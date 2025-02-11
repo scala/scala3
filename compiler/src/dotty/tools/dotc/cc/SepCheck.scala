@@ -142,6 +142,8 @@ object SepCheck:
 
   val EmptyConsumedSet = ConstConsumedSet(Array(), Array())
 
+  case class PeaksPair(actual: Refs, formal: Refs)
+
 class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import checker.*
   import SepCheck.*
@@ -193,6 +195,52 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case Nil => elems
       val elems: Refs = refs.filter(!_.isMaxCapability)
       recur(elems, elems.toList)
+
+    /** The members of type Fresh.Cap(...) or Fresh.Cap(...).rd in the transitive closure
+     *  of this set
+     */
+    private def freshElems(using Context): Refs =
+      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = newElems match
+        case newElem :: newElems1 =>
+          if seen.contains(newElem) then
+            recur(seen, acc, newElems1)
+          else newElem.stripReadOnly match
+            case Fresh.Cap(_) =>
+              recur(seen, acc + newElem, newElems1)
+            //case _: TypeRef | _: TypeParamRef =>
+            //  recur(seen + newElem, acc, newElems1)
+            case _ =>
+              recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
+        case Nil => acc
+      recur(emptyRefs, emptyRefs, refs.toList)
+
+    private def peaks(using Context): Refs =
+      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = newElems match
+        case newElem :: newElems1 =>
+          if seen.contains(newElem) then
+            recur(seen, acc, newElems1)
+          else newElem.stripReadOnly match
+            case Fresh.Cap(hidden) =>
+              if hidden.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
+              else
+                val superCaps =
+                  if newElem.isReadOnly then hidden.superCaps.map(_.readOnly)
+                  else hidden.superCaps
+                recur(seen + newElem, acc, superCaps ++ newElems)
+            case _ =>
+              if newElem.isMaxCapability
+                //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
+              then recur(seen + newElem, acc, newElems1)
+              else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
+        case Nil => acc
+      recur(emptyRefs, emptyRefs, refs.toList)
+
+    /** The shared peaks between `refs` and `other` */
+    private def sharedWith(other: Refs)(using Context): Refs =
+      def common(refs1: Refs, refs2: Refs) =
+        refs1.filter: ref =>
+          !ref.isReadOnly && refs2.exists(_.stripReadOnly eq ref)
+      common(refs, other) ++ common(other, refs)
 
     /** The overlap of two footprint sets F1 and F2. This contains all exclusive references `r`
      *  such that one of the following is true:
@@ -266,6 +314,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       recur(refs)
     end containsHidden
 
+    def hiddenSet(using Context): Refs =
+      freshElems.flatMap:
+        case Fresh.Cap(hidden) => hidden.elems
+        case ReadOnlyCapability(Fresh.Cap(hidden)) => hidden.elems.map(_.readOnly)
+
     /** Subtract all elements that are covered by some element in `others` from this set. */
     private def deduct(others: Refs)(using Context): Refs =
       refs.filter: ref =>
@@ -297,29 +350,21 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Report a separation failure in an application `fn(args)`
    *  @param fn          the function
-   *  @param args        the flattened argument lists
-   *  @param argIdx      the index of the failing argument in `args`, starting at 0
-   *  @param overlap     the overlap causing the failure
-   *  @param hiddenInArg the hidxden set of the type of the failing argument
-   *  @param footprints  a sequence of partial footprints, and the index of the
-   *                     last argument they cover.
-   *  @param deps        cross argument dependencies: maps argument trees to
-   *                     those other arguments that where mentioned by coorresponding
-   *                     formal parameters.
+   *  @param parts       the function prefix followed by the flattened argument list
+   *  @param polyArg     the clashing argument to a polymorphic formal
+   *  @param clashing    the argument with which it clashes
    */
-  private def sepApplyError(fn: Tree, args: List[Tree], argIdx: Int,
-      overlap: Refs, hiddenInArg: Refs, footprints: List[(Refs, Int)],
-      deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
-    val arg = args(argIdx)
+  def sepApplyError(fn: Tree, parts: List[Tree], polyArg: Tree, clashing: Tree)(using Context): Unit =
+    val polyArgIdx = parts.indexOf(polyArg).ensuring(_ >= 0) - 1
+    val clashIdx = parts.indexOf(clashing).ensuring(_ >= 0)
     def paramName(mt: Type, idx: Int): Option[Name] = mt match
       case mt @ MethodType(pnames) =>
         if idx < pnames.length then Some(pnames(idx)) else paramName(mt.resType, idx - pnames.length)
       case mt: PolyType => paramName(mt.resType, idx)
       case _ => None
-    def formalName = paramName(fn.nuType.widen, argIdx) match
+    def formalName = paramName(fn.nuType.widen, polyArgIdx) match
       case Some(pname) => i"$pname "
       case _ => ""
-    def whatStr = if overlap.size == 1 then "this capability is" else "these capabilities are"
     def qualifier = methPart(fn) match
       case Select(qual, _) => qual
       case _ => EmptyTree
@@ -329,43 +374,45 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     def funStr =
       if isShowableMethod then i"${fn.symbol}: ${fn.symbol.info}"
       else i"a function of type ${funType.widen}"
-    val clashIdx = footprints
-      .collect:
-        case (fp, idx) if !hiddenInArg.overlapWith(fp).isEmpty => idx
-      .head
-    def whereStr = clashIdx match
+    def clashArgStr = clashIdx match
       case 0 => "function prefix"
       case 1 => "first argument "
       case 2 => "second argument"
       case 3 => "third argument "
       case n => s"${n}th argument  "
-    def clashTree =
-      if clashIdx == 0 then qualifier
-      else args(clashIdx - 1)
     def clashTypeStr =
       if clashIdx == 0 && !isShowableMethod then "" // we already mentioned the type in `funStr`
-      else i" with type  ${clashTree.nuType}"
-    def clashCaptures = captures(clashTree)
-    def hiddenCaptures = formalCaptures(arg).hidden
-    def clashFootprint = clashCaptures.footprint
-    def hiddenFootprint = hiddenCaptures.footprint
-    def declaredFootprint = deps(arg).map(captures(_)).foldLeft(emptyRefs)(_ ++ _).footprint
-    def footprintOverlap = hiddenFootprint.overlapWith(clashFootprint).deduct(declaredFootprint)
+      else i" with type  ${clashing.nuType}"
+    val hiddenSet = formalCaptures(polyArg).hiddenSet
+    val clashSet = captures(clashing)
+    val hiddenFootprint = hiddenSet.footprint
+    val clashFootprint = clashSet.footprint
+    val overlapStr =
+      // The overlap of footprints, or, of this empty the set of shared peaks.
+      // We prefer footprint overlap since it tends to be more informative.
+      val overlap = hiddenFootprint.overlapWith(clashFootprint)
+      if !overlap.isEmpty then i"${CaptureSet(overlap)}"
+      else
+        val sharedPeaks = hiddenSet.peaks.sharedWith(clashSet.peaks)
+        assert(!sharedPeaks.isEmpty,
+          i"no overlap for $polyArg: $hiddenSet} vs $clashing: $clashSet")
+        sharedPeaks.nth(0) match
+          case fresh @ Fresh.Cap(hidden) =>
+            if hidden.owner.exists then i"cap of ${hidden.owner}" else i"$fresh"
+
     report.error(
-      em"""Separation failure: argument of type  ${arg.nuType}
+      em"""Separation failure: argument of type  ${polyArg.nuType}
           |to $funStr
-          |corresponds to capture-polymorphic formal parameter ${formalName}of type  ${arg.formalType}
-          |and captures ${CaptureSet(overlap)}, but $whatStr also passed separately
-          |in the ${whereStr.trim}$clashTypeStr.
+          |corresponds to capture-polymorphic formal parameter ${formalName}of type  ${polyArg.formalType}
+          |and hides capabilities  ${CaptureSet(hiddenSet)}.
+          |Some of these overlap with the captures of the ${clashArgStr.trim}$clashTypeStr.
           |
-          |  Capture set of $whereStr        : ${CaptureSet(clashCaptures)}
-          |  Hidden set of current argument        : ${CaptureSet(hiddenCaptures)}
-          |  Footprint of $whereStr          : ${CaptureSet(clashFootprint)}
-          |  Hidden footprint of current argument  : ${CaptureSet(hiddenFootprint)}
-          |  Declared footprint of current argument: ${CaptureSet(declaredFootprint)}
-          |  Undeclared overlap of footprints      : ${CaptureSet(footprintOverlap)}""",
-      arg.srcPos)
-  end sepApplyError
+          |  Hidden set of current argument        : ${CaptureSet(hiddenSet)}
+          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.footprint)}
+          |  Capture set of $clashArgStr        : ${CaptureSet(clashSet)}
+          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.footprint)}
+          |  The two sets overlap at               : $overlapStr""",
+      polyArg.srcPos)
 
   /** Report a use/definition failure, where a previously hidden capability is
    *  used again.
@@ -445,37 +492,58 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *                   formal parameters.
    */
   private def checkApply(fn: Tree, args: List[Tree], deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
-    val fnCaptures = methPart(fn) match
-      case Select(qual, _) => qual.nuType.captureSet
-      case _ => CaptureSet.empty
-    capt.println(i"check separate $fn($args), fnCaptures = $fnCaptures, argCaptures = ${args.map(arg => CaptureSet(formalCaptures(arg)))}, deps = ${deps.toList}")
-    var footprint = fnCaptures.elems.footprint
-    val footprints = mutable.ListBuffer[(Refs, Int)]((footprint, 0))
-    val indexedArgs = args.zipWithIndex
+    val (qual, fnCaptures) = methPart(fn) match
+      case Select(qual, _) => (qual, qual.nuType.captureSet)
+      case _ => (fn, CaptureSet.empty)
+    var currentPeaks = PeaksPair(fnCaptures.elems.peaks, emptyRefs)
+    val peaksOfTree: Map[Tree, PeaksPair] =
+      ((qual -> currentPeaks) :: args.map: arg =>
+          arg -> PeaksPair(
+            captures(arg).peaks,
+            if arg.needsSepCheck then formalCaptures(arg).hiddenSet.peaks else emptyRefs)
+      ).toMap
+    capt.println(
+      i"""check separate $fn($args), fnCaptures = $fnCaptures,
+         |  formalCaptures = ${args.map(arg => CaptureSet(formalCaptures(arg)))},
+         |  actualCaptures = ${args.map(arg => CaptureSet(captures(arg)))},
+         |  formalPeaks    = ${peaksOfTree.values.map(_.formal).toList}
+         |  actualPeaks    = ${peaksOfTree.values.map(_.actual).toList}
+         |  deps = ${deps.toList}""")
+    val parts = qual :: args
 
-    // First, compute all footprints of arguments to monomorphic pararameters,
-    // separately in `footprints`, and their union in `footprint`.
-    for (arg, idx) <- indexedArgs do
-      if !arg.needsSepCheck then
-        footprint = footprint ++ captures(arg).footprint.deductCapturesOf(deps(arg))
-        footprints += ((footprint, idx + 1))
+    for arg <- args do
+      val argPeaks = peaksOfTree(arg)
+      val argDeps = deps(arg)
 
-    // Then, for each argument to a polymorphic parameter:
-    //   - check formal type via checkType
-    //   - check that hidden set of argument does not overlap with current footprint
-    //   - add footprint of the deep capture set of actual type of argument
-    //     to global footprint(s)
-    for (arg, idx) <- indexedArgs do
+      def clashingPart(argPeaks: Refs, selector: PeaksPair => Refs): Tree =
+        parts.iterator.takeWhile(_ ne arg).find: prev =>
+            !argDeps.contains(prev)
+            && !selector(peaksOfTree(prev)).sharedWith(argPeaks).isEmpty
+          .getOrElse(EmptyTree)
+
+      // 1. test argPeaks.actual against previously captured formals
+      if !argPeaks.actual.sharedWith(currentPeaks.formal).isEmpty then
+        val clashing = clashingPart(argPeaks.actual, _.formal)
+        if !clashing.isEmpty then sepApplyError(fn, parts, clashing, arg)
+        else assert(!argDeps.isEmpty)
+
       if arg.needsSepCheck then
-        val ac = formalCaptures(arg)
+        //println(i"testing $arg, ${argPeaks.actual}/${argPeaks.formal} against ${currentPeaks.actual}")
         checkType(arg.formalType, arg.srcPos, TypeRole.Argument(arg))
-        val hiddenInArg = ac.hidden.footprint
-        //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
-        val overlap = hiddenInArg.overlapWith(footprint).deductCapturesOf(deps(arg))
-        if !overlap.isEmpty then
-          sepApplyError(fn, args, idx, overlap, hiddenInArg, footprints.toList, deps)
-        footprint ++= captures(arg).footprint
-        footprints += ((footprint, idx + 1))
+        // 2. test argPeaks.formal against previously hidden actuals
+        if !argPeaks.formal.sharedWith(currentPeaks.actual).isEmpty then
+          val clashing = clashingPart(argPeaks.formal, _.actual)
+          if !clashing.isEmpty then
+            if !clashing.needsSepCheck then
+              // if clashing needs a separation check then we already got an erro
+              // in (1) at position of clashing. No need to report it twice.
+              //println(i"CLASH $arg / ${argPeaks.formal} vs $clashing / ${peaksOfTree(clashing).actual} / ${captures(clashing).peaks}")
+              sepApplyError(fn, parts, arg, clashing)
+          else assert(!argDeps.isEmpty)
+
+      currentPeaks = PeaksPair(
+          currentPeaks.actual ++ argPeaks.actual,
+          currentPeaks.formal ++ argPeaks.formal)
   end checkApply
 
   /** The def/use overlap between the references `hiddenByDef` hidden by
@@ -757,7 +825,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case dep: TermParamRef =>
           argMap(dep.binder)(dep.paramNum) :: Nil
         case dep: ThisType if dep.cls == fn.symbol.owner =>
-          val Select(qual, _) = fn: @unchecked
+          val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
           qual :: Nil
         case _ =>
           Nil

@@ -442,7 +442,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
       case Fresh.Cap(hidden) =>
-        if printFreshDetailed then s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">"
+        val idStr = if showUniqueIds then s"#${hidden.id}" else ""
+        if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
         else if printFresh then "fresh"
         else "cap"
       case tp => toText(tp)

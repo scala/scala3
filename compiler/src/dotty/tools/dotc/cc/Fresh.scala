@@ -50,17 +50,21 @@ object Fresh:
   /** An extractor for "fresh" capabilities */
   object Cap:
 
-    def apply(initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
+    def apply(owner: Symbol, initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
       if ccConfig.useSepChecks then
-        AnnotatedType(defn.captureRoot.termRef, Annot(CaptureSet.HiddenSet(initialHidden)))
+        val hiddenSet = CaptureSet.HiddenSet(owner, initialHidden)
+        val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet))
+        hiddenSet.owningCap = res
+        //assert(hiddenSet.id != 3)
+        res
       else
         defn.captureRoot.termRef
 
     def apply(owner: Symbol, reach: Boolean)(using Context): CaptureRef =
-      apply(ownerToHidden(owner, reach))
+      apply(owner, ownerToHidden(owner, reach))
 
     def apply(owner: Symbol)(using Context): CaptureRef =
-      apply(ownerToHidden(owner, reach = false))
+      apply(owner, ownerToHidden(owner, reach = false))
 
     def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
       case Annot(hidden) => Some(hidden)
@@ -77,7 +81,7 @@ object Fresh:
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Cap(ownerToHidden(owner, reach))
+          Cap(owner, ownerToHidden(owner, reach))
         case t @ CapturingType(_, refs) =>
           val savedReach = reach
           if t.isBoxed then reach = true
