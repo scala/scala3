@@ -4,7 +4,7 @@ package vulpix
 
 import scala.language.unsafeNulls
 
-import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
+import java.io.{ File => JFile, InputStreamReader, IOException, BufferedReader, PrintStream }
 import java.nio.file.Paths
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
@@ -48,8 +48,11 @@ trait RunnerOrchestration {
   /** Destroy and respawn process after each test */
   def safeMode: Boolean
 
+  /** Open JDI connection for testing the debugger */
+  def debugMode: Boolean = false
+
   /** Running a `Test` class's main method from the specified `dir` */
-  def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
+  def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
   /** Kill all processes */
@@ -70,7 +73,7 @@ trait RunnerOrchestration {
     def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
       withRunner(_.runMain(classPath))
 
-    private class Runner(private var process: Process) {
+    private class Runner(private var process: RunnerProcess) {
       private var childStdout: BufferedReader = uninitialized
       private var childStdin: PrintStream = uninitialized
 
@@ -114,7 +117,7 @@ trait RunnerOrchestration {
         }
 
         if (childStdin eq null)
-          childStdin = new PrintStream(process.getOutputStream, /* autoFlush = */ true)
+          childStdin = new PrintStream(process.getOutputStream(), /* autoFlush = */ true)
 
         // pass file to running process
         childStdin.println(classPath)
@@ -124,7 +127,7 @@ trait RunnerOrchestration {
           val sb = new StringBuilder
 
           if (childStdout eq null)
-            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, StandardCharsets.UTF_8))
+            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))
 
           var childOutput: String = childStdout.readLine()
 
@@ -138,7 +141,7 @@ trait RunnerOrchestration {
             childOutput = childStdout.readLine()
           }
 
-          if (process.isAlive && childOutput != null) Success(sb.toString)
+          if (process.isAlive() && childOutput != null) Success(sb.toString)
           else Failure(sb.toString)
         }
 
@@ -159,18 +162,33 @@ trait RunnerOrchestration {
       }
     }
 
+    // A Java process and its JDI port for debugging, if debugMode is enabled.
+    private class RunnerProcess(p: Process, val port: Option[Int]):
+      export p.*
+
     /** Create a process which has the classpath of the `ChildJVMMain` and the
      *  scala library.
      */
-    private def createProcess: Process = {
+    private def createProcess: RunnerProcess = {
       val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
       val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
-      new ProcessBuilder(javaBin, "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
+      val args = Seq("-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
+        (if debugMode then Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,quiet=n") else Seq.empty)
+      val command = (javaBin +: args) :+ "dotty.tools.vulpix.ChildJVMMain"
+      val process = new ProcessBuilder(command*)
         .redirectErrorStream(true)
         .redirectInput(ProcessBuilder.Redirect.PIPE)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .start()
+
+      val jdiPort = Option.when(debugMode):
+        val reader = new BufferedReader(new InputStreamReader(process.getInputStream, StandardCharsets.UTF_8))
+        reader.readLine() match
+          case s"Listening for transport dt_socket at address: $port" => port.toInt
+          case line => throw new IOException(s"Failed getting JDI port of child JVM: got $line")
+
+      RunnerProcess(process, jdiPort)
     }
 
     private val freeRunners = mutable.Queue.empty[Runner]
