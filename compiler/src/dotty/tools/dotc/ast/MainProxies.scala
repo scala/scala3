@@ -103,17 +103,17 @@ object MainProxies {
       val body = Try(call, handler :: Nil, EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
-      /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.
-       *  The annotations will be retype-checked in another scope that may not have the same imports.
+
+      /** This context is used to create the `TypeSplices` wrapping annotations
+       *  below. These should have `mainFun` as their owner (and not the
+       *  enclosing package class that we would get otherwise) so that
+       *  subsequent owner changes (for example in `Typer.typedTypedSplice`) are
+       *  correct. See #22364 and associated tests.
        */
-      def insertTypeSplices = new TreeMap {
-          override def transform(tree: Tree)(using Context): Tree = tree match
-            case tree: tpd.Ident @unchecked => TypedSplice(tree)
-            case tree => super.transform(tree)
-      }
+      val annotsCtx = ctx.fresh.setOwner(mainFun)
       val annots = mainFun.annotations
         .filterNot(_.matches(defn.MainAnnot))
-        .map(annot => insertTypeSplices.transform(annot.tree))
+        .map(annot => TypedSplice(annot.tree)(using annotsCtx))
       val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic | Synthetic)
         .withAnnotations(annots)
