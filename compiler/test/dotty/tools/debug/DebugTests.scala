@@ -24,6 +24,7 @@ object DebugTests extends ParallelTesting:
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
+  override def debugMode = true
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
 
@@ -40,7 +41,7 @@ object DebugTests extends ParallelTesting:
 
     private def verifyDebug(dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       if Properties.testsNoRun then addNoRunWarning()
-      else runMain(testSource.runClassPath, testSource.allToolArgs) match
+      else runMain(testSource.runClassPath) match
         case Success(output) => ()
         case Failure(output) =>
           if output == "" then
