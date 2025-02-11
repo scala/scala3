@@ -18,6 +18,10 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
     var acc: SimpleIdentitySet[B] = SimpleIdentitySet.empty
     foreach(x => acc += f(x))
     acc
+  def flatMap[B <: AnyRef](f: Elem => SimpleIdentitySet[B]): SimpleIdentitySet[B] =
+    var acc: SimpleIdentitySet[B] = SimpleIdentitySet.empty
+    foreach(x => acc ++= f(x))
+    acc
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
   def nth(n: Int): Elem

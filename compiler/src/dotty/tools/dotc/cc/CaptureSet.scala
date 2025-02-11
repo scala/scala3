@@ -18,6 +18,7 @@ import util.common.alwaysTrue
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
+import compiletime.uninitialized
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -942,8 +943,9 @@ object CaptureSet:
    *  which are already subject through snapshotting and rollbacks in VarState.
    *  It's advantageous if we don't need to deal with other pieces of state there.
    */
-  class HiddenSet(initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
-  extends Var(initialElems = initialHidden):
+  class HiddenSet(owner: Symbol, initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
+  extends Var(owner, initialHidden):
+    var owningCap: AnnotatedType = uninitialized
 
     private def aliasRef: AnnotatedType | Null =
       if myElems.size == 1 then
@@ -958,6 +960,9 @@ object CaptureSet:
           case Fresh.Cap(hidden) if deps.contains(hidden) => hidden
           case _ => this
       else this
+
+    def superCaps: List[AnnotatedType] =
+      deps.toList.map(_.asInstanceOf[HiddenSet].owningCap)
 
     override def elems: Refs =
       val al = aliasSet
