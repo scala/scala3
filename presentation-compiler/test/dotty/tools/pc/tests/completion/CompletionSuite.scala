@@ -2134,3 +2134,14 @@ class CompletionSuite extends BaseCompletionSuite:
       """|build: Unit
          |""".stripMargin,
     )
+
+  @Test def i7191 =
+    check(
+      """|val x = Some(3).map(_.@@)
+         |""".stripMargin,
+      """|!=(x: Byte): Boolean
+         |!=(x: Char): Boolean
+         |!=(x: Double): Boolean
+         |""".stripMargin,
+      topLines = Some(3)
+    )
