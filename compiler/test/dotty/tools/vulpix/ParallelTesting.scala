@@ -70,6 +70,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def outDir: JFile
     def flags: TestFlags
     def sourceFiles: Array[JFile]
+    def checkFile: Option[JFile]
 
     def runClassPath: String = outDir.getPath + JFile.pathSeparator + flags.runClassPath
 
@@ -183,6 +184,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     decompilation: Boolean = false
   ) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
+
+    def checkFile: Option[JFile] =
+      sourceFiles.map(f => new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check")))
+        .find(_.exists())
   }
 
   /** A test source whose files will be compiled separately according to their
@@ -214,6 +219,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .map { (g, f) => (g, f.sorted) }
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
+
+    def checkFile: Option[JFile] =
+      val platform =
+        if allToolArgs.getOrElse(ToolName.Target, Nil).nonEmpty then s".$testPlatform"
+        else ""
+      Some(new JFile(dir.getPath + platform + ".check")).filter(_.exists)
   }
 
   protected def shouldSkipTestSource(testSource: TestSource): Boolean = false
@@ -258,12 +269,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     final def countErrors  (reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._1
     final def countWarnings(reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._2
     final def reporterFailed(r: TestReporter) = r.errorCount > 0
-
-    /**
-     * For a given test source, returns a check file against which the result of the test run
-     * should be compared. Is used by implementations of this trait.
-     */
-    final def checkFile(testSource: TestSource): Option[JFile] = (CompilationLogic.checkFilePath(testSource)).filter(_.exists)
 
     /**
      * Checks if the given actual lines are the same as the ones in the check file.
@@ -337,22 +342,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporters.filter(reporterFailed).foreach(logger.logReporterContents)
       logBuildInstructions(testSource, reporters)
       failTestSource(testSource)
-    }
-  }
-
-  object CompilationLogic {
-    private[ParallelTesting] def checkFilePath(testSource: TestSource) = testSource match {
-      case ts: JointCompilationSource =>
-        ts.files.collectFirst {
-          case f if !f.isDirectory =>
-            new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
-        }
-      case ts: SeparateCompilationSource =>
-        val platform =
-          if testSource.allToolArgs.getOrElse(ToolName.Target, Nil).nonEmpty then
-            s".$testPlatform"
-          else ""
-        Option(new JFile(ts.dir.getPath + platform + ".check"))
     }
   }
 
@@ -735,7 +724,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private def mkReporter = TestReporter.reporter(realStdout, logLevel = mkLogLevel)
 
     protected def diffCheckfile(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
+      testSource.checkFile.foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
     private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
       reporters.flatMap(_.consoleOutput.split("\n")).toList
@@ -938,7 +927,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
+      verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
   }
 
   private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
@@ -1177,7 +1166,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def this(targets: List[TestSource]) =
       this(targets, 1, true, None, false, false)
 
-    def checkFilePaths: List[JFile] = targets.map(CompilationLogic.checkFilePath).flatten
+    def checkFiles: List[JFile] = targets.flatMap(_.checkFile)
 
     def copy(targets: List[TestSource],
       times: Int = times,
