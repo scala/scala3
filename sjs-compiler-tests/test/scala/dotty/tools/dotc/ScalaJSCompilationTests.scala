@@ -2,7 +2,7 @@ package dotty
 package tools
 package dotc
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.{ Test => JUnitTest, BeforeClass, AfterClass }
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -28,7 +28,7 @@ class ScalaJSCompilationTests extends ParallelTesting {
 
   // Negative tests ------------------------------------------------------------
 
-  @Test def negScalaJS: Unit = {
+  @JUnitTest def negScalaJS: Unit = {
     implicit val testGroup: TestGroup = TestGroup("negScalaJS")
     aggregateTests(
       compileFilesInDir("tests/neg-scalajs", scalaJSOptions),
@@ -58,7 +58,7 @@ class ScalaJSCompilationTests extends ParallelTesting {
         Failure(writer.toString())
   end runMain
 
-  @Test def runScalaJS: Unit = {
+  @JUnitTest def runScalaJS: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runScalaJS")
     aggregateTests(
       compileFilesInDir("tests/run", scalaJSOptions),

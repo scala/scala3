@@ -51,9 +51,22 @@ trait RunnerOrchestration {
   /** Open JDI connection for testing the debugger */
   def debugMode: Boolean = false
 
-  /** Running a `Test` class's main method from the specified `dir` */
-  def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
+  /** Running a `Test` class's main method from the specified `classpath` */
+  def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
+
+  trait Debuggee:
+    // the jdi port to connect the debugger
+    def jdiPort: Int
+    // start the main method in the background
+    def launch(): Unit
+
+  /** Provide a Debuggee for debugging the Test class's main method
+   *  @param f the debugging flow: set breakpoints, launch main class, pause, step, evaluate, exit etc
+   */
+  def debugMain(classPath: String)(f: Debuggee => Unit)(implicit summaryReport: SummaryReporting): Unit =
+    assert(debugMode, "debugMode is disabled")
+    monitor.debugMain(classPath)(f)
 
   /** Kill all processes */
   def cleanup() = monitor.killAll()
@@ -69,13 +82,22 @@ trait RunnerOrchestration {
    *  it died
    */
   private class RunnerMonitor {
+    /** Did add hook to kill the child VMs? */
+    private val didAddCleanupCallback = new AtomicBoolean(false)
 
     def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
       withRunner(_.runMain(classPath))
 
-    private class Runner(private var process: RunnerProcess) {
-      private var childStdout: BufferedReader = uninitialized
-      private var childStdin: PrintStream = uninitialized
+    def debugMain(classPath: String)(f: Debuggee => Unit)(implicit summaryReport: SummaryReporting): Status =
+      withRunner(_.debugMain(classPath)(f))
+
+    // A JVM process and its JDI port for debugging, if debugMode is enabled.
+    private class RunnerProcess(p: Process, val jdiPort: Option[Int]):
+      val stdout = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))
+      val stdin = new PrintStream(p.getOutputStream(), /* autoFlush = */ true)
+      export p.{exitValue, isAlive, destroy}
+
+    private class Runner(private var process: RunnerProcess):
 
       /** Checks if `process` is still alive
        *
@@ -88,88 +110,78 @@ trait RunnerOrchestration {
         catch { case _: IllegalThreadStateException => true }
 
       /** Destroys the underlying process and kills IO streams */
-      def kill(): Unit = {
+      def kill(): Unit =
         if (process ne null) process.destroy()
         process = null
-        childStdout = null
-        childStdin = null
-      }
-
-      /** Did add hook to kill the child VMs? */
-      private val didAddCleanupCallback = new AtomicBoolean(false)
 
       /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
-      def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status = {
-        if (didAddCleanupCallback.compareAndSet(false, true)) {
-          // If for some reason the test runner (i.e. sbt) doesn't kill the VM, we
-          // need to clean up ourselves.
-          summaryReport.addCleanup(() => killAll())
-        }
-        assert(process ne null,
-          "Runner was killed and then reused without setting a new process")
+      def runMain(classPath: String): Status =
+        assert(process ne null, "Runner was killed and then reused without setting a new process")
+        awaitStatusOrRespawn(startMain(classPath))
 
-        // Makes the encapsulating RunnerMonitor spawn a new runner
-        def respawn(): Unit = {
-          process.destroy()
-          process = createProcess
-          childStdout = null
-          childStdin = null
-        }
+      def debugMain(classPath: String)(f: Debuggee => Unit): Status =
+        assert(process ne null, "Runner was killed and then reused without setting a new process")
+        assert(process.jdiPort.isDefined, "Runner has not been started in debug mode")
 
-        if (childStdin eq null)
-          childStdin = new PrintStream(process.getOutputStream(), /* autoFlush = */ true)
+        var mainFuture: Future[Status] = null
+        val debuggee = new Debuggee:
+          def jdiPort: Int = process.jdiPort.get
+          def launch(): Unit =
+            mainFuture = startMain(classPath)
 
+        try f(debuggee)
+        catch case debugFailure: Throwable =>
+          if mainFuture != null then awaitStatusOrRespawn(mainFuture)
+          throw debugFailure
+
+        assert(mainFuture ne null, "main method not started by debugger")
+        awaitStatusOrRespawn(mainFuture)
+      end debugMain
+
+      private def startMain(classPath: String): Future[Status] =
         // pass file to running process
-        childStdin.println(classPath)
+        process.stdin.println(classPath)
 
         // Create a future reading the object:
-        val readOutput = Future {
+        Future:
           val sb = new StringBuilder
 
-          if (childStdout eq null)
-            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))
-
-          var childOutput: String = childStdout.readLine()
+          var childOutput: String = process.stdout.readLine()
 
           // Discard all messages until the test starts
           while (childOutput != ChildJVMMain.MessageStart && childOutput != null)
-            childOutput = childStdout.readLine()
-          childOutput = childStdout.readLine()
+            childOutput = process.stdout.readLine()
+          childOutput = process.stdout.readLine()
 
-          while (childOutput != ChildJVMMain.MessageEnd && childOutput != null) {
+          while childOutput != ChildJVMMain.MessageEnd && childOutput != null do
             sb.append(childOutput).append(System.lineSeparator)
-            childOutput = childStdout.readLine()
-          }
+            childOutput = process.stdout.readLine()
 
           if (process.isAlive() && childOutput != null) Success(sb.toString)
           else Failure(sb.toString)
-        }
+      end startMain
 
-        // Await result for `maxDuration` and then timout and destroy the
-        // process:
-        val status =
-          try Await.result(readOutput, maxDuration)
-          catch { case _: TimeoutException =>  Timeout }
-
-        // Handle failure of the VM:
-        status match {
-          case _: Success if safeMode => respawn()
-          case _: Success => // no need to respawn sub process
-          case _: Failure => respawn()
-          case Timeout => respawn()
-        }
+      // wait status of the main class execution, respawn if failure or timeout
+      private def awaitStatusOrRespawn(future: Future[Status]): Status =
+        val status = try Await.result(future, maxDuration)
+          catch case _: TimeoutException => Timeout
+        // handle failures
+        status match
+          case _: Success if !safeMode => () // no need to respawn
+          case _ => respawn() // safeMode, failure or timeout
         status
-      }
-    }
 
-    // A Java process and its JDI port for debugging, if debugMode is enabled.
-    private class RunnerProcess(p: Process, val port: Option[Int]):
-      export p.*
+      // Makes the encapsulating RunnerMonitor spawn a new runner
+      private def respawn(): Unit =
+        process.destroy()
+        process = null
+        process = createProcess()
+    end Runner
 
     /** Create a process which has the classpath of the `ChildJVMMain` and the
      *  scala library.
      */
-    private def createProcess: RunnerProcess = {
+    private def createProcess(): RunnerProcess = {
       val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
       val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
@@ -212,12 +224,15 @@ trait RunnerOrchestration {
       notify()
     }
 
-    private def withRunner[T](op: Runner => T): T = {
+    private def withRunner[T](op: Runner => T)(using summaryReport: SummaryReporting): T =
+      // If for some reason the test runner (i.e. sbt) doesn't kill the VM,
+      // we need to clean up ourselves.
+      if didAddCleanupCallback.compareAndSet(false, true) then
+        summaryReport.addCleanup(() => killAll())
       val runner = getRunner()
       val result = op(runner)
       freeRunner(runner)
       result
-    }
 
     def killAll(): Unit = {
       freeRunners.foreach(_.kill())
