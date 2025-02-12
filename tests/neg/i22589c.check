@@ -1,0 +1,7 @@
+-- Error: tests/neg/i22589c.scala:8:7 ----------------------------------------------------------------------------------
+ 8 |object A extends Base[A.P] { // error
+   |^
+   |Inferred implementation of the deferred given instance given_TC_T in trait Base is self-recursive.
+   |An implementing given needs to be written explicitly.
+ 9 |  case class P()
+10 |}
