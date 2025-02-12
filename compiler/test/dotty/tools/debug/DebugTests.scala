@@ -42,7 +42,10 @@ object DebugTests extends ParallelTesting:
     private def verifyDebug(dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       if Properties.testsNoRun then addNoRunWarning()
       else
-        val status = debugMain(testSource.runClassPath)(_.launch())
+        val status = debugMain(testSource.runClassPath): debuggee =>
+          val debugger = Debugger(debuggee.jdiPort, maxDuration)
+          try debuggee.launch()
+          finally debugger.dispose()
         status match
           case Success(output) => ()
           case Failure(output) =>
