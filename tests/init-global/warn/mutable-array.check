@@ -1,11 +1,11 @@
--- Warning: tests/init-global/warn/mutable-array.scala:8:19 ------------------------------------------------------------
-8 |  val x: Int = box.value // warn
+-- Warning: tests/init-global/warn/mutable-array.scala:9:19 ------------------------------------------------------------
+9 |  val x: Int = box.value // warn
   |               ^^^^^^^^^
   |Reading mutable state of object A during initialization of object B.
   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
   |├── object B:	[ mutable-array.scala:5 ]
   |│   ^
-  |└── val x: Int = box.value // warn	[ mutable-array.scala:8 ]
+  |└── val x: Int = box.value // warn	[ mutable-array.scala:9 ]
   |                 ^^^^^^^^^
   |The mutable state is created through: 
   |├── object A:	[ mutable-array.scala:1 ]
