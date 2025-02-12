@@ -826,9 +826,6 @@ class Objects(using Context @constructorOnly):
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
           UnknownValue
-        else if target.equals(defn.ClassTagModule_apply) then
-          // ClassTag and other reflection related values are not analyzed
-          UnknownValue
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -1427,7 +1424,9 @@ class Objects(using Context @constructorOnly):
         val meth = defn.getWrapVarargsArrayModule.requiredMethod(wrapArrayMethodName)
         val module = defn.getWrapVarargsArrayModule.moduleClass.asClass
         val args = evalArgs(elems.map(Arg.apply), thisV, klass)
-        call(ObjectRef(module), meth, args, module.typeRef, NoType)
+        val arr = OfArray(State.currentObject, summon[Regions.Data])
+        Heap.writeJoin(arr.addr, args.map(_.value).join)
+        call(ObjectRef(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
         evalExprs(bindings, thisV, klass)
