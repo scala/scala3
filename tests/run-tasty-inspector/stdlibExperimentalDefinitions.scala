@@ -39,9 +39,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.into",
   "scala.annotation.internal.$into",
 
-  //// New feature: @publicInBinary
-  "scala.annotation.publicInBinary",
-
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 
