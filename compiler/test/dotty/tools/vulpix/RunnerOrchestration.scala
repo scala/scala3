@@ -56,9 +56,9 @@ trait RunnerOrchestration {
     monitor.runMain(classPath)
 
   trait Debuggee:
-    // the jdi port to connect the debugger
+    /** the jdi port to connect the debugger */
     def jdiPort: Int
-    // start the main method in the background
+    /** start the main method in the background */
     def launch(): Unit
 
   /** Provide a Debuggee for debugging the Test class's main method
