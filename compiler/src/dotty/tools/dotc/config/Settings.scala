@@ -293,8 +293,11 @@ object Settings:
     def BooleanSetting(name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
       publish(Setting(name, descr, initialValue, aliases = aliases))
 
-    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[String] =
-      publish(Setting(descr, default, helpArg, aliases = aliases, deprecation = deprecation, depends = depends))
+    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil, depends: SettingDependencies = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, aliases = aliases, depends = depends))
+
+    def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
     def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
@@ -320,8 +323,8 @@ object Settings:
     def PathSetting(name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(name, descr, default, aliases = aliases))
 
-    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[List[String]] =
-      publish(Setting(descr, if (default.isEmpty) Nil else List(default), aliases = aliases, deprecation = deprecation, depends = depends))
+    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil, depends: SettingDependencies = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default), aliases = aliases, depends = depends))
 
     def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, prefix = pre))
