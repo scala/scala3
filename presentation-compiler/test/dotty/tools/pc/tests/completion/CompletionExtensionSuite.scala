@@ -86,7 +86,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
 
   @Test def `filter-by-type-old` =
     check(
-      """|package example
+     """|package example
         |
         |object enrichments:
         |  implicit class A(num: Int):

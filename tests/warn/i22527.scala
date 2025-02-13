@@ -36,7 +36,7 @@ def orElse(x: Int): Unit =
 
 def onlyIf(x: Int): Unit =
   callme(
-    if (x > 0)
+    if x > 0 then
       true, "fail") // warn value discard
 
 def h(xs: List[Int]) =
