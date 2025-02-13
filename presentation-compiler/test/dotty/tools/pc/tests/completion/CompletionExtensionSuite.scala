@@ -86,7 +86,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
 
   @Test def `filter-by-type-old` =
     check(
-      """|package example
+     """|package example
         |
         |object enrichments:
         |  implicit class A(num: Int):
@@ -99,7 +99,6 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
      """|identity: String (implicit)
         |""".stripMargin, // identity2 won't be available
       filter = _.contains("(implicit)")
-
     )
 
   @Test def `filter-by-type-subtype` =
