@@ -90,9 +90,15 @@ class SemanticSymbolBuilder:
           b.append('+').append(idx + 1)
         case _ =>
       end find
-      val sig = sym.signature
-      val targetName = sym.targetName
-      find(sym => sym.signature == sig && sym.targetName == targetName)
+      try
+        val sig = sym.signature
+        val targetName = sym.targetName
+        find(sym => sym.signature == sig && sym.targetName == targetName)
+      catch
+        // sym.signature might not exist
+        // this solves tests/best-effort/compiler-semanticdb-crash
+        case _: MissingType if ctx.usedBestEffortTasty =>
+
 
     def addDescriptor(sym: Symbol): Unit =
       if sym.is(ModuleClass) then
