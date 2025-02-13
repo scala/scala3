@@ -197,24 +197,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val elems: Refs = refs.filter(!_.isMaxCapability)
       recur(elems, elems.toList)
 
-    /** The members of type Fresh.Cap(...) or Fresh.Cap(...).rd in the transitive closure
-     *  of this set
-     */
-    private def freshElems(using Context): Refs =
-      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = newElems match
-        case newElem :: newElems1 =>
-          if seen.contains(newElem) then
-            recur(seen, acc, newElems1)
-          else newElem.stripReadOnly match
-            case Fresh.Cap(_) =>
-              recur(seen, acc + newElem, newElems1)
-            //case _: TypeRef | _: TypeParamRef =>
-            //  recur(seen + newElem, acc, newElems1)
-            case _ =>
-              recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
-        case Nil => acc
-      recur(emptyRefs, emptyRefs, refs.toList)
-
     private def peaks(using Context): Refs =
       def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = newElems match
         case newElem :: newElems1 =>
@@ -286,7 +268,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
      *  capability in `refs`. E g. if `R = {x, <cap hiding <y, <cap hiding z>>}` then
      *  its hidden set is `{y, z}`.
      */
-    private def hidden(using Context): Refs =
+    private def hiddenSet(using Context): Refs =
       val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
 
       def hiddenByElem(elem: CaptureRef): Refs = elem match
@@ -299,7 +281,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           if seen.add(elem) then elems ++ hiddenByElem(elem) else elems
 
       recur(refs)
-    end hidden
+    end hiddenSet
 
     /** Same as !refs.hidden.isEmpty but more efficient */
     private def containsHidden(using Context): Boolean =
@@ -314,11 +296,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
       recur(refs)
     end containsHidden
-
-    def hiddenSet(using Context): Refs =
-      freshElems.flatMap:
-        case Fresh.Cap(hidden) => hidden.elems
-        case ReadOnlyCapability(Fresh.Cap(hidden)) => hidden.elems.map(_.readOnly)
 
     /** Subtract all elements that are covered by some element in `others` from this set. */
     private def deduct(others: Refs)(using Context): Refs =
@@ -353,7 +330,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private def captures(tree: Tree)(using Context): Refs =
    tree.nuType.deepCaptureSet.elems
 
-  // ---- Error reporting TODO Once these are stabilized, move to messages -----
+  // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
+
+  def sharedPeaksStr(shared: Refs)(using Context): String =
+    shared.nth(0) match
+      case fresh @ Fresh.Cap(hidden) =>
+        if hidden.owner.exists then i"$fresh of ${hidden.owner}" else i"$fresh"
 
   def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
     val hiddenFootprint = hiddenSet.footprint
@@ -365,9 +347,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     else
       val sharedPeaks = hiddenSet.peaks.sharedWith(clashSet.peaks)
       assert(!sharedPeaks.isEmpty, i"no overlap for $hiddenSet vs $clashSet")
-      sharedPeaks.nth(0) match
-        case fresh @ Fresh.Cap(hidden) =>
-          if hidden.owner.exists then i"cap of ${hidden.owner}" else i"$fresh"
+      sharedPeaksStr(sharedPeaks)
 
   /** Report a separation failure in an application `fn(args)`
    *  @param fn          the function
@@ -429,7 +409,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   def sepUseError(tree: Tree, used: Refs, globalOverlap: Refs)(using Context): Unit =
     val individualChecks = for mdefs <- previousDefs.iterator; mdef <- mdefs.iterator yield
-      val hiddenByDef = captures(mdef.tpt).hidden.footprint
+      val hiddenByDef = captures(mdef.tpt).hiddenSet.footprint
       val overlap = defUseOverlap(hiddenByDef, used, tree.symbol)
       if !overlap.isEmpty then
         def resultStr = if mdef.isInstanceOf[DefDef] then " result" else ""
@@ -560,7 +540,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     resultType.get(sym) match
       case Some(tp) if !overlap.isEmpty =>
         val declared = tp.captureSet.elems
-        overlap.deduct(declared.footprint).deduct(declared.hidden.footprint)
+        overlap.deduct(declared.footprint).deduct(declared.hiddenSet.footprint)
       case _ =>
         overlap
 
@@ -784,7 +764,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.hidden.footprint.deduct(refs.footprint)
+          val toCheck = refs.hiddenSet.footprint.deduct(refs.footprint)
           checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
       case TypeRole.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
@@ -869,8 +849,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
       checkType(tree.tpt, tree.symbol)
       if previousDefs.nonEmpty then
-        capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
-        defsShadow ++= captures(tree.tpt).hidden.deductSymRefs(tree.symbol).footprint
+        capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint}")
+        defsShadow ++= captures(tree.tpt).hiddenSet.deductSymRefs(tree.symbol).footprint
         resultType(tree.symbol) = tree.tpt.nuType
         previousDefs.head += tree
 

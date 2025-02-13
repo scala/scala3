@@ -15,7 +15,7 @@ def test1(@consume c: Object^, f: Object^ => Object^) =
 def test2(@consume c: Object^, f: Object^ ->{c} Object^) =
   def cc: Object^ = c // error
   val x1 =
-    { f(cc) } // error
+    { f(cc) } // error // error
   val x4: Object^ =
     { f(c) } // error // error
 
