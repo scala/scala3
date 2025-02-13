@@ -6,6 +6,5 @@ step 3
 break Test$ 14
 step 3
 step 4
-// incorrect debug line
-step 6
+step 14
 step 15
