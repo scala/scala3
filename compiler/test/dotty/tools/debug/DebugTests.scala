@@ -1,5 +1,6 @@
 package dotty.tools.debug
 
+import com.sun.jdi.*
 import dotty.Properties
 import dotty.tools.dotc.reporting.TestReporter
 import dotty.tools.io.JFile
@@ -12,9 +13,8 @@ class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
+    // compileFile("tests/debug/tailrec.scala", TestConfiguration.defaultOptions).checkDebug()
     compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
-
-end DebugTests
 
 object DebugTests extends ParallelTesting:
   def maxDuration = 45.seconds
@@ -45,9 +45,16 @@ object DebugTests extends ParallelTesting:
         val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file"))
         val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
         val status = debugMain(testSource.runClassPath): debuggee =>
-          val debugger = Debugger(debuggee.jdiPort, maxDuration)
-          try debuggee.launch()
-          finally debugger.dispose()
+          val debugger = Debugger(debuggee.jdiPort, maxDuration/* , verbose = true */)
+          // configure the breakpoints before starting the debuggee
+          val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }
+          for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
+          try
+            debuggee.launch()
+            playDebugSteps(debugger, debugSteps/* , verbose = true */)
+          finally
+            // stop debugger to let debuggee terminate its execution
+            debugger.dispose()
         status match
           case Success(output) => ()
           case Failure(output) =>
@@ -60,5 +67,32 @@ object DebugTests extends ParallelTesting:
           case Timeout =>
             echo("failed because test " + testSource.title + " timed out")
             failTestSource(testSource, TimeoutFailure(testSource.title))
+    end verifyDebug
 
+    private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =
+      import scala.language.unsafeNulls
+
+      var thread: ThreadReference = null
+      def location = thread.frame(0).location
+
+      for case step <- steps do
+        import DebugStep.*
+        step match
+          case DebugStepAssert(Break(className, line), assert) =>
+            // continue if paused
+            if thread != null then
+              debugger.continue(thread)
+              thread = null
+            thread = debugger.break()
+            if verbose then println(s"break ${location.declaringType.name} ${location.lineNumber}")
+            assert(location)
+          case DebugStepAssert(Next, assert) =>
+            thread = debugger.next(thread)
+            if verbose then println(s"next ${location.lineNumber}")
+            assert(location)
+          case DebugStepAssert(Step, assert) =>
+            thread = debugger.step(thread)
+            if verbose then println(s"step ${location.lineNumber}")
+            assert(location)
+    end playDebugSteps
   end DebugTest
