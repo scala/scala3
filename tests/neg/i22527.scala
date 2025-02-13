@@ -23,3 +23,8 @@ def g: Unit =
       class X extends AnyRef, Serializable // error
       27 // error
   )
+
+def onlyIf(x: Int): Unit =
+  callme(
+    if (x > 0)
+      true, "fail") // error syntax is broken after old-style conditional
