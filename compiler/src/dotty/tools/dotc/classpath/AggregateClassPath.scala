@@ -33,11 +33,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     packageIndex.getOrElseUpdate(pkg.dottedString, aggregates.filter(_.hasPackage(pkg)))
   }
 
-  override def asURLs: Seq[URL] =
-    aggregates.flatMap {
-      case v: VirtualDirectoryClassPath => Seq()
-      case a => a.asURLs
-    }
+  override def asURLs: Seq[URL] = aggregates.flatMap(_.asURLs)
 
   override def asClassPathStrings: Seq[String] = aggregates.map(_.asClassPathString).distinct
 

@@ -1,8 +1,10 @@
 package dotty.tools.repl
 
 import scala.language.unsafeNulls
+
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
+
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.classpath.ClassPathFactory
@@ -20,6 +22,7 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.SymbolLoaders
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -70,6 +73,7 @@ case class State(objectIndex: Int,
                  quiet: Boolean,
                  context: Context):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
+  //def copy() = this
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -94,7 +98,7 @@ class ReplDriver(settings: Array[String],
     initCtx.settings.YwithBestEffortTasty.name
   )
 
-  private def setupRootCtx(settings: Array[String], rootCtx: Context, previousOutputDir: Option[AbstractFile] = None) = {
+  private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
     val incompatible = settings.intersect(incompatibleOptions)
     val filteredSettings =
       if !incompatible.isEmpty then
@@ -107,7 +111,7 @@ class ReplDriver(settings: Array[String],
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-        ictx.base.initialize(previousOutputDir)
+        ictx.base.initialize()
         ictx
       }
       case None =>
@@ -540,30 +544,23 @@ class ReplDriver(settings: Array[String],
         if (existingClass.nonEmpty)
           out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
           state
-        else
-          val prevClassPath = state.context.platform.classPath(using state.context).asClassPathString
-          val newClassPath = s"$prevClassPath${JFile.pathSeparator}$path"
+        else inContext(state.context):
+          val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+          val prevOutputDir = ctx.settings.outputDir.value
 
           // add to compiler class path
-          val prevOutputDir = rootCtx.settings.outputDir.valueIn(rootCtx.settingsState)
-          val ctxToUse = initCtx.fresh
-            .setSetting(rootCtx.settings.classpath, newClassPath)
-            .setSetting(rootCtx.settings.outputDir, prevOutputDir) // reuse virtual output directory
-          rootCtx = setupRootCtx(
-            Array(),
-            ctxToUse,
-            previousOutputDir = Some(prevOutputDir)
-          )
-          val s = state.copy(context = rootCtx)
+          ctx.platform.addToClassPath(jarClassPath)
+          SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
           // new class loader with previous output dir and specified jar
-          val prevClassLoader = rendering.classLoader()(using state.context)
+          val prevClassLoader = rendering.classLoader()
           val jarClassLoader = fromURLsParallelCapable(
-            ClassPathFactory.newClassPath(jarFile)(using rootCtx).asURLs, prevClassLoader)
+            jarClassPath.asURLs, prevClassLoader)
           rendering.myClassLoader = new AbstractFileClassLoader(
-            rootCtx.settings.outputDir.valueIn(rootCtx.settingsState), jarClassLoader)
+            prevOutputDir, jarClassLoader)
+
           out.println(s"Added '$path' to classpath.")
-          s
+          state
 
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")

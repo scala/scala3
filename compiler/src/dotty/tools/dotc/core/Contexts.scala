@@ -36,7 +36,6 @@ import scala.annotation.internal.sharable
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
 import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
-import dotty.tools.dotc.classpath.ClassPathFactory
 import util.Property.Key
 import util.Store
 import plugins.*
@@ -916,11 +915,8 @@ object Contexts {
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */
-    def initialize(previousOutputDir: Option[AbstractFile] = None)(using Context): Unit = {
+    def initialize()(using Context): Unit = {
       _platform = newPlatform
-      previousOutputDir.foreach(cp =>
-        _platform.nn.addToClassPath(ClassPathFactory.newClassPath(cp))
-      )
       definitions.init()
     }
 

@@ -47,11 +47,7 @@ class ReplCompiler extends Compiler:
       /** Import previous runs and user defined imports */
       override protected def rootContext(using Context): Context = {
         def importContext(imp: tpd.Import)(using Context) =
-          // TODO: only when context has changed?
-          val typer = ctx.typer
-          typer.index(imp)
-          val imp2 = typer.typed(imp).asInstanceOf[tpd.Import]
-          ctx.importContext(imp2, imp2.symbol)
+          ctx.importContext(imp, imp.symbol)
 
         def importPreviousRun(id: Int)(using Context) = {
           // we first import the wrapper object id
