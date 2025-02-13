@@ -1212,7 +1212,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  of betasty files.
      */
     def checkNoBestEffortError()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new NoBestEffortErrorsTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+      val test = new NoBestEffortErrorsTest(targets, times, threadLimit, shouldFail).executeTestSuite()
 
       cleanup()
 
@@ -1761,7 +1761,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val bestEffortDir = new JFile(step1OutDir, s"META-INF${JFile.separator}best-effort")
 
       val step2Compilation = JointCompilationSource(
-        testGroup.name, step2SourceFiles, flags.and(withBetastyFlag).and(semanticDbFlag), step2OutDir, fromTasty = WithBestEffortTasty(bestEffortDir)
+        testGroup.name, step2SourceFiles, flags.and(bestEffortFlag).and(withBetastyFlag).and(semanticDbFlag), step2OutDir, fromTasty = WithBestEffortTasty(bestEffortDir)
       )
       (step1Compilation, step2Compilation, bestEffortDir)
     }.unzip3
@@ -1770,7 +1770,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       new CompilationTest(step1Targets).keepOutput,
       new CompilationTest(step2Targets).keepOutput,
       bestEffortDirs,
-      true
+      shouldDelete = true
     )
   }
 
@@ -1824,7 +1824,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     def noCrashWithCompilingDependencies()(implicit summaryReport: SummaryReporting): this.type = {
       step1.checkNoBestEffortError() // Compile all files to generate the class files with best effort tasty
-      step2.checkCompile() // Compile with best effort tasty
+      step2.checkNoBestEffortError() // Compile with best effort tasty
 
       this
     }
