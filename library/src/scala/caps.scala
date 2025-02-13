@@ -81,12 +81,27 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class consume extends annotation.StaticAnnotation
 
-  /** An annotation placed on a refinement created by capture checking.
+  /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.
    *  This could be useful for tracked parameters as well.
    */
   final class refineOverride extends annotation.StaticAnnotation
+
+  /** An internal annotation placed on a reference to an existential capability.
+   *  That way, we can distinguish different universal capabilties referring to
+   *  the same binder. For instance,
+   *
+   *     () -> (Ref^, Ref^)
+   *
+   *  would be encoded as
+   *
+   *     () -> (ex: Exists) -> (Ref^{ex @ existential}, Ref^{ex @existential})
+   *
+   *  The two capture references are different since they carry two separately
+   *  allocated annotations.
+   */
+  final class existential extends annotation.StaticAnnotation
 
   object unsafe:
 

@@ -2840,14 +2840,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def canInstantiateWith(assoc: ExAssoc): Boolean = assoc match
       case (bv, bvs) :: assoc1 =>
         if bv == tp1 then
-          !Existential.isExistentialVar(tp2)
-          || bvs.contains(tp2)
-          || assoc1.exists(_._1 == tp2)
+          tp2 match
+            case Existential.Var(bv2) =>
+              bvs.contains(bv2) || assoc1.exists(_._1 == bv2)
+            case _ =>
+              true
         else
           canInstantiateWith(assoc1)
       case Nil =>
         false
-    Existential.isExistentialVar(tp1) && canInstantiateWith(assocExistentials)
+    tp2 match
+      case Existential.Var(bv2) if tp1 eq bv2 =>
+        true // for now, existential references referring to the same
+             // binder are identified. !!! TODO this needs to be revised
+      case _ =>
+        canInstantiateWith(assocExistentials)
 
   def isOpenedExistential(ref: CaptureRef)(using Context): Boolean =
     openedExistentials.contains(ref)
@@ -2864,7 +2871,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         .showing(i"existential match not found for $t in $assoc", capt)
 
     def apply(t: Type) = t match
-      case t: TermParamRef if Existential.isExistentialVar(t) =>
+      case t: TermParamRef if Existential.isBinder(t) =>
         // Find outermost existential on the right that can be instantiated to `t`,
         // or `badExistential` if none exists.
         def findMapped(assoc: ExAssoc): CaptureRef = assoc match
@@ -2884,7 +2891,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      */
     lazy val inverse = new BiTypeMap:
       def apply(t: Type) = t match
-        case t: TermParamRef if Existential.isExistentialVar(t) =>
+        case t: TermParamRef if Existential.isBinder(t) =>
           assoc.find(_._1 == t) match
             case Some((_, bvs)) if bvs.nonEmpty => bvs.head
             case _ => bad(t)
@@ -3980,7 +3987,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
     }
 
   override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
-    traceIndented(i"subcaptures $refs1 <:< $refs2, varState = ${vs.toString}") {
+    traceIndented(i"subcaptures $refs1 <:< $refs2 in ${vs.toString}") {
       super.subCaptures(refs1, refs2, vs)
     }
 

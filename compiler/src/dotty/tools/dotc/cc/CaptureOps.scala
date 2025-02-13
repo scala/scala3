@@ -194,8 +194,8 @@ extension (tp: Type)
    *    - annotated types that represent reach or maybe capabilities
    */
   final def isTrackableRef(using Context): Boolean = tp match
-    case _: (ThisType | TermParamRef) =>
-      true
+    case _: ThisType => true
+    case tp: TermParamRef => !Existential.isBinder(tp)
     case tp: TermRef =>
       ((tp.prefix eq NoPrefix)
       || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
@@ -205,6 +205,7 @@ extension (tp: Type)
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
+    case Existential.Var(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
     case _ =>

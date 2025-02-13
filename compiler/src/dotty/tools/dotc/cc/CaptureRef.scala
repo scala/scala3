@@ -110,7 +110,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    */
   final def isMaxCapability(using Context): Boolean = this match
     case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
-    case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
+    case Existential.Var(_) => true
     case Fresh.Cap(_) => true
     case ReadOnlyCapability(tp1) => tp1.isMaxCapability
     case _ => false
@@ -228,8 +228,8 @@ trait CaptureRef extends TypeProxy, ValueType:
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
+        case Existential.Var(bv) => subsumesExistentially(bv, y)
         case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
-        case x: TermParamRef => subsumesExistentially(x, y)
         case x: TypeRef if assumedContainsOf(x).contains(y) => true
         case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
           x.info match
