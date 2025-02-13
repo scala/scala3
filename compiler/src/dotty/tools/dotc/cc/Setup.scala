@@ -376,7 +376,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 checkSharedOK:
                   CapturingType(parent2, ann.tree.toCaptureSet)
               catch case ex: IllegalCaptureRef =>
-                report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.srcPos)
+                if !tptToCheck.isEmpty then
+                  report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.srcPos)
                 parent2
             else if ann.symbol == defn.UncheckedCapturesAnnot then
               makeUnchecked(apply(parent))
@@ -917,7 +918,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     var retained = ann.retainedElems.toArray
     for i <- 0 until retained.length do
       val refTree = retained(i)
-      for ref <- refTree.toCaptureRefs do
+      val refs =
+        try refTree.toCaptureRefs
+        catch case ex: IllegalCaptureRef =>
+          report.error(em"Illegal capture reference: ${ex.getMessage.nn}", refTree.srcPos)
+          Nil
+      for ref <- refs do
         def pos =
           if refTree.span.exists then refTree.srcPos
           else if ann.span.exists then ann.srcPos

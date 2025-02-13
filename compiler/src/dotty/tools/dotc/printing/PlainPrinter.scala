@@ -441,6 +441,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
+      case Existential.Var(bv) => toTextRef(bv)
       case Fresh.Cap(hidden) =>
         val idStr = if showUniqueIds then s"#${hidden.id}" else ""
         if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
