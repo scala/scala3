@@ -19,7 +19,6 @@ import typer.ErrorReporting.{Addenda, NothingToAdd}
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
-import reporting.trace
 import annotation.constructorOnly
 import cc.CaptureSet.IdempotentCaptRefMap
 import annotation.tailrec

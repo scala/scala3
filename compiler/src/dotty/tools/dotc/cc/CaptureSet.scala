@@ -103,7 +103,9 @@ sealed abstract class CaptureSet extends Showable:
     elems.exists(_.stripReadOnly.isCap)
 
   final def isUnboxable(using Context) =
-    elems.exists(elem => elem.isRootCapability || Existential.isExistentialVar(elem))
+    elems.exists:
+      case Existential.Var(_) => true
+      case elem => elem.isRootCapability
 
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
@@ -428,7 +430,10 @@ object CaptureSet:
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
-    else Const(SimpleIdentitySet(elems.map(_.ensuring(_.isTrackableRef))*))
+    else
+      for elem <- elems do
+        assert(elem.isTrackableRef, i"not a trackable ref: $elem")
+      Const(SimpleIdentitySet(elems*))
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
@@ -563,12 +568,12 @@ object CaptureSet:
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isRootCapability then
         !noUniversal
-      else if Existential.isExistentialVar(elem) then
-        !noUniversal
-        && !TypeComparer.isOpenedExistential(elem)
-          // Opened existentials on the left cannot be added to nested capture sets on the right
-          // of a comparison. Test case is open-existential.scala.
       else elem match
+        case Existential.Var(bv) =>
+          !noUniversal
+          && !TypeComparer.isOpenedExistential(bv)
+            // Opened existentials on the left cannot be added to nested capture sets on the right
+            // of a comparison. Test case is open-existential.scala.
         case elem: TermRef if level.isDefined =>
           elem.prefix match
             case prefix: CaptureRef =>
@@ -621,10 +626,13 @@ object CaptureSet:
         computingApprox = true
         try
           val approx = computeApprox(origin).ensuring(_.isConst)
-          if approx.elems.exists(Existential.isExistentialVar(_)) then
+          if approx.elems.exists:
+            case Existential.Var(_) => true
+            case _ => false
+          then
             ccState.approxWarnings +=
                 em"""Capture set variable $this gets upper-approximated
-                    |to existential variable from $approx, using {cap} instead."""
+                  |to existential variable from $approx, using {cap} instead."""
             universal
           else approx
         finally computingApprox = false
@@ -1169,6 +1177,8 @@ object CaptureSet:
         try pred finally seen -= ref
       else false
 
+    override def toString = "open varState"
+
   object VarState:
 
     /** A class for states that do not allow to record elements or dependent sets.
@@ -1181,6 +1191,7 @@ object CaptureSet:
       override def putElems(v: Var, refs: Refs) = false
       override def putDeps(v: Var, deps: Deps) = false
       override def isOpen = false
+      override def toString = "closed varState"
 
     /** A closed state that allows a Fresh.Cap instance to subsume a
      *  reference `r` only if `r` is already present in the hidden set of the instance.
@@ -1189,6 +1200,7 @@ object CaptureSet:
     @sharable
     object Separate extends Closed:
       override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = false
+      override def toString = "separating varState"
 
     /** A special state that turns off recording of elements. Used only
      *  in `addSub` to prevent cycles in recordings.
@@ -1199,6 +1211,7 @@ object CaptureSet:
       override def putDeps(v: Var, deps: Deps) = true
       override def rollBack(): Unit = ()
       override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = true
+      override def toString = "unrecorded varState"
 
     /** A closed state that turns off recording of hidden elements (but allows
      *  adding them). Used in `mightAccountFor`.
@@ -1206,6 +1219,7 @@ object CaptureSet:
     @sharable
     private[CaptureSet] object ClosedUnrecorded extends Closed:
       override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = true
+      override def toString = "closed unrecorded varState"
 
   end VarState
 
@@ -1282,6 +1296,8 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
+        case tp @ Existential.Var(_) =>
+          tp.captureSet
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
         case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>

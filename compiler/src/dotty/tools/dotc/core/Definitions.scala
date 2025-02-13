@@ -1074,6 +1074,7 @@ class Definitions {
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
   @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.refineOverride")
+  @tu lazy val ExistentialAnnot:  ClassSymbol = requiredClass("scala.caps.existential")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")

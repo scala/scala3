@@ -6085,7 +6085,7 @@ object Types extends TypeUtils {
         case tp: TypeAlias =>
           ensureTrackable(tp.alias)
         case _ =>
-          assert(false, i"not a trackable captureRef ref: $result, ${result.underlyingIterator.toList}")
+          assert(false, i"not a trackable CaptureRef: $result with underlying ${result.underlyingIterator.toList}")
       ensureTrackable(result)
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
