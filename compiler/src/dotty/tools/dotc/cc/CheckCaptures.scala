@@ -525,7 +525,11 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, resType: Type, tree: Tree)(using Context): Unit = resType match
       case _: MethodOrPoly => // wait until method is fully applied
       case _ =>
-        if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), tree)
+        def isRetained(ref: CaptureRef): Boolean = ref.pathRoot match
+          case root: ThisType => ctx.owner.isContainedIn(root.cls)
+          case _ => true
+        if sym.exists && curEnv.isOpen then
+          markFree(capturedVars(sym).filter(isRetained), tree)
 
     /** Under the sealed policy, disallow the root capability in type arguments.
      *  Type arguments come either from a TypeApply node or from an AppliedType
