@@ -7,6 +7,7 @@ import java.nio.channels.ClosedByInterruptException
 
 import scala.util.control.NonFatal
 
+import dotty.tools.dotc.classpath.PackageNameUtils
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -265,7 +266,7 @@ object SymbolLoaders {
 
     def maybeModuleClass(classRep: ClassRepresentation): Boolean = classRep.name.last == '$'
 
-    private def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
+    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
       def isAbsent(classRep: ClassRepresentation) =
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
@@ -309,6 +310,32 @@ object SymbolLoaders {
         }
     }
   }
+
+  def mergeNewEntries(
+    packageClass: ClassSymbol, fullPackageName: String,
+    jarClasspath: ClassPath, fullClasspath: ClassPath,
+  )(using Context): Unit =
+    if jarClasspath.classes(fullPackageName).nonEmpty then
+      // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
+      val packageVal = packageClass.sourceModule.asInstanceOf[TermSymbol]
+      if packageClass.isRoot then
+        val loader = new PackageLoader(packageVal, fullClasspath)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
+      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
+        () // skip
+      else if fullClasspath.hasPackage(fullPackageName) then
+        packageClass.info = new PackageLoader(packageVal, fullClasspath)
+      else
+        packageClass.owner.info.decls.openForMutations.unlink(packageVal)
+    else
+      for p <- jarClasspath.packages(fullPackageName) do
+        val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+        val subPackage = packageClass.info.decl(subPackageName).orElse:
+          // package does not exist in symbol table, create a new symbol
+          enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
+        mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+  end mergeNewEntries
 }
 
 /** A lazy type that completes itself by calling parameter doComplete.

@@ -2150,7 +2150,7 @@ class Definitions {
 
   private var isInitialized = false
 
-  def init(require: Boolean = false)(using Context): Unit = {
+  def init()(using Context): Unit = {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
