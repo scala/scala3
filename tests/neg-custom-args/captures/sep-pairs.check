@@ -1,0 +1,41 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-pairs.scala:32:10 ------------------------------------
+32 |  Pair(Ref(), Ref()) // error // error: universal capability cannot be included in capture set
+   |       ^^^^^
+   |       Found:    box Ref^{cap.rd, cap}
+   |       Required: box Ref^?
+   |
+   |       Note that the universal capability `cap.rd`
+   |       cannot be included in capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-pairs.scala:32:17 ------------------------------------
+32 |  Pair(Ref(), Ref()) // error // error: universal capability cannot be included in capture set
+   |              ^^^^^
+   |              Found:    box Ref^{cap.rd, cap}
+   |              Required: box Ref^?
+   |
+   |              Note that the universal capability `cap.rd`
+   |              cannot be included in capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/sep-pairs.scala:15:10 ---------------------------------------------------------
+15 |  val r1: Pair[Ref^, Ref^] = mkPair(r0) // error: overlap at r0
+   |          ^^^^^^^^^^^^^^^^
+   |          Separation failure in value r1's type Pair[box Ref^, box Ref^].
+   |          One part,  box Ref^, hides capabilities  {r0}.
+   |          Another part,  box Ref^,  captures capabilities  {r0}.
+   |          The two sets overlap at  {r0}.
+-- Error: tests/neg-custom-args/captures/sep-pairs.scala:13:9 ----------------------------------------------------------
+13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
+   |         ^^^^^^^^^^^^^^^^
+   |         Separation failure in method bad's result type Pair[box Ref^, box Ref^].
+   |         One part,  box Ref^, hides capabilities  {cap, cap}.
+   |         Another part,  box Ref^,  captures capabilities  {cap, cap}.
+   |         The two sets overlap at  cap of method bad.
+-- Error: tests/neg-custom-args/captures/sep-pairs.scala:44:18 ---------------------------------------------------------
+44 |  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
+   |                  ^^^^^^^^^^^^^^^^
+   |                  Separation failure in value sameToPair's type Pair[box Ref^, box Ref^].
+   |                  One part,  box Ref^, hides capabilities  {fstSame}.
+   |                  Another part,  box Ref^,  captures capabilities  {sndSame}.
+   |                  The two sets overlap at  cap of value same.

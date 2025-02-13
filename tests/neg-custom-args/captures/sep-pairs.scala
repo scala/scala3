@@ -36,10 +36,12 @@ def test(io: Object^): Unit =
   val two = twoRefs()
   val fst: Ref^{two.fst*} = two.fst
   val snd: Ref^{two.snd*} = two.snd
+  val twoCopy: Pair[Ref^, Ref^] = Pair(fst, snd) // ok
 
-  val two2 = twoRefs2()
-  val fst2 = two.fst
-  val snd2 = two.snd
+  val same = twoRefs2()
+  val fstSame = same.fst
+  val sndSame = same.snd
+  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
 
-  val p2: Pair[Ref^, Ref^] = Pair(fst, snd) // should be error
+
 
