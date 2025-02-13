@@ -139,7 +139,7 @@ trait RunnerOrchestration {
       end debugMain
 
       private def startMain(classPath: String): Future[Status] =
-        // pass file to running process
+        // pass classpath to running process
         process.stdin.println(classPath)
 
         // Create a future reading the object:

@@ -1,11 +1,7 @@
 package dotty.tools.debug
 
-import scala.util.Using
-import scala.io.Source
-import java.nio.charset.StandardCharsets
-import scala.io.Codec
+import com.sun.jdi.Location
 import dotty.tools.io.JFile
-import java.nio.file.Files
 import dotty.tools.readLines
 
 /**
@@ -19,38 +15,36 @@ private[debug] object DebugStepAssert:
   def parseCheckFile(checkFile: JFile): Seq[DebugStepAssert[?]] =
     val sym = "[a-zA-Z0-9$.]+"
     val line = "\\d+"
-    val break = s"break ($sym) ($line)".r
-    val step = s"step ($sym|$line)".r
-    val next = s"next ($sym|$line)".r
-    val comment = "// .*".r
-    val empty = "\\w*".r
+    val trailing = s"\\s*(?:\\/\\/.*)?".r // empty or comment
+    val break = s"break ($sym) ($line)$trailing".r
+    val step = s"step ($sym|$line)$trailing".r
+    val next = s"next ($sym|$line)$trailing".r
     readLines(checkFile).flatMap:
       case break(className , lineStr) =>
         val line = lineStr.toInt
-        Some(DebugStepAssert(Break(className, line), checkFrame(className, line)))
+        Some(DebugStepAssert(Break(className, line), checkClassAndLine(className, line)))
       case step(pattern) => Some(DebugStepAssert(Step, checkLineOrMethod(pattern)))
-      case next(pattern) => Some(DebugStepAssert(Step, checkLineOrMethod(pattern)))
-      case comment() | empty() => None
+      case next(pattern) => Some(DebugStepAssert(Next, checkLineOrMethod(pattern)))
+      case trailing() => None
       case invalid => throw new Exception(s"Cannot parse debug step: $invalid")
 
-  private def checkFrame(className: String, line: Int)(frame: Frame): Unit =
-    assert(className.matches(frame.className))
-    assert(frame.line == line)
+  private def checkClassAndLine(className: String, line: Int)(location: Location): Unit =
+    assert(className == location.declaringType.name, s"obtained ${location.declaringType.name}, expected ${className}")
+    checkLine(line)(location)
 
-  private def checkLineOrMethod(pattern: String): Frame => Unit =
+  private def checkLineOrMethod(pattern: String): Location => Unit =
     if "(\\d+)".r.matches(pattern) then checkLine(pattern.toInt) else checkMethod(pattern)
 
-  private def checkLine(line: Int)(frame: Frame): Unit = assert(frame.line == line)
+  private def checkLine(line: Int)(location: Location): Unit =
+    assert(location.lineNumber == line, s"obtained ${location.lineNumber}, expected $line")
 
-  private def checkMethod(method: String)(frame: Frame): Unit =
-    assert(method.matches(s"${frame.className}.${frame.methodName}"))
+  private def checkMethod(methodName: String)(location: Location): Unit = assert(methodName == location.method.name)
 end DebugStepAssert
 
 private[debug] enum DebugStep[T]:
-  case Break(className: String, line: Int) extends DebugStep[Frame]
-  case Step extends DebugStep[Frame]
-  case Next extends DebugStep[Frame]
+  case Break(className: String, line: Int) extends DebugStep[Location]
+  case Step extends DebugStep[Location]
+  case Next extends DebugStep[Location]
 
-private[debug] case class Frame(className: String, methodName: String, line: Int)
 
 
