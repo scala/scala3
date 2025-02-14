@@ -674,7 +674,7 @@ object SpaceEngine {
           val superType = child.typeRef.superType
           if typeArgs.exists(_.isBottomType) && superType.isInstanceOf[ClassInfo] then
             val parentClass = superType.asInstanceOf[ClassInfo].declaredParents.find(_.classSymbol == parent).get
-            val paramTypeMap = Map.from(parentClass.argTypes.map(_.typeSymbol).zip(typeArgs))
+            val paramTypeMap = Map.from(parentClass.argInfos.map(_.typeSymbol).zip(typeArgs))
             val substArgs = child.typeRef.typeParamSymbols.map(param => paramTypeMap.getOrElse(param, WildcardType))
             substArgs
           else Nil
