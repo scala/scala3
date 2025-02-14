@@ -1,4 +1,4 @@
-import scala.language.`3.8`
+import scala.language.`3.7`
 
 class TestBody1
 class TestBody2
@@ -19,4 +19,4 @@ class Matchers:
 
 class Test extends Matchers:
   def test(): Unit =
-    "hello world" should endWith ("world") // error
+    "hello world" should endWith ("world") // warn: overloading resolution change
