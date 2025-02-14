@@ -1,0 +1,18 @@
+-- [E008] Not Found Error: tests/neg/i22429.scala:9:16 -----------------------------------------------------------------
+9 |  val a = "abc".testExt // error
+  |          ^^^^^^^^^^^^^
+  |          value testExt is not a member of String, but could be made available as an extension method.
+  |
+  |          Consider making one of the following imports accessible to fix:
+  |
+  |            import Extensions.testExt // existing imported member is not accessible
+  |
+-- [E008] Not Found Error: tests/neg/i22429.scala:10:13 ----------------------------------------------------------------
+10 |  val b = 42.xs // error
+   |          ^^^^^
+   |          value xs is not a member of Int, but could be made available as an extension method.
+   |
+   |          Consider making one of the following imports accessible to fix:
+   |
+   |            import Extensions.xs
+   |
