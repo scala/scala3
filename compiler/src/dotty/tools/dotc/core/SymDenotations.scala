@@ -1154,10 +1154,10 @@ object SymDenotations {
     final def enclosingClass(using Context): Symbol = {
       def enclClass(sym: Symbol, skip: Boolean): Symbol = {
         def newSkip = sym.is(JavaStaticTerm)
-        if (!sym.exists)
+        if !sym.exists then
           NoSymbol
-        else if (sym.isClass)
-          if (skip) enclClass(sym.owner, newSkip) else sym
+        else if sym.isClass then
+          if skip || sym.isRefinementClass then enclClass(sym.owner, newSkip) else sym
         else
           enclClass(sym.owner, skip || newSkip)
       }
