@@ -2,15 +2,15 @@ import language.experimental.namedTuples
 
 class IO
 
-class C(val f: IO^):
+class C(val ff: IO^):
   val procs: List[Proc] = ???
 
 type Proc = () => Unit
 
 def test(io: IO^) =
   val c = C(io)
-  val f = () => println(c.f)
-  val _: () ->{c.f} Unit = f
+  val f = () => println(c.ff)
+  val _: () ->{c.ff} Unit = f
 
   val x = c.procs
   val _: List[() ->{c.procs*} Unit] = x

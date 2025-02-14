@@ -287,6 +287,8 @@ trait CaptureRef extends TypeProxy, ValueType:
           this match
             case MaybeCapability(x1) => x1.covers(y1)
             case _ => false
+        case Fresh.Cap(hidden) =>
+          hidden.superCaps.exists(this covers _)
         case _ =>
           false
 
