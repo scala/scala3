@@ -330,7 +330,8 @@ object Phases {
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
       val buf = List.newBuilder[CompilationUnit]
-      for unit <- units do
+
+      for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         if ctx.run.enterUnit(unit) then
           try

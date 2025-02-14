@@ -311,10 +311,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         if phaseWillRun then
           Stats.trackTime(s"phase time ms/$phase") {
             val start = System.currentTimeMillis
-            val profileBefore = profiler.beforePhase(phase)
-            try units = phase.runOn(units)
-            catch case _: InterruptedException => cancelInterrupted()
-            profiler.afterPhase(phase, profileBefore)
+            profiler.onPhase(phase):
+              try units = phase.runOn(units)
+              catch case _: InterruptedException => cancelInterrupted()
             if (ctx.settings.Xprint.value.containsPhase(phase))
               for (unit <- units)
                 lastPrintedTree =
