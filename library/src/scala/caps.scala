@@ -114,7 +114,7 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
 
     /** A wrapper around code for which separation checks are suppressed.
      */
-    def unsafeAssumeSeparate[T](op: T): T = op
+    def unsafeAssumeSeparate(op: Any): op.type = op
 
   end unsafe
 end caps

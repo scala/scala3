@@ -3,7 +3,7 @@
    |          ^
    |          Separation failure: Illegal access to {c} which is hidden by the previous definition
    |          of value xs with type List[box () => Unit].
-   |          This type hides capabilities  {xs*, c}
+   |          This type hides capabilities  {c}
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:13:7 ---------------------------------------------------------
 13 |  foo((() => println(c)) :: Nil, c) // error
    |       ^^^^^^^^^^^^^^^^^^^^^^^^

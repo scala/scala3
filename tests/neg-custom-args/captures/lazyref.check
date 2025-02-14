@@ -26,27 +26,45 @@
    |                                   Required: LazyRef[Int]^{cap1}
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazyref.scala:8:24 ------------------------------------------------------------
+8 |    new LazyRef(() => f(elem())) // error: separation failure
+  |                        ^^^^
+  |              Separation failure: Illegal access to {LazyRef.this.elem} which is hidden by the previous definition
+  |              of value get with type () => T.
+  |              This type hides capabilities  {LazyRef.this.elem}
+-- Error: tests/neg-custom-args/captures/lazyref.scala:23:13 -----------------------------------------------------------
+23 |  val ref3 = ref1.map(g) // error: separation failure
+   |             ^^^^
+   |             Separation failure: Illegal access to {cap1} which is hidden by the previous definition
+   |             of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
+   |             This type hides capabilities  {cap1}
 -- Error: tests/neg-custom-args/captures/lazyref.scala:26:9 ------------------------------------------------------------
 26 |      if cap1 == cap2   // error: separation failure // error: separation failure
    |         ^^^^
    |         Separation failure: Illegal access to {cap1} which is hidden by the previous definition
-   |         of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |         This type hides capabilities  {ref2*, cap1, cap2, ref1}
+   |         of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
+   |         This type hides capabilities  {ref2*, cap1}
 -- Error: tests/neg-custom-args/captures/lazyref.scala:26:17 -----------------------------------------------------------
 26 |      if cap1 == cap2   // error: separation failure // error: separation failure
    |                 ^^^^
    |                 Separation failure: Illegal access to {cap2} which is hidden by the previous definition
-   |                 of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |                 This type hides capabilities  {ref2*, cap1, cap2, ref1}
+   |                 of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
+   |                 This type hides capabilities  {ref2*, cap1}
 -- Error: tests/neg-custom-args/captures/lazyref.scala:27:11 -----------------------------------------------------------
-27 |      then ref1         // error: separation failure
+27 |      then ref1 // error: separation failure
    |           ^^^^
-   |           Separation failure: Illegal access to {ref1} which is hidden by the previous definition
-   |           of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |           This type hides capabilities  {ref2*, cap1, cap2, ref1}
+   |           Separation failure: Illegal access to {cap1, ref1} which is hidden by the previous definition
+   |           of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
+   |           This type hides capabilities  {ref2*, cap1}
+-- Error: tests/neg-custom-args/captures/lazyref.scala:28:11 -----------------------------------------------------------
+28 |      else ref2) // error: separation failure
+   |           ^^^^
+   |           Separation failure: Illegal access to {cap1, cap2, ref1} which is hidden by the previous definition
+   |           of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
+   |           This type hides capabilities  {ref2*, cap1}
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
 29 |    .map(g) // error: separation failure
    |         ^
    |         Separation failure: Illegal access to {cap2} which is hidden by the previous definition
-   |         of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |         This type hides capabilities  {ref2*, cap1, cap2, ref1}
+   |         of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
+   |         This type hides capabilities  {ref2*, cap1}
