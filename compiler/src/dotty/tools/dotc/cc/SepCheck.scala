@@ -145,6 +145,8 @@ object SepCheck:
 
   case class PeaksPair(actual: Refs, hidden: Refs)
 
+  case class DefInfo(tree: ValOrDefDef, symbol: Symbol, hidden: Refs, hiddenPeaks: Refs)
+
 class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import checker.*
   import SepCheck.*
@@ -154,15 +156,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   private var defsShadow: Refs = emptyRefs
 
-  /** A map from definitions to their internal result types.
-   *  Populated during separation checking traversal.
+  /** The previous val or def definitions encountered during separation checking
+   *  in reverse order. These all enclose and precede the current traversal node.
    */
-  private val resultType = EqHashMap[Symbol, Type]()
-
-  /** The previous val or def definitions encountered during separation checking.
-   *  These all enclose and precede the current traversal node.
-   */
-  private var previousDefs: List[mutable.ListBuffer[ValOrDefDef]] = Nil
+  private var previousDefs: List[DefInfo] = Nil
 
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
@@ -402,31 +399,26 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Report a use/definition failure, where a previously hidden capability is
    *  used again.
-   *  @param tree          the tree where the capability is used
-   *  @param used          the footprint of all uses of `tree`
-   *  @param globalOverlap the overlap between `used` and all capabilities hidden
-   *                       by previous definitions
+   *  @param tree        the tree where the capability is used
+   *  @param clashing    the tree where the capability is previously hidden,
+   *                     or emptyTree if none exists
+   *  @param used        the uses of `tree`
+   *  @param hidden      the hidden set of the clashing def,
+   *                     or the global hidden set if no clashing def exists
    */
-  def sepUseError(tree: Tree, used: Refs, globalOverlap: Refs)(using Context): Unit =
-    val individualChecks = for mdefs <- previousDefs.iterator; mdef <- mdefs.iterator yield
-      val hiddenByDef = captures(mdef.tpt).hiddenSet.footprint
-      val overlap = defUseOverlap(hiddenByDef, used, tree.symbol)
-      if !overlap.isEmpty then
-        def resultStr = if mdef.isInstanceOf[DefDef] then " result" else ""
-        report.error(
-          em"""Separation failure: Illegal access to ${CaptureSet(overlap)} which is hidden by the previous definition
-              |of ${mdef.symbol} with$resultStr type ${mdef.tpt.nuType}.
-              |This type hides capabilities  ${CaptureSet(hiddenByDef)}""",
-          tree.srcPos)
-        true
-      else false
-    val clashes = individualChecks.filter(identity)
-    if clashes.hasNext then clashes.next // issues error as a side effect
-    else report.error(
-      em"""Separation failure: Illegal access to ${CaptureSet(globalOverlap)} which is hidden by some previous definitions
-          |No clashing definitions were found. This might point to an internal error.""",
-      tree.srcPos)
-  end sepUseError
+  def sepUseError(tree: Tree, clashingDef: ValOrDefDef | Null, used: Refs, hidden: Refs)(using Context): Unit =
+    if clashingDef != null then
+      def resultStr = if clashingDef.isInstanceOf[DefDef] then " result" else ""
+      report.error(
+        em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
+            |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
+            |This type hides capabilities  ${CaptureSet(hidden)}""",
+        tree.srcPos)
+    else
+      report.error(
+        em"""Separation failure: illegal access to ${overlapStr(hidden, used)} which is hidden by some previous definitions
+            |No clashing definitions were found. This might point to an internal error.""",
+        tree.srcPos)
 
   /** Report a failure where a previously consumed capability is used again,
    *  @param ref     the capability that is used after being consumed
@@ -531,33 +523,37 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           currentPeaks.hidden ++ argPeaks.hidden)
   end checkApply
 
-  /** The def/use overlap between the references `hiddenByDef` hidden by
-   *  a previous definition and the `used` set of a tree with symbol `sym`.
-   *  Deduct any capabilities referred to or hidden by the (result-) type of `sym`.
-   */
-  def defUseOverlap(hiddenByDef: Refs, used: Refs, sym: Symbol)(using Context): Refs =
-    val overlap = hiddenByDef.overlapWith(used)
-    resultType.get(sym) match
-      case Some(tp) if !overlap.isEmpty =>
-        val declared = tp.captureSet.elems
-        overlap.deduct(declared.footprint).deduct(declared.hiddenSet.footprint)
-      case _ =>
-        overlap
-
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
-  def checkUse(tree: Tree)(using Context) =
-    val used = tree.markedFree
-    if !used.elems.isEmpty then
-      val usedFootprint = used.elems.footprint
-      val overlap = defUseOverlap(defsShadow, usedFootprint, tree.symbol)
-      if !overlap.isEmpty then
-        sepUseError(tree, usedFootprint, overlap)
-      for ref <- used.elems do
+  def checkUse(tree: Tree)(using Context): Unit =
+    val used = tree.markedFree.elems
+    if !used.isEmpty then
+      val usedPeaks = used.peaks
+      val overlap = defsShadow.peaks.sharedWith(usedPeaks)
+      if !defsShadow.peaks.sharedWith(usedPeaks).isEmpty then
+        val sym = tree.symbol
+
+        def findClashing(prevDefs: List[DefInfo]): Option[DefInfo] = prevDefs match
+          case prevDef :: prevDefs1 =>
+            if prevDef.symbol == sym then Some(prevDef)
+            else if !prevDef.hiddenPeaks.sharedWith(usedPeaks).isEmpty then Some(prevDef)
+            else findClashing(prevDefs1)
+          case Nil =>
+            None
+
+        findClashing(previousDefs) match
+          case Some(clashing) =>
+            if clashing.symbol != sym then
+              sepUseError(tree, clashing.tree, used, clashing.hidden)
+          case None =>
+            sepUseError(tree, null, used, defsShadow)
+
+      for ref <- used do
         val pos = consumed.get(ref)
         if pos != null then consumeError(ref, pos, tree.srcPos)
+  end checkUse
 
   /** If `tp` denotes some version of a singleton type `x.type` the set `{x}`
    *  otherwise the empty set.
@@ -840,6 +836,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
     case _ => false
 
+  def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
+    defsShadow ++= hiddenByDef
+    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.peaks) :: previousDefs
+
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
    *  application as right hand sides.
@@ -848,11 +848,18 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
     if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
       checkType(tree.tpt, tree.symbol)
-      if previousDefs.nonEmpty then
-        capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint}")
-        defsShadow ++= captures(tree.tpt).hiddenSet.deductSymRefs(tree.symbol).footprint
-        resultType(tree.symbol) = tree.tpt.nuType
-        previousDefs.head += tree
+      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint}")
+      pushDef(tree, captures(tree.tpt).hiddenSet.deductSymRefs(tree.symbol))
+
+  def inSection[T](op: => T)(using Context): T =
+    val savedDefsShadow = defsShadow
+    val savedPrevionsDefs = previousDefs
+    try op
+    finally
+      previousDefs = savedPrevionsDefs
+      defsShadow = savedDefsShadow
+
+  def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))
 
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
@@ -870,19 +877,17 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           tree.tpe match
             case _: MethodOrPoly =>
             case _ => traverseApply(tree, Nil)
-        case tree: Block =>
-          val saved = defsShadow
-          previousDefs = mutable.ListBuffer() :: previousDefs
-          try traverseChildren(tree)
-          finally
-            previousDefs = previousDefs.tail
-            defsShadow = saved
+        case _: Block | _: Template =>
+          traverseSection(tree)
         case tree: ValDef =>
           traverseChildren(tree)
           checkValOrDefDef(tree)
         case tree: DefDef =>
-          withFreshConsumed:
-            traverseChildren(tree)
+          inSection:
+            withFreshConsumed:
+              for params <- tree.paramss; case param: ValDef <- params do
+                pushDef(param, emptyRefs)
+              traverseChildren(tree)
           checkValOrDefDef(tree)
         case If(cond, thenp, elsep) =>
           traverse(cond)

@@ -463,8 +463,11 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     * $preservesLaziness
     */
   override def partitionMap[A1, A2](f: A => Either[A1, A2]): (LazyListIterable[A1]^{this, f}, LazyListIterable[A2]^{this, f}) = {
-    val (left, right) = map(f).partition(_.isLeft)
-    (left.map(_.asInstanceOf[Left[A1, _]].value), right.map(_.asInstanceOf[Right[_, A2]].value))
+    unsafeAssumeSeparate:
+      val part = map(f).partition(_.isLeft)
+      val left = part._1
+      val right = part._2
+      (left.map(_.asInstanceOf[Left[A1, _]].value), right.map(_.asInstanceOf[Right[_, A2]].value))
   }
 
   /** @inheritdoc
@@ -675,7 +678,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
   override def dropRight(n: Int): LazyListIterable[A]^{this} = {
     if (n <= 0) this
     else if (knownIsEmpty) LazyListIterable.empty
-    else newLL {
+    else unsafeAssumeSeparate { newLL {
       var scout = this
       var remaining = n
       // advance scout n elements ahead (or until empty)
@@ -683,9 +686,8 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         remaining -= 1
         scout = scout.tail
       }
-      unsafeAssumeSeparate:
-        dropRightState(scout)
-    }
+      dropRightState(scout)
+    }}
   }
 
   private def dropRightState(scout: LazyListIterable[_]^): State[A]^{this, scout} =
