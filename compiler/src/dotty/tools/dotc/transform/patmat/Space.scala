@@ -841,8 +841,6 @@ object SpaceEngine {
     if Nullables.unsafeNullsEnabled then self.stripNull() else self
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
-    val seen = collection.mutable.Set.empty[Symbol]
-
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
       val tpw = tp.widen.dealias.stripUnsafeNulls()
@@ -856,10 +854,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) && {
-        if seen.add(classSym) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
-        else true // recursive case class: return true and other members can still fail the check
-      }
+      classSym.is(Case)
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
