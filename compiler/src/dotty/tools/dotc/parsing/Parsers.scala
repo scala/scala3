@@ -97,6 +97,9 @@ object Parsers {
   private val InCase: Region => Region = Scanners.InCase(_)
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
+  private val InBrk : Region => Region = _.match
+    case p: Scanners.InParens => Scanners.Indented(p.indentWidth, p.prefix, p)
+    case r => r
 
   abstract class ParserCommon(val source: SourceFile)(using Context) {
 
@@ -2129,8 +2132,10 @@ object Parsers {
     def condExpr(altToken: Token): Tree =
       val t: Tree =
         if in.token == LPAREN then
-          var t: Tree = atSpan(in.offset):
-            makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
+          var t: Tree =
+            inSepRegion(InBrk): // allow inferred NEWLINE for observeIndented below
+              atSpan(in.offset):
+                makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
           if in.token != altToken then
             if toBeContinued(altToken) then
               t = inSepRegion(InCond) {
