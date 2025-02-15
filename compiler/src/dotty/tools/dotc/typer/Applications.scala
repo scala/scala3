@@ -694,9 +694,11 @@ trait Applications extends Compatibility {
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
 
 
-    /** Is `sym` a constructor of an annotation? */
-    def isAnnotConstr(sym: Symbol): Boolean =
-      sym.isConstructor && sym.owner.isAnnotation
+    /** Is `sym` a constructor of an annotation class, and are we in an
+     *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
+     */
+    protected final def isAnnotConstr(sym: Symbol): Boolean =
+      ctx.mode.is(Mode.InAnnotation) && sym.isConstructor && sym.owner.isAnnotation
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
@@ -994,9 +996,7 @@ trait Applications extends Compatibility {
                 case (arg: NamedArg, _) => arg
                 case (arg, name)        => NamedArg(name, arg)
               }
-          else if isAnnotConstr(methRef.symbol) then
-            typedArgs
-          else if !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
+          else if !isAnnotConstr(methRef.symbol) && !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             // (never do this for Java annotation constructors, hence the 'else if')

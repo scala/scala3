@@ -2779,7 +2779,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
     def local: FreshContext = outer.fresh.setOwner(newLocalDummy(sym.owner))
-    sym.owner.infoOrCompleter match
+    val ctx0 = sym.owner.infoOrCompleter match
       case completer: Namer#Completer
       if sym.is(Param) && completer.completerTypeParams(sym).nonEmpty =>
         // Create a new local context with a dummy owner and a scope containing the
@@ -2788,6 +2788,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         local.setScope(newScopeWith(completer.completerTypeParams(sym)*))
       case _ =>
         if outer.owner.isClass then local else outer
+    ctx0.addMode(Mode.InAnnotation)
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {
     // necessary to force annotation trees to be computed.
@@ -2802,7 +2803,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
-    checkAnnotClass(checkAnnotArgs(typed(annot)))
+    val typedAnnot = withMode(Mode.InAnnotation)(typed(annot))
+    checkAnnotClass(checkAnnotArgs(typedAnnot))
 
   def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
     val annot = Annotations.Annotation(tree)
@@ -3335,7 +3337,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot1 = checkAnnotClass(typedExpr(tree.annot))
+    val annot0 = withMode(Mode.InAnnotation)(typedExpr(tree.annot))
+    val annot1 = checkAnnotClass(annot0)
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
