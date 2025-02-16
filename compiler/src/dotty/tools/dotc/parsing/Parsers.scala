@@ -105,7 +105,7 @@ object Parsers {
   private val InCase: Region => Region = Scanners.InCase(_)
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
-  private val InBrk : Region => Region = _.match
+  private val InBrk : Region => Region =
     case p: Scanners.InParens => Scanners.Indented(p.indentWidth, p.prefix, p)
     case r => r
 
@@ -2328,27 +2328,25 @@ object Parsers {
     def condExpr(altToken: Token): Tree =
       val t: Tree =
         if in.token == LPAREN then
-          var t: Tree =
-            inSepRegion(InBrk): // allow inferred NEWLINE for observeIndented below
-              atSpan(in.offset):
-                makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
-          if in.token != altToken then
-            if toBeContinued(altToken) then
-              t = inSepRegion(InCond) {
+          inSepRegion(InBrk): // allow inferred NEWLINE for observeIndented below
+            atSpan(in.offset):
+              makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
+          .pipe: t =>
+            if in.token == altToken then t
+            else if toBeContinued(altToken) then
+              inSepRegion(InCond):
                 expr1Rest(
                   postfixExprRest(
                     simpleExprRest(t, Location.ElseWhere),
                     Location.ElseWhere),
                   Location.ElseWhere)
-              }
             else
               if rewriteToNewSyntax(t.span) then
-                dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
+                dropParensOrBraces(t.span.start, tokenString(altToken))
               in.observeIndented()
               return t
-          t
         else if in.isNestedStart then
-          try expr() finally newLinesOpt()
+          expr().tap(_ => newLinesOpt())
         else
           inSepRegion(InCond)(expr())
       if rewriteToOldSyntax(t.span.startPos) then revertToParens(t)
