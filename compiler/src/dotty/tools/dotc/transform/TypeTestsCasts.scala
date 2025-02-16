@@ -250,7 +250,8 @@ object TypeTestsCasts {
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType) && inMatch then
+          val tp = if expr.tpe.isPrimitiveValueType then defn.boxedType(expr.tpe) else expr.tpe
+          if tp <:< testType && inMatch then
             if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
