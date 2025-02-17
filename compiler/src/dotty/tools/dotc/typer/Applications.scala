@@ -645,7 +645,11 @@ trait Applications extends Compatibility {
           version.map(v => s" (since $v)").getOrElse("")
 
       val deprecatedNames: Map[Name, Annotation] =
-        methRef.symbol.paramSymss.find(_.exists(_.isTerm)) match
+        val sym = methRef.symbol
+        val paramss =
+          if sym.hasAnnotation(defn.MappedAlternativeAnnot) then sym.rawParamss
+          else sym.paramSymss
+        paramss.find(_.exists(_.isTerm)) match
         case Some(ps) if ps.exists(_.hasAnnotation(defn.DeprecatedNameAnnot)) =>
           ps.flatMap: p =>
             p.getAnnotation(defn.DeprecatedNameAnnot).map(p.name -> _)
