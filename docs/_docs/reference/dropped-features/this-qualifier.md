@@ -29,3 +29,15 @@ This can cause problems if a program tries to access the missing private field v
       // [C] needed if `field` is to be accessed through reflection
     val retained = field * field
 ```
+
+Class parameters are normally inferred object-private,
+so that members introduced by explicitly declaring them `val` or `var` are exempt from the rule described here.
+
+In particular, the following field is not excluded from variance checking:
+```scala
+  class C[-T](private val t: T) // error
+```
+And in contrast to the private field shown above, this field is not eliminated:
+```scala
+  class C(private val c: Int)
+```
