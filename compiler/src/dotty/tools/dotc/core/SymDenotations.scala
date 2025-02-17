@@ -350,7 +350,6 @@ object SymDenotations {
 
       ensureCompleted()
       if rawParamss.isEmpty then recurWithoutParamss(info)
-      else if symbol.hasAnnotation(defn.MappedAlternativeAnnot) then recurWithParamss(info.stripPoly, rawParamss)
       else recurWithParamss(info, rawParamss)
     end paramSymss
 
