@@ -68,7 +68,8 @@ class Compiler {
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
+         new RefChecks,              // Various checks mostly related to abstract members and overriding
+         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
     List(new semanticdb.ExtractSemanticDB.AppendDiagnostics) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members
@@ -90,8 +91,7 @@ class Compiler {
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s and f string interpolators by rewriting them to string concatenations or formats
-         new DropBreaks,             // Optimize local Break throws by rewriting them
-         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
+         new DropBreaks) ::          // Optimize local Break throws by rewriting them
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns

@@ -1971,13 +1971,7 @@ object desugar {
      *
      *  3.
      *
-     *    for (P <- G) yield P  ==>  G
-     *
-     *  If betterFors is enabled, P is a variable or a tuple of variables and G is not a withFilter.
-     *
      *    for (P <- G) yield E  ==>  G.map (P => E)
-     *
-     *    Otherwise
      *
      *  4.
      *
@@ -2157,7 +2151,7 @@ object desugar {
           val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
           if betterForsEnabled
           && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
-          // && deepEquals(gen.pat, body)
+          && deepEquals(gen.pat, body)
           then
             aply.putAttachment(TrailingForMap, ())
           aply
