@@ -44,8 +44,9 @@ object DebugTests extends ParallelTesting:
       else
         val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file"))
         val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
+        val expressionEvaluator = ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
         val status = debugMain(testSource.runClassPath): debuggee =>
-          val debugger = Debugger(debuggee.jdiPort, maxDuration/* , verbose = true */)
+          val debugger = Debugger(debuggee.jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
           // configure the breakpoints before starting the debuggee
           val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }
           for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
@@ -72,6 +73,11 @@ object DebugTests extends ParallelTesting:
     private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =
       import scala.language.unsafeNulls
 
+      /** The DebugTests can only debug one thread at a time. It cannot handle breakpoints in concurrent threads.
+       *  When thread is null, it means the JVM is running and no thread is waiting to be resumed.
+       *  If thread is not null, it is waiting to be resumed by calling continue, step or next.
+       *  While the thread is paused, it can be used for evaluation.
+       */
       var thread: ThreadReference = null
       def location = thread.frame(0).location
 
