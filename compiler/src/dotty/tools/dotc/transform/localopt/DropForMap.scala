@@ -10,6 +10,13 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.ast.desugar
 
+/** Drop unused trailing map calls in for comprehensions.
+  * We can drop the map call if:
+  * - it won't change the type of the expression, and
+  * - the function is an identity function or a const function to unit.
+  *
+  * The latter condition is checked in [[Desugar.scala#makeFor]]
+  */
 class DropForMap extends MiniPhase:
   import DropForMap.*
 
