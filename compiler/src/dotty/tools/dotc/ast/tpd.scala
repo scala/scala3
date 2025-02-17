@@ -1167,7 +1167,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  recursion in the self type.
      */
     def ensureHasSym(sym: Symbol)(using Context): Unit =
-      if sym.exists && sym != tree.symbol then
+      if sym.exists && sym != tree.symbol && sym.isTerm then
         typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
         tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
 

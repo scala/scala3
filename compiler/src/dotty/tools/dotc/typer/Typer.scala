@@ -2501,7 +2501,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case rhs => typedExpr(rhs, tpt1.tpe.widenExpr)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    postProcessInfo(sym)
+    postProcessInfo(vdef1, sym)
     vdef1.setDefTree
   }
 

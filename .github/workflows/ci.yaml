@@ -773,7 +773,7 @@ jobs:
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           filename: .github/workflows/issue_nightly_failed.md
-
+  build-sdk-package:
     uses: ./.github/workflows/build-sdk.yml
     if:
       (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
