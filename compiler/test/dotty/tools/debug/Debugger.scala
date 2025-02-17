@@ -12,11 +12,15 @@ import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 import java.util.concurrent.TimeoutException
 
-class Debugger(vm: VirtualMachine, maxDuration: Duration, verbose: Boolean = false):
+class Debugger(vm: VirtualMachine, evaluator: ExpressionEvaluator, maxDuration: Duration, verbose: Boolean):
   // For some JDI events that we receive, we wait for client actions.
   // Example: On a BreakpointEvent, the client may want to inspect frames and variables, before it
   // decides to step in or continue.
   private val pendingEvents = new LinkedBlockingQueue[Event]()
+
+  // When the debuggee is evaluating an expression coming from the debugger
+  // we should resume the thread after each BreakpointEvent
+  private var isEvaluating = false
 
   // Internal event subscriptions, to react to JDI events
   // Example: add a Breakpoint on a ClassPrepareEvent
@@ -41,6 +45,14 @@ class Debugger(vm: VirtualMachine, maxDuration: Duration, verbose: Boolean = fal
 
   def step(thread: ThreadReference): ThreadReference =
     stepAndWait(thread, StepRequest.STEP_LINE, StepRequest.STEP_INTO)
+
+  def evaluate(expression: String, thread: ThreadReference): Either[String, String] =
+    try
+      isEvaluating = true
+      evaluator.evaluate(expression, thread)
+    finally
+      isEvaluating = false
+
 
   /** stop listening and disconnect debugger */
   def dispose(): Unit =
@@ -86,8 +98,9 @@ class Debugger(vm: VirtualMachine, maxDuration: Duration, verbose: Boolean = fal
           for f <- subscriptions if f.isDefinedAt(event) do f(event)
           event match
             case e: (BreakpointEvent | StepEvent) =>
-              shouldResume = false
-              pendingEvents.put(e)
+              if !isEvaluating then
+                shouldResume = false
+                pendingEvents.put(e)
             case _: VMDisconnectEvent => isAlive = false
             case _ => ()
         if shouldResume then eventSet.resume()
@@ -116,11 +129,11 @@ object Debugger:
     .find(_.getClass.getName == "com.sun.tools.jdi.SocketAttachingConnector")
     .get
 
-  def apply(jdiPort: Int, maxDuration: Duration): Debugger =
+  def apply(jdiPort: Int, expressionEvaluator: ExpressionEvaluator, maxDuration: Duration, verbose: Boolean = false): Debugger =
     val arguments = connector.defaultArguments()
     arguments.get("hostname").setValue("localhost")
     arguments.get("port").setValue(jdiPort.toString)
     arguments.get("timeout").setValue(maxDuration.toMillis.toString)
     val vm = connector.attach(arguments)
-    new Debugger(vm, maxDuration)
+    new Debugger(vm, expressionEvaluator, maxDuration, verbose)
 
