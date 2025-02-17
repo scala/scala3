@@ -2151,7 +2151,7 @@ object desugar {
           val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
           if betterForsEnabled
           && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
-          && deepEquals(gen.pat, body)
+          && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil)))
           then
             aply.putAttachment(TrailingForMap, ())
           aply
@@ -2166,7 +2166,7 @@ object desugar {
             if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
             else mapName
           val aply = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
-          if selectName == mapName then
+          if selectName == mapName && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil))) then
             aply.pushAttachment(TrailingForMap, ())
           aply
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
