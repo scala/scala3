@@ -169,7 +169,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef) = cd0 match {
+    def genPlainClass(cd0: TypeDef) = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
 
