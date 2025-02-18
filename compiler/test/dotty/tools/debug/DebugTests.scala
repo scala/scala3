@@ -13,7 +13,7 @@ class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
-    // compileFile("tests/debug/tailrec.scala", TestConfiguration.defaultOptions).checkDebug()
+    // compileFile("tests/debug/for.scala", TestConfiguration.defaultOptions).checkDebug()
     compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
 
 object DebugTests extends ParallelTesting:
@@ -100,5 +100,9 @@ object DebugTests extends ParallelTesting:
             thread = debugger.step(thread)
             if verbose then println(s"step ${location.lineNumber}")
             assert(location)
+          case DebugStepAssert(Eval(expr), assert) =>
+            val result = debugger.evaluate(expr, thread)
+            if verbose then println(s"eval $expr $result")
+            assert(result)
     end playDebugSteps
   end DebugTest
