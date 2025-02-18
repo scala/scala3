@@ -23,6 +23,7 @@ private[debug] object DebugStepAssert:
     val eval = s"eval (.*)".r
     val result = "result (.*)".r
     val error = "error (.*)".r
+    val multiLineError = s"error$trailing".r
 
     def loop(lines: List[String], acc: List[DebugStepAssert[?]]): List[DebugStepAssert[?]] =
       lines match
@@ -37,24 +38,28 @@ private[debug] object DebugStepAssert:
         case next(pattern) :: tail =>
           val step = DebugStepAssert(Next, checkLineOrMethod(pattern))
           loop(tail, step :: acc)
-        case eval(expr) :: resOrError :: tail =>
-          val expected = parseResultOrError(resOrError)
-          val step = DebugStepAssert(Eval(expr), checkEval(expected))
-          loop(tail, step :: acc)
+        case eval(expr) :: tail0 =>
+          val (assertion, tail1) = parseEvalAssertion(tail0)
+          val step = DebugStepAssert(Eval(expr), assertion)
+          loop(tail1, step :: acc)
         case multiLineEval() :: tail0 =>
           val (exprLines, tail1) = tail0.span(_.startsWith("  "))
           val expr = exprLines.map(s => s.stripPrefix("  ")).mkString("\n")
-          val expected = parseResultOrError(tail1.head)
-          val step = DebugStepAssert(Eval(expr), checkEval(expected))
-          loop(tail1.tail, step :: acc)
+          val (assertion, tail2) = parseEvalAssertion(tail1)
+          val step = DebugStepAssert(Eval(expr), assertion)
+          loop(tail2, step :: acc)
         case trailing() :: tail => loop(tail, acc)
         case invalid :: tail => throw new Exception(s"Cannot parse debug step: $invalid")
 
-    def parseResultOrError(line: String): Either[String, String] =
-      line match
-        case result(expected) => Right(expected)
-        case error(expected) => Left(expected)
-        case invalid => throw new Exception(s"Cannot parse as result or error: $invalid")
+    def parseEvalAssertion(lines: List[String]): (Either[String, String] => Unit, List[String]) =
+      lines match
+        case Nil => throw new Exception(s"Missing result or error")
+        case result(expected) :: tail => (checkResult(expected), tail)
+        case error(expected) :: tail => (checkError(Seq(expected)), tail)
+        case multiLineError() :: tail0 =>
+          val (expected, tail1) = tail0.span(_.startsWith("  "))
+          (checkError(expected.map(_.stripPrefix("  "))), tail1)
+        case invalid :: _ => throw new Exception(s"Cannot parse as result or error: $invalid")
 
     loop(readLines(checkFile), Nil)
   end parseCheckFile
@@ -71,12 +76,35 @@ private[debug] object DebugStepAssert:
 
   private def checkMethod(methodName: String)(location: Location): Unit = assert(methodName == location.method.name)
 
-  private def checkEval(expected: Either[String, String])(obtained: Either[String, String]): Unit =
-    (expected, obtained) match
-      case (Left(expected), Left(obtained)) => assert(expected.r.matches(obtained), s"obtained $obtained, expected $expected")
-      case (Right(expected), Right(obtained)) => assert(expected.r.matches(obtained.toString), s"obtained $obtained, expected $expected")
-      case (Left(_), Right(_)) => throw new AssertionError("evaluation succeeded but error expected")
-      case (Right(_), Left(_)) => throw new AssertionError("evaluation failed")
+  private def checkResult(expected: String)(obtained: Either[String, String]): Unit =
+    obtained match
+      case Left(obtained) =>
+        val message =
+          s"""|Evaluation failed:
+              |$obtained""".stripMargin
+        throw new AssertionError(message)
+      case Right(obtained) =>
+        val message =
+          s"""|Expected: $expected
+              |Obtained: $obtained""".stripMargin
+        assert(expected.r.matches(obtained.toString), message)
+
+  private def checkError(expected: Seq[String])(obtained: Either[String, String]): Unit =
+    obtained match
+      case Left(obtained) =>
+        val message =
+          s"""|Expected:
+              |${expected.mkString("\n")}
+              |Obtained:
+              |$obtained""".stripMargin
+        assert(expected.forall(e => e.r.findFirstMatchIn(obtained).isDefined), message)
+      case Right(obtained) =>
+        val message =
+          s"""|Evaluation succeeded but failure expected.
+              |Obtained: $obtained
+              |""".stripMargin
+        throw new AssertionError(message)
+
 
 end DebugStepAssert
 
