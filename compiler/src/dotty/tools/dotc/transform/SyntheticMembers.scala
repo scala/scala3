@@ -523,21 +523,47 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  ```
    *  type MirroredMonoType = C[?]
    *  ```
+   *
+   *  However, if the last parameter is annotated `@unroll` then we generate:
+   *
+   *  def fromProduct(x$0: Product): MirroredMonoType =
+   *    val arity = x$0.productArity
+   *    val a$1 = x$0.productElement(0).asInstanceOf[U]
+   *    val b$1 = x$0.productElement(1).asInstanceOf[a$1.Elem]
+   *    val c$1 = (
+   *      if arity > 2 then
+   *        x$0.productElement(2)
+   *      else
+   *        <default getter for the third parameter of C>
+   *    ).asInstanceOf[Seq[String]]
+   *    new C[U](a$1, b$1, c$1*)
    */
   def fromProductBody(caseClass: Symbol, productParam: Tree, optInfo: Option[MirrorImpl.OfProduct])(using Context): Tree =
     val classRef = optInfo match
       case Some(info) => TypeRef(info.pre, caseClass)
       case _ => caseClass.typeRef
-    val (newPrefix, constrMeth) =
+    val (newPrefix, constrMeth, constrSyms) =
       val constr = TermRef(classRef, caseClass.primaryConstructor)
+      val symss = caseClass.primaryConstructor.paramSymss
       (constr.info: @unchecked) match
         case tl: PolyType =>
           val tvars = constrained(tl)
           val targs = for tvar <- tvars yield
             tvar.instantiate(fromBelow = false)
-          (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType])
+          (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
-          (classRef, mt)
+          (classRef, mt, symss.head)
+
+    // Index of the first parameter marked `@unroll` or -1
+    val unrolledFrom =
+      constrSyms.indexWhere(_.hasAnnotation(defn.UnrollAnnot))
+
+    // `val arity = x$0.productArity`
+    val arityDef: Option[ValDef] =
+      if unrolledFrom != -1 then
+        Some(SyntheticValDef(nme.arity, productParam.select(defn.Product_productArity).withSpan(ctx.owner.span.focus)))
+      else None
+    val arityRefTree = arityDef.map(vd => ref(vd.symbol))
 
     // Create symbols for the vals corresponding to each parameter
     // If there are dependent parameters, the infos won't be correct yet.
@@ -550,16 +576,29 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       bindingSyms.foreach: bindingSym =>
         bindingSym.info = bindingSym.info.substParams(constrMeth, bindingRefs)
 
+    def defaultGetterAtIndex(idx: Int): Tree =
+      val defaultGetterPrefix = caseClass.primaryConstructor.name.toTermName
+      ref(caseClass.companionModule).select(NameKinds.DefaultGetterName(defaultGetterPrefix, idx))
+
     val bindingDefs = bindingSyms.zipWithIndex.map: (bindingSym, idx) =>
-      ValDef(bindingSym,
-        productParam.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
-          .ensureConforms(bindingSym.info))
+      val selection = productParam.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
+      val rhs = (
+        if unrolledFrom != -1 && idx >= unrolledFrom then
+          If(arityRefTree.get.select(defn.Int_>).appliedTo(Literal(Constant(idx))),
+            thenp =
+              selection,
+            elsep =
+              defaultGetterAtIndex(idx))
+        else
+          selection
+      ).ensureConforms(bindingSym.info)
+      ValDef(bindingSym, rhs)
 
     val newArgs = bindingRefs.lazyZip(constrMeth.paramInfos).map: (bindingRef, paramInfo) =>
       val refTree = ref(bindingRef)
       if paramInfo.isRepeatedParam then ctx.typer.seqToRepeated(refTree) else refTree
     Block(
-      bindingDefs,
+      arityDef.toList ::: bindingDefs,
       New(newPrefix, newArgs)
     )
   end fromProductBody
