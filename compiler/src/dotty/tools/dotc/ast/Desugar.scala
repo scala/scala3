@@ -393,14 +393,18 @@ object desugar {
           rhs
       cpy.TypeDef(tparam)(rhs = dropInRhs(tparam.rhs))
 
-    def paramssNoRHS = mapParamss(meth.paramss)(identity): vparam =>
-      if vparam.rhs.isEmpty then vparam
-      else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
+    def paramssNoRHS = mapParamss(meth.paramss)(identity) {
+      vparam =>
+        if vparam.rhs.isEmpty then vparam
+        else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
+    }
 
     def getterParamss(n: Int): List[ParamClause] =
-      mapParamss(takeUpTo(paramssNoRHS, n))
-        (tparam => dropContextBounds(toMethParam(tparam, KeepAnnotations.All)))
-        (vparam => toMethParam(vparam, KeepAnnotations.All, keepDefault = false))
+      mapParamss(takeUpTo(paramssNoRHS, n)) {
+        tparam => dropContextBounds(toMethParam(tparam, KeepAnnotations.All))
+      } {
+        vparam => toMethParam(vparam, KeepAnnotations.All, keepDefault = false)
+      }
 
     def defaultGetters(paramss: List[ParamClause], n: Int): List[DefDef] = paramss match
       case ValDefs(vparam :: vparams) :: paramss1 =>
