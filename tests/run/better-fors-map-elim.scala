@@ -27,32 +27,38 @@ object Test extends App {
 
   import myOption.*
 
+  def portablePrintMyOption(opt: MyOption[Any]): Unit =
+    if opt == MySome(()) then
+      println("MySome(())")
+    else
+      println(opt)
+
   val z = for {
     a <- MyOption(1)
     b <- MyOption(())
   } yield ()
 
-  println(z)
+  portablePrintMyOption(z)
 
   val z2 = for {
     a <- MyOption(1)
     b <- MyOption(2)
   } yield b
 
-  println(z2)
+  portablePrintMyOption(z2)
 
   val z3 = for {
     a <- MyOption(1)
     (b, c) <- MyOption((2, 3))
   } yield (b, c)
 
-  println(z3)
+  portablePrintMyOption(z3)
 
   val z4 = for {
     a <- MyOption(1)
     (b, (c, d)) <- MyOption((2, (3, 4)))
   } yield (b, (c, d))
 
-  println(z4)
+  portablePrintMyOption(z4)
 
 }
