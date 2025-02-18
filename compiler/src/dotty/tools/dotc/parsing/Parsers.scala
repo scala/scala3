@@ -105,7 +105,7 @@ object Parsers {
   private val InCase: Region => Region = Scanners.InCase(_)
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
-  private val InBrk : Region => Region =
+  private val InOldCond: Region => Region = // old-style Cond to allow indent when InParens, see #22608
     case p: Scanners.InParens => Scanners.Indented(p.indentWidth, p.prefix, p)
     case r => r
 
@@ -2328,7 +2328,7 @@ object Parsers {
     def condExpr(altToken: Token): Tree =
       val t: Tree =
         if in.token == LPAREN then
-          inSepRegion(InBrk): // allow inferred NEWLINE for observeIndented below
+          inSepRegion(InOldCond): // allow inferred NEWLINE for observeIndented below
             atSpan(in.offset):
               makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
           .pipe: t =>
