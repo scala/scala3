@@ -2520,8 +2520,10 @@ class ExtensionHasDefault(method: Symbol)(using Context)
   def msg(using Context) =
     i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
   def explain(using Context) =
-    i"""Although extensions are ordinary methods, they must be invoked as a selection.
-       |Therefore, the receiver cannot be omitted. A default argument for that parameter would never be used."""
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {

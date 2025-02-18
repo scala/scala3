@@ -5,8 +5,10 @@
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  | Although extensions are ordinary methods, they must be invoked as a selection.
-  | Therefore, the receiver cannot be omitted. A default argument for that parameter would never be used.
+  | The receiver cannot be omitted when an extension method is invoked as a selection.
+  | A default argument for that parameter would never be used in that case.
+  | An extension method can be invoked as a regular method, but if that is the intended usage,
+  | it should not be defined as an extension.
    ---------------------------------------------------------------------------------------------------------------------
 -- [E208] Potential Issue Warning: tests/warn/i12460.scala:5:37 --------------------------------------------------------
 5 |extension (using String)(s: String = "hello, world") def revert = s.reverse.toUpperCase // warn
@@ -15,6 +17,8 @@
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  | Although extensions are ordinary methods, they must be invoked as a selection.
-  | Therefore, the receiver cannot be omitted. A default argument for that parameter would never be used.
+  | The receiver cannot be omitted when an extension method is invoked as a selection.
+  | A default argument for that parameter would never be used in that case.
+  | An extension method can be invoked as a regular method, but if that is the intended usage,
+  | it should not be defined as an extension.
    ---------------------------------------------------------------------------------------------------------------------
