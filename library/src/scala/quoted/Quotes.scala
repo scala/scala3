@@ -3708,6 +3708,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @param tpe type of the implicit parameter
       */
       def search(tpe: TypeRepr): ImplicitSearchResult
+
+      /** Find a given instance of type `T` in the current scope provided by the current enclosing splice,
+      *  while excluding certain symbols from the initial implicit search.
+      *  Return an `ImplicitSearchResult`.
+      *
+      *  @param tpe type of the implicit parameter
+      *  @param ignored Symbols ignored during the initial implicit search
+      *
+      *  @note if an found given requires additional search for other given instances,
+      *  this additional search will NOT exclude the symbols from the `ignored` list.
+      */
+      def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
     }
 
     /** Result of a given instance search */

@@ -928,8 +928,8 @@ trait Implicits:
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
-    inferImplicit(formal, EmptyTree, span) match
+  def inferImplicitArg(formal: Type, span: Span, ignored: Set[Symbol] = Set.empty)(using Context): Tree =
+    inferImplicit(formal, EmptyTree, span, ignored) match
       case SearchSuccess(arg, _, _, _) => arg
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
@@ -1082,7 +1082,7 @@ trait Implicits:
    *                         it should be applied, EmptyTree otherwise.
    *  @param span            The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt):
+  def inferImplicit(pt: Type, argument: Tree, span: Span, ignored: Set[Symbol] = Set.empty)(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt):
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
@@ -1110,7 +1110,7 @@ trait Implicits:
           else i"conversion from ${argument.tpe} to $pt"
 
         CyclicReference.trace(i"searching for an implicit $searchStr"):
-          try ImplicitSearch(pt, argument, span)(using searchCtx).bestImplicit
+          try ImplicitSearch(pt, argument, span, ignored)(using searchCtx).bestImplicit
           catch case ce: CyclicReference =>
             ce.inImplicitSearch = true
             throw ce
@@ -1130,9 +1130,9 @@ trait Implicits:
             result
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
-            if (deepPt ne pt) inferImplicit(deepPt, argument, span)
+            if (deepPt ne pt) inferImplicit(deepPt, argument, span, ignored)
             else if (migrateTo3 && !ctx.mode.is(Mode.OldImplicitResolution))
-              withMode(Mode.OldImplicitResolution)(inferImplicit(pt, argument, span)) match {
+              withMode(Mode.OldImplicitResolution)(inferImplicit(pt, argument, span, ignored)) match {
                 case altResult: SearchSuccess =>
                   report.migrationWarning(
                     result.reason.msg
@@ -1243,7 +1243,7 @@ trait Implicits:
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span, ignored: Set[Symbol])(using Context):
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
@@ -1670,7 +1670,7 @@ trait Implicits:
         SearchFailure(TooUnspecific(pt), span)
       else
         val contextual = ctxImplicits != null
-        val preEligible = // the eligible candidates, ignoring positions
+        var preEligible = // the eligible candidates, ignoring positions
           if ctxImplicits != null then
             if ctx.gadt.isNarrowing then
               withoutMode(Mode.ImplicitsEnabled) {
@@ -1678,6 +1678,9 @@ trait Implicits:
               }
             else ctxImplicits.eligible(wildProto)
           else implicitScope(wildProto).eligible
+        if !ignored.isEmpty then
+          preEligible =
+            preEligible.filter(candidate => !ignored.contains(candidate.implicitRef.underlyingRef.symbol))
 
         /** Does candidate `cand` come too late for it to be considered as an
          *  eligible candidate? This is the case if `cand` appears in the same
