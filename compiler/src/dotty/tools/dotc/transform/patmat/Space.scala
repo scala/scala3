@@ -972,6 +972,10 @@ object SpaceEngine {
   end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
-    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+    checkMatchExhaustivityOnly(m)
     if reachabilityCheckable(m.selector) then checkReachability(m)
+
+  def checkMatchExhaustivityOnly(m: Match)(using Context): Unit =
+    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+
 }

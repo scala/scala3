@@ -385,10 +385,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runPhases(allPhases = fusedPhases)(using runCtx)
     cancelAsyncTasty()
 
-    ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
+    ctx.reporter.finalizeReporting()
     while (finalizeActions.nonEmpty && canProgress()) {
       val action = finalizeActions.remove(0)
       action()

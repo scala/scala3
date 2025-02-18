@@ -46,10 +46,13 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      // Skip analysis on inlined code (eg pos/i19157)
+      // Skip unreachability analysis on inlined code (eg pos/i19157)
       if !tpd.enclosingInlineds.nonEmpty then
         // check exhaustivity and unreachability
         SpaceEngine.checkMatch(tree)
+      else
+        // only check exhaustivity
+        SpaceEngine.checkMatchExhaustivityOnly(tree)
 
       translated.ensureConforms(matchType)
     }
