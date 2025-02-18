@@ -239,7 +239,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
       case tree: New =>
         val constr = tree.tpe.typeSymbol.primaryConstructor
-        if isExpr(constr) then
+        if constr.exists then
           symSet(called, enclosure) += constr
       case tree: This =>
         narrowTo(tree.symbol.asClass)
