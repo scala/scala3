@@ -13,7 +13,7 @@ class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
-    // compileFile("tests/debug/tailrec.scala", TestConfiguration.defaultOptions).checkDebug()
+    // compileFile("tests/debug/for.scala", TestConfiguration.defaultOptions).checkDebug()
     compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
 
 object DebugTests extends ParallelTesting:
@@ -71,11 +71,9 @@ object DebugTests extends ParallelTesting:
     end verifyDebug
 
     private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =
-      import scala.language.unsafeNulls
-
       /** The DebugTests can only debug one thread at a time. It cannot handle breakpoints in concurrent threads.
-       *  When thread is null, it means the JVM is running and no thread is waiting to be resumed.
-       *  If thread is not null, it is waiting to be resumed by calling continue, step or next.
+       *  When thread is None, it means the JVM is running and no thread is waiting to be resumed.
+       *  If thread is Some, it is waiting to be resumed by calling continue, step or next.
        *  While the thread is paused, it can be used for evaluation.
        */
       var thread: ThreadReference = null
@@ -100,5 +98,9 @@ object DebugTests extends ParallelTesting:
             thread = debugger.step(thread)
             if verbose then println(s"step ${location.lineNumber}")
             assert(location)
+          case DebugStepAssert(Eval(expr), assert) =>
+            val result = debugger.evaluate(expr, thread)
+            if verbose then println(s"eval $expr $result")
+            assert(result)
     end playDebugSteps
   end DebugTest

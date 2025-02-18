@@ -1,3 +1,9 @@
 break Test$ 3
 step 4
+eval b
+result 72
+eval
+  val c = b + 1
+  c + 1
+result 74
 step 10
