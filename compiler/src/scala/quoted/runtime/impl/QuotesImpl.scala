@@ -2527,7 +2527,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =
         import tpd.TreeOps
-        val implicitTree = ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span, ignored = Set.empty)
+        val implicitTree = ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
         // Make sure that we do not have any uninstantiated type variables.
         // See tests/pos-macros/i16636.
         // See tests/pos-macros/exprSummonWithTypeVar with -Xcheck-macros.

@@ -86,7 +86,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
    */
   protected def tryHeal(tp: TypeRef): Type = {
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
-    val tag = ctx.typer.inferImplicitArg(reqType, pos.span, ignored = Set.empty)
+    val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
       case tp: TermRef =>
         ctx.typer.checkStable(tp, pos, "type witness")

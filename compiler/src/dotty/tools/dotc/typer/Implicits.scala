@@ -901,7 +901,7 @@ trait Implicits:
         }
 
       try
-        val inferred = inferImplicit(adjust(to), from, from.span, ignored = Set.empty)
+        val inferred = inferImplicit(adjust(to), from, from.span)
 
         inferred match {
           case SearchSuccess(_, ref, _, false) if isOldStyleFunctionConversion(ref.underlying) =>
@@ -928,7 +928,7 @@ trait Implicits:
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
    */
-  def inferImplicitArg(formal: Type, span: Span, ignored: Set[Symbol])(using Context): Tree =
+  def inferImplicitArg(formal: Type, span: Span, ignored: Set[Symbol] = Set.empty)(using Context): Tree =
     inferImplicit(formal, EmptyTree, span, ignored) match
       case SearchSuccess(arg, _, _, _) => arg
       case fail @ SearchFailure(failed) =>
@@ -944,7 +944,7 @@ trait Implicits:
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span, where: => String = "")(using Context): Tree = {
-    val arg = inferImplicitArg(formal, span, ignored = Set.empty)
+    val arg = inferImplicitArg(formal, span)
     if (arg.tpe.isInstanceOf[SearchFailureType])
       report.error(missingArgMsg(arg, formal, where), ctx.source.atSpan(span))
     arg
@@ -968,7 +968,7 @@ trait Implicits:
     def ignoredInstanceNormalImport = arg.tpe match
       case fail: SearchFailureType =>
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-          inferImplicit(fail.expectedType, fail.argument, arg.span, Set.empty)(
+          inferImplicit(fail.expectedType, fail.argument, arg.span)(
             using findHiddenImplicitsCtx(ctx)) match {
             case s: SearchSuccess => Some(s)
             case f: SearchFailure =>
@@ -1082,7 +1082,7 @@ trait Implicits:
    *                         it should be applied, EmptyTree otherwise.
    *  @param span            The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, span: Span, ignored: Set[Symbol])(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt):
+  def inferImplicit(pt: Type, argument: Tree, span: Span, ignored: Set[Symbol] = Set.empty)(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt):
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
@@ -1670,7 +1670,7 @@ trait Implicits:
         SearchFailure(TooUnspecific(pt), span)
       else
         val contextual = ctxImplicits != null
-        val prePreEligible = // the eligible candidates, ignoring positions
+        var preEligible = // the eligible candidates, ignoring positions
           if ctxImplicits != null then
             if ctx.gadt.isNarrowing then
               withoutMode(Mode.ImplicitsEnabled) {
@@ -1678,9 +1678,10 @@ trait Implicits:
               }
             else ctxImplicits.eligible(wildProto)
           else implicitScope(wildProto).eligible
+        if !ignored.isEmpty then
+          preEligible =
+            preEligible.filter(candidate => !ignored.contains(candidate.implicitRef.underlyingRef.symbol))
 
-        val preEligible =
-          prePreEligible.filter(candidate => !ignored.contains(candidate.implicitRef.underlyingRef.symbol))
         /** Does candidate `cand` come too late for it to be considered as an
          *  eligible candidate? This is the case if `cand` appears in the same
          *  scope as a given definition of the form `given ... = ...` that

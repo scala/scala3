@@ -45,7 +45,7 @@ trait QuotesAndSplices {
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
-    val quotes = inferImplicitArg(defn.QuotesClass.typeRef, tree.span, ignored = Set.empty)
+    val quotes = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
 
     if quotes.tpe.isInstanceOf[SearchFailureType] then
       report.error(missingArgMsg(quotes, defn.QuotesClass.typeRef, ""), ctx.source.atSpan(tree.span))

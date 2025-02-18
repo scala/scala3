@@ -45,7 +45,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case arg :: Nil =>
         instArg(arg) match
           case defn.ArrayOf(elemTp) =>
-            val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span, Set.empty)
+            val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !tp.isBottomTypeAfterErasure =>
             val sym = tp.typeSymbol
@@ -148,7 +148,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     /** Is there an `CanEqual[T, T]` instance, assuming -strictEquality? */
     def hasEq(tp: Type)(using Context): Boolean =
-      val inst = typer.inferImplicitArg(defn.CanEqualClass.typeRef.appliedTo(tp, tp), span, ignored = Set.empty)
+      val inst = typer.inferImplicitArg(defn.CanEqualClass.typeRef.appliedTo(tp, tp), span)
       !inst.isEmpty && !inst.tpe.isError
 
     /** Can we assume the canEqualAny instance for `tp1`, `tp2`?
