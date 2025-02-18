@@ -34,7 +34,7 @@ enum SourceVersion:
   def enablesFewerBraces = isAtLeast(`3.3`)
   def enablesClauseInterleaving = isAtLeast(`3.6`)
   def enablesNewGivens = isAtLeast(`3.6`)
-  def enablesNamedTuples = isAtLeast(`3.6`)
+  def enablesNamedTuples = isAtLeast(`3.7`)
 
 object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.7`

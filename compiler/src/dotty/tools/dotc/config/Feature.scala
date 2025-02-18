@@ -29,7 +29,6 @@ object Feature:
   val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
-  val clauseInterleaving = experimental("clauseInterleaving")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
