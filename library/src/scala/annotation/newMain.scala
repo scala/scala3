@@ -253,6 +253,7 @@ final class newMain extends MainAnnotation[FromString, Any]:
             case (arg +: t, "") => recurse(t, arg, acc)
             case (arg +: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
             case (arg +: t, l) => recurse(t, arg, acc :+ l)
+            case (_, _) => acc
           }
 
         recurse(argsUsage, "", Vector()).toList
