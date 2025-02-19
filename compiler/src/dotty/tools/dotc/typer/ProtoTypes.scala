@@ -80,9 +80,9 @@ object ProtoTypes {
                     val excluded = ctx.typerState.ownedVars.filter(!_.isInstantiated)
                     val aboveOK = !ctx.typerState.constraint.dependsOn(tvar, excluded, co = true)
                     val belowOK = !ctx.typerState.constraint.dependsOn(tvar, excluded, co = false)
-                    if aboveOK then
+                    if belowOK then
                       tvar.instantiate(fromBelow = true)
-                    else if belowOK then
+                    else if aboveOK then
                       tvar.instantiate(fromBelow = false)
 
               // commit any remaining changes in typer state
