@@ -29,8 +29,8 @@
 13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
    |         ^^^^^^^^^^^^^^^^
    |         Separation failure in method bad's result type Pair[box Ref^, box Ref^].
-   |         One part,  box Ref^, hides capabilities  {r1*, r0}.
-   |         Another part,  box Ref^,  captures capabilities  {r1*, r0}.
+   |         One part,  box Ref^, hides capabilities  {cap, cap, r1*, r0}.
+   |         Another part,  box Ref^,  captures capabilities  {cap, cap, r1*, r0}.
    |         The two sets overlap at  {r1*, r0}.
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:44:18 ---------------------------------------------------------
 44 |  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
