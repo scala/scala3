@@ -387,7 +387,7 @@ class Namer { typer: Typer =>
     def recur(stat: Tree): Context = stat match {
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
-        index(pcl.stats)(using ctx.fresh.setOwner(pkg.moduleClass))
+        index(pcl.stats)(using ctx.packageContext(pcl, pkg))
         invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
         setDocstring(pkg, stat)
         ctx
