@@ -132,7 +132,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym)
         then symd.info // don't transform symbols that will anyway be updated
-        else Fresh.fromCap(transformExplicitType(symd.info), sym)
+        else Fresh.fromCap(transformExplicitType(symd.info, sym), sym)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -302,7 +302,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *  6. Perform normalizeCaptures
    */
-  private def transformExplicitType(tp: Type, tptToCheck: Tree = EmptyTree)(using Context): Type =
+  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree)(using Context): Type =
 
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
@@ -387,7 +387,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             this(expandThrowsAlias(res, exc, Nil))
           case t =>
             // Map references to capability classes C to C^
-            if t.derivesFromCapability && !t.isSingleton && t.typeSymbol != defn.Caps_Exists
+            if t.derivesFromCapability
+              && !t.isSingleton
+              && t.typeSymbol != defn.Caps_Exists
+              && (!sym.isConstructor || (t ne tp.finalResultType))
+                // Don't add ^ to result types of class constructors deriving from Capability
             then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
             else normalizeCaptures(mapFollowingAliases(t))
     end toCapturing
@@ -460,7 +464,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
-          else transformExplicitType(tree.tpe, tptToCheck = tree)
+          else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = box(transformed)
         if sym.is(Param) && (transformed ne tree.tpe) then
           paramSigChange += tree
@@ -685,7 +689,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
               // Compute new parent types
               val ps1 = inContext(ctx.withOwner(cls)):
-                ps.mapConserve(transformExplicitType(_))
+                ps.mapConserve(transformExplicitType(_, NoSymbol))
 
               // Install new types and if it is a module class also update module object
               if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
