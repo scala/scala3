@@ -1965,6 +1965,11 @@ class Namer { typer: Typer =>
       val pt = inherited.orElse(expectedDefaultArgType).orElse(fallbackProto).widenExpr
       val tp = typedAheadRhs(pt).tpe
       if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
+        // See i21558, the default argument new A(1.0) is of type A[?T]
+        // With an uninterpolated, invariant ?T type variable.
+        // So before we return the default getter parameter type (A[? <: Double])
+        // we want to force ?T to instantiate, so it's poly is removed from the constraint
+        isFullyDefined(tp, ForceDegree.all)
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).
         // For justification on the use of `@uncheckedVariance`, see
