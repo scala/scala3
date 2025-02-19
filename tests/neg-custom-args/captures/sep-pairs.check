@@ -1,20 +1,20 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-pairs.scala:32:10 ------------------------------------
 32 |  Pair(Ref(), Ref()) // error // error: universal capability cannot be included in capture set
    |       ^^^^^
-   |       Found:    box Ref^{cap.rd, cap}
+   |       Found:    box Ref^
    |       Required: box Ref^?
    |
-   |       Note that the universal capability `cap.rd`
+   |       Note that the universal capability `cap`
    |       cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-pairs.scala:32:17 ------------------------------------
 32 |  Pair(Ref(), Ref()) // error // error: universal capability cannot be included in capture set
    |              ^^^^^
-   |              Found:    box Ref^{cap.rd, cap}
+   |              Found:    box Ref^
    |              Required: box Ref^?
    |
-   |              Note that the universal capability `cap.rd`
+   |              Note that the universal capability `cap`
    |              cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
