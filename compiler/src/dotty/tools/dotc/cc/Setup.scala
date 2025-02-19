@@ -471,6 +471,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tree.setNuType(
           if boxed then transformed
           else if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
+          else if tree.isInferred then transformed
           else Fresh.fromCap(transformed, sym))
 
     /** Transform the type of a val or var or the result type of a def */
