@@ -45,32 +45,26 @@ object DebugTests extends ParallelTesting:
     private def verifyDebug(dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       if Properties.testsNoRun then addNoRunWarning()
       else
-        val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file"))
+        val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
         val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
-        val expressionEvaluator = ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
-        val status = debugMain(testSource.runClassPath): debuggee =>
-          val debugger = Debugger(debuggee.jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
-          // configure the breakpoints before starting the debuggee
-          val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }
-          for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
-          try
-            debuggee.launch()
-            playDebugSteps(debugger, debugSteps/* , verbose = true */)
-          finally
-            // stop debugger to let debuggee terminate its execution
-            debugger.dispose()
-        status match
-          case Success(output) => ()
-          case Failure(output) =>
-            if output == "" then
-              echo(s"Test '${testSource.title}' failed with no output")
-            else
-              echo(s"Test '${testSource.title}' failed with output:")
-              echo(output)
-            failTestSource(testSource)
-          case Timeout =>
-            echo("failed because test " + testSource.title + " timed out")
-            failTestSource(testSource, TimeoutFailure(testSource.title))
+        val expressionEvaluator =
+          ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
+        try
+          val status = debugMain(testSource.runClassPath): debuggee =>
+            val debugger = Debugger(debuggee.jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
+            // configure the breakpoints before starting the debuggee
+            val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }
+            for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
+            try
+              debuggee.launch()
+              playDebugSteps(debugger, debugSteps/* , verbose = true */)
+            finally
+              // stop debugger to let debuggee terminate its execution
+              debugger.dispose()
+          reportDebuggeeStatus(testSource, status)
+        catch case DebugStepException(message, location) =>
+          echo(s"\nDebug step failed: $location\n" + message)
+          failTestSource(testSource)
     end verifyDebug
 
     private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =
@@ -109,4 +103,18 @@ object DebugTests extends ParallelTesting:
             if verbose then println(s"eval $expr $result")
             assert(result)
     end playDebugSteps
+
+    private def reportDebuggeeStatus(testSource: TestSource, status: Status): Unit =
+      status match
+        case Success(output) => ()
+        case Failure(output) =>
+          if output == "" then
+            echo(s"Test '${testSource.title}' failed with no output")
+          else
+            echo(s"Test '${testSource.title}' failed with output:")
+            echo(output)
+          failTestSource(testSource)
+        case Timeout =>
+          echo("failed because test " + testSource.title + " timed out")
+          failTestSource(testSource, TimeoutFailure(testSource.title))
   end DebugTest
