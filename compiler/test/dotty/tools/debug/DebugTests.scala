@@ -8,16 +8,19 @@ import dotty.tools.vulpix.*
 import org.junit.Test
 
 import scala.concurrent.duration.*
+import scala.util.control.NonFatal
 
 class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
-    // compileFile("tests/debug/for.scala", TestConfiguration.defaultOptions).checkDebug()
+    // compileFile("tests/debug/eval-static-fields.scala", TestConfiguration.defaultOptions).checkDebug()
     compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
 
 object DebugTests extends ParallelTesting:
-  def maxDuration = 45.seconds
+  def maxDuration =
+    // Increase the timeout when the user is debugging the tests
+    if isUserDebugging then 3.hours else 45.seconds
   def numberOfSlaves = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
@@ -99,7 +102,10 @@ object DebugTests extends ParallelTesting:
             if verbose then println(s"step ${location.lineNumber}")
             assert(location)
           case DebugStepAssert(Eval(expr), assert) =>
-            val result = debugger.evaluate(expr, thread)
+            val result =
+              try debugger.evaluate(expr, thread)
+              catch case NonFatal(cause) =>
+                throw new Exception(s"Evaluation of $expr failed", cause)
             if verbose then println(s"eval $expr $result")
             assert(result)
     end playDebugSteps

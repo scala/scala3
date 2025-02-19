@@ -57,7 +57,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               JavaEncoding.encode(typeSymbol) match
                 case s"scala.runtime.${_}Ref" =>
                   val elemField = typeSymbol.info.decl(termName("elem")).symbol
-                  gen.setField(
+                  gen.setField(tree)(
                     gen.getLocalValue(variableName),
                     elemField.asTerm,
                     value
@@ -65,7 +65,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
                 case _ => gen.setLocalValue(variableName, value)
             case ReflectEvalStrategy.ClassCapture(variable, cls, isByName) =>
               val rawCapture = gen
-                .getClassCapture(qualifier, variable.name, cls)
+                .getClassCapture(tree)(qualifier, variable.name, cls)
                 .getOrElse {
                   report.error(s"No capture found for $variable in $cls", tree.srcPos)
                   ref(defn.Predef_undefined)
@@ -75,7 +75,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               gen.boxIfValueClass(variable, capturedValue)
             case ReflectEvalStrategy.ClassCaptureAssign(variable, cls) =>
               val capture = gen
-                .getClassCapture(qualifier, variable.name, cls)
+                .getClassCapture(tree)(qualifier, variable.name, cls)
                 .getOrElse {
                   report.error(s"No capture found for $variable in $cls", tree.srcPos)
                   ref(defn.Predef_undefined)
@@ -83,7 +83,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               val value = gen.unboxIfValueClass(variable, args.head)
               val typeSymbol = variable.info.typeSymbol
               val elemField = typeSymbol.info.decl(termName("elem")).symbol
-              gen.setField(capture, elemField.asTerm, value)
+              gen.setField(tree)(capture, elemField.asTerm, value)
             case ReflectEvalStrategy.MethodCapture(variable, method, isByName) =>
               val rawCapture = gen
                 .getMethodCapture(method, variable.name)
@@ -104,24 +104,25 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               val value = gen.unboxIfValueClass(variable, args.head)
               val typeSymbol = variable.info.typeSymbol
               val elemField = typeSymbol.info.decl(termName("elem")).symbol
-              gen.setField(capture, elemField.asTerm, value)
+              gen.setField(tree)(capture, elemField.asTerm, value)
             case ReflectEvalStrategy.StaticObject(obj) => gen.getStaticObject(obj)
             case ReflectEvalStrategy.Field(field, isByName) =>
               // if the field is lazy, if it is private in a value class or a trait
               // then we must call the getter method
               val fieldValue =
                 if field.is(Lazy) || field.owner.isValueClass || field.owner.is(Trait)
-                then gen.callMethod(qualifier, field.getter.asTerm, Nil)
+                then gen.callMethod(tree)(qualifier, field.getter.asTerm, Nil)
                 else
-                  val rawValue = gen.getField(qualifier, field)
+                  val rawValue = gen.getField(tree)(qualifier, field)
                   if isByName then gen.evaluateByName(rawValue) else rawValue
               gen.boxIfValueClass(field, fieldValue)
             case ReflectEvalStrategy.FieldAssign(field) =>
               val arg = gen.unboxIfValueClass(field, args.head)
-              if field.owner.is(Trait) then gen.callMethod(qualifier, field.setter.asTerm, List(arg))
-              else gen.setField(qualifier, field, arg)
-            case ReflectEvalStrategy.MethodCall(method) => gen.callMethod(qualifier, method, args)
-            case ReflectEvalStrategy.ConstructorCall(ctr, cls) => gen.callConstructor(qualifier, ctr, args)
+              if field.owner.is(Trait) then
+                gen.callMethod(tree)(qualifier, field.setter.asTerm, List(arg))
+              else gen.setField(tree)(qualifier, field, arg)
+            case ReflectEvalStrategy.MethodCall(method) => gen.callMethod(tree)(qualifier, method, args)
+            case ReflectEvalStrategy.ConstructorCall(ctr, cls) => gen.callConstructor(tree)(qualifier, ctr, args)
         case _ => super.transform(tree)
 
   private def isReflectEval(symbol: Symbol)(using Context): Boolean =
@@ -135,7 +136,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       JavaEncoding.encode(typeSymbol) match
         case s"scala.runtime.${_}Ref" =>
           val elemField = typeSymbol.info.decl(termName("elem")).symbol
-          getField(tree, elemField.asTerm)
+          getField(tree)(tree, elemField.asTerm)
         case _ => tree
 
     def boxIfValueClass(term: TermSymbol, tree: Tree): Tree =
@@ -147,7 +148,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
     def boxValueClass(valueClass: ClassSymbol, tree: Tree): Tree =
       // qualifier is null: a value class cannot be nested into a class
       val ctor = valueClass.primaryConstructor.asTerm
-      callConstructor(nullLiteral, ctor, List(tree))
+      callConstructor(tree)(nullLiteral, ctor, List(tree))
 
     def unboxIfValueClass(term: TermSymbol, tree: Tree): Tree =
       getErasedValueType(atPhase(Phases.elimErasedValueTypePhase)(term.info)) match
@@ -162,7 +163,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
     private def unboxValueClass(tree: Tree, tpe: ErasedValueType): Tree =
       val cls = tpe.tycon.typeSymbol.asClass
       val unboxMethod = ValueClasses.valueClassUnbox(cls).asTerm
-      callMethod(tree, unboxMethod, Nil)
+      callMethod(tree)(tree, unboxMethod, Nil)
 
     def getThisObject: Tree =
       Apply(Select(expressionThis, termName("getThisObject")), List.empty)
@@ -185,7 +186,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
         List(qualifier, Literal(Constant(JavaEncoding.encode(outerCls))))
       )
 
-    def getClassCapture(qualifier: Tree, originalName: Name, cls: ClassSymbol): Option[Tree] =
+    def getClassCapture(tree: Tree)(qualifier: Tree, originalName: Name, cls: ClassSymbol): Option[Tree] =
       cls.info.decls.iterator
         .filter(term => term.isField)
         .find { field =>
@@ -196,7 +197,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               info.name == originalName
             case _ => false
         }
-        .map(field => getField(qualifier, field.asTerm))
+        .map(field => getField(tree: Tree)(qualifier, field.asTerm))
 
     def getMethodCapture(method: TermSymbol, originalName: TermName): Option[Tree] =
       val methodType = method.info.asInstanceOf[MethodType]
@@ -210,32 +211,40 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
         List(Literal(Constant(JavaEncoding.encode(obj))))
       )
 
-    def getField(qualifier: Tree, field: TermSymbol): Tree =
-      Apply(
-        Select(expressionThis, termName("getField")),
-        List(
-          qualifier,
-          Literal(Constant(JavaEncoding.encode(field.owner.asType))),
-          Literal(Constant(JavaEncoding.encode(field.name)))
+    def getField(tree: Tree)(qualifier: Tree, field: TermSymbol): Tree =
+      if field.owner.isTerm then
+        report.error(s"Cannot access local val ${field.name} in ${field.owner} as field", tree.srcPos)
+        ref(defn.Predef_undefined)
+      else
+        Apply(
+          Select(expressionThis, termName("getField")),
+          List(
+            qualifier,
+            Literal(Constant(JavaEncoding.encode(field.owner.asType))),
+            Literal(Constant(JavaEncoding.encode(field.name)))
+          )
         )
-      )
 
-    def setField(qualifier: Tree, field: TermSymbol, value: Tree): Tree =
-      Apply(
-        Select(expressionThis, termName("setField")),
-        List(
-          qualifier,
-          Literal(Constant(JavaEncoding.encode(field.owner.asType))),
-          Literal(Constant(JavaEncoding.encode(field.name))),
-          value
+    def setField(tree: Tree)(qualifier: Tree, field: TermSymbol, value: Tree): Tree =
+      if field.owner.isTerm then
+        report.error(s"Cannot access local var ${field.name} in ${field.owner} as field", tree.srcPos)
+        ref(defn.Predef_undefined)
+      else
+        Apply(
+          Select(expressionThis, termName("setField")),
+          List(
+            qualifier,
+            Literal(Constant(JavaEncoding.encode(field.owner.asType))),
+            Literal(Constant(JavaEncoding.encode(field.name))),
+            value
+          )
         )
-      )
 
     def evaluateByName(function: Tree): Tree =
       val castFunction = function.cast(defn.Function0.typeRef.appliedTo(defn.AnyType))
       Apply(Select(castFunction, termName("apply")), List())
 
-    def callMethod(qualifier: Tree, method: TermSymbol, args: List[Tree]): Tree =
+    def callMethod(tree: Tree)(qualifier: Tree, method: TermSymbol, args: List[Tree]): Tree =
       val methodType = method.info.asInstanceOf[MethodType]
       val paramTypesNames = methodType.paramInfos.map(JavaEncoding.encode)
       val paramTypesArray = JavaSeqLiteral(
@@ -247,7 +256,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
         report.error(s"Unknown captured variable $name in $method", reflectEval.srcPos)
         ref(defn.Predef_undefined)
       val capturedArgs = methodType.paramNames.dropRight(args.size).map {
-        case name @ DerivedName(underlying, _) => capturedValue(method, underlying).getOrElse(unknownCapture(name))
+        case name @ DerivedName(underlying, _) => capturedValue(tree)(method, underlying).getOrElse(unknownCapture(name))
         case name => unknownCapture(name)
       }
 
@@ -275,7 +284,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
         case _ => result
     end callMethod
 
-    def callConstructor(qualifier: Tree, ctr: TermSymbol, args: List[Tree]): Tree =
+    def callConstructor(tree: Tree)(qualifier: Tree, ctr: TermSymbol, args: List[Tree]): Tree =
       val methodType = ctr.info.asInstanceOf[MethodType]
       val paramTypesNames = methodType.paramInfos.map(JavaEncoding.encode)
       val clsName = JavaEncoding.encode(methodType.resType)
@@ -285,7 +294,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
           case outer if outer.toString == "$outer" => qualifier
           case name @ DerivedName(underlying, _) =>
             // if derived then probably a capture
-            capturedValue(ctr.owner, underlying)
+            capturedValue(tree: Tree)(ctr.owner, underlying)
               .getOrElse {
                 report.error(s"Unknown captured variable $name in $ctr of ${ctr.owner}", reflectEval.srcPos)
                 ref(defn.Predef_undefined)
@@ -316,22 +325,22 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       )
     end callConstructor
 
-    private def capturedValue(sym: Symbol, originalName: TermName): Option[Tree] =
+    private def capturedValue(tree: Tree)(sym: Symbol, originalName: TermName): Option[Tree] =
       val encodedName = JavaEncoding.encode(originalName)
-      if expressionStore.classOwners.contains(sym) then capturedByClass(sym.asClass, originalName)
+      if expressionStore.classOwners.contains(sym) then capturedByClass(tree: Tree)(sym.asClass, originalName)
       else if config.localVariables.contains(encodedName) then Some(getLocalValue(encodedName))
       else
         // if the captured value is not a local variables
         // then it must have been captured by the outer method
         expressionStore.capturingMethod.flatMap(getMethodCapture(_, originalName))
 
-    private def capturedByClass(cls: ClassSymbol, originalName: TermName): Option[Tree] =
+    private def capturedByClass(tree: Tree)(cls: ClassSymbol, originalName: TermName): Option[Tree] =
       val target = expressionStore.classOwners.indexOf(cls)
       val qualifier = expressionStore.classOwners
         .drop(1)
         .take(target)
         .foldLeft(getThisObject)((q, cls) => getOuter(q, cls))
-      getClassCapture(qualifier, originalName, cls)
+      getClassCapture(tree: Tree)(qualifier, originalName, cls)
 
 private object ResolveReflectEval:
   val name = "resolve-reflect-eval"

@@ -81,7 +81,7 @@ private[debug] object DebugStepAssert:
       case Left(obtained) =>
         val message =
           s"""|Evaluation failed:
-              |$obtained""".stripMargin
+              |${obtained.replace("\n", "\n|")}""".stripMargin
         throw new AssertionError(message)
       case Right(obtained) =>
         val message =
@@ -96,7 +96,7 @@ private[debug] object DebugStepAssert:
           s"""|Expected:
               |${expected.mkString("\n")}
               |Obtained:
-              |$obtained""".stripMargin
+              |${obtained.replace("\n", "\n|")}""".stripMargin
         assert(expected.forall(e => e.r.findFirstMatchIn(obtained).isDefined), message)
       case Right(obtained) =>
         val message =
