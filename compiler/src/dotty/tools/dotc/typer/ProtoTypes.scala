@@ -69,6 +69,13 @@ object ProtoTypes {
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
+              // Remove all type lambdas and tvars introduced by testCompat
+              for tvar <- newctx.typerState.ownedVars do
+                inContext(newctx):
+                  if !tvar.isInstantiated then
+                    tvar.instantiate(fromBelow = false) // any direction
+
+              // commit any remaining changes in typer state
               newctx.typerState.commit()
             result
           case _ => testCompat

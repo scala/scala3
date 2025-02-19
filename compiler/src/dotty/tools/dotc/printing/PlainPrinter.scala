@@ -224,7 +224,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
-        "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
+        "<error>" // do not print previously reported error message because they may try to print this error type again recursively
       case tp: ErrorType =>
         s"<error ${tp.msg.message}>"
       case tp: WildcardType =>
