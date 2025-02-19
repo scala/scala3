@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.{migrateTo3, fewerBracesEnabled}
+import config.Feature.migrateTo3
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
@@ -664,7 +664,7 @@ object Scanners {
         if token == COLONop && inTemplate then
           report.deprecationWarning(em"`:` after symbolic operator is deprecated; use backticks around operator instead", sourcePos(offset))
           true
-        else token == COLONfollow && (inTemplate || fewerBracesEnabled)
+        else token == COLONfollow && (inTemplate || sourceVersion.enablesFewerBraces)
       if enabled then
         peekAhead()
         val atEOL = isAfterLineEnd || token == EOF

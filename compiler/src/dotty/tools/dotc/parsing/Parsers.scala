@@ -885,7 +885,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if canRewrite && (!underColonSyntax || Feature.fewerBracesEnabled) then
+      if canRewrite && (!underColonSyntax || sourceVersion.enablesFewerBraces) then
         val openingPatchStr =
           if !colonRequired then ""
           else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
@@ -1011,7 +1011,7 @@ object Parsers {
       skipParams()
       lookahead.isColon
       && {
-        !sourceVersion.isAtLeast(`3.6`)
+        !sourceVersion.enablesNewGivens
         || { // in the new given syntax, a `:` at EOL after an identifier represents a single identifier given
              // Example:
              //    given C:
@@ -1165,7 +1165,7 @@ object Parsers {
      *      body
      */
     def isColonLambda =
-      Feature.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
+      sourceVersion.enablesFewerBraces && in.token == COLONfollow && followingIsLambdaAfterColon()
 
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
@@ -1870,7 +1870,7 @@ object Parsers {
       infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg()
                      && !isPureArrow
-                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) && inContextBound)
+                     && !(isIdent(nme.as) && sourceVersion.enablesNewGivens && inContextBound)
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
@@ -2263,7 +2263,7 @@ object Parsers {
     def contextBound(pname: TypeName): Tree =
       val t = toplevelTyp(inContextBound = true)
       val ownName =
-        if isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) then
+        if isIdent(nme.as) && sourceVersion.enablesNewGivens then
           in.nextToken()
           ident()
         else EmptyTermName
@@ -2276,7 +2276,7 @@ object Parsers {
     def contextBounds(pname: TypeName): List[Tree] =
       if in.isColon then
         in.nextToken()
-        if in.token == LBRACE && sourceVersion.isAtLeast(`3.6`)
+        if in.token == LBRACE && sourceVersion.enablesNewGivens
         then inBraces(commaSeparated(() => contextBound(pname)))
         else
           val bound = contextBound(pname)
@@ -3500,7 +3500,7 @@ object Parsers {
           val hkparams = typeParamClauseOpt(ParamOwner.Hk)
           val bounds =
             if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name)
-            else if sourceVersion.isAtLeast(`3.6`) && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
+            else if sourceVersion.enablesNewGivens && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
             else typeBounds()
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
@@ -3969,7 +3969,7 @@ object Parsers {
         val ident = termIdent()
         var name = ident.name.asTermName
         val paramss =
-          if Feature.clauseInterleavingEnabled(using in.languageImportContext) then
+          if sourceVersion.enablesClauseInterleaving then
             typeOrTermParamClauses(ParamOwner.Def, numLeadParams)
           else
             val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -4069,7 +4069,7 @@ object Parsers {
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ if (staged & StageKind.QuotedPattern) != 0
-              || sourceVersion.isAtLeast(`3.6`) && in.isColon =>
+              || sourceVersion.enablesNewGivens && in.isColon =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
@@ -4244,7 +4244,7 @@ object Parsers {
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
       val nameStart = in.offset
-      var newSyntaxAllowed = sourceVersion.isAtLeast(`3.6`)
+      var newSyntaxAllowed = sourceVersion.enablesNewGivens
       val hasEmbeddedColon = !in.isColon && followingIsGivenDefWithColon()
       val name = if isIdent && hasEmbeddedColon then ident() else EmptyTermName
 
