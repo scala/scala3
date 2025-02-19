@@ -2,25 +2,42 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
+import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
-import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
-import java.lang.System.{lineSeparator => EOL}
+import java.io.ByteArrayOutputStream
+import java.io.File as JFile
+import java.io.IOException
+import java.io.PrintStream
+import java.lang.System.lineSeparator as EOL
+import java.lang.management.ManagementFactory
 import java.net.URL
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, NoSuchFileException, Path, Paths}
-import java.nio.charset.{Charset, StandardCharsets}
 import java.text.SimpleDateFormat
-import java.util.{HashMap, Timer, TimerTask}
-import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
-
+import java.util.HashMap
+import java.util.Timer
+import java.util.TimerTask
+import java.util.concurrent.Executors as JExecutors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import scala.collection.mutable
-import scala.io.{Codec, Source}
+import scala.collection.mutable.ListBuffer
+import scala.io.Codec
+import scala.io.Source
 import scala.jdk.CollectionConverters.*
-import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
+import scala.language.unsafeNulls
+import scala.util.Failure as TryFailure
+import scala.util.Random
+import scala.util.Success as TrySuccess
+import scala.util.Try
+import scala.util.Using
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
-import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts.*
@@ -32,7 +49,6 @@ import dotc.reporting.Diagnostic
 import dotc.config.Config
 import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
-import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -459,7 +475,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** Print a progress bar for the current `Test` */
     private def updateProgressMonitor(start: Long): Unit =
-      if testSourcesCompleted < sourceCount then
+      if testSourcesCompleted < sourceCount && !isUserDebugging then
         realStdout.print(s"\r${makeProgressBar(start)}")
 
     private def finishProgressMonitor(start: Long): Unit =
@@ -1832,6 +1848,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     flags.options.sliding(2).collectFirst {
       case Array("-encoding", encoding) => Charset.forName(encoding)
     }.getOrElse(StandardCharsets.UTF_8)
+
+  def isUserDebugging: Boolean =
+    val mxBean = ManagementFactory.getRuntimeMXBean
+    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
 }
 
 object ParallelTesting {
