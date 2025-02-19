@@ -2073,7 +2073,7 @@ class Namer { typer: Typer =>
     val sym = symbolOfTree(param)
     sym.maybeOwner.maybeOwner.infoOrCompleter match
       case info: ClassInfo
-        if !sym.is(Tracked) && (sym.info.typeSymbol.is(Tracked) || isContextBoundWitnessWithAbstractMembers(sym, param, sym.maybeOwner.maybeOwner)) =>
+        if !sym.is(Tracked) && (sym.info.widen.typeSymbol.is(Tracked) || isContextBoundWitnessWithAbstractMembers(sym, param, sym.maybeOwner.maybeOwner)) =>
         typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
         setParamTrackedWithAccessors(sym, info)
       case _ =>
