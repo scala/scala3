@@ -480,7 +480,9 @@ object CaptureSet:
   end Fluid
 
   /** The subclass of captureset variables with given initial elements */
-  class Var(override val owner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
+  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
+
+    override def owner = initialOwner
 
     /** A unique identification number for diagnostics */
     val id =
@@ -951,9 +953,14 @@ object CaptureSet:
    *  which are already subject through snapshotting and rollbacks in VarState.
    *  It's advantageous if we don't need to deal with other pieces of state there.
    */
-  class HiddenSet(owner: Symbol, initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
-  extends Var(owner, initialHidden):
+  class HiddenSet(initialOwner: Symbol, initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
+  extends Var(initialOwner, initialHidden):
     var owningCap: AnnotatedType = uninitialized
+    var givenOwner: Symbol = initialOwner
+
+    override def owner = givenOwner
+
+    // assert(id != 34, i"$initialHidden")
 
     private def aliasRef: AnnotatedType | Null =
       if myElems.size == 1 then
