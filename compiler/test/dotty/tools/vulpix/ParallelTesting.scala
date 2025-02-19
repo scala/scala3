@@ -6,6 +6,7 @@ import scala.language.unsafeNulls
 
 import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
 import java.lang.System.{lineSeparator => EOL}
+import java.lang.management.ManagementFactory
 import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
@@ -459,7 +460,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** Print a progress bar for the current `Test` */
     private def updateProgressMonitor(start: Long): Unit =
-      if testSourcesCompleted < sourceCount then
+      if testSourcesCompleted < sourceCount && !isUserDebugging then
         realStdout.print(s"\r${makeProgressBar(start)}")
 
     private def finishProgressMonitor(start: Long): Unit =
@@ -1832,6 +1833,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     flags.options.sliding(2).collectFirst {
       case Array("-encoding", encoding) => Charset.forName(encoding)
     }.getOrElse(StandardCharsets.UTF_8)
+
+  /** checks if the current process is being debugged */
+  def isUserDebugging: Boolean =
+    val mxBean = ManagementFactory.getRuntimeMXBean
+    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
 }
 
 object ParallelTesting {
