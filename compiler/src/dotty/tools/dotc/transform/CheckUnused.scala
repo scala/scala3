@@ -73,7 +73,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         val target = res.dealias.typeSymbol
         resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
       case _ =>
-    else if tree.qualifier.srcPos.isSynthetic || name.exists(_ != tree.symbol.name) then
+    else if tree.qualifier.srcPos.isSynthetic && tree.qualifier.tpe.isStable || name.exists(_ != tree.symbol.name) then
       if !ignoreTree(tree) then
         resolveUsage(tree.symbol, name, tree.qualifier.tpe)
     else
