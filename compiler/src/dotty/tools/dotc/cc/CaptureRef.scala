@@ -259,7 +259,7 @@ trait CaptureRef extends TypeProxy, ValueType:
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap && canAddHidden && vs.addHidden(hidden, y)
       case _ =>
-        this.isCap && canAddHidden
+        this.isCap && canAddHidden && vs != VarState.HardSeparate
         || y.match
             case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case _ => false

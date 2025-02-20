@@ -197,7 +197,7 @@ sealed abstract class CaptureSet extends Showable:
          // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
         !x.isMaxCapability
         && !x.derivesFrom(defn.Caps_CapSet)
-        && !(vs == VarState.Separate && x.captureSetOfInfo.containsRootCapability)
+        && !(vs.isSeparating && x.captureSetOfInfo.containsRootCapability)
            // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
         && x.captureSetOfInfo.subCaptures(this, VarState.Separate).isOK
 
@@ -257,9 +257,9 @@ sealed abstract class CaptureSet extends Showable:
    *  `this` and `that`
    */
   def ++ (that: CaptureSet)(using Context): CaptureSet =
-    if this.subCaptures(that, VarState.Separate).isOK then
+    if this.subCaptures(that, VarState.HardSeparate).isOK then
       if that.isAlwaysEmpty && this.keepAlways then this else that
-    else if that.subCaptures(this, VarState.Separate).isOK then this
+    else if that.subCaptures(this, VarState.HardSeparate).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Union(this, that)
 
@@ -554,7 +554,7 @@ object CaptureSet:
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isTrackableRef, elem)
-        assert(!this.isInstanceOf[HiddenSet] || summon[VarState] == VarState.Separate, summon[VarState])
+        assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
         elems += elem
         if elem.isRootCapability then
           rootAddedHandler()
@@ -1157,6 +1157,7 @@ object CaptureSet:
 
     /** Does this state allow additions of elements to capture set variables? */
     def isOpen = true
+    def isSeparating = false
 
     /** Add element to hidden set, recording it in elemsMap,
      *  return whether this was allowed. By default, recording is allowed
@@ -1204,10 +1205,23 @@ object CaptureSet:
      *  reference `r` only if `r` is already present in the hidden set of the instance.
      *  No new references can be added.
      */
-    @sharable
-    object Separate extends Closed:
+    class Separating extends Closed:
       override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = false
       override def toString = "separating varState"
+      override def isSeparating = true
+
+    /** A closed state that allows a Fresh.Cap instance to subsume a
+     *  reference `r` only if `r` is already present in the hidden set of the instance.
+     *  No new references can be added.
+     */
+    @sharable
+    object Separate extends Separating
+
+    /** Like Separate but in addition we assume that `cap` never subsumes anything else.
+     *  Used in `++` to not lose track of dependencies between function parameters.
+     */
+    @sharable
+    object HardSeparate extends Separating
 
     /** A special state that turns off recording of elements. Used only
      *  in `addSub` to prevent cycles in recordings.

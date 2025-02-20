@@ -340,11 +340,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param fn          the function
    *  @param parts       the function prefix followed by the flattened argument list
    *  @param polyArg     the clashing argument to a polymorphic formal
-   *  @param clashing    the argument with which it clashes
+   *  @param clashing    the argument, function prefix, or entire function application result with
+   *                     which it clashes,
+   *
    */
   def sepApplyError(fn: Tree, parts: List[Tree], polyArg: Tree, clashing: Tree)(using Context): Unit =
     val polyArgIdx = parts.indexOf(polyArg).ensuring(_ >= 0) - 1
-    val clashIdx = parts.indexOf(clashing).ensuring(_ >= 0)
+    val clashIdx = parts.indexOf(clashing) // -1 means entire function application
     def paramName(mt: Type, idx: Int): Option[Name] = mt match
       case mt @ MethodType(pnames) =>
         if idx < pnames.length then Some(pnames(idx)) else paramName(mt.resType, idx - pnames.length)
@@ -363,11 +365,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       if isShowableMethod then i"${fn.symbol}: ${fn.symbol.info}"
       else i"a function of type ${funType.widen}"
     def clashArgStr = clashIdx match
-      case 0 => "function prefix"
-      case 1 => "first argument "
-      case 2 => "second argument"
-      case 3 => "third argument "
-      case n => s"${n}th argument  "
+      case -1 => "function result"
+      case 0  => "function prefix"
+      case 1  => "first argument "
+      case 2  => "second argument"
+      case 3  => "third argument "
+      case n  => s"${n}th argument  "
     def clashTypeStr =
       if clashIdx == 0 && !isShowableMethod then "" // we already mentioned the type in `funStr`
       else i" with type  ${clashing.nuType}"
@@ -455,11 +458,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *
    *  @param fn        the applied function
    *  @param args      the flattened argument lists
+   *  @param app       the entire application tree
    *  @param deps      cross argument dependencies: maps argument trees to
    *                   those other arguments that where mentioned by coorresponding
    *                   formal parameters.
    */
-  private def checkApply(fn: Tree, args: List[Tree], deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
+  private def checkApply(fn: Tree, args: List[Tree], app: Tree, deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
     val (qual, fnCaptures) = methPart(fn) match
       case Select(qual, _) => (qual, qual.nuType.captureSet)
       case _ => (fn, CaptureSet.empty)
@@ -511,6 +515,29 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       currentPeaks = PeaksPair(
           currentPeaks.actual ++ argPeaks.actual,
           currentPeaks.hidden ++ argPeaks.hidden)
+    end for
+
+    def collectRefs(args: List[Type], res: Type) =
+      args.foldLeft(argCaptures(res)): (refs, arg) =>
+        refs ++ arg.deepCaptureSet.elems
+
+    /** The deep capture sets of all parameters of this type (if it is a function type) */
+    def argCaptures(tpe: Type): Refs = tpe match
+      case defn.FunctionOf(args, resultType, isContextual) =>
+        collectRefs(args, resultType)
+      case defn.RefinedFunctionOf(mt) =>
+        collectRefs(mt.paramInfos, mt.resType)
+      case CapturingType(parent, _) =>
+        argCaptures(parent)
+      case _ =>
+        emptyRefs
+
+    if !deps(app).isEmpty then
+      lazy val appPeaks = argCaptures(app.nuType).peaks
+      lazy val partPeaks = partsWithPeaks.toMap
+      for arg <- deps(app) do
+        if arg.needsSepCheck && !partPeaks(arg).hidden.sharedWith(appPeaks).isEmpty then
+          sepApplyError(fn, parts, arg, app)
   end checkApply
 
   /** 1. Check that the capabilities used at `tree` don't overlap with
@@ -782,44 +809,55 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *
    *    f(x: A, y: B^{cap, x}, z: C^{x, y}): D
    *
-   *  then the dependencies of an application `f(a, b)` is a map that takes
-   *  `b` to `List(a)` and `c` to `List(a, b)`.
+   *  then the dependencies of an application `f(a, b, c)` of type C^{y} is the map
+   *
+   *    [ b -> [a]
+   *    , c -> [a, b]
+   *    , f(a, b, c) -> [b]]
    */
-  private def dependencies(fn: Tree, argss: List[List[Tree]])(using Context): collection.Map[Tree, List[Tree]] =
+  private def dependencies(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): collection.Map[Tree, List[Tree]] =
+    def isFunApply(sym: Symbol) =
+      sym.name == nme.apply && defn.isFunctionClass(sym.owner)
     val mtpe =
-      if fn.symbol.exists then fn.symbol.info
-      else fn.tpe.widen // happens for PolyFunction applies
+      if fn.symbol.exists && !isFunApply(fn.symbol) then fn.symbol.info
+      else fn.nuType.widen
     val mtps = collectMethodTypes(mtpe)
     assert(mtps.hasSameLengthAs(argss), i"diff for $fn: ${fn.symbol} /// $mtps /// $argss")
     val mtpsWithArgs = mtps.zip(argss)
     val argMap = mtpsWithArgs.toMap
     val deps = mutable.HashMap[Tree, List[Tree]]().withDefaultValue(Nil)
-    for
-      (mt, args) <- mtpsWithArgs
-      (formal, arg) <- mt.paramInfos.zip(args)
-      dep <- formal.captureSet.elems.toList
-    do
-      val referred = dep.stripReach match
-        case dep: TermParamRef =>
-          argMap(dep.binder)(dep.paramNum) :: Nil
-        case dep: ThisType if dep.cls == fn.symbol.owner =>
-          val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
-          qual :: Nil
-        case _ =>
-          Nil
-      deps(arg) ++= referred
+
+    def recordDeps(formal: Type, actual: Tree) =
+      for dep <- formal.captureSet.elems.toList do
+        val referred = dep.stripReach match
+          case dep: TermParamRef =>
+            argMap(dep.binder)(dep.paramNum) :: Nil
+          case dep: ThisType if dep.cls == fn.symbol.owner =>
+            val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
+            qual :: Nil
+          case _ =>
+            Nil
+        deps(actual) ++= referred
+
+    for (mt, args) <- mtpsWithArgs; (formal, arg) <- mt.paramInfos.zip(args) do
+      recordDeps(formal, arg)
+    recordDeps(mtpe.finalResultType, app)
+    capt.println(i"deps for $app = ${deps.toList}")
     deps
+
 
   /** Decompose an application into a function prefix and a list of argument lists.
    *  If some of the arguments need a separation check because they are capture polymorphic,
    *  perform a separation check with `checkApply`
    */
-  private def traverseApply(tree: Tree, argss: List[List[Tree]])(using Context): Unit = tree match
-    case Apply(fn, args) => traverseApply(fn, args :: argss)
-    case TypeApply(fn, args) => traverseApply(fn, argss) // skip type arguments
-    case _ =>
-      if argss.nestedExists(_.needsSepCheck) then
-        checkApply(tree, argss.flatten, dependencies(tree, argss))
+  private def traverseApply(app: Tree)(using Context): Unit =
+    def recur(tree: Tree, argss: List[List[Tree]]): Unit = tree match
+      case Apply(fn, args) => recur(fn, args :: argss)
+      case TypeApply(fn, args) => recur(fn, argss) // skip type arguments
+      case _ =>
+        if argss.nestedExists(_.needsSepCheck) then
+          checkApply(tree, argss.flatten, app, dependencies(tree, argss, app))
+    recur(app, Nil)
 
   /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`? */
   def isUnsafeAssumeSeparate(tree: Tree)(using Context): Boolean = tree match
@@ -866,7 +904,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseChildren(tree)
           tree.tpe match
             case _: MethodOrPoly =>
-            case _ => traverseApply(tree, Nil)
+            case _ => traverseApply(tree)
         case _: Block | _: Template =>
           traverseSection(tree)
         case tree: ValDef =>
