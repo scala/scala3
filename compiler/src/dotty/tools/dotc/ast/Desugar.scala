@@ -418,6 +418,7 @@ object desugar {
           .withMods(Modifiers(
             meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
             meth.mods.privateWithin))
+          .withSpan(vparam.rhs.span)
         val rest = defaultGetters(vparams :: paramss1, n + 1)
         if vparam.rhs.isEmpty then rest else defaultGetter :: rest
       case _ :: paramss1 =>  // skip empty parameter lists and type parameters
