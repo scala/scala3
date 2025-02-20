@@ -55,11 +55,14 @@ trait RunnerOrchestration {
   def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
+  /** Each method of Debuggee can be called only once, in the order of definition.*/
   trait Debuggee:
-    /** the jdi port to connect the debugger */
-    def jdiPort: Int
+    /** read the jdi port to connect the debugger */
+    def readJdiPort(): Int
     /** start the main method in the background */
     def launch(): Unit
+    /** wait until the end of the main method */
+    def exit(): Status
 
   /** Provide a Debuggee for debugging the Test class's main method
    *  @param f the debugging flow: set breakpoints, launch main class, pause, step, evaluate, exit etc
@@ -88,14 +91,31 @@ trait RunnerOrchestration {
     def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
       withRunner(_.runMain(classPath))
 
-    def debugMain(classPath: String)(f: Debuggee => Unit)(implicit summaryReport: SummaryReporting): Status =
+    def debugMain(classPath: String)(f: Debuggee => Unit)(implicit summaryReport: SummaryReporting): Unit =
       withRunner(_.debugMain(classPath)(f))
 
-    // A JVM process and its JDI port for debugging, if debugMode is enabled.
-    private class RunnerProcess(p: Process, val jdiPort: Option[Int]):
-      val stdout = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))
-      val stdin = new PrintStream(p.getOutputStream(), /* autoFlush = */ true)
+    private class RunnerProcess(p: Process):
+      private val stdout = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))
+      private val stdin = new PrintStream(p.getOutputStream(), /* autoFlush = */ true)
+
+      def readLine(): String =
+        stdout.readLine() match
+          case s"Listening for transport dt_socket at address: $port" =>
+            throw new IOException(
+              s"Unexpected transport dt_socket message." +
+              " The port is going to be lost and no debugger will be able to connect."
+            )
+          case line => line
+
+      def printLine(line: String): Unit = stdin.println(line)
+
+      def getJdiPort(): Int =
+        stdout.readLine() match
+          case s"Listening for transport dt_socket at address: $port" => port.toInt
+          case line => throw new IOException(s"Failed getting JDI port of child JVM: got $line")
+
       export p.{exitValue, isAlive, destroy}
+    end RunnerProcess
 
     private class Runner(private var process: RunnerProcess):
 
@@ -107,7 +127,7 @@ trait RunnerOrchestration {
        */
       def isAlive: Boolean =
         try { process.exitValue(); false }
-        catch { case _: IllegalThreadStateException => true }
+        catch case _: IllegalThreadStateException => true
 
       /** Destroys the underlying process and kills IO streams */
       def kill(): Unit =
@@ -119,51 +139,50 @@ trait RunnerOrchestration {
         assert(process ne null, "Runner was killed and then reused without setting a new process")
         awaitStatusOrRespawn(startMain(classPath))
 
-      def debugMain(classPath: String)(f: Debuggee => Unit): Status =
+      def debugMain(classPath: String)(f: Debuggee => Unit): Unit =
         assert(process ne null, "Runner was killed and then reused without setting a new process")
-        assert(process.jdiPort.isDefined, "Runner has not been started in debug mode")
 
-        var mainFuture: Future[Status] = null
         val debuggee = new Debuggee:
-          def jdiPort: Int = process.jdiPort.get
-          def launch(): Unit =
-            mainFuture = startMain(classPath)
+          private var mainFuture: Future[Status] = null
+          def readJdiPort(): Int = process.getJdiPort()
+          def launch(): Unit = mainFuture = startMain(classPath)
+          def exit(): Status =
+            awaitStatusOrRespawn(mainFuture)
 
         try f(debuggee)
-        catch case debugFailure: Throwable =>
-          if mainFuture != null then awaitStatusOrRespawn(mainFuture)
-          throw debugFailure
-
-        assert(mainFuture ne null, "main method not started by debugger")
-        awaitStatusOrRespawn(mainFuture)
+        catch case e: Throwable =>
+          // if debugging failed it is safer to respawn a new process
+          respawn()
+          throw e
       end debugMain
 
       private def startMain(classPath: String): Future[Status] =
         // pass classpath to running process
-        process.stdin.println(classPath)
+        process.printLine(classPath)
 
         // Create a future reading the object:
         Future:
           val sb = new StringBuilder
 
-          var childOutput: String = process.stdout.readLine()
+          var childOutput: String = process.readLine()
 
           // Discard all messages until the test starts
           while (childOutput != ChildJVMMain.MessageStart && childOutput != null)
-            childOutput = process.stdout.readLine()
-          childOutput = process.stdout.readLine()
+            childOutput = process.readLine()
+          childOutput = process.readLine()
 
           while childOutput != ChildJVMMain.MessageEnd && childOutput != null do
             sb.append(childOutput).append(System.lineSeparator)
-            childOutput = process.stdout.readLine()
+            childOutput = process.readLine()
 
-          if (process.isAlive() && childOutput != null) Success(sb.toString)
+          if process.isAlive() && childOutput != null then Success(sb.toString)
           else Failure(sb.toString)
       end startMain
 
       // wait status of the main class execution, respawn if failure or timeout
       private def awaitStatusOrRespawn(future: Future[Status]): Status =
-        val status = try Await.result(future, maxDuration)
+        val status =
+          try Await.result(future, maxDuration)
           catch case _: TimeoutException => Timeout
         // handle failures
         status match
@@ -181,7 +200,7 @@ trait RunnerOrchestration {
     /** Create a process which has the classpath of the `ChildJVMMain` and the
      *  scala library.
      */
-    private def createProcess(): RunnerProcess = {
+    private def createProcess(): RunnerProcess =
       val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
       val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
@@ -193,15 +212,7 @@ trait RunnerOrchestration {
         .redirectInput(ProcessBuilder.Redirect.PIPE)
         .redirectOutput(ProcessBuilder.Redirect.PIPE)
         .start()
-
-      val jdiPort = Option.when(debugMode):
-        val reader = new BufferedReader(new InputStreamReader(process.getInputStream, StandardCharsets.UTF_8))
-        reader.readLine() match
-          case s"Listening for transport dt_socket at address: $port" => port.toInt
-          case line => throw new IOException(s"Failed getting JDI port of child JVM: got $line")
-
-      RunnerProcess(process, jdiPort)
-    }
+      RunnerProcess(process)
 
     private val freeRunners = mutable.Queue.empty[Runner]
     private val busyRunners = mutable.Set.empty[Runner]
@@ -210,7 +221,7 @@ trait RunnerOrchestration {
       while (freeRunners.isEmpty && busyRunners.size >= numberOfSlaves) wait()
 
       val runner =
-        if (freeRunners.isEmpty) new Runner(createProcess)
+        if (freeRunners.isEmpty) new Runner(createProcess())
         else freeRunners.dequeue()
       busyRunners += runner
 
