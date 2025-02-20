@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
+import java.util.concurrent.TimeoutException
 
 class Debugger(vm: VirtualMachine, maxDuration: Duration, verbose: Boolean = false):
   // For some JDI events that we receive, we wait for client actions.
@@ -47,14 +48,18 @@ class Debugger(vm: VirtualMachine, maxDuration: Duration, verbose: Boolean = fal
     vm.dispose()
 
   private def addBreakpoint(refType: ReferenceType, line: Int): Unit =
-    for location <- refType.locationsOfLine(line).asScala do
-      if verbose then println(s"Adding breakpoint in $location")
-      val breakpoint = vm.eventRequestManager.createBreakpointRequest(location)
-      // suspend only the thread which triggered the event
-      breakpoint.setSuspendPolicy(EventRequest.SUSPEND_EVENT_THREAD)
-      // let's enable the breakpoint and forget about it
-      // we don't need to store it because we never remove any breakpoint
-      breakpoint.enable()
+    try
+      for location <- refType.locationsOfLine(line).asScala do
+        if verbose then println(s"Adding breakpoint in $location")
+        val breakpoint = vm.eventRequestManager.createBreakpointRequest(location)
+        // suspend only the thread which triggered the event
+        breakpoint.setSuspendPolicy(EventRequest.SUSPEND_EVENT_THREAD)
+        // let's enable the breakpoint and forget about it
+        // we don't need to store it because we never remove any breakpoint
+        breakpoint.enable()
+    catch
+      case e: AbsentInformationException =>
+        if verbose then println(s"AbsentInformationException on ${refType}")
 
   private def stepAndWait(thread: ThreadReference, size: Int, depth: Int): ThreadReference =
     val request = vm.eventRequestManager.createStepRequest(thread, size, depth)
@@ -94,6 +99,7 @@ class Debugger(vm: VirtualMachine, maxDuration: Duration, verbose: Boolean = fal
   private def receiveEvent[T](f: PartialFunction[Event, T]): T =
     // poll repeatedly until we get an event that matches the partial function or a timeout
     Iterator.continually(pendingEvents.poll(maxDuration.toMillis, TimeUnit.MILLISECONDS))
+      .map(e => if (e == null) throw new TimeoutException() else e)
       .collect(f)
       .next()
 
