@@ -1,0 +1,11 @@
+break Test$ 6
+eval showType(msg)
+result java.lang.String
+eval
+  type Foo = Int
+  showType(1: Foo)
+result Foo
+eval
+  class Bar
+  showType(new Bar)
+result Bar
