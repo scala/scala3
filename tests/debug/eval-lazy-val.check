@@ -1,0 +1,12 @@
+break A 9
+eval x
+result 1
+eval y
+// it is not supported because the compiler does not declare y as a local variable in the class file
+error local lazy val not supported
+eval A.z
+result 3
+eval
+  lazy val z = 4
+  z
+result 4

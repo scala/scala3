@@ -1,0 +1,15 @@
+break A$ 6
+eval this.m(1)
+result f
+eval (new B).m
+result fo
+
+break A$B$1 5
+eval value
+result foo
+eval size
+result 2
+eval m
+result fo
+eval A.this.m(1)
+result f

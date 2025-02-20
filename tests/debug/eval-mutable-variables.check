@@ -1,0 +1,33 @@
+break A 12
+eval x = 2
+result ()
+eval x
+result 2
+eval
+  u = 2
+  u
+result 2
+eval u
+result 2
+eval y += 1
+result ()
+eval yy()
+result 3
+eval (new B).zz()
+result 2
+
+break A 14
+eval y+=1; y
+result 4
+
+break A 15
+eval y
+result 5
+
+break A$B$1 18
+eval z += 1; z
+result 3
+
+break A$B$1 19
+eval z
+result 4

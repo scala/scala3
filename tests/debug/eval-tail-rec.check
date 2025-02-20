@@ -1,0 +1,14 @@
+break Test$ 3
+eval f(100)
+result 25
+
+break Test$ 8
+eval x
+result 80
+eval f(x)
+result 40
+eval
+  @scala.annotation.tailrec
+  def g(x: Int): Int = if x <= 42 then g(x * 2) else x
+  g(21)
+result 84

@@ -1,0 +1,25 @@
+break Test$ 4
+eval a.a1
+result a.a1
+eval a.B.b1
+result a.B.b1
+eval new A("aa", 2).a1
+result aa.a1
+eval new A("aa", 2).B.b1
+result aa.B.b1
+
+break A 17
+eval name
+result a
+eval this.n
+result 1
+eval a2
+result a.a2
+eval new A("aa", 2).a2
+result aa.a2
+eval B.b1
+result a.B.b1
+eval C.c1
+result a.C.c1
+eval new A("aa", 2).C.c1
+result aa.C.c1

@@ -1,0 +1,22 @@
+break ParentA$ParentB 20 // in ParentA$ParentB.<init>
+break ParentA 17
+eval x + y + z
+result xyz
+eval y = "yy"
+result ()
+eval m2
+result yyz
+eval (new B).m
+result x
+
+break ParentA$ParentB 20
+eval x + y + z
+result xyyz
+eval y = "yyy"
+result ()
+eval m2
+result yyyz
+
+break TraitA 9
+eval u = "uu"; u
+result uu
