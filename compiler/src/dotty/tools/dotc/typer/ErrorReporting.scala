@@ -294,7 +294,7 @@ object ErrorReporting {
 
   def dependentMsg =
     """Term-dependent types are experimental,
-      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
+      |they must be enabled with a `experimental.modularity` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
 }

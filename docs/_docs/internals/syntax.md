@@ -196,7 +196,7 @@ AnnotType1        ::=  SimpleType1 {Annotation}                                 
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ TypeBounds
-                    |  SimpleType1
+                    |  SimpleType1 {ParArgumentExprs}
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)

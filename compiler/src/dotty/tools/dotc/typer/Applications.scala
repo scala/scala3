@@ -1693,6 +1693,23 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.UnApply, selType: Type)(using Context): UnApply =
     throw new UnsupportedOperationException("cannot type check an UnApply node")
 
+  def typedAppliedConstructorType(tree: untpd.Apply)(using Context) = untpd.methPart(tree) match
+      case Select(New(tpt), _) =>
+        val tree1 = typedExpr(tree)
+        val widenSkolemsMap = new TypeMap:
+          def apply(tp: Type) = mapOver(tp.widenSkolem)
+        val preciseTp = widenSkolemsMap(tree1.tpe)
+        val classTp = typedType(tpt).tpe
+        def classSymbolHasOnlyTrackedParameters =
+          classTp.classSymbol.primaryConstructor.paramSymss.flatten.filter(_.isTerm).forall(_.is(Tracked))
+        if !preciseTp.isError && !classSymbolHasOnlyTrackedParameters then
+          report.warning(OnlyFullyDependentAppliedConstructorType(), tree.srcPos)
+        if !preciseTp.isError && (preciseTp frozen_=:= classTp) then
+          report.warning(PointlessAppliedConstructorType(tpt, tree.args, classTp), tree.srcPos)
+        TypeTree(preciseTp)
+      case _ =>
+        throw TypeError(em"Unexpected applied constructor type: $tree")
+
   /** Is given method reference applicable to argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
