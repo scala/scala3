@@ -15,7 +15,7 @@ class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
-    // compileFile("tests/debug/eval-private-members-in-parent.scala", TestConfiguration.defaultOptions).checkDebug()
+    // compileFile("tests/debug/eval-local-class-in-value-class.scala", TestConfiguration.defaultOptions).checkDebug()
     compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
 
 object DebugTests extends ParallelTesting:

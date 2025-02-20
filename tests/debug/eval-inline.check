@@ -1,0 +1,13 @@
+break Test$ 4
+eval m1
+result 42
+eval m2(y)
+result 2
+eval x + 1
+result 2
+eval test1(42)
+result Test(42)
+eval test2
+result 42
+eval m2(test2)
+result 42
