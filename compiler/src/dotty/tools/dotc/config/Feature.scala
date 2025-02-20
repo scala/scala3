@@ -264,7 +264,7 @@ object Feature:
       if previewSym.exists
       then i"$previewSym is marked @preview$msg"
       else i"$sym inherits @preview$msg"
-    report.error(markedPreview + "\n\n" + previewUseSite("definition"), srcPos)
+    report.error(i"${markedPreview}\n\n${previewUseSite("definition")}", srcPos)
 
   private def previewUseSite(which: String): String =
     s"Preview $which may only be used when compiling with the `-preview` compiler flag"
