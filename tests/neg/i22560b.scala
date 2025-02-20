@@ -12,7 +12,9 @@ package p:
   private[p] class C(i: Int) // ctor proxy gets privateWithin of class
   private[p] class D(i: Int)
   object D
+  private class E(i: Int)
 
 package q:
   def f() = p.C(42) // error
   def g() = p.D(42) // error
+  def h() = p.E(42) // error
