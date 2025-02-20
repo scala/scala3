@@ -7,6 +7,7 @@ import dotty.tools.io.JFile
 import dotty.tools.vulpix.*
 import org.junit.Test
 
+import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 
@@ -14,7 +15,7 @@ class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
-    // compileFile("tests/debug/eval-static-fields.scala", TestConfiguration.defaultOptions).checkDebug()
+    // compileFile("tests/debug/eval-private-members-in-parent.scala", TestConfiguration.defaultOptions).checkDebug()
     compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
 
 object DebugTests extends ParallelTesting:
@@ -49,21 +50,24 @@ object DebugTests extends ParallelTesting:
         val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
         val expressionEvaluator =
           ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
-        try
-          val status = debugMain(testSource.runClassPath): debuggee =>
-            val debugger = Debugger(debuggee.jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
-            // configure the breakpoints before starting the debuggee
-            val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }
-            for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
-            try
-              debuggee.launch()
-              playDebugSteps(debugger, debugSteps/* , verbose = true */)
-            finally
-              // stop debugger to let debuggee terminate its execution
-              debugger.dispose()
-          reportDebuggeeStatus(testSource, status)
+        try debugMain(testSource.runClassPath): debuggee =>
+          val jdiPort = debuggee.readJdiPort()
+          val debugger = Debugger(jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
+          // configure the breakpoints before starting the debuggee
+          val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }.distinct
+          for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
+          try
+            debuggee.launch()
+            playDebugSteps(debugger, debugSteps/* , verbose = true */)
+            val status = debuggee.exit()
+            reportDebuggeeStatus(testSource, status)
+          finally
+            // closing the debugger must be done at the very end so that the
+            // 'Listening for transport dt_socket at address: <port>' message is ready to be read
+            // by the next DebugTest
+            debugger.dispose()
         catch case DebugStepException(message, location) =>
-          echo(s"\nDebug step failed: $location\n" + message)
+          echo(s"\n[error] Debug step failed: $location\n" + message)
           failTestSource(testSource)
     end verifyDebug
 
@@ -73,35 +77,42 @@ object DebugTests extends ParallelTesting:
        *  If thread is Some, it is waiting to be resumed by calling continue, step or next.
        *  While the thread is paused, it can be used for evaluation.
        */
-      var thread: ThreadReference = null
-      def location = thread.frame(0).location
+      var thread: Option[ThreadReference] = None
+      def location = thread.get.frame(0).location
+      def continueIfPaused(): Unit =
+        thread.foreach(debugger.continue)
+        thread = None
 
       for case step <- steps do
         import DebugStep.*
-        step match
-          case DebugStepAssert(Break(className, line), assert) =>
-            // continue if paused
-            if thread != null then
-              debugger.continue(thread)
-              thread = null
-            thread = debugger.break()
-            if verbose then println(s"break ${location.declaringType.name} ${location.lineNumber}")
-            assert(location)
-          case DebugStepAssert(Next, assert) =>
-            thread = debugger.next(thread)
-            if verbose then println(s"next ${location.lineNumber}")
-            assert(location)
-          case DebugStepAssert(Step, assert) =>
-            thread = debugger.step(thread)
-            if verbose then println(s"step ${location.lineNumber}")
-            assert(location)
-          case DebugStepAssert(Eval(expr), assert) =>
-            val result =
-              try debugger.evaluate(expr, thread)
-              catch case NonFatal(cause) =>
-                throw new Exception(s"Evaluation of $expr failed", cause)
-            if verbose then println(s"eval $expr $result")
-            assert(result)
+        try step match
+          case DebugStepAssert(Break(className, line), assertion) =>
+            continueIfPaused()
+            thread = Some(debugger.break())
+            if verbose then
+              println(s"break $location ${location.method.name}")
+            assertion(location)
+          case DebugStepAssert(Next, assertion) =>
+            thread = Some(debugger.next(thread.get))
+            if verbose then println(s"next $location ${location.method.name}")
+            assertion(location)
+          case DebugStepAssert(Step, assertion) =>
+            thread = Some(debugger.step(thread.get))
+            if verbose then println(s"step $location ${location.method.name}")
+            assertion(location)
+          case DebugStepAssert(Eval(expr), assertion) =>
+            if verbose then println(s"eval $expr")
+            val result = debugger.evaluate(expr, thread.get)
+            if verbose then println(result.fold("error " + _, "result " + _))
+            assertion(result)
+        catch
+          case _: TimeoutException => throw new DebugStepException("Timeout", step.location)
+          case e: DebugStepException => throw e
+          case NonFatal(e) =>
+            throw new Exception(s"Debug step failed unexpectedly: ${step.location}", e)
+      end for
+      // let the debuggee finish its execution
+      continueIfPaused()
     end playDebugSteps
 
     private def reportDebuggeeStatus(testSource: TestSource, status: Status): Unit =
