@@ -85,7 +85,7 @@ object ErrorReporting {
     /** An explanatory note to be added to error messages
      *  when there's a problem with abstract var defs */
     def abstractVarMessage(sym: Symbol): String =
-      if (sym.underlyingSymbol.is(Mutable))
+      if sym.underlyingSymbol.isMutableVarOrAccessor then
         "\n(Note that variables need to be initialized to be defined)"
       else ""
 
