@@ -183,8 +183,9 @@ object NamerOps:
         cls.owner, cls.name.toTermName,
         flags, flags,
         constructorCompanionCompleter(cls),
-        coord = cls.coord,
-        compUnitInfo = cls.compUnitInfo)
+        cls.privateWithin,
+        cls.coord,
+        cls.compUnitInfo)
     companion.moduleClass.registerCompanion(cls)
     cls.registerCompanion(companion.moduleClass)
     companion
