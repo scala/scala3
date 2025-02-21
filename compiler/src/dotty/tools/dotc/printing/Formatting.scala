@@ -8,7 +8,7 @@ import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
 import reporting.Message
-import util.DiffUtil
+import util.{DiffUtil, SimpleIdentitySet}
 import Highlighting.*
 
 object Formatting {
@@ -86,6 +86,9 @@ object Formatting {
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
         def show(x: H *: T) =
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
+
+      given [X <: AnyRef: Show]: Show[SimpleIdentitySet[X]] with
+        def show(x: SimpleIdentitySet[X]) = summon[Show[List[X]]].show(x.toList)
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString

@@ -1,5 +1,6 @@
 import language.experimental.captureChecking
-import caps.use
+
+import caps.{use, consume}
 
   // ok
   def runOps(@use ops: List[() => Unit]): Unit =
@@ -16,9 +17,9 @@ import caps.use
       runOps(ops1)  // error
 
   // unsound: impure operation pretended pure
-  def delayedRunOps2(ops: List[() => Unit]): () ->{} Unit =
+  def delayedRunOps2(@consume ops: List[() => Unit]): () ->{} Unit =
     () =>
-      val ops1: List[() => Unit] = ops
+      val ops1: List[() => Unit] = ops // error
       runOps(ops1)  // error
 
   // unsound: impure operation pretended pure
