@@ -24,7 +24,6 @@ import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
 import typer.ErrorReporting.errorTree
-import typer.Checking.checkValue
 import core.TypeErasure.*
 import core.Decorators.*
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -676,7 +675,7 @@ object Erasure {
       if tree.name == nme.apply && integrateSelect(tree) then
         return typed(tree.qualifier, pt)
 
-      val qual1 = typed(tree.qualifier, AnySelectionProto)
+      var qual1 = typed(tree.qualifier, AnySelectionProto)
 
       def mapOwner(sym: Symbol): Symbol =
         if !sym.exists && tree.name == nme.apply then
@@ -725,7 +724,8 @@ object Erasure {
 
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
-      if owner == defn.ObjectClass then checkValue(qual1)
+      if owner == defn.ObjectClass then
+        qual1 = checkValue(qual1)
 
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree)(qual, sym.name).withType(NamedType(qual.tpe, sym))
