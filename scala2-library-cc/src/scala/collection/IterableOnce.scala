@@ -805,7 +805,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
       case  _ => Some(reduceLeft(op))
     }
   private final def reduceLeftOptionIterator[B >: A](op: (B, A) => B): Option[B] = reduceOptionIterator[A, B](iterator)(op)
-  private final def reduceOptionIterator[X >: A, B >: X](it: Iterator[X]^)(op: (B, X) => B): Option[B] = {
+  private final def reduceOptionIterator[X >: A, B >: X](it: Iterator[X]^{this, caps.cap})(op: (B, X) => B): Option[B] = {
     if (it.hasNext) {
       var acc: B = it.next()
       while (it.hasNext)

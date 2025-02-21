@@ -9,7 +9,7 @@ def test(io: Object^, async: Object^) =
     compose(op)
 
   def foo[X](op: (xs: List[(X, () ->{io} Unit)]) => List[() ->{xs*} Unit])
-               : (xs: List[(X, () ->{io} Unit)]) => List[() ->{} Unit] =
+               : (xs: List[(X, () ->{io} Unit)]) => List[() ->{} Unit] = // error
     op // error
 
   def boom(op: List[(() ->{async} Unit, () ->{io} Unit)]): List[() ->{} Unit] =

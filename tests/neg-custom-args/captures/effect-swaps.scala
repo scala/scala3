@@ -1,3 +1,5 @@
+
+
 object boundary:
 
   final class Label[-T] extends caps.Capability
@@ -12,7 +14,7 @@ end boundary
 
 import boundary.{Label, break}
 
-trait Async extends caps.Capability
+trait Async extends caps.SharedCapability
 object Async:
   def blocking[T](body: Async ?=> T): T = ???
 

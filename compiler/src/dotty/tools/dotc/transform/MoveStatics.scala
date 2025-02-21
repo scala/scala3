@@ -28,7 +28,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
 
   def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists &&
-        (sym.is(Flags.Method) || !(sym.is(Flags.Mutable) && sym.owner.companionClass.is(Flags.Trait)))) {
+        (sym.is(Flags.Method) || !(sym.isMutableVarOrAccessor && sym.owner.companionClass.is(Flags.Trait)))) {
       sym.owner.asClass.delete(sym.symbol)
       sym.owner.companionClass.asClass.enter(sym.symbol)
       sym.copySymDenotation(owner = sym.owner.companionClass)

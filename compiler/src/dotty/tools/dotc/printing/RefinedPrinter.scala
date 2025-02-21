@@ -337,7 +337,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
       case tp @ PolyProto(targs, resType) =>
         "[applied to [" ~ toTextGlobal(targs, ", ") ~ "] returning " ~ toText(resType)
-      case ReachCapability(_) | MaybeCapability(_) =>
+      case tp: AnnotatedType if tp.isTrackableRef =>
         toTextCaptureRef(tp)
       case _ =>
         super.toText(tp)
@@ -744,6 +744,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case PostfixOp(l, op) =>
         if op.name == nme.CC_REACH then
           changePrec(DotPrec) { toText(l) ~ "*" }
+        else if op.name == nme.CC_READONLY then
+          changePrec(DotPrec) { toText(l) ~ ".rd" }
         else
           changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
       case PrefixOp(op, r) =>

@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:36:2 -----------------------------------------------
 36 |  try // error
    |  ^
-   |  The result of `try` cannot have type LazyList[Int]^ since
+   |  The result of `try` cannot have type LazyList[Int]^{cap.rd} since
    |  that type captures the root capability `cap`.
    |  This is often caused by a locally generated exception capability leaking as part of its result.
 37 |    tabulate(10) { i =>

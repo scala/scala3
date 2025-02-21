@@ -255,7 +255,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   def transformMemberDefThreadUnsafe(x: ValOrDefDef)(using Context): Thicket = {
     val claz = x.symbol.owner.asClass
     val tpe = x.tpe.widen.resultType.widen
-    assert(!(x.symbol is Mutable))
+    assert(!x.symbol.isMutableVarOrAccessor)
     val containerName = LazyLocalName.fresh(x.name.asTermName)
     val containerSymbol = newSymbol(claz, containerName,
       x.symbol.flags &~ containerFlagsMask | containerFlags | Private,
@@ -447,7 +447,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   def transformMemberDefThreadSafe(x: ValOrDefDef)(using Context): Thicket = {
-    assert(!(x.symbol is Mutable))
+    assert(!x.symbol.isMutableVarOrAccessor)
     if ctx.settings.YlegacyLazyVals.value then
       transformMemberDefThreadSafeLegacy(x)
     else

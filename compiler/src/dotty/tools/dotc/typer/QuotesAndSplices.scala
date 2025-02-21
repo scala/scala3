@@ -130,7 +130,7 @@ trait QuotesAndSplices {
           report.error("Open pattern expected an identifier", arg.srcPos)
           EmptyTree
       }
-      for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
+      for arg <- typedArgs if arg.symbol.isMutableVarOrAccessor do // TODO support these patterns. Possibly using scala.quoted.util.Var
         report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val patType = (tree.typeargs.isEmpty, tree.args.isEmpty) match

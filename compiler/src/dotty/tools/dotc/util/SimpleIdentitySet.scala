@@ -42,6 +42,11 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
         if (that.contains(x)) s else s + x
       }
 
+  def ** [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+    if this.size == 0 then this
+    else if that.size == 0 then that
+    else this.filter(that.contains)
+
   def == [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
     this.size == that.size && forall(that.contains)
 
