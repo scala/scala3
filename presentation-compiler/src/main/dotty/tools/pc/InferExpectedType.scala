@@ -1,6 +1,5 @@
 package dotty.tools.pc
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
@@ -16,7 +15,6 @@ import dotty.tools.dotc.typer.Applications.UnapplyArgs
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.InteractiveEnrichments.*
@@ -95,7 +93,8 @@ object InterCompletionType:
       case UnApply(fun, _, pats) :: _ =>
         val ind = pats.indexWhere(_.span.contains(span))
         if ind < 0 then None
-        else Some(UnapplyArgs(fun.tpe.finalResultType, fun, pats, NoSourcePosition).argTypes(ind))
+        else
+          UnapplyArgs(fun.tpe.finalResultType, fun, pats, NoSourcePosition).argTypes.get(ind)
       // f(@@)
       case (app: Apply) :: rest =>
         val param =

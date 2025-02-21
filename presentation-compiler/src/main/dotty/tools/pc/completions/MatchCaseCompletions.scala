@@ -27,7 +27,6 @@ import dotty.tools.dotc.core.Types.NoType
 import dotty.tools.dotc.core.Types.OrType
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types.TypeRef
-import dotty.tools.dotc.core.Types.AppliedType
 import dotty.tools.dotc.typer.Applications.UnapplyArgs
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
