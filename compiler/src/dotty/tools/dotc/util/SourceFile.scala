@@ -275,13 +275,7 @@ object SourceFile {
     ScriptSourceFile.hasScriptHeader(content)
 
   def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
-    // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // so cope with failure.
-    val chars =
-      try new String(file.toByteArray, codec.charSet).toCharArray
-      catch
-        case _: FileSystemException => Array.empty[Char]
-
+    val chars = file.toCharArray(using codec.charSet)
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)
     else

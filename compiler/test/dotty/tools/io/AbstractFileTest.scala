@@ -1,14 +1,22 @@
-package dotty.tools.io
+package dotty.tools
+package io
 
 import scala.language.unsafeNulls
 
 import org.junit.Test
+import org.junit.Assert.assertTrue
 
-import dotty.tools.io.AbstractFile
-import java.nio.file.Files._
+import java.nio.file.AccessDeniedException
+import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFilePermissions
 
 class AbstractFileTest {
+  import Directory.inTempDirectory
+
+  def permitted(rwx: String = "rwxrwxrwx") =
+    val permissions = PosixFilePermissions.fromString(rwx)
+    PosixFilePermissions.asFileAttribute(permissions)
+
   //
   // Cope with symbolic links. Exercised by -d output.
   //
@@ -43,8 +51,23 @@ class AbstractFileTest {
     assert(dir.subdirectoryNamed("link").exists)
   }
   @Test def t6450(): Unit =
-    try Directory.inTempDirectory(exerciseSymbolicLinks)
-    catch { case _: UnsupportedOperationException => () }
+    try inTempDirectory(exerciseSymbolicLinks)
+    catch case _: UnsupportedOperationException => ()
+
+  @Test def i14664 = inTempDirectory: d =>
+    val f = createTempFile(d.jpath, "i14664", "test", permitted("-w--w--w-"))
+    val p = PlainFile(d / Path(f))
+    assertThrows[AccessDeniedException](_ => true):
+      p.toCharArray
+
+  @Test def `i14664 ENOENT` = inTempDirectory: d =>
+    val p = PlainFile(d / "random")
+    assertTrue(p.toCharArray.isEmpty) // would be NoSuchFileException
+
+  @Test def `i14664 ENOTDIR` = inTempDirectory: d =>
+    val f = createTempFile(d.jpath, "i14664", "test", permitted())
+    val p = PlainFile(d / Path(f) / "random")
+    assertTrue(p.toCharArray.isEmpty) // would be FileSystemException
 }
 
 /* Was:

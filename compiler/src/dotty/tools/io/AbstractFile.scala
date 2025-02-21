@@ -6,13 +6,14 @@
 package dotty.tools.io
 
 import scala.language.unsafeNulls
+import scala.io.Codec
 
 import java.io.{
   IOException, InputStream, OutputStream, BufferedOutputStream,
   ByteArrayOutputStream
 }
 import java.net.URL
-import java.nio.file.{FileAlreadyExistsException, Files, Paths}
+import java.nio.file.{AccessDeniedException, FileAlreadyExistsException, FileSystemException, Files, Paths}
 
 /**
  * An abstraction over files for use in the reflection/compiler libraries.
@@ -112,7 +113,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def absolute: AbstractFile
 
   /** Returns the containing directory of this abstract file */
-  def container : AbstractFile
+  def container: AbstractFile
 
   /** Returns the underlying File if any and null otherwise. */
   def file: JFile = try {
@@ -159,18 +160,23 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
 
   def toURL: URL = if (jpath == null) null else jpath.toUri.toURL
 
-  /** Returns contents of file (if applicable) in a Char array.
-   *  warning: use `Global.getSourceFile()` to use the proper
-   *  encoding when converting to the char array.
+  /** Returns contents of `input` in a Char array.
    */
   @throws(classOf[IOException])
-  def toCharArray: Array[Char] = new String(toByteArray).toCharArray
+  def toCharArray(using codec: Codec): Array[Char] = new String(toByteArray, codec.charSet).toCharArray
 
-  /** Returns contents of file (if applicable) in a byte array.
+  /** Returns contents of `input` in a Byte array.
+   *
+   *  Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
+   *  so cope with failure by defaulting to empty array. Rethrow `AccessDeniedException` as helpful.
+   *  See #14664 for limits on probing for other conditions such as path prefix is existing regular file.
    */
   @throws(classOf[IOException])
   def toByteArray: Array[Byte] = {
-    val in = input
+    val in =
+      try input catch
+      case e: AccessDeniedException => throw e
+      case _: FileSystemException => return Array.empty[Byte]
     sizeOption match {
       case Some(size) =>
         var rest = size
@@ -186,7 +192,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
       case None =>
         val out = new ByteArrayOutputStream()
         var c = in.read()
-        while(c != -1) {
+        while (c != -1) {
           out.write(c)
           c = in.read()
         }
