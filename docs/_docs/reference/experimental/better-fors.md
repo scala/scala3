@@ -60,7 +60,7 @@ Additionally this extension changes the way `for`-comprehensions are desugared. 
     This change makes the desugaring more intuitive and avoids unnecessary `map` calls, when an alias is not followed by a guard.
 
 2. **Avoiding Redundant `map` Calls**:
-    When the result of the `for`-comprehension is the same expression as the last generator pattern, the desugaring avoids an unnecessary `map` call. but th eequality of the last pattern and the result has to be able to be checked syntactically, so it is either a variable or a tuple of variables.
+    When the result of the `for`-comprehension is the same expression as the last generator pattern, the desugaring avoids an unnecessary `map` call. But the equality of the last pattern and the result has to be able to be checked syntactically, so it is either a variable or a tuple of variables. There is also a special case for dropping the `map`, if its body is a constant function, that returns `()` (`Unit` constant).
     **Current Desugaring**:
       ```scala
       for {

@@ -64,6 +64,11 @@ object desugar {
    */
   val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
 
+  /** An attachment key to indicate that an Apply is created as a last `map`
+   *  scall in a for-comprehension.
+   */
+  val TrailingForMap: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1967,13 +1972,7 @@ object desugar {
      *
      *  3.
      *
-     *    for (P <- G) yield P  ==>  G
-     *
-     *  If betterFors is enabled, P is a variable or a tuple of variables and G is not a withFilter.
-     *
      *    for (P <- G) yield E  ==>  G.map (P => E)
-     *
-     *    Otherwise
      *
      *  4.
      *
@@ -2147,14 +2146,20 @@ object desugar {
           case (Tuple(ts1), Tuple(ts2)) => ts1.corresponds(ts2)(deepEquals)
           case _ => false
 
+      def markTrailingMap(aply: Apply, gen: GenFrom, selectName: TermName): Unit =
+        if betterForsEnabled
+          && selectName == mapName
+          && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
+          && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil)))
+        then
+          aply.putAttachment(TrailingForMap, ())
+
       enums match {
         case Nil if betterForsEnabled => body
         case (gen: GenFrom) :: Nil =>
-          if betterForsEnabled
-            && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
-            && deepEquals(gen.pat, body)
-          then gen.expr  // avoid a redundant map with identity
-          else Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          markTrailingMap(aply, gen, mapName)
+          aply
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
@@ -2165,7 +2170,9 @@ object desugar {
           val selectName =
             if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
             else mapName
-          Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+          val aply = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+          markTrailingMap(aply, gen, selectName)
+          aply
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
