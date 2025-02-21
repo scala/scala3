@@ -2145,15 +2145,19 @@ object desugar {
           case (Tuple(ts1), Tuple(ts2)) => ts1.corresponds(ts2)(deepEquals)
           case _ => false
 
+      def markTrailingMap(aply: Apply, gen: GenFrom, selectName: TermName): Unit =
+        if betterForsEnabled
+          && selectName == mapName
+          && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
+          && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil)))
+        then
+          aply.putAttachment(TrailingForMap, ())
+
       enums match {
         case Nil if betterForsEnabled => body
         case (gen: GenFrom) :: Nil =>
           val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
-          if betterForsEnabled
-          && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
-          && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil)))
-          then
-            aply.putAttachment(TrailingForMap, ())
+          markTrailingMap(aply, gen, mapName)
           aply
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
@@ -2166,8 +2170,7 @@ object desugar {
             if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
             else mapName
           val aply = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
-          if selectName == mapName && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil))) then
-            aply.pushAttachment(TrailingForMap, ())
+          markTrailingMap(aply, gen, selectName)
           aply
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
