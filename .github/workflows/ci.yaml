@@ -53,12 +53,65 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  test_non_bootstrapped:
+  build-non-bootstrapped:
+    name: Build Non-Bootstrapped Compiler
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Checkout cleanup script
+        uses: actions/checkout@v4
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+      - name: Compile Non-Bootstrapped Dotty
+        run: ./project/scripts/sbt "; clean; compile"
+
+  build-bootstrapped:
+    name: Build Bootstrapped Compiler
+    needs: build-non-bootstrapped
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2024-10-18
+      options: --cpu-shares 4096
+      volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Checkout cleanup script
+        uses: actions/checkout@v4
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+      - name: Compile Bootstrapped Dotty
+        run: ./project/scripts/sbt "; clean; scala3-bootstrapped/compile"
+
+  test_non_bootstrapped:
+    needs: build-non-bootstrapped
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2024-10-18
+      options: --cpu-shares 4096
+      volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -106,11 +159,13 @@ jobs:
           ./project/scripts/cmdTests
 
   test:
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -166,11 +221,13 @@ jobs:
         run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty; scala2-library-cc/compile; scala2-library-cc-tasty/compile; scala3-bootstrapped/testCompilation i3"
 
   test_scala2_library_tasty:
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -293,11 +350,13 @@ jobs:
 
   mima:
     name: MiMa
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -344,11 +403,13 @@ jobs:
           ./project/scripts/scala2-library-tasty-mima.sh
 
   community_build_a:
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -401,11 +462,13 @@ jobs:
         run: cat community-build/dotty-community-build-deps || true
 
   community_build_b:
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -458,11 +521,13 @@ jobs:
         run: cat community-build/dotty-community-build-deps || true
 
   community_build_c:
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -515,11 +580,13 @@ jobs:
         run: cat community-build/dotty-community-build-deps || true
 
   test_sbt:
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -565,6 +632,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -625,6 +693,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -696,6 +765,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
