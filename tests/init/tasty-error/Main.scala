@@ -1,1 +1,1 @@
-class Main extends B{}
+class Main extends B{} // anypos-error
