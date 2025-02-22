@@ -326,7 +326,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           traverseChildren(t)
 
-    /*  Also set any previously unset owners of toplevel Fresh.Cap instances to improve
+    /*  Also set any previously unset owners of toplevel Fresh instances to improve
      *  error diagnostics in separation checking.
      */
     private def anchorCaps(sym: Symbol)(using Context) = new TypeTraverser:
@@ -336,7 +336,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case t @ CapturingType(parent, refs) =>
               for ref <- refs.elems do
                 ref match
-                  case Fresh.Cap(hidden) if !hidden.givenOwner.exists =>
+                  case Fresh(hidden) if !hidden.givenOwner.exists =>
                     hidden.givenOwner = sym
                   case _ =>
               traverse(parent)
@@ -346,7 +346,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
-     *  variantly in it. Also anchor Fresh.Cap instances with anchorCaps.
+     *  variantly in it. Also anchor Fresh instances with anchorCaps.
      */
     private def interpolateVarsIn(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
@@ -508,7 +508,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             capt.println(i"Widen reach $c to $underlying in ${env.owner}")
             if ccConfig.useSepChecks then
               recur(underlying.filter(!_.isMaxCapability), env, null)
-                // we don't want to disallow underlying Fresh.Cap, since these are typically locally created
+                // we don't want to disallow underlying Fresh instances, since these are typically locally created
                 // fresh capabilities. We don't need to also follow the hidden set since separation
                 // checking makes ure that locally hidden references need to go to @consume parameters.
             else
@@ -721,7 +721,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         res
 
     /** Recheck argument against a "freshened" version of `formal` where toplevel `cap`
-     *  occurrences are replaced by `Fresh.Cap`. Also, if formal parameter carries a `@use`,
+     *  occurrences are replaced by `Fresh` instances. Also, if formal parameter carries a `@use`,
      *  charge the deep capture set of the actual argument to the environment.
      */
     protected override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
@@ -820,14 +820,14 @@ class CheckCaptures extends Recheck, SymTransformer:
        *
        *  Second half: union of initial capture set and all capture sets of arguments
        *  to tracked parameters. The initial capture set `initCs` is augmented with
-       *   - Fresh.Cap    if `core` extends Mutable
-       *   - Fresh.Cap.rd if `core` extends Capability
+       *   - Fresh(...)    if `core` extends Mutable
+       *   - Fresh(...).rd if `core` extends Capability
        */
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
           if core.derivesFromMutable then initCs ++ CaptureSet.fresh()
-          else if core.derivesFromCapability then initCs ++ Fresh.Cap(core.classSymbol).readOnly.singletonCaptureSet
+          else if core.derivesFromCapability then initCs ++ Fresh(core.classSymbol).readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol

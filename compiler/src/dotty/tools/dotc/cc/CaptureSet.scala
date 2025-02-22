@@ -419,7 +419,7 @@ object CaptureSet:
     defn.captureRoot.termRef.singletonCaptureSet
 
   def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
-    Fresh.Cap(owner).singletonCaptureSet
+    Fresh(owner).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
@@ -650,7 +650,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       if !isConst then
         val approx = upperApprox(empty)
-          .map(Fresh.FromCap(NoSymbol).inverse)    // Fresh.Cap --> cap
+          .map(Fresh.FromCap(NoSymbol).inverse)    // Fresh --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -939,14 +939,14 @@ object CaptureSet:
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
     cs1.elems.filter(cs2.mightAccountFor) ++ cs2.elems.filter(cs1.mightAccountFor)
 
-  /** A capture set variable used to record the references hidden by a Fresh.Cap instance,
+  /** A capture set variable used to record the references hidden by a Fresh instance,
    *  The elems and deps members are repurposed as follows:
    *    elems: Set of hidden references
-   *    deps : Set of hidden sets for which the Fresh.Cap instance owning this set
+   *    deps : Set of hidden sets for which the Fresh instance owning this set
    *           is a hidden element.
    *  Hidden sets may become aliases of other hidden sets, which means that
    *  reads and writes of elems go to the alias.
-   *  If H is an alias of R.hidden for some Fresh.Cap R then:
+   *  If H is an alias of R.hidden for some Fresh instance R then:
    *    H.elems == {R}
    *    H.deps = {R.hidden}
    *  This encoding was chosen because it relies only on the elems and deps fields
@@ -965,14 +965,14 @@ object CaptureSet:
     private def aliasRef: AnnotatedType | Null =
       if myElems.size == 1 then
         myElems.nth(0) match
-          case al @ Fresh.Cap(hidden) if deps.contains(hidden) => al
+          case al @ Fresh(hidden) if deps.contains(hidden) => al
           case _ => null
       else null
 
     private def aliasSet: HiddenSet =
       if myElems.size == 1 then
         myElems.nth(0) match
-          case Fresh.Cap(hidden) if deps.contains(hidden) => hidden
+          case Fresh(hidden) if deps.contains(hidden) => hidden
           case _ => this
       else this
 
@@ -989,7 +989,7 @@ object CaptureSet:
 
     /** Add element to hidden set. Also add it to all supersets (as indicated by
      *  deps of this set). Follow aliases on both hidden set and added element
-     *  before adding. If the added element is also a Fresh.Cap instance with
+     *  before adding. If the added element is also a Fresh instance with
      *  hidden set H which is a superset of this set, then make this set an
      *  alias of H.
      */
@@ -1003,7 +1003,7 @@ object CaptureSet:
             assert(dep != this)
             vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
         elem match
-          case Fresh.Cap(hidden) =>
+          case Fresh(hidden) =>
             if this ne hidden then
               val alias = hidden.aliasRef
               if alias != null then
@@ -1019,7 +1019,7 @@ object CaptureSet:
             addToElems()
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the
-     *  duration. This is used to escape infinite recursions if two Fresh.Caps
+     *  duration. This is used to escape infinite recursions if two Freshs
      *  refer to each other in their hidden sets.
      */
     override def processElems[T](f: Refs => T): T =
@@ -1192,7 +1192,7 @@ object CaptureSet:
     /** A class for states that do not allow to record elements or dependent sets.
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
-     *  On the other hand, these states do allow by default Fresh.Cap instances to
+     *  On the other hand, these states do allow by default Fresh instances to
      *  subsume arbitary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
@@ -1201,7 +1201,7 @@ object CaptureSet:
       override def isOpen = false
       override def toString = "closed varState"
 
-    /** A closed state that allows a Fresh.Cap instance to subsume a
+    /** A closed state that allows a Fresh instance to subsume a
      *  reference `r` only if `r` is already present in the hidden set of the instance.
      *  No new references can be added.
      */
@@ -1210,7 +1210,7 @@ object CaptureSet:
       override def toString = "separating varState"
       override def isSeparating = true
 
-    /** A closed state that allows a Fresh.Cap instance to subsume a
+    /** A closed state that allows a Fresh instance to subsume a
      *  reference `r` only if `r` is already present in the hidden set of the instance.
      *  No new references can be added.
      */

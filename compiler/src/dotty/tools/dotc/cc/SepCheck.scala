@@ -201,7 +201,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
           else newElem.stripReadOnly match
-            case Fresh.Cap(hidden) =>
+            case Fresh(hidden) =>
               if hidden.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
                 val superCaps =
@@ -270,7 +270,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
 
       def hiddenByElem(elem: CaptureRef): Refs = elem match
-        case Fresh.Cap(hcs) => hcs.elems ++ recur(hcs.elems)
+        case Fresh(hcs) => hcs.elems ++ recur(hcs.elems)
         case ReadOnlyCapability(ref1) => hiddenByElem(ref1).map(_.readOnly)
         case _ => emptyRefs
 
@@ -318,7 +318,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def sharedPeaksStr(shared: Refs)(using Context): String =
     shared.nth(0) match
-      case fresh @ Fresh.Cap(hidden) =>
+      case fresh @ Fresh(hidden) =>
         if hidden.owner.exists then i"$fresh of ${hidden.owner}" else i"$fresh"
       case other =>
         i"$other"
@@ -591,7 +591,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     refs.deductSymFootprint(role.dclSym).deduct(explicitRefs(tpe))
 
   /** Check validity of consumed references `refsToCheck`. The references are consumed
-   *  because they are hidden in a Fresh.Cap result type or they are referred
+   *  because they are hidden in a Fresh result type or they are referred
    *  to in an argument to a @consume parameter or in a prefix of a @consume method --
    *  which one applies is determined by the role parameter.
    *

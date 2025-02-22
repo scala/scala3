@@ -27,10 +27,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
-  /** Print Fresh.Cap instances as <cap hiding ...> */
+  /** Print Fresh instances as <cap hiding ...> */
   protected def printFreshDetailed = ctx.settings.YccPrintFresh.value
 
-  /** Print Fresh.Cap instances as "fresh" */
+  /** Print Fresh instances as "fresh" */
   protected def printFresh = printFreshDetailed || ctx.property(PrintFresh).isDefined
 
   private var openRecs: List[RecType] = Nil
@@ -442,7 +442,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
       case Existential.Var(bv) => toTextRef(bv)
-      case Fresh.Cap(hidden) =>
+      case Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${hidden.id}" else ""
         if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
         else if printFresh then "fresh"
