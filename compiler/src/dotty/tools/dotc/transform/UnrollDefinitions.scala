@@ -228,46 +228,9 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     forwarderDef
   }
 
-  private def generateFromProduct(startParamIndices: List[Int], paramCount: Int, defdef: DefDef)(using Context) = {
-    cpy.DefDef(defdef)(
-      name = defdef.name,
-      paramss = defdef.paramss,
-      tpt = defdef.tpt,
-      rhs = Match(
-        ref(defdef.paramss.head.head.asInstanceOf[ValDef].symbol).select(termName("productArity")),
-        startParamIndices.map { paramIndex =>
-          val Apply(select, args) = defdef.rhs: @unchecked
-          CaseDef(
-            Literal(Constant(paramIndex)),
-            EmptyTree,
-            Apply(
-              select,
-              args.take(paramIndex) ++
-                Range(paramIndex, paramCount).map(n =>
-                  ref(defdef.symbol.owner.companionModule)
-                    .select(DefaultGetterName(defdef.symbol.owner.primaryConstructor.name.toTermName, n))
-                )
-            )
-          )
-        } :+ CaseDef(
-          Underscore(defn.IntType),
-          EmptyTree,
-          defdef.rhs
-        )
-      )
-    ).setDefTree
-  }
+  case class Forwarders(origin: Symbol, forwarders: List[DefDef])
 
-  private enum Gen:
-    case Substitute(origin: Symbol, newDef: DefDef)
-    case Forwarders(origin: Symbol, forwarders: List[DefDef])
-
-    def origin: Symbol
-    def extras: List[DefDef] = this match
-      case Substitute(_, d) => d :: Nil
-      case Forwarders(_, ds) => ds
-
-  private def generateSyntheticDefs(tree: Tree, compute: ComputeIndices)(using Context): Option[Gen] = tree match {
+  private def generateSyntheticDefs(tree: Tree, compute: ComputeIndices)(using Context): Option[Forwarders] = tree match {
     case defdef: DefDef if defdef.paramss.nonEmpty =>
       import dotty.tools.dotc.core.NameOps.isConstructorName
 
@@ -277,38 +240,29 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       val isCaseApply =
         defdef.name == nme.apply && defdef.symbol.owner.companionClass.is(CaseClass)
 
-      val isCaseFromProduct = defdef.name == nme.fromProduct && defdef.symbol.owner.companionClass.is(CaseClass)
-
       val annotated =
         if (isCaseCopy) defdef.symbol.owner.primaryConstructor
         else if (isCaseApply) defdef.symbol.owner.companionClass.primaryConstructor
-        else if (isCaseFromProduct) defdef.symbol.owner.companionClass.primaryConstructor
         else defdef.symbol
 
       compute(annotated) match {
         case Nil => None
         case (paramClauseIndex, annotationIndices) :: Nil =>
           val paramCount = annotated.paramSymss(paramClauseIndex).size
-          if isCaseFromProduct then
-            Some(Gen.Substitute(
-              origin = defdef.symbol,
-              newDef = generateFromProduct(annotationIndices, paramCount, defdef)
-            ))
-          else
-            val generatedDefs =
-              val indices = (annotationIndices :+ paramCount).sliding(2).toList.reverse
-              indices.foldLeft(List.empty[DefDef]):
-                case (defdefs, paramIndex :: nextParamIndex :: Nil) =>
-                  generateSingleForwarder(
-                    defdef,
-                    paramIndex,
-                    paramCount,
-                    nextParamIndex,
-                    paramClauseIndex,
-                    isCaseApply
-                  ) :: defdefs
-                case _ => unreachable("sliding with at least 2 elements")
-            Some(Gen.Forwarders(origin = defdef.symbol, forwarders = generatedDefs))
+          val generatedDefs =
+            val indices = (annotationIndices :+ paramCount).sliding(2).toList.reverse
+            indices.foldLeft(List.empty[DefDef]):
+              case (defdefs, paramIndex :: nextParamIndex :: Nil) =>
+                generateSingleForwarder(
+                  defdef,
+                  paramIndex,
+                  paramCount,
+                  nextParamIndex,
+                  paramClauseIndex,
+                  isCaseApply
+                ) :: defdefs
+              case _ => unreachable("sliding with at least 2 elements")
+          Some(Forwarders(origin = defdef.symbol, forwarders = generatedDefs))
 
         case multiple =>
           report.error("Cannot have multiple parameter lists containing `@unroll` annotation", defdef.srcPos)
@@ -323,14 +277,12 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     val generatedBody = tmpl.body.flatMap(generateSyntheticDefs(_, compute))
     val generatedConstr0 = generateSyntheticDefs(tmpl.constr, compute)
     val allGenerated = generatedBody ++ generatedConstr0
-    val bodySubs = generatedBody.collect({ case s: Gen.Substitute => s.origin }).toSet
-    val otherDecls = tmpl.body.filterNot(d => d.symbol.exists && bodySubs(d.symbol))
 
     if allGenerated.nonEmpty then
-      val byName = (tmpl.constr :: otherDecls).groupMap(_.symbol.name.toString)(_.symbol)
+      val byName = (tmpl.constr :: tmpl.body).groupMap(_.symbol.name.toString)(_.symbol)
       for
         syntheticDefs <- allGenerated
-        dcl <- syntheticDefs.extras
+        dcl <- syntheticDefs.forwarders
       do
         val replaced = dcl.symbol
         byName.get(dcl.name.toString).foreach { syms =>
@@ -348,7 +300,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       tmpl.parents,
       tmpl.derived,
       tmpl.self,
-      otherDecls ++ allGenerated.flatMap(_.extras)
+      tmpl.body ++ allGenerated.flatMap(_.forwarders)
     )
   }
 

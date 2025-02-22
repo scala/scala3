@@ -12,7 +12,7 @@ The Scala 3 standard library has a type [`IArray`](https://scala-lang.org/api/3.
 arrays that is defined like this:
 
 ```scala
-  opaque type IArray[+T] = Array[_ <: T]
+  opaque type IArray[+T] = Array[? <: T]
 ```
 
 The `IArray` type offers extension methods for `length` and `apply`, but not for `update`; hence it seems values of type `IArray` cannot be updated.

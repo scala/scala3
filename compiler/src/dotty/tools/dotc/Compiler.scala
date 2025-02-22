@@ -8,7 +8,7 @@ import parsing.Parser
 import Phases.Phase
 import transform.*
 import backend.jvm.{CollectSuperCalls, GenBCode}
-import localopt.StringInterpolatorOpt
+import localopt.{StringInterpolatorOpt, DropForMap}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -68,7 +68,8 @@ class Compiler {
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
+         new RefChecks,              // Various checks mostly related to abstract members and overriding
+         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
     List(new semanticdb.ExtractSemanticDB.AppendDiagnostics) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members

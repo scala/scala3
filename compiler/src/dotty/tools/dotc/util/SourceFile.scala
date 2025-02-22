@@ -276,12 +276,11 @@ object SourceFile {
 
   def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // so cope with failure; also deal with path prefix "Not a directory".
+    // so cope with failure.
     val chars =
       try new String(file.toByteArray, codec.charSet).toCharArray
       catch
-        case _: NoSuchFileException => Array.empty[Char]
-        case fse: FileSystemException if fse.getMessage.endsWith("Not a directory") => Array.empty[Char]
+        case _: FileSystemException => Array.empty[Char]
 
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)

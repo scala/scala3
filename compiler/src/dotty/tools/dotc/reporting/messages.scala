@@ -2317,7 +2317,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2513,6 +2513,17 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
        |it should not be defined as an extension.
        |
        |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
+
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {

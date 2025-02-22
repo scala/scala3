@@ -1209,7 +1209,6 @@ object Build {
   lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(moduleName := "scala2-library")
     // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
@@ -1221,7 +1220,6 @@ object Build {
   lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",

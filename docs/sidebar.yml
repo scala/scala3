@@ -123,7 +123,6 @@ subsection:
           - page: reference/dropped-features/type-projection.md
           - page: reference/dropped-features/do-while.md
           - page: reference/dropped-features/procedure-syntax.md
-          - page: reference/dropped-features/package-objects.md
           - page: reference/dropped-features/early-initializers.md
           - page: reference/dropped-features/class-shadowing.md
           - page: reference/dropped-features/class-shadowing-spec.md
@@ -164,6 +163,7 @@ subsection:
           - page: reference/experimental/runtimeChecked.md
           - page: reference/experimental/better-fors.md
           - page: reference/experimental/unrolled-defs.md
+          - page: reference/experimental/package-object-values.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

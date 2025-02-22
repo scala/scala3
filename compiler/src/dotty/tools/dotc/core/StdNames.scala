@@ -425,6 +425,7 @@ object StdNames {
     val array_length : N        = "array_length"
     val array_update : N        = "array_update"
     val arraycopy: N            = "arraycopy"
+    val arity: N                = "arity"
     val as: N                   = "as"
     val asTerm: N               = "asTerm"
     val asModule: N             = "asModule"

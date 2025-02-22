@@ -2530,7 +2530,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ClassOfConstant extends ClassOfConstantModule:
       def apply(x: TypeRepr): ClassOfConstant =
-        // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
+        // We only check if the supplied TypeRepr is valid if it contains an Array,
+        // as so far only that Array could cause issues
+        def correctTypeApplicationForArray(typeRepr: TypeRepr): Boolean =
+            val isArray = typeRepr.typeSymbol != dotc.core.Symbols.defn.ArrayClass
+            typeRepr match
+              case AppliedType(_, targs) if !targs.isEmpty => true
+              case _ => isArray
+        xCheckMacroAssert(
+          correctTypeApplicationForArray(x),
+          "Illegal empty Array type constructor. Please supply a type parameter."
+        )
         dotc.core.Constants.Constant(x)
       def unapply(constant: ClassOfConstant): Some[TypeRepr] = Some(constant.typeValue)
     end ClassOfConstant
