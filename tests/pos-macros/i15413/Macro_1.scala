@@ -1,4 +1,4 @@
-//> using options -experimental -Werror -WunstableInlineAccessors
+//> using options -Werror -WunstableInlineAccessors
 
 import scala.quoted.*
 import scala.annotation.publicInBinary
