@@ -15,7 +15,7 @@ package dotty.tools.dotc.util
 import scala.language.unsafeNulls
 
 import collection.mutable, mutable.ListBuffer
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 import java.lang.System.lineSeparator
 
 object StackTraceOps:

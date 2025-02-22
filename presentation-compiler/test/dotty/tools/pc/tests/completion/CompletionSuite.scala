@@ -147,6 +147,50 @@ class CompletionSuite extends BaseCompletionSuite:
       "XtensionMethod(a: Int): XtensionMethod"
     )
 
+  @Test def tupleDirect =
+    check(
+      """
+        |trait Foo {
+        |  def setup: List[(String, String)]
+        |}
+        |object Foo {
+        |  val foo: Foo = ???
+        |  foo.setup.exist@@
+        |}""".stripMargin,
+      """|exists(p: ((String, String)) => Boolean): Boolean
+          |""".stripMargin
+    )
+
+  @Test def tupleAlias =
+    check(
+      """
+        |trait Foo {
+        |  def setup: List[Foo.TupleAliasResult]
+        |}
+        |object Foo {
+        |  type TupleAliasResult = (String, String)
+        |  val foo: Foo = ???
+        |  foo.setup.exist@@
+        |}""".stripMargin,
+      """|exists(p: TupleAliasResult => Boolean): Boolean
+         |""".stripMargin
+    )
+
+  @Test def listAlias =
+    check(
+      """
+        |trait Foo {
+        |  def setup: List[Foo.ListAliasResult]
+        |}
+        |object Foo {
+        |  type ListAliasResult = List[String]
+        |  val foo: Foo = ???
+        |  foo.setup.exist@@
+        |}""".stripMargin,
+      """|exists(p: ListAliasResult => Boolean): Boolean
+         |""".stripMargin
+    )
+
   @Ignore("This test should be handled by compiler fuzzy search")
   @Test def fuzzy =
     check(
@@ -2167,4 +2211,15 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|build: Unit
          |""".stripMargin,
+    )
+
+  @Test def i7191 =
+    check(
+      """|val x = Some(3).map(_.@@)
+         |""".stripMargin,
+      """|!=(x: Byte): Boolean
+         |!=(x: Char): Boolean
+         |!=(x: Double): Boolean
+         |""".stripMargin,
+      topLines = Some(3)
     )

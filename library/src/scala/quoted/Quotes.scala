@@ -1,7 +1,6 @@
 package scala.quoted
 
-import scala.annotation.experimental
-import scala.annotation.implicitNotFound
+import scala.annotation.{experimental, implicitNotFound, unused}
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -2545,6 +2544,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SimpleSelector` */
     trait SimpleSelectorModule { this: SimpleSelector.type =>
+      @experimental def apply(name: String): SimpleSelector
       def unapply(x: SimpleSelector): Some[String]
     }
 
@@ -2570,6 +2570,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RenameSelector` */
     trait RenameSelectorModule { this: RenameSelector.type =>
+      @experimental def apply(fromName: String, toName: String): RenameSelector
       def unapply(x: RenameSelector): (String, String)
     }
 
@@ -2597,6 +2598,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val OmitSelector` */
     trait OmitSelectorModule { this: OmitSelector.type =>
+      @experimental def apply(name: String): OmitSelector
       def unapply(x: OmitSelector): Some[String]
     }
 
@@ -2621,6 +2623,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val GivenSelector` */
     trait GivenSelectorModule { this: GivenSelector.type =>
+      @experimental def apply(bound: Option[TypeTree]): GivenSelector
       def unapply(x: GivenSelector): Some[Option[TypeTree]]
     }
 
@@ -3705,6 +3708,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @param tpe type of the implicit parameter
       */
       def search(tpe: TypeRepr): ImplicitSearchResult
+
+      /** Find a given instance of type `T` in the current scope provided by the current enclosing splice,
+      *  while excluding certain symbols from the initial implicit search.
+      *  Return an `ImplicitSearchResult`.
+      *
+      *  @param tpe type of the implicit parameter
+      *  @param ignored Symbols ignored during the initial implicit search
+      *
+      *  @note if an found given requires additional search for other given instances,
+      *  this additional search will NOT exclude the symbols from the `ignored` list.
+      */
+      def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
     }
 
     /** Result of a given instance search */
@@ -4941,7 +4956,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             foldTree(foldTree(foldTree(x, cond)(owner), thenp)(owner), elsep)(owner)
           case While(cond, body) =>
             foldTree(foldTree(x, cond)(owner), body)(owner)
-          case Closure(meth, tpt) =>
+          case Closure(meth, _) =>
             foldTree(x, meth)(owner)
           case Match(selector, cases) =>
             foldTrees(foldTree(x, selector)(owner), cases)(owner)
@@ -5019,7 +5034,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def traverseTree(tree: Tree)(owner: Symbol): Unit = traverseTreeChildren(tree)(owner)
 
-      def foldTree(x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
+      def foldTree(@unused x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
 
       protected def traverseTreeChildren(tree: Tree)(owner: Symbol): Unit = foldOverTree((), tree)(owner)
 

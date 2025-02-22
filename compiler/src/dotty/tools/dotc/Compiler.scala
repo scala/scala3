@@ -7,9 +7,8 @@ import typer.{TyperPhase, RefChecks}
 import parsing.Parser
 import Phases.Phase
 import transform.*
-import dotty.tools.backend
 import backend.jvm.{CollectSuperCalls, GenBCode}
-import localopt.StringInterpolatorOpt
+import localopt.{StringInterpolatorOpt, DropForMap}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -34,8 +33,7 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // Compiler frontend: scanner, parser
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
-    List(new CheckUnused.PostTyper) :: // Check for unused elements
-    List(new CheckShadowing) :: // Check shadowing elements
+    List(CheckUnused.PostTyper(), CheckShadowing()) :: // Check for unused, shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB.ExtractSemanticInfo) :: // Extract info into .semanticdb files
@@ -51,10 +49,10 @@ class Compiler {
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
-    List(new CheckUnused.PostInlining) ::  // Check for unused elements
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
+    List(new CheckUnused.PostInlining) ::  // Check for unused elements
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -70,7 +68,8 @@ class Compiler {
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
+         new RefChecks,              // Various checks mostly related to abstract members and overriding
+         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
     List(new semanticdb.ExtractSemanticDB.AppendDiagnostics) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members

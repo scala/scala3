@@ -14,6 +14,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$quotedPatternsWithPolymorphicFunctions$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.Patterns.higherOrderHoleWithTypes"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.packageObjectValues"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$packageObjectValues$"),
       ),
 
       // Additions since last LTS
@@ -96,6 +98,7 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),

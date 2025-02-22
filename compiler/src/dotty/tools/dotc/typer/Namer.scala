@@ -246,7 +246,9 @@ class Namer { typer: Typer =>
 
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        val flags = checkFlags(tree.mods.flags)
+        var flags = checkFlags(tree.mods.flags)
+        if ctx.settings.YcompileScala2Library.value then
+          flags |= Scala2x
         val name = checkNoConflict(tree.name, flags.is(Private), tree.span).asTypeName
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
@@ -1175,11 +1177,26 @@ class Namer { typer: Typer =>
       def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
+        /**
+         * The export selects a member of the current class (issue #22147).
+         * Assumes that cls.classInfo.selfType.derivesFrom(sym.owner) is true.
+         */
+        def isCurrentClassMember: Boolean = expr match
+          case id: (Ident | This) => // Access through self type or this
+            /* Given the usage context below, where cls's self type is a subtype of sym.owner,
+               it suffices to check if symbol is the same class. */
+            cls == id.symbol
+          case _ => false
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
           Skip
-        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
+        // if the cls is a subclass or mixes in the owner of the symbol
+        // and either
+        // * the symbols owner is the cls itself
+        // * the symbol is not a deferred symbol
+        // * the symbol is a member of the current class (#22147)
+        else if cls.classInfo.selfType.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred) || isCurrentClassMember) then
           No(i"is already a member of $cls")
         else if pathMethod.exists && mbr.isType then
           No("is a type, so it cannot be exported as extension method")
@@ -1940,9 +1957,7 @@ class Namer { typer: Typer =>
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      val mt = wrapMethType(effectiveResultType(sym, paramSymss))
-      if sym.isPrimaryConstructor then checkCaseClassParamDependencies(mt, sym.owner)
-      mt
+      wrapMethType(effectiveResultType(sym, paramSymss))
     else
       val paramFn = if Feature.enabled(Feature.modularity) && sym.isAllOf(Given | Method) then wrapRefinedMethType else wrapMethType
       valOrDefDefSig(ddef, sym, paramSymss, paramFn)
@@ -1983,16 +1998,6 @@ class Namer { typer: Typer =>
 
     ddef.trailingParamss.foreach(completeParams)
   end completeTrailingParamss
-
-  /** Checks an implementation restriction on case classes. */
-  def checkCaseClassParamDependencies(mt: Type, cls: Symbol)(using Context): Unit =
-    mt.stripPoly match
-      case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
-        // See issue #8073 for background
-        report.error(
-            em"""Implementation restriction: case classes cannot have dependencies between parameters""",
-            cls.srcPos)
-      case _ =>
 
   private def setParamTrackedWithAccessors(psym: Symbol, ownerTpe: Type)(using Context): Unit =
     for acc <- ownerTpe.decls.lookupAll(psym.name) if acc.is(ParamAccessor) do

@@ -570,7 +570,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // For example, `(x: T, y: x.f.type) => Unit`. In this case, when we
               // substitute `x.f.type`, `x` becomes a `TermParamRef`. But the new method
               // type is still under initialization and `paramInfos` is still `null`,
-              // so the new `NamedType` will not have a denoation.
+              // so the new `NamedType` will not have a denotation.
               def adaptedInfo(psym: Symbol, info: mt.PInfo): mt.PInfo = mt.companion match
                 case mtc: MethodTypeCompanion => mtc.adaptParamInfo(psym, info).asInstanceOf[mt.PInfo]
                 case _ => info

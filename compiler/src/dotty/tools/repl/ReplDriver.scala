@@ -510,6 +510,10 @@ class ReplDriver(settings: Array[String],
         state
       }
 
+    case KindOf(expr) =>
+      out.println(s"""The :kind command is not currently supported.""")
+      state
+
     case TypeOf(expr) =>
       expr match {
         case "" => out.println(s":type <expression>")

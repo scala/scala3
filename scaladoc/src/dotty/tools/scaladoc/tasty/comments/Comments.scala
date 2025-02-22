@@ -112,7 +112,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
               case None => sym.dri
             DocLink.ToDRI(dri, targetText)
           case None =>
-            val txt = s"No DRI found for query"
+            val txt = s"Couldn't resolve a member for the given link query"
             val msg = s"$txt: $queryStr"
 
             if (!summon[DocContext].args.noLinkWarnings) then

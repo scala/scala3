@@ -147,11 +147,12 @@ object Completion:
         checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
 
       case (tree: untpd.RefTree) :: _ if tree.name != nme.ERROR =>
-        tree.name.toString.take(pos.span.point - tree.span.point)
+        val nameStart = tree.span.point
+        val start = if pos.source.content().lift(nameStart).contains('`') then nameStart + 1 else nameStart
+        tree.name.toString.take(pos.span.point - start)
 
-      case _ => naiveCompletionPrefix(pos.source.content().mkString, pos.point)
-
-
+      case _ =>
+        naiveCompletionPrefix(pos.source.content().mkString, pos.point)
   end completionPrefix
 
   private object GenericImportSelector:
@@ -662,7 +663,7 @@ object Completion:
      */
     private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
       val typer = ctx.typer
-      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
+      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span, Set.empty).allImplicits
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions

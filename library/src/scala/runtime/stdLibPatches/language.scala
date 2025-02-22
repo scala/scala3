@@ -140,6 +140,11 @@ object language:
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
     object betterFors
+
+    /** Experimental support for package object values
+     */
+    @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
+    object packageObjectValues
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

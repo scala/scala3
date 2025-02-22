@@ -62,7 +62,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         val qualTpe = qual.tpe
         assert(
-          qualTpe.isErasedValueType || qualTpe.derivesFrom(tree.symbol.owner) ||
+          qualTpe.widenDealias.isErasedValueType || qualTpe.derivesFrom(tree.symbol.owner) ||
             tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
           i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>

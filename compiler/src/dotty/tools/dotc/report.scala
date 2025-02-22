@@ -1,15 +1,12 @@
 package dotty.tools.dotc
 
-import reporting.*
-import Diagnostic.*
-import util.{SourcePosition, NoSourcePosition, SrcPos}
-import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.*
-import config.SourceVersion
 import ast.*
-import config.Feature.sourceVersion
+import core.*, Contexts.*, Flags.*, Symbols.*, Decorators.*
+import config.Feature.sourceVersion, config.{MigrationVersion, SourceVersion}
+import reporting.*, Diagnostic.*
+import util.{SourcePosition, NoSourcePosition, SrcPos}
+
 import java.lang.System.currentTimeMillis
-import dotty.tools.dotc.config.MigrationVersion
 
 object report:
 
@@ -54,6 +51,9 @@ object report:
     if required then error(msg, pos)
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
   end featureWarning
+
+  def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
+    issueWarning(LintWarning(msg, addInlineds(pos), origin))
 
   def warning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new Warning(msg, addInlineds(pos)))

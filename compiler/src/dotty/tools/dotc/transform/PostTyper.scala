@@ -246,7 +246,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else
             if sym.is(Param) then
               registerIfUnrolledParam(sym)
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              // @unused is getter/setter but we want it on ordinary method params
+              if !sym.owner.is(Method) || sym.owner.isConstructor then
+                sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
               // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
               val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)
@@ -254,7 +256,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               for publicInBinaryAnnot <- publicInBinaryAnnotOpt do sym.addAnnotation(publicInBinaryAnnot)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
-          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
+          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value &&
+             sym != defn.StringContext_raw &&
+             sym != defn.StringContext_f &&
+             sym != defn.StringContext_s then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
                // This should be removed on Scala 3.x

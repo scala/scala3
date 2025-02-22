@@ -11,7 +11,7 @@ import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, 
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
-import scala.util.chaining.*
+import dotty.tools.dotc.util.chaining.*
 
 import java.util.zip.Deflater
 
@@ -174,28 +174,20 @@ private sealed trait WarningSettings:
     choices = List(
       ChoiceWithHelp("nowarn", ""),
       ChoiceWithHelp("all", ""),
-      ChoiceWithHelp(
-        name = "imports",
-        description = "Warn if an import selector is not referenced.\n" +
-        "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
+      ChoiceWithHelp("imports", "Warn if an import selector is not referenced."),
       ChoiceWithHelp("privates", "Warn if a private member is unused"),
       ChoiceWithHelp("locals", "Warn if a local definition is unused"),
       ChoiceWithHelp("explicits", "Warn if an explicit parameter is unused"),
       ChoiceWithHelp("implicits", "Warn if an implicit parameter is unused"),
       ChoiceWithHelp("params", "Enable -Wunused:explicits,implicits"),
+      ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
       ChoiceWithHelp(
         name = "strict-no-implicit-warn",
         description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
         "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
       ),
-      // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
-      ChoiceWithHelp(
-        name = "unsafe-warn-patvars",
-        description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
-        "This warning can generate false positive, as warning cannot be\n" +
-        "suppressed yet."
-      )
     ),
     default = Nil
   )
@@ -207,7 +199,6 @@ private sealed trait WarningSettings:
     // Is any choice set for -Wunused?
     def any(using Context): Boolean = Wall.value || Wunused.value.nonEmpty
 
-    // overrided by strict-no-implicit-warn
     def imports(using Context) =
       (allOr("imports") || allOr("linted")) && !(strictNoImplicitWarn)
     def locals(using Context) =
@@ -221,9 +212,8 @@ private sealed trait WarningSettings:
     def params(using Context) = allOr("params")
     def privates(using Context) =
       allOr("privates") || allOr("linted")
-    def patvars(using Context) =
-      isChoiceSet("unsafe-warn-patvars") // not with "all"
-      // allOr("patvars") // todo : rename once fixed
+    def patvars(using Context) = allOr("patvars")
+    def inlined(using Context) = isChoiceSet("inlined")
     def linted(using Context) =
       allOr("linted")
     def strictNoImplicitWarn(using Context) =

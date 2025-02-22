@@ -7,7 +7,7 @@ import effekt.util.messages.ErrorReporter
 import effekt.context.{ Context }
 
 // This import is also NECESSARY for the cyclic error
-import effekt.source.{ resolve }
+import effekt.source.{ resolve } // error
 
 
 trait TyperOps extends ErrorReporter { self: Context =>

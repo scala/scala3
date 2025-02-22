@@ -292,7 +292,9 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Xfatal-warnings",                         // -Werror in modern usage
+      "-Werror",
+      //"-Wunused:all",
+      //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
       "-language:implicitConversions",
     ),
@@ -1207,7 +1209,6 @@ object Build {
   lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(moduleName := "scala2-library")
     // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
@@ -1219,7 +1220,6 @@ object Build {
   lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
@@ -1233,8 +1233,8 @@ object Build {
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
-      scalacOptions += "-Yscala2Unpickler:never",
-      scalacOptions -= "-Xfatal-warnings",
+      scalacOptions += "-Yscala2-unpickler:never",
+      scalacOptions += "-Werror:false",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -1483,7 +1483,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.4.2"
+    val mtagsVersion = "1.5.1"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -1601,7 +1601,7 @@ object Build {
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
       bspEnabled := false,
-      scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
+      scalacOptions --= Seq("-Werror", "-deprecation"),
 
       // Required to run Scala.js tests.
       Test / fork := false,

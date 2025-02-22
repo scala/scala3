@@ -84,6 +84,9 @@ object Typer {
   /** Indicates that an expression is explicitly ascribed to [[Unit]] type. */
   val AscribedToUnit = new Property.StickyKey[Unit]
 
+  /** Tree adaptation lost fidelity; this attachment preserves the original tree. */
+  val AdaptedTree = new Property.StickyKey[tpd.Tree]
+
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
    */
@@ -615,10 +618,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Shortcut for the root package, this is not just a performance
     // optimization, it also avoids forcing imports thus potentially avoiding
     // cyclic references.
-    if (name == nme.ROOTPKG)
-      val tree2 = tree.withType(defn.RootPackage.termRef)
-      checkLegalValue(tree2, pt)
-      return tree2
+    if name == nme.ROOTPKG then
+      return checkLegalValue(tree.withType(defn.RootPackage.termRef), pt)
 
     val rawType =
       val saved1 = unimported
@@ -678,9 +679,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             cpy.Ident(tree)(tree.name.unmangleClassName).withType(checkedType)
           else
             tree.withType(checkedType)
-      val tree2 = toNotNullTermRef(tree1, pt)
-      checkLegalValue(tree2, pt)
-      tree2
+      checkLegalValue(toNotNullTermRef(tree1, pt), pt)
 
     def isLocalExtensionMethodRef: Boolean = rawType match
       case rawType: TermRef =>
@@ -720,21 +719,47 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       errorTree(tree, MissingIdent(tree, kind, name, pt))
   end typedIdent
 
+  def checkValue(tree: Tree)(using Context): Tree =
+    val sym = tree.tpe.termSymbol
+    if sym.isNoValue && !ctx.isJava then
+      if sym.is(Package)
+          && Feature.enabled(Feature.packageObjectValues)
+          && tree.tpe.member(nme.PACKAGE).hasAltWith(_.symbol.isPackageObject)
+      then
+        typed(untpd.Select(untpd.TypedSplice(tree), nme.PACKAGE))
+      else
+        report.error(SymbolIsNotAValue(sym), tree.srcPos)
+        tree
+    else tree
+
+  /** Check that `tree` refers to a value, unless `tree` is selected or applied
+   *  (singleton types x.type don't count as selections).
+   */
+  def checkValue(tree: Tree, proto: Type)(using Context): Tree =
+    tree match
+      case tree: RefTree if tree.name.isTermName =>
+        proto match
+          case _: SelectionProto if proto ne SingletonTypeProto => tree // no value check
+          case _: FunOrPolyProto => tree // no value check
+          case _ => checkValue(tree)
+      case _ => tree
+
   /** (1) If this reference is neither applied nor selected, check that it does
    *      not refer to a package or Java companion object.
    *  (2) Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
    */
-  private def checkLegalValue(tree: Tree, pt: Type)(using Context): Unit =
-    checkValue(tree, pt)
+  private def checkLegalValue(tree: Tree, pt: Type)(using Context): Tree =
+    val tree1 = checkValue(tree, pt)
     if ctx.mode.is(Mode.Pattern)
-       && !tree.isType
+       && !tree1.isType
        && !pt.isInstanceOf[ApplyingProto]
-       && !tree.tpe.match
+       && !tree1.tpe.match
         case tp: NamedType => tp.denot.hasAltWith(_.symbol.isStableMember && tp.prefix.isStable || tp.info.isStable)
         case tp            => tp.isStable
-       && !isWildcardArg(tree)
+       && !isWildcardArg(tree1)
     then
-      report.error(StableIdentPattern(tree, pt), tree.srcPos)
+      report.error(StableIdentPattern(tree1, pt), tree1.srcPos)
+    tree1
 
   def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
     val selName = tree0.name
@@ -748,8 +773,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if checkedType.exists then
         val select = toNotNullTermRef(assignType(tree, checkedType), pt)
         if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
-        checkLegalValue(select, pt)
-        ConstFold(select)
+        ConstFold(checkLegalValue(select, pt))
       else EmptyTree
 
     // Otherwise, simplify `m.apply(...)` to `m(...)`
@@ -2776,7 +2800,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
     def local: FreshContext = outer.fresh.setOwner(newLocalDummy(sym.owner))
-    sym.owner.infoOrCompleter match
+    val ctx0 = sym.owner.infoOrCompleter match
       case completer: Namer#Completer
       if sym.is(Param) && completer.completerTypeParams(sym).nonEmpty =>
         // Create a new local context with a dummy owner and a scope containing the
@@ -2785,6 +2809,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         local.setScope(newScopeWith(completer.completerTypeParams(sym)*))
       case _ =>
         if outer.owner.isClass then local else outer
+    ctx0.addMode(Mode.InAnnotation)
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {
     // necessary to force annotation trees to be computed.
@@ -2799,7 +2824,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
-    checkAnnotClass(checkAnnotArgs(typed(annot)))
+    val typedAnnot = withMode(Mode.InAnnotation)(typed(annot))
+    checkAnnotClass(checkAnnotArgs(typedAnnot))
 
   def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
     val annot = Annotations.Annotation(tree)
@@ -3193,7 +3219,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if cls.isEnum || firstParentTpe.classSymbol.isEnum then
+      if cls.isEnum || !cls.isRefinementClass && firstParentTpe.classSymbol.isEnum then
         checkEnum(cdef, cls, firstParent)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
@@ -3332,7 +3358,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot1 = checkAnnotClass(typedExpr(tree.annot))
+    val annot0 = withMode(Mode.InAnnotation)(typedExpr(tree.annot))
+    val annot1 = checkAnnotClass(annot0)
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then
       registerNowarn(annot1, tree)
@@ -3422,7 +3449,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Translate tuples of all arities */
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
-    val tree1 = desugar.tuple(tree, pt)
+    val tree1 = desugar.tuple(tree, pt).withAttachmentsFrom(tree)
     checkDeprecatedAssignmentSyntax(tree)
     if tree1 ne tree then typed(tree1, pt)
     else
@@ -4161,6 +4188,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def methodStr = methPart(tree).symbol.showLocated
         if matchingApply(wtp, pt) then
           migrate(contextBoundParams(tree, wtp, pt))
+          migrate(implicitParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
           else tree
         else if wtp.isContextualMethod then
@@ -4169,9 +4197,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           readapt(tree.appliedToNone) // insert () to primary constructors
         else
           errorTree(tree, em"Missing arguments for $methodStr")
-      case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
-        errorTree(tree, MethodDoesNotTakeParameters(tree))
-      }
+      case _ =>
+        tryInsertApplyOrImplicit(tree, pt, locked):
+          errorTree(tree, MethodDoesNotTakeParameters(tree))
     }
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
@@ -4568,12 +4596,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** Adapt an expression of constant type to a different constant type `tpe`. */
     def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
-      def lit = Literal(tpe.value).withSpan(tree.span)
+      def lit = Literal(tpe.value).withSpan(tree.span).withAttachment(AdaptedTree, tree)
       tree match {
         case Literal(c) => lit
         case tree @ Block(stats, expr) => tpd.cpy.Block(tree)(stats, adaptConstant(expr, tpe))
         case tree =>
-          if (isIdempotentExpr(tree)) lit // See discussion in phase Literalize why we demand isIdempotentExpr
+          if isIdempotentExpr(tree) then lit // See discussion in phase FirstTransform why we demand isIdempotentExpr
           else Block(tree :: Nil, lit)
       }
     }

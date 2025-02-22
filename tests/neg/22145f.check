@@ -1,0 +1,10 @@
+-- [E008] Not Found Error: tests/neg/22145f.scala:11:6 -----------------------------------------------------------------
+11 |    2.f() // error
+   |    ^^^
+   |    value f is not a member of Int, but could be made available as an extension method.
+   |
+   |    One of the following imports might fix the problem:
+   |
+   |      import C.this.O1.O2.Ext.f
+   |      import C.this.O2.Ext.f
+   |

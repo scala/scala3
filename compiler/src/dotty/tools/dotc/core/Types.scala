@@ -2473,7 +2473,7 @@ object Types extends TypeUtils {
           else lastd match {
             case lastd: SymDenotation =>
               if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
-              else finish(memberDenot(lastd.initial.name, allowPrivate = false))
+              else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
             case _ =>
               fromDesignator
           }
@@ -6073,6 +6073,9 @@ object Types extends TypeUtils {
     def forward(ref: CaptureRef): CaptureRef =
       val result = this(ref)
       def ensureTrackable(tp: Type): CaptureRef = tp match
+        /* Issue #22437: handle case when info is not yet available during postProcess in CC setup */
+        case tp: (TypeParamRef | TermRef) if tp.underlying == NoType =>
+          tp
         case tp: CaptureRef =>
           if tp.isTrackableRef then tp
           else ensureTrackable(tp.underlying)
@@ -6084,6 +6087,9 @@ object Types extends TypeUtils {
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
+      /* Ensure bijection for issue #22437 fix in method forward above:  */
+      case result: (TypeParamRef | TermRef) if result.underlying == NoType =>
+        result
       case result: CaptureRef if result.isTrackableRef => result
   end BiTypeMap
 

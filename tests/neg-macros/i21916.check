@@ -1,0 +1,15 @@
+
+-- Error: tests/neg-macros/i21916/Test_2.scala:3:27 --------------------------------------------------------------------
+3 |@main def Test = Macro.test() // error
+  |                 ^^^^^^^^^^^^
+  |                 Exception occurred while executing macro expansion.
+  |                 java.lang.AssertionError: Illegal empty Array type constructor. Please supply a type parameter.
+  |                 	at Macro$.testImpl(Macro_1.scala:8)
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:3
+3 |  inline def test() = ${testImpl}
+  |                      ^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

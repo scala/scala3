@@ -179,3 +179,60 @@ class CompletionBacktickSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin
     )
+
+  @Test def `add-backticks-around-identifier` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  Foo@@
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `complete-inside-backticks` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo@@`
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `complete-inside-backticks-after-space` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo B@@a`
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `complete-inside-empty-backticks` =
+    checkEdit(
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `@@`
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def `Foo Bar` = 123
+         |  `Foo Bar`
+         |}
+         |""".stripMargin,
+      filter = _ == "Foo Bar: Int"
+    )

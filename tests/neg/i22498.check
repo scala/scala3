@@ -1,0 +1,4 @@
+-- Error: tests/neg/i22498.scala:5:32 ----------------------------------------------------------------------------------
+5 |    inline def proxy: Foo = new Foo(0) // error
+  |                                ^^^
+  |                                Private constructors used in inline methods require @publicInBinary

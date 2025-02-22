@@ -2317,7 +2317,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2513,6 +2513,17 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
        |it should not be defined as an extension.
        |
        |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
+
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -3290,22 +3301,24 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |companion value with the (term-)name `A`. However, these context bound companions
        |are not values themselves, they can only be referred to in selections."""
 
-class UnusedSymbol(errorText: String)(using Context)
+class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
 extends Message(UnusedSymbolID) {
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
+  override def actions(using Context) = this.actions
 }
 
-object UnusedSymbol {
-    def imports(using Context): UnusedSymbol = new UnusedSymbol(i"unused import")
-    def localDefs(using Context): UnusedSymbol = new UnusedSymbol(i"unused local definition")
-    def explicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused explicit parameter")
-    def implicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused implicit parameter")
-    def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
-    def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
-}
+object UnusedSymbol:
+  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
+  def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
+  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
+  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 

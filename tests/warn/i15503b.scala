@@ -117,7 +117,7 @@ package foo.scala2.tests:
 
   object Types {
     def l1() = {
-      object HiObject { def f = this } // OK
+      object HiObject { def f = this } // warn
       class Hi { // warn
         def f1: Hi = new Hi
         def f2(x: Hi) = x

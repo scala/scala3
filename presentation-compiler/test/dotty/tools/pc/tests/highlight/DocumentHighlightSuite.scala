@@ -1462,5 +1462,29 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |""".stripMargin
     )
 
+  @Test def i3053 =
+    check(
+      s"""import Aaaa.*
+        |
+        |def classDef2(cdef: List[Int]): Int = {
+        |  def aaa(ddef: Thicket2): List[Int] = ddef match {
+        |    case Thicket2(_) => ???
+        |  }
+        |${("//" + "x" * 64 + "\n") * 64}
+        |  1
+        |}.<<showing2>>("aaa")
+        |
+        |case class Thicket2(trees: List[Int]) {}
+        |
+        |object Aaaa {
+        |  extension [T](x: T)
+        |    def <<show@@ing2>>[U](aaa: String): T = {
+        |      x
+        |    }
+        |}
+        |
+        |""".stripMargin
+    )
+
 
 end DocumentHighlightSuite

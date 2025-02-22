@@ -535,7 +535,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 true) &&
             // We discard the private val representing a case accessor. We only enter the case accessor def.
             // We do need to load these symbols to read properly unpickle the annotations on the symbol (see sbt-test/scala2-compat/i19421).
-            !flags.isAllOf(CaseAccessor | PrivateLocal, butNot = Method)
+            !flags.isAllOf(CaseAccessor | PrivateLocal, butNot = Method) &&
+            // Skip entering extension methods: they will be recreated by the ExtensionMethods phase.
+            // Same trick is used by tasty-query (see
+            //https://github.com/scalacenter/tasty-query/blob/fdefadcabb2f21d5c4b71f728b81c68f6fddcc0f/tasty-query/shared/src/main/scala/tastyquery/reader/pickles/PickleReader.scala#L261-L273
+            //)
+            // This trick is also useful when reading the Scala 2 Standard library from tasty, since
+            // the extension methods will not be present, and it avoid having to distinguish between Scala2 pickles and Scala2 tasty (stdlib)
+            !(owner.is(ModuleClass) && sym.name.endsWith("$extension"))
 
         if (canEnter)
           owner.asClass.enter(sym, symScope(owner))

@@ -15,11 +15,21 @@ object Scala2LibraryBootstrappedMiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.language$experimental$"),
         ProblemFilters.exclude[FinalClassProblem]("scala.languageFeature$*$"),
 
-        // trait $init$
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.$init$"),
-
-        // Value class extension methods
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*$extension"),
+        // Issue: https://github.com/scala/scala3/issues/22495
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak2$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.linesSeparated$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.escape$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.toBooleanImpl$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.unwrapArg$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.iterateUntilEmpty$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple2Zipped.coll1$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple2Zipped.coll2$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll1$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll2$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll3$extension"),
 
         // Companion module class
         ProblemFilters.exclude[FinalClassProblem]("scala.*$"),
@@ -56,17 +66,8 @@ object Scala2LibraryBootstrappedMiMaFilters {
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.NoPositioner"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPosition"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.SortedMapOps.coll"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.fromSpecific"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.ArrayBuilder#ofUnit.addAll"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.TreeMap.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.TreeMap.fromSpecific"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NothingManifest.newArray"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NullManifest.newArray"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.collection.ArrayOps#ReverseIterator.xs"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.NonLocalReturnControl.value"),
-        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.immutable.SortedMapOps.coll"),
       ) ++
       Seq( // DirectMissingMethodProblem
         "scala.collection.LinearSeqIterator#LazyCell.this",

@@ -611,7 +611,7 @@ class DottyLanguageServer extends LanguageServer
   private def inProjectsSeeing(baseDriver: InteractiveDriver,
                                definitions: List[SourceTree],
                                symbols: List[Symbol]): List[(InteractiveDriver, Context, List[Symbol])] = {
-    val projects = projectsSeeing(definitions)(baseDriver.currentCtx)
+    val projects = projectsSeeing(definitions)(using baseDriver.currentCtx)
     projects.toList.map { config =>
       val remoteDriver = drivers(config)
       val ctx = remoteDriver.currentCtx
