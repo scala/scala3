@@ -259,19 +259,19 @@ object Existential:
         core
 
   /** Map existentially bound references referring to `boundVar` one-to-one
-   *  to Fresh.Cap instances
+   *  to Fresh instances
    */
   def boundVarToCap(boundVar: TermParamRef, tp: Type)(using Context) =
     val subst = new IdempotentCaptRefMap:
       val seen = EqHashMap[Annotation, CaptureRef]()
       def apply(t: Type): Type = t match
         case t @ Var(`boundVar`) =>
-          seen.getOrElseUpdate(t.annot, Fresh.Cap(NoSymbol))
+          seen.getOrElseUpdate(t.annot, Fresh(NoSymbol))
         case _ =>
           mapOver(t)
     subst(tp)
 
-  /** Map top-level existentials to `Fresh.Cap`. */
+  /** Map top-level existentials to `Fresh`. */
   def toCap(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
       boundVarToCap(boundVar, unpacked)
@@ -281,7 +281,7 @@ object Existential:
       tp1.derivedAnnotatedType(toCap(parent), ann)
     case _ => tp
 
-  /** Map existentials at the top-level and in all nested result types to `Fresh.Cap`
+  /** Map existentials at the top-level and in all nested result types to `Fresh`
    */
   def toCapDeeply(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
@@ -352,14 +352,14 @@ object Existential:
         def apply(t: Type) = t match
           case t @ Var(`boundVar`) =>
             // do a reverse getOrElseUpdate on `seen` to produce the
-            // `Fresh.Cap` assosicated with `t`
+            // `Fresh` assosicated with `t`
             val it = seen.iterator
             var ref: CaptureRef | Null = null
             while it.hasNext && ref == null do
               val (k, v) = it.next
               if v.annot eq t.annot then ref = k
             if ref == null then
-              ref = Fresh.Cap(NoSymbol)
+              ref = Fresh(NoSymbol)
               seen(ref) = t
             ref
           case _ => mapOver(t)

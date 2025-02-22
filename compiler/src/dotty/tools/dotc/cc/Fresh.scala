@@ -16,26 +16,55 @@ import util.SimpleIdentitySet.empty
 import CaptureSet.{Refs, emptyRefs, NarrowingCapabilityMap}
 import dotty.tools.dotc.util.SimpleIdentitySet
 
-/** A module for handling Fresh types. Fresh.Cap instances are top type that keep
+/** A module for handling Fresh types. Fresh instances are top types that keep
  *  track of what they hide when capabilities get widened by subsumption to fresh.
  *  The module implements operations to convert between regular caps.cap and
- *  Fresh.Cap instances. Fresh.Cap is encoded as `caps.cap @freshCapability(...)` where
+ *  Fresh instances. Fresh(...) is encoded as `caps.cap @freshCapability(...)` where
  *  `freshCapability(...)` is a special kind of annotation of type `Fresh.Annot`
  *  that contains a hidden set.
  */
 object Fresh:
 
-  /** The annotation of a Fresh.Cap instance */
-  case class Annot(hidden: CaptureSet.HiddenSet) extends Annotation:
+  /** The annotation of a Fresh instance */
+  case class Annot(hidden: CaptureSet.HiddenSet, binder: MethodType | NoType.type = NoType) extends Annotation:
     override def symbol(using Context) = defn.FreshCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
 
+    def derivedAnnotation(binder: MethodType | NoType.type)(using Context): Annotation =
+      if this.binder eq binder then this else Annot(hidden, binder)
+
     override def hash: Int = hidden.hashCode
     override def eql(that: Annotation) = that match
-      case Annot(hidden) => this.hidden eq hidden
+      case Annot(hidden, binder) => (this.hidden eq hidden) && (this.binder eq binder)
       case _ => false
+
+    override def mapWith(tm: TypeMap)(using Context) =
+      tm(binder) match
+        case binder1: MethodType => derivedAnnotation(binder1)
+        case _ => this
   end Annot
+
+  /** Extractor methods for "fresh" capabilities */
+  def apply(owner: Symbol, initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
+    if ccConfig.useSepChecks then
+      val hiddenSet = CaptureSet.HiddenSet(owner, initialHidden)
+      val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet))
+      hiddenSet.owningCap = res
+      //assert(hiddenSet.id != 3)
+      res
+    else
+      defn.captureRoot.termRef
+
+  def apply(owner: Symbol, reach: Boolean)(using Context): CaptureRef =
+    apply(owner, ownerToHidden(owner, reach))
+
+  def apply(owner: Symbol)(using Context): CaptureRef =
+    apply(owner, ownerToHidden(owner, reach = false))
+
+  def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
+    case Annot(hidden, _) => Some(hidden)
+    case _ => None
 
   /** The initial elements (either 0 or 1) of a hidden set created for given `owner`.
    *  If owner `x` is a trackable this is `x*` if reach` is true, or `x` otherwise.
@@ -47,30 +76,6 @@ object Fresh:
     else
       if ref.isTracked then SimpleIdentitySet(ref) else emptyRefs
 
-  /** An extractor for "fresh" capabilities */
-  object Cap:
-
-    def apply(owner: Symbol, initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
-      if ccConfig.useSepChecks then
-        val hiddenSet = CaptureSet.HiddenSet(owner, initialHidden)
-        val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet))
-        hiddenSet.owningCap = res
-        //assert(hiddenSet.id != 3)
-        res
-      else
-        defn.captureRoot.termRef
-
-    def apply(owner: Symbol, reach: Boolean)(using Context): CaptureRef =
-      apply(owner, ownerToHidden(owner, reach))
-
-    def apply(owner: Symbol)(using Context): CaptureRef =
-      apply(owner, ownerToHidden(owner, reach = false))
-
-    def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
-      case Annot(hidden) => Some(hidden)
-      case _ => None
-  end Cap
-
   /** Map each occurrence of cap to a different Sep.Cap instance */
   class FromCap(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
@@ -81,7 +86,7 @@ object Fresh:
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Cap(owner, ownerToHidden(owner, reach))
+          Fresh(owner, ownerToHidden(owner, reach))
         case t @ CapturingType(_, refs) =>
           val savedReach = reach
           if t.isBoxed then reach = true
@@ -99,7 +104,7 @@ object Fresh:
 
     lazy val inverse: BiTypeMap & FollowAliasesMap = new BiTypeMap with FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case t @ Cap(_) => defn.captureRoot.termRef
+        case t @ Fresh(_) => defn.captureRoot.termRef
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
@@ -118,14 +123,14 @@ object Fresh:
 
   /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
    *  with an added property PrintFresh. This addition causes all occurrences of
-   *  `Fresh.Cap` to be printed as `fresh` instead of `cap`, so that one avoids
+   *  `Fresh` to be printed as `fresh` instead of `cap`, so that one avoids
    *  confusion in error messages.
    */
   def printContext(refs: (Type | CaptureSet)*)(using Context): Context =
     def hasCap = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
         x || t.dealiasKeepAnnots.match
-          case Fresh.Cap(_) => false
+          case Fresh(_) => false
           case t: TermRef => t.isCap || this(x, t.widen)
           case x: ThisType => false
           case _ => foldOver(x, t)

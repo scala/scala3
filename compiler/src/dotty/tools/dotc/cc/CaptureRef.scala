@@ -92,12 +92,12 @@ trait CaptureRef extends TypeProxy, ValueType:
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
 
-  /** Is this reference a Fresh.Cap instance? */
+  /** Is this reference a Fresh instance? */
   final def isFresh(using Context): Boolean = this match
-    case Fresh.Cap(_) => true
+    case Fresh(_) => true
     case _ => false
 
-  /** Is this reference the generic root capability `cap` or a Fresh.Cap instance? */
+  /** Is this reference the generic root capability `cap` or a Fresh instance? */
   final def isCapOrFresh(using Context): Boolean = isCap || isFresh
 
   /** Is this reference one of the generic root capabilities `cap` or `cap.rd` ? */
@@ -111,7 +111,7 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def isMaxCapability(using Context): Boolean = this match
     case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
     case Existential.Var(_) => true
-    case Fresh.Cap(_) => true
+    case Fresh(_) => true
     case ReadOnlyCapability(tp1) => tp1.isMaxCapability
     case _ => false
 
@@ -244,9 +244,9 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** This is a maximal capability that subsumes `y` in given context and VarState.
    *  @param canAddHidden  If true we allow maximal capabilities to subsume all other capabilities.
-   *                       We add those capabilities to the hidden set if this is Fresh.Cap
+   *                       We add those capabilities to the hidden set if this is a Fresh instance.
    *                       If false we only accept `y` elements that are already in the
-   *                       hidden set of this Fresh.Cap. The idea is that in a VarState that
+   *                       hidden set of this Fresh instance. The idea is that in a VarState that
    *                       accepts additions we first run `maxSubsumes` with `canAddHidden = false`
    *                       so that new variables get added to the sets. If that fails, we run
    *                       the test again with canAddHidden = true as a last effort before we
@@ -255,7 +255,7 @@ trait CaptureRef extends TypeProxy, ValueType:
   def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
     (this eq y)
     || this.match
-      case Fresh.Cap(hidden) =>
+      case Fresh(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap && canAddHidden && vs.addHidden(hidden, y)
       case _ =>
@@ -287,7 +287,7 @@ trait CaptureRef extends TypeProxy, ValueType:
           this match
             case MaybeCapability(x1) => x1.covers(y1)
             case _ => false
-        case Fresh.Cap(hidden) =>
+        case Fresh(hidden) =>
           hidden.superCaps.exists(this covers _)
         case _ =>
           false

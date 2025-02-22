@@ -21,7 +21,7 @@ import CaptureSet.VarState
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
 
-/** Context property to print Fresh.Cap as "fresh" instead of "cap" */
+/** Context property to print Fresh(...) as "fresh" instead of "cap" */
 val PrintFresh: Key[Unit] = Key()
 
 object ccConfig:
