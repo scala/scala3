@@ -1353,13 +1353,11 @@ object Semantic:
 
       case closureDef(ddef) =>
         val rhs = ddef.getRhs
-        if rhs.isEmpty then Hot
-        else Fun(rhs, thisV, klass)
+        Fun(rhs, thisV, klass)
 
       case PolyFun(ddef) =>
         val rhs = ddef.getRhs
-        if rhs.isEmpty then Hot
-        else Fun(rhs, thisV, klass)
+        Fun(rhs, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
@@ -1413,7 +1411,6 @@ object Semantic:
         // local val definition
         val rhs = vdef.getRhs
         eval(rhs, thisV, klass)
-
 
       case ddef : DefDef =>
         // local method
