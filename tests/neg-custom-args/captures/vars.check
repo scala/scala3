@@ -9,7 +9,7 @@
 25 |    a = g      // error
    |        ^
    |        Found:    (x: String) ->{cap3} String
-   |        Required: String ->{cap1} String
+   |        Required: (x: String) ->{cap1} String
    |
    |        Note that reference (cap3 : CC^), defined in method scope
    |        cannot be included in outer capture set {cap1} of variable a

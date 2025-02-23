@@ -184,7 +184,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case info: MethodType =>
       val isContextual = info.isImplicitMethod
       val capturesRoot = refs == rootSetText
-      if cc.isCaptureCheckingOrSetup && cc.isNotReallyDependent(info) then
+      if cc.isCaptureCheckingOrSetup && info.allParamNamesSynthetic && !info.looksDependent then
         // cc.Setup converts all functions to dependent functions. Undo that when printing.
         toTextFunction(info.paramInfos, info.resType, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
       else

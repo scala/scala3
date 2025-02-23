@@ -1305,6 +1305,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             case defn.RefinedFunctionOf(rinfo: MethodType) =>
               depFun(args, resultType, isContextual, rinfo.paramNames)
             case _ => expected
+        case expected @ defn.RefinedFunctionOf(einfo: MethodType)
+        if einfo.allParamNamesSynthetic =>
+          actual match
+            case defn.RefinedFunctionOf(ainfo: MethodType)
+            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.hasSameLengthAs(einfo.paramNames) =>
+              einfo.derivedLambdaType(paramNames = ainfo.paramNames)
+                .toFunctionType(alwaysDependent = true)
+            case _ => expected
         case _ => expected
       recur(expected)
 
