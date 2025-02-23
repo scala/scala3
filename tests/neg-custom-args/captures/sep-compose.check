@@ -86,7 +86,7 @@
 40 |  p1(f) // error
    |     ^
    |     Separation failure: argument of type  (f : () ->{a} Unit)
-   |     to a function of type (x$0: () => Unit) ->{f} Unit
+   |     to a function of type (() => Unit) ->{f} Unit
    |     corresponds to capture-polymorphic formal parameter x$0 of type  () => Unit
    |     and hides capabilities  {f}.
    |     Some of these overlap with the captures of the function prefix.

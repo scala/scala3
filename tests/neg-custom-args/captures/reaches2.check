@@ -1,24 +1,24 @@
 -- Error: tests/neg-custom-args/captures/reaches2.scala:10:10 ----------------------------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |          ^
-   |reference ps* is not included in the allowed capture set {}
-   |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
+   |     reference ps* is not included in the allowed capture set {}
+   |     of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box A^? ->? A^?
 -- Error: tests/neg-custom-args/captures/reaches2.scala:10:13 ----------------------------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |             ^
-   |reference ps* is not included in the allowed capture set {}
-   |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
+   |     reference ps* is not included in the allowed capture set {}
+   |     of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box A^? ->? A^?
 -- Error: tests/neg-custom-args/captures/reaches2.scala:10:28 ----------------------------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |                            ^
-   |               Separation failure: argument of type  (x$0: A) ->{x} box A^?
-   |               to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |               corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
-   |               and hides capabilities  {x}.
-   |               Some of these overlap with the captures of the second argument with type  (x$0: A) ->{y} box A^?.
+   |                      Separation failure: argument of type  A ->{x} box A^?
+   |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
+   |                      corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
+   |                      and hides capabilities  {x}.
+   |                      Some of these overlap with the captures of the second argument with type  A ->{y} box A^?.
    |
-   |                 Hidden set of current argument        : {x}
-   |                 Hidden footprint of current argument  : {x, ps*}
-   |                 Capture set of second argument        : {y}
-   |                 Footprint set of second argument      : {y, ps*}
-   |                 The two sets overlap at               : {ps*}
+   |                        Hidden set of current argument        : {x}
+   |                        Hidden footprint of current argument  : {x, ps*}
+   |                        Capture set of second argument        : {y}
+   |                        Footprint set of second argument      : {y, ps*}
+   |                        The two sets overlap at               : {ps*}

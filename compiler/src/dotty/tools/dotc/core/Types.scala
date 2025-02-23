@@ -4053,6 +4053,12 @@ object Types extends TypeUtils {
     def isParamDependent(using Context): Boolean =
       paramDependencyStatus == TrueDeps || paramDependencyStatus == CaptureDeps
 
+    /** Like resultDependent || paramDependent, but without attempt to eliminate
+     *  dependencies with de-aliasing
+     */
+    def looksDependent(using Context): Boolean =
+      dependencyStatus != NoDeps || paramDependencyStatus != NoDeps
+
     /** Is there a dependency involving a reference in a capture set, but
      *  otherwise no true result dependency?
      */
