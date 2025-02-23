@@ -4090,6 +4090,10 @@ object Types extends TypeUtils {
         }
         dropDependencies(resultType)
       else resultType
+
+    /** Are all parameter names synthetic? */
+    def allParamNamesSynthetic = paramNames.zipWithIndex.forall: (name, i) =>
+      name == nme.syntheticParamName(i)
   }
 
   abstract case class MethodType(paramNames: List[TermName])(
@@ -4118,7 +4122,6 @@ object Types extends TypeUtils {
 
     def nonErasedParamCount(using Context): Int =
       paramInfos.count(p => !p.hasAnnotation(defn.ErasedParamAnnot))
-
 
     protected def prefixString: String = companion.prefixString
   }

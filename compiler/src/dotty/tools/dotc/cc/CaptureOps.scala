@@ -82,14 +82,6 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
 
-/** This function has the form of a dependent function (i.e. it is a RefinedType with
- *  a MethodType refinement), but there are no dependencies and all parameter names
- *  are synthetic.
- */
-def isNotReallyDependent(info: MethodType)(using Context): Boolean =
-  !info.looksDependent && info.paramNames.zipWithIndex.forall: (name, i) =>
-    name == nme.syntheticParamName(i)
-
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
