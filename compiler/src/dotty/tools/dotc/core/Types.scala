@@ -3952,7 +3952,7 @@ object Types extends TypeUtils {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, _) =>
               tp.info match {
-                case TypeAlias(alias) if depStatus(NoDeps, pre) == TrueDeps => apply(alias)
+                case TypeAlias(alias) if depStatus(NoDeps, pre, forParams = false) == TrueDeps => apply(alias)
                 case _ => mapOver(tp)
               }
             case _ =>
@@ -3966,7 +3966,7 @@ object Types extends TypeUtils {
     private var myDependencyStatus: DependencyStatus = Unknown
     private var myParamDependencyStatus: DependencyStatus = Unknown
 
-    private def depStatus(initial: DependencyStatus, tp: Type)(using Context): DependencyStatus =
+    private def depStatus(initial: DependencyStatus, tp: Type, forParams: Boolean)(using Context): DependencyStatus =
       class DepAcc extends TypeAccumulator[DependencyStatus]:
         def apply(status: DependencyStatus, tp: Type) = compute(status, tp, this)
       def combine(x: DependencyStatus, y: DependencyStatus) =
@@ -3995,11 +3995,13 @@ object Types extends TypeUtils {
           case tp: AnnotatedType =>
             tp match
               case CapturingType(parent, refs) =>
-                (compute(status, parent, theAcc) /: refs.elems) {
+                val status1 = (compute(status, parent, theAcc) /: refs.elems):
                   (s, ref) => ref.stripReach match
-                    case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, CaptureDeps)
+                    case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, TrueDeps)
                     case tp => combine(s, compute(status, tp, theAcc))
-                }
+                if refs.isConst || forParams // We assume capture set variables in parameters don't generate param dependencies
+                then status1
+                else combine(status1, Provisional)
               case _ =>
                 if tp.annot.refersToParamOf(thisLambdaType) then TrueDeps
                 else compute(status, tp.parent, theAcc)
@@ -4023,7 +4025,7 @@ object Types extends TypeUtils {
     private def dependencyStatus(using Context): DependencyStatus =
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
-        val result = depStatus(NoDeps, resType)
+        val result = depStatus(NoDeps, resType, forParams = false)
         if ((result & Provisional) == 0) myDependencyStatus = result
         (result & StatusMask).toByte
       }
@@ -4036,7 +4038,7 @@ object Types extends TypeUtils {
       else {
         val result =
           if (paramInfos.isEmpty) NoDeps
-          else paramInfos.tail.foldLeft(NoDeps)(depStatus(_, _))
+          else paramInfos.tail.foldLeft(NoDeps)(depStatus(_, _, forParams = true))
         if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
@@ -4045,24 +4047,20 @@ object Types extends TypeUtils {
      *  which cannot be eliminated by de-aliasing?
      */
     def isResultDependent(using Context): Boolean =
-      dependencyStatus == TrueDeps || dependencyStatus == CaptureDeps
+      dependencyStatus == TrueDeps
 
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
      */
     def isParamDependent(using Context): Boolean =
-      paramDependencyStatus == TrueDeps || paramDependencyStatus == CaptureDeps
+      paramDependencyStatus == TrueDeps
 
     /** Like resultDependent || paramDependent, but without attempt to eliminate
      *  dependencies with de-aliasing
      */
     def looksDependent(using Context): Boolean =
-      dependencyStatus != NoDeps || paramDependencyStatus != NoDeps
-
-    /** Is there a dependency involving a reference in a capture set, but
-     *  otherwise no true result dependency?
-     */
-    def isCaptureDependent(using Context) = dependencyStatus == CaptureDeps
+      (dependencyStatus & StatusMask) != NoDeps
+      || (paramDependencyStatus & StatusMask) != NoDeps
 
     def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
@@ -4470,8 +4468,7 @@ object Types extends TypeUtils {
     final val Unknown: DependencyStatus = 0      // not yet computed
     final val NoDeps: DependencyStatus = 1       // no dependent parameters found
     final val FalseDeps: DependencyStatus = 2    // all dependent parameters are prefixes of non-depended alias types
-    final val CaptureDeps: DependencyStatus = 3  // dependencies in capture sets under captureChecking, otherwise only false dependencoes
-    final val TrueDeps: DependencyStatus = 4     // some truly dependent parameters exist
+    final val TrueDeps: DependencyStatus = 3     // some truly dependent parameters exist
     final val StatusMask: DependencyStatus = 7   // the bits indicating actual dependency status
     final val Provisional: DependencyStatus = 8  // set if dependency status can still change due to type variable instantiations
   }
