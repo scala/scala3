@@ -161,39 +161,41 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private def toTextFunction(tp: AppliedType, refs: Text = Str("")): Text =
     val AppliedType(tycon, args) = (tp: @unchecked)
     val tsym = tycon.typeSymbol
-    val isGiven = tsym.name.isContextFunction
+    val isContextual = tsym.name.isContextFunction
     val capturesRoot = refs == rootSetText
     val isPure =
       Feature.pureFunsEnabled && !tsym.name.isImpureFunction && !capturesRoot
-    changePrec(GlobalPrec) {
-      val argStr: Text =
-        if args.length == 2
-            && !defn.isDirectTupleNType(args.head)
-            && !isGiven
-        then
-          atPrec(InfixPrec) { argText(args.head) }
-        else
+    toTextFunction(args.init, args.last, refs.provided(!capturesRoot), isContextual, isPure)
+
+  private def toTextFunction(args: List[Type], res: Type, refs: Text,
+      isContextual: Boolean, isPure: Boolean): Text =
+    changePrec(GlobalPrec):
+      val argStr: Text = args match
+        case arg :: Nil if !defn.isDirectTupleNType(arg) && !isContextual =>
+          atPrec(InfixPrec):
+            argText(arg)
+        case _=>
           "("
-          ~ argsText(args.init)
+          ~ argsText(args)
           ~ ")"
-      argStr
-      ~ " " ~ arrow(isGiven, isPure)
-      ~ (refs provided !capturesRoot)
-      ~ " " ~ argText(args.last)
-    }
+      argStr ~ " " ~ arrow(isContextual, isPure) ~ refs ~ " " ~ argText(res)
 
   protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
     case info: MethodType =>
+      val isContextual = info.isImplicitMethod
       val capturesRoot = refs == rootSetText
-      changePrec(GlobalPrec) {
-        "("
-        ~ paramsText(info)
-        ~ ") "
-        ~ arrow(info.isImplicitMethod, isPure && !capturesRoot)
-        ~ (refs provided !capturesRoot)
-        ~ " "
-        ~ toTextMethodAsFunction(info.resultType, isPure)
-      }
+      if cc.isCaptureCheckingOrSetup && cc.isNotReallyDependent(info) then
+        // cc.Setup converts all functions to dependent functions. Undo that when printing.
+        toTextFunction(info.paramInfos, info.resType, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
+      else
+        changePrec(GlobalPrec):
+          "("
+          ~ paramsText(info)
+          ~ ") "
+          ~ arrow(isContextual, isPure && !capturesRoot)
+          ~ refs.provided(!capturesRoot)
+          ~ " "
+          ~ toTextMethodAsFunction(info.resultType, isPure)
     case info: PolyType =>
       changePrec(GlobalPrec) {
         "["
