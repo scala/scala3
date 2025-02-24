@@ -68,8 +68,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     val name = tree.removeAttachment(OriginalName).getOrElse(nme.NO_NAME)
     if tree.srcPos.isSynthetic && tree.symbol == defn.TypeTest_unapply then
       tree.qualifier.tpe.underlying.finalResultType match
-      case AppliedType(_, args) => // tycon.typeSymbol == defn.TypeTestClass
-        val res = args(1) // T in TypeTest[-S, T]
+      case AppliedType(tycon, args) =>
+        val res =
+          if tycon.typeSymbol == defn.TypeTestClass then args(1) // T in TypeTest[-S, T]
+          else if tycon.typeSymbol == defn.TypeableType then args(0) // T in Typeable[T]
+          else return tree
         val target = res.dealias.typeSymbol
         resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
       case _ =>
