@@ -113,8 +113,6 @@ object Test extends App {
 
   /////////////////// elimination of map ///////////////////
 
-  import scala.language.experimental.betterFors
-
   @tailrec
   def pair[B](xs: List[Int], ys: List[B], n: Int): List[(Int, B)] =
     if n == 0 then xs.zip(ys)
