@@ -275,14 +275,13 @@ class CompilationTests {
       val a0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
       val a1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
       val b1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
-      val a0b1 = a0 + ":" + b1
 
       val tests = List(
         compileFile("tests/init/tasty-error/v1/A.scala", tastyErrorOptions)(tastyErrorGroup),
         compileFile("tests/init/tasty-error/v1/B.scala", tastyErrorOptions.withClasspath(a1))(tastyErrorGroup),
         compileFile("tests/init/tasty-error/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
       ).map(_.keepOutput.checkCompile())
-      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0b1))(tastyErrorGroup).checkExpectedErrors()
+      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0 + ":" + b1))(tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }

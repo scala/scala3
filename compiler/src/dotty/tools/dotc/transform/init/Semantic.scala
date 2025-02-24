@@ -738,8 +738,7 @@ object Semantic:
               else
                 reporter.reportAll(tryReporter.errors)
                 extendTrace(ddef) {
-                  val rhs = ddef.getRhs
-                  eval(rhs, ref, cls, cacheResult = true)
+                  eval(ddef.getRhs, ref, cls, cacheResult = true)
                 }
             else if ref.canIgnoreMethodCall(target) then
               Hot
@@ -801,13 +800,10 @@ object Semantic:
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { init(tpl, ref, cls) }
             else
-              val rhs = ddef.getRhs
-              if rhs.isEmpty then Hot
-              else
-                val initCall = rhs match
-                  case Block(call :: _, _) => call
-                  case call => call
-                extendTrace(ddef) { eval(initCall, ref, cls) }
+              val initCall = ddef.getRhs match
+                case Block(call :: _, _) => call
+                case call => call
+              extendTrace(ddef) { eval(initCall, ref, cls) }
             end if
           else
             Hot
@@ -823,10 +819,7 @@ object Semantic:
               extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
               ref
             else
-              extendTrace(ddef) {
-                val rhs = ddef.getRhs
-                eval(rhs, ref, cls, cacheResult = true)
-              }
+              extendTrace(ddef) { eval(ddef.getRhs, ref, cls, cacheResult = true) }
           else if ref.canIgnoreMethodCall(ctor) then
             Hot
           else
@@ -936,9 +929,7 @@ object Semantic:
 
               case Cold => Cold
 
-              case ref: Ref =>
-                val rhs = vdef.getRhs
-                eval(rhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
+              case ref: Ref => eval(vdef.getRhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
               case _ =>
                  report.warning("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
                  Hot
@@ -1352,12 +1343,10 @@ object Semantic:
           }
 
       case closureDef(ddef) =>
-        val rhs = ddef.getRhs
-        Fun(rhs, thisV, klass)
+        Fun(ddef.getRhs, thisV, klass)
 
       case PolyFun(ddef) =>
-        val rhs = ddef.getRhs
-        Fun(rhs, thisV, klass)
+        Fun(ddef.getRhs, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
@@ -1409,8 +1398,7 @@ object Semantic:
 
       case vdef : ValDef =>
         // local val definition
-        val rhs = vdef.getRhs
-        eval(rhs, thisV, klass)
+        eval(vdef.getRhs, thisV, klass)
 
       case ddef : DefDef =>
         // local method
