@@ -102,11 +102,9 @@ case class TemplateFile(
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}"))
     )
 
-    def asJavaElement(o: Object): Object = o match
-      case m: Map[?, ?] => m.transform {
-        case (k: String, v: Object) => asJavaElement(v)
-      }.asJava
-      case l: List[?] => l.map(x => asJavaElement(x.asInstanceOf[Object])).asJava
+    def asJavaElement(o: Any): Any = o match
+      case m: Map[?, ?] => m.transform { (k, v) => asJavaElement(v) }.asJava
+      case l: List[?] => l.map(asJavaElement).asJava
       case other => other
 
     // Library requires mutable maps..

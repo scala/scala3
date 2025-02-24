@@ -1383,30 +1383,31 @@ trait Implicits:
             if alt1.isExtension then
               // Fall back: if both results are extension method applications,
               // compare the extension methods instead of their wrappers.
-              def stripExtension(alt: SearchSuccess) = methPart(stripApply(alt.tree)).tpe
-              (stripExtension(alt1), stripExtension(alt2)) match
-                case (ref1: TermRef, ref2: TermRef) =>
-                  // ref1 and ref2 might refer to type variables owned by
-                  // alt1.tstate and alt2.tstate respectively, to compare the
-                  // alternatives correctly we need a TyperState that includes
-                  // constraints from both sides, see
-                  // tests/*/extension-specificity2.scala for test cases.
-                  val constraintsIn1 = alt1.tstate.constraint ne ctx.typerState.constraint
-                  val constraintsIn2 = alt2.tstate.constraint ne ctx.typerState.constraint
-                  def exploreState(alt: SearchSuccess): TyperState =
-                    alt.tstate.fresh(committable = false)
-                  val comparisonState =
-                    if constraintsIn1 && constraintsIn2 then
-                      exploreState(alt1).mergeConstraintWith(alt2.tstate)
-                    else if constraintsIn1 then
-                      exploreState(alt1)
-                    else if constraintsIn2 then
-                      exploreState(alt2)
-                    else
-                      ctx.typerState
+              def stripExtension(alt: SearchSuccess) =
+                methPart(stripApply(alt.tree)).tpe: @unchecked match { case ref: TermRef => ref }
+              val ref1 = stripExtension(alt1)
+              val ref2 = stripExtension(alt2)
+              // ref1 and ref2 might refer to type variables owned by
+              // alt1.tstate and alt2.tstate respectively, to compare the
+              // alternatives correctly we need a TyperState that includes
+              // constraints from both sides, see
+              // tests/*/extension-specificity2.scala for test cases.
+              val constraintsIn1 = alt1.tstate.constraint ne ctx.typerState.constraint
+              val constraintsIn2 = alt2.tstate.constraint ne ctx.typerState.constraint
+              def exploreState(alt: SearchSuccess): TyperState =
+                alt.tstate.fresh(committable = false)
+              val comparisonState =
+                if constraintsIn1 && constraintsIn2 then
+                  exploreState(alt1).mergeConstraintWith(alt2.tstate)
+                else if constraintsIn1 then
+                  exploreState(alt1)
+                else if constraintsIn2 then
+                  exploreState(alt2)
+                else
+                  ctx.typerState
 
-                  diff = inContext(searchContext().withTyperState(comparisonState)):
-                    compare(ref1, ref2, preferGeneral = true)
+              diff = inContext(searchContext().withTyperState(comparisonState)):
+                compare(ref1, ref2, preferGeneral = true)
             else // alt1 is a conversion, prefer extension alt2 over it
               diff = -1
           if diff < 0 then alt2
