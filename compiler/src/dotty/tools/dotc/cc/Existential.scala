@@ -372,20 +372,15 @@ object Existential:
   end mapCap
 
   /** Map `cap` in function results to fresh existentials */
-  def mapCapInResults(fail: Message => Unit)(using Context): TypeMap = new:
-
-    def mapFunOrMethod(tp: Type, args: List[Type], res: Type): Type =
-      val args1 = atVariance(-variance)(args.map(this))
-      val res1 = res match
-        case res: MethodType => mapFunOrMethod(res, res.paramInfos, res.resType)
-        case res: PolyType => mapFunOrMethod(res, Nil, res.resType) // TODO: Also map bounds of PolyTypes
-        case _ => mapCap(apply(res), fail)
-          //.showing(i"map cap res $res / ${apply(res)} of $tp = $result")
-      tp.derivedFunctionOrMethod(args1, res1)
-
+  def mapCapInResults(fail: Message => Unit)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
     def apply(t: Type): Type = t match
-      case FunctionOrMethod(args, res) if variance > 0 && !isAliasFun(t) =>
-        mapFunOrMethod(t, args, res)
+      case defn.RefinedFunctionOf(mt) =>
+        val mt1 = apply(mt)
+        if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
+        else t
+      case t: MethodType if variance > 0 && !t.resType.isInstanceOf[MethodOrPoly] =>
+        val t1 = mapOver(t).asInstanceOf[MethodType]
+        t1.derivedLambdaType(resType = mapCap(t1.resType, fail))
       case CapturingType(parent, refs) =>
         t.derivedCapturingType(this(parent), refs)
       case Existential(_, _) =>
@@ -393,7 +388,7 @@ object Existential:
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
       case _ =>
-        mapOver(t)
+        mapFollowingAliases(t)
   end mapCapInResults
 
   /** Is `mt` a method represnting an existential type when used in a refinement? */
