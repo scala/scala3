@@ -26,10 +26,10 @@ on:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
 
-# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag) 
+# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
 # For example it would:
 # - terminate previous PR CI execution after pushing more changes to the same PR branch
-# - terminate previous on-push CI run after merging new PR to main 
+# - terminate previous on-push CI run after merging new PR to main
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -60,7 +60,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -86,7 +86,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -111,7 +111,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -165,7 +165,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -227,7 +227,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -356,7 +356,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -409,7 +409,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -468,7 +468,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -527,7 +527,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -586,7 +586,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -632,7 +632,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -693,7 +693,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -765,7 +765,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
+        # - /nfs-cache/.develocity/build-cache:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -925,7 +925,7 @@ jobs:
           scala3-${{ env.RELEASE_TAG }}*.zip \
           scala3-${{ env.RELEASE_TAG }}*.tar.gz \
           scala3-${{ env.RELEASE_TAG }}*.sha256 \
-          scala3-${{ env.RELEASE_TAG }}.msi 
+          scala3-${{ env.RELEASE_TAG }}.msi
 
       - name: Publish Release
         run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
