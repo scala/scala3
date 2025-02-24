@@ -180,7 +180,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp: MethodOrPoly => tp // don't box results of methods outside refinements
       case _ => recur(tp)
 
-  trait SetupTypeMap extends FollowAliasesMap:
+  private trait SetupTypeMap extends FollowAliasesMap:
     private var isTopLevel = true
 
     protected def innerApply(tp: Type): Type
@@ -191,6 +191,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       try innerApply(tp)
       finally isTopLevel = saved
 
+    /** Map parametric functions with results that have a capture set somewhere
+     *  to dependent functions.
+     */
     protected def normalizeFunctions(tp: Type, original: Type)(using Context): Type = tp match
       case AppliedType(tycon, args)
       if defn.isNonRefinedFunction(tp) && isTopLevel =>
@@ -203,6 +206,38 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
           case _ => tp
       case _ => tp
+
+    /** Pull out an embedded capture set from a part of `tp` */
+    def normalizeCaptures(tp: Type)(using Context): Type = tp match
+      case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
+        CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
+      case tp: RecType =>
+        tp.parent match
+          case parent @ CapturingType(parent1, refs) =>
+            CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
+          case _ =>
+            tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
+                // by `mapInferred`. Hence if the underlying type admits capture variables
+                // a variable was already added, and the first case above would apply.
+      case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
+        assert(tp1.isBoxed == tp2.isBoxed)
+        CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
+      case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
+        assert(tp1.isBoxed == tp2.isBoxed)
+        CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
+      case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
+        CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
+      case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
+        CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
+      case tp @ AppliedType(tycon, args)
+      if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
+        tp.derivedAppliedType(tycon, args.mapConserve(box))
+      case tp: RealTypeBounds =>
+        tp.derivedTypeBounds(tp.lo, box(tp.hi))
+      case tp: LazyRef =>
+        normalizeCaptures(tp.ref)
+      case _ =>
+        tp
 
   end SetupTypeMap
 
@@ -292,7 +327,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   3. Add universal capture sets to types deriving from Capability
    *   4. Map `cap` in function result types to existentially bound variables.
    *   5. Schedule deferred well-formed tests for types with retains annotations.
-   *  6. Perform normalizeCaptures
+   *   6. Perform normalizeCaptures
    */
   private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree)(using Context): Type =
 
@@ -856,38 +891,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else t
       case Existential(_) => t
       case _ => mapFollowingAliases(t)
-
-  /** Pull out an embedded capture set from a part of `tp` */
-  def normalizeCaptures(tp: Type)(using Context): Type = tp match
-    case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
-      CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
-    case tp: RecType =>
-      tp.parent match
-        case parent @ CapturingType(parent1, refs) =>
-          CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
-        case _ =>
-          tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
-              // by `mapInferred`. Hence if the underlying type admits capture variables
-              // a variable was already added, and the first case above would apply.
-    case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-      assert(tp1.isBoxed == tp2.isBoxed)
-      CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
-    case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-      assert(tp1.isBoxed == tp2.isBoxed)
-      CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
-    case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
-      CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
-    case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
-      CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
-    case tp @ AppliedType(tycon, args)
-    if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
-      tp.derivedAppliedType(tycon, args.mapConserve(box))
-    case tp: RealTypeBounds =>
-      tp.derivedTypeBounds(tp.lo, box(tp.hi))
-    case tp: LazyRef =>
-      normalizeCaptures(tp.ref)
-    case _ =>
-      tp
 
   /** Run setup on a compilation unit with given `tree`.
    *  @param recheckDef   the function to run for completing a val or def
