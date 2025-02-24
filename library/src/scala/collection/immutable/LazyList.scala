@@ -28,35 +28,49 @@ import scala.runtime.Statics
   *
   *  Elements are memoized; that is, the value of each element is computed at most once.
   *
-  *  Elements are computed in-order and are never skipped. In other words,
-  *  accessing the tail causes the head to be computed first.
+  *  Elements are computed in order and are never skipped.
+  *  As a consequence, accessing the tail causes the head to be computed first.
   *
   *  How lazy is a `LazyList`? When you have a value of type `LazyList`, you
-  *  don't know yet whether the list is empty or not. If you learn that it is non-empty,
-  *  then you also know that the head has been computed. But the tail is itself
-  *  a `LazyList`, whose emptiness-or-not might remain undetermined.
+  *  don't know yet whether the list is empty.
+  *  We say that it is lazy in its head.
+  *  If you have tested that it is non-empty,
+  *  then you also know that the head has been computed.
+  *
+  *  It is also lazy in its tail, which is also a `LazyList`.
+  *  You don't know whether the tail is empty until it is "forced", which is to say,
+  *  until an element of the tail is computed.
+  *
+  *  These important properties of `LazyList` depend on its construction using `#::` (or `#:::`).
+  *  That operator is analogous to the "cons" of a strict `List`, `::`.
+  *  It is "right-associative", so that the collection goes on the "right",
+  *  and the element on the left of the operator is prepended to the collection.
+  *  However, unlike the cons of a strict `List`, `#::` is lazy in its parameter,
+  *  which is the element prepended to the left, and also lazy in its right-hand side,
+  *  which is the `LazyList` being prepended to.
+  *  (That is accomplished by implicitly wrapping the `LazyList`, as shown in the Scaladoc.)
+  *
+  *  Other combinators from the collections API do not preserve this laziness.
+  *  In particular, `++`, or `concat`, is "eager" or "strict" in its parameter
+  *  and should not be used to compose `LazyList`s.
   *
   *  A `LazyList` may be infinite. For example, `LazyList.from(0)` contains
-  *  all of the natural numbers 0, 1, 2, and so on. For infinite sequences,
+  *  all of the natural numbers `0`, `1`, `2`, ... For infinite sequences,
   *  some methods (such as `count`, `sum`, `max` or `min`) will not terminate.
   *
-  *  Here is an example:
+  *  Here is an example showing the Fibonacci sequence,
+  *  which may be evaluated to an arbitrary number of elements:
   *
   *  {{{
   *  import scala.math.BigInt
   *  object Main extends App {
   *    val fibs: LazyList[BigInt] =
-  *      BigInt(0) #:: BigInt(1) #:: fibs.zip(fibs.tail).map{ n => n._1 + n._2 }
-  *    fibs.take(5).foreach(println)
+  *      BigInt(0) #:: BigInt(1) #:: fibs.zip(fibs.tail).map(n => n._1 + n._2)
+  *    println {
+  *      fibs.take(5).mkString(", ")
+  *    }
   *  }
-  *
-  *  // prints
-  *  //
-  *  // 0
-  *  // 1
-  *  // 1
-  *  // 2
-  *  // 3
+  *  // prints: 0, 1, 1, 2, 3
   *  }}}
   *
   *  To illustrate, let's add some output to the definition `fibs`, so we
@@ -64,13 +78,12 @@ import scala.runtime.Statics
   *
   *  {{{
   *  import scala.math.BigInt
+  *  import scala.util.chaining._
   *  object Main extends App {
   *    val fibs: LazyList[BigInt] =
   *      BigInt(0) #:: BigInt(1) #::
-  *        fibs.zip(fibs.tail).map{ n =>
-  *          println(s"Adding \${n._1} and \${n._2}")
-  *          n._1 + n._2
-  *        }
+  *        fibs.zip(fibs.tail).map(n => (n._1 + n._2)
+  *        .tap(sum => println(s"Adding ${n._1} and ${n._2} => $sum")))
   *    fibs.take(5).foreach(println)
   *    fibs.take(6).foreach(println)
   *  }
@@ -79,11 +92,11 @@ import scala.runtime.Statics
   *  //
   *  // 0
   *  // 1
-  *  // Adding 0 and 1
+  *  // Adding 0 and 1 => 1
   *  // 1
-  *  // Adding 1 and 1
+  *  // Adding 1 and 1 => 2
   *  // 2
-  *  // Adding 1 and 2
+  *  // Adding 1 and 2 => 3
   *  // 3
   *
   *  // And then prints
@@ -93,35 +106,28 @@ import scala.runtime.Statics
   *  // 1
   *  // 2
   *  // 3
-  *  // Adding 2 and 3
+  *  // Adding 2 and 3 => 5
   *  // 5
   *  }}}
   *
-  *  Note that the definition of `fibs` uses `val` not `def`.  The memoization of the
-  *  `LazyList` requires us to have somewhere to store the information and a `val`
-  *  allows us to do that.
+  *  Note that the definition of `fibs` uses `val` not `def`.
+  *  Memoization of the `LazyList` requires us to retain a reference to the computed values.
   *
-  *  Further remarks about the semantics of `LazyList`:
+  *  `LazyList` is considered an immutable data structure, even though its elements are computed on demand.
+  *  Once the values are memoized they do not change.
+  *  Moreover, the `LazyList` itself is defined once and references to it are interchangeable.
+  *  Values that have yet to be memoized still "exist"; they simply haven't been computed yet.
   *
-  *  - Though the `LazyList` changes as it is accessed, this does not
-  *  contradict its immutability.  Once the values are memoized they do
-  *  not change. Values that have yet to be memoized still "exist", they
-  *  simply haven't been computed yet.
+  *  Memoization can be a source of memory leaks and must be used with caution.
+  *  It avoids recomputing elements of the list, but if a reference to the head
+  *  is retained unintentionally, then all elements will be retained.
   *
-  *  - One must be cautious of memoization; it can eat up memory if you're not
-  *  careful.  That's because memoization of the `LazyList` creates a structure much like
-  *  [[scala.collection.immutable.List]].  As long as something is holding on to
-  *  the head, the head holds on to the tail, and so on recursively.
-  *  If, on the other hand, there is nothing holding on to the head (e.g. if we used
-  *  `def` to define the `LazyList`) then once it is no longer being used directly,
-  *  it disappears.
+  *  The caveat that all elements are computed in order means
+  *  that some operations, such as [[drop]], [[dropWhile]], [[flatMap]] or [[collect]],
+  *  may process a large number of intermediate elements before returning.
   *
-  *  - Note that some operations, including [[drop]], [[dropWhile]],
-  *  [[flatMap]] or [[collect]] may process a large number of intermediate
-  *  elements before returning.
-  *
-  *  Here's another example.  Let's start with the natural numbers and iterate
-  *  over them.
+  *  Here's an example that illustrates these behaviors.
+  *  Let's begin with an iteration of the natural numbers.
   *
   *  {{{
   *  // We'll start with a silly iteration
@@ -144,10 +150,10 @@ import scala.runtime.Statics
   *  val it1 = lazylist1.iterator
   *  loop("Iterator1: ", it1.next(), it1)
   *
-  *  // We can redefine this LazyList such that all we have is the Iterator left
-  *  // and allow the LazyList to be garbage collected as required.  Using a def
-  *  // to provide the LazyList ensures that no val is holding onto the head as
-  *  // is the case with lazylist1
+  *  // We can redefine this LazyList such that we retain only a reference to its Iterator.
+  *  // That allows the LazyList to be garbage collected.
+  *  // Using `def` to produce the LazyList in a method ensures
+  *  // that no val is holding onto the head, as with lazylist1.
   *  def lazylist2: LazyList[Int] = {
   *    def loop(v: Int): LazyList[Int] = v #:: loop(v + 1)
   *    loop(0)
@@ -190,19 +196,18 @@ import scala.runtime.Statics
   *  }
   *  }}}
   *
-  *  The head, the tail and whether the list is empty or not can be initially unknown.
+  *  The head, the tail and whether the list is empty is initially unknown.
   *  Once any of those are evaluated, they are all known, though if the tail is
-  *  built with `#::` or `#:::`, it's content still isn't evaluated. Instead, evaluating
-  *  the tails content is deferred until the tails empty status, head or tail is
+  *  built with `#::` or `#:::`, its content still isn't evaluated. Instead, evaluating
+  *  the tail's content is deferred until the tail's empty status, head or tail is
   *  evaluated.
   *
-  *  Delaying the evaluation of whether a LazyList is empty or not until it's needed
+  *  Delaying the evaluation of whether a LazyList is empty until it's needed
   *  allows LazyList to not eagerly evaluate any elements on a call to `filter`.
   *
-  *  Only when it's further evaluated (which may be never!) any of the elements gets
-  *  forced.
+  *  Only when it's further evaluated (which may be never!) do any of the elements get forced.
   *
-  *  for example:
+  *  For example:
   *
   *  {{{
   *  def tailWithSideEffect: LazyList[Nothing] = {
@@ -227,8 +232,8 @@ import scala.runtime.Statics
   *  }}}
   *
   *  This exception occurs when a `LazyList` is attempting to derive its next element
-  *  from itself, and is attempting to read the element currently being evaluated. A
-  *  trivial example of such might be
+  *  from itself, and is attempting to read the element currently being evaluated.
+  *  As a trivial example:
   *
   *  {{{
   *  lazy val a: LazyList[Int] = 1 #:: 2 #:: a.filter(_ > 2)
@@ -242,7 +247,7 @@ import scala.runtime.Statics
   *  @tparam A    the type of the elements contained in this lazy list.
   *
   *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#lazylists "Scala's Collection Library overview"]]
-  *  section on `LazyLists` for more information.
+  *  section on `LazyLists` for a summary.
   *  @define Coll `LazyList`
   *  @define coll lazy list
   *  @define orderDependent
