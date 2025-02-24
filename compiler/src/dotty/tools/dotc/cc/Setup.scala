@@ -188,7 +188,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     final def apply(tp: Type) =
       val saved = isTopLevel
       if variance < 0 then isTopLevel = false
-      try innerApply(tp)
+      try tp match
+        case defn.RefinedFunctionOf(rinfo: MethodType) =>
+          val rinfo1 = apply(rinfo)
+          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
+          else tp
+        case _ =>
+          innerApply(tp)
       finally isTopLevel = saved
 
     /** Map parametric functions with results that have a capture set somewhere
@@ -291,10 +297,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
             // Drop explicit retains annotations
             apply(parent)
-          case defn.RefinedFunctionOf(rinfo: MethodType) =>
-            val rinfo1 = apply(rinfo)
-            if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-            else tp
           case Existential(_, unpacked) =>
             // drop the existential, the bound variables will be replaced by capture set variables
             apply(unpacked)
