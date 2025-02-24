@@ -1,0 +1,50 @@
+------ UserName.T - Directly -------
+Original: Main_2$package.UserName.T
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ UserName.T - Directly -------
+Original: Main_2$package.UserName
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ ForeignWrapper1[UserName.T] -------
+Original: Main_2$package.UserName.T
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ ForeignWrapper2[UserName.T] -------
+Original: Main_2$package.UserName.T
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ ForeignWrapper1[UserName] -------
+Original: Main_2$package.UserName
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ ForeignWrapper2[UserName] -------
+Original: Main_2$package.UserName
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ Wrapper1[UserName.T] -------
+Original: Main_2$package.UserName.T
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ Wrapper2[UserName.T] -------
+Original: Main_2$package.UserName.T
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ Wrapper1[UserName] -------
+Original: Main_2$package.UserName
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
+------ Wrapper2[UserName] -------
+Original: Main_2$package.UserName
+Dealias: Main_2$package.UserName.T
+Dealias dealias: Main_2$package.UserName.T
+    
