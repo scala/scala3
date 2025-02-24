@@ -2,25 +2,42 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
+import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
-import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
-import java.lang.System.{lineSeparator => EOL}
+import java.io.ByteArrayOutputStream
+import java.io.File as JFile
+import java.io.IOException
+import java.io.PrintStream
+import java.lang.System.lineSeparator as EOL
+import java.lang.management.ManagementFactory
 import java.net.URL
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, NoSuchFileException, Path, Paths}
-import java.nio.charset.{Charset, StandardCharsets}
 import java.text.SimpleDateFormat
-import java.util.{HashMap, Timer, TimerTask}
-import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
-
+import java.util.HashMap
+import java.util.Timer
+import java.util.TimerTask
+import java.util.concurrent.Executors as JExecutors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import scala.collection.mutable
-import scala.io.{Codec, Source}
+import scala.collection.mutable.ListBuffer
+import scala.io.Codec
+import scala.io.Source
 import scala.jdk.CollectionConverters.*
-import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
+import scala.language.unsafeNulls
+import scala.util.Failure as TryFailure
+import scala.util.Random
+import scala.util.Success as TrySuccess
+import scala.util.Try
+import scala.util.Using
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
-import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts.*
@@ -32,7 +49,6 @@ import dotc.reporting.Diagnostic
 import dotc.config.Config
 import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
-import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -70,6 +86,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def outDir: JFile
     def flags: TestFlags
     def sourceFiles: Array[JFile]
+    def checkFile: Option[JFile]
 
     def runClassPath: String = outDir.getPath + JFile.pathSeparator + flags.runClassPath
 
@@ -183,6 +200,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     decompilation: Boolean = false
   ) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
+
+    def checkFile: Option[JFile] =
+      sourceFiles.map(f => new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check")))
+        .find(_.exists())
   }
 
   /** A test source whose files will be compiled separately according to their
@@ -214,6 +235,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .map { (g, f) => (g, f.sorted) }
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
+
+    def checkFile: Option[JFile] =
+      val platform =
+        if allToolArgs.getOrElse(ToolName.Target, Nil).nonEmpty then s".$testPlatform"
+        else ""
+      Some(new JFile(dir.getPath + platform + ".check")).filter(_.exists)
   }
 
   protected def shouldSkipTestSource(testSource: TestSource): Boolean = false
@@ -226,7 +253,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         rerun.exists(dir.getPath.contains)
     })
 
-  private trait CompilationLogic { this: Test =>
+  protected trait CompilationLogic { this: Test =>
     def suppressErrors = false
 
     /**
@@ -258,12 +285,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     final def countErrors  (reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._1
     final def countWarnings(reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._2
     final def reporterFailed(r: TestReporter) = r.errorCount > 0
-
-    /**
-     * For a given test source, returns a check file against which the result of the test run
-     * should be compared. Is used by implementations of this trait.
-     */
-    final def checkFile(testSource: TestSource): Option[JFile] = (CompilationLogic.checkFilePath(testSource)).filter(_.exists)
 
     /**
      * Checks if the given actual lines are the same as the ones in the check file.
@@ -340,26 +361,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
-  object CompilationLogic {
-    private[ParallelTesting] def checkFilePath(testSource: TestSource) = testSource match {
-      case ts: JointCompilationSource =>
-        ts.files.collectFirst {
-          case f if !f.isDirectory =>
-            new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
-        }
-      case ts: SeparateCompilationSource =>
-        val platform =
-          if testSource.allToolArgs.getOrElse(ToolName.Target, Nil).nonEmpty then
-            s".$testPlatform"
-          else ""
-        Option(new JFile(ts.dir.getPath + platform + ".check"))
-    }
-  }
-
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  private class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
+  protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
     import summaryReport._
 
@@ -470,7 +475,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** Print a progress bar for the current `Test` */
     private def updateProgressMonitor(start: Long): Unit =
-      if testSourcesCompleted < sourceCount then
+      if testSourcesCompleted < sourceCount && !isUserDebugging then
         realStdout.print(s"\r${makeProgressBar(start)}")
 
     private def finishProgressMonitor(start: Long): Unit =
@@ -735,7 +740,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private def mkReporter = TestReporter.reporter(realStdout, logLevel = mkLogLevel)
 
     protected def diffCheckfile(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
+      testSource.checkFile.foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
     private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
       reporters.flatMap(_.consoleOutput.split("\n")).toList
@@ -903,15 +908,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       verifyOutput(testSource, reporters, logger)
   }
 
-  private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private var didAddNoRunWarning = false
-    private def addNoRunWarning() = if (!didAddNoRunWarning) {
+    protected def addNoRunWarning() = if (!didAddNoRunWarning) {
       didAddNoRunWarning = true
       summaryReport.addStartingMessage {
         """|WARNING
            |-------
-           |Run tests were only compiled, not run - this is due to the `dotty.tests.norun`
+           |Run and debug tests were only compiled, not run - this is due to the `dotty.tests.norun`
            |property being set
            |""".stripMargin
       }
@@ -938,7 +943,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      verifyOutput(checkFile(testSource), testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
+      verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
   }
 
   private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
@@ -1162,12 +1167,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `aggregateTests` in the companion, which will ensure that aggregation is allowed.
    */
   final class CompilationTest private (
-    private[ParallelTesting] val targets: List[TestSource],
-    private[ParallelTesting] val times: Int,
-    private[ParallelTesting] val shouldDelete: Boolean,
-    private[ParallelTesting] val threadLimit: Option[Int],
-    private[ParallelTesting] val shouldFail: Boolean,
-    private[ParallelTesting] val shouldSuppressOutput: Boolean
+    val targets: List[TestSource],
+    val times: Int,
+    val shouldDelete: Boolean,
+    val threadLimit: Option[Int],
+    val shouldFail: Boolean,
+    val shouldSuppressOutput: Boolean
   ) {
     import org.junit.Assert.fail
 
@@ -1177,7 +1182,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def this(targets: List[TestSource]) =
       this(targets, 1, true, None, false, false)
 
-    def checkFilePaths: List[JFile] = targets.map(CompilationLogic.checkFilePath).flatten
+    def checkFiles: List[JFile] = targets.flatMap(_.checkFile)
 
     def copy(targets: List[TestSource],
       times: Int = times,
@@ -1270,7 +1275,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       checkFail(test, "Rewrite")
     }
 
-    private def checkPass(test: Test, desc: String): this.type =
+    def checkPass(test: Test, desc: String): this.type =
       test.executeTestSuite()
 
       cleanup()
@@ -1843,6 +1848,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     flags.options.sliding(2).collectFirst {
       case Array("-encoding", encoding) => Charset.forName(encoding)
     }.getOrElse(StandardCharsets.UTF_8)
+
+  def isUserDebugging: Boolean =
+    val mxBean = ManagementFactory.getRuntimeMXBean
+    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
 }
 
 object ParallelTesting {

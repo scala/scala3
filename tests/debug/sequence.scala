@@ -6,6 +6,6 @@ object Test {
     a = a * 8         // [step: 9 * 9]
     a = 9 * 9         // [step: 34 * 23]
     a = 34 * 23       // [step: print]
-    print(a)          // [cont]
+    println(a)          // [cont]
   }
 }
