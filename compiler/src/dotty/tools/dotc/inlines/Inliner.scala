@@ -399,7 +399,9 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  type aliases, add proxy definitions to `opaqueProxies` that expose these aliases.
    */
   private def addOpaqueProxies(tp: Type, span: Span, forThisProxy: Boolean)(using Context): Unit =
-    tp.foreachPart {
+    val foreachTpPart =
+      (p: Type => Unit) => if (forThisProxy) tp.foreachPartWithoutTypeParams(p) else tp.foreachPart(p)
+    foreachTpPart {
       case ref: TermRef =>
         for cls <- ref.widen.baseClasses do
           if cls.containsOpaques
