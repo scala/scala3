@@ -473,7 +473,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
       def apply(sym: Symbol): Ref =
         assert(sym.isTerm, s"expected a term symbol, but received $sym")
-        val refTree = tpd.ref(sym) match
+        val refTree = tpd.generalisedRef(sym) match
           case t @ tpd.This(ident) => // not a RefTree, so we need to work around this - issue #19732
             // ident in `This` can be a TypeIdent of sym, so we manually prepare the ref here,
             // knowing that the owner is actually `This`.
