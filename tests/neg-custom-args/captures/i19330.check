@@ -7,7 +7,7 @@
 22 |  val bad: bar.T = foo(bar) // error
    |                   ^^^^^^^^
    |                   Found:    () => Logger^
-   |                   Required: () ->{fresh} (ex$7: caps.Exists) -> Logger^{ex$7}
+   |                   Required: () ->{fresh} Logger^{fresh}
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
