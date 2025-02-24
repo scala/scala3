@@ -538,6 +538,14 @@ object Types extends TypeUtils {
     final def foreachPart(p: Type => Unit, stopAt: StopAt = StopAt.None)(using Context): Unit =
       new ForeachAccumulator(p, stopAt).apply((), this)
 
+    final def foreachPartWithoutTypeParams(p: Type => Unit, stopAt: StopAt = StopAt.None)(using Context): Unit =
+      new ForeachAccumulator(p, stopAt) {
+        override def apply(x: Unit, tp: Type) = tp match
+          case AppliedType(tycon, _) => super.apply(x, tycon)
+          case other => super.apply(x, other)
+      }.apply((), this)
+
+
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
      *
