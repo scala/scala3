@@ -292,6 +292,13 @@ abstract class Source extends Iterator[Char] with Closeable {
    */
   @nowarn("cat=deprecation")
   object RelaxedPosition extends Position {
+
+    // IMPORTANT: 
+    // Scala 3 removes unnecessary outer pointers while Scala 2 doesn't
+    // This is important to capture the outer pointer when compiling with
+    // dotc to maintain our binary compatibility requirements
+    private val _ = Source.this
+
     def checkInput(line: Int, column: Int): Unit = ()
   }
   object RelaxedPositioner extends Positioner(RelaxedPosition) { }

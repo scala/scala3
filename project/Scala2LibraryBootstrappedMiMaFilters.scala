@@ -74,8 +74,6 @@ object Scala2LibraryBootstrappedMiMaFilters {
         "scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this",
         "scala.concurrent.BatchingExecutor#AbstractBatch.this",
         "scala.concurrent.Channel#LinkedList.this",
-        "scala.Enumeration#ValueOrdering.this",
-        "scala.io.Source#RelaxedPosition.this",
         "scala.collection.IterableOnceOps#Maximized.this", // New in 2.13.11: private inner class
         "scala.util.Properties.<clinit>",
         "scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5",

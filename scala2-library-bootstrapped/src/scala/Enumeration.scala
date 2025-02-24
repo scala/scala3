@@ -272,6 +272,12 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** An ordering by id for values of this set */
   implicit object ValueOrdering extends Ordering[Value] {
+
+    // IMPORTANT: 
+    // Scala 3 removes unnecessary outer pointers while Scala 2 doesn't
+    // This is important to capture the outer pointer when compiling with
+    // dotc to maintain our binary compatibility requirements
+    private val _ = Enumeration.this
     def compare(x: Value, y: Value): Int = x compare y
   }
 
