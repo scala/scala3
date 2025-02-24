@@ -1171,7 +1171,7 @@ object RefChecks {
         def explicit = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true)
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
       val explicitInfo = sym.info.explicit // consider explicit value params
-      val target = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
+      val target = explicitInfo.firstParamTypes.head.typeSymbol.info // required for extension method, the putative receiver
       val methTp = explicitInfo.resultType // skip leading implicits and the "receiver" parameter
       def hidden =
         target.nonPrivateMember(sym.name)
@@ -1200,7 +1200,7 @@ object RefChecks {
           sym.owner.info.member(getterName)
         if getterDenot.exists
         then report.warning(ExtensionHasDefault(sym), getterDenot.symbol.srcPos)
-      if !target.typeSymbol.isOpaqueAlias && !sym.nextOverriddenSymbol.exists && hidden
+      if !sym.nextOverriddenSymbol.exists && hidden
       then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
   end checkExtensionMethods
 
