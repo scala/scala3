@@ -491,7 +491,13 @@ trait BCodeHelpers extends BCodeIdiomatic {
       report.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
       for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
-        val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
+        val m =
+          if !m0.is(Bridge) then m0
+          else
+            m0.allOverriddenSymbols.find(!_.is(Bridge))
+            .filterNot(_.is(Deferred))
+            .getOrElse(m0.nextOverriddenSymbol)
+
         if (m == NoSymbol)
           report.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
         else if (m.isType || m.is(Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
