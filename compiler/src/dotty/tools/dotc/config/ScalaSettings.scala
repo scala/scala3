@@ -185,9 +185,10 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
       ChoiceWithHelp(
         name = "strict-no-implicit-warn",
-        description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
-        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+        description = """Same as -Wunused:imports, only for imports of explicit named members.
+                        |NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all""".stripMargin
       ),
+      ChoiceWithHelp("unsafe-warn-patvars", "Deprecated alias for `patvars`"),
     ),
     default = Nil
   )
@@ -212,7 +213,7 @@ private sealed trait WarningSettings:
     def params(using Context) = allOr("params")
     def privates(using Context) =
       allOr("privates") || allOr("linted")
-    def patvars(using Context) = allOr("patvars")
+    def patvars(using Context) = allOr("patvars") || isChoiceSet("unsafe-warn-patvars")
     def inlined(using Context) = isChoiceSet("inlined")
     def linted(using Context) =
       allOr("linted")
