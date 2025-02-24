@@ -292,10 +292,11 @@ object ScriptTestEnv {
 
   lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
 
-  lazy val (scalacPath: String, scalaPath: String) = {
+  lazy val (scalacPath: String, scalaPath: String, replPath: String) = {
     val scalac = s"$workingDirectory/$packBinDir/scalac".toPath.normalize
     val scala = s"$workingDirectory/$packBinDir/scala".toPath.normalize
-    (scalac.norm, scala.norm)
+    val repl = s"$workingDirectory/$packBinDir/repl".toPath.normalize
+    (scalac.norm, scala.norm, repl.norm)
   }
 
 
