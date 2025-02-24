@@ -281,7 +281,7 @@ class CompilationTests {
         compileFile("tests/init/tasty-error/v1/B.scala", tastyErrorOptions.withClasspath(a1))(tastyErrorGroup),
         compileFile("tests/init/tasty-error/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
       ).map(_.keepOutput.checkCompile())
-      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0 + ":" + b1))(tastyErrorGroup).checkExpectedErrors()
+      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0).withClasspath(b1))(tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }
