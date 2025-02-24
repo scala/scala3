@@ -180,6 +180,32 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp: MethodOrPoly => tp // don't box results of methods outside refinements
       case _ => recur(tp)
 
+  trait SetupTypeMap extends FollowAliasesMap:
+    private var isTopLevel = true
+
+    protected def innerApply(tp: Type): Type
+
+    final def apply(tp: Type) =
+      val saved = isTopLevel
+      if variance < 0 then isTopLevel = false
+      try innerApply(tp)
+      finally isTopLevel = saved
+
+    protected def normalizeFunctions(tp: Type, original: Type)(using Context): Type = tp match
+      case AppliedType(tycon, args)
+      if defn.isNonRefinedFunction(tp) && isTopLevel =>
+        original match
+          case AppliedType(`tycon`, args0) if args0.last ne args.last =>
+            // We have an applied type that underwent some addition of capture sets.
+            // Map to a dependent type so that things are more uniform.
+            depFun(args.init, args.last,
+              isContextual = defn.isContextFunctionClass(tycon.classSymbol))
+                .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
+          case _ => tp
+      case _ => tp
+
+  end SetupTypeMap
+
   /** Transform the type of an InferredTypeTree by performing the following transformation
     * steps everywhere in the type:
     *  1. Drop retains annotations
@@ -197,7 +223,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
   private def transformInferredType(tp: Type)(using Context): Type =
-    def mapInferred(refine: Boolean): TypeMap = new TypeMap with FollowAliasesMap:
+    def mapInferred(refine: Boolean): TypeMap = new TypeMap with SetupTypeMap:
       override def toString = "map inferred"
 
       /** Refine a possibly applied class type C where the class has tracked parameters
@@ -225,42 +251,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => tp
         case _ => tp
 
-      private var isTopLevel = true
-
-      private def mapNested(ts: List[Type]): List[Type] =
-        val saved = isTopLevel
-        isTopLevel = false
-        try ts.mapConserve(this)
-        finally isTopLevel = saved
-
-      def apply(tp: Type) =
+      def innerApply(tp: Type) =
         val tp1 = tp match
           case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
             // Drop explicit retains annotations
             apply(parent)
-          case tp @ AppliedType(tycon, args) =>
-            val tycon1 = this(tycon)
-            if defn.isNonRefinedFunction(tp) then
-              // Convert toplevel generic function types to dependent functions
-              if !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) then
-                // This type is a function after dealiasing, so we dealias and recurse.
-                // See #15925.
-                this(tp.dealias)
-              else
-                val args0 = args.init
-                var res0 = args.last
-                val args1 = mapNested(args0)
-                val res1 = this(res0)
-                if isTopLevel then
-                  depFun(args1, res1,
-                      isContextual = defn.isContextFunctionClass(tycon1.classSymbol))
-                    .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", capt)
-                else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
-                  tp
-                else
-                  tp.derivedAppliedType(tycon1, args1 :+ res1)
-            else
-              tp.derivedAppliedType(tycon1, args.mapConserve(arg => box(this(arg))))
           case defn.RefinedFunctionOf(rinfo: MethodType) =>
             val rinfo1 = apply(rinfo)
             if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
@@ -268,10 +263,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case Existential(_, unpacked) =>
             // drop the existential, the bound variables will be replaced by capture set variables
             apply(unpacked)
-          case tp: MethodType =>
-            tp.derivedLambdaType(
-              paramInfos = mapNested(tp.paramInfos),
-              resType = this(tp.resType))
           case tp: TypeLambda =>
             // Don't recurse into parameter bounds, just cleanup any stray retains annotations
             tp.derivedLambdaType(
@@ -279,8 +270,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               resType = this(tp.resType))
           case _ =>
             mapFollowingAliases(tp)
-        addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
-      end apply
+        addVar(
+          addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
+          ctx.owner)
     end mapInferred
 
     try
@@ -307,7 +299,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
-    val toCapturing = new DeepTypeMap with FollowAliasesMap:
+    val toCapturing = new DeepTypeMap with SetupTypeMap:
       override def toString = "expand aliases"
 
       /** Expand $throws aliases. This is hard-coded here since $throws aliases in stdlib
@@ -361,7 +353,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
         tp
 
-      def apply(t: Type) =
+      def innerApply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
             checkSharedOK:
@@ -393,7 +385,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               && (!sym.isConstructor || (t ne tp.finalResultType))
                 // Don't add ^ to result types of class constructors deriving from Capability
             then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
-            else normalizeCaptures(mapFollowingAliases(t))
+            else normalizeCaptures(normalizeFunctions(mapFollowingAliases(t), t))
     end toCapturing
 
     val tp1 = toCapturing(tp)

@@ -140,11 +140,10 @@ object Synthetics:
     def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
       val (et: ExprType) = info: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      def mapFinalResult(tp: Type, f: Type => Type): Type =
-        val defn.FunctionNOf(args, res, isContextual) = tp: @unchecked
-        if defn.isFunctionNType(res) then
-          defn.FunctionNOf(args, mapFinalResult(res, f), isContextual)
-        else
+      def mapFinalResult(tp: Type, f: Type => Type): Type = tp match
+        case FunctionOrMethod(args, res) =>
+          tp.derivedFunctionOrMethod(args, mapFinalResult(res, f))
+        case _ =>
           f(tp)
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
