@@ -922,6 +922,7 @@ object SpaceEngine {
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
+    && tpd.enclosingInlineds.isEmpty // Skip reachability on inlined code (eg i19157/i22212)
 
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
@@ -972,10 +973,6 @@ object SpaceEngine {
   end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
-    checkMatchExhaustivityOnly(m)
-    if reachabilityCheckable(m.selector) then checkReachability(m)
-
-  def checkMatchExhaustivityOnly(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
-
+    if reachabilityCheckable(m.selector) then checkReachability(m)
 }
