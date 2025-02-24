@@ -830,6 +830,7 @@ class Definitions {
 
   @tu lazy val ReflectSelectableTypeRef: TypeRef = requiredClassRef("scala.reflect.Selectable")
 
+  @tu lazy val TypeableType: TypeSymbol = requiredPackage("scala.reflect.Typeable$package").moduleClass.requiredType("Typeable")
   @tu lazy val TypeTestClass: ClassSymbol = requiredClass("scala.reflect.TypeTest")
     @tu lazy val TypeTest_unapply: Symbol = TypeTestClass.requiredMethod(nme.unapply)
   @tu lazy val TypeTestModule_identity: Symbol = TypeTestClass.companionModule.requiredMethod(nme.identity)

@@ -1,7 +1,5 @@
 //> using options -Wunused:patvars
 
-import scala.reflect.Typeable
-
 sealed trait Calc
 sealed trait Const extends Calc
 case class Sum(a: Calc, b: Calc) extends Calc
@@ -73,13 +71,6 @@ class C(c0: Option[Int], k0: K):
   def optionalName =
     for case Some(value) <- List(Option(42))
     yield 27
-
-    /*
-  def tester[A](a: A)(using Typeable[K]) =
-    a match
-    case S(i, j) => i + j
-    case _ => 0
-    */
 
 class Wild:
   def f(x: Any) =
