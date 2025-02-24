@@ -116,6 +116,7 @@ subsection:
           - page: reference/changed-features/lazy-vals-init.md
           - page: reference/changed-features/main-functions.md
           - page: reference/changed-features/interpolation-escapes.md
+          - page: reference/changed-features/better-fors.md
       - title: Dropped Features
         index: reference/dropped-features/dropped-features.md
         subsection:
@@ -162,7 +163,6 @@ subsection:
           - page: reference/experimental/modularity.md
           - page: reference/experimental/typeclasses.md
           - page: reference/experimental/runtimeChecked.md
-          - page: reference/experimental/better-fors.md
           - page: reference/experimental/unrolled-defs.md
           - page: reference/experimental/package-object-values.md
       - page: reference/syntax.md

@@ -35,7 +35,6 @@ object Feature:
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
-  val betterFors = experimental("betterFors")
   val packageObjectValues = experimental("packageObjectValues")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
@@ -62,8 +61,7 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (into, "Allow into modifier on parameter types"),
-    (modularity, "Enable experimental modularity features"),
-    (betterFors, "Enable improvements in `for` comprehensions")
+    (modularity, "Enable experimental modularity features")
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -117,8 +115,6 @@ object Feature:
   def dependentEnabled(using Context) = enabled(dependent)
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
-
-  def betterForsEnabled(using Context) = enabled(betterFors)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 

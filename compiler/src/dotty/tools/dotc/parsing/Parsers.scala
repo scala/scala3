@@ -2956,7 +2956,7 @@ object Parsers {
     /** Enumerators ::= Generator {semi Enumerator | Guard}
      */
     def enumerators(): List[Tree] =
-      if in.featureEnabled(Feature.betterFors) then
+      if sourceVersion.isAtLeast(`3.7`) then
         aliasesUntilGenerator() ++ enumeratorsRest()
       else
         generator() :: enumeratorsRest()
