@@ -12,6 +12,7 @@ object Scala2LibraryBootstrappedMiMaFilters {
         // Scala language features
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language.<clinit>"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language#experimental.<clinit>"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Properties.<clinit>"),
         ProblemFilters.exclude[FinalClassProblem]("scala.language$experimental$"),
         ProblemFilters.exclude[FinalClassProblem]("scala.languageFeature$*$"),
 
@@ -68,16 +69,17 @@ object Scala2LibraryBootstrappedMiMaFilters {
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.collection.ArrayOps#ReverseIterator.xs"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.NonLocalReturnControl.value"),
-      ) ++
-      Seq( // DirectMissingMethodProblem
-        "scala.collection.LinearSeqIterator#LazyCell.this",
-        "scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this",
-        "scala.concurrent.BatchingExecutor#AbstractBatch.this",
-        "scala.concurrent.Channel#LinkedList.this",
-        "scala.collection.IterableOnceOps#Maximized.this", // New in 2.13.11: private inner class
-        "scala.util.Properties.<clinit>",
-        "scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5",
-      ).map(ProblemFilters.exclude[DirectMissingMethodProblem])
+
+        // Missing outer pointers in private classes (not a problem)
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.LinearSeqIterator#LazyCell.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.BatchingExecutor#AbstractBatch.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.Channel#LinkedList.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.IterableOnceOps#Maximized.this"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5"),
+
+      )
     }
   )
 
