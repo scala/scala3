@@ -26,7 +26,7 @@ import dotty.tools.dotc.util.SimpleIdentitySet
 object Fresh:
 
   /** The annotation of a Fresh instance */
-  case class Annot(hidden: CaptureSet.HiddenSet, binder: MethodType | NoType.type = NoType) extends Annotation:
+  case class Annot(hidden: CaptureSet.HiddenSet, binder: MethodType | NoType.type) extends Annotation:
     override def symbol(using Context) = defn.FreshCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
@@ -45,11 +45,11 @@ object Fresh:
         case _ => this
   end Annot
 
-  /** Extractor methods for "fresh" capabilities */
+  /** Constructor and extractor methods for "fresh" capabilities */
   def apply(owner: Symbol, initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
     if ccConfig.useSepChecks then
       val hiddenSet = CaptureSet.HiddenSet(owner, initialHidden)
-      val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet))
+      val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet, NoType))
       hiddenSet.owningCap = res
       //assert(hiddenSet.id != 3)
       res
@@ -63,8 +63,15 @@ object Fresh:
     apply(owner, ownerToHidden(owner, reach = false))
 
   def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
-    case Annot(hidden, _) => Some(hidden)
+    case Annot(hidden, binder) if !binder.exists => Some(hidden)
     case _ => None
+
+  /** Create an existential */
+  def existential(binder: MethodType)(using Context): AnnotatedType =
+    val hiddenSet = CaptureSet.HiddenSet(NoSymbol, emptyRefs)
+    val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet, binder))
+    hiddenSet.owningCap = res
+    res
 
   /** The initial elements (either 0 or 1) of a hidden set created for given `owner`.
    *  If owner `x` is a trackable this is `x*` if reach` is true, or `x` otherwise.

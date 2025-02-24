@@ -390,6 +390,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
         tp
 
+      /** Map references to capability classes C to C^,
+       *  normalize captures and map to dependent functions.
+       */
+      def defaultApply(t: Type) =
+        if t.derivesFromCapability
+          && !t.isSingleton
+          && t.typeSymbol != defn.Caps_Exists
+          && (!sym.isConstructor || (t ne tp.finalResultType))
+            // Don't add ^ to result types of class constructors deriving from Capability
+        then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
+        else normalizeCaptures(normalizeFunctions(mapFollowingAliases(t), t))
+
       def innerApply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
@@ -414,15 +426,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               t.derivedAnnotatedType(parent1, ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
+          case t @ AppliedType(tycon, args)
+          if defn.isNonRefinedFunction(tp)
+              && !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) =>
+            // Expand arguments of aliases of function types before proceeding with dealias.
+            // This is necessary to bind existentialFresh instances to the right method binder.
+            val args1 = atVariance(-variance):
+              args.map(this)
+            defaultApply(t.derivedAppliedType(tycon, args1))
           case t =>
-            // Map references to capability classes C to C^
-            if t.derivesFromCapability
-              && !t.isSingleton
-              && t.typeSymbol != defn.Caps_Exists
-              && (!sym.isConstructor || (t ne tp.finalResultType))
-                // Don't add ^ to result types of class constructors deriving from Capability
-            then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
-            else normalizeCaptures(normalizeFunctions(mapFollowingAliases(t), t))
+            defaultApply(t)
     end toCapturing
 
     val tp1 = toCapturing(tp)
