@@ -19,70 +19,70 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:15:30 --------------------------
 15 |  val _: A^ -> (x: C^) -> C = x3 // error
    |                              ^^
-   |                              Found:    (x3 : A^ -> (x: C^) -> (ex$11: caps.Exists) -> C^{ex$11})
+   |                              Found:    (x3 : A^ -> (x: C^) -> (ex$9: caps.Exists) -> C^{ex$9})
    |                              Required: A^ -> (x: C^) -> C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:18:25 --------------------------
 18 |  val _: A^ -> C^ -> C = x4 // error
    |                         ^^
-   |                         Found:    (x4 : A^ -> C^ -> (ex$19: caps.Exists) -> C^{ex$19})
+   |                         Found:    (x4 : A^ -> C^ -> (ex$17: caps.Exists) -> C^{ex$17})
    |                         Required: A^ -> C^ -> C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:21:30 --------------------------
 21 |  val _: A^ -> (x: C^) -> C = x5 // error
    |                              ^^
-   |                              Found:    (x5 : A^ -> (x: C^) -> (ex$27: caps.Exists) -> C^{ex$27})
+   |                              Found:    (x5 : A^ -> (x: C^) -> (ex$23: caps.Exists) -> C^{ex$23})
    |                              Required: A^ -> (x: C^) -> C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:24:30 --------------------------
 24 |  val _: A^ -> (x: C^) => C = x6 // error
    |                              ^^
-   |              Found:    (x6 : A^ -> (ex$36: caps.Exists) -> (x: C^) ->{ex$36} (ex$35: caps.Exists) -> C^{ex$35})
-   |              Required: A^ -> (ex$39: caps.Exists) -> (x: C^) ->{ex$39} C
+   |              Found:    (x6 : A^ -> (ex$32: caps.Exists) -> (x: C^) ->{ex$32} (ex$31: caps.Exists) -> C^{ex$31})
+   |              Required: A^ -> (ex$35: caps.Exists) -> (x: C^) ->{ex$35} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:27:25 --------------------------
 27 |  val _:  (x: C^) => C = y1 // error
    |                         ^^
-   |                         Found:    (y1 : (x: C^) ->{fresh} (ex$41: caps.Exists) -> C^{ex$41})
+   |                         Found:    (y1 : (x: C^) ->{fresh} (ex$37: caps.Exists) -> C^{ex$37})
    |                         Required: (x: C^) ->{fresh} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:30:20 --------------------------
 30 |  val _:  C^ => C = y2 // error
    |                    ^^
-   |                    Found:    (y2 : C^ ->{fresh} (ex$45: caps.Exists) -> C^{ex$45})
+   |                    Found:    (y2 : C^ ->{fresh} (ex$41: caps.Exists) -> C^{ex$41})
    |                    Required: C^ ->{fresh} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:33:30 --------------------------
 33 |  val _: A^ => (x: C^) => C = y3 // error
    |                              ^^
-   |       Found:    (y3 : A^ ->{fresh} (ex$50: caps.Exists) -> (x: C^) ->{ex$50} (ex$49: caps.Exists) -> C^{ex$49})
-   |       Required: A^ ->{fresh} (ex$53: caps.Exists) -> (x: C^) ->{ex$53} C
+   |       Found:    (y3 : A^ ->{fresh} (ex$44: caps.Exists) -> (x: C^) ->{ex$44} (ex$43: caps.Exists) -> C^{ex$43})
+   |       Required: A^ ->{fresh} (ex$47: caps.Exists) -> (x: C^) ->{ex$47} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:36:25 --------------------------
 36 |  val _: A^ => C^ => C = y4 // error
    |                         ^^
-   |            Found:    (y4 : A^ ->{fresh} (ex$56: caps.Exists) -> C^ ->{ex$56} (ex$55: caps.Exists) -> C^{ex$55})
-   |            Required: A^ ->{fresh} (ex$59: caps.Exists) -> C^ ->{ex$59} C
+   |            Found:    (y4 : A^ ->{fresh} (ex$50: caps.Exists) -> C^ ->{ex$50} (ex$49: caps.Exists) -> C^{ex$49})
+   |            Required: A^ ->{fresh} (ex$52: caps.Exists) -> C^ ->{ex$52} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:39:30 --------------------------
 39 |  val _: A^ => (x: C^) -> C = y5 // error
    |                              ^^
-   |                              Found:    (y5 : A^ ->{fresh} (x: C^) -> (ex$61: caps.Exists) -> C^{ex$61})
+   |                              Found:    (y5 : A^ ->{fresh} (x: C^) -> (ex$54: caps.Exists) -> C^{ex$54})
    |                              Required: A^ ->{fresh} (x: C^) -> C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:42:30 --------------------------
 42 |  val _: A^ => (x: C^) => C = y6 // error
    |                              ^^
-   |       Found:    (y6 : A^ ->{fresh} (ex$70: caps.Exists) -> (x: C^) ->{ex$70} (ex$69: caps.Exists) -> C^{ex$69})
-   |       Required: A^ ->{fresh} (ex$73: caps.Exists) -> (x: C^) ->{ex$73} C
+   |       Found:    (y6 : A^ ->{fresh} (ex$63: caps.Exists) -> (x: C^) ->{ex$63} (ex$62: caps.Exists) -> C^{ex$62})
+   |       Required: A^ ->{fresh} (ex$66: caps.Exists) -> (x: C^) ->{ex$66} C
    |
    | longer explanation available when compiling with `-explain`
