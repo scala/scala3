@@ -216,6 +216,7 @@ class TabcompleteTests extends ReplTest {
         ":kind",
         ":load",
         ":quit",
+        ":require",
         ":reset",
         ":settings",
         ":silent",
