@@ -219,10 +219,10 @@ abstract class Recheck extends Phase, SymTransformer:
         sharpen: Denotation => Denotation)(using Context): Type =
       if name.is(OuterSelectName) then tree.tpe
       else
-        val pre = ta.maybeSkolemizePrefix(qualType, name)
+        //val pre = ta.maybeSkolemizePrefix(qualType, name)
         val mbr =
           sharpen(
-            qualType.findMember(name, pre,
+            qualType.findMember(name, qualType,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
           )).suchThat(tree.symbol == _)
         val newType = tree.tpe match

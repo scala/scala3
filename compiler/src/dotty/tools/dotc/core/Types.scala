@@ -98,8 +98,12 @@ object Types extends TypeUtils {
 // ----- Tests -----------------------------------------------------
 
 //    // debug only: a unique identifier for a type
-//    val uniqId = { nextId = nextId + 1; nextId }
-//    if uniqId == 19555 then trace.dumpStack()
+//    val uniqId = {
+//      nextId = nextId + 1
+//      if (nextId == 19555)
+//        println("foo")
+//      nextId
+//    }
 
     /** A cache indicating whether the type was still provisional, last time we checked */
     @sharable private var mightBeProvisional = true
@@ -5578,25 +5582,24 @@ object Types extends TypeUtils {
     }
 
     def & (that: TypeBounds)(using Context): TypeBounds =
-      val lo1 = this.lo.stripLazyRef
-      val lo2 = that.lo.stripLazyRef
-      val hi1 = this.hi.stripLazyRef
-      val hi2 = that.hi.stripLazyRef
-
       // This will try to preserve the FromJavaObjects type in upper bounds.
       // For example, (? <: FromJavaObjects | Null) & (? <: Any),
       // we want to get (? <: FromJavaObjects | Null) intead of (? <: Any),
       // because we may check the result <:< (? <: Object | Null) later.
-      if hi1.containsFromJavaObject && (hi1 frozen_<:< hi2) && (lo2 frozen_<:< lo1) then
+      if this.hi.containsFromJavaObject
+        && (this.hi frozen_<:< that.hi)
+        && (that.lo frozen_<:< this.lo) then
         // FromJavaObject in tp1.hi guarantees tp2.hi <:< tp1.hi
         // prefer tp1 if FromJavaObject is in its hi
         this
-      else if hi2.containsFromJavaObject && (hi2 frozen_<:< hi1) && (lo1 frozen_<:< lo2) then
+      else if that.hi.containsFromJavaObject
+        && (that.hi frozen_<:< this.hi)
+        && (this.lo frozen_<:< that.lo) then
         // Similarly, prefer tp2 if FromJavaObject is in its hi
         that
-      else if (lo1 frozen_<:< lo2) && (hi2 frozen_<:< hi1) then that
-      else if (lo2 frozen_<:< lo1) && (hi1 frozen_<:< hi2) then this
-      else TypeBounds(lo1 | lo2, hi1 & hi2)
+      else if (this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi) then that
+      else if (that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi) then this
+      else TypeBounds(this.lo | that.lo, this.hi & that.hi)
 
     def | (that: TypeBounds)(using Context): TypeBounds =
       if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) this
@@ -5605,7 +5608,7 @@ object Types extends TypeUtils {
 
     override def & (that: Type)(using Context): Type = that match {
       case that: TypeBounds => this & that
-      case _ => super.&(that)
+      case _ => super.& (that)
     }
 
     override def | (that: Type)(using Context): Type = that match {
