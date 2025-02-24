@@ -116,6 +116,7 @@ trait CommonScalaSettings:
   val unchecked: Setting[Boolean] = BooleanSetting(RootSetting, "unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val language: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, legacyChoices = ScalaSettingsProperties.legacyLanguageFeatures, default = Nil, aliases = List("--language"))
   val experimental: Setting[Boolean] = BooleanSetting(RootSetting, "experimental", "Annotate all top-level definitions with @experimental. This enables the use of experimental features anywhere in the project.")
+  val preview: Setting[Boolean] = BooleanSetting(RootSetting, "preview", "Enable the use of preview features anywhere in the project.")
 
   /* Coverage settings */
   val coverageOutputDir = PathSetting(RootSetting, "coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))

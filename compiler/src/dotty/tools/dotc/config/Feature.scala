@@ -11,6 +11,7 @@ import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
+import Annotations.PreviewAnnotation
 import Settings.Setting.ChoiceWithHelp
 
 object Feature:
@@ -233,4 +234,29 @@ object Feature:
       true
     else
       false
+
+  def isPreviewEnabled(using Context): Boolean =
+    ctx.settings.preview.value
+
+  def checkPreviewFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
+    if !isPreviewEnabled then
+      report.error(previewUseSite(which) + note, srcPos)
+
+  def checkPreviewDef(sym: Symbol, srcPos: SrcPos)(using Context) = if !isPreviewEnabled then
+    val previewSym =
+      if sym.hasAnnotation(defn.PreviewAnnot) then sym
+      else if sym.owner.hasAnnotation(defn.PreviewAnnot) then sym.owner
+      else NoSymbol
+    val msg =
+      previewSym.getAnnotation(defn.PreviewAnnot).collectFirst {
+        case PreviewAnnotation(msg) if msg.nonEmpty => s": $msg"
+      }.getOrElse("")
+    val markedPreview =
+      if previewSym.exists
+      then i"$previewSym is marked @preview$msg"
+      else i"$sym inherits @preview$msg"
+    report.error(i"${markedPreview}\n\n${previewUseSite("definition")}", srcPos)
+
+  private def previewUseSite(which: String): String =
+    s"Preview $which may only be used when compiling with the `-preview` compiler flag"
 end Feature
