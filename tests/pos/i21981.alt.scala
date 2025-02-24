@@ -3,13 +3,9 @@ trait Ops[F[_], A]:
 
 trait Functor1[G[_]]
 
-trait Functor2[H[_]]:
-  extension [C1, C2](hc: H[(C1, C2)])
-    def map2[D](f1: (C1, C2) => D): H[D]
+trait Functor2[H[_]]
 
 trait Ref[I[_], +E]
-
-final class Cov[+F]
 
 class Test:
   given [J[_]](using J: Functor1[J]): Functor2[J] with

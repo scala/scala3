@@ -77,7 +77,7 @@ object ProtoTypes {
                   if !tvar.isInstantiated then
                     // Filter out any tvar that instantiating would further constrain the current constraint
                     // Similar to filterByDeps in interpolateTypeVars.
-                    // Also, filter out any tvar that is the instantiation another tvar
+                    // Also, filter out any tvar that is in the instantiation of another tvar
                     // (that we're not also trying to instantiate)
                     // For example, in tests/pos/i21981.scala
                     // when testing the compatibility of `.map2[?K]` on receiver `map0[?B]`
