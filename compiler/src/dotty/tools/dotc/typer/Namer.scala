@@ -712,7 +712,7 @@ class Namer { typer: Typer =>
               enterSymbol(classConstructorCompanion(classSym.asClass))
             else
               for moduleSym <- companionVals do
-                if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
+                if moduleSym.lastKnownDenotation.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
                     if needsConstructorProxies(classSym) then
                       classConstructorCompanion(classSym.asClass)
