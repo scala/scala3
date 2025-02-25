@@ -2044,6 +2044,12 @@ object desugar {
           makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
 
+      /** Does this pattern define any given bindings */
+      def isGivenPattern(pat: Tree): Boolean = pat.existsSubTree {
+        case pat @ Bind(_, pat1) => pat.mods.is(Given)
+        case _ => false
+      }
+
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
        *  it in a Bind with a fresh name. Return the transformed pattern, and the identifier
        *  that refers to the bound variable for the pattern. Wildcard Binds are
@@ -2165,7 +2171,8 @@ object desugar {
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
         case (gen: GenFrom) :: rest
         if sourceVersion.isAtLeast(`3.7`)
-           && rest.dropWhile(_.isInstanceOf[GenAlias]).headOption.forall(e => e.isInstanceOf[GenFrom]) => // possible aliases followed by a generator or end of for
+           && rest.dropWhile(_.isInstanceOf[GenAlias]).headOption.forall(e => e.isInstanceOf[GenFrom]) // possible aliases followed by a generator or end of for
+           && !rest.takeWhile(_.isInstanceOf[GenAlias]).exists(a => isGivenPattern(a.asInstanceOf[GenAlias].pat)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           val selectName =
             if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
