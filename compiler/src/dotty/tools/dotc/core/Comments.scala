@@ -405,15 +405,10 @@ object Comments {
       val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
       val raw = ctx.docCtx.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
-      defs(sym) ++= defines(raw).map {
-        str => {
-          val start = skipWhitespace(str, "@define".length)
-          val (key, value) = str.splitAt(skipVariable(str, start))
-          key.drop(start) -> value
-        }
-      } map {
-        case (key, Trim(value)) =>
-          variableName(key) -> value.replaceAll("\\s+\\*+$", "")
+      defs(sym) ++= defines(raw).map { str =>
+        val start = skipWhitespace(str, "@define".length)
+        val (key, Trim(value)) = str.splitAt(skipVariable(str, start)): @unchecked
+        variableName(key.drop(start)) -> value.replaceAll("\\s+\\*+$", "")
       }
     }
 
