@@ -93,10 +93,11 @@ class Objects(using Context @constructorOnly):
    *      | OfClass(class, vs[outer], ctor, args, env)                   // instance of a class
    *      | OfArray(object[owner], regions)
    *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
-   *      | SafeValue                                                    // values on which method calls and fields won't cause warnings. Int, String, etc.
+   *      | SafeValue                                                    // values on which method calls and field accesses won't cause warnings. Int, String, etc.
+   *      | UnknownValue
    * vs ::= ValueSet(ve)                                                 // set of abstract values
    * Bottom ::= ValueSet(Empty)
-   * val ::= ve | UnknownValue | vs | Package                            // all possible abstract values in domain
+   * val ::= ve | TopWidenedValue | vs | Package                         // all possible abstract values in domain
    * Ref ::= ObjectRef | OfClass                                         // values that represent a reference to some (global or instance) object
    * ThisValue ::= Ref | UnknownValue                                    // possible values for 'this'
    *
@@ -190,7 +191,7 @@ class Objects(using Context @constructorOnly):
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
-      "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ", vals = " + valFields + ")"
+      "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + " env = " + env.show + ", vals = " + valFields + ")"
 
   object OfClass:
     def apply(
@@ -229,17 +230,24 @@ class Objects(using Context @constructorOnly):
 
   /**
    * Represents common base values like Int, String, etc.
-   * Assumption: all methods calls on such values should be pure (no side effects)
+   * Assumption: all methods calls on such values should not trigger initialization of global objects
+   * or read/write mutable fields
    */
   case class SafeValue(tpe: Type) extends ValueElement:
     // tpe could be a AppliedType(java.lang.Class, T)
     val baseType = if tpe.isInstanceOf[AppliedType] then tpe.asInstanceOf[AppliedType].underlying else tpe
-    assert(baseType.isInstanceOf[TypeRef] && SafeValue.safeTypes.contains(baseType), "Invalid creation of SafeValue! Type = " + tpe)
-    val typeref = baseType.asInstanceOf[TypeRef]
-    def show(using Context): String = "SafeValue of type " + tpe
+    assert(baseType.isInstanceOf[TypeRef], "Invalid creation of SafeValue! Type = " + tpe)
+    val typeSymbol = baseType.asInstanceOf[TypeRef].symbol
+    assert(SafeValue.safeTypeSymbols.contains(typeSymbol), "Invalid creation of SafeValue! Type = " + tpe)
+    def show(using Context): String = "SafeValue of " + typeSymbol.show
+    override def equals(that: Any): Boolean =
+      that.isInstanceOf[SafeValue] && that.asInstanceOf[SafeValue].typeSymbol == typeSymbol
 
   object SafeValue:
-    val safeTypes = defn.ScalaNumericValueTypeList ++ List(defn.UnitType, defn.BooleanType, defn.StringType, defn.NullType, defn.ClassClass.typeRef)
+    val safeTypeSymbols =
+      (defn.ScalaNumericValueTypeList ++
+       List(defn.UnitType, defn.BooleanType, defn.StringType.asInstanceOf[TypeRef], defn.NullType, defn.ClassClass.typeRef))
+      .map(_.symbol)
 
   /**
    * Represents a set of values
@@ -253,20 +261,26 @@ class Objects(using Context @constructorOnly):
     def show(using Context): String = "Package(" + packageSym.show + ")"
 
   /** Represents values unknown to the checker, such as values loaded without source
+   */
+  case object UnknownValue extends ValueElement:
+    def show(using Context): String = "UnknownValue"
+
+  /** Represents values lost due to widening
    *
    *  This is the top of the abstract domain lattice, which should not
    *  be used during initialization.
    *
-   *  UnknownValue is not ValueElement since RefSet containing UnknownValue
-   *  is equivalent to UnknownValue
-   */
-  case object UnknownValue extends Value:
-    def show(using Context): String = "UnknownValue"
+   *  TopWidenedValue is not ValueElement since RefSet containing TopWidenedValue
+   *  is equivalent to TopWidenedValue
+  */
+
+  case object TopWidenedValue extends Value:
+    def show(using Context): String = "TopWidenedValue"
 
   val Bottom = ValueSet(ListSet.empty)
 
   /** Possible types for 'this' */
-  type ThisValue = Ref | UnknownValue.type
+  type ThisValue = Ref | TopWidenedValue.type
 
   /** Checking state  */
   object State:
@@ -623,8 +637,8 @@ class Objects(using Context @constructorOnly):
   extension (a: Value)
     def join(b: Value): Value =
       (a, b) match
-      case (UnknownValue, _)                => UnknownValue
-      case (_, UnknownValue)                => UnknownValue
+      case (TopWidenedValue, _)                   => TopWidenedValue
+      case (_, TopWidenedValue)                   => TopWidenedValue
       case (Package(_), _)                        => UnknownValue // should not happen
       case (_, Package(_))                        => UnknownValue
       case (Bottom, b)                            => b
@@ -640,8 +654,8 @@ class Objects(using Context @constructorOnly):
       case (a: Ref, b: Ref) if a.equals(b)        => Bottom
       case _ => a
 
-    def widen(height: Int)(using Context): Value =
-      if height == 0 then UnknownValue
+    def widen(height: Int)(using Context): Value = log("widening value " + a.show + " down to height " + height, printer, (_: Value).show) {
+      if height == 0 then TopWidenedValue
       else
         a match
           case Bottom => Bottom
@@ -659,6 +673,7 @@ class Objects(using Context @constructorOnly):
             ref.widenedCopy(outer2, args2, env2)
 
           case _ => a
+    }
 
     def filterType(tpe: Type)(using Context): Value =
       tpe match
@@ -671,21 +686,24 @@ class Objects(using Context @constructorOnly):
     // Filter the value according to a class symbol, and only leaves the sub-values
     // which could represent an object of the given class
     def filterClass(sym: Symbol)(using Context): Value =
-        if !sym.isClass then a
-        else
-          val klass = sym.asClass
-          a match
-            case UnknownValue => UnknownValue
-            case Package(_) => a
-            case SafeValue(_) => a
-            case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
-            case ValueSet(values) => values.map(v => v.filterClass(klass)).join
-            case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
-            case fun: Fun =>
-              if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
+      if !sym.isClass then a
+      else
+        val klass = sym.asClass
+        a match
+          case UnknownValue | TopWidenedValue => a
+          case Package(packageSym) =>
+            if packageSym.moduleClass.equals(sym) || (klass.denot.isPackageObject && klass.owner.equals(sym)) then a else Bottom
+          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) then a else Bottom
+          case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
+          case ValueSet(values) => values.map(v => v.filterClass(klass)).join
+          case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
+          case fun: Fun =>
+            if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
 
-  extension (value: Ref | UnknownValue.type)
-    def widenRefOrCold(height : Int)(using Context) : Ref | UnknownValue.type = value.widen(height).asInstanceOf[ThisValue]
+  extension (value: ThisValue)
+    def widenRefOrCold(height : Int)(using Context) : ThisValue =
+      assert(height > 0, "Cannot call widenRefOrCold with height 0!")
+      value.widen(height).asInstanceOf[ThisValue]
 
   extension (values: Iterable[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
@@ -708,6 +726,9 @@ class Objects(using Context @constructorOnly):
    */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
+    case TopWidenedValue =>
+      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
+      Bottom
     case UnknownValue =>
       if reportUnknown then
         report.warning("Using unknown value. " + Trace.show, Trace.position)
@@ -716,10 +737,12 @@ class Objects(using Context @constructorOnly):
         UnknownValue
 
     case Package(packageSym) =>
+      if meth.equals(defn.throwMethod) then
+        Bottom
       // calls on packages are unexpected. However the typer might mistakenly
       // set the receiver to be a package instead of package object.
       // See packageObjectStringInterpolator.scala
-      if !meth.owner.denot.isPackageObject then
+      else if !meth.owner.denot.isPackageObject then
         report.warning("[Internal error] Unexpected call on package = " + value.show + ", meth = " + meth.show + Trace.show, Trace.position)
         Bottom
       else
@@ -729,13 +752,13 @@ class Objects(using Context @constructorOnly):
 
     case v @ SafeValue(tpe) =>
       // Assume such method is pure. Check return type, only try to analyze body if return type is not safe
-      val target = resolve(v.typeref.symbol.asClass, meth)
+      val target = resolve(v.typeSymbol.asClass, meth)
       if !target.hasSource then
         UnknownValue
       else
         val ddef = target.defTree.asInstanceOf[DefDef]
         val returnType = ddef.tpt.tpe
-        if SafeValue.safeTypes.contains(returnType) then
+        if SafeValue.safeTypeSymbols.contains(returnType.typeSymbol) then
           // since method is pure and return type is safe, no need to analyze method body
           SafeValue(returnType)
         else
@@ -800,7 +823,7 @@ class Objects(using Context @constructorOnly):
             if meth.owner.isClass then
               (ref, Env.NoEnv)
             else
-              Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(UnknownValue -> Env.NoEnv)
+              Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(TopWidenedValue -> Env.NoEnv)
 
           val env2 = Env.ofDefDef(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
@@ -898,6 +921,9 @@ class Objects(using Context @constructorOnly):
    */
   def select(value: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value.show, printer, (_: Value).show) {
     value.filterClass(field.owner) match
+    case TopWidenedValue =>
+      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
+      Bottom
     case UnknownValue =>
       if reportUnknown then
         report.warning("Using unknown value. " + Trace.show, Trace.position)
@@ -942,7 +968,7 @@ class Objects(using Context @constructorOnly):
             Bottom
           else
             // initialization error, reported by the initialization checker
-            UnknownValue
+            Bottom
         else if ref.hasVal(target) then
           ref.valValue(target)
         else if ref.isObjectRef && ref.klass.hasSource then
@@ -950,7 +976,7 @@ class Objects(using Context @constructorOnly):
           Bottom
         else
           // initialization error, reported by the initialization checker
-          UnknownValue
+          Bottom
 
       else
         if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
@@ -984,6 +1010,12 @@ class Objects(using Context @constructorOnly):
    */
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
     lhs.filterClass(field.owner) match
+    case TopWidenedValue =>
+      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
+    case UnknownValue =>
+      if reportUnknown then
+        report.warning("Assigning to unknown value. " + Trace.show, Trace.position)
+      end if
     case p: Package =>
       report.warning("[Internal error] unexpected tree in assignment, package = " + p.packageSym.show + Trace.show, Trace.position)
     case fun: Fun =>
@@ -991,8 +1023,8 @@ class Objects(using Context @constructorOnly):
     case arr: OfArray =>
       report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + " field = " + field + Trace.show, Trace.position)
 
-    case SafeValue(_) | UnknownValue =>
-      report.warning("Assigning to base or unknown value is forbidden. " + Trace.show, Trace.position)
+    case SafeValue(_) =>
+      report.warning("Assigning to base value is forbidden. " + Trace.show, Trace.position)
 
     case ValueSet(values) =>
       values.foreach(ref => assign(ref, field, rhs, rhsTyp))
@@ -1028,9 +1060,13 @@ class Objects(using Context @constructorOnly):
       Bottom
 
     case UnknownValue =>
-      UnknownValue
+      if reportUnknown then
+        report.warning("Instantiating when outer is unknown. " + Trace.show, Trace.position)
+        Bottom
+      else
+        UnknownValue
 
-    case outer: (Ref | UnknownValue.type | Package) =>
+    case outer: (Ref | TopWidenedValue.type | Package) =>
       if klass == defn.ArrayClass then
         args.head.tree.tpe match
           case ConstantType(Constants.Constant(0)) =>
@@ -1046,7 +1082,7 @@ class Objects(using Context @constructorOnly):
           outer match
             case Package(_) => // For top-level classes
               (outer, Env.NoEnv)
-            case thisV : (Ref | UnknownValue.type) =>
+            case thisV : ThisValue =>
               if klass.owner.isClass then
                 if klass.owner.is(Flags.Package) then
                   report.warning("[Internal error] top-level class should have `Package` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
@@ -1115,7 +1151,7 @@ class Objects(using Context @constructorOnly):
             case fun: Fun =>
               given Env.Data = Env.ofByName(sym, fun.env)
               eval(fun.code, fun.thisV, fun.klass)
-            case UnknownValue =>
+            case UnknownValue | TopWidenedValue =>
               report.warning("Calling on unknown value. " + Trace.show, Trace.position)
               Bottom
             case _: ValueSet | _: Ref | _: OfArray | _: Package | SafeValue(_) =>
@@ -1891,6 +1927,7 @@ class Objects(using Context @constructorOnly):
       thisV match
         case Bottom => Bottom
         case UnknownValue => UnknownValue
+        case TopWidenedValue => TopWidenedValue
         case ref: Ref =>
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !ref.hasOuter(klass) then
