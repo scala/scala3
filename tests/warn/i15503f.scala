@@ -52,3 +52,7 @@ object Unmatched:
       case Ident(name) =>
       case _ =>
     e
+
+trait Ctx
+case class K(i: Int)(using val ctx: Ctx) // nowarn
+class L(val i: Int)(using val ctx: Ctx) // nowarn
