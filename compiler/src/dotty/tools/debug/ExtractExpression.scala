@@ -122,7 +122,8 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
         case tree: (Ident | Select) if !tree.symbol.isStatic =>
           val qualifier = getTransformedQualifier(tree)
           val qualifierType = widenDealiasQualifierType(tree)
-          val castQualifier = if qualifier.tpe <:< qualifierType then qualifier else qualifier.cast(qualifierType)
+          val castQualifier = if qualifier.tpe <:< qualifierType then qualifier else
+            qualifier.select(defn.Any_asInstanceOf).appliedToType(qualifierType)
           cpy.Select(tree)(castQualifier, tree.name)
 
         case Typed(tree, tpt) if tpt.symbol.isType && !isTypeAccessible(tpt.tpe) => transform(tree)
