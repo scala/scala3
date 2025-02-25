@@ -237,7 +237,7 @@ object SpaceEngine {
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1, tp2) && covers(fun, tp1, ss.length) then
+        if isSubType(tp1.stripNamedTuple, tp2) && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a
@@ -804,8 +804,8 @@ object SpaceEngine {
         else tp.symbol.showName
       case Typ(tp, decomposed) =>
         val cls = tp.classSymbol
-        if ctx.definitions.isTupleNType(tp) then
-          params(tp).map(_ => "_").mkString("(", ", ", ")")
+        if ctx.definitions.isTupleNType(tp.stripNamedTuple) then
+          params(tp.stripNamedTuple).map(_ => "_").mkString("(", ", ", ")")
         else if defn.ListType.isRef(cls) then
           if flattenList then "_*" else "_: List"
         else if (defn.ConsType.isRef(cls))
