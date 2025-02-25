@@ -1,7 +1,7 @@
--- [E172] Type Error: tests/neg/i18123.scala:25:33 ---------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i18123.scala:25:48 ---------------------------------------------------------------------
 25 |  (charClassIntersection.rep() | classItem.rep()) // error
-   |                                 ^^^^^^^^^^^^^^^
-   |No given instance of type pkg.Implicits.Repeater[pkg.RegexTree, V] was found.
+   |                                                ^
+   |No given instance of type pkg.Implicits.Repeater[pkg.RegexTree, V] was found for parameter repeater of method rep in package pkg.
    |I found:
    |
    |    pkg.Implicits.Repeater.GenericRepeaterImplicit[T]
