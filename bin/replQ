@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/.."
+. $ROOT/bin/commonQ
+
+java -Dscala.usejavacp=true -cp $cp dotty.tools.repl.Main -usejavacp "$@"
