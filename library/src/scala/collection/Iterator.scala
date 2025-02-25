@@ -413,7 +413,17 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
   @deprecated("Call scanRight on an Iterable instead.", "2.13.0")
   def scanRight[B](z: B)(op: (A, B) => B): Iterator[B] = ArrayBuffer.from(this).scanRight(z)(op).iterator
-
+ 
+  /** Finds index of the first element satisfying some predicate after or at some start index.
+    *
+    *  $mayNotTerminateInf
+    *
+    *  @param  p     the predicate used to test elements.
+    *  @param  from   the start index
+    *  @return the index `>= from` of the first element of this $coll that satisfies the predicate `p`,
+    *           or `-1`, if none exists.
+    *  @note   Reuse: $consumesIterator
+    */
   def indexWhere(p: A => Boolean, from: Int = 0): Int = {
     var i = math.max(from, 0)
     val dropped = drop(from)
