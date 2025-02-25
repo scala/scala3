@@ -18,7 +18,7 @@ For experimentation and research, Scala 3 introduces _research plugin_. Research
 are more powerful than Scala 2 analyzer plugins as they let plugin authors customize
 the whole compiler pipeline. One can easily replace the standard typer by a custom one or
 create a parser for a domain-specific language. However, research plugins are only
-enabled with the `-experimental` compiler flag or in nightly/snapshot releases of Scala 3.
+enabled for nightly or snaphot releases of Scala 3.
 
 Common plugins that add new phases to the compiler pipeline are called
 _standard plugins_ in Scala 3. In terms of features, they are similar to
