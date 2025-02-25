@@ -9,6 +9,6 @@ object Test {
       a += 1              // [step: while] [cont: print]
     }
 
-    print(a) // [break] [cont]
+    println(a) // [break] [cont]
   }
 }
