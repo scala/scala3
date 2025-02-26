@@ -1,0 +1,21 @@
+
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i22212/Test_2.scala:3:19 --------------------------------------
+3 |    Macro.makeMatch() // warn: match may not be exhaustive.
+  |    ^^^^^^^^^^^^^^^^^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: Baz
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:7
+7 |      (_: Foo) match
+  |       ^^^^^^
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:7
+7 |      (_: Foo) match
+  |      ^
+8 |        case Bar => ()
+   ---------------------------------------------------------------------------------------------------------------------
+  |
+  | longer explanation available when compiling with `-explain`
