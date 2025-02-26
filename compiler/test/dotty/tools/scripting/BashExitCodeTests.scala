@@ -36,7 +36,7 @@ class BashExitCodeTests:
   def scala(args: String*)     = verifyExit(scalaPath, ("--power" +: args :+ "--offline" :+ "--server=false")*)
   def scalacRaw(args: String*) = verifyExit(scalacPath, args*)
   def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir +: args)*)
-  def repl(args: String*)      = verifyExit(scalaPath, "--power", "repl", "--offline", "--", args*)
+  def repl(args: String*)      = verifyExit(scalaPath, ("--power" +: "repl" +: "--offline" +: "--" +: args)*)
 
   /** The path to the test file for this class. */
   def f(body: String, suffix: String = ".scala"): String =
