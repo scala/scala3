@@ -1,5 +1,5 @@
 /**
- * JAR used for testing repl :require
+ * JAR used for testing repl :jar
  * Generated using: mkdir out; scalac -d out MyLibrary.scala; jar cf mylibrary.jar -C out .
  */
 package mylibrary

@@ -515,6 +515,10 @@ class ReplDriver(settings: Array[String],
       }
 
     case Require(path) =>
+      out.println(":require has been deprecated and replaced with :jar. Please use :jar")
+      state
+
+    case JarCmd(path) =>
       val jarFile = AbstractFile.getDirectory(path)
       if (jarFile == null)
         out.println(s"""Cannot add "$path" to classpath.""")
