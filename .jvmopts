@@ -3,3 +3,4 @@
 -Xmx4096m
 -XX:MaxInlineLevel=35
 -XX:ReservedCodeCacheSize=512m
+-XX:+UseParallelGC
