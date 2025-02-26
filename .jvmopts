@@ -1,6 +1,6 @@
 -Xss1m
--Xms512m
--Xmx4096m
+-Xms1025m
+-Xmx8192m
 -XX:MaxInlineLevel=35
 -XX:ReservedCodeCacheSize=512m
 -XX:+UseParallelGC
