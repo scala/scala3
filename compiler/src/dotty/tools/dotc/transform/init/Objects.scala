@@ -747,8 +747,8 @@ class Objects(using Context @constructorOnly):
 
   /** Check if the checker option reports warnings about unknown code
    */
-  def reportUnknown(using context: Context): Boolean =
-    context.settings.YcheckInitGlobal.value == "report-unknown"
+  val reportUnknown: Boolean = false
+
 
   /** Handle method calls `e.m(args)`.
    *
@@ -967,7 +967,10 @@ class Objects(using Context @constructorOnly):
         UnknownValue
 
     case v @ SafeValue(_) =>
-      report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + Trace.show, Trace.position)
+      if v.typeSymbol != defn.NullClass then
+        // selection on Null is sensible on AST level; no warning for it
+        report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
+      end if
       Bottom
 
     case Package(packageSym) =>

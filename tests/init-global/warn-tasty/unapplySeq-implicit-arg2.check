@@ -1,4 +1,4 @@
--- Warning: tests/init-global/warn/unapplySeq-implicit-arg2.scala:4:9 --------------------------------------------------
+-- Warning: tests/init-global/warn-tasty/unapplySeq-implicit-arg2.scala:4:9 --------------------------------------------
 4 |    Some(i1 +: seqi) // warn
   |         ^^
   |Access uninitialized field value i1. Calling trace:
