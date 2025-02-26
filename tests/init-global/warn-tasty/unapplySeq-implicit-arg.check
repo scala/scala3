@@ -1,4 +1,4 @@
--- Warning: tests/init-global/warn/unapplySeq-implicit-arg.scala:11:20 -------------------------------------------------
+-- Warning: tests/init-global/warn-tasty/unapplySeq-implicit-arg.scala:11:20 -------------------------------------------
 11 |  val i2: Int = Seq(i2) match // warn
    |                    ^^
    |                    Access uninitialized field value i2. Calling trace:
