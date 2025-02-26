@@ -508,8 +508,13 @@ object Inlines:
           inContext(evCtx) {
             val evidence = evTyper.inferImplicitArg(tpe, callTypeArgs.head.span)
             evidence.tpe match
+              case fail: Implicits.LateMismatchedImplicit =>
+                val addendum = fail.errors match
+                  case Nil  => ""
+                  case errs => errs.map(_.msg).mkString("a search with errors:\n  ", "\n  ", "")
+                errorTree(call, evTyper.missingArgMsg(evidence, tpe, addendum))
               case fail: Implicits.SearchFailureType =>
-                errorTree(call, evTyper.missingArgMsg(evidence, tpe, ""))
+                errorTree(call, evTyper.missingArgMsg(evidence, tpe, where = ""))
               case _ =>
                 evidence
           }
