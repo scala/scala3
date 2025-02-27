@@ -4,7 +4,6 @@ import dotty.tools.pc.base.BaseSignatureHelpSuite
 
 import org.junit.Test
 import org.junit.Ignore
-import java.nio.file.Path
 
 class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
 

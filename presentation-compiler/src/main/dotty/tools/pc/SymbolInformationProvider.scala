@@ -12,7 +12,6 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.pc.utils.InteractiveEnrichments.deepDealias
-import dotty.tools.pc.SemanticdbSymbols
 import dotty.tools.pc.utils.InteractiveEnrichments.allSymbols
 import dotty.tools.pc.utils.InteractiveEnrichments.stripBackticks
 import scala.meta.internal.pc.PcSymbolInformation
