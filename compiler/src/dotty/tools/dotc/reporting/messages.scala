@@ -3749,3 +3749,15 @@ final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(Recurs
     i"Recursive call used a default argument for parameter $name."
   override protected def explain(using Context): String =
     "It's more explicit to pass current or modified arguments in a recursion."
+
+final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(EncodedPackageNameID):
+  override protected def msg(using Context): String =
+    i"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour."
+  override protected def explain(using Context): String =
+    i"""Tooling may not cope with directories whose names do not match their package name.
+       |For example, `p-q` is encoded as `p$$minusq` and written that way to the file system.
+       |
+       |Package objects have names derived from their file names, so that names such as
+       |`myfile.test.scala` and `myfile-test.scala` will result in encoded names for package objects.
+       |
+       |The name `$name` is encoded to `${name.encode}`."""

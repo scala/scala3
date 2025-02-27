@@ -31,6 +31,7 @@ import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
+import util.chaining.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
@@ -3476,12 +3477,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         inContext(ctx.packageContext(tree, pkg)) {
           // If it exists, complete the class containing the top-level definitions
           // before typing any statement in the package to avoid cycles as in i13669.scala
-          val topLevelClassName = desugar.packageObjectName(ctx.source).moduleClassName
-          pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
+          val packageObjectName = desugar.packageObjectName(ctx.source, tree.srcPos)
+          val topLevelClassSymbol = pkg.moduleClass.info.decls.lookup(packageObjectName.moduleClassName)
+          topLevelClassSymbol.ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
             stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
           cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
+            .tap: _ =>
+              if !ctx.isAfterTyper
+              && pkg != defn.EmptyPackageVal
+              && !topLevelClassSymbol.info.decls.filter(sym => !sym.isConstructor && !sym.is(Synthetic)).isEmpty
+              then
+                desugar.checkSimplePackageName(packageObjectName, tree.span, ctx.source, isPackageObject = true)
         }
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`
@@ -3882,8 +3890,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
     var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
-    val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
+    val initialNotNullInfos = ctx.notNullInfos
     @tailrec def traverse(stats: List[untpd.Tree])(using Context): (List[Tree], Context) = stats match {
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)

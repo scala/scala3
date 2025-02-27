@@ -143,7 +143,8 @@ class SemanticdbTests:
       "-classpath", target.toString,
       "-Xignore-scala2-macros",
       "-usejavacp",
-      "-Wunused:all"
+      "-Wunused:all",
+      "-Yno-reporter",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)

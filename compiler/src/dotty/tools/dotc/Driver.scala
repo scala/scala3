@@ -10,6 +10,7 @@ import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
 import config.Feature
+import util.chaining.*
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -87,10 +88,12 @@ class Driver {
       if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
-      fileNamesOrNone.map { fileNames =>
+      fileNamesOrNone.map: fileNames =>
         val files = fileNames.map(ctx.getFile)
         (files, fromTastySetup(files))
-      }
+      .tap: _ =>
+        if ctx.settings.YnoReporter.value then
+          ictx.setReporter(Reporter.SilentReporter())
     }
   }
 
