@@ -1222,13 +1222,8 @@ class Definitions {
      */
     def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
       tpe.refinedInfo match
-        case mt: MethodType
-        if tpe.refinedName == nme.apply
-            && isFunctionType(tpe.parent)
-            && !Existential.isExistentialMethodOLD(mt) => Some(mt)
-        case mt: PolyType
-        if tpe.refinedName == nme.apply
-            && isFunctionType(tpe.parent) => Some(mt)
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply && isFunctionType(tpe.parent) => Some(mt)
         case _ => None
 
   end RefinedFunctionOf

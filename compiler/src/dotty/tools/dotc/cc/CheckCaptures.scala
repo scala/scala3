@@ -23,7 +23,6 @@ import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
-import Existential.derivedExistentialTypeOLD
 import Annotations.Annotation
 
 /** The capture checker */
@@ -869,8 +868,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           // can happen for curried constructors if instantiate of a previous step
           // added capture set to result.
           augmentConstructorType(parent, initCs ++ refs)
-        case core @ Existential(boundVar, core1) =>
-          core.derivedExistentialTypeOLD(augmentConstructorType(core1, initCs))
         case _ =>
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
@@ -942,8 +939,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           // which are less intelligible. An example is the line `a = x` in
           // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
           // to apply only to closures that are not eta expansions.
-          val res1 = Existential.toCapDeeply(res) // TODO: why toCapDeeply?
-          val pt1 = Existential.toCapDeeply(pt)
+          val res1 = Existential.toCap(res, deep = true) // TODO: why deep = true?
+          val pt1 = Existential.toCap(pt, deep = true)
             // We need to open existentials here in order not to get vars mixed up in them
             // We do the proper check with existentials when we are finished with the closure block.
           capt.println(i"pre-check closure $expr of type $res1 against $pt1")
@@ -1450,17 +1447,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         def adaptStr = i"adapting $actual ${if covariant then "~~>" else "<~~"} $expected"
 
-        // Get existentials and wildcards out of the way
-        actual match
-          case actual @ Existential(_, actualUnpacked) =>
-            return Existential.derivedExistentialTypeOLD(actual):
-                recur(actualUnpacked, expected, covariant)
-          case _ =>
+        // Get wildcards out of the way
         expected match
-          case expected @ Existential(_, expectedUnpacked) =>
-            return recur(actual, expectedUnpacked, covariant)
-          case _: WildcardType =>
-            return actual
+          case _: WildcardType => return actual
           case _ =>
 
         trace(adaptStr, capt, show = true) {
