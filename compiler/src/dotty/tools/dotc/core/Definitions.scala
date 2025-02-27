@@ -1225,7 +1225,7 @@ class Definitions {
         case mt: MethodType
         if tpe.refinedName == nme.apply
             && isFunctionType(tpe.parent)
-            && !Existential.isExistentialMethod(mt) => Some(mt)
+            && !Existential.isExistentialMethodOLD(mt) => Some(mt)
         case mt: PolyType
         if tpe.refinedName == nme.apply
             && isFunctionType(tpe.parent) => Some(mt)

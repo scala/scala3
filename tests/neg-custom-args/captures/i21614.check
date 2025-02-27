@@ -8,10 +8,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |Found:    (_$1: box File^{files*}) ->{files*} (ex$14: caps.Exists) -> box Logger{val f: File^{_$1}}^{ex$14.rd, _$1}
-   |Required: (_$1: box File^{files*}) => box Logger{val f: File^?}^?
+   |            Found:    (_$1: box File^{files*}) ->{files*} box Logger{val f: File^{_$1}}^{localcap.rd, _$1}
+   |            Required: (_$1: box File^{files*}) ->{fresh} box Logger{val f: File^?}^?
    |
-   |Note that the universal capability `cap.rd`
-   |cannot be included in capture set ?
+   |            Note that reference unknown.localcap.rd
+   |            cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`

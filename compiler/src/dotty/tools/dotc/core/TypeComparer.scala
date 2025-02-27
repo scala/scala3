@@ -47,8 +47,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     monitored = false
     GADTused = false
     opaquesUsed = false
-    openedExistentials = Nil
-    assocExistentials = Nil
+    openedExistentialsOLD = Nil
+    assocExistentialsOLD = Nil
     recCount = 0
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
@@ -70,14 +70,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** In capture checking: The existential types that are open because they
    *  appear in an existential type on the left in an enclosing comparison.
    */
-  private var openedExistentials: List[TermParamRef] = Nil
+  private var openedExistentialsOLD: List[TermParamRef] = Nil
+  private var openedMethods: List[MethodType] = Nil
 
   /** In capture checking: A map from existential types that are appear
    *  in an existential type on the right in an enclosing comparison.
    *  Each existential gets mapped to the opened existentials to which it
    *  may resolve at this point.
    */
-  private var assocExistentials: ExAssoc = Nil
+  private var assocExistentialsOLD: ExAssocOLD = Nil
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -822,7 +823,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (tp1.signature consistentParams tp2.signature) &&
             matchingMethodParams(tp1, tp2) &&
             (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            inOpenedMethod(tp2):
+              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
@@ -2809,23 +2811,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** A type associating instantiatable existentials on the right of a comparison
    *  with the existentials they can be instantiated with.
    */
-  type ExAssoc = List[(TermParamRef, List[TermParamRef])]
+  type ExAssocOLD = List[(TermParamRef, List[TermParamRef])]
 
   private def compareExistentialLeft(boundVar: TermParamRef, tp1unpacked: Type, tp2: Type)(using Context): Boolean =
-    val saved = openedExistentials
+    val saved = openedExistentialsOLD
     try
-      openedExistentials = boundVar :: openedExistentials
+      openedExistentialsOLD = boundVar :: openedExistentialsOLD
       recur(tp1unpacked, tp2)
     finally
-      openedExistentials = saved
+      openedExistentialsOLD = saved
 
   private def compareExistentialRight(tp1: Type, boundVar: TermParamRef, tp2unpacked: Type)(using Context): Boolean =
-    val saved = assocExistentials
+    val saved = assocExistentialsOLD
     try
-      assocExistentials = (boundVar, openedExistentials) :: assocExistentials
+      assocExistentialsOLD = (boundVar, openedExistentialsOLD) :: assocExistentialsOLD
       recur(tp1, tp2unpacked)
     finally
-      assocExistentials = saved
+      assocExistentialsOLD = saved
+
+  private def inOpenedMethod[T](mt: MethodType)(op: => T)(using Context): T =
+    val saved = openedMethods
+    if !mt.resType.isInstanceOf[MethodOrPoly] then openedMethods = mt :: openedMethods
+    try op finally openedMethods = saved
 
   /** Is `tp1` an existential var that subsumes `tp2`? This is the case if `tp1` is
    *  instantiatable (i.e. it's a key in `assocExistentials`) and one of the
@@ -2837,11 +2844,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    EX c1: A -> Ex c2. B
    */
   def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context): Boolean =
-    def canInstantiateWith(assoc: ExAssoc): Boolean = assoc match
+    def canInstantiateWith(assoc: ExAssocOLD): Boolean = assoc match
       case (bv, bvs) :: assoc1 =>
         if bv == tp1 then
           tp2 match
-            case Existential.Var(bv2) =>
+            case Existential.VarOLD(bv2) =>
               bvs.contains(bv2) || assoc1.exists(_._1 == bv2)
             case _ =>
               true
@@ -2850,34 +2857,36 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case Nil =>
         false
     tp2 match
-      case Existential.Var(bv2) if tp1 eq bv2 =>
+      case Existential.VarOLD(bv2) if tp1 eq bv2 =>
         true // for now, existential references referring to the same
              // binder are identified. !!! TODO this needs to be revised
       case _ =>
-        canInstantiateWith(assocExistentials)
+        canInstantiateWith(assocExistentialsOLD)
 
   def isOpenedExistential(ref: CaptureRef)(using Context): Boolean =
-    openedExistentials.contains(ref)
+    ref match
+      case Existential.Vble(mt) => openedMethods.contains(mt)
+      case _ => openedExistentialsOLD.contains(ref)
 
   /** bi-map taking existentials to the left of a comparison to matching
    *  existentials on the right. This is not a bijection. However
    *  we have `forwards(backwards(bv)) == bv` for an existentially bound `bv`.
    *  That's enough to qualify as a BiTypeMap.
    */
-  private class MapExistentials(assoc: ExAssoc)(using Context) extends BiTypeMap:
+  private class MapExistentials(assoc: ExAssocOLD)(using Context) extends BiTypeMap:
 
     private def bad(t: Type) =
-      Existential.badExistential
+      Existential.badExistentialOLD
         .showing(i"existential match not found for $t in $assoc", capt)
 
     def apply(t: Type) = t match
-      case t: TermParamRef if Existential.isBinder(t) =>
+      case t: TermParamRef if Existential.isBinderOLD(t) =>
         // Find outermost existential on the right that can be instantiated to `t`,
         // or `badExistential` if none exists.
-        def findMapped(assoc: ExAssoc): CaptureRef = assoc match
+        def findMapped(assoc: ExAssocOLD): CaptureRef = assoc match
           case (bv, assocBvs) :: assoc1 =>
             val outer = findMapped(assoc1)
-            if !Existential.isBadExistential(outer) then outer
+            if !Existential.isBadExistentialOLD(outer) then outer
             else if assocBvs.contains(t) then bv
             else bad(t)
           case Nil =>
@@ -2891,7 +2900,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      */
     lazy val inverse = new BiTypeMap:
       def apply(t: Type) = t match
-        case t: TermParamRef if Existential.isBinder(t) =>
+        case t: TermParamRef if Existential.isBinderOLD(t) =>
           assoc.find(_._1 == t) match
             case Some((_, bvs)) if bvs.nonEmpty => bvs.head
             case _ => bad(t)
@@ -2909,11 +2918,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet,
       vs: CaptureSet.VarState = makeVarState())(using Context): CaptureSet.CompareResult =
     try
-      if assocExistentials.isEmpty then
+      if assocExistentialsOLD.isEmpty then
         refs1.subCaptures(refs2, vs)
       else
-        val mapped = refs1.map(MapExistentials(assocExistentials))
-        if mapped.elems.exists(Existential.isBadExistential)
+        val mapped = refs1.map(MapExistentials(assocExistentialsOLD))
+        if mapped.elems.exists(Existential.isBadExistentialOLD)
         then CaptureSet.CompareResult.Fail(refs2 :: Nil)
         else mapped.subCaptures(refs2, vs)
     catch case ex: AssertionError =>
@@ -3507,7 +3516,7 @@ object TypeComparer {
   def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
     comparing(_.subCaptures(refs1, refs2, vs))
 
-  def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
+  def subsumesExistentiallyOLD(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
     comparing(_.subsumesExistentially(tp1, tp2))
 
   def isOpenedExistential(ref: CaptureRef)(using Context) =

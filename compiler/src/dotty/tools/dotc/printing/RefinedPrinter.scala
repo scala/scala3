@@ -180,31 +180,38 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           ~ ")"
       argStr ~ " " ~ arrow(isContextual, isPure) ~ refs ~ " " ~ argText(res)
 
-  protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
-    case info: MethodType =>
-      val isContextual = info.isImplicitMethod
-      val capturesRoot = refs == rootSetText
-      if cc.isCaptureCheckingOrSetup && info.allParamNamesSynthetic && !info.looksDependent then
-        // cc.Setup converts all functions to dependent functions. Undo that when printing.
-        toTextFunction(info.paramInfos, info.resType, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
-      else
-        changePrec(GlobalPrec):
-          "("
-          ~ paramsText(info)
-          ~ ") "
-          ~ arrow(isContextual, isPure && !capturesRoot)
-          ~ refs.provided(!capturesRoot)
-          ~ " "
-          ~ toTextMethodAsFunction(info.resultType, isPure)
-    case info: PolyType =>
-      changePrec(GlobalPrec) {
-        "["
-        ~ paramsText(info)
-        ~ "] => "
-        ~ toTextMethodAsFunction(info.resultType, isPure)
-      }
-    case _ =>
-      toText(info)
+  protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text =
+    def recur(tp: Type, enclInfo: MethodOrPoly | Null): Text = tp match
+      case tp: MethodType =>
+        val isContextual = tp.isImplicitMethod
+        val capturesRoot = refs == rootSetText
+        if cc.isCaptureCheckingOrSetup
+            && tp.allParamNamesSynthetic && !tp.looksDependent
+            && !showUniqueIds && !printDebug
+        then
+          // cc.Setup converts all functions to dependent functions. Undo that when printing.
+          inOpenMethod(tp):
+            toTextFunction(tp.paramInfos, tp.resType, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
+        else
+          changePrec(GlobalPrec):
+            "("
+            ~ paramsText(tp)
+            ~ ") "
+            ~ arrow(isContextual, isPure && !capturesRoot)
+            ~ refs.provided(!capturesRoot)
+            ~ " "
+            ~ recur(tp.resultType, tp)
+      case tp: PolyType =>
+        changePrec(GlobalPrec) {
+          "["
+          ~ paramsText(tp)
+          ~ "] => "
+          ~ recur(tp.resultType, tp)
+        }
+      case _ =>
+        inOpenMethod(enclInfo):
+          toText(tp)
+    recur(info, null)
 
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =

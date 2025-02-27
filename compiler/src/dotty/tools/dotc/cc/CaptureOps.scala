@@ -195,7 +195,7 @@ extension (tp: Type)
    */
   final def isTrackableRef(using Context): Boolean = tp match
     case _: ThisType => true
-    case tp: TermParamRef => !Existential.isBinder(tp)
+    case tp: TermParamRef => !Existential.isBinderOLD(tp)
     case tp: TermRef =>
       ((tp.prefix eq NoPrefix)
       || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
@@ -205,7 +205,8 @@ extension (tp: Type)
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
-    case Existential.Var(_) => true
+    case Existential.VarOLD(_) => true
+    case Existential.Vble(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
     case _ =>
@@ -526,11 +527,11 @@ extension (tp: Type)
           case t @ AnnotatedType(parent, ann) =>
             // Don't map annotations, which includes capture sets
             t.derivedAnnotatedType(this(parent), ann)
-          case t @ FunctionOrMethod(args, res @ Existential(_, _))
+          case t @ FunctionOrMethod(args, res)
           if args.forall(_.isAlwaysPure) =>
             // Also map existentials in results to reach capabilities if all
             // preceding arguments are known to be always pure
-            apply(t.derivedFunctionOrMethod(args, Existential.toCap(res)))
+            t.derivedFunctionOrMethod(args, apply(Existential.toCap(res)))
           case Existential(_, _) =>
             t
           case _ =>
@@ -571,6 +572,11 @@ extension (tp: Type)
     case tp: TermRef => tp.symbol.ccLevel
     case tp: ThisType => tp.cls.ccLevel.nextInner
     case _ => undefinedLevel
+
+  def hasSuffix(other: MethodType)(using Context): Boolean =
+    (tp eq other) || tp.match
+      case tp: MethodOrPoly => tp.resType.hasSuffix(other)
+      case _ => false
 
 extension (cls: ClassSymbol)
 

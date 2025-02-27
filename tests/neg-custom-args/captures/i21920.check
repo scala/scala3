@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21920.scala:34:34 ---------------------------------------
 34 |  val cell: Cell[File] = File.open(f => Cell(Seq(f))) // error
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                         Found:    Cell[box File^{f, f²}]{val head: () ?->? IterableOnce[box File^{f, f²}]^?}^?
+   |                         Found:    Cell[box File^{f, f²}]{val head: () ?->? IterableOnce[box File^{f²}]^?}^?
    |                         Required: Cell[File]
    |
    |                         where:    f  is a reference to a value parameter

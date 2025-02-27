@@ -23,7 +23,7 @@ import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
-import Existential.derivedExistentialType
+import Existential.derivedExistentialTypeOLD
 import Annotations.Annotation
 
 /** The capture checker */
@@ -850,7 +850,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // added capture set to result.
           augmentConstructorType(parent, initCs ++ refs)
         case core @ Existential(boundVar, core1) =>
-          core.derivedExistentialType(augmentConstructorType(core1, initCs))
+          core.derivedExistentialTypeOLD(augmentConstructorType(core1, initCs))
         case _ =>
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
@@ -922,7 +922,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // which are less intelligible. An example is the line `a = x` in
           // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
           // to apply only to closures that are not eta expansions.
-          val res1 = Existential.toCapDeeply(res)
+          val res1 = Existential.toCapDeeply(res) // TODO: why toCapDeeply?
           val pt1 = Existential.toCapDeeply(pt)
             // We need to open existentials here in order not to get vars mixed up in them
             // We do the proper check with existentials when we are finished with the closure block.
@@ -1433,7 +1433,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Get existentials and wildcards out of the way
         actual match
           case actual @ Existential(_, actualUnpacked) =>
-            return Existential.derivedExistentialType(actual):
+            return Existential.derivedExistentialTypeOLD(actual):
                 recur(actualUnpacked, expected, covariant)
           case _ =>
         expected match
