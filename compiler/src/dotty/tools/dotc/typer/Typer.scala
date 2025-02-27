@@ -2850,31 +2850,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
     val annot = Annotations.Annotation(tree)
-    def argPos = annot.argument(0).getOrElse(tree).sourcePos
-    var verbose = false
-    val filters = annot.argumentConstantString(0) match
-      case None => annot.argument(0) match
-        case Some(t: Select) if t.name.is(DefaultGetterName) =>
-          // default argument used for `@nowarn` and `@nowarn()`
-          List(MessageFilter.Any)
-        case _ =>
-          report.warning(s"filter needs to be a compile-time constant string", argPos)
-          List(MessageFilter.None)
-      case Some("") =>
-        List(MessageFilter.Any)
-      case Some("verbose") | Some("v") =>
-        verbose = true
-        List(MessageFilter.Any)
-      case Some(s) =>
-        WConf.parseFilters(s).left.map(parseErrors =>
-          report.warning (s"Invalid message filter\n${parseErrors.mkString ("\n")}", argPos)
-            List(MessageFilter.None)
-        ).merge
-    val range = mdef.sourcePos
-    val sup = Suppression(tree.sourcePos, filters, range.start, range.end, verbose)
-    // invalid suppressions, don't report as unused
-    if filters == List(MessageFilter.None) then sup.markUsed()
-    ctx.run.nn.suppressions.addSuppression(sup)
+    val argPos = annot.argument(0).getOrElse(tree).sourcePos
+    val conf = annot.argumentConstantString(0).getOrElse:
+      annot.argument(0) match
+      case Some(t: Select) if t.name.is(DefaultGetterName) =>
+        "" // default argument used for `@nowarn` and `@nowarn()`
+      case _ =>
+        report.warning(s"filter needs to be a compile-time constant string", argPos)
+        "none" // not a -Wconf filter, mapped to MessageFilter.None by registerNowarn
+    ctx.run.nn.suppressions.registerNowarn(tree.sourcePos, mdef.span)(conf, argPos)
 
   /** Run `typed` on `rhs` except if `rhs` is the right hand side of a deferred given,
    *  in which case the empty tree is returned.

@@ -98,7 +98,8 @@ object Inliner:
 
   // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
   // They are generally left alone (not mapped further, and if they wrap a type
-  // the type Inlined wrapper gets dropped
+  // the type Inlined wrapper gets dropped.
+  // As a side effect, register @nowarn annotations from annotated expressions.
   private class InlinerMap(
       typeMap: Type => Type,
       treeMap: Tree => Tree,
@@ -114,6 +115,18 @@ object Inliner:
       // neg/i14653.scala.
       ConservativeTreeCopier()
     ):
+
+    override def transform(tree: Tree)(using Context): Tree =
+      tree match
+      case Typed(expr, tpt) =>
+        tpt.tpe match
+        case AnnotatedType(_, annot) if annot.hasSymbol(defn.NowarnAnnot) =>
+          val argPos = annot.argument(0).getOrElse(tree).sourcePos
+          val conf = annot.argumentConstantString(0).getOrElse("")
+          ctx.run.nn.suppressions.registerNowarn(tree.sourcePos, expr.span)(conf, argPos)
+        case _ =>
+      case _ =>
+      super.transform(tree)
 
     override def copy(
         typeMap: Type => Type,
