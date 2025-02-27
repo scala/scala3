@@ -166,6 +166,7 @@ object CheckCaptures:
     val check = new TypeTraverser:
 
       private val seen = new EqHashSet[TypeRef]
+      var openFreshBinders: List[MethodType] = Nil
 
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
@@ -184,13 +185,32 @@ object CheckCaptures:
             ()
           case CapturingType(parent, refs) =>
             if variance >= 0 then
+              val openBinders = openFreshBinders
               refs.disallowRootCapability: () =>
-                def part = if t eq tp then "" else i"the part $t of "
+                def part =
+                  if t eq tp then ""
+                  else
+                    // Show in context of all enclosing traversed fresh binders.
+                    def showInOpenedFreshBinders(mts: List[MethodType]): String = mts match
+                      case Nil => i"the part $t of "
+                      case mt :: mts1 =>
+                        CCState.inOpenedFreshBinder(mt):
+                          showInOpenedFreshBinders(mts1)
+                    showInOpenedFreshBinders(openBinders.reverse)
                 report.error(
                   em"""$what cannot $have $tp since
                       |${part}that type captures the root capability `cap`.$addendum""",
                   pos)
             traverse(parent)
+          case defn.RefinedFunctionOf(mt) =>
+            traverse(mt)
+          case t: MethodType if t.isFreshBinder =>
+            atVariance(-variance):
+              t.paramInfos.foreach(traverse)
+            val saved = openFreshBinders
+            openFreshBinders = t :: openFreshBinders
+            try traverse(t.resType)
+            finally openFreshBinders = saved
           case t =>
             traverseChildren(t)
     if ccConfig.useSealed then check.traverse(tp)

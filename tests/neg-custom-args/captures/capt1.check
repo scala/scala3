@@ -37,7 +37,7 @@
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |             ^^^^^^^^^
    |             Type variable X of method h cannot be instantiated to () -> box C^ since
-   |             the part box C^{<cap of (): box C^>} of that type captures the root capability `cap`.
+   |             the part box C^ of that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/capt1.scala:36:30 -------------------------------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                              ^
@@ -47,7 +47,7 @@
 38 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
    |             ^^^^^^^^^^^^^^^^^^^^^^^
    |             Type variable X of method h cannot be instantiated to box () ->{x} C^ since
-   |             the part C^{<cap of (): C^>} of that type captures the root capability `cap`.
+   |             the part C^ of that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/capt1.scala:43:7 --------------------------------------------------------------
 43 |    if x == null then  // error: separation
    |       ^

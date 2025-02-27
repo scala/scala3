@@ -823,7 +823,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (tp1.signature consistentParams tp2.signature) &&
             matchingMethodParams(tp1, tp2) &&
             (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            inOpenedMethod(tp2):
+            CCState.inOpenedFreshBinder(tp2):
               isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
@@ -2829,11 +2829,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     finally
       assocExistentialsOLD = saved
 
-  private def inOpenedMethod[T](mt: MethodType)(op: => T)(using Context): T =
-    val saved = openedMethods
-    if !mt.resType.isInstanceOf[MethodOrPoly] then openedMethods = mt :: openedMethods
-    try op finally openedMethods = saved
-
   /** Is `tp1` an existential var that subsumes `tp2`? This is the case if `tp1` is
    *  instantiatable (i.e. it's a key in `assocExistentials`) and one of the
    *  following is true:
@@ -2865,7 +2860,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   def isOpenedExistential(ref: CaptureRef)(using Context): Boolean =
     ref match
-      case Existential.Vble(mt) => openedMethods.contains(mt)
+      case Existential.Vble(mt) => CCState.openedFreshBinders.contains(mt)
       case _ => openedExistentialsOLD.contains(ref)
 
   /** bi-map taking existentials to the left of a comparison to matching
