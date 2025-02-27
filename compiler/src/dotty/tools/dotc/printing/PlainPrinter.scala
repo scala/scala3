@@ -48,14 +48,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     limiter.register(str)
     Texts.Str(str, lineRange)
 
-  private var openMethods: List[MethodOrPoly] = Nil
-
-  protected def inOpenMethod[T](mt: MethodOrPoly | Null)(op: => T)(using Context): T =
-    val saved = openMethods
-    if mt != null && !mt.resType.isInstanceOf[MethodOrPoly] then
-      openMethods = mt :: openMethods
-    try op finally openMethods = saved
-
   given stringToText: Conversion[String, Text] = Str(_)
 
   /** If true, tweak output so it is the same before and after pickling */
@@ -270,7 +262,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
             && (refs.isUniversal
                 || refs.elems.nth(0).match
                       case Existential.Vble(binder) =>
-                        openMethods.nonEmpty && openMethods.head == binder
+                        CCState.openedFreshBinders match
+                          case b :: _ => binder eq b
+                          case _ => false
                       case _ =>
                         false
             )
@@ -307,7 +301,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ paramsText(tp)
           ~ ")"
           ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
-          ~ inOpenMethod(tp)(toText(tp.resultType))
+          ~ CCState.inOpenedFreshBinder(tp)(toText(tp.resultType))
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
@@ -463,7 +457,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case Existential.VarOLD(bv) => toTextRef(bv)
       case Existential.Vble(binder) =>
         // TODO: Better printing? USe a mode where we print more detailed
-        val vbleText: Text = openMethods.indexOf(binder) match
+        val vbleText: Text = CCState.openedFreshBinders.indexOf(binder) match
           case -1 =>
             "<cap of " ~ toText(binder) ~ ">"
           case n => "outer_" * n ++ "cap"

@@ -101,6 +101,8 @@ class CCState:
   private var curLevel: Level = outermostLevel
   private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
 
+  private var openedFreshBinders: List[MethodType] = Nil
+
 object CCState:
 
   opaque type Level = Int
@@ -125,6 +127,14 @@ object CCState:
     val saved = ccs.curLevel
     if !p then ccs.curLevel = ccs.curLevel.nextInner
     try op finally ccs.curLevel = saved
+
+  inline def inOpenedFreshBinder[T](mt: MethodType)(op: => T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.openedFreshBinders
+    if mt.isFreshBinder then ccs.openedFreshBinders = mt :: ccs.openedFreshBinders
+    try op finally ccs.openedFreshBinders = saved
+
+  def openedFreshBinders(using Context): List[MethodType] = ccState.openedFreshBinders
 
   extension (x: Level)
     def isDefined: Boolean = x >= 0
@@ -577,6 +587,10 @@ extension (tp: Type)
     (tp eq other) || tp.match
       case tp: MethodOrPoly => tp.resType.hasSuffix(other)
       case _ => false
+
+  def isFreshBinder(using Context): Boolean = tp match
+    case tp: MethodType => !tp.resType.isInstanceOf[MethodOrPoly]
+    case _ => false
 
 extension (cls: ClassSymbol)
 

@@ -181,7 +181,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       argStr ~ " " ~ arrow(isContextual, isPure) ~ refs ~ " " ~ argText(res)
 
   protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text =
-    def recur(tp: Type, enclInfo: MethodOrPoly | Null): Text = tp match
+    def recur(tp: Type, enclInfo: MethodType | Null): Text = tp match
       case tp: MethodType =>
         val isContextual = tp.isImplicitMethod
         val capturesRoot = refs == rootSetText
@@ -190,7 +190,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && !showUniqueIds && !printDebug
         then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
-          inOpenMethod(tp):
+          CCState.inOpenedFreshBinder(tp):
             toTextFunction(tp.paramInfos, tp.resType, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
         else
           changePrec(GlobalPrec):
@@ -206,11 +206,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           "["
           ~ paramsText(tp)
           ~ "] => "
-          ~ recur(tp.resultType, tp)
+          ~ recur(tp.resultType, enclInfo)
         }
       case _ =>
-        inOpenMethod(enclInfo):
-          toText(tp)
+        if enclInfo != null then CCState.inOpenedFreshBinder(enclInfo)(toText(tp))
+        else toText(tp)
     recur(info, null)
 
   override def toText(tp: Type): Text = controlled {

@@ -311,7 +311,7 @@ object Existential:
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
-          if !t.resType.isInstanceOf[MethodOrPoly] && !deep then localBinders = localBinders + t
+          if t.isFreshBinder && !deep then localBinders = localBinders + t
           try t.derivedLambdaType(resType = this(t.resType))
           finally localBinders = saved
         case t: PolyType =>
@@ -484,7 +484,7 @@ object Existential:
         val mt1 = apply(mt)
         if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
         else t
-      case t: MethodType if variance > 0 && !t.resType.isInstanceOf[MethodOrPoly] =>
+      case t: MethodType if variance > 0 && t.isFreshBinder =>
         val t1 = mapOver(t).asInstanceOf[MethodType]
         t1.derivedLambdaType(resType =
           if ccConfig.newScheme then mapCap(t1.resType, t1, fail)
