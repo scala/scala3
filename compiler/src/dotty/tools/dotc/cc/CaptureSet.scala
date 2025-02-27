@@ -1303,9 +1303,15 @@ object CaptureSet:
       ref1.captureSetOfInfo.map(ReadOnlyMap())
     case _ =>
       if ref.isMaxCapability then ref.singletonCaptureSet
-      else ofType(ref.underlying, followResult = true) // TODO: why followResult = true?
+      else ofType(ref.underlying, followResult = false)
 
-  /** Capture set of a type */
+  /** Capture set of a type
+   *  @param followResult  If true, also include capture sets of function results.
+   *                       This mode is currently not used. It could be interesting
+   *                       when we change the system so that the capture set of a function
+   *                       is the union of the capture sets if its span.
+   *                       In this case we should use `followResult = true` in the call in ofInfo above.
+   */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):
       tp.dealiasKeepAnnots match
