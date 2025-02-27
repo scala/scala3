@@ -419,9 +419,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           case prevEntry: TypeBounds =>
             adjustBounds(prevEntry, add = false)
           case _ =>
-        if entry != null && entry.exists then
-          // srcParam is instantiated, but keep dependencies to respond to "dependsOn"
-          adjustBounds(entry.bounds, add = true)
+        dropDeps(srcParam) // srcParam is instantiated, so its dependencies can be dropped
     this
   end adjustDeps
 

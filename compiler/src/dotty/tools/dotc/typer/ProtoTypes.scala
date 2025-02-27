@@ -77,9 +77,18 @@ object ProtoTypes {
                   if !tvar.isInstantiated then
                     // Filter out any tvar that instantiating would further constrain the current constraint
                     // Similar to filterByDeps in interpolateTypeVars.
+                    // Also, filter out any tvar that is in the instantiation of another tvar
+                    // (that we're not also trying to instantiate)
+                    // For example, in tests/pos/i21981.scala
+                    // when testing the compatibility of `.map2[?K]` on receiver `map0[?B]`
+                    // the tvars for B and K unified, instantiating `B := K`,
+                    // so we can't instantiate away `K` as it would incorrectly define `B`.
                     val excluded = ctx.typerState.ownedVars.filter(!_.isInstantiated)
-                    val aboveOK = !ctx.typerState.constraint.dependsOn(tvar, excluded, co = true)
-                    val belowOK = !ctx.typerState.constraint.dependsOn(tvar, excluded, co = false)
+                    var isInst = false
+                    ctx.typerState.constraint.foreachTypeVar: tvar1 =>
+                      isInst ||= !excluded.contains(tvar1) && tvar1.instanceOpt == tvar
+                    val aboveOK = !isInst && !ctx.typerState.constraint.dependsOn(tvar, excluded, co = true)
+                    val belowOK = !isInst && !ctx.typerState.constraint.dependsOn(tvar, excluded, co = false)
                     if aboveOK then
                       tvar.instantiate(fromBelow = false)
                     else if belowOK then
