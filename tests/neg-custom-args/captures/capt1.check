@@ -36,33 +36,33 @@
 -- Error: tests/neg-custom-args/captures/capt1.scala:36:16 -------------------------------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |             ^^^^^^^^^
-   |             Type variable X of method h cannot be instantiated to () -> box C^{localcap} since
-   |             the part box C^{unknown.localcap} of that type captures the root capability `cap`.
+   |             Type variable X of method h cannot be instantiated to () -> box C^ since
+   |             the part box C^{<cap of (): box C^>} of that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/capt1.scala:36:30 -------------------------------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                              ^
    |                              reference (x : C^) is not included in the allowed capture set {}
-   |                              of an enclosing function literal with expected type () -> box C^{localcap}
+   |                              of an enclosing function literal with expected type () -> box C^
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
 38 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-   |             Type variable X of method h cannot be instantiated to box () ->{x} C^{localcap} since
-   |             the part C^{unknown.localcap} of that type captures the root capability `cap`.
+   |             Type variable X of method h cannot be instantiated to box () ->{x} C^ since
+   |             the part C^{<cap of (): C^>} of that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/capt1.scala:43:7 --------------------------------------------------------------
 43 |    if x == null then  // error: separation
    |       ^
    |       Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |       of value z1 with type () => C^{localcap}.
+   |       of value z1 with type () => C^.
    |       This type hides capabilities  {x}
 -- Error: tests/neg-custom-args/captures/capt1.scala:44:12 -------------------------------------------------------------
 44 |      () => x  // error: separation
    |            ^
    |            Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |            of value z1 with type () => C^{localcap}.
+   |            of value z1 with type () => C^.
    |            This type hides capabilities  {x}
 -- Error: tests/neg-custom-args/captures/capt1.scala:47:2 --------------------------------------------------------------
 47 |  x // error: separation
    |  ^
    |  Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |  of value z1 with type () => C^{localcap}.
+   |  of value z1 with type () => C^.
    |  This type hides capabilities  {x}

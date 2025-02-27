@@ -27,7 +27,7 @@
 18 |    { f(cc) } // error // error
    |        ^^
    |        Separation failure: argument of type  (cc : -> Object^)
-   |        to a function of type Object^ ->{c} Object^{localcap}
+   |        to a function of type Object^ ->{c} Object^
    |        corresponds to capture-polymorphic formal parameter x$0 of type  Object^
    |        and hides capabilities  {cap, c}.
    |        Some of these overlap with the captures of the function prefix.

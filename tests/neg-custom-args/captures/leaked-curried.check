@@ -2,9 +2,9 @@
 14 |        () => () => io // error
    |                    ^^
    |                    reference (io : Cap^) is not included in the allowed capture set {}
-   |                    of an enclosing function literal with expected type () -> () ->{io} Cap^{localcap}
+   |                    of an enclosing function literal with expected type () -> () ->{io} Cap^
 -- Error: tests/neg-custom-args/captures/leaked-curried.scala:17:20 ----------------------------------------------------
 17 |        () => () => io // error
    |                    ^^
    |                    reference (io : Cap^) is not included in the allowed capture set {}
-   |                    of an enclosing function literal with expected type () -> () ->{io} Cap^{localcap}
+   |                    of an enclosing function literal with expected type () -> () ->{io} Cap^

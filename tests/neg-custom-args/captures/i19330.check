@@ -13,5 +13,5 @@
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
 16 |    val t: () => Logger^ = () => l // error
    |           ^^^^^^^^^^^^^
-   |           Separation failure: value t's type () => Logger^{localcap} hides parameter l.
+   |           Separation failure: value t's type () => Logger^ hides parameter l.
    |           The parameter needs to be annotated with @consume to allow this.
