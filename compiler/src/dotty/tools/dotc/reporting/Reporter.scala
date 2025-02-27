@@ -30,6 +30,10 @@ object Reporter {
     override def report(dia: Diagnostic)(using Context): Unit = ()
   }
 
+  /** A reporter for -Yno-reporter [sic] */
+  class SilentReporter extends Reporter:
+    def doReport(dia: Diagnostic)(using Context): Unit = ()
+
   type ErrorHandler = (Diagnostic, Context) => Unit
 
   private val defaultIncompleteHandler: ErrorHandler =
