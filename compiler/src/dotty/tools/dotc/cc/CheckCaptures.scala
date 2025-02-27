@@ -939,8 +939,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           // which are less intelligible. An example is the line `a = x` in
           // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
           // to apply only to closures that are not eta expansions.
-          val res1 = Existential.toCap(res, deep = true) // TODO: why deep = true?
-          val pt1 = Existential.toCap(pt, deep = true)
+          val res1 = Existential.toCap(res) // TODO: why deep = true?
+          val pt1 = Existential.toCap(pt)
             // We need to open existentials here in order not to get vars mixed up in them
             // We do the proper check with existentials when we are finished with the closure block.
           capt.println(i"pre-check closure $expr of type $res1 against $pt1")

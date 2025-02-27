@@ -226,7 +226,7 @@ object Existential:
       case _ => None
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
-  def toCap(tp: Type, deep: Boolean = false)(using Context): Type =
+  def toCap(tp: Type)(using Context): Type =
     val subst = new IdempotentCaptRefMap:
       val seen = EqHashMap[Annotation, CaptureRef]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
@@ -238,7 +238,7 @@ object Existential:
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
-          if t.isFreshBinder && !deep then localBinders = localBinders + t
+          if t.isFreshBinder then localBinders = localBinders + t
           try t.derivedLambdaType(resType = this(t.resType))
           finally localBinders = saved
         case t: PolyType =>
