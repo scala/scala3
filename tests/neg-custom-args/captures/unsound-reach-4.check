@@ -14,6 +14,6 @@
 17 |  def use(@consume x: F): File^ = x // error @consume override
    |      ^
    |error overriding method use in trait Foo of type (x: File^): box File^;
-   |  method use of type (x: File^): (ex$2: caps.Exists) -> File^{ex$2} has a parameter x with different @consume status than the corresponding parameter in the overridden definition
+   |  method use of type (x: File^): File^{unknown.localcap} has a parameter x with different @consume status than the corresponding parameter in the overridden definition
    |
    | longer explanation available when compiling with `-explain`

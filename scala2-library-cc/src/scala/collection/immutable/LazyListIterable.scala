@@ -387,12 +387,30 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     */
   def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]^): LazyListIterable[B]^{this, suffix} =
     newLL {
-      if (isEmpty) suffix match {
+      {if (isEmpty) suffix match {
         case lazyList: LazyListIterable[B]       => lazyList.state // don't recompute the LazyListIterable
         case coll if coll.knownSize == 0 => State.Empty
         case coll                        => stateFromIterator(coll.iterator)
       }
       else sCons(head, tail lazyAppendedAll suffix)
+    }.asInstanceOf
+    /* TODO: Without the asInstanceOf, we get
+        [error] 390 |      {if (isEmpty) suffix match {
+        [error]     |      ^y-cc / Compile / compileIncremental 10s
+        [error]     |Found:    () ?->{suffix}
+        [error]     |  scala.collection.immutable.LazyListIterable.State[box B^?]^{unknown.localcap}
+        [error]     |Required: () ?->{fresh}
+        [error]     |  scala.collection.immutable.LazyListIterable.State[box B^?]^{localcap}
+        [error] 391 |        case lazyList: LazyListIterable[B]       => lazyList.state // don't recompute the LazyListIterable
+        [error] 392 |        case coll if coll.knownSize == 0 => State.Empty
+        [error] 393 |        case coll                        => stateFromIterator(coll.iterator)
+        [error] 394 |      }
+        [error] 395 |      else sCons(head, tail lazyAppendedAll suffix)
+        [error] 396 |    }//.asInstanceOf
+        [error]     |
+
+      Figure out why we found a result with capture {unknown.localcap}.
+    */
     }
 
   /** @inheritdoc

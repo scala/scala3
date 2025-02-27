@@ -39,10 +39,11 @@ object Fresh:
       case Annot(hidden, binder) => (this.hidden eq hidden) && (this.binder eq binder)
       case _ => false
 
-    override def mapWith(tm: TypeMap)(using Context) =
-      tm(binder) match
-        case binder1: MethodType => derivedAnnotation(binder1)
-        case _ => this
+    override def mapWith(tm: TypeMap)(using Context) = tm match
+      case tm: Substituters.SubstBindingMap[MethodType] @unchecked if tm.from eq binder =>
+        derivedAnnotation(tm.to)
+      case _ =>
+        this
   end Annot
 
   /** Constructor and extractor methods for "fresh" capabilities */

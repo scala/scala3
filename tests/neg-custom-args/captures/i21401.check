@@ -21,5 +21,5 @@
 -- Error: tests/neg-custom-args/captures/i21401.scala:17:52 ------------------------------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^
-   |Type variable X of value leaked cannot be instantiated to Boxed[box IO^] -> (ex$14: caps.Exists) -> Boxed[box IO^{ex$14}] since
-   |the part box IO^{ex$14} of that type captures the root capability `cap`.
+   |      Type variable X of value leaked cannot be instantiated to Boxed[box IO^] -> Boxed[box IO^{localcap}] since
+   |      the part box IO^{unknown.localcap} of that type captures the root capability `cap`.

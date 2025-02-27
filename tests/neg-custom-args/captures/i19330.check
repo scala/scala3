@@ -6,12 +6,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:22:22 ---------------------------------------
 22 |  val bad: bar.T = foo(bar) // error
    |                   ^^^^^^^^
-   |                   Found:    () => Logger^
-   |                   Required: () ->{fresh} Logger^{fresh}
+   |                   Found:    bar.T
+   |                   Required: () => Logger^
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
 16 |    val t: () => Logger^ = () => l // error
    |           ^^^^^^^^^^^^^
-   |           Separation failure: value t's type () => (ex$3: caps.Exists) -> Logger^{ex$3} hides parameter l.
+   |           Separation failure: value t's type () => Logger^{localcap} hides parameter l.
    |           The parameter needs to be annotated with @consume to allow this.

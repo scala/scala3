@@ -104,7 +104,8 @@ sealed abstract class CaptureSet extends Showable:
 
   final def isUnboxable(using Context) =
     elems.exists:
-      case Existential.Var(_) => true
+      case Existential.VarOLD(_) => true
+      case Existential.Vble(_) => true
       case elem => elem.isRootCapability
 
   final def isReadOnly(using Context): Boolean =
@@ -547,7 +548,7 @@ object CaptureSet:
     final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
-      else if Existential.isBadExistential(elem) then // Fail if `elem` is an out-of-scope existential
+      else if Existential.isBadExistentialOLD(elem) then // Fail if `elem` is an out-of-scope existential
         CompareResult.Fail(this :: Nil)
       else if !levelOK(elem) then
         CompareResult.LevelError(this, elem)    // or `elem` is not visible at the level of the set.
@@ -567,13 +568,19 @@ object CaptureSet:
           elems -= elem
           res.addToTrace(this)
 
+    // TODO: Also track allowable TermParamRefs and Existential.Vbles in capture sets
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isRootCapability then
         !noUniversal
       else elem match
-        case Existential.Var(bv) =>
+        case Existential.VarOLD(bv) =>
           !noUniversal
           && !TypeComparer.isOpenedExistential(bv)
+            // Opened existentials on the left cannot be added to nested capture sets on the right
+            // of a comparison. Test case is open-existential.scala.
+        case elem @ Existential.Vble(mt) =>
+          !noUniversal
+          && !TypeComparer.isOpenedExistential(elem)
             // Opened existentials on the left cannot be added to nested capture sets on the right
             // of a comparison. Test case is open-existential.scala.
         case elem: TermRef if level.isDefined =>
@@ -629,7 +636,8 @@ object CaptureSet:
         try
           val approx = computeApprox(origin).ensuring(_.isConst)
           if approx.elems.exists:
-            case Existential.Var(_) => true
+            case Existential.VarOLD(_) => true
+            case Existential.Vble(_) => true
             case _ => false
           then
             ccState.approxWarnings +=
@@ -1304,7 +1312,7 @@ object CaptureSet:
       ref1.captureSetOfInfo.map(ReadOnlyMap())
     case _ =>
       if ref.isMaxCapability then ref.singletonCaptureSet
-      else ofType(ref.underlying, followResult = true)
+      else ofType(ref.underlying, followResult = true) // TODO: why followResult = true?
 
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
@@ -1317,7 +1325,9 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case tp @ Existential.Var(_) =>
+        case tp @ Existential.VarOLD(_) =>
+          tp.captureSet
+        case tp @ Existential.Vble(_) =>
           tp.captureSet
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
@@ -1332,8 +1342,11 @@ object CaptureSet:
               CaptureSet.ofTypeDeeply(parent.widen)
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
           ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
-          ++ (recur(rinfo.resType)                             // add capture set of result
-          -- CaptureSet(rinfo.paramRefs.filter(_.isTracked)*)) // but disregard bound parameters
+          ++ recur(rinfo.resType)                             // add capture set of result
+              .filter:
+                case TermParamRef(binder, _) => binder ne rinfo
+                case Existential.Vble(binder) => binder ne rinfo
+                case _ => true
         case tpd @ AppliedType(tycon, args) =>
           if followResult && defn.isNonRefinedFunction(tpd) then
             recur(args.last)
@@ -1359,7 +1372,7 @@ object CaptureSet:
    *  capture sets. Nested existential sets are approximated with `cap`.
    *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
    *  replaces caps with reach capabilties. The one exception to this is invariant
-   *  arguments. This have to be included to be conservative in dcs but must be
+   *  arguments. These have to be included to be conservative in dcs but must be
    *  excluded in narrowCaps.
    */
   def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
@@ -1377,9 +1390,9 @@ object CaptureSet:
             val upper = t.info.bounds.hi
             if includeTypevars && upper.isExactlyAny then CaptureSet.fresh(t.symbol)
             else this(cs, upper)
-          case t @ FunctionOrMethod(args, res @ Existential(_, _))
-          if args.forall(_.isAlwaysPure) =>
-            this(cs, Existential.toCap(res))
+          case t @ FunctionOrMethod(args, res) =>
+            if args.forall(_.isAlwaysPure) then this(cs, Existential.toCap(res))
+            else cs
           case t @ Existential(_, _) =>
             cs
           case _ =>

@@ -196,7 +196,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       recur(elems, elems.toList)
 
     private def peaks(using Context): Refs =
-      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = newElems match
+      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = trace(i"peaks $acc, $newElems = "):
+        newElems match
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)

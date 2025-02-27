@@ -48,6 +48,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
     limiter.register(str)
     Texts.Str(str, lineRange)
 
+  private var openMethods: List[MethodOrPoly] = Nil
+
+  protected def inOpenMethod[T](mt: MethodOrPoly | Null)(op: => T)(using Context): T =
+    val saved = openMethods
+    if mt != null then openMethods = mt :: openMethods
+    try op finally openMethods = saved
+
   given stringToText: Conversion[String, Text] = Str(_)
 
   /** If true, tweak output so it is the same before and after pickling */
@@ -441,7 +448,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
-      case Existential.Var(bv) => toTextRef(bv)
+      case Existential.VarOLD(bv) => toTextRef(bv)
+      case Existential.Vble(binder) =>
+        // TODO: Better printing? USe a mode where we print more detailed
+        val vbleStr = openMethods.indexOf(binder) match
+          case -1 => "unknown.localcap" 
+          case n => "outer_" * n ++ "localcap"
+        vbleStr ~ hashStr(binder)
       case Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${hidden.id}" else ""
         if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
