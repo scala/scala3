@@ -116,24 +116,37 @@ object CCState:
    */
   def currentLevel(using Context): Level = ccState.curLevel
 
+  /** Perform `op` in the next inner level
+   *  @pre We are currently in capture checking or setup
+   */
   inline def inNestedLevel[T](inline op: T)(using Context): T =
     val ccs = ccState
     val saved = ccs.curLevel
     ccs.curLevel = ccs.curLevel.nextInner
     try op finally ccs.curLevel = saved
 
+  /** Perform `op` in the next inner level unless `p` holds.
+   *  @pre We are currently in capture checking or setup
+   */
   inline def inNestedLevelUnless[T](inline p: Boolean)(inline op: T)(using Context): T =
     val ccs = ccState
     val saved = ccs.curLevel
     if !p then ccs.curLevel = ccs.curLevel.nextInner
     try op finally ccs.curLevel = saved
 
+  /** If we are currently in capture checking or setup, perform `op` assuming
+   *  a fresh enclosing binder `mt`, otherwise perform `op` directly.
+   */
   inline def inOpenedFreshBinder[T](mt: MethodType)(op: => T)(using Context): T =
-    val ccs = ccState
-    val saved = ccs.openedFreshBinders
-    if mt.isFreshBinder then ccs.openedFreshBinders = mt :: ccs.openedFreshBinders
-    try op finally ccs.openedFreshBinders = saved
+    if isCaptureCheckingOrSetup then
+      val ccs = ccState
+      val saved = ccs.openedFreshBinders
+      if mt.isFreshBinder then ccs.openedFreshBinders = mt :: ccs.openedFreshBinders
+      try op finally ccs.openedFreshBinders = saved
+    else
+      op
 
+  /** The currently opened fresh binders */
   def openedFreshBinders(using Context): List[MethodType] = ccState.openedFreshBinders
 
   extension (x: Level)
@@ -147,7 +160,7 @@ object CCState:
 end CCState
 
 /** The currently valid CCState */
-def ccState(using Context) =
+def ccState(using Context): CCState =
   Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState1
 
 extension (tree: Tree)
