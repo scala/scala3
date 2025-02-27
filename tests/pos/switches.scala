@@ -42,6 +42,7 @@ class Test {
     case IntAnyVal(100) => 2
     case IntAnyVal(1000) => 3
     case IntAnyVal(10000) => 4
+    case _ => -1
   }
 }
 
