@@ -297,9 +297,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
             // Drop explicit retains annotations
             apply(parent)
-          case Existential(_, unpacked) =>
-            // drop the existential, the bound variables will be replaced by capture set variables
-            apply(unpacked)
           case tp: TypeLambda =>
             // Don't recurse into parameter bounds, just cleanup any stray retains annotations
             tp.derivedLambdaType(
@@ -904,7 +901,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val parent1 = this(parent)
         if refs.isUniversal then t.derivedCapturingType(parent1, CaptureSet.Fluid)
         else t
-      case Existential(_) => t
       case _ => mapFollowingAliases(t)
 
   /** Run setup on a compilation unit with given `tree`.

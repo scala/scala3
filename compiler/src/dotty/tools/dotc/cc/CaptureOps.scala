@@ -204,8 +204,7 @@ extension (tp: Type)
    *    - annotated types that represent reach or maybe capabilities
    */
   final def isTrackableRef(using Context): Boolean = tp match
-    case _: ThisType => true
-    case tp: TermParamRef => !Existential.isBinderOLD(tp)
+    case _: (ThisType | TermParamRef) => true
     case tp: TermRef =>
       ((tp.prefix eq NoPrefix)
       || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
@@ -215,7 +214,6 @@ extension (tp: Type)
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
-    case Existential.VarOLD(_) => true
     case Existential.Vble(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
@@ -542,8 +540,6 @@ extension (tp: Type)
             // Also map existentials in results to reach capabilities if all
             // preceding arguments are known to be always pure
             t.derivedFunctionOrMethod(args, apply(Existential.toCap(res)))
-          case Existential(_, _) =>
-            t
           case _ =>
             mapOver(t)
     end narrowCaps
@@ -571,8 +567,6 @@ extension (tp: Type)
           case t @ AnnotatedType(parent, ann) =>
             // Don't traverse annotations, which includes capture sets
             this(x, parent)
-          case Existential(_, _) =>
-            false
           case _ =>
             foldOver(x, t)
     acc(false, tp)

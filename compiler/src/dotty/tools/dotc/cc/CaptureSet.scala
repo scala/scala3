@@ -104,7 +104,6 @@ sealed abstract class CaptureSet extends Showable:
 
   final def isUnboxable(using Context) =
     elems.exists:
-      case Existential.VarOLD(_) => true
       case Existential.Vble(_) => true
       case elem => elem.isRootCapability
 
@@ -548,8 +547,6 @@ object CaptureSet:
     final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
-      else if Existential.isBadExistentialOLD(elem) then // Fail if `elem` is an out-of-scope existential
-        CompareResult.Fail(this :: Nil)
       else if !levelOK(elem) then
         CompareResult.LevelError(this, elem)    // or `elem` is not visible at the level of the set.
       else
@@ -573,14 +570,9 @@ object CaptureSet:
       if elem.isRootCapability then
         !noUniversal
       else elem match
-        case Existential.VarOLD(bv) =>
-          !noUniversal
-          && !TypeComparer.isOpenedExistential(bv)
-            // Opened existentials on the left cannot be added to nested capture sets on the right
-            // of a comparison. Test case is open-existential.scala.
         case elem @ Existential.Vble(mt) =>
           !noUniversal
-          && !TypeComparer.isOpenedExistential(elem)
+          && !CCState.openedFreshBinders.contains(elem)
             // Opened existentials on the left cannot be added to nested capture sets on the right
             // of a comparison. Test case is open-existential.scala.
         case elem: TermRef if level.isDefined =>
@@ -636,7 +628,6 @@ object CaptureSet:
         try
           val approx = computeApprox(origin).ensuring(_.isConst)
           if approx.elems.exists:
-            case Existential.VarOLD(_) => true
             case Existential.Vble(_) => true
             case _ => false
           then
@@ -1325,8 +1316,6 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case tp @ Existential.VarOLD(_) =>
-          tp.captureSet
         case tp @ Existential.Vble(_) =>
           tp.captureSet
         case CapturingType(parent, refs) =>
@@ -1393,8 +1382,6 @@ object CaptureSet:
           case t @ FunctionOrMethod(args, res) =>
             if args.forall(_.isAlwaysPure) then this(cs, Existential.toCap(res))
             else cs
-          case t @ Existential(_, _) =>
-            cs
           case _ =>
             foldOver(cs, t)
     collect(CaptureSet.empty, tp)

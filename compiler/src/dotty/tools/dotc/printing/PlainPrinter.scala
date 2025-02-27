@@ -454,7 +454,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
-      case Existential.VarOLD(bv) => toTextRef(bv)
       case Existential.Vble(binder) =>
         // TODO: Better printing? USe a mode where we print more detailed
         val vbleText: Text = CCState.openedFreshBinders.indexOf(binder) match

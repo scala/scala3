@@ -210,41 +210,6 @@ Expansion of ^:
 */
 object Existential:
 
-  type CarrierOLD = RefinedType
-
-  def unapply(tp: CarrierOLD)(using Context): Option[(TermParamRef, Type)] =
-    tp.refinedInfo match
-      case mt: MethodType
-      if isExistentialMethodOLD(mt) && defn.isNonRefinedFunction(tp.parent) =>
-        Some(mt.paramRefs.head, mt.resultType)
-      case _ => None
-
-  /** Create method type in the refinement of an existential type */
-  private def exMethodTypeOLD(using Context)(
-      mk: TermParamRef => Type,
-      boundName: TermName = ExistentialBinderName.fresh()
-    ): MethodType =
-    MethodType(boundName :: Nil)(
-      mt => defn.Caps_Exists.typeRef :: Nil,
-      mt => mk(mt.paramRefs.head))
-
-  /** Create existential */
-  def applyOLD(mk: TermParamRef => Type)(using Context): Type =
-    exMethodTypeOLD(mk).toFunctionType(alwaysDependent = true)
-
-  /** The (super-) type of existentially bound references */
-  type VarOLD = AnnotatedType
-
-  /** An extractor for existentially bound references of the form ex @existential
-   *  where ex is a TermParamRef of type Exists
-   */
-  object VarOLD:
-    def apply(boundVar: TermParamRef)(using Context): VarOLD =
-      AnnotatedType(boundVar, Annotation(defn.ExistentialAnnot, NoSpan))
-    def unapply(tp: VarOLD)(using Context): Option[TermParamRef] = tp match
-      case AnnotatedType(bv: TermParamRef, ann) if ann.symbol == defn.ExistentialAnnot => Some(bv)
-      case _ => None
-
   /** The (super-) type of existentially bound references */
   type Vble = AnnotatedType
 
@@ -259,44 +224,6 @@ object Existential:
             Some(mt)
           case _ => None
       case _ => None
-
-  /** Create existential if bound variable appears in result of `mk` */
-  def wrapOLD(mk: TermParamRef => Type)(using Context): Type =
-    val mt = exMethodTypeOLD(mk)
-    if mt.isResultDependent then mt.toFunctionType() else mt.resType
-
-  extension (tp: CarrierOLD)
-    def derivedExistentialTypeOLD(core: Type)(using Context): Type = tp match
-      case Existential(boundVar, unpacked) =>
-        if core eq unpacked then tp
-        else applyOLD(bv => core.substParam(boundVar, bv))
-      case _ =>
-        core
-
-  /** Map existentially bound references referring to `boundVar` one-to-one
-   *  to Fresh instances (OLD)
-   */
-  def boundVarToCapOLD(boundVar: TermParamRef, tp: Type)(using Context) =
-    val subst = new IdempotentCaptRefMap:
-      val seen = EqHashMap[Annotation, CaptureRef]()
-      def apply(t: Type): Type = t match
-        case t @ VarOLD(`boundVar`) =>
-          seen.getOrElseUpdate(t.annot, Fresh(NoSymbol))
-        case _ =>
-          mapOver(t)
-    subst(tp)
-
-  /** Map existentially bound references referring to `boundVar` one-to-one
-   *  to Fresh instances
-   */
-  def toCapOLD(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
-    case Existential(boundVar, unpacked) => // (OLD)
-      boundVarToCapOLD(boundVar, unpacked)
-    case tp1 @ CapturingType(parent, refs) =>
-      tp1.derivedCapturingType(toCap(parent), refs)
-    case tp1 @ AnnotatedType(parent, ann) =>
-      tp1.derivedAnnotatedType(toCap(parent), ann)
-    case _ => tp
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def toCap(tp: Type, deep: Boolean = false)(using Context): Type =
@@ -320,26 +247,8 @@ object Existential:
         case _ =>
           mapOver(t)
 
-    if ccConfig.newScheme then subst(tp)
-    else toCapOLD(tp)
-
-  /** Map existentials at the top-level and in all nested result types to `Fresh`
-   */
-  def toCapDeeplyOLD(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
-    case Existential(boundVar, unpacked) =>
-      toCapDeeplyOLD(boundVarToCapOLD(boundVar, unpacked))
-    case tp1 @ FunctionOrMethod(args, res) =>
-      val tp2 = tp1.derivedFunctionOrMethod(args, toCapDeeplyOLD(res))
-      if tp2 ne tp1 then tp2 else tp
-    case tp1 @ CapturingType(parent, refs) =>
-      tp1.derivedCapturingType(toCapDeeplyOLD(parent), refs)
-    case tp1 @ AnnotatedType(parent, ann) =>
-      tp1.derivedAnnotatedType(toCapDeeplyOLD(parent), ann)
-    case _ => tp
-
-  def toCapDeeply(tp: Type)(using Context): Type =
-    if ccConfig.newScheme then toCap(tp, deep = true)
-    else toCapDeeplyOLD(tp)
+    subst(tp)
+  end toCap
 
   /** Knowing that `tp` is a function type, is it an alias to a function other
    *  than `=>`?
@@ -347,75 +256,6 @@ object Existential:
   private def isAliasFun(tp: Type)(using Context) = tp match
     case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
     case _ => false
-
-  /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
-   *  variable. If there are such occurrences, or there might be in the future due to embedded
-   *  capture set variables, create an existential with the variable wrapping the type.
-   *  Stop at function or method types since these have been mapped before.
-   */
-  def mapCapOLD(tp: Type, fail: Message => Unit)(using Context): Type =
-    var needsWrap = false
-
-    abstract class CapMap extends BiTypeMap:
-      override def mapOver(t: Type): Type = t match
-        case t @ FunctionOrMethod(args, res) if variance > 0 && !isAliasFun(t) =>
-          t // `t` should be mapped in this case by a different call to `mapCap`.
-        case Existential(_, _) =>
-          t
-        case t: (LazyRef | TypeVar) =>
-          mapConserveSuper(t)
-        case _ =>
-          super.mapOver(t)
-
-    class Wrap(boundVar: TermParamRef) extends CapMap:
-      private val seen = EqHashMap[CaptureRef, VarOLD]()
-
-      def apply(t: Type) = t match
-        case t: CaptureRef if t.isCapOrFresh =>
-          if variance > 0 then
-            needsWrap = true
-            seen.getOrElseUpdate(t, VarOLD(boundVar))
-          else
-            if variance == 0 then
-              fail(em"""$tp captures the root capability `cap` in invariant position""")
-            // we accept variance < 0, and leave the cap as it is
-            super.mapOver(t)
-        case t @ CapturingType(parent, refs: CaptureSet.Var) =>
-          if variance > 0 then needsWrap = true
-          super.mapOver(t)
-        case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
-          if variance > 0 then
-            needsWrap = true
-            super.mapOver:
-              defn.FunctionNOf(args, res, contextual)
-                .capturing(VarOLD(boundVar).singletonCaptureSet)
-          else mapOver(t)
-        case _ =>
-          mapOver(t)
-        //.showing(i"mapcap $t = $result")
-
-      lazy val inverse = new BiTypeMap:
-        def apply(t: Type) = t match
-          case t @ VarOLD(`boundVar`) =>
-            // do a reverse getOrElseUpdate on `seen` to produce the
-            // `Fresh` assosicated with `t`
-            val it = seen.iterator
-            var ref: CaptureRef | Null = null
-            while it.hasNext && ref == null do
-              val (k, v) = it.next
-              if v.annot eq t.annot then ref = k
-            if ref == null then
-              ref = Fresh(NoSymbol)
-              seen(ref) = t
-            ref
-          case _ => mapOver(t)
-        def inverse = Wrap.this
-        override def toString = "Wrap.inverse"
-    end Wrap
-
-    val wrapped = applyOLD(Wrap(_)(tp))
-    if needsWrap then wrapped else tp
-  end mapCapOLD
 
   /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
    *  variable bound by `mt`.
@@ -486,37 +326,13 @@ object Existential:
         else t
       case t: MethodType if variance > 0 && t.isFreshBinder =>
         val t1 = mapOver(t).asInstanceOf[MethodType]
-        t1.derivedLambdaType(resType =
-          if ccConfig.newScheme then mapCap(t1.resType, t1, fail)
-          else mapCapOLD(t1.resType, fail))
+        t1.derivedLambdaType(resType = mapCap(t1.resType, t1, fail))
       case CapturingType(parent, refs) =>
         t.derivedCapturingType(this(parent), refs)
-      case Existential(_, _) =>
-        t
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
       case _ =>
         mapFollowingAliases(t)
   end mapCapInResults
-
-  /** Is `mt` a method represnting an existential type when used in a refinement? */
-  def isExistentialMethodOLD(mt: TermLambda)(using Context): Boolean = mt.paramInfos match
-    case (info: TypeRef) :: rest => info.symbol == defn.Caps_Exists && rest.isEmpty
-    case _ => false
-
-  /** Is `ref` a TermParamRef representing existentially bound variables? */
-  def isBinderOLD(ref: CaptureRef)(using Context) = ref match
-    case ref: TermParamRef => isExistentialMethodOLD(ref.binder)
-    case _ => false
-
-  /** An value signalling an out-of-scope existential that should
-   *  lead to a compare failure.
-   */
-  def badExistentialOLD(using Context): TermParamRef =
-    exMethodTypeOLD(identity, nme.OOS_EXISTENTIAL).paramRefs.head
-
-  def isBadExistentialOLD(ref: CaptureRef) = ref match
-    case ref: TermParamRef => ref.paramName == nme.OOS_EXISTENTIAL
-    case _ => false
 
 end Existential
