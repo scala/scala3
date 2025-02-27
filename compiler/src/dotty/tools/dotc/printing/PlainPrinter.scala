@@ -52,7 +52,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def inOpenMethod[T](mt: MethodOrPoly | Null)(op: => T)(using Context): T =
     val saved = openMethods
-    if mt != null then openMethods = mt :: openMethods
+    if mt != null && !mt.resType.isInstanceOf[MethodOrPoly] then
+      openMethods = mt :: openMethods
     try op finally openMethods = saved
 
   given stringToText: Conversion[String, Text] = Str(_)
@@ -262,9 +263,20 @@ class PlainPrinter(_ctx: Context) extends Printer {
         then
           toText(parent)
         else
+          // The set if universal if it consists only of caps.cap or
+          // only of an existential Fresh that is bound to the immediately enclosing method.
+          def isUniversal =
+            refs.elems.size == 1
+            && (refs.isUniversal
+                || refs.elems.nth(0).match
+                      case Existential.Vble(binder) =>
+                        openMethods.nonEmpty && openMethods.head == binder
+                      case _ =>
+                        false
+            )
           val refsText =
-            if refs.isUniversal then
-              if refs.elems.size == 1 then rootSetText else toTextCaptureSet(refs)
+            if isUniversal then
+              rootSetText
             else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh then
               rootSetText
             else
@@ -295,7 +307,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ paramsText(tp)
           ~ ")"
           ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
-          ~ toText(tp.resultType)
+          ~ inOpenMethod(tp)(toText(tp.resultType))
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
@@ -451,10 +463,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case Existential.VarOLD(bv) => toTextRef(bv)
       case Existential.Vble(binder) =>
         // TODO: Better printing? USe a mode where we print more detailed
-        val vbleStr = openMethods.indexOf(binder) match
-          case -1 => "unknown.localcap" 
-          case n => "outer_" * n ++ "localcap"
-        vbleStr ~ hashStr(binder)
+        val vbleText: Text = openMethods.indexOf(binder) match
+          case -1 =>
+            "<cap of " ~ toText(binder) ~ ">"
+          case n => "outer_" * n ++ "cap"
+        vbleText ~ hashStr(binder)
       case Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${hidden.id}" else ""
         if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
