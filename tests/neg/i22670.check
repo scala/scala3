@@ -1,0 +1,18 @@
+-- Warning: tests/neg/i22670/i22670-macro.scala:4:0 --------------------------------------------------------------------
+ 4 |import scala.quoted.*
+   |^
+   |The package name `i22670-macro$package` will be encoded on the classpath, and can lead to undefined behaviour.
+ 5 |transparent inline def foo =
+ 6 |  ${ fooImpl }
+ 7 |def fooImpl(using Quotes): Expr[Any] =
+ 8 |  Expr("hello")
+-- Warning: tests/neg/i22670/i22670-usage.scala:4:0 --------------------------------------------------------------------
+4 |val x = foo // warn
+  |^^^^^^^^^^^
+  |The package name `i22670-usage$package` will be encoded on the classpath, and can lead to undefined behaviour.
+Cyclic macro dependencies in tests/neg/i22670/i22670-usage.scala.
+Compilation stopped since no further progress can be made.
+
+To fix this, place macros in one set of files and their callers in another.
+
+Compile with -Xprint-suspension for information.

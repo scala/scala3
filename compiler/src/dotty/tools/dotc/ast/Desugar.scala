@@ -19,6 +19,7 @@ import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
 import parsing.Parsers
+import dotty.tools.dotc.util.chaining.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -1268,25 +1269,29 @@ object desugar {
     else tree
   }
 
+  def checkSimplePackageName(name: Name, errSpan: Span, source: SourceFile, isPackageObject: Boolean)(using Context) =
+    if !ctx.isAfterTyper then
+      name match
+      case name: SimpleName if (isPackageObject || !errSpan.isSynthetic) && name.exists(Chars.willBeEncoded) =>
+        report.warning(
+          em"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour.",
+          source.atSpan(errSpan))
+      case _ =>
+
   def checkPackageName(mdef: ModuleDef | PackageDef)(using Context): Unit =
-
-    def check(name: Name, errSpan: Span): Unit = name match
-      case name: SimpleName if !errSpan.isSynthetic && name.exists(Chars.willBeEncoded) =>
-        report.warning(em"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour.", mdef.source.atSpan(errSpan))
-      case _ =>
-
-    def loop(part: RefTree): Unit = part match
-      case part @ Ident(name) => check(name, part.span)
-      case part @ Select(qual: RefTree, name) =>
-        check(name, part.nameSpan)
-        loop(qual)
-      case _ =>
-
+    def check(name: Name, errSpan: Span) = checkSimplePackageName(name, errSpan, mdef.source, isPackageObject = false)
     mdef match
-      case pdef: PackageDef => loop(pdef.pid)
-      case mdef: ModuleDef if mdef.mods.is(Package) => check(mdef.name, mdef.nameSpan)
-      case _ =>
-  end checkPackageName
+    case pdef: PackageDef =>
+      def loop(part: RefTree): Unit = part match
+        case part @ Ident(name) => check(name, part.span)
+        case part @ Select(qual: RefTree, name) =>
+          check(name, part.nameSpan)
+          loop(qual)
+        case _ =>
+      loop(pdef.pid)
+    case mdef: ModuleDef if mdef.mods.is(Package) =>
+      check(mdef.name, mdef.nameSpan)
+    case _ =>
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
@@ -1795,10 +1800,11 @@ object desugar {
   /** Assuming `src` contains top-level definition, returns the name that should
    *  be using for the package object that will wrap them.
    */
-  def packageObjectName(src: SourceFile): TermName =
+  def packageObjectName(src: SourceFile, srcPos: SrcPos)(using Context): TermName =
     val fileName = src.file.name
     val sourceName = fileName.take(fileName.lastIndexOf('.'))
     (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
+      .tap(nm => checkSimplePackageName(nm, srcPos.span, src, isPackageObject = true))
 
   /** Group all definitions that can't be at the toplevel in
    *  an object named `<source>$package` where `<source>` is the name of the source file.
@@ -1826,7 +1832,7 @@ object desugar {
     val (nestedStats, topStats) = pdef.stats.partition(inPackageObject)
     if (nestedStats.isEmpty) pdef
     else {
-      val name = packageObjectName(ctx.source)
+      val name = packageObjectName(ctx.source, pdef.srcPos)
       val grouped =
         ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
           .withMods(Modifiers(Synthetic))
