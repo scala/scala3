@@ -17,15 +17,15 @@ import Phases.{unfusedPhases, Phase}
 import sbt.interfaces.ProgressCallback
 
 import util.*
-import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
-import reporting.Diagnostic
-import reporting.Diagnostic.Warning
+import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, NoProfile, WConf}
+import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
+import Spans.Span
 
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
@@ -38,6 +38,7 @@ import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
+import dotty.tools.dotc.util.chaining.*
 import java.util.{Timer, TimerTask}
 
 /** A compiler run. Exports various methods to compile source files */
@@ -98,6 +99,26 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         case _ =>
           Action.Warning
       }
+
+    def registerNowarn(annotPos: SourcePosition, range: Span)(conf: String, pos: SrcPos)(using Context): Unit =
+      var verbose = false
+      val filters = conf match
+        case "" =>
+          List(MessageFilter.Any)
+        case "none" =>
+          List(MessageFilter.None)
+        case "verbose" | "v" =>
+          verbose = true
+          List(MessageFilter.Any)
+        case conf =>
+          WConf.parseFilters(conf).left.map: parseErrors =>
+            report.warning(s"Invalid message filter\n${parseErrors.mkString("\n")}", pos)
+            List(MessageFilter.None)
+          .merge
+      addSuppression:
+        Suppression(annotPos, filters, range.start, range.end, verbose)
+          .tap: sup =>
+            if filters == List(MessageFilter.None) then sup.markUsed() // invalid suppressions, don't report as unused
 
     def addSuppression(sup: Suppression): Unit =
       val suppressions = mySuppressions.getOrElseUpdate(sup.annotPos.source, ListBuffer.empty)
