@@ -234,7 +234,7 @@ object Existential:
       def apply(t: Type): Type = t match
         case t @ Vble(binder) =>
           if localBinders.contains(binder) then t // keep bound references
-          else seen.getOrElseUpdate(t.annot, Fresh(NoSymbol)) // map free references to Fresh()
+          else seen.getOrElseUpdate(t.annot, Fresh()) // map free references to Fresh()
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
@@ -306,7 +306,7 @@ object Existential:
               val (k, v) = it.next
               if v.annot eq t.annot then ref = k
             if ref == null then
-              ref = Fresh(NoSymbol)
+              ref = Fresh()
               seen(ref) = t
             ref
           case _ => mapOver(t)

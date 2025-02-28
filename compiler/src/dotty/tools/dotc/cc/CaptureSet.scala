@@ -419,7 +419,7 @@ object CaptureSet:
     defn.captureRoot.termRef.singletonCaptureSet
 
   def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
-    Fresh(owner).singletonCaptureSet
+    Fresh.withOwner(owner).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
@@ -952,8 +952,8 @@ object CaptureSet:
    *  which are already subject through snapshotting and rollbacks in VarState.
    *  It's advantageous if we don't need to deal with other pieces of state there.
    */
-  class HiddenSet(initialOwner: Symbol, initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
-  extends Var(initialOwner, initialHidden):
+  class HiddenSet(initialOwner: Symbol)(using @constructorOnly ictx: Context)
+  extends Var(initialOwner):
     var owningCap: AnnotatedType = uninitialized
     var givenOwner: Symbol = initialOwner
 

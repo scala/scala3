@@ -14,6 +14,7 @@ import transform.{PreRecheck, Recheck}, Recheck.*
 import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
 import Synthetics.isExcluded
 import util.SimpleIdentitySet
+import util.chaining.*
 import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
@@ -132,7 +133,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym)
         then symd.info // don't transform symbols that will anyway be updated
-        else Fresh.fromCap(transformExplicitType(symd.info, sym), sym)
+        else Fresh.fromCap(transformExplicitType(symd.info, sym), sym).tap(addOwnerAsHidden(_, sym))
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -489,6 +490,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
+  private def addOwnerAsHidden(tp: Type, owner: Symbol)(using Context): Unit =
+    val ref = owner.termRef
+    def add = new TypeTraverser:
+      var reach = false
+      def traverse(t: Type): Unit = t match
+        case Fresh(hidden) =>
+          if reach then hidden.elems += ref.reach
+          else if ref.isTracked then hidden.elems += ref
+        case t @ CapturingType(_, _) if t.isBoxed && !reach =>
+          reach = true
+          try traverseChildren(t) finally reach = false
+        case _ =>
+          traverseChildren(t)
+    if ref.isTrackableRef then add.traverse(tp)
+  end addOwnerAsHidden
+
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
     import checker.*
@@ -503,15 +520,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
-          else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
+          else
+            val transformed = transformExplicitType(tree.tpe, sym, tptToCheck = tree)
+            if boxed then transformed
+            else Fresh.fromCap(transformed, sym).tap(addOwnerAsHidden(_, sym))
         if boxed then transformed = box(transformed)
         if sym.is(Param) && (transformed ne tree.tpe) then
           paramSigChange += tree
         tree.setNuType(
           if boxed then transformed
           else if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
-          else if tree.isInferred then transformed
-          else Fresh.fromCap(transformed, sym))
+          else transformed)
 
     /** Transform the type of a val or var or the result type of a def */
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
@@ -899,7 +918,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def apply(t: Type) = t match
       case t @ CapturingType(parent, refs) =>
         val parent1 = this(parent)
-        if refs.isUniversal then t.derivedCapturingType(parent1, CaptureSet.Fluid)
+        if refs.isUniversalOrFresh then t.derivedCapturingType(parent1, CaptureSet.Fluid)
         else t
       case _ => mapFollowingAliases(t)
 

@@ -764,7 +764,7 @@ object CapsOfApply:
 
 abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =
-    assert(tp.isTrackableRef)
+    assert(tp.isTrackableRef, i"not a trackable ref: $tp")
     tp match
       case AnnotatedType(_, annot) =>
         assert(!unwrappable.contains(annot.symbol), i"illegal combination of derived capabilities: $annotCls over ${annot.symbol}")

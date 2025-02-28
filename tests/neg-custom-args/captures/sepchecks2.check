@@ -10,11 +10,11 @@
    |       Separation failure: argument of type  List[box () ->{c} Unit]
    |       to method foo: (xs: List[box () => Unit], y: Object^): Nothing
    |       corresponds to capture-polymorphic formal parameter xs of type  List[box () => Unit]
-   |       and hides capabilities  {<none>*, c}.
+   |       and hides capabilities  {c}.
    |       Some of these overlap with the captures of the second argument with type  (c : Object^).
    |
-   |         Hidden set of current argument        : {<none>*, c}
-   |         Hidden footprint of current argument  : {<none>*, c}
+   |         Hidden set of current argument        : {c}
+   |         Hidden footprint of current argument  : {c}
    |         Capture set of second argument        : {c}
    |         Footprint set of second argument      : {c}
    |         The two sets overlap at               : {c}

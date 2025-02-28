@@ -47,9 +47,9 @@ object Fresh:
   end Annot
 
   /** Constructor and extractor methods for "fresh" capabilities */
-  def apply(owner: Symbol, initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
+  private def make(owner: Symbol)(using Context): CaptureRef =
     if ccConfig.useSepChecks then
-      val hiddenSet = CaptureSet.HiddenSet(owner, initialHidden)
+      val hiddenSet = CaptureSet.HiddenSet(owner)
       val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet, NoType))
       hiddenSet.owningCap = res
       //assert(hiddenSet.id != 3)
@@ -57,11 +57,9 @@ object Fresh:
     else
       defn.captureRoot.termRef
 
-  def apply(owner: Symbol, reach: Boolean)(using Context): CaptureRef =
-    apply(owner, ownerToHidden(owner, reach))
+  def withOwner(owner: Symbol)(using Context): CaptureRef = make(owner)
 
-  def apply(owner: Symbol)(using Context): CaptureRef =
-    apply(owner, ownerToHidden(owner, reach = false))
+  def apply()(using Context): CaptureRef = make(NoSymbol)
 
   def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
     case Annot(hidden, binder) if !binder.exists => Some(hidden)
@@ -69,7 +67,7 @@ object Fresh:
 
   /** Create an existential */
   def existential(binder: MethodType)(using Context): AnnotatedType =
-    val hiddenSet = CaptureSet.HiddenSet(NoSymbol, emptyRefs)
+    val hiddenSet = CaptureSet.HiddenSet(NoSymbol)
     val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet, binder))
     hiddenSet.owningCap = res
     res
@@ -88,17 +86,13 @@ object Fresh:
   class FromCap(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
-    private var reach = false
-
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Fresh(owner, ownerToHidden(owner, reach))
-        case t @ CapturingType(_, refs) =>
-          val savedReach = reach
-          if t.isBoxed then reach = true
-          try mapOver(t) finally reach = savedReach
+          Fresh.withOwner(owner)
+        case t @ CapturingType(_, _) =>
+          mapOver(t)
         case t @ AnnotatedType(parent, ann) =>
           val parent1 = this(parent)
           if ann.symbol.isRetains && ann.tree.toCaptureSet.containsCap then
