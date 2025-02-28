@@ -1661,8 +1661,8 @@ Schema => SemanticDB v4
 Uri => ForComprehension.scala
 Text => empty
 Language => Scala
-Symbols => 13 entries
-Occurrences => 53 entries
+Symbols => 12 entries
+Occurrences => 51 entries
 Synthetics => 6 entries
 
 Symbols:
@@ -1671,14 +1671,13 @@ example/ForComprehension#`<init>`(). => primary ctor <init> (): ForComprehension
 local0 => param a: Int
 local1 => param b: Int
 local2 => val local c: Int
-local3 => param x$1: Tuple2[Int, Int]
-local4 => param a: Int
-local5 => param b: Int
-local6 => param x$1: Tuple2[Int, Int]
-local7 => val local c: Int
-local8 => val local d: Int
-local9 => val local e: Tuple4[Int, Int, Int, Int]
-local10 => param f: Tuple4[Int, Int, Int, Int]
+local3 => param a: Int
+local4 => param b: Int
+local5 => param x$1: Tuple2[Int, Int]
+local6 => val local c: Int
+local7 => val local d: Int
+local8 => val local e: Tuple4[Int, Int, Int, Int]
+local9 => param f: Tuple4[Int, Int, Int, Int]
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -1687,53 +1686,51 @@ Occurrences:
 [4:4..4:5): a <- local0
 [4:9..4:13): List -> scala/package.List.
 [5:4..5:5): b <- local1
-[5:4..5:5): b -> local1
 [5:9..5:13): List -> scala/package.List.
 [6:7..6:8): b -> local1
 [6:9..6:10): > -> scala/Int#`>`(+3).
 [7:4..7:5): c <- local2
-[7:4..7:5): c -> local2
 [7:8..7:9): a -> local0
 [7:10..7:11): + -> scala/Int#`+`(+4).
 [7:12..7:13): b -> local1
 [8:11..8:12): a -> local0
 [8:14..8:15): b -> local1
 [8:17..8:18): c -> local2
-[10:4..10:5): a <- local4
+[10:4..10:5): a <- local3
 [10:9..10:13): List -> scala/package.List.
-[11:4..11:5): b <- local5
+[11:4..11:5): b <- local4
 [11:9..11:13): List -> scala/package.List.
-[11:14..11:15): a -> local4
-[13:6..13:7): a -> local4
-[14:6..14:7): b -> local5
+[11:14..11:15): a -> local3
+[13:6..13:7): a -> local3
+[14:6..14:7): b -> local4
 [15:6..15:8): == -> scala/Any#`==`().
-[17:6..17:7): c <- local7
-[18:6..18:7): d <- local8
+[17:6..17:7): c <- local6
+[18:6..18:7): d <- local7
 [19:9..19:13): List -> scala/package.List.
-[19:15..19:16): a -> local4
-[19:18..19:19): b -> local5
-[21:6..21:7): a -> local4
-[22:6..22:7): b -> local5
-[23:6..23:7): c -> local7
-[24:6..24:7): d -> local8
+[19:15..19:16): a -> local3
+[19:18..19:19): b -> local4
+[21:6..21:7): a -> local3
+[22:6..22:7): b -> local4
+[23:6..23:7): c -> local6
+[24:6..24:7): d -> local7
 [25:6..25:8): == -> scala/Any#`==`().
-[26:4..26:5): e <- local9
-[26:4..26:5): e -> local9
-[27:6..27:7): a -> local4
-[28:6..28:7): b -> local5
-[29:6..29:7): c -> local7
-[30:6..30:7): d -> local8
-[32:7..32:8): e -> local9
+[26:4..26:5): e <- local8
+[26:4..26:5): e -> local8
+[27:6..27:7): a -> local3
+[28:6..28:7): b -> local4
+[29:6..29:7): c -> local6
+[30:6..30:7): d -> local7
+[32:7..32:8): e -> local8
 [32:9..32:11): == -> scala/Any#`==`().
-[33:4..33:5): f <- local10
+[33:4..33:5): f <- local9
 [33:9..33:13): List -> scala/package.List.
-[33:14..33:15): e -> local9
-[36:6..36:7): a -> local4
-[37:6..37:7): b -> local5
-[38:6..38:7): c -> local7
-[39:6..39:7): d -> local8
-[40:6..40:7): e -> local9
-[41:6..41:7): f -> local10
+[33:14..33:15): e -> local8
+[36:6..36:7): a -> local3
+[37:6..37:7): b -> local4
+[38:6..38:7): c -> local6
+[39:6..39:7): d -> local7
+[40:6..40:7): e -> local8
+[41:6..41:7): f -> local9
 
 Synthetics:
 [4:9..4:13):List => *.apply[Int]
