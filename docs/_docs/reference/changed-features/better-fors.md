@@ -1,12 +1,10 @@
 ---
 layout: doc-page
 title: "Better fors"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/better-fors.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/better-fors.html
 ---
 
-The `betterFors` language extension improves the usability of `for`-comprehensions.
-
-The extension is enabled by the language import `import scala.language.experimental.betterFors` or by setting the command line option `-language:experimental.betterFors`.
+Starting in Scala `3.7`, the usability of `for`-comprehensions is improved.
 
 The biggest user facing change is the new ability to start `for`-comprehensions with aliases. This means that the following previously invalid code is now valid:
 
@@ -30,11 +28,11 @@ for
 yield a + b
 ```
 
-Additionally this extension changes the way `for`-comprehensions are desugared. The desugaring is now done in a more intuitive way and the desugared code can be more efficient, because it avoids some unnecessary method calls. There are two main changes in the desugaring:
+Additionally, this extension changes the way `for`-comprehensions are desugared. The desugaring is now done in a more intuitive way and the desugared code can be more efficient, because it avoids some unnecessary method calls. There are two main changes in the desugaring:
 
 1. **Simpler Desugaring for Pure Aliases**:
     When an alias is not followed by a guard, the desugaring is simplified. The last generator and the aliases don't have to be wrapped in a tuple, and instead the aliases are simply introduced as local variables in a block with the next generator.
-    **Current Desugaring**:
+    **Previous Desugaring**:
       ```scala
       for {
         a <- doSth(arg)
