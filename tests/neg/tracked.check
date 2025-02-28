@@ -22,10 +22,6 @@
 11 |  tracked object Foo // error
    |  ^^^^^^^^^^^^^^^^^^
    |  Modifier tracked is not allowed for this definition
--- [E156] Syntax Error: tests/neg/tracked.scala:14:16 ------------------------------------------------------------------
-14 |  tracked class D // error
-   |  ^^^^^^^^^^^^^^^
-   |  Modifier tracked is not allowed for this definition
 -- [E156] Syntax Error: tests/neg/tracked.scala:17:15 ------------------------------------------------------------------
 17 |  tracked type T = Int // error
    |  ^^^^^^^^^^^^^^^^^^^^
