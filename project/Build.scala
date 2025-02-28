@@ -20,6 +20,8 @@ import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
+import dotty.tools.sbtplugin.ScalaLibraryPlugin
+
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
@@ -1207,6 +1209,7 @@ object Build {
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
    */
   lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
+    enablePlugins(ScalaLibraryPlugin).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(scala2LibraryBootstrappedSettings).
