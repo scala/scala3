@@ -153,7 +153,9 @@ class ReplDriver(settings: Array[String],
    *
    *  Possible reason for unsuccessful run are raised flags in CLI like --help or --version
    */
-  final def tryRunning = if shouldStart then runUntilQuit()
+  final def tryRunning = if shouldStart then
+    if rootCtx.settings.replQuitAfterInit.value(using rootCtx) then initialState
+    else runUntilQuit()
 
   /** Run REPL with `state` until `:quit` command found
    *

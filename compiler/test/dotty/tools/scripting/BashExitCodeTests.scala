@@ -32,10 +32,11 @@ class BashExitCodeTests:
         s"expected $expectedExitCode but got $exitCode${pp("out", stdout)}${pp("err", stderr)}"
       }, expectedExitCode, exitCode)
 
-  // Helpers for running scala, scalac, and scalac without the output directory ("raw")
+  // Helpers for running scala, scalac and repl without the output directory ("raw")
   def scala(args: String*)     = verifyExit(scalaPath, ("--power" +: args :+ "--offline" :+ "--server=false")*)
   def scalacRaw(args: String*) = verifyExit(scalacPath, args*)
   def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir +: args)*)
+  def repl(args: String*)      = verifyExit(scalaPath, ("--power" +: "repl" +: "--offline" +: "--" +: args)*)
 
   /** The path to the test file for this class. */
   def f(body: String, suffix: String = ".scala"): String =
@@ -71,6 +72,8 @@ class BashExitCodeTests:
   @Test def version       = scala("--version")(0)
   @Test def xPluginList   = scala("-Xplugin-list")(0)
   @Test def vPhases       = scala("-Vphases")(0)
+
+  @Test def replEval      = repl("--repl-quit-after-init", "--repl-init-script", "\'println(\"Hello from init script!\"); val i = 2 * 2\'")(0)
 
   /** A utility for running two commands in a row, like you do in bash. */
   extension (inline u1: Unit) inline def & (inline u2: Unit): Unit = { u1; u2 }
