@@ -32,7 +32,7 @@ class BashExitCodeTests:
         s"expected $expectedExitCode but got $exitCode${pp("out", stdout)}${pp("err", stderr)}"
       }, expectedExitCode, exitCode)
 
-  // Helpers for running scala, scalac, scalac, and repl without the output directory ("raw")
+  // Helpers for running scala, scalac and repl without the output directory ("raw")
   def scala(args: String*)     = verifyExit(scalaPath, ("--power" +: args :+ "--offline" :+ "--server=false")*)
   def scalacRaw(args: String*) = verifyExit(scalacPath, args*)
   def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir +: args)*)
