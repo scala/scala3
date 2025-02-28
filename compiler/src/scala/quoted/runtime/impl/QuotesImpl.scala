@@ -1694,7 +1694,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SimpleSelectorTypeTest
 
     object SimpleSelector extends SimpleSelectorModule:
-      def apply(name: String): SimpleSelector = 
+      def apply(name: String): SimpleSelector =
         withDefaultPos(untpd.ImportSelector(untpd.Ident(name.toTermName)))
       def unapply(x: SimpleSelector): Some[String] = Some(x.name.toString)
     end SimpleSelector
@@ -1837,11 +1837,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def termSymbol: Symbol = self.termSymbol
         def isSingleton: Boolean = self.isSingleton
         def memberType(member: Symbol): TypeRepr =
-          // we use thisType to avoid resolving otherwise unstable prefixes into Nothing
-          val classSymbol = self.classSymbol
-          member.info
-            .asSeenFrom(classSymbol.thisType, member.owner)
-            .substThis(classSymbol.asClass, self) // and we remove the previously added This(_) for compatibility
+          // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
+          val memberInfo =
+            if self.typeSymbol.isClassDef then
+              member.info.substThis(self.classSymbol.asClass, self)
+            else
+              member.info
+          memberInfo
+            .asSeenFrom(self, member.owner)
 
         def baseClasses: List[Symbol] = self.baseClasses
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
