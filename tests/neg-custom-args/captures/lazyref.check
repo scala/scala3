@@ -1,28 +1,43 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:19:28 --------------------------------------
-19 |  val ref1c: LazyRef[Int] = ref1 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:20:28 --------------------------------------
+20 |  val ref1c: LazyRef[Int] = ref1 // error
    |                            ^^^^
    |                            Found:    (ref1 : LazyRef[Int]{val elem: () ->{cap1} Int}^{cap1})
    |                            Required: LazyRef[Int]
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:21:35 --------------------------------------
-21 |  val ref2c: LazyRef[Int]^{cap2} = ref2 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:22:35 --------------------------------------
+22 |  val ref2c: LazyRef[Int]^{cap2} = ref2 // error
    |                                   ^^^^
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref2*} Int}^{ref2}
    |                                   Required: LazyRef[Int]^{cap2}
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:23:35 --------------------------------------
-23 |  val ref3c: LazyRef[Int]^{ref1} = ref3 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:24:35 --------------------------------------
+24 |  val ref3c: LazyRef[Int]^{ref1} = ref3 // error
    |                                   ^^^^
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref3*} Int}^{ref3}
    |                                   Required: LazyRef[Int]^{ref1}
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:25:35 --------------------------------------
-25 |  val ref4c: LazyRef[Int]^{cap1} = ref4 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:26:35 --------------------------------------
+26 |  val ref4c: LazyRef[Int]^{cap1} = ref4 // error
    |                                   ^^^^
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref4*} Int}^{ref4}
    |                                   Required: LazyRef[Int]^{cap1}
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazyref.scala:25:55 -----------------------------------------------------------
+25 |  val ref4 = (if cap1 == cap2 then ref1 else ref2).map(g) // error: separation failure
+   |                                                       ^
+   |Separation failure: argument of type  (x: Int) ->{cap2} Int
+   |to method map: [U](f: T => U): LazyRef[U]^{f, LazyRef.this}
+   |corresponds to capture-polymorphic formal parameter f of type  Int => Int
+   |and captures {cap2}, but this capability is also passed separately
+   |in the function prefix with type  (LazyRef[Int]{val elem: () ->{ref2*} Int} | (ref1 : LazyRef[Int]{val elem: () ->{cap1} Int}^{cap1}))^{ref2}.
+   |
+   |  Capture set of function prefix        : {ref1, ref2, ref2*}
+   |  Hidden set of current argument        : {cap2}
+   |  Footprint of function prefix          : {ref1, ref2, ref2*, cap1, cap2}
+   |  Hidden footprint of current argument  : {cap2}
+   |  Declared footprint of current argument: {}
+   |  Undeclared overlap of footprints      : {cap2}

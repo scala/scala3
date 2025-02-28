@@ -1,5 +1,5 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:11:8 -------------------------------------
-11 |    x = q           // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:12:8 -------------------------------------
+12 |    x = q           // error
    |        ^
    |        Found:    (q : () => Unit)
    |        Required: () ->{p, q²} Unit
@@ -8,15 +8,15 @@
    |                  q² is a parameter in method test
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:12:9 -------------------------------------
-12 |    x = (q: Proc)   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
+13 |    x = (q: Proc)   // error
    |         ^^^^^^^
    |         Found:    () => Unit
    |         Required: () ->{p, q} Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
-13 |    y = (q: Proc)   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:9 -------------------------------------
+14 |    y = (q: Proc)   // error
    |         ^^^^^^^
    |         Found:    () => Unit
    |         Required: () ->{p} Unit
@@ -25,18 +25,18 @@
    |         cannot be included in capture set {p} of variable y
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:8 -------------------------------------
-14 |    y = q           // error, was OK under unsealed
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:15:8 -------------------------------------
+15 |    y = q           // error, was OK under unsealed
    |        ^
    |        Found:    (q : () => Unit)
    |        Required: () ->{p} Unit
    |
    |        Note that reference (q : () => Unit), defined in method inner
-   |        cannot be included in outer capture set {p} of variable y
+   |        cannot be included in outer capture set {p}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/outer-var.scala:16:57 ---------------------------------------------------------
-16 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
+-- Error: tests/neg-custom-args/captures/outer-var.scala:17:57 ---------------------------------------------------------
+17 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
    |                                                      ^^^^^^^^^^
    |                             Type variable A of object ListBuffer cannot be instantiated to box () => Unit since
    |                             that type captures the root capability `cap`.
