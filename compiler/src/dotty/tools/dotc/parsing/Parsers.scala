@@ -4363,7 +4363,7 @@ object Parsers {
         else
           // structural instance
           val vparamss1 = vparamss.nestedMap: vparam =>
-            if vparam.mods.is(Private)
+            if vparam.mods.is(Private) && !vparam.name.isInstanceOf[DerivedName]
             then vparam.withMods(vparam.mods &~ PrivateLocal | Protected)
             else vparam
           val constr = makeConstructor(tparams, vparamss1)
