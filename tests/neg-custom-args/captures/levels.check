@@ -7,7 +7,7 @@
 22 |    r.setV(g) // error
    |           ^
    |           Found:    box (x: String) ->{cap3} String
-   |           Required: box (x$0: String) ->? String
+   |           Required: box (x: String) ->? String
    |
    |           Note that reference (cap3 : CC^), defined in method scope
    |           cannot be included in outer capture set ? of value r
