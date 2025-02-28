@@ -350,9 +350,9 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |
          |object <<B>>/*class*/ {
          |  val <<a>>/*variable,definition,readonly*/ = for {
-         |    <<foo>>/*variable,definition,readonly*/ <- <<List>>/*class*/("a", "b", "c")
+         |    <<foo>>/*parameter,declaration,readonly*/ <- <<List>>/*class*/("a", "b", "c")
          |    <<_>>/*class,abstract*/ = <<println>>/*method*/("print!")
-         |  } yield <<foo>>/*variable,readonly*/
+         |  } yield <<foo>>/*parameter,readonly*/
          |}
          |""".stripMargin
     )
