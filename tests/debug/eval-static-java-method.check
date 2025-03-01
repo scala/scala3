@@ -1,0 +1,5 @@
+break Test$ 3
+eval
+  import java.nio.file.Paths
+  Paths.get(".")
+result .
