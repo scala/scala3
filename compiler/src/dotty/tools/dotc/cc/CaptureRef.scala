@@ -14,6 +14,7 @@ import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.VarState
 import Annotations.Annotation
+import config.Printers.capt
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
@@ -259,6 +260,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case Existential.Vble(binder) =>
         y.stripReadOnly match
           case Existential.Vble(binder1) => binder1.hasSuffix(binder)
+            .showing(i"cmp existential $binder maxSubsumes $binder1 = $result", capt)
           case _ => true
       case _ =>
         this.isCap && canAddHidden && vs != VarState.HardSeparate

@@ -201,17 +201,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Map parametric functions with results that have a capture set somewhere
      *  to dependent functions.
      */
-    protected def normalizeFunctions(tp: Type, original: Type)(using Context): Type = tp match
+    protected def normalizeFunctions(tp: Type, original: Type, expandAlways: Boolean = false)(using Context): Type =
+      tp match
       case AppliedType(tycon, args)
       if defn.isNonRefinedFunction(tp) && isTopLevel =>
-        original match
-          case AppliedType(`tycon`, args0) if args0.last ne args.last =>
-            // We have an applied type that underwent some addition of capture sets.
-            // Map to a dependent type so that things are more uniform.
-            depFun(args.init, args.last,
-              isContextual = defn.isContextFunctionClass(tycon.classSymbol))
-                .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
-          case _ => tp
+        // Expand if we have an applied type that underwent some addition of capture sets
+        val expand = expandAlways || original.match
+          case AppliedType(`tycon`, args0) => args0.last ne args.last
+          case _ => false
+        if expand then
+          depFun(args.init, args.last,
+            isContextual = defn.isContextFunctionClass(tycon.classSymbol))
+              .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
+        else tp
       case _ => tp
 
     /** Pull out an embedded capture set from a part of `tp` */
@@ -334,8 +336,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
-    val toCapturing = new DeepTypeMap with SetupTypeMap:
-      override def toString = "expand aliases"
+    object toCapturing extends DeepTypeMap, SetupTypeMap:
+      override def toString = "transformExplicitType"
+
+      var keepFunAliases = true
+      var keptFunAliases = false
 
       /** Expand $throws aliases. This is hard-coded here since $throws aliases in stdlib
         * are defined with `?=>` rather than `?->`.
@@ -425,21 +430,33 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
           case t @ AppliedType(tycon, args)
-          if defn.isNonRefinedFunction(tp)
-              && !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) =>
-            // Expand arguments of aliases of function types before proceeding with dealias.
-            // This is necessary to bind existentialFresh instances to the right method binder.
-            val args1 = atVariance(-variance):
-              args.map(this)
-            defaultApply(t.derivedAppliedType(tycon, args1))
+          if defn.isNonRefinedFunction(t)
+              && !defn.isFunctionSymbol(t.typeSymbol) && (t.dealias ne tp) =>
+            if keepFunAliases then
+              // Hold off with dealising and expand in a second pass.
+              // This is necessary to bind existentialFresh instances to the right method binder.
+              keptFunAliases = true
+              mapOver(t)
+            else
+              // In the second pass, map the alias and make sure it has the form
+              // of a dependent function.
+              normalizeFunctions(apply(t.dealias), t, expandAlways = true)
           case t =>
             defaultApply(t)
     end toCapturing
 
-    val tp1 = toCapturing(tp)
-    val tp2 = Existential.mapCapInResults(fail)(tp1)
-    if tp2 ne tp then capt.println(i"expanded explicit in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
-    tp2
+    def transform(tp: Type): Type =
+      val tp1 = toCapturing(tp)
+      val tp2 = Existential.mapCapInResults(fail, toCapturing.keepFunAliases)(tp1)
+      val snd = if toCapturing.keepFunAliases then "" else " 2nd time"
+      if tp2 ne tp then capt.println(i"expanded explicit$snd in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
+      tp2
+
+    val tp1 = transform(tp)
+    if toCapturing.keptFunAliases then
+      toCapturing.keepFunAliases = false
+      transform(tp1)
+    else tp1
   end transformExplicitType
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding

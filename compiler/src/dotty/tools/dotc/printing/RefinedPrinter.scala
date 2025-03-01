@@ -165,9 +165,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val capturesRoot = refs == rootSetText
     val isPure =
       Feature.pureFunsEnabled && !tsym.name.isImpureFunction && !capturesRoot
-    toTextFunction(args.init, args.last, refs.provided(!capturesRoot), isContextual, isPure)
+    toTextFunction(args.init, args.last, tp, refs.provided(!capturesRoot), isContextual, isPure)
 
-  private def toTextFunction(args: List[Type], res: Type, refs: Text,
+  private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType, refs: Text,
       isContextual: Boolean, isPure: Boolean): Text =
     changePrec(GlobalPrec):
       val argStr: Text = args match
@@ -178,7 +178,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           "("
           ~ argsText(args)
           ~ ")"
-      argStr ~ " " ~ arrow(isContextual, isPure) ~ refs ~ " " ~ argText(res)
+      argStr ~ " " ~ arrow(isContextual, isPure) ~ refs ~ " "
+      ~ fn.match
+          case fn: MethodType => CCState.inNewExistentialScope(fn)(argText(res))
+          case _ => argText(res)
 
   protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text =
     def recur(tp: Type, enclInfo: MethodType | Null): Text = tp match
@@ -190,8 +193,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && !showUniqueIds && !printDebug
         then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
-          CCState.inOpenedFreshBinder(tp):
-            toTextFunction(tp.paramInfos, tp.resType, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
+          toTextFunction(tp.paramInfos, tp.resType, tp, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
         else
           changePrec(GlobalPrec):
             "("
@@ -209,7 +211,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           ~ recur(tp.resultType, enclInfo)
         }
       case _ =>
-        if enclInfo != null then CCState.inOpenedFreshBinder(enclInfo)(toText(tp))
+        if enclInfo != null then CCState.inNewExistentialScope(enclInfo)(toText(tp))
         else toText(tp)
     recur(info, null)
 

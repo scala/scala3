@@ -165,7 +165,10 @@ object CheckCaptures:
     val check = new TypeTraverser:
 
       private val seen = new EqHashSet[TypeRef]
-      var openFreshBinders: List[MethodType] = Nil
+
+      // We keep track of open existential scopes here so that we can set these scopes
+      // in ccState when printing a part of the offending type.
+      var openExistentialScopes: List[MethodType] = Nil
 
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
@@ -184,18 +187,18 @@ object CheckCaptures:
             ()
           case CapturingType(parent, refs) =>
             if variance >= 0 then
-              val openBinders = openFreshBinders
+              val openScopes = openExistentialScopes
               refs.disallowRootCapability: () =>
                 def part =
                   if t eq tp then ""
                   else
-                    // Show in context of all enclosing traversed fresh binders.
+                    // Show in context of all enclosing traversed existential scopes.
                     def showInOpenedFreshBinders(mts: List[MethodType]): String = mts match
                       case Nil => i"the part $t of "
                       case mt :: mts1 =>
-                        CCState.inOpenedFreshBinder(mt):
+                        CCState.inNewExistentialScope(mt):
                           showInOpenedFreshBinders(mts1)
-                    showInOpenedFreshBinders(openBinders.reverse)
+                    showInOpenedFreshBinders(openScopes.reverse)
                 report.error(
                   em"""$what cannot $have $tp since
                       |${part}that type captures the root capability `cap`.$addendum""",
@@ -203,13 +206,13 @@ object CheckCaptures:
             traverse(parent)
           case defn.RefinedFunctionOf(mt) =>
             traverse(mt)
-          case t: MethodType if t.isFreshBinder =>
+          case t: MethodType if t.marksExistentialScope =>
             atVariance(-variance):
               t.paramInfos.foreach(traverse)
-            val saved = openFreshBinders
-            openFreshBinders = t :: openFreshBinders
+            val saved = openExistentialScopes
+            openExistentialScopes = t :: openExistentialScopes
             try traverse(t.resType)
-            finally openFreshBinders = saved
+            finally openExistentialScopes = saved
           case t =>
             traverseChildren(t)
     if ccConfig.useSealed then check.traverse(tp)

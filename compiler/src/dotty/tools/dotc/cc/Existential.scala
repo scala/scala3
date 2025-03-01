@@ -238,7 +238,7 @@ object Existential:
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
-          if t.isFreshBinder then localBinders = localBinders + t
+          if t.marksExistentialScope then localBinders = localBinders + t
           try t.derivedLambdaType(resType = this(t.resType))
           finally localBinders = saved
         case t: PolyType =>
@@ -318,13 +318,13 @@ object Existential:
   end mapCap
 
   /** Map `cap` in function results to fresh existentials */
-  def mapCapInResults(fail: Message => Unit)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
+  def mapCapInResults(fail: Message => Unit, keepAliases: Boolean = false)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
     def apply(t: Type): Type = t match
       case defn.RefinedFunctionOf(mt) =>
         val mt1 = apply(mt)
         if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
         else t
-      case t: MethodType if variance > 0 && t.isFreshBinder =>
+      case t: MethodType if variance > 0 && t.marksExistentialScope =>
         val t1 = mapOver(t).asInstanceOf[MethodType]
         t1.derivedLambdaType(resType = mapCap(t1.resType, t1, fail))
       case CapturingType(parent, refs) =>
@@ -332,7 +332,7 @@ object Existential:
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
       case _ =>
-        mapFollowingAliases(t)
+        if keepAliases then mapOver(t) else mapFollowingAliases(t)
   end mapCapInResults
 
 end Existential
