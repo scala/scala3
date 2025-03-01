@@ -553,14 +553,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
-        transformTT(tpt, sym,
-            boxed =
-              sym.isMutableVar
-                && !ccConfig.useSealed
-                && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
-              // Under the sealed policy, we disallow root capabilities in the type of mutable
-              // variables, no need to box them here.
-          )
+        transformTT(tpt, sym, boxed = false)
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
         throw ex

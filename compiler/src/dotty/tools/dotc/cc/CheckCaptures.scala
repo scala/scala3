@@ -215,41 +215,8 @@ object CheckCaptures:
             finally openExistentialScopes = saved
           case t =>
             traverseChildren(t)
-    if ccConfig.useSealed then check.traverse(tp)
+    check.traverse(tp)
   end disallowRootCapabilitiesIn
-
-  /** If we are not under the sealed policy, and a tree is an application that unboxes
-   *  its result or is a try, check that the tree's type does not have covariant universal
-   *  capabilities.
-   */
-  private def checkNotUniversalInUnboxedResult(tpe: Type, tree: Tree)(using Context): Unit =
-    def needsUniversalCheck = tree match
-      case _: RefTree | _: Apply | _: TypeApply => tree.symbol.unboxesResult
-      case _: Try => true
-      case _ => false
-
-    object checkNotUniversal extends TypeTraverser:
-      def traverse(tp: Type) =
-        tp.dealias match
-        case wtp @ CapturingType(parent, refs) =>
-          if variance > 0 then
-            refs.disallowRootCapability: () =>
-              def part = if wtp eq tpe.widen then "" else i" in its part $wtp"
-              report.error(
-                em"""The expression's type ${tpe.widen} is not allowed to capture the root capability `cap`$part.
-                  |This usually means that a capability persists longer than its allowed lifetime.""",
-                tree.srcPos)
-          if !wtp.isBoxed then traverse(parent)
-        case tp =>
-          traverseChildren(tp)
-
-    if !ccConfig.useSealed
-        && !tpe.hasAnnotation(defn.UncheckedCapturesAnnot)
-        && needsUniversalCheck
-        && tpe.widen.isValueType
-    then
-      checkNotUniversal.traverse(tpe.widen)
-  end checkNotUniversalInUnboxedResult
 
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
@@ -584,7 +551,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
       def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
-      if ccConfig.useSealed && !isExempt then
+      if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
           fn.tpe.widenDealias match
             case tl: TypeLambda => tl.paramNames
@@ -1178,7 +1145,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
       val tp = super.recheckTry(tree, pt)
-      if ccConfig.useSealed && Feature.enabled(Feature.saferExceptions) then
+      if Feature.enabled(Feature.saferExceptions) then
         disallowRootCapabilitiesIn(tp, ctx.owner,
           "The result of `try`", "have type",
           "\nThis is often caused by a locally generated exception capability leaking as part of its result.",
@@ -1226,12 +1193,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         markFree(res.boxedCaptureSet, tree)
       res
     end recheck
-
-    /** Under the old unsealed policy: check that cap is ot unboxed */
-    override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
-      checkNotUniversalInUnboxedResult(tpe, tree)
-      super.recheckFinish(tpe, tree, pt)
-    end recheckFinish
 
     // ------------------ Adaptation -------------------------------------
     //
@@ -1487,34 +1448,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             .capturing(if alwaysConst then CaptureSet(captures.elems) else captures)
             .forceBoxStatus(resultBoxed)
 
-        if needsAdaptation then
-          val criticalSet =          // the set with which we box or unbox
+        if needsAdaptation && !insertBox then // we are unboxing
+          val criticalSet =          // the set with which we unbox
             if covariant then captures   // covariant: we box with captures of actual type plus captures leaked by inner adapation
             else expected.captureSet     // contravarant: we unbox with captures of epected type
-          def msg = em"""$actual cannot be box-converted to $expected
-                        |since at least one of their capture sets contains the root capability `cap`"""
-          def allowUniversalInBoxed =
-            ccConfig.useSealed
-            || expected.hasAnnotation(defn.UncheckedCapturesAnnot)
-            || actual.widen.hasAnnotation(defn.UncheckedCapturesAnnot)
-          if !allowUniversalInBoxed then
-            if criticalSet.isUnboxable && expected.isValueType then
-              // We can't box/unbox the universal capability. Leave `actual` as it is
-              // so we get an error in checkConforms. Add the error message generated
-              // from boxing as an addendum. This tends to give better error
-              // messages than disallowing the root capability in `criticalSet`.
-              if boxErrors != null then boxErrors += msg
-              if ctx.settings.YccDebug.value then
-                println(i"cannot box/unbox $actual vs $expected")
-              return actual
-            // Disallow future addition of `cap` to `criticalSet`.
-            criticalSet.disallowRootCapability: () =>
-              report.error(msg, tree.srcPos)
-
-          if !insertBox then  // we are unboxing
             //debugShowEnvs()
-            markFree(criticalSet, tree)
-        end if
+          markFree(criticalSet, tree)
 
         // Compute the adapted type.
         // The result is boxed if actual is boxed and we don't need to adapt,
@@ -1901,8 +1840,6 @@ class CheckCaptures extends Recheck, SymTransformer:
                 checkBounds(normArgs, tl)
                 args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
               case _ =>
-          case tree: TypeTree if !ccConfig.useSealed =>
-            checkArraysAreSealedIn(tree.tpe, tree.srcPos)
           case _ =>
         end check
       end checker
