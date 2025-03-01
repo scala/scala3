@@ -133,7 +133,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym)
         then symd.info // don't transform symbols that will anyway be updated
-        else Fresh.fromCap(transformExplicitType(symd.info, sym), sym).tap(addOwnerAsHidden(_, sym))
+        else transformExplicitType(symd.info, sym, freshen = true)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -331,7 +331,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   5. Schedule deferred well-formed tests for types with retains annotations.
    *   6. Perform normalizeCaptures
    */
-  private def transformExplicitType(tp: Type, sym: Symbol, tptToCheck: Tree = EmptyTree)(using Context): Type =
+  private def transformExplicitType(tp: Type, sym: Symbol, freshen: Boolean, tptToCheck: Tree = EmptyTree)(using Context): Type =
 
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
@@ -453,10 +453,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       tp2
 
     val tp1 = transform(tp)
-    if toCapturing.keptFunAliases then
-      toCapturing.keepFunAliases = false
-      transform(tp1)
-    else tp1
+    val tp2 =
+      if toCapturing.keptFunAliases then
+        toCapturing.keepFunAliases = false
+        transform(tp1)
+      else tp1
+    if freshen then Fresh.fromCap(tp2).tap(addOwnerAsHidden(_, sym))
+    else tp2
   end transformExplicitType
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
@@ -537,16 +540,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
-          else
-            val transformed = transformExplicitType(tree.tpe, sym, tptToCheck = tree)
-            if boxed then transformed
-            else Fresh.fromCap(transformed, sym).tap(addOwnerAsHidden(_, sym))
+          else transformExplicitType(tree.tpe, sym, freshen = !boxed, tptToCheck = tree)
         if boxed then transformed = box(transformed)
         if sym.is(Param) && (transformed ne tree.tpe) then
           paramSigChange += tree
         tree.setNuType(
-          if boxed then transformed
-          else if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
+          if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
 
     /** Transform the type of a val or var or the result type of a def */
@@ -758,7 +757,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
               // Compute new parent types
               val ps1 = inContext(ctx.withOwner(cls)):
-                ps.mapConserve(transformExplicitType(_, NoSymbol))
+                ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
 
               // Install new types and if it is a module class also update module object
               if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
