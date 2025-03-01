@@ -101,7 +101,7 @@ class CCState:
   private var curLevel: Level = outermostLevel
   private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
 
-  private var openedFreshBinders: List[MethodType] = Nil
+  private var openExistentialScopes: List[MethodType] = Nil
 
 object CCState:
 
@@ -134,20 +134,21 @@ object CCState:
     if !p then ccs.curLevel = ccs.curLevel.nextInner
     try op finally ccs.curLevel = saved
 
-  /** If we are currently in capture checking or setup, perform `op` assuming
-   *  a fresh enclosing binder `mt`, otherwise perform `op` directly.
+  /** If we are currently in capture checking or setup, and `mt` is a method
+   *  type that is not a prefix of a curried method, perform `op` assuming
+   *  a fresh enclosing existential scope `mt`, otherwise perform `op` directly.
    */
-  inline def inOpenedFreshBinder[T](mt: MethodType)(op: => T)(using Context): T =
+  inline def inNewExistentialScope[T](mt: MethodType)(op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.openedFreshBinders
-      if mt.isFreshBinder then ccs.openedFreshBinders = mt :: ccs.openedFreshBinders
-      try op finally ccs.openedFreshBinders = saved
+      val saved = ccs.openExistentialScopes
+      if mt.marksExistentialScope then ccs.openExistentialScopes = mt :: ccs.openExistentialScopes
+      try op finally ccs.openExistentialScopes = saved
     else
       op
 
-  /** The currently opened fresh binders */
-  def openedFreshBinders(using Context): List[MethodType] = ccState.openedFreshBinders
+  /** The currently opened existential scopes */
+  def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
 
   extension (x: Level)
     def isDefined: Boolean = x >= 0
@@ -590,14 +591,19 @@ extension (tp: Type)
     case tp: ThisType => tp.cls.ccLevel.nextInner
     case _ => undefinedLevel
 
+  /** Is this a method or function that has `other` as its direct or indirect result
+   *  type?
+   */
   def hasSuffix(other: MethodType)(using Context): Boolean =
     (tp eq other) || tp.match
-      case tp: MethodOrPoly => tp.resType.hasSuffix(other)
+      case defn.RefinedFunctionOf(mt) => mt.hasSuffix(other)
+      case mt: MethodType => mt.resType.hasSuffix(other)
       case _ => false
 
-  def isFreshBinder(using Context): Boolean = tp match
-    case tp: MethodType => !tp.resType.isInstanceOf[MethodOrPoly]
-    case _ => false
+extension (tp: MethodType)
+  /** A method marks an existential scope unless it is the prefix of a curried method */
+  def marksExistentialScope(using Context): Boolean =
+    !tp.resType.isInstanceOf[MethodOrPoly]
 
 extension (cls: ClassSymbol)
 

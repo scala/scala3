@@ -572,7 +572,7 @@ object CaptureSet:
       else elem match
         case elem @ Existential.Vble(mt) =>
           !noUniversal
-          && !CCState.openedFreshBinders.contains(elem)
+          && !CCState.openExistentialScopes.contains(elem)
             // Opened existentials on the left cannot be added to nested capture sets on the right
             // of a comparison. Test case is open-existential.scala.
         case elem: TermRef if level.isDefined =>

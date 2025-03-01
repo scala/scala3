@@ -260,9 +260,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           def isUniversal =
             refs.elems.size == 1
             && (refs.isUniversal
-                || refs.elems.nth(0).match
+                || !printDebug && !showUniqueIds && refs.elems.nth(0).match
                       case Existential.Vble(binder) =>
-                        CCState.openedFreshBinders match
+                        CCState.openExistentialScopes match
                           case b :: _ => binder eq b
                           case _ => false
                       case _ =>
@@ -301,7 +301,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ paramsText(tp)
           ~ ")"
           ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
-          ~ CCState.inOpenedFreshBinder(tp)(toText(tp.resultType))
+          ~ CCState.inNewExistentialScope(tp)(toText(tp.resultType))
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
@@ -456,7 +456,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
       case Existential.Vble(binder) =>
         // TODO: Better printing? USe a mode where we print more detailed
-        val vbleText: Text = CCState.openedFreshBinders.indexOf(binder) match
+        val vbleText: Text = CCState.openExistentialScopes.indexOf(binder) match
           case -1 =>
             "<cap of " ~ toText(binder) ~ ">"
           case n => "outer_" * n ++ "cap"
