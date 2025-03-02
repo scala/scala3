@@ -100,6 +100,12 @@ object Reset {
   val command: String = ":reset"
 }
 
+/** `:sh <command line>` run a shell command (result is implicitly => List[String]) */
+case class Sh(expr: String) extends Command
+object Sh {
+  val command: String = ":sh"
+}
+
 /** Toggle automatic printing of results */
 case object Silent extends Command:
   val command: String = ":silent"
@@ -150,6 +156,7 @@ object ParseResult {
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
     Settings.command -> (arg => Settings(arg)),
+    Sh.command -> (arg => Sh(arg)),
     Silent.command -> (_ => Silent),
   )
 
