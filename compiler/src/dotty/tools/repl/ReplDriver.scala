@@ -538,6 +538,10 @@ class ReplDriver(settings: Array[String],
       }
       state
 
+    case Sh(expr) =>
+      out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")
+      state
+
     case Settings(arg) => arg match
       case "" =>
         given ctx: Context = state.context
