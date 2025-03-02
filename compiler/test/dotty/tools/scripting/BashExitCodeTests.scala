@@ -73,7 +73,10 @@ class BashExitCodeTests:
   @Test def xPluginList   = scala("-Xplugin-list")(0)
   @Test def vPhases       = scala("-Vphases")(0)
 
-  @Test def replEval      = repl("--repl-quit-after-init", "--repl-init-script", "\'println(\"Hello from init script!\"); val i = 2 * 2\'")(0)
+  @Test def replEval      =
+    // Do not run this test on Windows since it is wrongly escaped (#22689)
+    assumeFalse(System.getProperty("os.name").startsWith("Windows"));
+    repl("--repl-quit-after-init", "--repl-init-script", "\'println(\"Hello from init script!\"); val i = 2 * 2\'")(0)
 
   /** A utility for running two commands in a row, like you do in bash. */
   extension (inline u1: Unit) inline def & (inline u2: Unit): Unit = { u1; u2 }
