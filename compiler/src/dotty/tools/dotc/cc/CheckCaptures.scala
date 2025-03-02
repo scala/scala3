@@ -23,6 +23,7 @@ import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
+import scala.util.boundary
 
 /** The capture checker */
 object CheckCaptures:
@@ -1290,7 +1291,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, covariant: Boolean, alwaysConst: Boolean, boxErrors: BoxErrors)(using Context): Type =
 
-      def recur(actual: Type, expected: Type, covariant: Boolean): Type =
+      def recur(actual: Type, expected: Type, covariant: Boolean): Type = boundary:
 
         /** Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
          *  @param boxed   if true we adapt to a boxed expected type
@@ -1384,7 +1385,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if boxErrors != null then boxErrors += msg
               if ctx.settings.YccDebug.value then
                 println(i"cannot box/unbox $actual vs $expected")
-              return actual
+              boundary.break(actual)
             // Disallow future addition of `cap` to `criticalSet`.
             criticalSet.disallowRootCapability: () =>
               report.error(msg, pos)

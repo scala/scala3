@@ -968,7 +968,8 @@ class Definitions {
     def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
     def TupleXXL_unapplySeq(using Context): Symbol = TupleXXLModule.requiredMethod(nme.unapplySeq)
 
-  @tu lazy val NamedTupleModule = requiredModule("scala.NamedTuple")
+  @tu lazy val NamedTupleModule: Symbol = requiredModule("scala.NamedTuple")
+  @tu lazy val NamedTupleModuleClass: Symbol = NamedTupleModule.moduleClass
   @tu lazy val NamedTupleTypeRef: TypeRef = NamedTupleModule.termRef.select(tpnme.NamedTuple).asInstanceOf
 
   @tu lazy val RuntimeTupleMirrorTypeRef: TypeRef = requiredClassRef("scala.runtime.TupleMirror")
@@ -1376,9 +1377,9 @@ class Definitions {
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
-  final def isNamedTuple_From(sym: Symbol)(using Context): Boolean =
-    sym.name == tpnme.From && sym.owner == NamedTupleModule.moduleClass
-
+  private val namedTupleTypes: Set[Name] = Set(
+    tpnme.From, tpnme.OptFrom, tpnme.IsNamedTuple
+  )
   private val compiletimePackageAnyTypes: Set[Name] = Set(
     tpnme.Equals, tpnme.NotEquals, tpnme.IsConst, tpnme.ToString
   )
@@ -1407,7 +1408,8 @@ class Definitions {
     tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt
   )
   private val compiletimePackageOpTypes: Set[Name] =
-    Set(tpnme.S, tpnme.From)
+    Set(tpnme.S)
+    ++ namedTupleTypes
     ++ compiletimePackageAnyTypes
     ++ compiletimePackageIntTypes
     ++ compiletimePackageLongTypes
@@ -1420,7 +1422,7 @@ class Definitions {
     compiletimePackageOpTypes.contains(sym.name)
     && (
          isCompiletime_S(sym)
-      || isNamedTuple_From(sym)
+      || sym.owner == NamedTupleModuleClass && namedTupleTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsLongModuleClass && compiletimePackageLongTypes.contains(sym.name)
