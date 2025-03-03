@@ -36,6 +36,7 @@ import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.inlines.Inlines
+import scala.annotation.tailrec
 
 object Applications {
   import tpd.*
@@ -1525,6 +1526,20 @@ trait Applications extends Compatibility {
     def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
       // try first for non-overloaded, then for overloaded occurrences
       def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree =
+        /** Returns `true` if there are type parameters after the last explicit
+         *  (non-implicit) term parameters list.
+         */
+        @tailrec
+        def hasTrailingTypeParams(paramss: List[List[Symbol]], acc: Boolean = false): Boolean =
+          paramss match
+            case Nil => acc
+            case params :: rest =>
+              val newAcc =
+                params match
+                  case param :: _ if param.isType => true
+                  case param :: _ if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
+                  case _ => acc
+              hasTrailingTypeParams(paramss.tail, newAcc)
 
         def tryWithProto(qual: untpd.Tree, targs: List[Tree], pt: Type)(using Context) =
           val proto = UnapplyFunProto(pt, this)
@@ -1532,7 +1547,13 @@ trait Applications extends Compatibility {
           val result =
             if targs.isEmpty then typedExpr(unapp, proto)
             else typedExpr(unapp, PolyProto(targs, proto)).appliedToTypeTrees(targs)
-          if !result.symbol.exists
+          if result.symbol.exists && hasTrailingTypeParams(result.symbol.paramSymss) then
+            // We don't accept `unapply` or `unapplySeq` methods with type
+            // parameters after the last explicit term parameter because we
+            // can't encode them: `UnApply` nodes cannot take type paremeters.
+            // See #22550 and associated test cases.
+            notAnExtractor(result)
+          else if !result.symbol.exists
              || result.symbol.name == name
              || ctx.reporter.hasErrors
           then result
