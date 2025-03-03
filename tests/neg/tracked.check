@@ -14,10 +14,6 @@
 4 |class C2(tracked var x: Int) // error
   |                     ^
   |                     mutable variables may not be `tracked`
--- [E156] Syntax Error: tests/neg/tracked.scala:8:16 -------------------------------------------------------------------
-8 |    tracked val b: Int = 2 // error
-  |    ^^^^^^^^^^^^^^^^^^^^^^
-  |    Modifier tracked is not allowed for this definition
 -- [E156] Syntax Error: tests/neg/tracked.scala:11:17 ------------------------------------------------------------------
 11 |  tracked object Foo // error
    |  ^^^^^^^^^^^^^^^^^^
