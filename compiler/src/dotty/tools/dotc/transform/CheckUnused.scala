@@ -66,6 +66,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   // import x.y; y may be rewritten x.y, also import x.z as y
   override def transformSelect(tree: Select)(using Context): tree.type =
     val name = tree.removeAttachment(OriginalName).getOrElse(nme.NO_NAME)
+    inline def isImportable = tree.qualifier.srcPos.isSynthetic
+      && tree.qualifier.tpe.match
+        case ThisType(_) | SuperType(_, _) => false
+        case qualtpe => qualtpe.isStable
     if tree.srcPos.isSynthetic && tree.symbol == defn.TypeTest_unapply then
       tree.qualifier.tpe.underlying.finalResultType match
       case AppliedType(tycon, args) =>
@@ -76,10 +80,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         val target = res.dealias.typeSymbol
         resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
       case _ =>
-    else if tree.qualifier.srcPos.isSynthetic && tree.qualifier.tpe.isStable || name.exists(_ != tree.symbol.name) then
+    else if isImportable || name.exists(_ != tree.symbol.name) then
       if !ignoreTree(tree) then
         resolveUsage(tree.symbol, name, tree.qualifier.tpe)
-    else
+    else if !ignoreTree(tree) then
       refUsage(tree.symbol)
     tree
 
@@ -313,7 +317,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         case none =>
 
     // Avoid spurious NoSymbol and also primary ctors which are never warned about.
-    if !sym.exists || sym.isPrimaryConstructor then return
+    // Selections C.this.toString should be already excluded, but backtopped here for eq, etc.
+    if !sym.exists || sym.isPrimaryConstructor || defn.topClasses(sym.owner) then return
 
     // Find the innermost, highest precedence. Contexts have no nesting levels but assume correctness.
     // If the sym is an enclosing definition (the owner of a context), it does not count toward usages.
@@ -451,7 +456,6 @@ object CheckUnused:
         if (tree.symbol ne NoSymbol) && !tree.name.isWildcard then
           defs.addOne((tree.symbol, tree.namePos))
       case _ =>
-        //println(s"OTHER ${tree.symbol}")
         if tree.symbol ne NoSymbol then
           defs.addOne((tree.symbol, tree.srcPos))
 
