@@ -4,7 +4,7 @@ import annotation.retains
 class Cap
 
 type Op[T, C] =
-  (v: T) => (s: C) => C
+  T => C => C
 
 type List[T] =
   [C] -> (op: Op[T, C]) -> (s: C) ->{op} C

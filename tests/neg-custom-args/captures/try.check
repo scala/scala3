@@ -3,11 +3,13 @@
    |                            ^^^^^^^^^^^^^^^^^^^
    |                            Type variable R of method handle cannot be instantiated to box CT[Exception]^ since
    |                            that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/try.scala:30:65 ---------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:30:32 ------------------------------------------
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
-   |                                                                 ^
-   |                                    reference (x : CT[Exception]^) is not included in the allowed capture set {}
-   |                                    of an enclosing function literal with expected type () ->? Nothing
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                Found:    () ->{x} Nothing
+   |                                Required: () ->? Nothing
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:52:2 -------------------------------------------
 47 |val global: () -> Int = handle {
 48 |  (x: CanThrow[Exception]) =>
@@ -16,11 +18,8 @@
 51 |      22
 52 |} {  // error
    |                        ^
-   |                        Found:    () ->{x, x²} Int
+   |                        Found:    () ->{x} Int
    |                        Required: () -> Int
-   |
-   |                        where:    x  is a reference to a value parameter
-   |                                  x² is a reference to a value parameter
 53 |  (ex: Exception) => () => 22
 54 |}
    |

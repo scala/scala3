@@ -836,7 +836,7 @@ class Objects(using Context @constructorOnly):
           Bottom
       else if target.exists then
         def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name.toString == "next"
-        if target.isOneOf(Flags.Mutable) && !isNextFieldOfColonColon then
+        if target.isMutableVarOrAccessor && !isNextFieldOfColonColon then
           if ref.hasVar(target) then
             val addr = ref.varAddr(target)
             if addr.owner == State.currentObject then
