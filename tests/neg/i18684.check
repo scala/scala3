@@ -67,14 +67,16 @@
 -- [E127] Pattern Match Error: tests/neg/i18684.scala:12:6 -------------------------------------------------------------
 12 |  val inner(x) = 3 // error
    |      ^^^^^
-   |      Test.inner cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+   |Test.inner cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
    |--------------------------------------------------------------------------------------------------------------------
    | Explanation (enabled by `-explain`)
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   | An unapply method should be defined in an object as follow:
+   | An unapply method should be in an object, take a single explicit term parameter, and:
    |   - If it is just a test, return a Boolean. For example case even()
    |   - If it returns a single sub-value of type T, return an Option[T]
    |   - If it returns several sub-values T1,...,Tn, group them in an optional tuple Option[(T1,...,Tn)]
+   |
+   | Additionaly, unapply or unapplySeq methods cannot take type parameters after their explicit term parameter.
    |
    | Sometimes, the number of sub-values isn't fixed and we would like to return a sequence.
    | For this reason, you can also define patterns through unapplySeq which returns Option[Seq[T]].
