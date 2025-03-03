@@ -712,6 +712,12 @@ class Namer { typer: Typer =>
               enterSymbol(classConstructorCompanion(classSym.asClass))
             else
               for moduleSym <- companionVals do
+                // by not going through `.lastKnownDenotation` (instead using `.current`),
+                // we guarantee that the `moduleSym` will be brought forward to the current run,
+                // rendering `moduleSym.isDefinedInCurrentRun` as always true.
+                // We want to regenerate the companion instead of bringing it forward,
+                // as even if we are able to bring forward the object symbol,
+                // we might not be able to do the same with its stale module class symbol (see `tests/pos/i20449`)
                 if moduleSym.lastKnownDenotation.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
                     if needsConstructorProxies(classSym) then
