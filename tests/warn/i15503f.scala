@@ -52,3 +52,35 @@ object Unmatched:
       case Ident(name) =>
       case _ =>
     e
+
+trait Ctx
+case class K(i: Int)(using val ctx: Ctx) // nowarn
+class L(val i: Int)(using val ctx: Ctx) // nowarn
+class M(val i: Int)(using ctx: Ctx) // warn
+
+package givens:
+
+  trait X:
+    def doX: Int
+
+  trait Y:
+    def doY: String
+
+  given X:
+    def doX = 7
+
+  given X => Y: // warn protected param to given class
+    def doY = "7"
+  /* desugared. It is protected so that its type can be used in member defs without leaking.
+   * possibly it should be protected only for named parameters.
+      given class given_Y(using x$1: givens.X) extends Object(), givens.Y {
+        protected given val x$1: givens.X
+        def doY: String = "7"
+      }
+      final given def given_Y(using x$1: givens.X): givens.given_Y =
+        new givens.given_Y(using x$1)()
+  */
+
+  given namely: (x: X) => Y: // warn protected param to given class
+    def doY = "8"
+end givens
