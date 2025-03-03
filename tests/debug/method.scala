@@ -3,7 +3,7 @@ object Test {
     val a = 1 + 2        // [break] [step: a * 9]
     val b = a * 9        // [step: plus]
     val c = plus(a, b)   // [step: x * x]
-    print(c)
+    println(c)
   }
 
   def plus(x: Int, y: Int) = {

@@ -1,0 +1,15 @@
+break Test$ 12
+eval m1("foo")
+result m1(foo)
+eval m3
+result A
+eval m2(new A)
+result m2(A)
+
+break B 23
+eval m1("foo")
+result m1(foo)
+eval m3
+result C
+eval m2(new C)
+result m2(C)

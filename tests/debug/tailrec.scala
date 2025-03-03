@@ -12,6 +12,6 @@ object Test {
      val b = a * 9     // [break] [step: fact]
      val c = fact(a)   // [step: x == 0] [step: fact(x - 1)] [step: x == 0] [cont]
      fact(0)           // [break] [step: x == 0] [step: 1] [step: fact(x - 1)] [step: print]
-     print(c)          // [cont]
+     println(c)          // [cont]
   }
 }
