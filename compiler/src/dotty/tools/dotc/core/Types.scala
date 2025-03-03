@@ -4116,7 +4116,6 @@ object Types extends TypeUtils {
     protected def prefixString: String = companion.prefixString
   }
 
-  // Actually.. not cached.  MethodOrPoly are `UncachedGroundType`s.
   final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion)
     extends MethodType(paramNames)(paramInfosExp, resultTypeExp)
 
@@ -4882,7 +4881,7 @@ object Types extends TypeUtils {
     def origin: TypeParamRef = currentOrigin
 
     /** Set origin to new parameter. Called if we merge two conflicting constraints.
-     *  See OrderingConstraint#merge
+     *  See OrderingConstraint#merge, OrderingConstraint#rename
      */
     def setOrigin(p: TypeParamRef) = currentOrigin = p
 

@@ -139,15 +139,14 @@ class TyperState() {
   def uncommittedAncestor: TyperState =
     if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
 
-  /** Commit `this` typer state by copying information into the current typer state,
-   *  where "current" means contextual, so meaning `ctx.typerState`.
+  /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
    *  type variables changes from this typer state to the current one. (2) Variables
    *  that were temporarily instantiated in the current typer state are permanently
    *  instantiated instead.
    *
    *  A note on merging: An interesting test case is isApplicableSafe.scala. It turns out that this
-   *  requires a context merge using the new `&` operator. Sequence of actions:
+   *  requires a context merge using the new `&' operator. Sequence of actions:
    *  1) Typecheck argument in typerstate 1.
    *  2) Cache argument.
    *  3) Evolve same typer state (to typecheck other arguments, say)

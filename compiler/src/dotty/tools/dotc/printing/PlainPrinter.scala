@@ -253,7 +253,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
-        "<error>" // do not print previously reported error message because they may try to print this error type again recursively
+        "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
         s"<error ${tp.msg.message}>"
       case tp: WildcardType =>

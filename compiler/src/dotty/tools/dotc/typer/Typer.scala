@@ -4838,29 +4838,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               var typeArgs = tree match
                 case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
                 case _ => Nil
-              if typeArgs.isEmpty then
-                val poly1 = tree match
-                  case Select(qual, nme.apply) => qual.tpe.widen match
-                    case defn.PolyFunctionOf(_) =>
-                      // Given a poly function, like the one in i6682a:
-                      //    val v = [T] => (y:T) => (x:y.type) => 3
-                      // It's possible to apply `v(v)` which extends to:
-                      //    v.apply[?T](v)
-                      // Requiring the circular constraint `v <: ?T`,
-                      // (because type parameter T occurs in v's type).
-                      // So we create a fresh copy of the outer
-                      // poly method type, so we now extend to:
-                      //    v.apply[?T'](v)
-                      // Where `?T'` is a type var for a T' type parameter,
-                      // leading to the non-circular `v <: ?T'` constraint.
-                      //
-                      // This also happens in `assignType(tree: untpd.TypeApply, ..)`
-                      // to avoid any type arguments, containing the type lambda,
-                      // being applied to the very same type lambda.
-                      poly.newLikeThis(poly.paramNames, poly.paramInfos, poly.resType)
-                    case _ => poly
-                  case _ => poly
-                typeArgs = constrained(poly1, tree)._2.map(_.wrapInTypeTree(tree))
+              if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2.map(_.wrapInTypeTree(tree))
               convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
         case wtp =>
           val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
