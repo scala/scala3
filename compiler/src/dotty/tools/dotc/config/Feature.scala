@@ -37,7 +37,6 @@ object Feature:
   val modularity = experimental("modularity")
   val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
-  val betterFors = experimental("betterFors")
   val packageObjectValues = experimental("packageObjectValues")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
@@ -66,8 +65,7 @@ object Feature:
     (into, "Allow into modifier on parameter types"),
     (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
-    (betterMatchTypeExtractors, "Enable better match type extractors"),
-    (betterFors, "Enable improvements in `for` comprehensions")
+    (betterMatchTypeExtractors, "Enable better match type extractors")
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -121,8 +119,6 @@ object Feature:
   def dependentEnabled(using Context) = enabled(dependent)
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
-
-  def betterForsEnabled(using Context) = enabled(betterFors)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
