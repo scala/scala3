@@ -265,9 +265,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private var coDeps: ReverseDeps = SimpleIdentityMap.empty
 
   /** A map that associates type parameters of this constraint with all other type
-   *  parameters that refer to them in their bounds covariantly, such that, if the
+   *  parameters that refer to them in their bounds contravariantly, such that, if the
    *  type parameter is instantiated to a smaller type, the constraint would be narrowed.
-   *  (i.e. solution set changes other than simply being made larger).
+   *  (i.e. solution set changes other than simply being made smaller).
    */
   private var contraDeps: ReverseDeps = SimpleIdentityMap.empty
 
@@ -370,7 +370,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     /** Adjust reverse dependencies of all type parameters referenced by `bound`
      *  @param  isLower `bound` is a lower bound
-     *  @param  add     if true, add referenced variables to dependencoes, otherwise drop them.
+     *  @param  add     if true, add referenced variables to dependencies, otherwise drop them.
      */
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
@@ -396,8 +396,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           }
         case _ => false
 
-    /** Add or remove depenencies referenced in `bounds`.
-     *  @param add   if true, dependecies are added, otherwise they are removed
+    /** Add or remove dependencies referenced in `bounds`.
+     *  @param add   if true, dependencies are added, otherwise they are removed
      */
     def adjustBounds(bounds: TypeBounds, add: Boolean) =
       adjustReferenced(bounds.lo, isLower = true, add)
