@@ -1,0 +1,2 @@
+scala>:sh
+The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.
