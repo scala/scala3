@@ -1413,7 +1413,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeBlockTypeTest extends TypeTest[Tree, TypeBlock]:
       def unapply(x: Tree): Option[TypeBlock & x.type] = x match
-        case tpt: (tpd.Block & x.type) => Some(tpt)
+        case tpt: (tpd.Block & x.type) if x.isType => Some(tpt)
         case _ => None
     end TypeBlockTypeTest
 
