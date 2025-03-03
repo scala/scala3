@@ -444,9 +444,9 @@ class Objects(using Context @constructorOnly):
      * Due to widening, the corresponding environment might not exist. As a result reading the local
      * variable will return `Cold` and it's forbidden to write to the local variable.
      *
-     * @param target  The symbol to search for.
-     * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
-     * @param env   The local environment where the local variable is referenced.
+     * @param target The symbol to search for.
+     * @param thisV  The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env    The local environment where the local variable is referenced.
      *
      * @return the environment that owns the `target` and value for `this` owned by the given method.
      */
@@ -470,7 +470,7 @@ class Objects(using Context @constructorOnly):
     }
 
     /**
-     * Resolve the environment owned by the given method.
+     * Resolve the environment owned by the given method `enclosing`.
      *
      * The method could be located in outer scope with intermixed classes between its definition
      * site and usage site.
@@ -478,23 +478,25 @@ class Objects(using Context @constructorOnly):
      * Due to widening, the corresponding environment might not exist. As a result reading the local
      * variable will return `Cold` and it's forbidden to write to the local variable.
      *
-     * @param meth  The method which owns the environment
-     * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
-     * @param env   The local environment where the local variable is referenced.
+     * @param enclosing The method which owns the environment. This method is called to look up the environment
+     *                  owned by the enclosing method of some symbol.
+     * @param thisV     The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env       The local environment where the local variable is referenced.
      *
      * @return the environment and value for `this` owned by the given method.
      */
-    def resolveEnvByOwner(meth: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env by owner for " + meth.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+    def resolveEnvByOwner(enclosing: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env by owner for " + enclosing.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+      assert(enclosing.is(Flags.Method), "Only method symbols allows, got " + enclosing.show)
       env match
       case localEnv: LocalEnv =>
-        if localEnv.meth == meth then Some(thisV -> env)
-        else resolveEnvByOwner(meth, thisV, localEnv.outer)
+        if localEnv.meth == enclosing then Some(thisV -> env)
+        else resolveEnvByOwner(enclosing, thisV, localEnv.outer)
       case NoEnv =>
         thisV match
         case ref: OfClass =>
           ref.outer match
           case outer : ThisValue =>
-            resolveEnvByOwner(meth, outer, ref.env)
+            resolveEnvByOwner(enclosing, outer, ref.env)
           case _ =>
             // TODO: properly handle the case where ref.outer is ValueSet
             None
