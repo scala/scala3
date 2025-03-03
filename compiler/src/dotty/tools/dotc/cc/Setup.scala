@@ -403,7 +403,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
         then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
-        else normalizeCaptures(normalizeFunctions(mapFollowingAliases(t), t))
+        else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
         t match
@@ -438,9 +438,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               keptFunAliases = true
               mapOver(t)
             else
-              // In the second pass, map the alias and make sure it has the form
-              // of a dependent function.
-              normalizeFunctions(apply(t.dealias), t, expandAlways = true)
+              // In the second pass, map the alias
+              apply(t.dealias)
           case t =>
             defaultApply(t)
     end toCapturing

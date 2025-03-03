@@ -260,7 +260,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           def isUniversal =
             refs.elems.size == 1
             && (refs.isUniversal
-                || !printDebug && !showUniqueIds && refs.elems.nth(0).match
+                || !printDebug && !printFresh && !showUniqueIds && refs.elems.nth(0).match
                       case Existential.Vble(binder) =>
                         CCState.openExistentialScopes match
                           case b :: _ => binder eq b
@@ -459,7 +459,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val vbleText: Text = CCState.openExistentialScopes.indexOf(binder) match
           case -1 =>
             "<cap of " ~ toText(binder) ~ ">"
-          case n => "outer_" * n ++ "cap"
+          case n => "outer_" * n ++ (if printFresh then "localcap" else "cap")
         vbleText ~ hashStr(binder)
       case Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${hidden.id}" else ""

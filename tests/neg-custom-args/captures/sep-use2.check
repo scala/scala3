@@ -27,8 +27,8 @@
 18 |    { f(cc) } // error // error
    |        ^^
    |        Separation failure: argument of type  (cc : -> Object^)
-   |        to a function of type Object^ ->{c} Object^
-   |        corresponds to capture-polymorphic formal parameter x$0 of type  Object^
+   |        to a function of type (x: Object^) ->{c} Object^
+   |        corresponds to capture-polymorphic formal parameter x of type  Object^
    |        and hides capabilities  {cap, c}.
    |        Some of these overlap with the captures of the function prefix.
    |
@@ -49,3 +49,17 @@
    |        Separation failure: Illegal access to {c} which is hidden by the previous definition
    |        of method cc with result type Object^.
    |        This type hides capabilities  {c}
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:24:8 -----------------------------------------------------------
+24 |    { f(c) } // error
+   |        ^
+   |        Separation failure: argument of type  (c : Object^)
+   |        to a function of type Object^ ->{c} Object^
+   |        corresponds to capture-polymorphic formal parameter v1 of type  Object^
+   |        and hides capabilities  {c}.
+   |        Some of these overlap with the captures of the function prefix.
+   |
+   |          Hidden set of current argument        : {c}
+   |          Hidden footprint of current argument  : {c}
+   |          Capture set of function prefix        : {f}
+   |          Footprint set of function prefix      : {f, c}
+   |          The two sets overlap at               : {c}

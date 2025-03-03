@@ -252,18 +252,23 @@ trait CaptureRef extends TypeProxy, ValueType:
    *                       fail a comparison.
    */
   def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+    def yIsExistential = y.stripReadOnly match
+      case Existential.Vble(_) =>
+        capt.println(i"failed existential $this >: $y")
+        true
+      case _ => false
     (this eq y)
     || this.match
       case Fresh(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
-        || !y.stripReadOnly.isCap && canAddHidden && vs.addHidden(hidden, y)
+        || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
       case Existential.Vble(binder) =>
         y.stripReadOnly match
           case Existential.Vble(binder1) => binder1.hasSuffix(binder)
             .showing(i"cmp existential $binder maxSubsumes $binder1 = $result", capt)
           case _ => true
       case _ =>
-        this.isCap && canAddHidden && vs != VarState.HardSeparate
+        this.isCap /*&& !yIsExistential*/ && canAddHidden && vs != VarState.HardSeparate
         || y.match
             case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case _ => false

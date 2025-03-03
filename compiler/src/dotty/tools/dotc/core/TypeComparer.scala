@@ -321,10 +321,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
               if (sym1 ne NoSymbol) && (sym1 eq sym2) then
-                ctx.erasedTypes ||
-                sym1.isStaticOwner ||
-                isSubPrefix(tp1.prefix, tp2.prefix) ||
-                thirdTryNamed(tp2)
+                ctx.erasedTypes
+                || sym1.isStaticOwner
+                || isSubPrefix(tp1.prefix, tp2.prefix)
+                || thirdTryNamed(tp2)
               else
                 (tp1.name eq tp2.name)
                 && !sym1.is(Private)

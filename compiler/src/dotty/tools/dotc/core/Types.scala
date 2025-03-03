@@ -1124,7 +1124,7 @@ object Types extends TypeUtils {
       TypeComparer.topLevelSubType(this, that)
     }
 
-    /** Is this type a subtype of that type? */
+    /** Is this type a subtype of that type without adding to the constraint? */
     final def frozen_<:<(that: Type)(using Context): Boolean = {
       record("frozen_<:<")
       TypeComparer.isSubTypeWhenFrozen(this, that)

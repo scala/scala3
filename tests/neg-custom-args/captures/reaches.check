@@ -45,24 +45,31 @@
    |                                Type variable A of constructor Id cannot be instantiated to box () => Unit since
    |                                that type captures the root capability `cap`.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:63:27 --------------------------------------
-63 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
+63 |    val f1: File^{id*} = id(f) // error // error
    |                         ^^^^^
    |                         Found:    File^{f}
    |                         Required: File^{id*}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:80:10 -----------------------------------------------------------
-80 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:71:27 --------------------------------------
+71 |    val f1: File^{id*} = id(f) // error // error
+   |                         ^^^^^
+   |                         Found:    File^{f}
+   |                         Required: File^{id*}
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/reaches.scala:88:10 -----------------------------------------------------------
+88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
    |          ^
    |          Local reach capability ps* leaks into capture scope of method mapCompose.
    |          To allow this, the parameter ps should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/reaches.scala:80:13 -----------------------------------------------------------
-80 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
+-- Error: tests/neg-custom-args/captures/reaches.scala:88:13 -----------------------------------------------------------
+88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
    |             ^
    |             Local reach capability ps* leaks into capture scope of method mapCompose.
    |             To allow this, the parameter ps should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/reaches.scala:80:28 -----------------------------------------------------------
-80 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
+-- Error: tests/neg-custom-args/captures/reaches.scala:88:28 -----------------------------------------------------------
+88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
    |                            ^
    |                      Separation failure: argument of type  A ->{x} box A^?
    |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
@@ -75,8 +82,8 @@
    |                        Capture set of second argument        : {y}
    |                        Footprint set of second argument      : {y, ps*}
    |                        The two sets overlap at               : {ps*}
--- Error: tests/neg-custom-args/captures/reaches.scala:83:28 -----------------------------------------------------------
-83 |  ps.map((x, y) => compose1(x, y)) // error sepcheck
+-- Error: tests/neg-custom-args/captures/reaches.scala:91:28 -----------------------------------------------------------
+91 |  ps.map((x, y) => compose1(x, y)) // error sepcheck
    |                            ^
    |                      Separation failure: argument of type  A ->{x} box A^?
    |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
@@ -94,6 +101,14 @@
    |                               ^^^
    |                               id* cannot be tracked since its deep capture set is empty
 -- Error: tests/neg-custom-args/captures/reaches.scala:63:18 -----------------------------------------------------------
-63 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
+63 |    val f1: File^{id*} = id(f) // error // error
+   |                  ^^^
+   |                  id* cannot be tracked since its deep capture set is empty
+-- Error: tests/neg-custom-args/captures/reaches.scala:70:31 -----------------------------------------------------------
+70 |  val leaked = usingFile[File^{id*}]: f => // error
+   |                               ^^^
+   |                               id* cannot be tracked since its deep capture set is empty
+-- Error: tests/neg-custom-args/captures/reaches.scala:71:18 -----------------------------------------------------------
+71 |    val f1: File^{id*} = id(f) // error // error
    |                  ^^^
    |                  id* cannot be tracked since its deep capture set is empty
