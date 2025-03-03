@@ -860,21 +860,24 @@ object Types extends TypeUtils {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else
-          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-          val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-            pre,
-            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-          joint match
-            case joint: SingleDenotation
-            if isRefinedMethod
-              && (rinfo <:< joint.info
-                || name == nme.apply && defn.isFunctionType(tp.parent)) =>
-              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-            case _ =>
-              joint
+        else rinfo match
+          case AnnotatedType(rinfo1, ann) if ann.symbol == defn.RefineOverrideAnnot =>
+            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo1)
+          case _ =>
+            val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
+            val joint = pdenot.meet(
+              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+              pre,
+              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+            joint match
+              case joint: SingleDenotation
+              if isRefinedMethod
+                && (rinfo <:< joint.info
+                  || name == nme.apply && defn.isFunctionType(tp.parent)) =>
+                // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+                joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+              case _ =>
+                joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
@@ -4175,7 +4178,7 @@ object Types extends TypeUtils {
          tl => params.map(p => tl.integrate(params, adaptParamInfo(p))),
          tl => tl.integrate(params, resultType))
 
-    /** Adapt info of parameter symbol to be integhrated into corresponding MethodType
+    /** Adapt info of parameter symbol to be integrated into corresponding MethodType
      *  using the scheme described in `fromSymbols`.
      */
     def adaptParamInfo(param: Symbol, pinfo: Type)(using Context): Type =
