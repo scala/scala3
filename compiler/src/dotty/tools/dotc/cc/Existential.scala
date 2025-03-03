@@ -281,7 +281,8 @@ object Existential:
             seen.getOrElseUpdate(t, Vble(mt))
           else
             if variance == 0 then
-              fail(em"""$tp captures the root capability `cap` in invariant position""")
+              fail(em"""$tp captures the root capability `cap` in invariant position.
+                       |This capability cannot be converted to an existential in the result type of a function.""")
             // we accept variance < 0, and leave the cap as it is
             super.mapOver(t)
         case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>

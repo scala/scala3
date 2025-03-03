@@ -2,7 +2,7 @@
 import caps.consume
 import caps.unsafe.unsafeAssumeSeparate
 
-def Test(@consume c: Object^, f: Object^ => Object^) =
+def Test(@consume c: Object^, @consume f: Object^ => Object^) =
   def cc: Object^ = unsafeAssumeSeparate(c)
   val x1 =
     { f(cc) }
@@ -11,7 +11,7 @@ def Test(@consume c: Object^, f: Object^ => Object^) =
   val x3: Object^ =
     f(cc)
   val x4: Object^ =
-    { f(cc) }
+    { unsafeAssumeSeparate(f)(cc) }
 
 
 

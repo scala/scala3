@@ -540,11 +540,13 @@ extension (tp: Type)
           case t @ AnnotatedType(parent, ann) =>
             // Don't map annotations, which includes capture sets
             t.derivedAnnotatedType(this(parent), ann)
-          case t @ FunctionOrMethod(args, res)
-          if args.forall(_.isAlwaysPure) =>
-            // Also map existentials in results to reach capabilities if all
-            // preceding arguments are known to be always pure
-            t.derivedFunctionOrMethod(args, apply(Existential.toCap(res)))
+          case t @ FunctionOrMethod(args, res) =>
+            if args.forall(_.isAlwaysPure) then
+              // Also map existentials in results to reach capabilities if all
+              // preceding arguments are known to be always pure
+              t.derivedFunctionOrMethod(args, apply(Existential.toCap(res)))
+            else
+              t
           case _ =>
             mapOver(t)
     end narrowCaps

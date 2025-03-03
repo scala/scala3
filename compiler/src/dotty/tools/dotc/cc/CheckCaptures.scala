@@ -1260,7 +1260,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
-              println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
+              println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
             case _ =>
         actualBoxed
       else

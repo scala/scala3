@@ -1,7 +1,7 @@
 
 import caps.consume
 
-def test1(@consume c: Object^, f: Object^ => Object^) =
+def test1(@consume c: Object^, f: (x: Object^) => Object^) =
   def cc: Object^ = c  // error
   val x1 =
     { f(cc) } // ok
@@ -12,12 +12,18 @@ def test1(@consume c: Object^, f: Object^ => Object^) =
   val x4: Object^ = // error
     { f(c) } // error
 
-def test2(@consume c: Object^, f: Object^ ->{c} Object^) =
+def test2(@consume c: Object^, f: (x: Object^) ->{c} Object^) =
   def cc: Object^ = c // error
   val x1 =
     { f(cc) } // error // error
-  val x4: Object^ =
+  val x4: Object^ = // ^ hides just c, since the Object^ in the result of `f` is existential
     { f(c) } // error // error
+
+def test3(@consume c: Object^, f: Object^ ->{c} Object^) =
+  val x4: Object^ = // ^ hides c and f*
+    { f(c) } // error
+
+
 
 
 

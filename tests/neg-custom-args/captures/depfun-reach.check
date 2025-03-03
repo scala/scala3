@@ -1,15 +1,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:19:4 ----------------------------------
 19 |    op // error
    |    ^^
-   |    Found:    (xs: List[(X, box () ->{io} Unit)]) ->{op} List[box () ->{xs*} Unit]
+   |    Found:    (op : (xs: List[(X, box () ->{io} Unit)]) => List[box () ->{xs*} Unit])
    |    Required: (xs: List[(X, box () ->{io} Unit)]) => List[() -> Unit]
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:26:60 ---------------------------------
 26 |  val b: (xs: List[() ->{io} Unit]) => List[() ->{} Unit] = a // error
    |                                                            ^
-   |                                        Found:    (xs: List[box () ->{io} Unit]) ->{a} List[box () ->{xs*} Unit]
-   |                                        Required: (xs: List[box () ->{io} Unit]) => List[() -> Unit]
+   |                                     Found:    (a : (xs: List[box () ->{io} Unit]) => List[box () ->{xs*} Unit])
+   |                                     Required: (xs: List[box () ->{io} Unit]) => List[() -> Unit]
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/depfun-reach.scala:18:17 ------------------------------------------------------

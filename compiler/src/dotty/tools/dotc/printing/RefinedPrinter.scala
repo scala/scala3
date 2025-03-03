@@ -190,8 +190,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val capturesRoot = refs == rootSetText
         if cc.isCaptureCheckingOrSetup
             && tp.allParamNamesSynthetic && !tp.looksDependent
-            && !showUniqueIds && !printDebug
-        then
+            && !showUniqueIds && !printDebug && !printFresh
+          then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
           toTextFunction(tp.paramInfos, tp.resType, tp, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
         else
