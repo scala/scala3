@@ -1,0 +1,12 @@
+-- [E127] Pattern Match Error: tests/neg/22550.scala:6:9 ---------------------------------------------------------------
+6 |    case Matches(x) => println(x) // error // error
+  |         ^^^^^^^
+  |Matches cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/22550.scala:6:31 ------------------------------------------------------------------
+6 |    case Matches(x) => println(x) // error // error
+  |                               ^
+  |                               Not found: x
+  |
+  | longer explanation available when compiling with `-explain`
