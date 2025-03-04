@@ -9,7 +9,7 @@ import cc.CaptureSet.IdempotentCaptRefMap
  */
 object Substituters:
 
-  final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap | Null)(using Context): Type =
+  final def subst[BT <: BindingType](tp: Type, from: BT, to: BT, theMap: SubstBindingMap[BT] | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
         if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
@@ -163,7 +163,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap, BiTypeMap {
+  final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
     def inverse = SubstBindingMap(to, from)
   }

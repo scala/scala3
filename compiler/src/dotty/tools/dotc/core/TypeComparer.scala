@@ -47,8 +47,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     monitored = false
     GADTused = false
     opaquesUsed = false
-    openedExistentials = Nil
-    assocExistentials = Nil
     recCount = 0
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
@@ -66,18 +64,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Indicates whether the subtype check used opaque types */
   private var opaquesUsed: Boolean = false
-
-  /** In capture checking: The existential types that are open because they
-   *  appear in an existential type on the left in an enclosing comparison.
-   */
-  private var openedExistentials: List[TermParamRef] = Nil
-
-  /** In capture checking: A map from existential types that are appear
-   *  in an existential type on the right in an enclosing comparison.
-   *  Each existential gets mapped to the opened existentials to which it
-   *  may resolve at this point.
-   */
-  private var assocExistentials: ExAssoc = Nil
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -335,10 +321,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
               if (sym1 ne NoSymbol) && (sym1 eq sym2) then
-                ctx.erasedTypes ||
-                sym1.isStaticOwner ||
-                isSubPrefix(tp1.prefix, tp2.prefix) ||
-                thirdTryNamed(tp2)
+                ctx.erasedTypes
+                || sym1.isStaticOwner
+                || isSubPrefix(tp1.prefix, tp2.prefix)
+                || thirdTryNamed(tp2)
               else
                 (tp1.name eq tp2.name)
                 && !sym1.is(Private)
@@ -440,7 +426,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if isCaptureVarComparison then
-              return subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK
+              return subCaptures(tp1.captureSet, tp2.captureSet).isOK
             if (tp1 eq NothingType) || isBottom(tp1) then
               return true
         }
@@ -548,7 +534,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+          else if subCaptures(refs1, tp2.captureSet).isOK && sameBoxed(tp1, tp2, refs1)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
           then
             val tp2a =
@@ -565,8 +551,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if reduced.exists then
           recur(reduced, tp2) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
         else thirdTry
-      case Existential(boundVar, tp1unpacked) =>
-        compareExistentialLeft(boundVar, tp1unpacked, tp2)
       case _: FlexType =>
         true
       case _ =>
@@ -591,7 +575,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
         if isCaptureVarComparison then
-          return subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK
+          return subCaptures(tp1.captureSet, tp2.captureSet).isOK
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
@@ -651,8 +635,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTryNamed(tp2)
       case tp2: TypeParamRef =>
         compareTypeParamRef(tp2)
-      case Existential(boundVar, tp2unpacked) =>
-        compareExistentialRight(tp1, boundVar, tp2unpacked)
       case tp2: RefinedType =>
         def compareRefinedSlow: Boolean =
           val name2 = tp2.refinedName
@@ -678,12 +660,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1 @ CapturingType(parent1, refs1), info2: Type)
               if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+                subCaptures(refs1, info2.captureSet).isOK && sameBoxed(info1, info2, refs1)
                   && isSubInfo(parent1, info2)
               case (info1: Type, CapturingType(parent2, refs2))
               if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
+                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2).isOK) && sameBoxed(info1, info2, refs1)
                   && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
@@ -822,7 +804,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (tp1.signature consistentParams tp2.signature) &&
             matchingMethodParams(tp1, tp2) &&
             (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            CCState.inNewExistentialScope(tp2):
+              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
@@ -877,12 +860,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // capt-capibility.scala and function-combinators.scala
               val singletonOK = tp1 match
                 case tp1: SingletonType
-                if subCaptures(tp1.underlying.captureSet, refs2, frozen = true).isOK =>
+                if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate).isOK =>
                   recur(tp1.widen, tp2)
                 case _ =>
                   false
               singletonOK
-              || subCaptures(refs1, refs2, frozenConstraint).isOK
+              || subCaptures(refs1, refs2).isOK
                   && sameBoxed(tp1, tp2, refs1)
                   && (recur(tp1.widen.stripCapturing, parent2)
                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
@@ -2174,7 +2157,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val info2 = tp2.refinedInfo
         val isExpr2 = info2.isInstanceOf[ExprType]
         var info1 = m.info match
-          case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
+          case info1: ValueType if isExpr2 || m.symbol.isMutableVarOrAccessor =>
             // OK: { val x: T } <: { def x: T }
             // OK: { var x: T } <: { def x: T }
             // NO: { var x: T } <: { val x: T }
@@ -2806,111 +2789,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   // ----------- Capture checking -----------------------------------------------
 
-  /** A type associating instantiatable existentials on the right of a comparison
-   *  with the existentials they can be instantiated with.
-   */
-  type ExAssoc = List[(TermParamRef, List[TermParamRef])]
+  protected def makeVarState() =
+    if frozenConstraint then CaptureSet.VarState.Closed() else CaptureSet.VarState()
 
-  private def compareExistentialLeft(boundVar: TermParamRef, tp1unpacked: Type, tp2: Type)(using Context): Boolean =
-    val saved = openedExistentials
+  protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet,
+      vs: CaptureSet.VarState = makeVarState())(using Context): CaptureSet.CompareResult =
     try
-      openedExistentials = boundVar :: openedExistentials
-      recur(tp1unpacked, tp2)
-    finally
-      openedExistentials = saved
-
-  private def compareExistentialRight(tp1: Type, boundVar: TermParamRef, tp2unpacked: Type)(using Context): Boolean =
-    val saved = assocExistentials
-    try
-      assocExistentials = (boundVar, openedExistentials) :: assocExistentials
-      recur(tp1, tp2unpacked)
-    finally
-      assocExistentials = saved
-
-  /** Is `tp1` an existential var that subsumes `tp2`? This is the case if `tp1` is
-   *  instantiatable (i.e. it's a key in `assocExistentials`) and one of the
-   *  following is true:
-   *    - `tp2` is not an existential var,
-   *    - `tp1` is associated via `assocExistentials` with `tp2`,
-   *    - `tp2` appears as key in `assocExistentials` further out than `tp1`.
-   *  The third condition allows to instantiate c2 to c1 in
-   *    EX c1: A -> Ex c2. B
-   */
-  def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context): Boolean =
-    def canInstantiateWith(assoc: ExAssoc): Boolean = assoc match
-      case (bv, bvs) :: assoc1 =>
-        if bv == tp1 then
-          !Existential.isExistentialVar(tp2)
-          || bvs.contains(tp2)
-          || assoc1.exists(_._1 == tp2)
-        else
-          canInstantiateWith(assoc1)
-      case Nil =>
-        false
-    Existential.isExistentialVar(tp1) && canInstantiateWith(assocExistentials)
-
-  def isOpenedExistential(ref: CaptureRef)(using Context): Boolean =
-    openedExistentials.contains(ref)
-
-  /** bi-map taking existentials to the left of a comparison to matching
-   *  existentials on the right. This is not a bijection. However
-   *  we have `forwards(backwards(bv)) == bv` for an existentially bound `bv`.
-   *  That's enough to qualify as a BiTypeMap.
-   */
-  private class MapExistentials(assoc: ExAssoc)(using Context) extends BiTypeMap:
-
-    private def bad(t: Type) =
-      Existential.badExistential
-        .showing(i"existential match not found for $t in $assoc", capt)
-
-    def apply(t: Type) = t match
-      case t: TermParamRef if Existential.isExistentialVar(t) =>
-        // Find outermost existential on the right that can be instantiated to `t`,
-        // or `badExistential` if none exists.
-        def findMapped(assoc: ExAssoc): CaptureRef = assoc match
-          case (bv, assocBvs) :: assoc1 =>
-            val outer = findMapped(assoc1)
-            if !Existential.isBadExistential(outer) then outer
-            else if assocBvs.contains(t) then bv
-            else bad(t)
-          case Nil =>
-            bad(t)
-        findMapped(assoc)
-      case _ =>
-        mapOver(t)
-
-    /** The inverse takes existentials on the right to the innermost existential
-     *  on the left to which they can be instantiated.
-     */
-    lazy val inverse = new BiTypeMap:
-      def apply(t: Type) = t match
-        case t: TermParamRef if Existential.isExistentialVar(t) =>
-          assoc.find(_._1 == t) match
-            case Some((_, bvs)) if bvs.nonEmpty => bvs.head
-            case _ => bad(t)
-        case _ =>
-          mapOver(t)
-
-        def inverse = MapExistentials.this
-        override def toString = "MapExistentials.inverse"
-    end inverse
-  end MapExistentials
-
-  protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    try
-      if assocExistentials.isEmpty then
-        refs1.subCaptures(refs2, frozen)
-      else
-        val mapped = refs1.map(MapExistentials(assocExistentials))
-        if mapped.elems.exists(Existential.isBadExistential)
-        then CaptureSet.CompareResult.Fail(refs2 :: Nil)
-        else subCapturesMapped(mapped, refs2, frozen)
+      refs1.subCaptures(refs2, vs)
     catch case ex: AssertionError =>
       println(i"fail while subCaptures $refs1 <:< $refs2")
       throw ex
-
-  protected def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    refs1.subCaptures(refs2, frozen)
 
   /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
    *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
@@ -2918,7 +2806,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs1.subCaptures(CaptureSet.empty, frozenConstraint).isOK
+    || refs1.subCaptures(CaptureSet.empty, makeVarState()).isOK
 
   // ----------- Diagnostics --------------------------------------------------
 
@@ -3496,14 +3384,8 @@ object TypeComparer {
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     comparing(_.reduceMatchWith(op))
 
-  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    comparing(_.subCaptures(refs1, refs2, frozen))
-
-  def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
-    comparing(_.subsumesExistentially(tp1, tp2))
-
-  def isOpenedExistential(ref: CaptureRef)(using Context) =
-    comparing(_.isOpenedExistential(ref))
+  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
+    comparing(_.subCaptures(refs1, refs2, vs))
 }
 
 object MatchReducer:
@@ -3978,14 +3860,9 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       super.gadtAddBound(sym, b, isUpper)
     }
 
-  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    traceIndented(i"subcaptures $refs1 <:< $refs2 ${if frozen then "frozen" else ""}") {
-      super.subCaptures(refs1, refs2, frozen)
-    }
-
-  override def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    traceIndented(i"subcaptures mapped $refs1 <:< $refs2 ${if frozen then "frozen" else ""}") {
-      super.subCapturesMapped(refs1, refs2, frozen)
+  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
+    traceIndented(i"subcaptures $refs1 <:< $refs2 in ${vs.toString}") {
+      super.subCaptures(refs1, refs2, vs)
     }
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }
