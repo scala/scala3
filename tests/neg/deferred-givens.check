@@ -9,5 +9,5 @@
 -- Error: tests/neg/deferred-givens.scala:26:8 -------------------------------------------------------------------------
 26 |  class E extends A2  // error, can't summon polymorphic given
    |  ^^^^^^^^^^^^^^^^^^
-   |  Cannnot infer the implementation of the deferred given instance given_Ctx3_T in trait A2
+   |  Cannot infer the implementation of the deferred given instance given_Ctx3_T in trait A2
    |  since that given is parameterized. An implementing given needs to be written explicitly.
