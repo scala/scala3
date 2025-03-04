@@ -10,6 +10,7 @@ import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
 import com.gradle.develocity.agent.sbt.DevelocityPlugin.autoImport._
+import com.gradle.develocity.agent.sbt.api.experimental.buildcache
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.MappingsHelper.directory
 import com.typesafe.sbt.packager.universal.UniversalPlugin
@@ -607,7 +608,10 @@ object Build {
       assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
       docScalaInstance
     },
-    Compile / doc / scalacOptions ++= scalacOptionsDocSettings()
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
+    // force recompilation of bootstrapped modules when the compiler changes
+    Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
+      (`scala3-compiler` / Compile / compile / buildcache.develocityTaskCacheKey).taskValue
   )
 
   lazy val commonBenchmarkSettings = Seq(
