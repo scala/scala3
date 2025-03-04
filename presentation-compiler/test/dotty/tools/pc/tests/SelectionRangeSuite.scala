@@ -76,6 +76,12 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
            |  } yield a + b
            |}""".stripMargin,
         """|object Main extends App {
+           |  val total = for {
+           |    >>region>>a <- Some(1)<<region<<
+           |    b <- Some(2)
+           |  } yield a + b
+           |}""".stripMargin,
+        """|object Main extends App {
            |  val total = >>region>>for {
            |    a <- Some(1)
            |    b <- Some(2)
@@ -102,7 +108,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
       )
     )
 
-  @Test def `function params` =
+  @Test def `function-params-1` =
     check(
       """|object Main extends App {
          |  def func(a@@: Int, b: Int) =
@@ -124,6 +130,32 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
       )
     )
 
+  @Test def `function-params-2` =
+    check(
+      """|object Main extends App {
+         |  val func = (a@@: Int, b: Int) =>
+         |    a + b
+         |}""".stripMargin,
+      List[String](
+        """|object Main extends App {
+           |  val func = (>>region>>a: Int<<region<<, b: Int) =>
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  val func = (>>region>>a: Int, b: Int<<region<<) =>
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  val func = >>region>>(a: Int, b: Int) =>
+           |    a + b<<region<<
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  >>region>>val func = (a: Int, b: Int) =>
+           |    a + b<<region<<
+           |}""".stripMargin
+      )
+  )
+
   @Test def `def - type params` =
     check(
       "object Main extends App { def foo[Type@@ <: T1, B](hi: Int, b: Int, c:Int) = ??? }",
@@ -131,5 +163,27 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "object Main extends App { def foo[>>region>>Type <: T1<<region<<, B](hi: Int, b: Int, c:Int) = ??? }",
         "object Main extends App { def foo[>>region>>Type <: T1, B<<region<<](hi: Int, b: Int, c:Int) = ??? }",
         "object Main extends App { >>region>>def foo[Type <: T1, B](hi: Int, b: Int, c:Int) = ???<<region<< }"
+      )
+    )
+
+
+  @Test def `arithmetic` =
+    check(
+      """|object Main extends App {
+         |  def x = 12 * (34 + 5@@6)
+         |}""".stripMargin,
+      List[String](
+        """|object Main extends App {
+           |  def x = 12 * (34 + >>region>>56<<region<<)
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  def x = 12 * (>>region>>34 + 56<<region<<)
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  def x = 12 * >>region>>(34 + 56)<<region<<
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  def x = >>region>>12 * (34 + 56)<<region<<
+           |}""".stripMargin
       )
     )
