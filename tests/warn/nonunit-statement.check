@@ -14,7 +14,7 @@
 30 |  copy()                  // warn
    |  ^^^^^^
    |  unused value of type K
--- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:37:2 ---------------------------------------------
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:37:5 ---------------------------------------------
 37 |  27 +: xs                // warn
    |  ^^^^^^^^
    |  unused value of type List[Int]
@@ -63,7 +63,7 @@
 101 |      println("false")
 102 |      j
 103 |    }
--- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:116:4 --------------------------------------------
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:116:8 --------------------------------------------
 116 |    set += a     // warn because cannot know whether the `set` was supposed to be consumed or assigned
     |    ^^^^^^^^
     |    unused value of type scala.collection.mutable.LinkedHashSet[A]
