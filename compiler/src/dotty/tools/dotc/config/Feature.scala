@@ -35,7 +35,6 @@ object Feature:
   val into = experimental("into")
   val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
-  val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val betterFors = experimental("betterFors")
   val packageObjectValues = experimental("packageObjectValues")
@@ -66,7 +65,6 @@ object Feature:
     (into, "Allow into modifier on parameter types"),
     (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
-    (betterMatchTypeExtractors, "Enable better match type extractors"),
     (betterFors, "Enable improvements in `for` comprehensions")
   )
 
