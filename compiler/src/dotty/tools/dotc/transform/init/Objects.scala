@@ -437,7 +437,40 @@ class Objects(using Context @constructorOnly):
         throw new RuntimeException("Incorrect local environment for initializing " + x.show)
 
     /**
-     * Resolve the environment owned by the given method.
+     * Resolve the environment by searching for a given symbol.
+     *
+     * Searches for the environment that owns `target`, starting from `env` as the innermost.
+     *
+     * Due to widening, the corresponding environment might not exist. As a result reading the local
+     * variable will return `Cold` and it's forbidden to write to the local variable.
+     *
+     * @param target The symbol to search for.
+     * @param thisV  The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env    The local environment where the local variable is referenced.
+     *
+     * @return the environment that owns the `target` and value for `this` owned by the given method.
+     */
+    def resolveEnvByValue(target: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env by value for " + target.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+      env match
+      case localEnv: LocalEnv =>
+        if localEnv.getVal(target).isDefined then Some(thisV -> localEnv)
+        else if localEnv.getVar(target).isDefined then Some(thisV -> localEnv)
+        else resolveEnvByValue(target, thisV, localEnv.outer)
+      case NoEnv =>
+        thisV match
+        case ref: OfClass =>
+          ref.outer match
+          case outer : ThisValue =>
+            resolveEnvByValue(target, outer, ref.env)
+          case _ =>
+            // TODO: properly handle the case where ref.outer is ValueSet
+            None
+        case _ =>
+          None
+    }
+
+    /**
+     * Resolve the environment owned by the given method `enclosing`.
      *
      * The method could be located in outer scope with intermixed classes between its definition
      * site and usage site.
@@ -445,23 +478,25 @@ class Objects(using Context @constructorOnly):
      * Due to widening, the corresponding environment might not exist. As a result reading the local
      * variable will return `Cold` and it's forbidden to write to the local variable.
      *
-     * @param meth  The method which owns the environment
-     * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
-     * @param env   The local environment where the local variable is referenced.
+     * @param enclosing The method which owns the environment. This method is called to look up the environment
+     *                  owned by the enclosing method of some symbol.
+     * @param thisV     The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env       The local environment where the local variable is referenced.
      *
      * @return the environment and value for `this` owned by the given method.
      */
-    def resolveEnv(meth: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env for " + meth.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+    def resolveEnvByOwner(enclosing: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env by owner for " + enclosing.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+      assert(enclosing.is(Flags.Method), "Only method symbols allows, got " + enclosing.show)
       env match
       case localEnv: LocalEnv =>
-        if localEnv.meth == meth then Some(thisV -> env)
-        else resolveEnv(meth, thisV, localEnv.outer)
+        if localEnv.meth == enclosing then Some(thisV -> env)
+        else resolveEnvByOwner(enclosing, thisV, localEnv.outer)
       case NoEnv =>
         thisV match
         case ref: OfClass =>
           ref.outer match
           case outer : ThisValue =>
-            resolveEnv(meth, outer, ref.env)
+            resolveEnvByOwner(enclosing, outer, ref.env)
           case _ =>
             // TODO: properly handle the case where ref.outer is ValueSet
             None
@@ -724,7 +759,7 @@ class Objects(using Context @constructorOnly):
             if meth.owner.isClass then
               (ref, Env.NoEnv)
             else
-              Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+              Env.resolveEnvByOwner(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
           val env2 = Env.ofDefDef(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
@@ -771,9 +806,9 @@ class Objects(using Context @constructorOnly):
           end if
 
         case _ =>
-          // by-name closure
-          given Env.Data = env
-          extendTrace(code) { eval(code, thisV, klass, cacheResult = true) }
+          // Should be unreachable, by-name closures are handled by readLocal
+          report.warning("[Internal error] Only DefDef should be possible here, but found " + code.show + ". " + Trace.show, Trace.position)
+          Bottom
 
     case ValueSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
@@ -962,7 +997,7 @@ class Objects(using Context @constructorOnly):
                   (thisV.widenRefOrCold(1), Env.NoEnv)
               else
                 // klass.enclosingMethod returns its primary constructor
-                Env.resolveEnv(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+                Env.resolveEnvByOwner(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
@@ -992,7 +1027,9 @@ class Objects(using Context @constructorOnly):
    */
   def readLocal(thisV: ThisValue, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
     def isByNameParam(sym: Symbol) = sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType]
-    Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
+    // Can't use enclosingMethod here because values defined in a by-name closure will have the wrong enclosingMethod,
+    // since our phase is before elimByName.
+    Env.resolveEnvByValue(sym, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       if sym.is(Flags.Mutable) then
         // Assume forward reference check is doing a good job
@@ -1047,8 +1084,9 @@ class Objects(using Context @constructorOnly):
    */
   def writeLocal(thisV: ThisValue, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
-
-    Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
+    // Can't use enclosingMethod here because values defined in a by-name closure will have the wrong enclosingMethod,
+    // since our phase is before elimByName.
+    Env.resolveEnvByValue(sym, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       given Env.Data = env
       Env.getVar(sym) match
