@@ -726,8 +726,10 @@ object CheckUnused:
             else
               selData.allSymbolsForNamed.contains(sym)
         else
+          if altName.exists(alt => alt.toTermName != sym.name.toTermName) then // rename is never a wildcard import
+            false
           // Wildcard
-          if selData.excludedMembers.contains(altName.getOrElse(sym.name).toTermName) then
+          else if selData.excludedMembers.contains(altName.getOrElse(sym.name).toTermName) then
             // Wildcard with exclusions that match the symbol
             false
           else if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
