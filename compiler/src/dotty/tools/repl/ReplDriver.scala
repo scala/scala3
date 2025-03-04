@@ -73,7 +73,6 @@ case class State(objectIndex: Int,
                  quiet: Boolean,
                  context: Context):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
-  //def copy() = this
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
