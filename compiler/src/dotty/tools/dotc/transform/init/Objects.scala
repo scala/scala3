@@ -29,6 +29,8 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.core.Flags.AbstractOrTrait
+import dotty.tools.dotc.util.ParsedComment.docOf
+import dotty.tools.dotc.ast.untpd
 
 /** Check initialization safety of static objects
  *
@@ -590,6 +592,32 @@ class Objects(using Context @constructorOnly):
 
         case None =>
           report.warning("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
+  end Returns
+
+  /**
+    * Global data recording exception handlers and values in throw statement
+    */
+
+  object Exceptions:
+    opaque type Throws = mutable.ArrayBuffer[Value]
+    val throwBlocks = mutable.ArrayBuffer[Value](Bottom)
+
+    extension (throws: Throws)
+      def value: Value = throws.last
+
+    def getThrowBlocks(): Throws = throwBlocks
+
+    def addThrowBlock(): Unit = throwBlocks.addOne(Bottom)
+
+    def popThrowBlock(): Unit = throwBlocks.remove(throwBlocks.size - 1)
+
+    def getThrowBlockValue(): Value = throwBlocks.last
+
+    def addThrow(value: Value): Unit =
+      val currentThrowVal = throwBlocks.last
+      throwBlocks.update(throwBlocks.size - 1, currentThrowVal.join(value))
+
+  end Exceptions
 
   type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
 
@@ -608,6 +636,13 @@ class Objects(using Context @constructorOnly):
       case (a : ValueElement, ValueSet(values))   => ValueSet(values + a)
       case (ValueSet(values), b : ValueElement)   => ValueSet(values + b)
       case (a : ValueElement, b : ValueElement)   => ValueSet(ListSet(a, b))
+
+    def remove(b: Value): Value = (a, b) match
+      case (ValueSet(values1), b: ValueElement)   => ValueSet(values1 - b)
+      case (ValueSet(values1), ValueSet(values2)) => ValueSet(values1.removedAll(values2))
+      case (a: Ref, b: Ref) if a.equals(b)        => Bottom
+      case _ => a
+    
 
     def widen(height: Int)(using Context): Value =
       if height == 0 then Cold
@@ -1195,6 +1230,10 @@ class Objects(using Context @constructorOnly):
             val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
             if id.symbol.isConstructor then
               withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
+            else if id.symbol.equals(defn.throwMethod) then
+              assert(args.length == 1)
+              Exceptions.addThrow(args.head.value)
+              Bottom
             else
               withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
 
@@ -1268,7 +1307,7 @@ class Objects(using Context @constructorOnly):
 
       case Match(scrutinee, cases) =>
         val scrutineeValue = eval(scrutinee, thisV, klass)
-        patternMatch(scrutineeValue, cases, thisV, klass)
+        patternMatch(scrutineeValue, cases, thisV, klass)._1
 
       case Return(expr, from) =>
         Returns.handle(from.symbol, eval(expr, thisV, klass))
@@ -1282,10 +1321,7 @@ class Objects(using Context @constructorOnly):
         eval(expr, thisV, klass)
 
       case Try(block, cases, finalizer) =>
-        val res = evalExprs(block :: cases.map(_.body), thisV, klass).join
-        if !finalizer.isEmpty then
-          eval(finalizer, thisV, klass)
-        res
+        exceptionHandling(block, cases, finalizer, thisV, klass)
 
       case SeqLiteral(elems, elemtpt) =>
         evalExprs(elems, thisV, klass).join
@@ -1325,10 +1361,32 @@ class Objects(using Context @constructorOnly):
         Bottom
   }
 
+  /** Models exception handling with try-catch-finally block. It uses `patternMatch` to
+   *  handle matching patterns in catch blocks
+   *
+   *  @param block       The try block to evaluate.
+   *  @param cases       The cases to match.
+   *  @param finalizer   An optional tree for finalizer.
+   *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
+   *  @param klass       The enclosing class where the type `tp` is located.
+   */
+
+  def exceptionHandling(block: Tree, cases: List[CaseDef], finalizer: Tree, thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
+    Exceptions.addThrowBlock()
+    eval(block, thisV, klass)
+    val throwValues = Exceptions.getThrowBlockValue()
+    Exceptions.popThrowBlock()
+    val (caseResults, remainingValues) = patternMatch(throwValues, cases, thisV, klass)
+    Exceptions.addThrow(remainingValues)
+    if (!finalizer.isEmpty) then eval(finalizer, thisV, klass)
+    caseResults
+  end exceptionHandling
+
   /** Evaluate the cases against the scrutinee value.
    *
-   *  It returns the scrutinee in most cases. The main effect of the function is for its side effects of adding bindings
-   *  to the environment.
+   *  It returns the scrutinee in most cases, and also returns the possible values that
+   *  might not be matched with any cases.
+   *  The main effect of the function is for its side effects of adding bindings to the environment.
    *
    *  See https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
    *
@@ -1337,7 +1395,7 @@ class Objects(using Context @constructorOnly):
    *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
    *  @param klass       The enclosing class where the type `tp` is located.
    */
-  def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
+  def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[(Value, Value)] =
     // expected member types for `unapplySeq`
     def lengthType = ExprType(defn.IntType)
     def lengthCompareType = MethodType(List(defn.IntType), defn.IntType)
@@ -1348,11 +1406,6 @@ class Objects(using Context @constructorOnly):
     def getMemberMethod(receiver: Type, name: TermName, tp: Type): Denotation =
       receiver.member(name).suchThat(receiver.memberInfo(_) <:< tp)
 
-    def evalCase(caseDef: CaseDef): Value =
-      evalPattern(scrutinee, caseDef.pat)
-      eval(caseDef.guard, thisV, klass)
-      eval(caseDef.body, thisV, klass)
-
     /** Abstract evaluation of patterns.
      *
      *  It augments the local environment for bound pattern variables. As symbols are globally
@@ -1360,17 +1413,18 @@ class Objects(using Context @constructorOnly):
      *
      *  Currently, we assume all cases are reachable, thus all patterns are assumed to match.
      */
-    def evalPattern(scrutinee: Value, pat: Tree): Value = log("match " + scrutinee.show + " against " + pat.show, printer, (_: Value).show):
+    def evalPattern(scrutinee: Value, pat: Tree): (Type, Value) = log("match " + scrutinee.show + " against " + pat.show, printer, (_: (Type, Value))._2.show):
       val trace2 = Trace.trace.add(pat)
       pat match
       case Alternative(pats) =>
-        for pat <- pats do evalPattern(scrutinee, pat)
-        scrutinee
+        val (types, values) = pats.map(evalPattern(scrutinee, _)).unzip()
+        val orType = types.fold(defn.NothingType)(OrType(_, _, false))
+        (orType, values.join)
 
       case bind @ Bind(_, pat) =>
-        val value = evalPattern(scrutinee, pat)
+        val (tpe, value) = evalPattern(scrutinee, pat)
         initLocal(bind.symbol, value)
-        scrutinee
+        (tpe, value)
 
       case UnApply(fun, implicits, pats) =>
         given Trace = trace2
@@ -1378,6 +1432,10 @@ class Objects(using Context @constructorOnly):
         val fun1 = funPart(fun)
         val funRef = fun1.tpe.asInstanceOf[TermRef]
         val unapplyResTp = funRef.widen.finalResultType
+
+        val receiverType = fun1 match
+          case ident: Ident => funRef.prefix
+          case select: Select => select.qualifier.tpe
 
         val receiver = fun1 match
           case ident: Ident =>
@@ -1467,17 +1525,18 @@ class Objects(using Context @constructorOnly):
             end if
           end if
         end if
-        scrutinee
+        (receiverType, scrutinee.filterType(receiverType))
 
       case Ident(nme.WILDCARD) | Ident(nme.WILDCARD_STAR) =>
-        scrutinee
+        (defn.ThrowableType, scrutinee)
 
-      case Typed(pat, _) =>
-        evalPattern(scrutinee, pat)
+      case Typed(pat, typeTree) =>
+        val (_, value) = evalPattern(scrutinee.filterType(typeTree.tpe), pat)
+        (typeTree.tpe, value)
 
       case tree =>
         // For all other trees, the semantics is normal.
-        eval(tree, thisV, klass)
+        (defn.ThrowableType, eval(tree, thisV, klass))
 
     end evalPattern
 
@@ -1517,8 +1576,16 @@ class Objects(using Context @constructorOnly):
       end if
     end evalSeqPatterns
 
-
-    cases.map(evalCase).join
+    var remainingScrutinee = scrutinee
+    val caseResults: mutable.ArrayBuffer[Value] = mutable.ArrayBuffer()
+    for caseDef <- cases do
+      val (tpe, value) = evalPattern(remainingScrutinee, caseDef.pat)
+      eval(caseDef.guard, thisV, klass)
+      caseResults.addOne(eval(caseDef.body, thisV, klass))
+      if catchesAllOf(caseDef, tpe) then
+        remainingScrutinee = remainingScrutinee.remove(value)
+    
+    (caseResults.join, remainingScrutinee)
   end patternMatch
 
   /** Handle semantics of leaf nodes
