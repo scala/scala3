@@ -13,7 +13,7 @@
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------
 17 |  def use(@consume x: F): File^ = x // error @consume override
    |      ^
-   |error overriding method use in trait Foo of type (x: File^): box File^;
-   |  method use of type (x: File^): File^ has a parameter x with different @consume status than the corresponding parameter in the overridden definition
+   |      error overriding method use in trait Foo of type (x: File^): box File^;
+   |        method use of type (x: File^): File^ has incompatible type
    |
    | longer explanation available when compiling with `-explain`

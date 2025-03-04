@@ -584,15 +584,6 @@ extension (tp: Type)
     case tp: ThisType => tp.cls.ccLevel.nextInner
     case _ => undefinedLevel
 
-  /** Is this a method or function that has `other` as its direct or indirect result
-   *  type?
-   */
-  def hasSuffix(other: MethodType)(using Context): Boolean =
-    (tp eq other) || tp.match
-      case defn.RefinedFunctionOf(mt) => mt.hasSuffix(other)
-      case mt: MethodType => mt.resType.hasSuffix(other)
-      case _ => false
-
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
