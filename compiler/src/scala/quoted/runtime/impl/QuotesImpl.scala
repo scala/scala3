@@ -1795,7 +1795,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def termSymbol: Symbol = self.termSymbol
         def isSingleton: Boolean = self.isSingleton
         def memberType(member: Symbol): TypeRepr =
-          member.info.asSeenFrom(self, member.owner)
+          // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
+          val memberInfo =
+            if self.typeSymbol.isClassDef then
+              member.info.substThis(self.classSymbol.asClass, self)
+            else
+              member.info
+          memberInfo
+            .asSeenFrom(self, member.owner)
+
         def baseClasses: List[Symbol] = self.baseClasses
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)
