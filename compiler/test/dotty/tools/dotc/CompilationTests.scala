@@ -263,6 +263,29 @@ class CompilationTests {
 
       tests.foreach(_.delete())
     }
+
+    /* This tests for errors in the program's TASTy trees.
+     * The test consists of three files: (a) v1/A, (b) v1/B, and (c) v0/A. (a) and (b) are
+     * compatible, but (b) and (c) are not. If (b) and (c) are compiled together, there should be
+     * an error when reading the files' TASTy trees. */
+    locally {
+      val tastyErrorGroup = TestGroup("checkInit/tasty-error")
+      val tastyErrorOptions = options.without("-Xfatal-warnings")
+
+      val a0Dir = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
+      val a1Dir = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
+      val b1Dir = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+
+      val tests = List(
+        compileFile("tests/init/tasty-error/v1/A.scala", tastyErrorOptions)(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/v1/B.scala", tastyErrorOptions.withClasspath(a1Dir))(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
+      ).map(_.keepOutput.checkCompile())
+
+      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0Dir).withClasspath(b1Dir))(tastyErrorGroup).checkExpectedErrors()
+
+      tests.foreach(_.delete())
+    }
   }
 
   // parallel backend tests
