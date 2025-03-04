@@ -1,4 +1,4 @@
--- Warning: tests/init-global/warn/unapplySeq-implicit-arg3.scala:3:27 -------------------------------------------------
+-- Warning: tests/init-global/warn-tasty/unapplySeq-implicit-arg3.scala:3:27 -------------------------------------------
 3 |    def m(seq: Seq[Int]) = i1 +: seq // warn
   |                           ^^
   |Access uninitialized field value i1. Calling trace:
