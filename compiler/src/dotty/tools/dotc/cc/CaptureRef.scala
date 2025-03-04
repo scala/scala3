@@ -264,11 +264,10 @@ trait CaptureRef extends TypeProxy, ValueType:
         || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
       case Existential.Vble(binder) =>
         y.stripReadOnly match
-          case Existential.Vble(binder1) => binder1.hasSuffix(binder)
-            .showing(i"cmp existential $binder maxSubsumes $binder1 = $result", capt)
+          case Existential.Vble(binder1) => false
           case _ => true
       case _ =>
-        this.isCap /*&& !yIsExistential*/ && canAddHidden && vs != VarState.HardSeparate
+        this.isCap && !yIsExistential && canAddHidden && vs != VarState.HardSeparate
         || y.match
             case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case _ => false
