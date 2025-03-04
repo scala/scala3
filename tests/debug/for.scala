@@ -3,7 +3,7 @@ object Test {
      val b = 8 * 9  // [break] [step: f()]
      f()            // [step: val a]
      20 + b
-     print(b)
+     println(b)
   }
 
   def f(): Unit = {

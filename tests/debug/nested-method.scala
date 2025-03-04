@@ -10,6 +10,6 @@ object Test {
      }
 
      val c = plus(a, b)            // [step: print] [cont]
-     print(c)
+     println(c)
   }
 }
