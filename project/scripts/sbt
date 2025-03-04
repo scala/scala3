@@ -10,4 +10,6 @@ CMD="${1:?Missing sbt command}"
 sbt -J-XX:ReservedCodeCacheSize=512m \
     -DSBT_PGP_USE_GPG=false \
     -no-colors \
+    -Ddevelocity.internal.cache.verbose=true \
+    -Ddevelocity.internal.cache.defaultLogLevel=info \
     "$CMD"

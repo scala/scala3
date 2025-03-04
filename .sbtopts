@@ -1,0 +1,2 @@
+# read build from develocity cache
+-Ddevelocity.scan.metaBuild
