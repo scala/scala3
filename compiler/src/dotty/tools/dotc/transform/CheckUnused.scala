@@ -592,7 +592,10 @@ object CheckUnused:
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.is(ParamAccessor) && !infos.refs(alias.symbol) then
+            val checking =
+                 aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+              || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
+            if checking && !infos.refs(alias.symbol) then
               warnAt(pos)(UnusedSymbol.implicitParams)
         else
           warnAt(pos)(UnusedSymbol.implicitParams)
