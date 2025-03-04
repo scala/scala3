@@ -265,6 +265,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case Existential.Vble(binder) =>
         y.stripReadOnly match
           case Existential.Vble(binder1) => false
+          case Fresh(_) => false
           case _ => true
       case _ =>
         this.isCap && !yIsExistential && canAddHidden && vs != VarState.HardSeparate

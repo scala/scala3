@@ -8,6 +8,13 @@
   |                                  x² is a reference to a value parameter
   |
   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:9:29 --------------------
+9 |  val z: A -> (x: A) -> B^ = y // error
+  |                             ^
+  |                             Found:    (y : A -> A -> B^)
+  |                             Required: A -> (x: A) -> B^
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
 13 |  val y: Fun[B^] = x // error
    |                   ^
@@ -16,5 +23,12 @@
    |
    |                   where:    x  is a value in method test2
    |                             x² is a reference to a value parameter
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:14:24 -------------------
+14 |  val z: (x: A) -> B^ = y // error
+   |                        ^
+   |                        Found:    (y : A -> B^)
+   |                        Required: (x: A) -> B^
    |
    | longer explanation available when compiling with `-explain`
