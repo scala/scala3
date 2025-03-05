@@ -321,3 +321,10 @@ object Suppressed:
 object Suppressing:
   import Suppressed.* // no warn, see options
   def f = 42
+
+package i22692:
+  import javax.swing.*
+  import javax.swing.event as swingEvent // no warn, regression test for warning in 3.6
+
+  type b = AbstractButton
+  type t = swingEvent.AncestorListener
