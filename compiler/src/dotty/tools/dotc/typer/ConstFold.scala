@@ -69,7 +69,7 @@ object ConstFold:
         case Literal(c) if c.tag == Constants.NullTag => Some(c)
         case _ =>
           tree.tpe.widenTermRefExpr.normalized.simplified match
-            case ConstantType(c) => Some(c)
+            case SingleAtom(ConstantType(c)) => Some(c)
             case _ => None
 
   extension [T <: Tree](tree: T)(using Context)
