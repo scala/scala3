@@ -2169,7 +2169,7 @@ trait Applications extends Compatibility {
             val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
             if alts0 ne alts then return resolve(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
-            return resolveMapped(alts, alt => stripImplicit(alt.widen), pt, srcPos)
+            return resolveMapped(alt => stripImplicit(alt.widen))(alts, pt, srcPos)
         case _ =>
 
       var found = withoutMode(Mode.ImplicitsEnabled)(resolveOverloaded1(alts, pt, srcPos))
@@ -2405,7 +2405,7 @@ trait Applications extends Compatibility {
               TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
           val alts2 = alts1.filter(withinBounds)
           if isDetermined(alts2) then alts2
-          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1, srcPos)
+          else resolveMapped(_.widen.appliedTo(targs1.tpes))(alts1, pt1, srcPos)
 
       case pt =>
         val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
@@ -2470,11 +2470,11 @@ trait Applications extends Compatibility {
           case pt @ FunProto(_, PolyProto(targs, resType)) =>
             // try to narrow further with snd argument list and following type params
             warnOnPriorityChange(candidates, found):
-              resolveMapped(_, skipParamClause(pt.typedArgs().tpes, targs.tpes), resType, srcPos)
+              resolveMapped(skipParamClause(pt.typedArgs().tpes, targs.tpes))(_, resType, srcPos)
           case pt @ FunProto(_, resType: FunOrPolyProto) =>
             // try to narrow further with snd argument list
             warnOnPriorityChange(candidates, found):
-              resolveMapped(_, skipParamClause(pt.typedArgs().tpes, Nil), resType, srcPos)
+              resolveMapped(skipParamClause(pt.typedArgs().tpes, Nil))(_, resType, srcPos)
           case _ =>
             // prefer alternatives that need no eta expansion
             val noCurried = alts.filterConserve(!resultIsMethod(_))
@@ -2523,11 +2523,13 @@ trait Applications extends Compatibility {
       recur(paramss, 0)
     case _ => (Nil, 0)
 
-  /** Resolve overloading by mapping to a different problem where each alternative's
-   *  type is mapped with `f`, alternatives with non-existing types or symbols are dropped, and the
-   *  expected type is `pt`. Map the results back to the original alternatives.
+  /** Resolve with `g` by mapping to a different problem where each alternative's type
+   *  is mapped with `f`, alternatives with non-existing types or symbols are dropped,
+   *  and the expected type is `pt`. Map the results back to the original alternatives.
    */
-  def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+  def resolveMapped
+      (f: TermRef => Type, g: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef] = resolveOverloaded)
+      (alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists && alt.symbol.exists then
@@ -2550,8 +2552,9 @@ trait Applications extends Compatibility {
     }
     val mapped = reverseMapping.map(_._1)
     overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
-    resolveOverloaded(mapped, pt, srcPos)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
+    g(mapped, pt, srcPos)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
       .map(reverseMapping.toMap)
+  end resolveMapped
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
    *  parameter type. If the formal parameter types corresponding to a closure argument

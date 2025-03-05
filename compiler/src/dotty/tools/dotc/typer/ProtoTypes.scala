@@ -375,7 +375,7 @@ object ProtoTypes {
    *  [](args): resultType
    *
    *  @param  args      The untyped arguments to which the function is applied
-   *  @param  resType   The expeected result type
+   *  @param  resType   The expected result type
    *  @param  typer     The typer to use for typing the arguments
    *  @param  applyKind The kind of application (regular/using/tupled infix operand)
    *  @param  state     The state object to use for tracking the changes to this prototype
