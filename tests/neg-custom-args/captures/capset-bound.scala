@@ -5,7 +5,7 @@ class IO
 case class File(io: IO^)
 
 def test(io1: IO^, io2: IO^) =
-  def f[C >: CapSet^{io1} <: CapSet^](file: File^{C^}) = ???
+  def f[C >: CapSet^{io1} <: CapSet^](file: File^{C}) = ???
   val f1: File^{io1} = ???
   val f2: File^{io2} = ???
   val f3: File^{io1, io2} = ???
