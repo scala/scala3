@@ -715,7 +715,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         && ctx.owner.owner.unforcedDecls.lookup(tree.name).exists
     then // we are in the arguments of a this(...) constructor call
       errorTree(tree, em"$tree is not accessible from constructor arguments")
-    else if ctx.mode.is(Mode.InCaptureSet) then
+    else if name.isTermName && ctx.mode.is(Mode.InCaptureSet) then
       // If we are in a capture set and the identifier is not a term name,
       // try to type it with the same name but as a type
       typed(untpd.makeCapsOf(untpd.cpy.Ident(tree)(name.toTypeName)), pt)
@@ -927,7 +927,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, if we are in a capture set, try to type it as a capture variable
     // reference (as selecting a type name).
     def trySelectTypeInCaptureSet() =
-      if ctx.mode.is(Mode.InCaptureSet) && tree0.name.isTypeName then
+      if tree0.name.isTermName && ctx.mode.is(Mode.InCaptureSet) then
         typedSelectWithAdapt(untpd.cpy.Select(tree0)(qual, tree0.name.toTypeName), pt, qual)
       else EmptyTree
 
