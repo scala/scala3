@@ -520,7 +520,7 @@ object CheckUnused:
     def checkPrivate(sym: Symbol, pos: SrcPos) =
       if ctx.settings.WunusedHas.privates
         && !sym.isPrimaryConstructor
-        && sym.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+        && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
         && !sym.name.is(BodyRetainerName)
         && !sym.isSerializationSupport
         && !(sym.is(Mutable) && sym.isSetter && sym.owner.is(Trait)) // tracks sym.underlyingSymbol sibling getter
@@ -764,7 +764,7 @@ object CheckUnused:
     for (sym, pos) <- infos.defs.iterator if !sym.hasAnnotation(defn.UnusedAnnot) do
       if infos.refs(sym) then
         checkUnassigned(sym, pos)
-      else if sym.is(Private, butNot = ParamAccessor) then
+      else if sym.isEffectivelyPrivate then
         checkPrivate(sym, pos)
       else if sym.is(Param, butNot = Given | Implicit) then
         checkParam(sym, pos)
@@ -885,6 +885,9 @@ object CheckUnused:
       sym.isClass && sym.info.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
+    def isEffectivelyPrivate(using Context): Boolean =
+      sym.is(Private, butNot = ParamAccessor)
+      || sym.owner.isAnonymousClass && !sym.nextOverriddenSymbol.exists
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

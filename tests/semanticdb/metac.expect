@@ -3494,7 +3494,7 @@ Text => empty
 Language => Scala
 Symbols => 12 entries
 Occurrences => 33 entries
-Diagnostics => 1 entries
+Diagnostics => 2 entries
 Synthetics => 4 entries
 
 Symbols:
@@ -3550,6 +3550,7 @@ Diagnostics:
 [14:20..14:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
 Instead, use method syntax .foo(...) or backticked identifier `foo`.
 The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+[19:8..19:17): [warning] unused private member
 
 Synthetics:
 [12:2..12:6):user => reflectiveSelectable(*)
