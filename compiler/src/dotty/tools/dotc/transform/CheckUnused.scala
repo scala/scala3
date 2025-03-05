@@ -284,8 +284,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         case sel :: sels =>
           val matches =
             if sel.isWildcard then
+              // if name is different from sym.name, it must be a rename on import, not a wildcard selector
+              !name.exists(_.toTermName != sym.name.toTermName)
               // the qualifier must have the target symbol as a member
-              hasAltMember(sym.name) && {
+              && hasAltMember(sym.name)
+              && {
                 if sel.isGiven then // Further check that the symbol is a given or implicit and conforms to the bound
                      sym.isOneOf(GivenOrImplicit)
                   && (sel.bound.isEmpty || sym.info.finalResultType <:< sel.boundTpe)
