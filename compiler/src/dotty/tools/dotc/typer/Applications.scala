@@ -2115,8 +2115,11 @@ trait Applications extends Compatibility {
   /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
+   *  Each trial applies the `resolve` parameter.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+  def resolveOverloaded
+      (resolve: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef] = resolveOverloaded1)
+      (alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
     record("resolveOverloaded")
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
@@ -2154,7 +2157,7 @@ trait Applications extends Compatibility {
           case Nil => chosen
           case alt2 :: Nil => alt2
           case alts2 =>
-            resolveOverloaded(alts2, pt, srcPos) match {
+            resolveOverloaded(resolve)(alts2, pt, srcPos) match {
               case alt2 :: Nil => alt2
               case _ => chosen
             }
@@ -2162,23 +2165,23 @@ trait Applications extends Compatibility {
       case _ => chosen
     }
 
-    def resolve(alts: List[TermRef]): List[TermRef] =
+    def resolve1(alts: List[TermRef]): List[TermRef] =
       pt match
         case pt: FunProto =>
           if pt.applyKind == ApplyKind.Using then
             val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
-            if alts0 ne alts then return resolve(alts0)
+            if alts0 ne alts then return resolve1(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
-            return resolveMapped(alt => stripImplicit(alt.widen))(alts, pt, srcPos)
+            return resolveMapped(alt => stripImplicit(alt.widen), resolve)(alts, pt, srcPos)
         case _ =>
 
-      var found = withoutMode(Mode.ImplicitsEnabled)(resolveOverloaded1(alts, pt, srcPos))
+      var found = withoutMode(Mode.ImplicitsEnabled)(resolve(alts, pt, srcPos))
       if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
-        found = resolveOverloaded1(alts, pt, srcPos)
+        found = resolve(alts, pt, srcPos)
       found match
         case alt :: Nil => adaptByResult(alt, alts) :: Nil
         case _ => found
-    end resolve
+    end resolve1
 
     /** Try an apply method, if
      *   - the result is applied to value arguments and alternative is not a method, or
@@ -2211,9 +2214,9 @@ trait Applications extends Compatibility {
 
     if (alts.exists(tryApply)) {
       val expanded = alts.flatMap(applyMembers)
-      resolve(expanded).map(retract)
+      resolve1(expanded).map(retract)
     }
-    else resolve(alts)
+    else resolve1(alts)
   end resolveOverloaded
 
   /** This private version of `resolveOverloaded` does the bulk of the work of
@@ -2286,7 +2289,9 @@ trait Applications extends Compatibility {
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
 
-    def narrowByNextParamClause(alts: List[TermRef], args: List[Tree], resultType: FunOrPolyProto): List[TermRef] =
+    def narrowByNextParamClause
+        (resolve: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef])
+        (alts: List[TermRef], args: List[Tree], resultType: FunOrPolyProto): List[TermRef] =
 
       /** The type of alternative `alt` after instantiating its first parameter
        *  clause with `argTypes`. In addition, if the resulting type is a PolyType
@@ -2311,10 +2316,10 @@ trait Applications extends Compatibility {
       resultType match
         case PolyProto(targs, resType) =>
           // try to narrow further with snd argument list and following type params
-          resolveMapped(skipParamClause(targs.tpes))(alts, resType, srcPos)
+          resolveMapped(skipParamClause(targs.tpes), resolve)(alts, resType, srcPos)
         case resType =>
           // try to narrow further with snd argument list
-          resolveMapped(skipParamClause(Nil))(alts, resType, srcPos)
+          resolveMapped(skipParamClause(Nil), resolve)(alts, resType, srcPos)
     end narrowByNextParamClause
 
     /** Normalization steps before checking arguments:
@@ -2479,7 +2484,7 @@ trait Applications extends Compatibility {
         deepPt match
           case pt @ FunProto(_, resType: FunOrPolyProto) =>
             warnOnPriorityChange(candidates, found):
-              narrowByNextParamClause(_, pt.typedArgs(), resType)
+              narrowByNextParamClause(resolveOverloaded1)(_, pt.typedArgs(), resType)
           case _ =>
             // prefer alternatives that need no eta expansion
             val noCurried = alts.filterConserve(!resultIsMethod(_))
@@ -2528,12 +2533,12 @@ trait Applications extends Compatibility {
       recur(paramss, 0)
     case _ => (Nil, 0)
 
-  /** Resolve with `g` by mapping to a different problem where each alternative's type
-   *  is mapped with `f`, alternatives with non-existing types or symbols are dropped,
+  /** ResolveOverloaded using `resolve` by mapping to a different problem where each alternative's
+   *  type is mapped with `f`, alternatives with non-existing types or symbols are dropped,
    *  and the expected type is `pt`. Map the results back to the original alternatives.
    */
   def resolveMapped
-      (f: TermRef => Type, g: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef] = resolveOverloaded)
+      (f: TermRef => Type, resolve: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef])
       (alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
@@ -2557,7 +2562,7 @@ trait Applications extends Compatibility {
     }
     val mapped = reverseMapping.map(_._1)
     overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
-    g(mapped, pt, srcPos)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
+    resolveOverloaded(resolve)(mapped, pt, srcPos)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
       .map(reverseMapping.toMap)
   end resolveMapped
 
