@@ -263,10 +263,11 @@ trait CaptureRef extends TypeProxy, ValueType:
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
       case Existential.Vble(binder) =>
-        y.stripReadOnly match
-          case Existential.Vble(binder1) => false
-          case Fresh(_) => false
-          case _ => true
+        if y.derivesFromSharedCapability then true
+        else
+          ccState.existentialSubsumesFailure =
+            ccState.existentialSubsumesFailure.orElse(Some(this, y))
+          false
       case _ =>
         this.isCap && !yIsExistential && canAddHidden && vs != VarState.HardSeparate
         || y.match

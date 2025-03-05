@@ -84,6 +84,12 @@ class CCState:
    */
   var levelError: Option[CaptureSet.CompareResult.LevelError] = None
 
+  /** Optionally, a pair of an existential variable and another capability.
+   *  Set when a subsumes check decides that an existential variable cannot be
+   *  instantiated to the other capability.
+   */
+  var existentialSubsumesFailure: Option[(CaptureRef, CaptureRef)] = None
+
   /** Warnings relating to upper approximations of capture sets with
    *  existentially bound variables.
    */

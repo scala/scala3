@@ -64,7 +64,7 @@ def attack2 =
     f1
 
 def attack3 =
-  val id: (x: File^) -> File^ = x => x
+  val id: (x: File^) -> File^ = x => x // error
     // val id: File^ -> EX C.File^C
 
   val leaked = usingFile[File^{id*}]: f => // error

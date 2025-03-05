@@ -14,6 +14,9 @@
   |                             Found:    (y : A -> A -> B^)
   |                             Required: A -> (x: A) -> B^
   |
+  |                             Note that the existential capture root in B^
+  |                             cannot subsume the capability cap
+  |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
 13 |  val y: Fun[B^] = x // error
@@ -30,5 +33,8 @@
    |                        ^
    |                        Found:    (y : A -> B^)
    |                        Required: (x: A) -> B^
+   |
+   |                        Note that the existential capture root in B^
+   |                        cannot subsume the capability cap
    |
    | longer explanation available when compiling with `-explain`
