@@ -28,7 +28,7 @@ import scala.collection.convert.{AsJavaExtensions, AsScalaExtensions}
   * }}}
   *
   * The conversions return adapters for the corresponding API, i.e., the collections are wrapped,
-  * not converted. Changes to the original collection are reflected in the view, and vice versa:
+  * not copied. Changes to the original collection are reflected in the view, and vice versa:
   *
   * {{{
   *   scala> import scala.jdk.CollectionConverters._
