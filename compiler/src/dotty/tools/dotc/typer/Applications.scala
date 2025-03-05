@@ -2225,7 +2225,7 @@ trait Applications extends Compatibility {
    *  implicits and SAM conversions enabled, and once without.
    */
   private def resolveOverloaded1(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
-    trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
+  trace(i"resolve over $alts%, %, pt = $pt", typr, show = true):
     record(s"resolveOverloaded1", alts.length)
 
     val sv = Feature.sourceVersion
@@ -2378,7 +2378,10 @@ trait Applications extends Compatibility {
       case _ => arg
     end normArg
 
-    val candidates = pt match {
+    // Note it is important not to capture the outer ctx, for when it is passed to resolveMapped
+    // (through narrowByNextParamClause) which retracts the Mode.SynthesizeExtMethodReceiver from the ctx
+    // before continuing to `resolveCandidates`.
+    def resolveCandidates(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] = pt match
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
         def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
@@ -2430,7 +2433,13 @@ trait Applications extends Compatibility {
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+            val alts3 = narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+
+            resultType.deepenProto match
+              case resultType: FunOrPolyProto =>
+                narrowByNextParamClause(resolveCandidates)(alts3, pt.typedArgs(), resultType)
+              case _ =>
+                alts3
 
       case pt @ PolyProto(targs1, pt1) =>
         val alts1 = alts.filterConserve(pt.canInstantiate)
@@ -2441,7 +2450,7 @@ trait Applications extends Compatibility {
               TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
           val alts2 = alts1.filter(withinBounds)
           if isDetermined(alts2) then alts2
-          else resolveMapped(_.widen.appliedTo(targs1.tpes))(alts1, pt1, srcPos)
+          else resolveMapped(_.widen.appliedTo(targs1.tpes), resolveCandidates)(alts1, pt1, srcPos)
 
       case pt =>
         val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
@@ -2465,48 +2474,58 @@ trait Applications extends Compatibility {
                   normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
               if convertible.length == 1 then convertible else compat
         else compat
-    }
+    end resolveCandidates
 
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
       case tp: MethodType => stripInferrable(tp.resultType).isInstanceOf[MethodType]
       case _ => false
 
-    record("resolveOverloaded.narrowedApplicable", candidates.length)
-    if pt.unusableForInference then
-      // `pt` might have become erroneous by typing arguments of FunProtos.
-      // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
-      candidates
-    else
-      val found = narrowMostSpecific(candidates)
-      if isDetermined(found) then found
+    // Like resolveCandidates, we should not capture the outer ctx parameter.
+    def resolveOverloaded2(candidates: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+      if pt.unusableForInference then
+        // `pt` might have become erroneous by typing arguments of FunProtos.
+        // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
+        candidates
       else
-        val deepPt = pt.deepenProto
-        deepPt match
-          case pt @ FunProto(_, resType: FunOrPolyProto) =>
-            warnOnPriorityChange(candidates, found):
-              narrowByNextParamClause(resolveOverloaded1)(_, pt.typedArgs(), resType)
-          case _ =>
-            // prefer alternatives that need no eta expansion
-            val noCurried = alts.filterConserve(!resultIsMethod(_))
-            val noCurriedCount = noCurried.length
-            if noCurriedCount == 1 then
-              noCurried
-            else if noCurriedCount > 1 && noCurriedCount < alts.length then
-              resolveOverloaded1(noCurried, pt, srcPos)
-            else
-              // prefer alternatves that match without default parameters
-              val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
-              val noDefaultsCount = noDefaults.length
-              if noDefaultsCount == 1 then
-                noDefaults
-              else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-                resolveOverloaded1(noDefaults, pt, srcPos)
-              else if deepPt ne pt then
-                // try again with a deeper known expected type
-                resolveOverloaded1(alts, deepPt, srcPos)
+        val found = narrowMostSpecific(candidates)
+        if isDetermined(found) then found
+        else
+          val deepPt = pt.deepenProto
+          deepPt match
+            case pt @ FunProto(_, resType: FunOrPolyProto) =>
+              warnOnPriorityChange(candidates, found):
+                narrowByNextParamClause(resolveOverloaded1)(_, pt.typedArgs(), resType)
+            case _ =>
+              // prefer alternatives that need no eta expansion
+              val noCurried = alts.filterConserve(!resultIsMethod(_))
+              val noCurriedCount = noCurried.length
+              if noCurriedCount == 1 then
+                noCurried
+              else if noCurriedCount > 1 && noCurriedCount < alts.length then
+                resolveOverloaded1(noCurried, pt, srcPos)
               else
-                candidates
-    }
+                // prefer alternatves that match without default parameters
+                val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
+                val noDefaultsCount = noDefaults.length
+                if noDefaultsCount == 1 then
+                  noDefaults
+                else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
+                  resolveOverloaded1(noDefaults, pt, srcPos)
+                else if deepPt ne pt then
+                  // try again with a deeper known expected type
+                  resolveOverloaded1(alts, deepPt, srcPos)
+                else
+                  candidates
+    end resolveOverloaded2
+
+    // First, we find the candidates by considering all parameter clauses.
+    // Second, we determine the most specific again by considering all parameter clauses;
+    // but restarting from the 1st argument list.
+    // In both cases, considering subsequent argument lists only narrows the set of alternatives
+    // (i.e. we do retry from the complete list of alternative mapped onto there next param clause).
+    val candidates = resolveCandidates(alts, pt, srcPos)
+    record("resolveOverloaded.narrowedApplicable", candidates.length)
+    resolveOverloaded2(candidates, pt, srcPos)
   end resolveOverloaded1
 
   /** Is `formal` a product type which is elementwise compatible with `params`? */
