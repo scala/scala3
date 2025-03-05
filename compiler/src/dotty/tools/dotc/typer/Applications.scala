@@ -2286,6 +2286,37 @@ trait Applications extends Compatibility {
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
 
+    def narrowByNextParamClause(alts: List[TermRef], args: List[Tree], resultType: FunOrPolyProto): List[TermRef] =
+
+      /** The type of alternative `alt` after instantiating its first parameter
+       *  clause with `argTypes`. In addition, if the resulting type is a PolyType
+       *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
+       */
+      def skipParamClause(typeArgs: List[Type])(alt: TermRef): Type =
+        def skip(tp: Type): Type = tp match
+          case tp: PolyType =>
+            skip(tp.resultType) match
+              case NoType =>
+                NoType
+              case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
+                tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
+              case rt =>
+                tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
+          case tp: MethodType =>
+            tp.instantiate(args.tpes)
+          case _ =>
+            NoType
+        skip(alt.widen)
+
+      resultType match
+        case PolyProto(targs, resType) =>
+          // try to narrow further with snd argument list and following type params
+          resolveMapped(skipParamClause(targs.tpes))(alts, resType, srcPos)
+        case resType =>
+          // try to narrow further with snd argument list
+          resolveMapped(skipParamClause(Nil))(alts, resType, srcPos)
+    end narrowByNextParamClause
+
     /** Normalization steps before checking arguments:
      *
      *                 { expr }   -->   expr
@@ -2431,27 +2462,6 @@ trait Applications extends Compatibility {
         else compat
     }
 
-    /** The type of alternative `alt` after instantiating its first parameter
-     *  clause with `argTypes`. In addition, if the resulting type is a PolyType
-     *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
-     */
-    def skipParamClause(argTypes: List[Type], typeArgs: List[Type])(alt: TermRef): Type =
-      def skip(tp: Type): Type = tp match {
-        case tp: PolyType =>
-          skip(tp.resultType) match
-            case NoType =>
-              NoType
-            case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
-              tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
-            case rt =>
-              tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
-        case tp: MethodType =>
-          tp.instantiate(argTypes)
-        case _ =>
-          NoType
-      }
-      skip(alt.widen)
-
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
       case tp: MethodType => stripInferrable(tp.resultType).isInstanceOf[MethodType]
       case _ => false
@@ -2467,14 +2477,9 @@ trait Applications extends Compatibility {
       else
         val deepPt = pt.deepenProto
         deepPt match
-          case pt @ FunProto(_, PolyProto(targs, resType)) =>
-            // try to narrow further with snd argument list and following type params
-            warnOnPriorityChange(candidates, found):
-              resolveMapped(skipParamClause(pt.typedArgs().tpes, targs.tpes))(_, resType, srcPos)
           case pt @ FunProto(_, resType: FunOrPolyProto) =>
-            // try to narrow further with snd argument list
             warnOnPriorityChange(candidates, found):
-              resolveMapped(skipParamClause(pt.typedArgs().tpes, Nil))(_, resType, srcPos)
+              narrowByNextParamClause(_, pt.typedArgs(), resType)
           case _ =>
             // prefer alternatives that need no eta expansion
             val noCurried = alts.filterConserve(!resultIsMethod(_))
