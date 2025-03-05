@@ -295,6 +295,8 @@ object Tokens extends TokensCommon {
 
   final val colonEOLPredecessors = BitSet(RPAREN, RBRACKET, BACKQUOTED_IDENT, THIS, SUPER, NEW)
 
+  final val canStartCaptureSetContentsTokens = BitSet(IDENTIFIER, BACKQUOTED_IDENT, THIS, RBRACE)
+
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
   final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)

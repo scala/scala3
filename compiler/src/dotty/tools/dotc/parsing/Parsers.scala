@@ -1638,7 +1638,7 @@ object Parsers {
     }
 
     def capturesAndResult(core: () => Tree): Tree =
-      if Feature.ccEnabled && in.token == LBRACE && in.offset == in.lastOffset
+      if Feature.ccEnabled && in.token == LBRACE && canStartCaptureSetContentsTokens.contains(in.lookahead.token)
       then CapturesAndResult(captureSet(), core())
       else core()
 
