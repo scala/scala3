@@ -3,7 +3,7 @@ import caps.*
 trait Abstract[X^]:
   type C >: X <: CapSet^
   // Don't test the return type using Unit, because it is a pure type.
-  def boom(): AnyRef^{C^}
+  def boom(): AnyRef^{C}
 
 class Concrete extends Abstract[CapSet^{}]:
   type C = CapSet^{}
@@ -27,4 +27,3 @@ class Concrete5(a: AnyRef^, b: AnyRef^) extends Abstract[CapSet^{a}]:
 
 class Concrete6(a: AnyRef^, b: AnyRef^) extends Abstract[CapSet^{a}]:
   def boom(): AnyRef^{b} = b // error
-  

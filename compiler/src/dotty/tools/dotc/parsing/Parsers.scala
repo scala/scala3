@@ -1591,8 +1591,8 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]
-     *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+     *                |  [ { SimpleRef `.` } SimpleRef `.` ] id
      */
     def captureRef(): Tree =
 
@@ -1611,12 +1611,6 @@ object Parsers {
             in.nextToken()
             derived(reachRef, nme.CC_READONLY)
           else reachRef
-        else if isIdent(nme.UPARROW) then
-          in.nextToken()
-          atSpan(startOffset(ref)):
-            convertToTypeId(ref) match
-              case ref: RefTree => makeCapsOf(ref)
-              case ref => ref
         else ref
 
       recur(simpleRef())
