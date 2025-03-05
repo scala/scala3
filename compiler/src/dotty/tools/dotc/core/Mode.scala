@@ -97,10 +97,10 @@ object Mode {
    *  Since this mode is only used during annotation typing,
    *  we can reuse the value of `ImplicitExploration` to save bits.
    */
-  val InCaptureSet: Mode = newMode(13, "InCaptureSet")
+  val InCaptureSet: Mode = ImplicitExploration
 
   /** We are currently unpickling Scala2 info */
-  val Scala2Unpickling: Mode = newMode(14, "Scala2Unpickling")
+  val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
 
   /** Signifies one of two possible situations:
    *   1. We are currently checking bounds to be non-empty, so we should not
