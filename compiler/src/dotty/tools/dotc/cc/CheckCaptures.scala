@@ -1218,6 +1218,19 @@ class CheckCaptures extends Recheck, SymTransformer:
               |
               |Note that ${msg.toString}"""
 
+    private def existentialSubsumesFailureAddenda(using Context): Addenda =
+      ccState.existentialSubsumesFailure match
+        case Some((ex @ Existential.Vble(binder), other)) =>
+          new Addenda:
+            override def toAdd(using Context): List[String] =
+              val ann = ex.annot.asInstanceOf[Fresh.Annot]
+              i"""
+                |
+                |Note that the existential capture root in ${ann.originalBinder.resType}
+                |cannot subsume the capability $other"""
+              :: Nil
+        case _ => NothingToAdd
+
     /** Addendas for error messages that show where we have under-approximated by
      *  mapping a a capture ref in contravariant position to the empty set because
      *  the original result type of the map was not itself a capture ref.
@@ -1257,6 +1270,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
+      ccState.existentialSubsumesFailure = None
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
@@ -1268,7 +1282,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         inContext(Fresh.printContext(actualBoxed, expected1)):
           err.typeMismatch(tree.withType(actualBoxed), expected1,
               addApproxAddenda(
-                addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors),
+                addenda
+                ++ CaptureSet.levelErrors
+                ++ boxErrorAddenda(boxErrors)
+                ++ existentialSubsumesFailureAddenda,
                 expected1))
         actual
     end checkConformsExpr

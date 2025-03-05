@@ -31,8 +31,15 @@ object Fresh:
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
 
+    private var myOriginalBinder = binder
+    def originalBinder: MethodType = myOriginalBinder.asInstanceOf[MethodType]
+
     def derivedAnnotation(binder: MethodType | NoType.type)(using Context): Annotation =
-      if this.binder eq binder then this else Annot(hidden, binder)
+      if this.binder eq binder then this
+      else
+        val ann = Annot(hidden, binder)
+        ann.myOriginalBinder = myOriginalBinder
+        ann
 
     override def hash: Int = hidden.hashCode
     override def eql(that: Annotation) = that match
@@ -70,6 +77,7 @@ object Fresh:
     val hiddenSet = CaptureSet.HiddenSet(NoSymbol)
     val res = AnnotatedType(defn.captureRoot.termRef, Annot(hiddenSet, binder))
     hiddenSet.owningCap = res
+    //assert(hiddenSet.id != 9, binder.show)
     res
 
   /** The initial elements (either 0 or 1) of a hidden set created for given `owner`.
