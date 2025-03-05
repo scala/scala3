@@ -513,3 +513,31 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |val foo_name = foo.na@@me
          |""".stripMargin
     )
+
+  @Test def i7256 =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |export Test.me@@thodA
+         |""".stripMargin
+    )
+
+  @Test def `i7256-2` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{me@@thodA, methodB}
+         |""".stripMargin
+    )
+
+  @Test def `i7256-3` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{methodA, methodB}
+         |
+         |val i = met@@hodA
+         |""".stripMargin
+    )
