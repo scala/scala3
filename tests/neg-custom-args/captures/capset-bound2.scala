@@ -2,7 +2,7 @@ import caps.*
 
 class IO
 
-def f[C^](io: IO^{C^}) = ???
+def f[C^](io: IO^{C}) = ???
 
 def test =
   f[CapSet](???)
@@ -10,4 +10,3 @@ def test =
   f[CapSet^](???)
   f[Nothing](???) // error
   f[String](???) // error
-  

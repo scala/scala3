@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 
-def runOps[C^](ops: List[() ->{C^} Unit]): Unit =
+def runOps[C^](ops: List[() ->{C} Unit]): Unit =
   ops.foreach: op => // error
     op()
 
