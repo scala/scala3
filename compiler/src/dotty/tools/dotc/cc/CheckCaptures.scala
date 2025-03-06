@@ -325,7 +325,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case t @ CapturingType(parent, refs) =>
               for ref <- refs.elems do
                 ref match
-                  case Fresh(hidden) if !hidden.givenOwner.exists =>
+                  case root.Fresh(hidden) if !hidden.givenOwner.exists =>
                     hidden.givenOwner = sym
                   case _ =>
               traverse(parent)
@@ -353,7 +353,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** If `res` is not CompareResult.OK, report an error */
     def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       if !res.isOK then
-        inContext(Fresh.printContext(added, res.blocking)):
+        inContext(root.printContext(added, res.blocking)):
           def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
           def descr: String =
             val d = res.blocking.description
@@ -714,7 +714,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  charge the deep capture set of the actual argument to the environment.
      */
     protected override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
-      val freshenedFormal = Fresh.fromCap(formal)
+      val freshenedFormal = root.capToFresh(formal)
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal", capt)
       if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
@@ -748,7 +748,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
-      val appType = Existential.toCap(super.recheckApplication(tree, qualType, funType, argTypes))
+      val appType = root.resultToFresh(super.recheckApplication(tree, qualType, funType, argTypes))
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
@@ -809,14 +809,14 @@ class CheckCaptures extends Recheck, SymTransformer:
        *
        *  Second half: union of initial capture set and all capture sets of arguments
        *  to tracked parameters. The initial capture set `initCs` is augmented with
-       *   - Fresh(...)    if `core` extends Mutable
-       *   - Fresh(...).rd if `core` extends Capability
+       *   - root.Fresh(...)    if `core` extends Mutable
+       *   - root.Fresh(...).rd if `core` extends Capability
        */
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
           if core.derivesFromMutable then initCs ++ CaptureSet.fresh()
-          else if core.derivesFromCapability then initCs ++ Fresh.withOwner(core.classSymbol).readOnly.singletonCaptureSet
+          else if core.derivesFromCapability then initCs ++ root.Fresh.withOwner(core.classSymbol).readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
@@ -857,7 +857,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
         case fun => fun.symbol
       disallowCapInTypeArgs(tree.fun, meth, tree.args)
-      val res = Existential.toCap(super.recheckTypeApply(tree, pt))
+      val res = root.resultToFresh(super.recheckTypeApply(tree, pt))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
@@ -909,8 +909,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           // which are less intelligible. An example is the line `a = x` in
           // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
           // to apply only to closures that are not eta expansions.
-          val res1 = Existential.toCap(res) // TODO: why deep = true?
-          val pt1 = Existential.toCap(pt)
+          val res1 = root.resultToFresh(res) // TODO: why deep = true?
+          val pt1 = root.resultToFresh(pt)
             // We need to open existentials here in order not to get vars mixed up in them
             // We do the proper check with existentials when we are finished with the closure block.
           capt.println(i"pre-check closure $expr of type $res1 against $pt1")
@@ -1220,13 +1220,13 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private def existentialSubsumesFailureAddenda(using Context): Addenda =
       ccState.existentialSubsumesFailure match
-        case Some((ex @ Existential.Vble(binder), other)) =>
+        case Some((ex @ root.Result(binder), other)) =>
           new Addenda:
             override def toAdd(using Context): List[String] =
-              val ann = ex.annot.asInstanceOf[Fresh.Annot]
+              val ann = ex.rootAnnot
               i"""
                 |
-                |Note that the existential capture root in ${ann.originalBinder.resType}
+                |Note that the existential capture root in ${ex.rootAnnot.originalBinder.resType}
                 |cannot subsume the capability $other"""
               :: Nil
         case _ => NothingToAdd
@@ -1279,7 +1279,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         actualBoxed
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        inContext(Fresh.printContext(actualBoxed, expected1)):
+        inContext(root.printContext(actualBoxed, expected1)):
           err.typeMismatch(tree.withType(actualBoxed), expected1,
               addApproxAddenda(
                 addenda

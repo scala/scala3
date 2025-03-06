@@ -202,7 +202,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
           else newElem.stripReadOnly match
-            case Fresh(hidden) =>
+            case root.Fresh(hidden) =>
               if hidden.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
                 val superCaps =
@@ -271,7 +271,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
 
       def hiddenByElem(elem: CaptureRef): Refs = elem match
-        case Fresh(hcs) => hcs.elems ++ recur(hcs.elems)
+        case root.Fresh(hcs) => hcs.elems ++ recur(hcs.elems)
         case ReadOnlyCapability(ref1) => hiddenByElem(ref1).map(_.readOnly)
         case _ => emptyRefs
 
@@ -319,7 +319,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def sharedPeaksStr(shared: Refs)(using Context): String =
     shared.nth(0) match
-      case fresh @ Fresh(hidden) =>
+      case fresh @ root.Fresh(hidden) =>
         if hidden.owner.exists then i"$fresh of ${hidden.owner}" else i"$fresh"
       case other =>
         i"$other"

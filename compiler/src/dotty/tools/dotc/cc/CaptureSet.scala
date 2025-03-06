@@ -410,7 +410,7 @@ object CaptureSet:
     defn.captureRoot.termRef.singletonCaptureSet
 
   def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
-    Fresh.withOwner(owner).singletonCaptureSet
+    root.Fresh.withOwner(owner).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
@@ -556,12 +556,12 @@ object CaptureSet:
           elems -= elem
           res.addToTrace(this)
 
-    // TODO: Also track allowable TermParamRefs and Existential.Vbles in capture sets
+    // TODO: Also track allowable TermParamRefs and root.Results in capture sets
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isRootCapability then
         !noUniversal
       else elem match
-        case elem @ Existential.Vble(mt) =>
+        case elem @ root.Result(mt) =>
           !noUniversal
           && !CCState.openExistentialScopes.contains(elem)
             // Opened existentials on the left cannot be added to nested capture sets on the right
@@ -619,7 +619,7 @@ object CaptureSet:
         try
           val approx = computeApprox(origin).ensuring(_.isConst)
           if approx.elems.exists:
-            case Existential.Vble(_) => true
+            case root.Result(_) => true
             case _ => false
           then
             ccState.approxWarnings +=
@@ -640,7 +640,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       if !isConst then
         val approx = upperApprox(empty)
-          .map(Fresh.FromCap(NoSymbol).inverse)    // Fresh --> cap
+          .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -955,14 +955,14 @@ object CaptureSet:
     private def aliasRef: AnnotatedType | Null =
       if myElems.size == 1 then
         myElems.nth(0) match
-          case al @ Fresh(hidden) if deps.contains(hidden) => al
+          case al @ root.Fresh(hidden) if deps.contains(hidden) => al
           case _ => null
       else null
 
     private def aliasSet: HiddenSet =
       if myElems.size == 1 then
         myElems.nth(0) match
-          case Fresh(hidden) if deps.contains(hidden) => hidden
+          case root.Fresh(hidden) if deps.contains(hidden) => hidden
           case _ => this
       else this
 
@@ -993,7 +993,7 @@ object CaptureSet:
             assert(dep != this)
             vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
         elem match
-          case Fresh(hidden) =>
+          case root.Fresh(hidden) =>
             if this ne hidden then
               val alias = hidden.aliasRef
               if alias != null then
@@ -1313,7 +1313,7 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case tp @ Existential.Vble(_) =>
+        case tp @ root.Result(_) =>
           tp.captureSet
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
@@ -1331,7 +1331,7 @@ object CaptureSet:
           ++ recur(rinfo.resType)                             // add capture set of result
               .filter:
                 case TermParamRef(binder, _) => binder ne rinfo
-                case Existential.Vble(binder) => binder ne rinfo
+                case root.Result(binder) => binder ne rinfo
                 case _ => true
         case tpd @ AppliedType(tycon, args) =>
           if followResult && defn.isNonRefinedFunction(tpd) then
@@ -1377,7 +1377,7 @@ object CaptureSet:
             if includeTypevars && upper.isExactlyAny then CaptureSet.fresh(t.symbol)
             else this(cs, upper)
           case t @ FunctionOrMethod(args, res) =>
-            if args.forall(_.isAlwaysPure) then this(cs, Existential.toCap(res))
+            if args.forall(_.isAlwaysPure) then this(cs, root.resultToFresh(res))
             else cs
           case _ =>
             foldOver(cs, t)

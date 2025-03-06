@@ -21,7 +21,7 @@ import CaptureSet.VarState
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
 
-/** Context property to print Fresh(...) as "fresh" instead of "cap" */
+/** Context property to print root.Fresh(...) as "fresh" instead of "cap" */
 val PrintFresh: Key[Unit] = Key()
 
 object ccConfig:
@@ -225,7 +225,7 @@ extension (tp: Type)
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
-    case Existential.Vble(_) => true
+    case root.Result(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
     case _ =>
@@ -557,7 +557,7 @@ extension (tp: Type)
             if args.forall(_.isAlwaysPure) then
               // Also map existentials in results to reach capabilities if all
               // preceding arguments are known to be always pure
-              t.derivedFunctionOrMethod(args, apply(Existential.toCap(res)))
+              t.derivedFunctionOrMethod(args, apply(root.resultToFresh(res)))
             else
               t
           case _ =>
@@ -719,6 +719,9 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+  def rootAnnot: root.Annot = (tp.annot: @unchecked) match
+    case ann: root.Annot => ann
 
 /** Drop retains annotations in the type. */
 class CleanupRetains(using Context) extends TypeMap:

@@ -261,7 +261,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             refs.elems.size == 1
             && (refs.isUniversal
                 || !printDebug && !printFresh && !showUniqueIds && refs.elems.nth(0).match
-                      case Existential.Vble(binder) =>
+                      case root.Result(binder) =>
                         CCState.openExistentialScopes match
                           case b :: _ => binder eq b
                           case _ => false
@@ -454,16 +454,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
-      case tp @ Existential.Vble(binder) =>
-        val idStr = s"##${tp.annot.asInstanceOf[Fresh.Annot].hidden.id}"
+      case tp @ root.Result(binder) =>
+        val idStr = s"##${tp.rootAnnot.id}"
         // TODO: Better printing? USe a mode where we print more detailed
         val vbleText: Text = CCState.openExistentialScopes.indexOf(binder) match
           case -1 =>
             "<cap of " ~ toText(binder) ~ ">"
           case n => "outer_" * n ++ (if printFresh then "localcap" else "cap")
         vbleText ~ hashStr(binder) ~ Str(idStr).provided(showUniqueIds)
-      case Fresh(hidden) =>
-        val idStr = if showUniqueIds then s"#${hidden.id}" else ""
+      case tp @ root.Fresh(hidden) =>
+        val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
         if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
         else if printFresh then "fresh"
         else "cap"

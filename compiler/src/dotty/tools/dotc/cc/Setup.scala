@@ -314,7 +314,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     try
       val tp1 = mapInferred(refine = true)(tp)
-      val tp2 = Existential.mapCapInResults(_ => assert(false))(tp1)
+      val tp2 = root.toResultInResults(_ => assert(false))(tp1)
       if tp2 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
     catch case ex: AssertionError =>
@@ -446,7 +446,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def transform(tp: Type): Type =
       val tp1 = toCapturing(tp)
-      val tp2 = Existential.mapCapInResults(fail, toCapturing.keepFunAliases)(tp1)
+      val tp2 = root.toResultInResults(fail, toCapturing.keepFunAliases)(tp1)
       val snd = if toCapturing.keepFunAliases then "" else " 2nd time"
       if tp2 ne tp then capt.println(i"expanded explicit$snd in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
@@ -457,7 +457,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         toCapturing.keepFunAliases = false
         transform(tp1)
       else tp1
-    if freshen then Fresh.fromCap(tp2).tap(addOwnerAsHidden(_, sym))
+    if freshen then root.capToFresh(tp2).tap(addOwnerAsHidden(_, sym))
     else tp2
   end transformExplicitType
 
@@ -514,7 +514,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def add = new TypeTraverser:
       var reach = false
       def traverse(t: Type): Unit = t match
-        case Fresh(hidden) =>
+        case root.Fresh(hidden) =>
           if reach then hidden.elems += ref.reach
           else if ref.isTracked then hidden.elems += ref
         case t @ CapturingType(_, _) if t.isBoxed && !reach =>
@@ -595,7 +595,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(fn)
           for case arg: TypeTree <- args do
             if defn.isTypeTestOrCast(fn.symbol) then
-              arg.setNuType(Fresh.fromCap(arg.tpe))
+              arg.setNuType(root.capToFresh(arg.tpe))
             else
               transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 
@@ -688,7 +688,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     mt.paramInfos
                   else
                     val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                    psyms.map(psym => adaptedInfo(psym, subst(Fresh.toCap(psym.nextInfo)).asInstanceOf[mt.PInfo])),
+                    psyms.map(psym => adaptedInfo(psym, subst(root.freshToCap(psym.nextInfo)).asInstanceOf[mt.PInfo])),
                 mt1 =>
                   integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas)
               )
@@ -702,7 +702,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // If there's a change in the signature, update the info of `sym`
         if sym.exists && signatureChanges then
           val newInfo =
-            Existential.mapCapInResults(report.error(_, tree.srcPos)):
+            root.toResultInResults(report.error(_, tree.srcPos)):
               integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} = $result", capt)
           if newInfo ne sym.info then
