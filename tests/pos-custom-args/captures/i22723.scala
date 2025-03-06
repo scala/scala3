@@ -1,5 +1,6 @@
 
 import language.experimental.captureChecking
+import language.experimental.modularity
 import caps.*
 
 case class A()
@@ -10,10 +11,10 @@ trait HasCap:
 object HasCap:
   def apply[T](body: HasCap^ ?=> T): T = ???
 
-class Box(using h: HasCap^):
+class Box(using tracked val h: HasCap^):
   var t: A^{h} = h.mkA
 
 def main() =
-  HasCap: h ?=>
-    val b = Box(using h)
-    b.t = h.mkA
+  HasCap: h1 ?=>
+    val b = Box(using h1)
+    b.t = h1.mkA
