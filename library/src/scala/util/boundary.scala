@@ -1,4 +1,6 @@
 package scala.util
+
+import language.experimental.captureChecking
 import scala.annotation.implicitNotFound
 
 /** A boundary that can be exited by `break` calls.
@@ -27,18 +29,27 @@ import scala.annotation.implicitNotFound
  * ```
  */
 object boundary:
+  import caps.unsafe.unsafeAssumePure
 
   /** User code should call `break.apply` instead of throwing this exception
    *  directly.
    */
-  final class Break[T] private[boundary](val label: Label[T], val value: T)
+  final class Break[T] private[boundary] (private[boundary] val label: Label[T]^{}, val value: T)
   extends RuntimeException(
-    /*message*/ null, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false)
+    /*message*/ null, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false):
+
+    /** Compare the given [[Label]] to the one this [[Break]] was constructed with. */
+    inline def isSameLabelAs(other: Label[T]) = label eq other
+
+  object Break:
+    def apply[T](label: Label[T], value: T) =
+      // SAFETY: labels cannot leak from [[Break]], and is only used for equality comparison.
+      new Break(label.unsafeAssumePure, value)
 
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
   @implicitNotFound("explain=A Label is generated from an enclosing `scala.util.boundary` call.\nMaybe that boundary is missing?")
-  final class Label[-T]
+  final class Label[-T] extends caps.Capability
 
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.
@@ -60,7 +71,7 @@ object boundary:
     val local = Label[T]()
     try body(using local)
     catch case ex: Break[T] @unchecked =>
-      if ex.label eq local then ex.value
+      if ex.isSameLabelAs(local) then ex.value
       else throw ex
 
 end boundary
