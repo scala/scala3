@@ -91,21 +91,12 @@ sealed abstract class CaptureSet extends Showable:
   final def isUniversal(using Context) =
     elems.exists(_.isCap)
 
-  /** Does this capture set contain the root reference `cap` as element? */
-  final def isUniversalOrFresh(using Context) =
-    elems.exists(_.isCapOrFresh)
-
   /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
   final def containsRootCapability(using Context) =
     elems.exists(_.isRootCapability)
 
   final def containsCap(using Context) =
     elems.exists(_.stripReadOnly.isCap)
-
-  final def isUnboxable(using Context) =
-    elems.exists:
-      case Existential.Vble(_) => true
-      case elem => elem.isRootCapability
 
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
@@ -151,7 +142,7 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set.
    */
   protected final def addNewElem(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
-    if elem.isMaxCapability || !vs.isOpen then
+    if elem.isRootCapability || !vs.isOpen then
       addThisElem(elem)
     else
       addThisElem(elem).orElse:
@@ -195,7 +186,7 @@ sealed abstract class CaptureSet extends Showable:
       elems.exists(_.subsumes(x))
       || // Even though subsumes already follows captureSetOfInfo, this is not enough.
          // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
-        !x.isMaxCapability
+        !x.isRootCapability
         && !x.derivesFrom(defn.Caps_CapSet)
         && !(vs.isSeparating && x.captureSetOfInfo.containsRootCapability)
            // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
@@ -216,7 +207,7 @@ sealed abstract class CaptureSet extends Showable:
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
       elems.exists(_.subsumes(x)(using ctx, VarState.ClosedUnrecorded))
-      || !x.isMaxCapability
+      || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems
           !elems.isEmpty && elems.forall(mightAccountFor)
@@ -352,7 +343,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-    if isUnboxable then handler()
+    if containsRootCapability then handler()
     this
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
@@ -1302,7 +1293,7 @@ object CaptureSet:
     case ReadOnlyCapability(ref1) =>
       ref1.captureSetOfInfo.map(ReadOnlyMap())
     case _ =>
-      if ref.isMaxCapability then ref.singletonCaptureSet
+      if ref.isRootCapability then ref.singletonCaptureSet
       else ofType(ref.underlying, followResult = false)
 
   /** Capture set of a type
@@ -1435,7 +1426,7 @@ object CaptureSet:
     override def toAdd(using Context) =
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
-        if ref.isRootCapability then
+        if ref.stripReadOnly.isCapOrFresh then
           def capStr = if ref.isReadOnly then "cap.rd" else "cap"
           i"""
             |

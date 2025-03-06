@@ -496,7 +496,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val underlying = CaptureSet.ofTypeDeeply(c1.widen)
             capt.println(i"Widen reach $c to $underlying in ${env.owner}")
             if ccConfig.useSepChecks then
-              recur(underlying.filter(!_.isMaxCapability), env, null)
+              recur(underlying.filter(!_.isRootCapability), env, null)
                 // we don't want to disallow underlying Fresh instances, since these are typically locally created
                 // fresh capabilities. We don't need to also follow the hidden set since separation
                 // checking makes ure that locally hidden references need to go to @consume parameters.
@@ -1771,7 +1771,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case ref: TermParamRef
                 if !allowed.contains(ref) && !seen.contains(ref) =>
                   seen += ref
-                  if ref.isMaxCapability then
+                  if ref.isRootCapability then
                     report.error(i"escaping local reference $ref", tree.srcPos)
                   else
                     val widened = ref.captureSetOfInfo
