@@ -399,7 +399,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def defaultApply(t: Type) =
         if t.derivesFromCapability
           && !t.isSingleton
-          && t.typeSymbol != defn.Caps_Exists
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
         then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)

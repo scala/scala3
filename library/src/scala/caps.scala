@@ -55,6 +55,7 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    *
    *      (x: Exists) => A ->{x} B
    */
+  @deprecated
   sealed trait Exists extends Capability
 
   /** This should go into annotations. For now it is here, so that we
