@@ -94,7 +94,7 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** Is this reference a Fresh instance? */
   final def isFresh(using Context): Boolean = this match
-    case Fresh(_) => true
+    case root.Fresh(_) => true
     case _ => false
 
   /** Is this reference the generic root capability `cap` or a Fresh instance? */
@@ -103,8 +103,8 @@ trait CaptureRef extends TypeProxy, ValueType:
   /** Is this reference one of the generic root capabilities `cap` or `cap.rd` ? */
   final def isRootCapability(using Context): Boolean = this match
     case ReadOnlyCapability(tp1) => tp1.isRootCapability
-    case Existential.Vble(_) => true
-    case _ => isCapOrFresh
+    case root(_) => true
+    case _ => isCap
 
   /** An exclusive capability is a capability that derives
    *  indirectly from a maximal capability without going through
@@ -244,16 +244,16 @@ trait CaptureRef extends TypeProxy, ValueType:
    */
   def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
     def yIsExistential = y.stripReadOnly match
-      case Existential.Vble(_) =>
+      case root.Result(_) =>
         capt.println(i"failed existential $this >: $y")
         true
       case _ => false
     (this eq y)
     || this.match
-      case Fresh(hidden) =>
+      case root.Fresh(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
-      case Existential.Vble(binder) =>
+      case root.Result(binder) =>
         if y.derivesFromSharedCapability then true
         else
           ccState.existentialSubsumesFailure =
@@ -288,7 +288,7 @@ trait CaptureRef extends TypeProxy, ValueType:
           this match
             case MaybeCapability(x1) => x1.covers(y1)
             case _ => false
-        case Fresh(hidden) =>
+        case root.Fresh(hidden) =>
           hidden.superCaps.exists(this covers _)
         case _ =>
           false
