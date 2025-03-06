@@ -616,6 +616,11 @@ object Implicits:
     def msg(using Context): Message =
       em"${errors.map(_.msg).mkString("\n")}"
   }
+
+  class LateMismatchedImplicit(ref: TermRef,
+                               expectedType: Type,
+                               argument: Tree,
+                               val errors: List[Diagnostic.Error]) extends MismatchedImplicit(ref, expectedType, argument)
 end Implicits
 
 import Implicits.*
@@ -1233,6 +1238,8 @@ trait Implicits:
               NoMatchingImplicitsFailure
             else if Splicer.inMacroExpansion && tpe <:< pt then
               SearchFailure(adapted.withType(new MacroErrorsFailure(ctx.reporter.allErrors.reverse, pt, argument)))
+            else if ctx.isAfterTyper then
+              SearchFailure(adapted.withType(LateMismatchedImplicit(ref, pt, argument, ctx.reporter.allErrors.reverse)))
             else
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
