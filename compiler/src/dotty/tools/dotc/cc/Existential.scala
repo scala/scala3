@@ -250,13 +250,6 @@ object Existential:
     subst(tp)
   end toCap
 
-  /** Knowing that `tp` is a function type, is it an alias to a function other
-   *  than `=>`?
-   */
-  private def isAliasFun(tp: Type)(using Context) = tp match
-    case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
-    case _ => false
-
   /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
    *  variable bound by `mt`.
    *  Stop at function or method types since these have been mapped before.
@@ -265,7 +258,7 @@ object Existential:
 
     abstract class CapMap extends BiTypeMap:
       override def mapOver(t: Type): Type = t match
-        case t @ FunctionOrMethod(args, res) if variance > 0 && !isAliasFun(t) =>
+        case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
           t // `t` should be mapped in this case by a different call to `mapCap`.
         case t: (LazyRef | TypeVar) =>
           mapConserveSuper(t)

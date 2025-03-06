@@ -926,7 +926,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def apply(t: Type) = t match
       case t @ CapturingType(parent, refs) =>
         val parent1 = this(parent)
-        if refs.isUniversalOrFresh then t.derivedCapturingType(parent1, CaptureSet.Fluid)
+        if refs.containsRootCapability then t.derivedCapturingType(parent1, CaptureSet.Fluid)
         else t
       case _ => mapFollowingAliases(t)
 
@@ -982,7 +982,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for
             j <- 0 until retained.length if j != i
             r <- retained(j).toCaptureRefs
-            if !r.isMaxCapability
+            if !r.isRootCapability
           yield r
         val remaining = CaptureSet(others*)
         check(remaining, remaining)

@@ -185,7 +185,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
      *   3. if `f in F` then the footprint of `f`'s info is also in `F`.
      */
     private def footprint(includeMax: Boolean = false)(using Context): Refs =
-      def retain(ref: CaptureRef) = includeMax || !ref.isMaxCapability
+      def retain(ref: CaptureRef) = includeMax || !ref.isRootCapability
       def recur(elems: Refs, newElems: List[CaptureRef]): Refs = newElems match
         case newElem :: newElems1 =>
           val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
@@ -210,7 +210,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                   else hidden.superCaps
                 recur(seen + newElem, acc, superCaps ++ newElems)
             case _ =>
-              if newElem.isMaxCapability
+              if newElem.isRootCapability
                 //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
               then recur(seen + newElem, acc, newElems1)
               else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)

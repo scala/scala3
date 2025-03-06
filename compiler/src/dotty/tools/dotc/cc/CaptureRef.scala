@@ -42,7 +42,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    *  set of the underlying type is not always empty.
    */
   final def isTracked(using Context): Boolean =
-    this.isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
+    this.isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
 
   /** Is this a maybe reference of the form `x?`? */
   final def isMaybe(using Context): Boolean = this ne stripMaybe
@@ -102,25 +102,16 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** Is this reference one of the generic root capabilities `cap` or `cap.rd` ? */
   final def isRootCapability(using Context): Boolean = this match
-    case ReadOnlyCapability(tp1) => tp1.isCapOrFresh
-    case _ => isCapOrFresh
-
-  /** Is this reference a capability that does not derive from another capability?
-   *  Includes read-only versions of maximal capabilities.
-   */
-  final def isMaxCapability(using Context): Boolean = this match
-    case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
+    case ReadOnlyCapability(tp1) => tp1.isRootCapability
     case Existential.Vble(_) => true
-    case Fresh(_) => true
-    case ReadOnlyCapability(tp1) => tp1.isMaxCapability
-    case _ => false
+    case _ => isCapOrFresh
 
   /** An exclusive capability is a capability that derives
    *  indirectly from a maximal capability without going through
    *  a read-only capability first.
    */
   final def isExclusive(using Context): Boolean =
-    !isReadOnly && (isMaxCapability || captureSetOfInfo.isExclusive)
+    !isReadOnly && (isRootCapability || captureSetOfInfo.isExclusive)
 
   // With the support of paths, we don't need to normalize the `TermRef`s anymore.
   // /** Normalize reference so that it can be compared with `eq` for equality */

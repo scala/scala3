@@ -434,6 +434,13 @@ extension (tp: Type)
     && tp.membersBasedOnFlags(Mutable | Method, EmptyFlags)
       .exists(_.hasAltWith(_.symbol.isUpdateMethod))
 
+  /** Knowing that `tp` is a function type, is it an alias to a function other
+   *  than `=>`?
+   */
+  def isAliasFun(using Context) = tp match
+    case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
+    case _ => false
+
   /** Tests whether the type derives from `caps.Capability`, which means
    *  references of this type are maximal capabilities.
    */
