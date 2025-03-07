@@ -138,7 +138,7 @@ This type is a shorthand for `(A -> B)^{c, d}`, i.e. the function type `A -> B` 
 The impure function type `A => B` is treated as an alias for `A ->{cap} B`. That is, impure functions are functions that can capture anything.
 
 A capture annotation `^` binds more strongly than a function arrow. So
-`A -> B^{c}` is read as `A` -> (B^{c})`.
+`A -> B^{c}` is read as `A -> (B^{c})`.
 
 Analogous conventions apply to context function types. `A ?=> B` is an impure context function, with `A ?-> B` as its pure complement.
 
