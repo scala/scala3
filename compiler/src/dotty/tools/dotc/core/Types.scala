@@ -3154,6 +3154,21 @@ object Types extends TypeUtils {
     }
   }
 
+  /** Extractor that matches a type that contains a single atom and returns that
+   *  atom.
+   *
+   *  See also [[Atoms]].
+   */
+  object SingleAtom:
+    def unapply(tp: Type)(using Context): Option[Type] =
+      tp.atoms match
+        case Atoms.Range(lo, hi) =>
+          if lo.size == 1 then Some(lo.head)
+          else if hi.size == 1 then Some(hi.head)
+          else None
+        case _ =>
+          None
+
   // `refFn` can be null only if `computed` is true.
   case class LazyRef(private var refFn: (Context => (Type | Null)) | Null) extends UncachedProxyType with ValueType {
     private var myRef: Type | Null = null
