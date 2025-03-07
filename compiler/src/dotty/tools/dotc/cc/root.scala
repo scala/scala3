@@ -19,8 +19,6 @@ import annotation.internal.sharable
 
 object root:
 
-  @sharable private var rootId = 0
-
   enum Kind:
     case Result(binder: MethodType)
     case Fresh(hidden: CaptureSet.HiddenSet)
@@ -34,6 +32,8 @@ object root:
         case Kind.Fresh(h2) => h1 eq h2
         case _ => false
   end Kind
+
+  @sharable private var rootId = 0
 
   /** The annotation of a root instance */
   case class Annot(kind: Kind) extends Annotation:
