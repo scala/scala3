@@ -1453,7 +1453,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val cs = actual.captureSet
           if covariant then cs ++ leaked
           else
-            if CCState.withCapAsRoot: // Not sure this is OK, actually
+            if // CCState.withCapAsRoot: // Not sure withCapAsRoot is OK here, actually
               !leaked.subCaptures(cs).isOK
             then
               report.error(

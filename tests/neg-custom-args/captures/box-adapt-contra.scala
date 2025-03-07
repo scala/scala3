@@ -10,7 +10,7 @@ def test1(c: Cap^): Unit =
 
 def test2(@consume c: Cap^, d: Cap^): Unit =
   def useCap1[X](x: X): (X => Unit) -> Unit = ???
-  val f1: (Cap^{c} => Unit) ->{c} Unit = useCap1[Cap^{c}](c)  // ok
+  val f1: (Cap^{c} => Unit) ->{c} Unit = useCap1[Cap^{c}](c)  // error, was ok when cap was a root
 
   def useCap2[X](x: X): (X ->{c} Unit) -> Unit = ???
   val f2: (Cap^{c} -> Unit) ->{c} Unit = useCap2[Cap^{c}](c)  // ok
