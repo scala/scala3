@@ -7,7 +7,7 @@ import TastyBuffer._
 
 // Tests ensuring TASTY version emitted by compiler is matching expected TASTY version
 class BuildTastyVersionTest {
-
+  
   val CurrentTastyVersion = TastyVersion(TastyFormat.MajorVersion, TastyFormat.MinorVersion, TastyFormat.ExperimentalVersion)
 
   // Needs to be defined in build Test/envVars
