@@ -32,26 +32,25 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
 
   override def transformPhase(using Context): Phase = this.next
 
-  override protected def newTransformer(using Context): Transformer =
-    new Transformer:
-      var expressionTree: Tree | Null = null
-      override def transform(tree: Tree)(using Context): Tree =
-        tree match
-          case PackageDef(pid, stats) =>
-            val evaluationClassDef =
-              stats.find(_.symbol == config.expressionClass)
-            val others = stats.filter(_.symbol != config.expressionClass)
-            val transformedStats = (others ++ evaluationClassDef).map(transform)
-            PackageDef(pid, transformedStats)
-          case tree: ValDef if isExpressionVal(tree.symbol) =>
-            expressionTree = tree.rhs
-            expressionStore.store(tree.symbol)
-            unitLiteral
-          case tree: DefDef if tree.symbol == config.evaluateMethod =>
-            val transformedExpr = ExpressionTransformer.transform(expressionTree.nn)
-            cpy.DefDef(tree)(rhs = transformedExpr)
-          case tree =>
-            super.transform(tree)
+  override protected def newTransformer(using Context): Transformer = new ExtractExpressionTransformer
+
+  private class ExtractExpressionTransformer extends Transformer:
+    private var expressionTree: Tree | Null = null
+    override def transform(tree: Tree)(using Context): Tree =
+      tree match
+        case PackageDef(pid, stats) =>
+          val (evaluationClassDef, others) = stats.partition(_.symbol == config.expressionClass)
+          val transformedStats = (others ++ evaluationClassDef).map(transform)
+          cpy.PackageDef(tree)(pid, transformedStats)
+        case tree: ValDef if isExpressionVal(tree.symbol) =>
+          expressionTree = tree.rhs
+          expressionStore.store(tree.symbol)
+          unitLiteral
+        case tree: DefDef if tree.symbol == config.evaluateMethod =>
+          val transformedExpr = ExpressionTransformer.transform(expressionTree.nn)
+          cpy.DefDef(tree)(rhs = transformedExpr)
+        case tree =>
+          super.transform(tree)
 
   private object ExpressionTransformer extends TreeMap:
     override def transform(tree: Tree)(using Context): Tree =
@@ -73,7 +72,7 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
 
         // non-static object
         case tree: (Ident | Select) if isNonStaticObject(tree.symbol) =>
-          callMethod(tree)(getTransformedQualifier(tree), tree.symbol.asTerm, List.empty)
+          callMethod(tree)(getTransformedQualifier(tree), tree.symbol.asTerm, Nil)
 
         // local variable
         case tree: Ident if isLocalVariable(tree.symbol) =>
@@ -141,7 +140,7 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
 
     private def getTransformedArgs(tree: Tree)(using Context): List[Tree] =
       tree match
-        case _: (Ident | Select) => List.empty
+        case _: (Ident | Select) => Nil
         case Apply(fun, args) => getTransformedArgs(fun) ++ args.map(transform)
         case TypeApply(fun, _) => getTransformedArgs(fun)
 
@@ -197,20 +196,20 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
     else nullLiteral
 
   private def getThis(tree: Tree)(cls: ClassSymbol)(using Context): Tree =
-    reflectEval(tree)(nullLiteral, ReflectEvalStrategy.This(cls), List.empty)
+    reflectEval(tree)(nullLiteral, ReflectEvalStrategy.This(cls), Nil)
 
   private def getLocalOuter(tree: Tree)(outerCls: ClassSymbol)(using Context): Tree =
     val strategy = ReflectEvalStrategy.LocalOuter(outerCls)
-    reflectEval(tree)(nullLiteral, strategy, List.empty)
+    reflectEval(tree)(nullLiteral, strategy, Nil)
 
   private def getOuter(tree: Tree)(qualifier: Tree, outerCls: ClassSymbol)(using Context): Tree =
     val strategy = ReflectEvalStrategy.Outer(outerCls)
-    reflectEval(tree)(qualifier, strategy, List.empty)
+    reflectEval(tree)(qualifier, strategy, Nil)
 
   private def getLocalValue(tree: Tree)(variable: Symbol)(using Context): Tree =
     val isByName = isByNameParam(variable.info)
     val strategy = ReflectEvalStrategy.LocalValue(variable.asTerm, isByName)
-    reflectEval(tree)(nullLiteral, strategy, List.empty)
+    reflectEval(tree)(nullLiteral, strategy, Nil)
 
   private def isByNameParam(tpe: Type)(using Context): Boolean =
     tpe match
@@ -226,7 +225,7 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
     val byName = isByNameParam(variable.info)
     val strategy = ReflectEvalStrategy.ClassCapture(variable.asTerm, cls, byName)
     val qualifier = thisOrOuterValue(tree)(cls)
-    reflectEval(tree)(qualifier, strategy, List.empty)
+    reflectEval(tree)(qualifier, strategy, Nil)
 
   private def setClassCapture(tree: Tree)(variable: Symbol, cls: ClassSymbol, value: Tree)(using Context) =
     val strategy = ReflectEvalStrategy.ClassCaptureAssign(variable.asTerm, cls)
@@ -237,7 +236,7 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
     val isByName = isByNameParam(variable.info)
     val strategy =
       ReflectEvalStrategy.MethodCapture(variable.asTerm, method.asTerm, isByName)
-    reflectEval(tree)(nullLiteral, strategy, List.empty)
+    reflectEval(tree)(nullLiteral, strategy, Nil)
 
   private def setMethodCapture(tree: Tree)(variable: Symbol, method: Symbol, value: Tree)(using Context) =
     val strategy =
@@ -246,12 +245,12 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
 
   private def getStaticObject(tree: Tree)(obj: Symbol)(using ctx: Context): Tree =
     val strategy = ReflectEvalStrategy.StaticObject(obj.asClass)
-    reflectEval(tree)(nullLiteral, strategy, List.empty)
+    reflectEval(tree)(nullLiteral, strategy, Nil)
 
   private def getField(tree: Tree)(qualifier: Tree, field: TermSymbol)(using Context): Tree =
     val byName = isByNameParam(field.info)
     val strategy = ReflectEvalStrategy.Field(field, byName)
-    reflectEval(tree)(qualifier, strategy, List.empty)
+    reflectEval(tree)(qualifier, strategy, Nil)
 
   private def setField(tree: Tree)(qualifier: Tree, field: TermSymbol, rhs: Tree)(using Context): Tree =
     val strategy = ReflectEvalStrategy.FieldAssign(field)
@@ -272,7 +271,7 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
   )(using Context): Tree =
     val evalArgs = List(
       qualifier,
-      Literal(Constant(strategy.toString)),
+      Literal(Constant(strategy.toString)), // only useful for debugging, when printing trees
       JavaSeqLiteral(args, TypeTree(ctx.definitions.ObjectType))
     )
     cpy
@@ -318,4 +317,4 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
     symbol.ownersIterator.exists(_ == evaluateMethod)
 
 private object ExtractExpression:
-  val name: String = "extract-expression"
+  val name: String = "extractExpression"
