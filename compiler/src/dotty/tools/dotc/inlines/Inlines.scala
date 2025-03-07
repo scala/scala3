@@ -23,6 +23,7 @@ import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
 import dotty.tools.dotc.core.Periods.PhaseId
+import dotty.tools.dotc.util.chaining.*
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -44,6 +45,11 @@ object Inlines:
   def bodyToInline(sym: SymDenotation)(using Context): Tree =
     if hasBodyToInline(sym) then
       sym.getAnnotation(defn.BodyAnnot).get.tree
+        .tap: body =>
+          for annot <- sym.getAnnotation(defn.NowarnAnnot) do
+            val argPos = annot.argument(0).getOrElse(annot.tree).sourcePos
+            val conf = annot.argumentConstantString(0).getOrElse("")
+            ctx.run.nn.suppressions.registerNowarn(annot.tree.sourcePos, body.span)(conf, argPos)
     else
       EmptyTree
 
