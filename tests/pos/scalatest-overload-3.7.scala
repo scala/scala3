@@ -19,4 +19,5 @@ class Matchers:
 
 class Test extends Matchers:
   def test(): Unit =
-    "hello world" should endWith ("world") // warn: overloading resolution change
+    "hello world" should endWith ("world") // no overloading resolution change
+    // related to tests/warn/multiparamlist-overload-3.7.scala

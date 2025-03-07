@@ -4108,7 +4108,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)
 
-      resolveOverloaded()(alts, pt, tree.srcPos) match
+      resolveOverloaded(alts, pt, tree.srcPos) match
         case alt :: Nil =>
           readaptSimplified(tree.withType(alt))
         case Nil =>

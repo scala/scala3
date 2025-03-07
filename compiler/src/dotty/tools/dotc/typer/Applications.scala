@@ -2112,15 +2112,71 @@ trait Applications extends Compatibility {
     }
   }
 
+  /** Overloadoing Priority Schemes, changing in `scala-3.7`.
+   *
+   *  Old Scheme, until 3.7:
+   *  - First, determines the _candidates_ (subset of the alternatives) by:
+   *    + looking at the first paramater clause
+   *  - Second, determine the best candidate by:
+   *    + doing narrowMostSpecific on the first argument list;
+   *    + if still ambigous and there is another parameter clause, then
+   *      restarts narrowMostSpecific by mapping the problem onto the next parameter clause,
+   *      but still considering all candidates.
+   *
+   *  New Scheme, from 3.7
+   *  - First, determines the candidates by:
+   *    + looking at first paramater clause;
+   *    + if still no determined and there is another parameter clause, then
+   *      looks at the next argument lists to narrow the candidates (not restarting from alts).
+   *      If that finds no alternative is applicable, fallback to the previous iteration
+   *      (see comment in narrowByNextParamClause for details).
+   *  - Second, determine the best candidate by, restoring all parameter clauses, and:
+   *    + doing narrowMostSpecific on the first argument list;
+   *    + if still ambigous and there is another parameter clause, then
+   *      continue narrowMostSpecific by mapping the problem onto the next parameter clause,
+   *      but only considering the alternatives found until now.
+   */
+  enum ResolveScheme:
+    case Old
+    case New
+    def isNewPriority: Boolean = this == New
+
+  /** Resolve overloaded alternative `alts`, given expected type `pt`. Determines the current
+   *  priority scheme and emits warnings for changes in resolution in migration version.
+   */
+  def resolveOverloaded(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+    record("resolveOverloaded")
+    lazy val oldRes = resolveOverloaded(resolveOverloaded1(ResolveScheme.Old))(alts, pt)
+    lazy val newRes = resolveOverloaded(resolveOverloaded1(ResolveScheme.New))(alts, pt)
+
+    val sv = Feature.sourceVersion
+    val isNewPriorityVersion = sv.isAtLeast(SourceVersion.`3.7`)
+    val isWarnPriorityChangeVersion = sv == SourceVersion.`3.7-migration`
+
+    def doWarn(oldChoice: String, newChoice: String): Unit = report.warning(
+      em"""Overloading resolution for ${err.expectedTypeStr(pt)} between alternatives
+          | ${alts map (_.info)}%\n %
+          |has changed.
+          |Previous choice          : $oldChoice
+          |New choice from Scala 3.7: $newChoice""", srcPos)
+
+    if isWarnPriorityChangeVersion then (oldRes, newRes) match
+      case (oldAlt :: Nil, newAlt :: Nil) if oldAlt != newAlt => doWarn(oldAlt.info.show, newAlt.info.show)
+      case (oldAlt :: Nil, Nil) => doWarn(oldAlt.info.show, "none")
+      case (Nil, newAlt :: Nil) => doWarn("none", newAlt.info.show)
+      case _ => // neither scheme has determined an alternative
+
+    if isNewPriorityVersion then newRes else oldRes
+  end resolveOverloaded
+
   /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    *  Each trial applies the `resolve` parameter.
    */
   def resolveOverloaded
-      (resolve: (List[TermRef], Type) => Context ?=> List[TermRef] = resolveOverloaded1)
-      (alts: List[TermRef], pt: Type, srcPos: SrcPos = NoSourcePosition)(using Context): List[TermRef] =
-    record("resolveOverloaded")
+      (resolve: (List[TermRef], Type) => Context ?=> List[TermRef])
+      (alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
@@ -2157,7 +2213,7 @@ trait Applications extends Compatibility {
           case Nil => chosen
           case alt2 :: Nil => alt2
           case alts2 =>
-            resolveOverloaded(resolve)(alts2, pt, srcPos) match {
+            resolveOverloaded(resolve)(alts2, pt) match {
               case alt2 :: Nil => alt2
               case _ => chosen
             }
@@ -2224,7 +2280,7 @@ trait Applications extends Compatibility {
    *  It might be called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded1(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
+  private def resolveOverloaded1(scheme: ResolveScheme)(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
   trace(i"resolve over $alts%, %, pt = $pt", typr, show = true):
     record(s"resolveOverloaded1", alts.length)
 
@@ -2414,7 +2470,7 @@ trait Applications extends Compatibility {
             val alts3 = narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
 
             resultType.deepenProto match
-              case resultType: FunOrPolyProto =>
+              case resultType: FunOrPolyProto if scheme.isNewPriority =>
                 narrowByNextParamClause(resolveCandidates)(alts3, pt.typedArgs(), resultType)
                   .fallbackTo(alts3) // see comment in narrowByNextParamClause
               case _ =>
@@ -2472,7 +2528,8 @@ trait Applications extends Compatibility {
           val deepPt = pt.deepenProto
           deepPt match
             case pt @ FunProto(_, resType: FunOrPolyProto) =>
-              narrowByNextParamClause(resolveOverloaded1)(found, pt.typedArgs(), resType)
+              val alts1 = if scheme.isNewPriority then found else candidates
+              narrowByNextParamClause(resolveOverloaded1(scheme))(alts1, pt.typedArgs(), resType)
             case _ =>
               // prefer alternatives that need no eta expansion
               val noCurried = alts.filterConserve(!resultIsMethod(_))
@@ -2480,7 +2537,7 @@ trait Applications extends Compatibility {
               if noCurriedCount == 1 then
                 noCurried
               else if noCurriedCount > 1 && noCurriedCount < alts.length then
-                resolveOverloaded1(noCurried, pt)
+                resolveOverloaded1(scheme)(noCurried, pt)
               else
                 // prefer alternatves that match without default parameters
                 val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
@@ -2488,19 +2545,14 @@ trait Applications extends Compatibility {
                 if noDefaultsCount == 1 then
                   noDefaults
                 else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-                  resolveOverloaded1(noDefaults, pt)
+                  resolveOverloaded1(scheme)(noDefaults, pt)
                 else if deepPt ne pt then
                   // try again with a deeper known expected type
-                  resolveOverloaded1(alts, deepPt)
+                  resolveOverloaded1(scheme)(alts, deepPt)
                 else
                   candidates
     end resolveOverloaded2
 
-    // First, we find the candidates by considering all parameter clauses.
-    // Second, we determine the most specific again by considering all parameter clauses;
-    // but restarting from the 1st argument list.
-    // In both cases, considering subsequent argument lists only narrows the set of alternatives
-    // (i.e. we do retry from the complete list of alternative mapped onto there next param clause).
     val candidates = resolveCandidates(alts, pt)
     record("resolveOverloaded.narrowedApplicable", candidates.length)
     resolveOverloaded2(candidates, pt)

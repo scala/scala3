@@ -1,4 +1,4 @@
-import scala.language.`3.6`
+import scala.language.`3.7-migration`
 
 class A
 class B extends A
@@ -11,15 +11,15 @@ class R3
 // In each test, the alternatives are defined from most genereal to most specific,
 // with respect to a lexicographic ordering by parameter list.
 // In each of the cases tested here, scala-3.7 resolves to the most specific applicable alternative.
-// See tests/pos/multiparamlist-overload-3.7.scala for the comparison.
+// See tests/neg/multiparamlist-overload-3.6.scala for the comparison.
 
 object Test1:
   def f(x: A)(y: C) = new R1
   def f(x: B)(y: A) = new R2
   def f(x: B)(y: B) = new R3
 
-  val r = f(new B)(new C) // all alternatives are applicable; resolves to: R1 in 3.6, R3 in 3.7
-  val _: R1 = r
+  val r = f(new B)(new C) // warn: all alternatives are applicable; resolves to: R1 in 3.6, R3 in 3.7
+  val _: R3 = r
 end Test1
 
 object Test2:
@@ -38,7 +38,7 @@ object Test2:
     def f(x: A)(y: A) = new R1
     def f(x: B)(y: B) = new R2
 
-    val r = f(new B)(new A) // error: resolves to: R2 in 3.6, R1 in 3.7
-    val _: R2 = r
+    val r = f(new B)(new A) // warn: resolves to: R2 in 3.6, R1 in 3.7
+    val _: R1 = r
 
 end Test2
