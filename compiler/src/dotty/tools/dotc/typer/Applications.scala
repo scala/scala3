@@ -2228,7 +2228,9 @@ trait Applications extends Compatibility {
   trace(i"resolve over $alts%, %, pt = $pt", typr, show = true):
     record(s"resolveOverloaded1", alts.length)
 
-    def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
+    extension (self: List[TermRef])
+      def isDetermined: Boolean = self.isEmpty || self.tail.isEmpty
+      inline def fallbackTo(inline alts: List[TermRef]) = if self.nonEmpty then self else alts
 
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
@@ -2287,6 +2289,15 @@ trait Applications extends Compatibility {
         case resType =>
           // try to narrow further with snd argument list
           resolveMapped(skipParamClause(Nil), resolve)(alts, resType)
+
+      // Note that `resolvedMapped` applies `resolveOverloaded(resolve)`, _not_ `resolve` directly.
+      // This benefits from the insertion of implicit parameters, apply methods, etc.
+      // But there are still some adaptations, e.g. auto-tupling, that are not performed at this stage.
+      // In those cases, it is possible that we find that no alternatives are applicable.
+      // So, in resolveCandidates, we fallback to the `alts` we had before considering the next parameter clause.
+      // Resolution will succeed (only) if narrowMostSpecific finds an unambiguous alternative
+      // by considering (only) the prior argument lists, after which adaptation can be performed.
+      // See tests/run/tupled-function-extension-method.scala for an example.
     end narrowByNextParamClause
 
     /** Normalization steps before checking arguments:
@@ -2405,6 +2416,7 @@ trait Applications extends Compatibility {
             resultType.deepenProto match
               case resultType: FunOrPolyProto =>
                 narrowByNextParamClause(resolveCandidates)(alts3, pt.typedArgs(), resultType)
+                  .fallbackTo(alts3) // see comment in narrowByNextParamClause
               case _ =>
                 alts3
 
