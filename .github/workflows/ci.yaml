@@ -26,6 +26,14 @@ on:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
 
+# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
+# For example it would:
+# - terminate previous PR CI execution after pushing more changes to the same PR branch
+# - terminate previous on-push CI run after merging new PR to main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   DOTTY_CI_RUN: true
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
@@ -818,7 +826,7 @@ jobs:
           path: .
       - name: Prepare MSI package
         shell: bash
-        run: | 
+        run: |
           msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
           mv scala.msi "${msiInstaller}"
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
@@ -826,14 +834,15 @@ jobs:
       - name: Install GH CLI
         uses: dev-hanz-ops/install-gh-cli-action@v0.2.0
         with:
-          gh-cli-version: 2.59.0 
-          
+          gh-cli-version: 2.59.0
       # Create the GitHub release
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         shell: bash
         run: |
+          # We need to config safe.directory in every step that might reference git
+          # It is not persisted between steps
           git config --global --add safe.directory /__w/scala3/scala3
           gh release create \
           --draft \
@@ -901,14 +910,14 @@ jobs:
     uses: ./.github/workflows/build-chocolatey.yml
     needs: [ build-sdk-package ]
     with:
-      version: 3.6.0-local # TODO: FIX THIS
+      version: 3.6.0-SNAPSHOT # Fake version, used only for choco tests
       url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
       digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
 
   test-chocolatey-package:
     uses: ./.github/workflows/test-chocolatey.yml
     with:
-      version     : 3.6.0-local # TODO: FIX THIS
+      version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
       java-version: 8
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
     needs: [ build-chocolatey-package ]

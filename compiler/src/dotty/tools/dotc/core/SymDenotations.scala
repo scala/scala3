@@ -2539,7 +2539,9 @@ object SymDenotations {
           )
         if compiledNow.exists then compiledNow
         else
-          val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
+          val assocFiles = multi
+            .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
+            .aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
           else
@@ -2679,10 +2681,6 @@ object SymDenotations {
       else
         stillValidInOwner(denot)
     }
-
-  def movedToCompanionClass(denot: SymDenotation)(using Context): Boolean =
-    val ownerCompanion = denot.maybeOwner.companionClass
-    stillValid(ownerCompanion) && ownerCompanion.unforcedDecls.contains(denot.name, denot.symbol)
 
   private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
     val owner = denot.maybeOwner.denot

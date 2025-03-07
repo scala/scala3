@@ -1243,8 +1243,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&
-          directionalRecur(adaptedTycon.appliedTo(args), other)
+          rollbackConstraintsUnless:
+            (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
+              && directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
     end compareAppliedTypeParamRef
@@ -2133,11 +2134,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // resort to reflection to invoke the member. And Java reflection needs to know exact
       // erased parameter types. See neg/i12211.scala. Other reflection algorithms could
       // conceivably dispatch without knowing precise parameter signatures. One can signal
-      // this by inheriting from the `scala.reflect.SignatureCanBeImprecise` marker trait,
+      // this by inheriting from the `scala.Selectable.WithoutPreciseParameterTypes` marker trait,
       // in which case the signature test is elided.
+      // We also relax signature checking when checking bounds,
+      // for instance in tests/pos/i17222.izumi.min.scala
+      // the `go` method info as seen from `Foo` is `>: (in: Any): Unit <: (Nothing): Unit`
+      // So the parameter types conform but their signatures don't match.
       def sigsOK(symInfo: Type, info2: Type) =
         tp2.underlyingClassRef(refinementOK = true).member(name).exists
         || tp2.derivesFrom(defn.WithoutPreciseParameterTypesClass)
+        || ctx.mode.is(Mode.CheckBoundsOrSelfType)
         || symInfo.isInstanceOf[MethodType]
             && symInfo.signature.consistentParams(info2.signature)
 

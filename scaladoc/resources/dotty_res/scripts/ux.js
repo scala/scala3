@@ -167,6 +167,11 @@ function attachAllListeners() {
       if (url.origin !== window.location.origin) {
         return;
       }
+      // ISSUE-19208, treat as normal link when lacking HTTP server,
+      // otherwise GET request blocked by CORS protections.
+      if (window.location.protocol.startsWith("file")) {
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
         return;
       }

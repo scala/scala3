@@ -41,6 +41,7 @@ import util.Store
 import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
+import dotty.tools.dotc.coverage.Coverage
 
 object Contexts {
 
@@ -777,13 +778,13 @@ object Contexts {
 
   extension (c: Context)
     def addNotNullInfo(info: NotNullInfo) =
-      c.withNotNullInfos(c.notNullInfos.extendWith(info))
+      if c.explicitNulls then c.withNotNullInfos(c.notNullInfos.extendWith(info)) else c
 
     def addNotNullRefs(refs: Set[TermRef]) =
-      c.addNotNullInfo(NotNullInfo(refs, Set()))
+      if c.explicitNulls then c.addNotNullInfo(NotNullInfo(refs, Set())) else c
 
     def withNotNullInfos(infos: List[NotNullInfo]): Context =
-      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+      if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
     def relaxedOverrideContext: Context =
       c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
@@ -981,6 +982,11 @@ object Contexts {
 
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
+
+    /** If coverage option is used, it stores all instrumented statements (for InstrumentCoverage).
+     * We need this information to be persisted across different runs, so it's stored here.
+     */
+    private[dotc] var coverage: Coverage | Null = null
 
     // Types state
     /** A table for hash consing unique types */

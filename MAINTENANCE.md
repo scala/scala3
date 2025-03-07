@@ -63,39 +63,48 @@ At the end of their supervision period, the supervisor reports to the team durin
 
 ## Maintenance List
 
-The following is the list of all the principal areas of the compiler and the core team members who are responsible for their maintenance:
+The following is the list of all the principal areas of the compiler and the internal team members who are responsible for their maintenance:
 
 ### Compiler
-- Parser: @odersky, @hamzaremmal
-- Typer: @odersky, @smarter, (@dwijnand), @noti0nal
+- Parser: @odersky, @hamzaremmal, @KacperFKorban
+- Typer: @odersky, @smarter, (@dwijnand), @noti0nal, @EugeneFlesselle, @KacperFKorban, @bracevac
 - Erasure: @smarter, @odersky
-- Enums: @bishabosha
-- Derivation & Mirrors: @bishabosha, (@dwijnand), @EugeneFlesselle
-- Export: @bishabosha, @odersky
-- Pattern Matching: @dwijnand, (@liufengyun), @sjrd
-- Inline: @nicolasstucki, @odersky, @hamzaremmal
-- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb, @hamzaremmal
-- Match types: @sjrd, @dwijnand, @Decel, @Linyxus
+- Enums:
+- Derivation & Mirrors: (@dwijnand), @EugeneFlesselle
+- Export: @odersky
+- Pattern Matching: @dwijnand, @sjrd, @noti0na1
+- Inline: @odersky, @jchyb, @hamzaremmal, @EugeneFlesselle
+- Metaprogramming (Quotes, Reflect, Staging): @jchyb, @hamzaremmal
+- Match types: @sjrd, @dwijnand, @Linyxus, @EugeneFlesselle
 - GADT: @dwijnand, @Linyxus
-- Initialization checker: @olhotak, @liufengyun
-- Safe nulls: @noti0na1, @olhotak
-- Transforms: @szymon-rd, @sjrd, @odersky, @smarter
-- tailrec: @sjrd, @mbovel
+- Initialization checker:
+- Transforms: @sjrd, @odersky, @smarter
+- Tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
-- JVM backend: @sjrd
-- Java-compat: @smarter, @dwijnand
-- Capture checker: @odersky, @Linyxus
+- JVM backend: @sjrd, @hamzaremmal
+- Java-compat: @smarter, @dwijnand, @hamzaremmal
+- Extension Methods: @odersky, @dwijnand
+- Safe nulls (experimental): @noti0na1
+- Capture checker (experimental): @odersky, @Linyxus, @bracevac, @noti0na1
+- Modularity (experimental): @KacperFKorban
+- Named Tuples (experimental): @odersky, @aherlihy
 
 ### Tooling
-- REPL: @dwijnand, @prolativ
+- REPL: @dwijnand
+- Runner/CLI: @Gedochao, (@tgodzik)
+- IDE: @tgodzik, (@kasiaMarek)
 - Scaladoc: @Florian3k
-- SemanticDB: @tanishiking
-- Coverage: @TheElectronWill
-- Linting (especially unused warnings) / Reporting UX: @szymon-rd
+- SemanticDB: @natsukagami, (@tanishiking)
+- Coverage: @KacperFKorban
+- Linting (especially unused warnings) / Reporting UX: @KacperFKorban
+- Presentation Compiler: @rochala, @tgodzik, @kasiaMarek, @natsukagami
+- Debug Adapter: @adpi2, (@tgodzik)
+- Scastie: @rochala
 
 ### Infrastructure
-- CI: @hamzaremmal
+- CI: @hamzaremmal, (@WojciechMazur)
 - Community Build: @hamzaremmal
 - Open Community Build: @WojciechMazur
-- Vulpix: @dwijnand, @prolativ
+- Vulpix: @dwijnand, @prolativ, @hamzaremmal
 - Benchmarks: @mbovel
+- Releases: @WojciechMazur, @prolativ

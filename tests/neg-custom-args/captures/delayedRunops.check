@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:16:13 -----------------------------------------------------
+16 |      runOps(ops1)  // error
+   |             ^^^^
+   |             reference ops* is not included in the allowed capture set {}
+   |             of an enclosing function literal with expected type () -> Unit
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:22:13 -----------------------------------------------------
+22 |      runOps(ops1)  // error
+   |             ^^^^
+   |             Local reach capability ops1* leaks into capture scope of enclosing function
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:28:13 -----------------------------------------------------
+28 |      runOps(ops1)  // error
+   |             ^^^^
+   |             reference ops* is not included in the allowed capture set {}
+   |             of an enclosing function literal with expected type () -> Unit

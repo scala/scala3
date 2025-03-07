@@ -333,12 +333,11 @@ object Existential:
         override def toString = "Wrap.inverse"
     end Wrap
 
-    if ccConfig.useExistentials then
-      val wrapped = apply(Wrap(_)(tp))
-      if needsWrap then wrapped else tp
-    else tp
+    val wrapped = apply(Wrap(_)(tp))
+    if needsWrap then wrapped else tp
   end mapCap
 
+  /** Map `cap` in function results to fresh existentials */
   def mapCapInResults(fail: Message => Unit)(using Context): TypeMap = new:
 
     def mapFunOrMethod(tp: Type, args: List[Type], res: Type): Type =

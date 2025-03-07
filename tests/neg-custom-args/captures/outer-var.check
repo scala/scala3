@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:11:8 -------------------------------------
 11 |    x = q           // error
    |        ^
-   |        Found:    box () ->{q} Unit
-   |        Required: box () ->{p, q²} Unit
+   |        Found:    (q : Proc)
+   |        Required: () ->{p, q²} Unit
    |
    |        where:    q  is a parameter in method inner
    |                  q² is a parameter in method test
@@ -12,19 +12,31 @@
 12 |    x = (q: Proc)   // error
    |         ^^^^^^^
    |         Found:    Proc
-   |         Required: box () ->{p, q} Unit
-   |
-   |         Note that () => Unit cannot be box-converted to box () ->{p, q} Unit
-   |         since at least one of their capture sets contains the root capability `cap`
+   |         Required: () ->{p, q} Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
 13 |    y = (q: Proc)   // error
    |         ^^^^^^^
    |         Found:    Proc
-   |         Required: box () => Unit
+   |         Required: () ->{p} Unit
    |
-   |         Note that () => Unit cannot be box-converted to box () => Unit
-   |         since at least one of their capture sets contains the root capability `cap`
+   |         Note that the universal capability `cap`
+   |         cannot be included in capture set {p} of variable y
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:8 -------------------------------------
+14 |    y = q           // error, was OK under unsealed
+   |        ^
+   |        Found:    (q : Proc)
+   |        Required: () ->{p} Unit
+   |
+   |        Note that reference (q : Proc), defined in method inner
+   |        cannot be included in outer capture set {p} of variable y
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/outer-var.scala:16:57 ---------------------------------------------------------
+16 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
+   |                                                      ^^^^^^^^^^
+   |                             Type variable A of object ListBuffer cannot be instantiated to box () => Unit since
+   |                             that type captures the root capability `cap`.

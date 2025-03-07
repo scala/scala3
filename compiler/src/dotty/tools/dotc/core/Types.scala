@@ -38,8 +38,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureRef, CaptureSet, SingletonCaptureRef, isTrackableRef,
-           derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
+import cc.*
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -867,23 +866,19 @@ object Types extends TypeUtils {
         }
         else
           val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-          rinfo match
-            case CapturingType(_, refs: CaptureSet.RefiningVar) if ccConfig.optimizedRefinements =>
-              pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
+          val joint = pdenot.meet(
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+            pre,
+            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+          joint match
+            case joint: SingleDenotation
+            if isRefinedMethod
+              && (rinfo <:< joint.info
+                || name == nme.apply && defn.isFunctionType(tp.parent)) =>
+              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
             case _ =>
-              val joint = pdenot.meet(
-                new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-                pre,
-                safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-              joint match
-                case joint: SingleDenotation
-                if isRefinedMethod
-                  && (rinfo <:< joint.info
-                    || name == nme.apply && defn.isFunctionType(tp.parent)) =>
-                  // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-                  joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-                case _ =>
-                  joint
+              joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
@@ -4007,7 +4002,7 @@ object Types extends TypeUtils {
                 (compute(status, parent, theAcc) /: refs.elems) {
                   (s, ref) => ref.stripReach match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, CaptureDeps)
-                    case _ => s
+                    case tp => combine(s, compute(status, tp, theAcc))
                 }
               case _ =>
                 if tp.annot.refersToParamOf(thisLambdaType) then TrueDeps
@@ -4078,6 +4073,10 @@ object Types extends TypeUtils {
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
             case CapturingType(_, _) =>
               mapOver(tp)
+            case ReachCapability(tp1) =>
+              apply(tp1) match
+                case tp1a: CaptureRef if tp1a.isTrackableRef => tp1a.reach
+                case _ => defn.captureRoot.termRef
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
               if ann.symbol.isRetainsLike then
@@ -4179,24 +4178,28 @@ object Types extends TypeUtils {
      *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
+      apply(params.map(_.name.asTermName))(
+         tl => params.map(p => tl.integrate(params, adaptParamInfo(p))),
+         tl => tl.integrate(params, resultType))
+
+    /** Adapt info of parameter symbol to be integhrated into corresponding MethodType
+     *  using the scheme described in `fromSymbols`.
+     */
+    def adaptParamInfo(param: Symbol, pinfo: Type)(using Context): Type =
       def addAnnotation(tp: Type, cls: ClassSymbol, param: Symbol): Type = tp match
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
+      var paramType = pinfo
+        .annotatedToRepeated
+        .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
+      if param.is(Inline) then
+        paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
+      if param.is(Erased) then
+        paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
+      paramType
 
-      def paramInfo(param: Symbol) =
-        var paramType = param.info
-          .annotatedToRepeated
-          .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
-        if param.is(Inline) then
-          paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
-        if param.is(Erased) then
-          paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
-        paramType
-
-      apply(params.map(_.name.asTermName))(
-         tl => params.map(p => tl.integrate(params, paramInfo(p))),
-         tl => tl.integrate(params, resultType))
-    end fromSymbols
+    def adaptParamInfo(param: Symbol)(using Context): Type =
+      adaptParamInfo(param, param.info)
 
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
@@ -4634,6 +4637,7 @@ object Types extends TypeUtils {
      */
     def isUnreducibleWild(using Context): Boolean =
       tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
+        && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
@@ -6078,6 +6082,8 @@ object Types extends TypeUtils {
         case tp: CaptureRef =>
           if tp.isTrackableRef then tp
           else ensureTrackable(tp.underlying)
+        case tp: TypeAlias =>
+          ensureTrackable(tp.alias)
         case _ =>
           assert(false, i"not a trackable captureRef ref: $result, ${result.underlyingIterator.toList}")
       ensureTrackable(result)

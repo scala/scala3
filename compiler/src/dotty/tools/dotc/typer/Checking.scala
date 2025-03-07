@@ -734,11 +734,16 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (clazz.isDerivedValueClass) {
+    // We don't check synthesised enum anonymous classes that are generated from
+    // enum extending a value class type (AnyVal or an alias of it)
+    // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
+    if (clazz.isDerivedValueClass && !clazz.isEnumAnonymClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
+      if (clazz.is(Enum))
+        report.error(EnumMayNotBeValueClasses(clazz), clazz.srcPos)
       if (clazz.is(Abstract))
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)

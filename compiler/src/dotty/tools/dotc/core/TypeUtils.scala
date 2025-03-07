@@ -127,8 +127,17 @@ class TypeUtils:
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
-    def namedTupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
+    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
       (if normalize then self.normalized else self).dealias match
+        // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
+        case AppliedType(tycon, nmes :: vals :: Nil) if !derived && tycon.typeSymbol == defn.NamedTupleTypeRef.symbol =>
+          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
+            case ConstantType(Constant(str: String)) => str.toTermName
+            case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
+          val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
+          names.zip(values)
+        case t if !derived => Nil
+        // default cause, used for post-typing
         case defn.NamedTuple(nmes, vals) =>
           val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
             case ConstantType(Constant(str: String)) => str.toTermName
@@ -138,8 +147,8 @@ class TypeUtils:
         case t =>
           Nil
 
-    def namedTupleElementTypes(using Context): List[(TermName, Type)] =
-      namedTupleElementTypesUpTo(Int.MaxValue)
+    def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
+      namedTupleElementTypesUpTo(Int.MaxValue, derived)
 
     def isNamedTupleType(using Context): Boolean = self match
       case defn.NamedTuple(_, _) => true

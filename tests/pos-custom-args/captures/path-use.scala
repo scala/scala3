@@ -1,4 +1,5 @@
 import language.experimental.namedTuples
+import caps.use
 
 class IO
 
@@ -8,12 +9,14 @@ class C(val f: IO^):
 type Proc = () => Unit
 
 def test(io: IO^) =
-  val c = C(io)
-  val f = () => println(c.f)
-  val _: () ->{c.f} Unit = f
+  def test1(@use c: C { val f: IO^{io}}^{io}) =
+    val f = () => println(c.f)
+    val _: () ->{c.f} Unit = f
 
-  val x = c.procs
-  val _: List[() ->{c.procs*} Unit] = x
+    val x = c.procs
+    val _: List[() ->{c.procs*} Unit] = x
 
-  val g = () => println(c.procs.head)
-  val _: () ->{c.procs*} Unit = g
+    val g = () => println(c.procs.head)
+    val _: () ->{c.procs*} Unit = g
+  test1(C(io))
+

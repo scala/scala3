@@ -1,0 +1,20 @@
+-- Error: tests/neg/i22192a.scala:6:12 ---------------------------------------------------------------------------------
+6 |  case Some(iam = n) => // error
+  |            ^^^^^^^
+  |            No element named `iam` is defined in selector type (name : String)
+-- [E006] Not Found Error: tests/neg/i22192a.scala:7:4 -----------------------------------------------------------------
+7 |    n // error
+  |    ^
+  |    Not found: n
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i22192a.scala:11:12 --------------------------------------------------------------------------------
+11 |  case Some(iam = n) => // error
+   |            ^^^^^^^
+   |            No element named `iam` is defined in selector type (name : String, population : Int)
+-- [E006] Not Found Error: tests/neg/i22192a.scala:12:4 ----------------------------------------------------------------
+12 |    n // error
+   |    ^
+   |    Not found: n
+   |
+   | longer explanation available when compiling with `-explain`
