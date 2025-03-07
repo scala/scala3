@@ -20,9 +20,9 @@ def handle[E <: Exception,  R <: Top](op: CT[E]^ => R)(handler: E => R): R =
   catch case ex: E => handler(ex)
 
 def test =
-  val a = handle[Exception, CanThrow[Exception]] {
+  val a = handle[Exception, CanThrow[Exception]] { // error
     (x: CanThrow[Exception]) => x
-  }{  // error (but could be better)
+  }{
     (ex: Exception) => ???
   }
 

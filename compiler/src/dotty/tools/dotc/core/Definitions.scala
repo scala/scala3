@@ -999,9 +999,6 @@ class Definitions {
     @tu lazy val Caps_Exists: ClassSymbol = requiredClass("scala.caps.Exists")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
-    @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
-    @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
-    @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
 
@@ -1057,12 +1054,12 @@ class Definitions {
   @tu lazy val ExperimentalAnnot: ClassSymbol = requiredClass("scala.annotation.experimental")
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
-  @tu lazy val UnboxAnnot:  ClassSymbol = requiredClass("scala.caps.unbox")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
+  @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
@@ -1340,10 +1337,25 @@ class Definitions {
   object NamedTuple:
     def apply(nmes: Type, vals: Type)(using Context): Type =
       AppliedType(NamedTupleTypeRef, nmes :: vals :: Nil)
-    def unapply(t: Type)(using Context): Option[(Type, Type)] = t match
-      case AppliedType(tycon, nmes :: vals :: Nil) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
-        Some((nmes, vals))
-      case _ => None
+    def unapply(t: Type)(using Context): Option[(Type, Type)] =
+      t match
+        case AppliedType(tycon, nmes :: vals :: Nil) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+          Some((nmes, vals))
+        case tp: TypeProxy =>
+          val t = unapply(tp.superType); t
+        case tp: OrType =>
+          (unapply(tp.tp1), unapply(tp.tp2)) match
+            case (Some(lhsName, lhsVal), Some(rhsName, rhsVal)) if lhsName == rhsName =>
+              Some(lhsName, lhsVal | rhsVal)
+            case _ => None
+        case tp: AndType =>
+          (unapply(tp.tp1), unapply(tp.tp2)) match
+            case (Some(lhsName, lhsVal), Some(rhsName, rhsVal)) if lhsName == rhsName =>
+              Some(lhsName, lhsVal & rhsVal)
+            case (lhs, None) => lhs
+            case (None, rhs) => rhs
+            case _ => None
+        case _ => None
 
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass

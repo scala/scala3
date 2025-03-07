@@ -93,12 +93,19 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def invalidateCaches() =
     myCaptureSetRunId = NoRunId
 
-  /** x subsumes x
-   *   this subsumes this.f
+  /**  x subsumes x
+   *   x =:= y       ==>  x subsumes y
+   *   x subsumes y  ==>  x subsumes y.f
    *   x subsumes y  ==>  x* subsumes y, x subsumes y?
    *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
    *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
-   *   TODO: Document path cases
+   *   X = CapSet^cx, exists rx in cx, rx subsumes y     ==>  X subsumes y
+   *   Y = CapSet^cy, forall ry in cy, x subsumes ry     ==>  x subsumes Y
+   *   X: CapSet^c1...CapSet^c2, (CapSet^c1) subsumes y  ==>  X subsumes y
+   *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
+   *   Contains[X, y]  ==>  X subsumes y
+   *
+   *   TODO: Document cases with more comments.
    */
   final def subsumes(y: CaptureRef)(using Context): Boolean =
 
@@ -135,12 +142,29 @@ trait CaptureRef extends TypeProxy, ValueType:
               case _ => false
           || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
+        case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
+          // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
+          // They can be other capture set variables, which are bounded by `CapSet`,
+          // like `def test[X^, Y^, Z >: X <: Y]`.
+          y.info match
+            case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
+            case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+          refs.elems.forall(this.subsumes)
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
         case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
-        case x: TypeRef => assumedContainsOf(x).contains(y)
+        case x: TypeRef if assumedContainsOf(x).contains(y) => true
+        case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
+          x.info match
+            case TypeBounds(lo: CaptureRef, _) =>
+              lo.subsumes(y)
+            case _ =>
+              x.captureSetOfInfo.elems.exists(_.subsumes(y))
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+          refs.elems.exists(_.subsumes(y))
         case _ => false
   end subsumes
 

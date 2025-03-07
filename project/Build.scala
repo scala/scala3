@@ -93,11 +93,12 @@ object Build {
 
   /** Version of the Scala compiler used to build the artifacts.
    *  Reference version should track the latest version pushed to Maven:
-   *  - In main branch it should be the last RC version (using experimental TASTy required for non-bootstrapped tests)
+   *  - In main branch it should be the last RC version
    *  - In release branch it should be the last stable release
-   *  3.6.0-RC1 was released as 3.6.0 - it's having and experimental TASTy version
+   *
+   *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.6.2"
+  val referenceVersion = "3.6.3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -105,8 +106,10 @@ object Build {
    *
    *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
    *  eg. `compatMode` or Windows native distribution version.
+   *
+   *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.6.3"
+  val developedVersion = "3.6.4"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -116,6 +119,25 @@ object Build {
    *  During final, stable release is set exactly to `developedVersion`.
   */
   val baseVersion = developedVersion
+
+  /** The version of TASTY that should be emitted, checked in runtime test
+   *  For defails on how TASTY version should be set see related discussions:
+   *    - https://github.com/scala/scala3/issues/13447#issuecomment-912447107
+   *    - https://github.com/scala/scala3/issues/14306#issuecomment-1069333516
+   *    - https://github.com/scala/scala3/pull/19321
+   *
+   *  Simplified rules, given 3.$minor.$patch = $developedVersion
+   *    - Major version is always 28
+   *    - TASTY minor version:
+   *      - in main (NIGHTLY): {if $patch == 0 then $minor else ${minor + 1}}
+   *      - in release branch is always equal to $minor
+   *    - TASTY experimental version:
+   *      - in main (NIGHTLY) is always experimental
+   *      - in release candidate branch is experimental if {patch == 0}
+   *      - in stable release is always non-experimetnal
+   */
+  val expectedTastyVersion = "28.6"
+  checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
@@ -149,7 +171,7 @@ object Build {
    *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
-   *  3.6.1 is an exception from this rule - 3.6.0 was a broken release
+   *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
   val mimaPreviousDottyVersion = "3.6.2"
 
@@ -279,6 +301,7 @@ object Build {
 
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
+    run / connectInput := true,
     Test / fork := true,
     Test / parallelExecution := false,
 
@@ -327,7 +350,7 @@ object Build {
         .withTestRetryConfiguration(
           config.testRetryConfiguration
             .withFlakyTestPolicy(FlakyTestPolicy.Fail)
-            .withMaxRetries(1)
+            .withMaxRetries(if (isInsideCI) 1 else 0)
             .withMaxFailures(10)
             .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
         )
@@ -739,7 +762,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.7.0-scala-2", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.7.1-scala-1", // used by the backend
         Dependencies.compilerInterface,
         "org.jline" % "jline-reader" % "3.27.1",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.27.1",
@@ -1425,7 +1448,7 @@ object Build {
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
     .withCommonSettings(Bootstrapped)
-    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`)
+    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
     .settings(
@@ -1436,6 +1459,7 @@ object Build {
   def scala3PresentationCompilerBuildInfo =
     Seq(
       ideTestsDependencyClasspath := {
+        val testCasesLib = (`scala3-presentation-compiler-testcases` / Compile / classDirectory).value
         val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
         val scalaLib =
           (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
@@ -1443,7 +1467,7 @@ object Build {
             .map(_.data)
             .filter(_.getName.matches("scala-library.*\\.jar"))
             .toList
-        dottyLib :: scalaLib
+        testCasesLib :: dottyLib :: scalaLib
         // Nil
       },
       Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
@@ -1502,6 +1526,10 @@ object Build {
       }.taskValue,
     )
   }
+
+  lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
+    .dependsOn(`scala3-compiler-bootstrapped`)
+    .settings(commonBootstrappedSettings)
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
@@ -2426,6 +2454,9 @@ object Build {
       settings(disableDocSetting).
       settings(
         versionScheme := Some("semver-spec"),
+        Test / envVars ++= Map(
+          "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+        ),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
           mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
@@ -2474,6 +2505,34 @@ object Build {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
     })
+  }
+
+  /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
+  def checkReleasedTastyVersion(): Unit = {
+    lazy val (scalaMinor, scalaPatch, scalaIsRC) = baseVersion.split("\\.|-").take(4) match {
+      case Array("3", minor, patch)    => (minor.toInt, patch.toInt, false)
+      case Array("3", minor, patch, _) => (minor.toInt, patch.toInt, true)
+      case other => sys.error(s"Invalid Scala base version string: $baseVersion")
+    }
+    lazy val (tastyMinor, tastyIsExperimental) = expectedTastyVersion.split("\\.|-").take(4) match {
+      case Array("28", minor)                    => (minor.toInt, false)
+      case Array("28", minor, "experimental", _) => (minor.toInt, true)
+      case other => sys.error(s"Invalid TASTy version string: $expectedTastyVersion")
+    }
+
+    if(isNightly) {
+      assert(tastyIsExperimental, "TASTY needs to be experimental in nightly builds")
+      val expectedTastyMinor = if(scalaPatch == 0) scalaMinor else scalaMinor + 1
+      assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
+    }
+
+    if(isRelease) {
+      assert(scalaMinor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
+      if (scalaIsRC && scalaPatch == 0)
+        assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
+      else
+        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
+    }
   }
 }
 

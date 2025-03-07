@@ -27,7 +27,7 @@ import ScriptParsers.*
 import Decorators.*
 import util.Chars
 import scala.annotation.tailrec
-import rewrites.Rewrites.{patch, overlapsPatch}
+import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
 import reporting.*
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
@@ -2240,7 +2240,7 @@ object Parsers {
       atSpan(in.offset):
         if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
           in.nextToken()
-          TypeBoundsTree(EmptyTree, makeCapsBound())
+          makeCapsBound()
         else
           TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
@@ -2779,6 +2779,12 @@ object Parsers {
           simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
+          if in.rewriteToIndent then
+            app match
+              case Apply(Apply(_, List(Block(_, _))), List(blk @ Block(_, _))) =>
+                unpatch(blk.srcPos.sourcePos.source, Span(blk.span.start, blk.span.start + 1))
+                unpatch(blk.srcPos.sourcePos.source, Span(blk.span.end, blk.span.end + 1))
+              case _ =>
           simpleExprRest(app, location, canApply = true)
         case USCORE =>
           atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
@@ -3519,7 +3525,7 @@ object Parsers {
      *  UsingClsTermParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
-     *                         [{Modifier | ‘tracked’} (‘val’ | ‘var’)] Param
+     *                         [{Modifier} (‘val’ | ‘var’)] Param
      *  TypelessClause    ::= DefTermParamClause
      *                      | UsingParamClause
      *
@@ -3557,8 +3563,6 @@ object Parsers {
         if isErasedKw then
           mods = addModifier(mods)
         if paramOwner.isClass then
-          if isIdent(nme.tracked) && in.featureEnabled(Feature.modularity) && !in.lookahead.isColon then
-            mods = addModifier(mods)
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             if in.token == VAL then
@@ -3706,7 +3710,15 @@ object Parsers {
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
             if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
-              syntaxError(em"this language import is only allowed at the toplevel", id.span)
+              val desc =
+                if ctx.mode.is(Mode.Interactive) then
+                  "not allowed in the REPL"
+                else "only allowed at the toplevel"
+              val hint =
+                if ctx.mode.is(Mode.Interactive) then
+                  f"\nTo use this language feature, include the flag `-language:$prefix.$imported` when starting the REPL"
+                else ""
+              syntaxError(em"this language import is $desc$hint", id.span)
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(em"source version import is only allowed at the toplevel", id.span)

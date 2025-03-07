@@ -25,5 +25,5 @@
 -- Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:68:15 ---------------------------------------------
 68 |        Result.make: //lbl ?=> // error, escaping label from Result
    |        ^^^^^^^^^^^
-   |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9, contextual$9}, box E^?]]^):
-   |  box Future[box T^?]^{fr, contextual$9, contextual$9} leaks into outer capture set of type parameter T of method make in object Result
+   |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]^):
+   |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result

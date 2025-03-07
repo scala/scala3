@@ -1,5 +1,5 @@
-//> using options -source 3.4
-// (to make sure we use the sealed policy)
+
+
 import language.experimental.captureChecking
 trait File:
   def close(): Unit
@@ -10,7 +10,7 @@ type F = File^
 
 trait Foo[+X]:
   def use(x: F): X
-class Bar extends Foo[File^]:
+class Bar extends Foo[File^]: // error
   def use(x: F): File^ = x
 
 def bad(): Unit =
@@ -18,5 +18,5 @@ def bad(): Unit =
   val boom: Foo[File^{backdoor*}] = backdoor
 
   var escaped: File^{backdoor*} = null
-  withFile("hello.txt"): f =>  // error
-    escaped = boom.use(f)
+  withFile("hello.txt"): f =>
+    escaped = boom.use(f)  // error

@@ -4,7 +4,7 @@ def test1(): Unit = {
   type Id[X] = [T] -> (op: X => T) -> T
 
   val x: Id[Cap^] = ???
-  x(cap => cap.use())  // error, OK under sealed
+  x(cap => cap.use())
 }
 
 def test2(io: Cap^): Unit = {

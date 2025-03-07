@@ -1,6 +1,7 @@
 package dotty.tools.dotc.transform
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 import dotty.tools.uncheckedNN
 import dotty.tools.dotc.ast.tpd
@@ -24,7 +25,7 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Types.{AnnotatedType, ConstantType, NoType, TermRef, Type, TypeTraverser}
 import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameOps.isReplWrapperName
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Annotations
@@ -211,7 +212,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   /**
    * This traverse is the **main** component of this phase
    *
-   * It traverse the tree the tree and gather the data in the
+   * It traverses the tree and gathers the data in the
    * corresponding context property
    */
   private def traverser = new TreeTraverser:
@@ -456,14 +457,21 @@ object CheckUnused:
           val (wildcardSels, nonWildcardSels) = imp.selectors.partition(_.isWildcard)
           nonWildcardSels ::: wildcardSels
 
+        val excludedMembers: mutable.Set[TermName] = mutable.Set.empty
+
         val newDataInScope =
           for sel <- reorderdSelectors yield
             val data = new ImportSelectorData(qualTpe, sel)
             if shouldSelectorBeReported(imp, sel) || isImportExclusion(sel) || isImportIgnored(imp, sel) then
               // Immediately mark the selector as used
               data.markUsed()
+              if isImportExclusion(sel) then
+                excludedMembers += sel.name
+            if sel.isWildcard && excludedMembers.nonEmpty then
+              // mark excluded members for the wildcard import
+              data.markExcluded(excludedMembers.toSet)
             data
-        impInScope.top.prependAll(newDataInScope)
+        impInScope.top.appendAll(newDataInScope)
     end registerImport
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
@@ -703,7 +711,7 @@ object CheckUnused:
 
       /** Given an import and accessibility, return selector that matches import<->symbol */
       private def isInImport(selData: ImportSelectorData, altName: Option[Name], isDerived: Boolean)(using Context): Boolean =
-        assert(sym.exists)
+        assert(sym.exists, s"Symbol $sym does not exist")
 
         val selector = selData.selector
 
@@ -719,7 +727,10 @@ object CheckUnused:
               selData.allSymbolsForNamed.contains(sym)
         else
           // Wildcard
-          if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
+          if selData.excludedMembers.contains(altName.getOrElse(sym.name).toTermName) then
+            // Wildcard with exclusions that match the symbol
+            false
+          else if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
             // The qualifier does not have the target symbol as a member
             false
           else
@@ -832,10 +843,13 @@ object CheckUnused:
 
     final class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
       private var myUsed: Boolean = false
+      var excludedMembers: Set[TermName] = Set.empty
 
       def markUsed(): Unit = myUsed = true
 
       def isUsed: Boolean = myUsed
+
+      def markExcluded(excluded: Set[TermName]): Unit = excludedMembers ++= excluded
 
       private var myAllSymbols: Set[Symbol] | Null = null
 

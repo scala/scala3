@@ -126,6 +126,7 @@ trait CommonScalaSettings:
   val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
   val usejavacp: Setting[Boolean] = BooleanSetting(RootSetting, "usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
   val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
+  val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
 end CommonScalaSettings
 
 /** -P "plugin" settings. Various tools might support plugins. */
@@ -353,8 +354,7 @@ private sealed trait XSettings:
   val XreadComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xread-docs", "Read documentation from tasty.")
 
   /** Area-specific debug output */
-  val XnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
-  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.")
+  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", aliases = List("Xno-decode-stacktraces"))
   val XdebugMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdebug-macros", "Show debug info when quote pattern match fails")
 
   /** Pipeline compilation options */
@@ -487,7 +487,7 @@ private sealed trait YSettings:
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YreadComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Yread-docs", "Read documentation from tasty.", deprecation = Deprecation.renamed("-Xread-docs"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-decode-stacktraces"))
+  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")

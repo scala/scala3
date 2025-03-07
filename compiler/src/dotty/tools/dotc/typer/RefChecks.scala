@@ -21,6 +21,7 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
+import cc.stripCapturing
 
 object RefChecks {
   import tpd.*
@@ -84,7 +85,7 @@ object RefChecks {
    *  (Forwarding tends to hide problems by binding parameter names).
    */
   private def upwardsThisType(cls: Symbol)(using Context) = cls.info match {
-    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
+    case ClassInfo(_, _, _, _, tp: Type) if (tp.stripCapturing ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -1155,6 +1156,11 @@ object RefChecks {
    *
    *  If the extension method is nullary, it is always hidden by a member of the same name.
    *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
+   *
+   *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
+   *  That check would account for accessibility and opacity. As a limitation, this check considers
+   *  only public members, a target receiver that is not an alias, and corresponding method parameters
+   *  that are either both opaque types or both not.
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
     if sym.is(Extension) && !sym.nextOverriddenSymbol.exists then
@@ -1178,7 +1184,9 @@ object RefChecks {
               val memberParamTps = member.info.stripPoly.firstParamTypes
               !memberParamTps.isEmpty
               && memberParamTps.lengthCompare(paramTps) == 0
-              && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+              && memberParamTps.lazyZip(paramTps).forall: (m, x) =>
+                m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias
+                && (x frozen_<:< m)
             }
           }
         .exists

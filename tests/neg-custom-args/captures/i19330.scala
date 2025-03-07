@@ -1,5 +1,5 @@
-//> using options -source 3.4
-// (to force sealed encapsulation checking)
+
+
 import language.experimental.captureChecking
 
 trait Logger

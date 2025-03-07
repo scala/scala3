@@ -429,13 +429,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val getParams = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
-          def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(using Context) = t match {
-            case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
-            case _ => foldOver(ps, t)
-          }
-        }
-        val params1 = getParams(new mutable.ListBuffer[TypeSymbol](), pat).toList
+        val params1 = pat.bindTypeSymbols
         val params2 = pat.tpe match
           case AppliedType(tycon, args) =>
             val tparams = tycon.typeParamSymbols

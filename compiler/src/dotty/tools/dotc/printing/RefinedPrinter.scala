@@ -30,7 +30,7 @@ import config.SourceVersion.*
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains, ReachCapability, MaybeCapability}
+import cc.*
 import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -248,8 +248,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def appliedText(tp: Type): Text = tp match
       case tp @ AppliedType(tycon, args) =>
         val namedElems =
-          try tp.namedTupleElementTypesUpTo(200, normalize = false)
-          catch case ex: TypeError => Nil
+          try tp.namedTupleElementTypesUpTo(200, false, normalize = false)
+          catch
+            case ex: TypeError => Nil
         if namedElems.nonEmpty then
           toTextNamedTuple(namedElems)
         else tp.tupleElementTypesUpTo(200, normalize = false) match
@@ -285,6 +286,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially
         toText(tycon)
+      case Existential(boundVar, unpacked)
+      if !printDebug && !ctx.settings.YccDebug.value && !unpacked.existsPart(_ == boundVar) =>
+        toText(unpacked)
       case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
           isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction,
@@ -569,6 +573,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree: TypeTree =>
         typeText(toText(tree.typeOpt))
         ~ Str("(inf)").provided(tree.isInferred && printDebug)
+      case SingletonTypeTree(ref: Literal) => toTextLocal(ref)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>
@@ -1121,7 +1126,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def recur(t: untpd.Tree): Text = t match
       case Apply(fn, Nil) => recur(fn)
       case Apply(fn, args) =>
-        val explicitArgs = args.filterNot(_.symbol.name.is(DefaultGetterName))
+        val explicitArgs = args.filterNot(untpd.stripNamedArg(_).symbol.name.is(DefaultGetterName))
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
       case TypeApply(fn, args) => recur(fn) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
