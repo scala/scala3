@@ -2118,8 +2118,8 @@ trait Applications extends Compatibility {
    *  Each trial applies the `resolve` parameter.
    */
   def resolveOverloaded
-      (resolve: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef] = resolveOverloaded1)
-      (alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+      (resolve: (List[TermRef], Type) => Context ?=> List[TermRef] = resolveOverloaded1)
+      (alts: List[TermRef], pt: Type, srcPos: SrcPos = NoSourcePosition)(using Context): List[TermRef] =
     record("resolveOverloaded")
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
@@ -2172,12 +2172,12 @@ trait Applications extends Compatibility {
             val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
             if alts0 ne alts then return resolve1(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
-            return resolveMapped(alt => stripImplicit(alt.widen), resolve)(alts, pt, srcPos)
+            return resolveMapped(alt => stripImplicit(alt.widen), resolve)(alts, pt)
         case _ =>
 
-      var found = withoutMode(Mode.ImplicitsEnabled)(resolve(alts, pt, srcPos))
+      var found = withoutMode(Mode.ImplicitsEnabled)(resolve(alts, pt))
       if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
-        found = resolve(alts, pt, srcPos)
+        found = resolve(alts, pt)
       found match
         case alt :: Nil => adaptByResult(alt, alts) :: Nil
         case _ => found
@@ -2224,42 +2224,9 @@ trait Applications extends Compatibility {
    *  It might be called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded1(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+  private def resolveOverloaded1(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
   trace(i"resolve over $alts%, %, pt = $pt", typr, show = true):
     record(s"resolveOverloaded1", alts.length)
-
-    val sv = Feature.sourceVersion
-    val isOldPriorityVersion: Boolean = sv.isAtMost(SourceVersion.`3.7`)
-    val isWarnPriorityChangeVersion = sv == SourceVersion.`3.7` || sv == SourceVersion.`3.8-migration`
-
-    def warnOnPriorityChange(oldCands: List[TermRef], newCands: List[TermRef])(f: List[TermRef] => List[TermRef]): List[TermRef] =
-      lazy val oldRes = f(oldCands)
-      val newRes = f(newCands)
-
-      def doWarn(oldChoice: String, newChoice: String): Unit =
-        val (change, whichChoice) =
-          if isOldPriorityVersion
-          then ("will change", "Current choice ")
-          else ("has changed", "Previous choice")
-
-        val msg = // using oldCands to list the alternatives as they should be a superset of newCands
-          em"""Overloading resolution for ${err.expectedTypeStr(pt)} between alternatives
-              | ${oldCands map (_.info)}%\n %
-              |$change.
-              |$whichChoice          : $oldChoice
-              |New choice from Scala 3.7: $newChoice"""
-
-        report.warning(msg, srcPos)
-      end doWarn
-
-      if isWarnPriorityChangeVersion then (oldRes, newRes) match
-        case (oldAlt :: Nil, newAlt :: Nil) if oldAlt != newAlt => doWarn(oldAlt.info.show, newAlt.info.show)
-        case (oldAlt :: Nil, Nil) => doWarn(oldAlt.info.show, "none")
-        case (Nil, newAlt :: Nil) => doWarn("none", newAlt.info.show)
-        case _ => // neither scheme has determined an alternative
-
-      if isOldPriorityVersion then oldRes else newRes
-    end warnOnPriorityChange
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -2290,7 +2257,7 @@ trait Applications extends Compatibility {
       alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
 
     def narrowByNextParamClause
-        (resolve: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef])
+        (resolve: (List[TermRef], Type) => Context ?=> List[TermRef])
         (alts: List[TermRef], args: List[Tree], resultType: FunOrPolyProto): List[TermRef] =
 
       /** The type of alternative `alt` after instantiating its first parameter
@@ -2316,10 +2283,10 @@ trait Applications extends Compatibility {
       resultType match
         case PolyProto(targs, resType) =>
           // try to narrow further with snd argument list and following type params
-          resolveMapped(skipParamClause(targs.tpes), resolve)(alts, resType, srcPos)
+          resolveMapped(skipParamClause(targs.tpes), resolve)(alts, resType)
         case resType =>
           // try to narrow further with snd argument list
-          resolveMapped(skipParamClause(Nil), resolve)(alts, resType, srcPos)
+          resolveMapped(skipParamClause(Nil), resolve)(alts, resType)
     end narrowByNextParamClause
 
     /** Normalization steps before checking arguments:
@@ -2381,7 +2348,7 @@ trait Applications extends Compatibility {
     // Note it is important not to capture the outer ctx, for when it is passed to resolveMapped
     // (through narrowByNextParamClause) which retracts the Mode.SynthesizeExtMethodReceiver from the ctx
     // before continuing to `resolveCandidates`.
-    def resolveCandidates(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] = pt match
+    def resolveCandidates(alts: List[TermRef], pt: Type)(using Context): List[TermRef] = pt match
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
         def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
@@ -2450,7 +2417,7 @@ trait Applications extends Compatibility {
               TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
           val alts2 = alts1.filter(withinBounds)
           if isDetermined(alts2) then alts2
-          else resolveMapped(_.widen.appliedTo(targs1.tpes), resolveCandidates)(alts1, pt1, srcPos)
+          else resolveMapped(_.widen.appliedTo(targs1.tpes), resolveCandidates)(alts1, pt1)
 
       case pt =>
         val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
@@ -2481,7 +2448,7 @@ trait Applications extends Compatibility {
       case _ => false
 
     // Like resolveCandidates, we should not capture the outer ctx parameter.
-    def resolveOverloaded2(candidates: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+    def resolveOverloaded2(candidates: List[TermRef], pt: Type)(using Context): List[TermRef] =
       if pt.unusableForInference then
         // `pt` might have become erroneous by typing arguments of FunProtos.
         // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
@@ -2493,8 +2460,7 @@ trait Applications extends Compatibility {
           val deepPt = pt.deepenProto
           deepPt match
             case pt @ FunProto(_, resType: FunOrPolyProto) =>
-              warnOnPriorityChange(candidates, found):
-                narrowByNextParamClause(resolveOverloaded1)(_, pt.typedArgs(), resType)
+              narrowByNextParamClause(resolveOverloaded1)(found, pt.typedArgs(), resType)
             case _ =>
               // prefer alternatives that need no eta expansion
               val noCurried = alts.filterConserve(!resultIsMethod(_))
@@ -2502,7 +2468,7 @@ trait Applications extends Compatibility {
               if noCurriedCount == 1 then
                 noCurried
               else if noCurriedCount > 1 && noCurriedCount < alts.length then
-                resolveOverloaded1(noCurried, pt, srcPos)
+                resolveOverloaded1(noCurried, pt)
               else
                 // prefer alternatves that match without default parameters
                 val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
@@ -2510,10 +2476,10 @@ trait Applications extends Compatibility {
                 if noDefaultsCount == 1 then
                   noDefaults
                 else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-                  resolveOverloaded1(noDefaults, pt, srcPos)
+                  resolveOverloaded1(noDefaults, pt)
                 else if deepPt ne pt then
                   // try again with a deeper known expected type
-                  resolveOverloaded1(alts, deepPt, srcPos)
+                  resolveOverloaded1(alts, deepPt)
                 else
                   candidates
     end resolveOverloaded2
@@ -2523,9 +2489,9 @@ trait Applications extends Compatibility {
     // but restarting from the 1st argument list.
     // In both cases, considering subsequent argument lists only narrows the set of alternatives
     // (i.e. we do retry from the complete list of alternative mapped onto there next param clause).
-    val candidates = resolveCandidates(alts, pt, srcPos)
+    val candidates = resolveCandidates(alts, pt)
     record("resolveOverloaded.narrowedApplicable", candidates.length)
-    resolveOverloaded2(candidates, pt, srcPos)
+    resolveOverloaded2(candidates, pt)
   end resolveOverloaded1
 
   /** Is `formal` a product type which is elementwise compatible with `params`? */
@@ -2557,8 +2523,8 @@ trait Applications extends Compatibility {
    *  and the expected type is `pt`. Map the results back to the original alternatives.
    */
   def resolveMapped
-      (f: TermRef => Type, resolve: (List[TermRef], Type, SrcPos) => Context ?=> List[TermRef])
-      (alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+      (f: TermRef => Type, resolve: (List[TermRef], Type) => Context ?=> List[TermRef])
+      (alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists && alt.symbol.exists then
@@ -2581,7 +2547,7 @@ trait Applications extends Compatibility {
     }
     val mapped = reverseMapping.map(_._1)
     overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
-    resolveOverloaded(resolve)(mapped, pt, srcPos)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
+    resolveOverloaded(resolve)(mapped, pt)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
       .map(reverseMapping.toMap)
   end resolveMapped
 
