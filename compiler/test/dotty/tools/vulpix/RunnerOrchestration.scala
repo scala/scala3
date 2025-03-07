@@ -85,8 +85,6 @@ trait RunnerOrchestration {
    *  it died
    */
   private class RunnerMonitor {
-    /** Did add hook to kill the child VMs? */
-    private val didAddCleanupCallback = new AtomicBoolean(false)
 
     def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
       withRunner(_.runMain(classPath))
@@ -118,7 +116,6 @@ trait RunnerOrchestration {
     end RunnerProcess
 
     private class Runner(private var process: RunnerProcess):
-
       /** Checks if `process` is still alive
        *
        *  When `process.exitValue()` is called on an active process the caught
@@ -236,10 +233,6 @@ trait RunnerOrchestration {
     }
 
     private def withRunner[T](op: Runner => T)(using summaryReport: SummaryReporting): T =
-      // If for some reason the test runner (i.e. sbt) doesn't kill the VM,
-      // we need to clean up ourselves.
-      if didAddCleanupCallback.compareAndSet(false, true) then
-        summaryReport.addCleanup(() => killAll())
       val runner = getRunner()
       val result = op(runner)
       freeRunner(runner)

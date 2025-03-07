@@ -5,6 +5,7 @@ import dotty.Properties
 import dotty.tools.dotc.reporting.TestReporter
 import dotty.tools.io.JFile
 import dotty.tools.vulpix.*
+import org.junit.AfterClass
 import org.junit.Test
 
 import java.util.concurrent.TimeoutException
@@ -31,6 +32,9 @@ object DebugTests extends ParallelTesting:
   override def debugMode = true
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
+  @AfterClass def tearDown(): Unit =
+    super.cleanup()
+    summaryReport.echoSummary()
 
   extension (test: CompilationTest)
     private def checkDebug()(implicit summaryReport: SummaryReporting): test.type =
