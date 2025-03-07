@@ -100,6 +100,8 @@ class CCState:
 
   private var openExistentialScopes: List[MethodType] = Nil
 
+  private var capIsRoot: Boolean = false
+
 object CCState:
 
   opaque type Level = Int
@@ -143,6 +145,21 @@ object CCState:
       try op finally ccs.openExistentialScopes = saved
     else
       op
+
+  /** Run `op` under the assumption that `cap` can subsume all other capabilties
+   *  except Result capabilities. Every use of this method should be scrutinized
+   *  for whether it introduces an unsoundness hole.
+   */
+  inline def withCapAsRoot[T](op: => T)(using Context): T =
+    if isCaptureCheckingOrSetup then
+      val ccs = ccState
+      val saved = ccs.capIsRoot
+      ccs.capIsRoot = true
+      try op finally ccs.capIsRoot = saved
+    else op
+
+  /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
+  def capIsRoot(using Context): Boolean = ccState.capIsRoot
 
   /** The currently opened existential scopes */
   def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
@@ -441,14 +458,30 @@ extension (tp: Type)
     case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
     case _ => false
 
-  /** Tests whether the type derives from `caps.Capability`, which means
-   *  references of this type are maximal capabilities.
+  /** Tests whether all CapturingType parts of the type that are traversed for
+   *  dcs computation satisfy at least one of two conditions:
+   *   1. They decorate classes that extend the given capability class `cls`, or
+   *   2. Their capture set is constant and consists only of capabilities
+   *      the derive from `cls` in the sense of `derivesFromCapTrait`.
    */
-  def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = tp.dealias match
+  def derivesFromCapTraitDeeply(cls: ClassSymbol)(using Context): Boolean =
+    val accumulate = new DeepTypeAccumulator[Boolean]:
+      def capturingCase(acc: Boolean, parent: Type, refs: CaptureSet) =
+        this(acc, parent)
+        && (parent.derivesFromCapTrait(cls)
+            || refs.isConst && refs.elems.forall(_.derivesFromCapTrait(cls)))
+      def abstractTypeCase(acc: Boolean, t: TypeRef, upperBound: Type) =
+        this(acc, upperBound)
+    accumulate(true, tp)
+
+  /** Tests whether the type derives from capability class `cls`. */
+  def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = tp.dealiasKeepAnnots match
     case tp: (TypeRef | AppliedType) =>
       val sym = tp.typeSymbol
       if sym.isClass then sym.derivesFrom(cls)
       else tp.superType.derivesFromCapTrait(cls)
+    case ReachCapability(tp1) =>
+      tp1.widen.derivesFromCapTraitDeeply(cls)
     case tp: (TypeProxy & ValueType) =>
       tp.superType.derivesFromCapTrait(cls)
     case tp: AndType =>
@@ -545,7 +578,7 @@ extension (tp: Type)
       var change = false
       def apply(t: Type) =
         if variance <= 0 then t
-        else t.dealiasKeepAnnots match
+        else t.dealias match
           case t @ CapturingType(p, cs) if cs.containsRootCapability =>
             change = true
             val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
@@ -804,33 +837,6 @@ object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnn
 object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot):
   protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot, defn.ReadOnlyCapabilityAnnot)
 
-/** Offers utility method to be used for type maps that follow aliases */
-trait ConservativeFollowAliasMap(using Context) extends TypeMap:
-
-  /** If `mapped` is a type alias, apply the map to the alias, while keeping
-   *  annotations. If the result is different, return it, otherwise return `mapped`.
-   *  Furthermore, if `original` is a LazyRef or TypeVar and the mapped result is
-   *  the same as the underlying type, keep `original`. This avoids spurious differences
-   *  which would lead to spurious dealiasing in the result
-   */
-  protected def applyToAlias(original: Type, mapped: Type) =
-    val mapped1 = mapped match
-      case t: (TypeRef | AppliedType) =>
-        val t1 = t.dealiasKeepAnnots
-        if t1 eq t then t
-        else
-          // If we see a type alias, map the alias type and keep it if it's different
-          val t2 = apply(t1)
-          if t2 ne t1 then t2 else t
-      case _ =>
-        mapped
-    original match
-      case original: (LazyRef | TypeVar) if mapped1 eq original.underlying =>
-        original
-      case _ =>
-        mapped1
-end ConservativeFollowAliasMap
-
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?
  *  @return  1st half: The argument types or empty if this is a type function
@@ -884,3 +890,36 @@ object ContainsParam:
       if tycon.typeSymbol == defn.Caps_ContainsTrait
           && cs.typeSymbol.isAbstractOrParamType => Some((cs, ref))
       case _ => None
+
+/** A class encapsulating the assumulator logic needed for `CaptureSet.ofTypeDeeply`
+ *  and `derivesFromCapTraitDeeply`.
+ *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
+ *  replaces caps with reach capabilties. There are two exceptions, however.
+ *   - First, invariant arguments. These have to be included to be conservative
+ *     in dcs but must be excluded in narrowCaps.
+ *   - Second, unconstrained type variables are handled specially in `ofTypeDeeply`.
+ */
+abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
+  val seen = util.HashSet[Symbol]()
+
+  protected def capturingCase(acc: T, parent: Type, refs: CaptureSet): T
+
+  protected def abstractTypeCase(acc: T, t: TypeRef, upperBound: Type): T
+
+  def apply(acc: T, t: Type) =
+    if variance < 0 then acc
+    else t.dealias match
+      case t @ CapturingType(p, cs1) =>
+        capturingCase(acc, p, cs1)
+      case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
+        seen += t.symbol
+        abstractTypeCase(acc, t, t.info.bounds.hi)
+      case AnnotatedType(parent, _) =>
+        this(acc, parent)
+      case t @ FunctionOrMethod(args, res) =>
+        if args.forall(_.isAlwaysPure) then this(acc, root.resultToFresh(res))
+        else acc
+      case _ =>
+        foldOver(acc, t)
+end DeepTypeAccumulator
+

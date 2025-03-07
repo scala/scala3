@@ -27,7 +27,10 @@ import caps.use
 
   def test2(@use lbls: List[Label^]) =
     def makeListener(lbl: Label^): Listener^{lbl} = ???
-    val listeners = lbls.map(makeListener)
+    val listeners = lbls.map(makeListener) // error
+      // we get an error here because we no longer allow contravariant cap
+      // to subsume other capabilities. The problem can be solved by declaring
+      // Label a SharedCapability, see cc-poly-source-capability.scala
     val src = Source[CapSet^{lbls*}]
     for l <- listeners do
       src.register(l)

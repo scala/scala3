@@ -260,10 +260,20 @@ trait CaptureRef extends TypeProxy, ValueType:
             ccState.existentialSubsumesFailure.orElse(Some(this, y))
           false
       case _ =>
-        this.isCap && !yIsExistential && canAddHidden && vs != VarState.HardSeparate
-        || y.match
-            case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
-            case _ => false
+        y match
+          case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
+          case _ if this.isCap =>
+            y.isCap
+            || y.derivesFromSharedCapability
+            || !yIsExistential
+                && canAddHidden
+                && vs != VarState.HardSeparate
+                && (CCState.capIsRoot
+                    // || { println(i"no longer $this maxSubsumes $y, ${y.isCap}"); false } // debug
+                   )
+            || false
+          case _ =>
+            false
 
   /** `x covers y` if we should retain `y` when computing the overlap of
    *  two footprints which have `x` respectively `y` as elements.

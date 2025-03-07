@@ -206,7 +206,8 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      elems.exists(_.subsumes(x)(using ctx, VarState.ClosedUnrecorded))
+      CCState.withCapAsRoot: // OK here since we opportunistically choose an alternative which gets checked later
+        elems.exists(_.subsumes(x)(using ctx, VarState.ClosedUnrecorded))
       || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems
@@ -639,14 +640,15 @@ object CaptureSet:
      */
     def solve()(using Context): Unit =
       if !isConst then
-        val approx = upperApprox(empty)
-          .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
-          .showing(i"solve $this = $result", capt)
-        //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
-        val newElems = approx.elems -- elems
-        given VarState()
-        if tryInclude(newElems, empty).isOK then
-          markSolved()
+        CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
+          val approx = upperApprox(empty)
+            .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
+            .showing(i"solve $this = $result", capt)
+          //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
+          val newElems = approx.elems -- elems
+          given VarState()
+          if tryInclude(newElems, empty).isOK then
+            markSolved()
 
     /** Mark set as solved and propagate this info to all dependent sets */
     def markSolved()(using Context): Unit =
@@ -1356,31 +1358,14 @@ object CaptureSet:
 
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
-   *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
-   *  replaces caps with reach capabilties. The one exception to this is invariant
-   *  arguments. These have to be included to be conservative in dcs but must be
-   *  excluded in narrowCaps.
    */
   def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
-    val collect = new TypeAccumulator[CaptureSet]:
-      val seen = util.HashSet[Symbol]()
-      def apply(cs: CaptureSet, t: Type) =
-        if variance < 0 then cs
-        else t.dealias match
-          case t @ CapturingType(p, cs1) =>
-            this(cs, p) ++ cs1
-          case t @ AnnotatedType(parent, ann) =>
-            this(cs, parent)
-          case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
-            seen += t.symbol
-            val upper = t.info.bounds.hi
-            if includeTypevars && upper.isExactlyAny then CaptureSet.fresh(t.symbol)
-            else this(cs, upper)
-          case t @ FunctionOrMethod(args, res) =>
-            if args.forall(_.isAlwaysPure) then this(cs, root.resultToFresh(res))
-            else cs
-          case _ =>
-            foldOver(cs, t)
+    val collect = new DeepTypeAccumulator[CaptureSet]:
+      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
+        this(acc, parent) ++ refs
+      def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
+        if includeTypevars && upperBound.isExactlyAny then CaptureSet.fresh(t.symbol)
+        else this(acc, upperBound)
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[CaptureRef]]
