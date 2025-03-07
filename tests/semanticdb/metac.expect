@@ -4367,7 +4367,7 @@ Uri => exports-example-Codec.scala
 Text => empty
 Language => Scala
 Symbols => 21 entries
-Occurrences => 33 entries
+Occurrences => 35 entries
 
 Symbols:
 exports/example/Codec# => trait Codec [typeparam T ] extends Object with Decoder[T] with Encoder[T] { self: Codec[T] => +6 decls }
@@ -4425,7 +4425,9 @@ Occurrences:
 [11:26..11:33): Encoder -> exports/example/Encoder#
 [11:34..11:35): T -> exports/example/Codec#[T]
 [12:9..12:15): decode -> exports/example/Codec#decode.
+[12:16..12:17): _ -> exports/example/Decoder#decode().
 [13:9..13:15): encode -> exports/example/Codec#encode.
+[13:16..13:17): _ -> exports/example/Encoder#encode().
 
 expect/exports-package.scala
 ----------------------------
