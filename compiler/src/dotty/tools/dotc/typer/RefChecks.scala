@@ -21,7 +21,7 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
-import cc.{stripCapturing, isUpdateMethod}
+import cc.{stripCapturing, isUpdateMethod, CCState}
 
 object RefChecks {
   import tpd.*
@@ -107,7 +107,9 @@ object RefChecks {
       def checkSelfConforms(other: ClassSymbol) =
         var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists then
-          if !(cinfo.selfType <:< otherSelf) then
+          if !CCState.withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
+            cinfo.selfType <:< otherSelf
+        then
             report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
               cls.srcPos)
 

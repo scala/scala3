@@ -45,5 +45,5 @@ def test5(): Unit =
   val a: Ref[Int]^ = Ref(0)
   val foo: (x: Ref[Int]^) -> (y: Ref[Int]^) ->{x} Unit =
     x => y => swap(x, y)
-  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // should be error, but we don't check params
+  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
   f(a)

@@ -698,7 +698,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.stripCapturing.capturing(CaptureSet.universal))
+        val argType0 = recheck(arg, pt.stripCapturing.capturing(root.Fresh()))
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing
@@ -1105,7 +1105,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
             && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
-            checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
+            CCState.withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
+              checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
         for pureBase <- cls.pureBaseClass do // (4)
           def selfTypeTree = impl.body
             .collect:
@@ -1452,7 +1453,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           val cs = actual.captureSet
           if covariant then cs ++ leaked
           else
-            if !leaked.subCaptures(cs).isOK then
+            if CCState.withCapAsRoot: // Not sure this is OK, actually
+              !leaked.subCaptures(cs).isOK
+            then
               report.error(
                 em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
                     |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", tree.srcPos)
@@ -1854,7 +1857,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                 val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
-                checkBounds(normArgs, tl)
+                CCState.withCapAsRoot: // OK? We need this since bounds use `cap` instead of `fresh`
+                  checkBounds(normArgs, tl)
                 args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
               case _ =>
           case _ =>

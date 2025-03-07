@@ -1,3 +1,10 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-curried.scala:48:43 ----------------------------------
+48 |  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
+   |                                        ^^^^^^
+   |                                        Found:    (y: Ref[Int]^) ->{a} Unit
+   |                                        Required: (y: Ref[Int]^{a}) ->{a} Unit
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:16:6 --------------------------------------------------------
 16 |  foo(a)(a)  // error
    |      ^
