@@ -25,7 +25,8 @@ object root:
     case Result(binder: MethodType)
     case Fresh(hidden: CaptureSet.HiddenSet)
 
-    override def equals(other: Any): Boolean = this match
+    override def equals(other: Any): Boolean =
+      (this eq other.asInstanceOf[AnyRef]) || this.match
       case Kind.Result(b1) => other match
         case Kind.Result(b2) => b1 eq b2
         case _ => false
@@ -271,13 +272,14 @@ object root:
           case t: TermRef => t.isCap || this(x, t.widen)
           case x: ThisType => false
           case _ => foldOver(x, t)
-    def containsFresh(x: Type | CaptureSet): Boolean = x match
+
+    def containsCap(x: Type | CaptureSet): Boolean = x match
       case tp: Type =>
         hasCap(false, tp)
       case refs: CaptureSet =>
         refs.elems.exists(_.stripReadOnly.isCap)
 
-    if refs.exists(containsFresh) then ctx.withProperty(PrintFresh, Some(()))
+    if refs.exists(containsCap) then ctx.withProperty(PrintFresh, Some(()))
     else ctx
   end printContext
 end root
