@@ -8,7 +8,8 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
 import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName}
-import dotty.tools.dotc.core.NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, WildcardParamName}
+import dotty.tools.dotc.core.NameKinds.{
+  BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import dotty.tools.dotc.core.Types.*
@@ -175,7 +176,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForDefDef(tree: DefDef)(using Context): Context =
     def trivial = tree.symbol.is(Deferred) || isUnconsuming(tree.rhs)
     def nontrivial = tree.symbol.isConstructor || tree.symbol.isAnonymousFunction
-    if !nontrivial && trivial then
+    def isDefault = tree.symbol.name.is(DefaultGetterName)
+    if !nontrivial && trivial || isDefault then
       refInfos.skip.addOne(tree.symbol)
     if tree.symbol.is(Inline) then
       refInfos.inliners += 1
