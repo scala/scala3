@@ -357,13 +357,25 @@ object Symbols extends SymUtils {
         targets.match
           case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
           case _                    => this
-      else if (denot.is(Synthetic)) {
+      else if denot.is(Synthetic) then
         val linked = denot.linkedClass
         if (linked.exists && !linked.is(Synthetic))
           linked
         else
           denot.owner.sourceSymbol
-      }
+      else if (
+        denot.is(TypeParam) &&
+        denot.maybeOwner.maybeOwner.isAllOf(EnumCase) &&
+        denot.maybeOwner.isPrimaryConstructor
+      ) then
+        val enclosingEnumCase = denot.maybeOwner.maybeOwner
+        val caseTypeParam = enclosingEnumCase.typeParams.find(_.name == denot.name)
+        if caseTypeParam.exists(_.is(Synthetic)) then
+          val enumClass = enclosingEnumCase.info.firstParent.typeSymbol
+          val sourceTypeParam = enumClass.typeParams.find(_.name == denot.name)
+          sourceTypeParam.getOrElse(this)
+        else
+          caseTypeParam.getOrElse(this)
       else if (denot.isPrimaryConstructor)
         denot.owner.sourceSymbol
       else this
