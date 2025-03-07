@@ -11,3 +11,7 @@ eval test2
 result 42
 eval m2(test2)
 result 42
+eval
+  inline val x = 3
+  x
+result 3

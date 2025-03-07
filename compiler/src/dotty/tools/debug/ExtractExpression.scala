@@ -58,10 +58,6 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
         case tree: ImportOrExport => tree
         case tree if isLocalToExpression(tree.symbol) => super.transform(tree)
 
-        case tree if tree.symbol.is(Inline) =>
-          val tpe = tree.symbol.info.asInstanceOf[ConstantType]
-          cpy.Literal(tree)(tpe.value)
-
         // static object
         case tree: (Ident | Select | This) if isStaticObject(tree.symbol) =>
           getStaticObject(tree)(tree.symbol.moduleClass)
