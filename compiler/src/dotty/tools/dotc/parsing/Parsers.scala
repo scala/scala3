@@ -3288,6 +3288,7 @@ object Parsers {
     private def modOfToken(tok: Int, name: Name): Mod = tok match {
       case ABSTRACT    => Mod.Abstract()
       case FINAL       => Mod.Final()
+      case IMPLICIT if ctx.settings.YimplicitAsGiven.value => Mod.GivenFromImplicit()
       case IMPLICIT    => Mod.Implicit()
       case GIVEN       => Mod.Given()
       case LAZY        => Mod.Lazy()
@@ -3557,7 +3558,7 @@ object Parsers {
 
       def paramMods() =
         if in.token == IMPLICIT then
-          addParamMod(() => Mod.Implicit())
+          addParamMod(() => if (ctx.settings.YimplicitAsGiven.value) Mod.GivenFromImplicit() else Mod.Implicit())
         else if isIdent(nme.using) then
           if initialMods.is(Given) then
             syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
