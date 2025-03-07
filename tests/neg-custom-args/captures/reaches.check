@@ -1,18 +1,18 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:11 --------------------------------------
 22 |    cur = (() => f.write()) :: Nil // error
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
-   |           Found:    List[box () ->{f} Unit]
-   |           Required: List[box () ->{xs*} Unit]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |          Found:    List[box () ->{f} Unit]
+   |          Required: List[box () ->{xs*} Unit]
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:33:7 ---------------------------------------
 33 |      (() => f.write()) :: Nil // error
-   |       ^^^^^^^^^^^^^^^^^^^^^^^
-   |       Found:    List[box () ->{f} Unit]
-   |       Required: box List[box () ->{xs*} Unit]^?
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^
+   |      Found:    List[box () ->{f} Unit]
+   |      Required: box List[box () ->{xs*} Unit]^?
    |
-   |       Note that reference (f : File^), defined in method $anonfun
-   |       cannot be included in outer capture set {xs*} of value cur
+   |      Note that reference (f : File^), defined in method $anonfun
+   |      cannot be included in outer capture set {xs*} of value cur
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:36:6 ------------------------------------------------------------

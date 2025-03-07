@@ -1656,7 +1656,7 @@ object desugar {
       val sel = Select(fn, op.name).withSpan(selectPos)
       if (left.sourcePos.endLine < op.sourcePos.startLine)
         sel.pushAttachment(MultiLineInfix, ())
-      arg match
+      val apply = arg match
         case Parens(arg) =>
           Apply(sel, assignToNamedArg(arg) :: Nil)
         case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
@@ -1665,6 +1665,7 @@ object desugar {
           Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
           Apply(sel, arg :: Nil)
+      apply.withSpan(apply.span.union(arg.span))
 
     if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
