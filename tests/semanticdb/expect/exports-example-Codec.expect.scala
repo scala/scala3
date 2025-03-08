@@ -10,6 +10,6 @@ trait Encoder/*<-exports::example::Encoder#*/[-T/*<-exports::example::Encoder#[T
 
 trait Codec/*<-exports::example::Codec#*/[T/*<-exports::example::Codec#[T]*/](decode/*<-exports::example::Codec#decode.*/: Decoder/*->exports::example::Decoder#*/[T/*->exports::example::Codec#[T]*/], encode/*<-exports::example::Codec#encode.*/: Encoder/*->exports::example::Encoder#*/[T/*->exports::example::Codec#[T]*/])
   extends Decoder/*->exports::example::Decoder#*/[T/*->exports::example::Codec#[T]*/] with Encoder/*->exports::example::Encoder#*/[T/*->exports::example::Codec#[T]*/] {
-  export decode/*->exports::example::Codec#decode.*/._
-  export encode/*->exports::example::Codec#encode.*/._
+  export decode/*->exports::example::Codec#decode.*/._/*->exports::example::Decoder#decode().*/
+  export encode/*->exports::example::Codec#encode.*/._/*->exports::example::Encoder#encode().*/
 }
