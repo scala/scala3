@@ -36,7 +36,6 @@ import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
 
 import collection.mutable
-import annotation.tailrec
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
@@ -52,7 +51,8 @@ import config.Config
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
-import scala.annotation.constructorOnly
+import scala.annotation.{unchecked as _, *}
+import dotty.tools.dotc.util.chaining.*
 
 object Typer {
 
@@ -4239,6 +4239,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       def addImplicitArgs(using Context) =
         def hasDefaultParams = methPart(tree).symbol.hasDefaultParams
+        def findDefaultArgument(argIndex: Int): Tree =
+          def appPart(t: Tree): Tree = t match
+            case Block(_, expr)      => appPart(expr)
+            case Inlined(_, _, expr) => appPart(expr)
+            case t => t
+          defaultArgument(appPart(tree), n = argIndex, testOnly = false)
         def implicitArgs(formals: List[Type], argIndex: Int, pt: Type): List[Tree] = formals match
           case Nil => Nil
           case formal :: formals1 =>
@@ -4260,13 +4266,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 then implicitArgs(formals, argIndex, pt1)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt1)
               case failed: SearchFailureType =>
-                lazy val defaultArg =
-                  def appPart(t: Tree): Tree = t match
-                    case Block(stats, expr) => appPart(expr)
-                    case Inlined(_, _, expr) => appPart(expr)
-                    case _ => t
-                  defaultArgument(appPart(tree), argIndex, testOnly = false)
-                    .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
+                lazy val defaultArg = findDefaultArgument(argIndex)
+                  .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
                 if !hasDefaultParams || defaultArg.isEmpty then
                   // no need to search further, the adapt fails in any case
                   // the reason why we continue inferring arguments in case of an AmbiguousImplicits
@@ -4288,44 +4289,44 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 arg :: inferArgsAfter(arg)
         end implicitArgs
 
-        /** Reports errors for arguments of `appTree` that have a
-          * `SearchFailureType`.
-          */
-        def issueErrors(fun: Tree, args: List[Tree]): Tree =
-          // Prefer other errors over ambiguities. If nested in outer searches a missing
-          // implicit can be healed by simply dropping this alternative and trying something
-          // else. But an ambiguity is sticky and propagates outwards. If we have both
-          // a missing implicit on one argument and an ambiguity on another the whole
-          // branch should be classified as a missing implicit.
-          val firstNonAmbiguous = args.tpes.find(tp => tp.isError && !tp.isInstanceOf[AmbiguousImplicits])
-          def firstError = args.tpes.find(_.isInstanceOf[SearchFailureType]).getOrElse(NoType)
-          def firstFailure = firstNonAmbiguous.getOrElse(firstError)
-          val errorType =
-            firstFailure match
-              case tp: AmbiguousImplicits =>
-                AmbiguousImplicits(tp.alt1, tp.alt2, tp.expectedType, tp.argument, nested = true)
-              case tp =>
-                tp
-          val res = untpd.Apply(fun, args).withType(errorType)
+        // Pick a failure type to propagate, if any.
+        // Prefer other errors over ambiguities. If nested in outer searches a missing
+        // implicit can be healed by simply dropping this alternative and trying something
+        // else. But an ambiguity is sticky and propagates outwards. If we have both
+        // a missing implicit on one argument and an ambiguity on another the whole
+        // branch should be classified as a missing implicit.
+        def propagatedFailure(args: List[Tree]): Type = args match
+          case arg :: args => arg.tpe match
+            case ambi: AmbiguousImplicits => propagatedFailure(args) match
+              case NoType | (_: AmbiguousImplicits) => ambi
+              case failed => failed
+            case failed: SearchFailureType => failed
+            case _ => propagatedFailure(args)
+          case Nil => NoType
 
-          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
-            arg.tpe match
-              case failure: SearchFailureType =>
-                val methodStr = err.refStr(methPart(fun).tpe)
-                val paramStr = implicitParamString(paramName, methodStr, fun)
-                val paramSym = fun.symbol.paramSymss.flatten.find(_.name == paramName)
-                val paramSymWithMethodCallTree = paramSym.map((_, res))
-                report.error(
-                   missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree),
-                   tree.srcPos.endPos
-                 )
-              case _ =>
-          }
-
-          res
+        /** Reports errors for arguments of `appTree` that have a `SearchFailureType`.
+         */
+        def issueErrors(fun: Tree, args: List[Tree], failureType: Type): Tree =
+          val errorType = failureType match
+            case ai: AmbiguousImplicits => ai.asNested
+            case tp => tp
+          untpd.Apply(fun, args)
+            .withType(errorType)
+            .tap: res =>
+              wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach: (paramName, formal, arg) =>
+                arg.tpe match
+                case failure: SearchFailureType =>
+                  val methodStr = err.refStr(methPart(fun).tpe)
+                  val paramStr = implicitParamString(paramName, methodStr, fun)
+                  val paramSym = fun.symbol.paramSymss.flatten.find(_.name == paramName)
+                  val paramSymWithMethodCallTree = paramSym.map((_, res))
+                  val msg = missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree)
+                  report.error(msg, tree.srcPos.endPos)
+                case _ =>
 
         val args = implicitArgs(wtp.paramInfos, 0, pt)
-        if (args.tpes.exists(_.isInstanceOf[SearchFailureType])) {
+        val failureType = propagatedFailure(args)
+        if failureType.exists then
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint and instantiated variables
@@ -4334,32 +4335,40 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if hasDefaultParams then
+          if hasDefaultParams && !failureType.isInstanceOf[AmbiguousImplicits] then
             // Only keep the arguments that don't have an error type, or that
-            // have an `AmbiguousImplicits` error type. The later ensures that a
+            // have an `AmbiguousImplicits` error type. The latter ensures that a
             // default argument can't override an ambiguous implicit. See tests
             // `given-ambiguous-default*` and `19414*`.
             val namedArgs =
-              wtp.paramNames.lazyZip(args)
-                .filter((_, arg) => !arg.tpe.isError || arg.tpe.isInstanceOf[AmbiguousImplicits])
-                .map((pname, arg) => untpd.NamedArg(pname, untpd.TypedSplice(arg)))
+              wtp.paramNames.lazyZip(args).collect:
+                case (pname, arg) if !arg.tpe.isError || arg.tpe.isInstanceOf[AmbiguousImplicits] =>
+                  untpd.NamedArg(pname, untpd.TypedSplice(arg))
+              .toList
+            val usingDefaultArgs =
+              wtp.paramNames.zipWithIndex
+                .exists((n, i) => !namedArgs.exists(_.name == n) && !findDefaultArgument(i).isEmpty)
 
-            val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-            val needsUsing = wtp.isContextualMethod || wtp.match
-              case MethodType(ContextBoundParamName(_) :: _) => sourceVersion.isAtLeast(`3.4`)
-              case _ => false
-            if needsUsing then app.setApplyKind(ApplyKind.Using)
-            typr.println(i"try with default implicit args $app")
-            val retyped = typed(app, pt, locked)
-
-            // If the retyped tree still has an error type and is an `Apply`
-            // node, we can report the errors for each argument nicely.
-            // Otherwise, we don't report anything here.
-            retyped match
-              case Apply(tree, args) if retyped.tpe.isError => issueErrors(tree, args)
-              case _ => retyped
-          else issueErrors(tree, args)
-        }
+            if !usingDefaultArgs then
+              issueErrors(tree, args, failureType)
+            else
+              val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
+              // old-style implicit needs to be marked using so that implicits are searched
+              val needsUsing = wtp.isImplicitMethod || wtp.match
+                case MethodType(ContextBoundParamName(_) :: _) => sourceVersion.isAtLeast(`3.4`)
+                case _ => false
+              if needsUsing then app.setApplyKind(ApplyKind.Using)
+              typr.println(i"try with default implicit args $app")
+              // If the retyped tree still has an error type and is an `Apply`
+              // node, we can report the errors for each argument nicely.
+              // Otherwise, we don't report anything here.
+              typed(app, pt, locked) match
+                case retyped @ Apply(tree, args) if retyped.tpe.isError =>
+                  propagatedFailure(args) match
+                  case sft: SearchFailureType => issueErrors(tree, args, sft)
+                  case _ => issueErrors(tree, args, retyped.tpe)
+                case retyped => retyped
+          else issueErrors(tree, args, failureType)
         else
           inContext(origCtx):
             // Reset context in case it was set to a supercall context before.
