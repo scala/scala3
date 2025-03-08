@@ -14,7 +14,3 @@
 7 |  tracked def f: F // error
   |  ^^^^^^^^^^^^^^^^
   |  Modifier tracked is not allowed for this definition
--- [E156] Syntax Error: tests/neg/abstract-tracked.scala:14:14 ---------------------------------------------------------
-14 |  tracked val x = 1 // error
-   |  ^^^^^^^^^^^^^^^^^
-   |  Modifier tracked is not allowed for this definition
