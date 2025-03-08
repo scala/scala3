@@ -985,7 +985,7 @@ class TreeUnpickler(reader: TastyReader,
       // If explicit nulls is enabled, and the source file did not have explicit
       // nulls enabled, nullify the member to allow for compatibility.
       if (ctx.explicitNulls && !explicitNulls) then
-        sym.info = JavaNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
+        sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
 
       goto(end)
       setSpan(start, tree)

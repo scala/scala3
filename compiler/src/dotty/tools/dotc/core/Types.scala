@@ -3427,6 +3427,7 @@ object Types extends TypeUtils {
         // flexible type is always a subtype of the original type and the Object type.
         // It is not necessary according to the use cases, so we choose to use a simpler
         // rule.
+        assert(!tp.isInstanceOf[LazyType])
         FlexibleType(OrNull(tp), tp)
     }
   }
