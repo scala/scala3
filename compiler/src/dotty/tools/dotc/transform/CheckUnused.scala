@@ -459,11 +459,11 @@ object CheckUnused:
       case tree: Bind =>
         if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) && !tree.hasAttachment(NoWarn) then
           pats.addOne((tree.symbol, tree.namePos))
-      case tree: ValDef if tree.hasAttachment(PatternVar) =>
-        if !tree.name.isInstanceOf[DerivedName] then
-          pats.addOne((tree.symbol, tree.namePos))
       case tree: NamedDefTree =>
-        if (tree.symbol ne NoSymbol) && !tree.name.isWildcard && !tree.hasAttachment(NoWarn) then
+        if tree.hasAttachment(PatternVar) then
+          if !tree.name.isInstanceOf[DerivedName] then
+            pats.addOne((tree.symbol, tree.namePos))
+        else if (tree.symbol ne NoSymbol) && !tree.name.isWildcard && !tree.hasAttachment(NoWarn) then
           defs.addOne((tree.symbol, tree.namePos))
       case _ =>
         if tree.symbol ne NoSymbol then
