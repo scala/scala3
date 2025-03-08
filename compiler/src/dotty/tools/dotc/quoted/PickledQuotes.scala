@@ -240,7 +240,9 @@ object PickledQuotes {
         treeOwner(tree) match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
-            TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            // Then replace the symbol owner with the one pointed by the quote context.
+            treeCpy.changeNonLocalOwners(ctx.owner)
           case _ =>
             tree
 
