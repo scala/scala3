@@ -1,0 +1,19 @@
+-- Warning: tests/warn/multiparamlist-overload-3.7.scala:21:10 ---------------------------------------------------------
+21 |  val r = f(new B)(new C) // warn: all alternatives are applicable; resolves to: R1 in 3.6, R3 in 3.7
+   |          ^
+   |          Overloading resolution for arguments (B)(C) between alternatives
+   |           (x: B)(y: B): R3
+   |           (x: B)(y: A): R2
+   |           (x: A)(y: C): R1
+   |          has changed.
+   |          Previous choice          : (x: A)(y: C): R1
+   |          New choice from Scala 3.7: (x: B)(y: B): R3
+-- Warning: tests/warn/multiparamlist-overload-3.7.scala:41:12 ---------------------------------------------------------
+41 |    val r = f(new B)(new A) // warn: resolves to: R2 in 3.6, R1 in 3.7
+   |            ^
+   |            Overloading resolution for arguments (B)(A) between alternatives
+   |             (x: B)(y: B): R2
+   |             (x: A)(y: A): R1
+   |            has changed.
+   |            Previous choice          : (x: B)(y: B): R2
+   |            New choice from Scala 3.7: (x: A)(y: A): R1
