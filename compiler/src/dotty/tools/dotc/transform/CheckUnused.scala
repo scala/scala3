@@ -150,6 +150,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       refInfos.register(tree)
+    tree.tpt match
+    case RefinedTypeTree(_, refinements) => relax(tree.rhs, refinements)
+    case _ =>
     ctx
   override def transformValDef(tree: ValDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
@@ -170,11 +173,15 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForDefDef(tree: DefDef)(using Context): Context =
     def trivial = tree.symbol.is(Deferred) || isUnconsuming(tree.rhs)
     def nontrivial = tree.symbol.isConstructor || tree.symbol.isAnonymousFunction
-    if !nontrivial && trivial then refInfos.skip.addOne(tree.symbol)
+    if !nontrivial && trivial then
+      refInfos.skip.addOne(tree.symbol)
     if tree.symbol.is(Inline) then
       refInfos.inliners += 1
     else if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       refInfos.register(tree)
+    tree.tpt match
+    case RefinedTypeTree(_, refinements) => relax(tree.rhs, refinements)
+    case _ =>
     ctx
   override def transformDefDef(tree: DefDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
@@ -456,7 +463,7 @@ object CheckUnused:
         if !tree.name.isInstanceOf[DerivedName] then
           pats.addOne((tree.symbol, tree.namePos))
       case tree: NamedDefTree =>
-        if (tree.symbol ne NoSymbol) && !tree.name.isWildcard then
+        if (tree.symbol ne NoSymbol) && !tree.name.isWildcard && !tree.hasAttachment(NoWarn) then
           defs.addOne((tree.symbol, tree.namePos))
       case _ =>
         if tree.symbol ne NoSymbol then
@@ -850,6 +857,17 @@ object CheckUnused:
             catch case _: ClassNotFoundException => ()
         args.foreach(traverse)
       case tree => traverseChildren(tree)
+
+  // NoWarn members in tree that correspond to refinements; currently uses only names.
+  def relax(tree: Tree, refinements: List[Tree])(using Context): Unit =
+    val names = refinements.collect { case named: NamedDefTree => named.name }.toSet
+    val relaxer = new TreeTraverser:
+      def traverse(tree: Tree)(using Context) =
+        tree match
+        case tree: NamedDefTree if names(tree.name) => tree.withAttachment(NoWarn, ())
+        case _ =>
+        traverseChildren(tree)
+    relaxer.traverse(tree)
 
   extension (nm: Name)
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
