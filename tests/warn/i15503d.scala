@@ -115,3 +115,9 @@ object `mutable patvar in for`:
 class `unset var requires -Wunused`:
   private var i = 0 // no warn as we didn't ask for it
   def f = println(i)
+
+class `i22743 lazy vals are defs`:
+  def f: (Int, String) = (42, "hello, world")
+  lazy val (i, s) = f // no warn because def is neither local nor private
+  val (j, t) = f // existing no warn for val with attachment
+  private lazy val (k, u) = f // warn // warn a warning so nice, they warn it twice

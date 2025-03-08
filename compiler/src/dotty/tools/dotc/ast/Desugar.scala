@@ -14,11 +14,11 @@ import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion.*
 import collection.mutable.ListBuffer
 import reporting.*
-import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
 
 import scala.annotation.internal.sharable
+import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.SrcPos
 
 object desugar {
@@ -1255,6 +1255,7 @@ object desugar {
                 DefDef(named.name.asTermName, Nil, tpt, selector(n))
                   .withMods(mods &~ Lazy)
                   .withSpan(named.span)
+                  .withAttachment(PatternVar, ())
               else
                 valDef(
                   ValDef(named.name.asTermName, tpt, selector(n))
@@ -1557,6 +1558,7 @@ object desugar {
     mayNeedSetter
   }
 
+  @unused
   private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
     DefDef(named.name.asTermName, Nil, tpt, rhs)
       .withMods(mods)
