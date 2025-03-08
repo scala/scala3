@@ -17,5 +17,5 @@ def test(io: Object^): Unit =
   par(f1)(() => println(io))  // !!! separation failure
 
   val f2 = g(io)              // error
-  par(f2)(() => println(io))  // !!! separation failure
+  par(f2)(() => println(io))  // error
 

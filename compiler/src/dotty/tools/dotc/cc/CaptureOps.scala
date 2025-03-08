@@ -482,6 +482,8 @@ extension (tp: Type)
       else tp.superType.derivesFromCapTrait(cls)
     case ReachCapability(tp1) =>
       tp1.widen.derivesFromCapTraitDeeply(cls)
+    case ReadOnlyCapability(tp1) =>
+      tp1.derivesFromCapTrait(cls)
     case tp: (TypeProxy & ValueType) =>
       tp.superType.derivesFromCapTrait(cls)
     case tp: AndType =>
