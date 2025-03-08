@@ -164,13 +164,6 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
 
-  /** Run `op`` with a fresh, initially empty consumed set. */
-  private def withFreshConsumed(op: => Unit): Unit =
-    val saved = consumed
-    consumed = MutConsumedSet()
-    op
-    consumed = saved
-
   /** Infos aboput Labeled expressions enclosing the current traversal point.
    *  For each labeled expression, it's label name, and a list buffer containing
    *  all consumed sets of return expressions referring to that label.
@@ -499,7 +492,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         else assert(!argDeps.isEmpty)
 
       if arg.needsSepCheck then
-        //println(i"testing $arg, ${argPeaks.actual}/${argPeaks.formal} against ${currentPeaks.actual}")
+        //println(i"testing $arg, formal = ${arg.formalType}, peaks = ${argPeaks.actual}/${argPeaks.hidden} against ${currentPeaks.actual}")
         checkType(arg.formalType, arg.srcPos, TypeRole.Argument(arg))
         // 2. test argPeaks.hidden against previously captured actuals
         if !argPeaks.hidden.sharedWith(currentPeaks.actual).isEmpty then
@@ -548,6 +541,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkUse(tree: Tree)(using Context): Unit =
     val used = tree.markedFree.elems
     if !used.isEmpty then
+      capt.println(i"check use $tree: $used")
       val usedPeaks = used.peaks
       val overlap = defsShadow.peaks.sharedWith(usedPeaks)
       if !defsShadow.peaks.sharedWith(usedPeaks).isEmpty then
@@ -569,7 +563,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             sepUseError(tree, null, used, defsShadow)
 
       for ref <- used do
-        val pos = consumed.get(ref)
+        val pos = consumed.get(ref.stripReadOnly)
         if pos != null then consumeError(ref, pos, tree.srcPos)
   end checkUse
 
@@ -656,7 +650,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
           if !ref.derivesFromSharedCapability then
-            consumed.put(ref, pos)
+            consumed.put(ref.stripReadOnly, pos)
       case _ =>
   end checkConsumedRefs
 
@@ -913,7 +907,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           checkValOrDefDef(tree)
         case tree: DefDef =>
           inSection:
-            withFreshConsumed:
+            consumed.segment:
               for params <- tree.paramss; case param: ValDef <- params do
                 pushDef(param, emptyRefs)
               traverseChildren(tree)
@@ -945,7 +939,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           val caseConsumed = for cas <- cases yield consumed.segment(traverse(cas))
           caseConsumed.foreach(consumed ++= _)
         case tree: TypeDef if tree.symbol.isClass =>
-          withFreshConsumed:
+          consumed.segment:
             traverseChildren(tree)
         case tree: WhileDo =>
           val loopConsumed = consumed.segment(traverseChildren(tree))
