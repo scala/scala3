@@ -15,13 +15,11 @@ import config.Feature.{sourceVersion, migrateTo3, enabled, betterForsEnabled}
 import config.SourceVersion.*
 import collection.mutable
 import reporting.*
-import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
 import parsing.Parsers
 
-import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
+import scala.annotation.{unchecked as _, *}, internal.sharable
 
 object desugar {
   import untpd.*
@@ -1546,6 +1544,7 @@ object desugar {
                 DefDef(named.name.asTermName, Nil, tpt, selector(n))
                   .withMods(mods &~ Lazy)
                   .withSpan(named.span)
+                  .withAttachment(PatternVar, ())
               else
                 valDef(
                   ValDef(named.name.asTermName, tpt, selector(n))
@@ -1942,6 +1941,7 @@ object desugar {
     mayNeedSetter
   }
 
+  @unused
   private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
     DefDef(named.name.asTermName, Nil, tpt, rhs)
       .withMods(mods)
