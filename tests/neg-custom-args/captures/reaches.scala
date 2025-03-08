@@ -1,4 +1,5 @@
-import caps.use
+import caps.use;
+import caps.consume
 class File:
   def write(): Unit = ???
 
@@ -32,7 +33,7 @@ def runAll1(@use xs: List[Proc]): Unit =
     cur.set:
       (() => f.write()) :: Nil // error
 
-def runAll2(xs: List[Proc]): Unit =
+def runAll2(@consume xs: List[Proc]): Unit =
   var cur: List[Proc] = xs   // error
   while cur.nonEmpty do
     val next: () => Unit = cur.head
@@ -42,9 +43,9 @@ def runAll2(xs: List[Proc]): Unit =
 def runAll3(xs: List[Proc]): Unit =
   val cur = Ref[List[Proc]](xs) // error
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head
+    val next: () => Unit = cur.get.head // error
     next()
-    cur.set(cur.get.tail: List[Proc])
+    cur.set(cur.get.tail: List[Proc]) // error
 
 class Id[-A,  +B >: A]():
   def apply(a: A): B = a
@@ -52,14 +53,22 @@ class Id[-A,  +B >: A]():
 def test =
   val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
   usingFile: f =>
-    id(() => f.write()) // error
+    id(() => f.write()) // was error
 
 def attack2 =
   val id: File^ -> File^ = x => x
+    // val id: File^ -> File^{fresh}
+
+  val leaked = usingFile[File^{id*}]: f => // error
+    val f1: File^{id*} = id(f) // error // error
+    f1
+
+def attack3 =
+  val id: (x: File^) -> File^ = x => x // error
     // val id: File^ -> EX C.File^C
 
   val leaked = usingFile[File^{id*}]: f => // error
-    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
+    val f1: File^{id*} = id(f) // error // error
     f1
 
 class List[+A]:
@@ -76,7 +85,7 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error // error
+  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
 
 def mapCompose2[A](@use ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y))
+  ps.map((x, y) => compose1(x, y)) // error sepcheck

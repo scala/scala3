@@ -1,3 +1,5 @@
+
+
 type Observe[T] = (T => Unit) -> Unit
 
 def unsafe(cap: C^) = cap.bad()
@@ -29,7 +31,7 @@ def main2(x: C^) : () -> Int =
     0
 
 def main3(x: C^) =
-  def c : C^ = new C(x)
+  def c : C^ = new C(x) // error separation
   val boxed2 : Observe[C]^ = box2(c) // error
   boxed2((cap: C^) => unsafe(c))
   0

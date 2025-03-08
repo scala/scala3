@@ -21,7 +21,7 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
-import cc.stripCapturing
+import cc.{stripCapturing, isUpdateMethod, CCState}
 
 object RefChecks {
   import tpd.*
@@ -107,7 +107,9 @@ object RefChecks {
       def checkSelfConforms(other: ClassSymbol) =
         var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists then
-          if !(cinfo.selfType <:< otherSelf) then
+          if !CCState.withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
+            cinfo.selfType <:< otherSelf
+        then
             report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
               cls.srcPos)
 
@@ -595,7 +597,7 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.is(Mutable) then
+      else if member.is(Override) && other.isMutableVarOrAccessor then
         overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
@@ -616,6 +618,8 @@ object RefChecks {
         overrideError("is erased, cannot override non-erased member")
       else if (other.is(Erased) && !member.isOneOf(Erased | Inline)) // (1.9)
         overrideError("is not erased, cannot override erased member")
+      else if member.isUpdateMethod && !other.is(Mutable) then
+        overrideError(i"is an update method, cannot override a read-only method")
       else if other.is(Inline) && !member.is(Inline) then // (1.10)
         overrideError("is not inline, cannot implement an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
@@ -775,7 +779,7 @@ object RefChecks {
 
           // Give a specific error message for abstract vars based on why it fails:
           // It could be unimplemented, have only one accessor, or be uninitialized.
-          if (underlying.is(Mutable)) {
+          if underlying.isMutableVarOrAccessor then
             val isMultiple = grouped.getOrElse(underlying.name, Nil).size > 1
 
             // If both getter and setter are missing, squelch the setter error.
@@ -784,7 +788,6 @@ object RefChecks {
               if (member.isSetter) "\n(Note that an abstract var requires a setter in addition to the getter)"
               else if (member.isGetter && !isMultiple) "\n(Note that an abstract var requires a getter in addition to the setter)"
               else err.abstractVarMessage(member))
-          }
           else if (underlying.is(Method)) {
             // If there is a concrete method whose name matches the unimplemented
             // abstract method, and a cursory examination of the difference reveals

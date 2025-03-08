@@ -1,0 +1,16 @@
+-- Error: tests/neg-custom-args/captures/sepchecks5.scala:12:37 --------------------------------------------------------
+12 |def bad(io: Object^): () => Unit = f(io) // error
+   |                                     ^^
+   |             Separation failure: argument to @consume parameter with type (io : Object^) refers to parameter io.
+   |             The parameter needs to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/sepchecks5.scala:19:13 --------------------------------------------------------
+19 |  val f2 = g(io)              // error
+   |             ^^
+   |             Separation failure: argument to @consume parameter with type (io : Object^) refers to parameter io.
+   |             The parameter needs to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/sepchecks5.scala:20:24 --------------------------------------------------------
+20 |  par(f2)(() => println(io))  // error
+   |                        ^^
+   |                        Separation failure: Illegal access to (io : Object^), which was passed to a
+   |                        @consume parameter or was used as a prefix to a @consume method on line 19
+   |                        and therefore is no longer available.
