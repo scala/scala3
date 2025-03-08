@@ -27,6 +27,13 @@ class JavaPlatform extends Platform {
       case _ => false
     })
 
+  def addToClassPath(cPath: ClassPath)(using Context): Unit = classPath match {
+    case AggregateClassPath(entries) =>
+      currentClassPath = Some(AggregateClassPath(entries :+ cPath))
+    case cp: ClassPath =>
+      currentClassPath = Some(AggregateClassPath(cp :: cPath :: Nil))
+  }
+
   /** Update classpath with a substituted subentry */
   def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit = currentClassPath.get match {
     case AggregateClassPath(entries) =>
