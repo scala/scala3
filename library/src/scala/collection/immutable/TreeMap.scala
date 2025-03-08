@@ -132,6 +132,16 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V])(implicit va
     else resultOrNull.value
   }
 
+  // override for performance -- no Some allocation
+  override def apply(key: K): V = {
+    val resultOrNull = RB.lookup(tree, key)
+    if (resultOrNull eq null) default(key)
+    else resultOrNull.value
+  }
+
+  // override for performance -- no Some allocation
+  override def contains(key: K): Boolean = RB.contains(tree, key)
+
   def removed(key: K): TreeMap[K,V] =
     newMapOrSelf(RB.delete(tree, key))
 
