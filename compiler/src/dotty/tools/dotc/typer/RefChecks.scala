@@ -1138,13 +1138,23 @@ object RefChecks {
 
   /** Check that an extension method is not hidden, i.e., that it is callable as an extension method.
    *
+   *  For example, it is not possible to define a type-safe extension `contains` for `Set`,
+   *  since for any parameter type, the existing `contains` method will compile and would be used.
+   *
    *  An extension method is hidden if it does not offer a parameter that is not subsumed
    *  by the corresponding parameter of the member with the same name (or of all alternatives of an overload).
    *
-   *  This check is suppressed if this method is an override.
+   *  This check is suppressed if the method is an override. (Because the type of the receiver
+   *  may be narrower in the override.)
    *
-   *  For example, it is not possible to define a type-safe extension `contains` for `Set`,
-   *  since for any parameter type, the existing `contains` method will compile and would be used.
+   *  If the extension method is nullary, it is always hidden by a member of the same name.
+   *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
+   *
+   *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
+   *  That check would account for accessibility and opacity. As a limitation, this check considers
+   *  only public members for which corresponding method parameters are either both opaque types or both not.
+   *  It is intended to warn if the receiver type from a third-party library has been augmented with a member
+   *  that nullifies an existing extension.
    *
    *  If the member has a leading implicit parameter list, then the extension method must also have
    *  a leading implicit parameter list. The reason is that if the implicit arguments are inferred,
@@ -1155,15 +1165,7 @@ object RefChecks {
    *  If the member does not have a leading implicit parameter list, then the argument cannot be explicitly
    *  supplied with `using`, as typechecking would fail. But the extension method may have leading implicit
    *  parameters, which are necessarily supplied implicitly in the application. The first non-implicit
-   *  parameters of the extension method must be distinguishable from the member parameters, as described.
-   *
-   *  If the extension method is nullary, it is always hidden by a member of the same name.
-   *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
-   *
-   *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
-   *  That check would account for accessibility and opacity. As a limitation, this check considers
-   *  only public members, a target receiver that is not an alias, and corresponding method parameters
-   *  that are either both opaque types or both not.
+   *  parameters of the extension method must be distinguishable from the member parameters, as described above.
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
     if sym.is(Extension) then
@@ -1171,26 +1173,23 @@ object RefChecks {
         def explicit = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true)
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
       val explicitInfo = sym.info.explicit // consider explicit value params
-      val target = explicitInfo.firstParamTypes.head.typeSymbol.info // required for extension method, the putative receiver
+      val target0 = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
+      val target = target0.dealiasKeepOpaques.typeSymbol.info
       val methTp = explicitInfo.resultType // skip leading implicits and the "receiver" parameter
+      def memberMatchesMethod(member: Denotation) =
+        val memberIsImplicit = member.info.hasImplicitParams
+        val paramTps =
+          if memberIsImplicit then methTp.stripPoly.firstParamTypes
+          else methTp.explicit.firstParamTypes
+        inline def paramsCorrespond =
+          val memberParamTps = member.info.stripPoly.firstParamTypes
+          memberParamTps.corresponds(paramTps): (m, x) =>
+            m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias && (x frozen_<:< m)
+        paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || paramsCorrespond
       def hidden =
         target.nonPrivateMember(sym.name)
         .filterWithPredicate: member =>
-          member.symbol.isPublic && {
-            val memberIsImplicit = member.info.hasImplicitParams
-            val paramTps =
-              if memberIsImplicit then methTp.stripPoly.firstParamTypes
-              else methTp.explicit.firstParamTypes
-
-            paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
-              val memberParamTps = member.info.stripPoly.firstParamTypes
-              !memberParamTps.isEmpty
-              && memberParamTps.lengthCompare(paramTps) == 0
-              && memberParamTps.lazyZip(paramTps).forall: (m, x) =>
-                m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias
-                && (x frozen_<:< m)
-            }
-          }
+          member.symbol.isPublic && memberMatchesMethod(member)
         .exists
       if sym.is(HasDefaultParams) then
         val getterDenot =
