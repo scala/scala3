@@ -17,9 +17,9 @@ def test2(@consume x: Ref^): Unit =
   val f: () ->{x.rd} Unit = () => x.get
   val rx: () => Unit = bad(f)  // hides x.rd in the resulting `cap`
   x.put(42)  // error
-  x.get      // error
+  x.get      // ok rd/rd
   par(rx, () => x.put(42))  // error
-  par(rx, () => x.get)  // error
+  par(rx, () => x.get)  // ok rd/rd
 
 def test3(@consume x: Ref^): Unit =
   val f: () ->{x.rd} Unit = () => x.get
@@ -31,11 +31,11 @@ def test4(@consume @use p: Pair[Ref^, Ref^]): Unit =
   val x: Ref^{p.fst*} = p.fst
   val y: Ref^{p.snd*} = p.snd
   badp(Pair(x, y))
-  println(p.fst.get) // errorSep
+  println(p.fst.get) // error
 
 def badp(@consume p: Pair[Ref^, Ref^]): Unit = ()
 
 def test5(@consume @use p: Pair[Ref^, Ref^]): Unit =
   badp(p) // ok
-  println(p.fst.get) // ok, but should be error
+  println(p.fst.get) // error
 

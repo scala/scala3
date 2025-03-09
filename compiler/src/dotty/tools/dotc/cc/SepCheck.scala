@@ -97,6 +97,7 @@ object SepCheck:
     var refs: Array[CaptureRef] = new Array(4)
     var locs: Array[SrcPos] = new Array(4)
     var size = 0
+    var peaks: Refs = emptyRefs
 
     private def double[T <: AnyRef : ClassTag](xs: Array[T]): Array[T] =
       val xs1 = new Array[T](xs.length * 2)
@@ -114,18 +115,29 @@ object SepCheck:
       while i < size && (refs(i) ne ref) do i += 1
       if i < size then locs(i) else null
 
+    def clashing(ref: CaptureRef)(using Context): SrcPos | Null =
+      val refPeaks = ref.peaks
+      if !peaks.sharedWith(refPeaks).isEmpty then
+        var i = 0
+        while i < size && refs(i).peaks.sharedWith(refPeaks).isEmpty do
+          i += 1
+        assert(i < size)
+        locs(i)
+      else null
+
     /** If `ref` is not yet in the set, add it with given source position */
-    def put(ref: CaptureRef, loc: SrcPos): Unit =
+    def put(ref: CaptureRef, loc: SrcPos)(using Context): Unit =
       if get(ref) == null then
         ensureCapacity(1)
         refs(size) = ref
         locs(size) = loc
         size += 1
+        peaks = peaks ++ ref.peaks
 
     /** Add all references with their associated positions from `that` which
      *  are not yet in the set.
      */
-    def ++= (that: ConsumedSet): Unit =
+    def ++= (that: ConsumedSet)(using Context): Unit =
       for i <- 0 until that.size do put(that.refs(i), that.locs(i))
 
     /** Run `op` and return any new references it created in a separate `ConsumedSet`.
@@ -133,12 +145,14 @@ object SepCheck:
      */
     def segment(op: => Unit): ConsumedSet =
       val start = size
+      val savedPeaks = peaks
       try
         op
         if size == start then EmptyConsumedSet
         else ConstConsumedSet(refs.slice(start, size), locs.slice(start, size))
       finally
         size = start
+        peaks = savedPeaks
   end MutConsumedSet
 
   val EmptyConsumedSet = ConstConsumedSet(Array(), Array())
@@ -264,6 +278,9 @@ object SepCheck:
       else refs
 
   end extension
+
+  extension (ref: CaptureRef)
+    def peaks(using Context): Refs = SimpleIdentitySet(ref).peaks
 
 class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import checker.*
@@ -553,7 +570,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             sepUseError(tree, null, used, defsShadow)
 
       for ref <- used do
-        val pos = consumed.get(ref.stripReadOnly)
+        val pos = consumed.clashing(ref)
         if pos != null then consumeError(ref, pos, tree.srcPos)
   end checkUse
 
@@ -632,7 +649,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
           if !ref.derivesFromSharedCapability then
-            consumed.put(ref.stripReadOnly, pos)
+            consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs
 
