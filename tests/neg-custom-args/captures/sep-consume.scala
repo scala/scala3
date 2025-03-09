@@ -6,6 +6,8 @@ class Ref extends Mutable:
   def get: Int = _data
   mut def put(x: Int): Unit = _data = x
 
+case class Pair[+A, +B](fst: A, snd: B)
+
 // require f and g to be non-interfering
 def par(f: () => Unit, g: () => Unit): Unit = ???
 
@@ -24,3 +26,16 @@ def test3(@consume x: Ref^): Unit =
   def foo = bad(f) // error
   foo()
   foo()
+
+def test4(@consume @use p: Pair[Ref^, Ref^]): Unit =
+  val x: Ref^{p.fst*} = p.fst
+  val y: Ref^{p.snd*} = p.snd
+  badp(Pair(x, y))
+  println(p.fst.get) // errorSep
+
+def badp(@consume p: Pair[Ref^, Ref^]): Unit = ()
+
+def test5(@consume @use p: Pair[Ref^, Ref^]): Unit =
+  badp(p) // ok
+  println(p.fst.get) // ok, but should be error
+
