@@ -1917,6 +1917,23 @@ class ExpectedTypeBoundOrEquals(found: Token)(using Context)
         |"""
 }
 
+class ExpectedCaptureBoundOrEquals(found: Token)(using Context)
+  extends SyntaxMsg(ExpectedCaptureBoundOrEqualsID) {
+  def msg(using Context) = i"${hl("=")}, ${hl(">:")}, or ${hl("<:")} expected, but ${Tokens.showToken(found)} found"
+
+  def explain(using Context) =
+    i"""Capture parameters and abstract captures may be constrained by a capture bound.
+        |Such capture bounds limit the concrete values of the capture variables and possibly
+        |reveal more information about the members of such captures.
+        |
+        |A lower type bound ${hl("B >: A")} expresses that the capture variable ${hl("B")}
+        |refers to a super capture of capture ${hl("A")}.
+        |
+        |An upper capture bound ${hl("T <: A")} declares that capture variable ${hl("T")}
+        |refers to a subcapture of ${hl("A")}.
+        |"""
+}
+
 class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
   extends NamingMsg(ClassAndCompanionNameClashID) {
   def msg(using Context) =

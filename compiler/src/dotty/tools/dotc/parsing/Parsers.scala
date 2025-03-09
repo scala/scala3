@@ -35,6 +35,7 @@ import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.dotc.config.Feature.ccEnabled
 
 object Parsers {
 
@@ -220,6 +221,10 @@ object Parsers {
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     // Are we seeing an `erased` soft keyword that will not be an identifier?
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
+    // Are we seeing a `cap` soft keyword for declaring a capture-set member or at the beginning a capture-variable parameter list?
+    def isCapKw = Feature.ccEnabled && isIdent(nme.cap)
+    // 'cap type' ?
+    def isCapTypeKw = isCapKw && in.lookahead.token == TYPE
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -1903,7 +1908,7 @@ object Parsers {
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
+      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then // TODO remove
         atSpan(t.span.start):
           in.nextToken()
           if in.token == LBRACE
@@ -1958,7 +1963,8 @@ object Parsers {
 
     def typeBlockStats(): List[Tree] =
       val tdefs = new ListBuffer[Tree]
-      while in.token == TYPE do tdefs += typeBlockStat()
+      while (in.token == TYPE) do
+        tdefs += typeBlockStat()
       tdefs.toList
 
     /**  TypeBlockStat ::= ‘type’ {nl} TypeDef
@@ -2159,10 +2165,13 @@ object Parsers {
      *    NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
      *    NameAndType       ::=  id ':' Type
      */
-    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] =
-      def argType() =
-        val t = typ()
+    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] = //TOOD grammar doc
+      def withWildCard(gen: => Tree) =
+        val t = gen
         if wildOK then t else rejectWildcardType(t)
+
+      def argType() = withWildCard(typ())
+      def argOrCapType() = withWildCard(if in.token == LBRACE then concreteCapsType(captureSet()) else typ())
 
       def namedArgType() =
         atSpan(in.offset):
@@ -2174,14 +2183,14 @@ object Parsers {
         atSpan(in.offset):
           val name = ident()
           acceptColon()
-          NamedArg(name, argType())
+          NamedArg(name, argType()) // TODO allow capsets here?
 
-      if namedOK && isIdent && in.lookahead.token == EQUALS then
-        commaSeparated(() => namedArgType())
+      if namedOK && isIdent && in.lookahead.token == EQUALS then // TOOD support for named cap args
+          commaSeparated(() => namedArgType())
       else if tupleOK && isIdent && in.lookahead.isColon && sourceVersion.enablesNamedTuples then
         commaSeparated(() => namedElem())
       else
-        commaSeparated(() => argType())
+        commaSeparated(() => argOrCapType())
     end argTypes
 
     def paramTypeOf(core: () => Tree): Tree =
@@ -2240,7 +2249,7 @@ object Parsers {
         inBraces(refineStatSeq())
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
-     *              |  `^`                     -- under captureChecking
+     *              |  `^`                     -- under captureChecking TODO remove
      */
     def typeBounds(): TypeBoundsTree =
       atSpan(in.offset):
@@ -2250,14 +2259,42 @@ object Parsers {
         else
           TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
+    /** CaptureSetBounds ::= [`>:' CaptureSetOrRef ] [`<:' CaptureSetOrRef ] --- under captureChecking
+     */
+    def captureSetBounds(): TypeBoundsTree =
+      atSpan(in.offset):
+          TypeBoundsTree(capsBound(SUPERTYPE), capsBound(SUBTYPE))
+
     private def bound(tok: Int): Tree =
       if (in.token == tok) { in.nextToken(); toplevelTyp() }
       else EmptyTree
+
+    private def capsBound(refs: List[Tree], isLowerBound: Boolean = false): Tree =
+      if isLowerBound && refs.isEmpty then // lower bounds with empty capture sets become a pure CapSet
+        Select(scalaDot(nme.caps), tpnme.CapSet)
+      else
+        makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, if refs.isEmpty then tpnme.retainsCap else tpnme.retains)
+
+    private def capsBound(tok: Int): Tree =
+      if (in.token == tok) then
+        in.nextToken()
+        capsBound(captureSet(), isLowerBound = tok == SUPERTYPE)
+      else
+        capsBound(Nil, isLowerBound = tok == SUPERTYPE)
 
     /** TypeAndCtxBounds  ::=  TypeBounds [`:` ContextBounds]
      */
     def typeAndCtxBounds(pname: TypeName): Tree = {
       val t = typeBounds()
+      val cbs = contextBounds(pname)
+      if (cbs.isEmpty) t
+      else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
+    }
+
+    /** CaptureSetAndCtxBounds  ::=  CaptureSetBounds [`:` ContextBounds]   -- under captureChecking
+     */
+    def captureSetAndCtxBounds(pname: TypeName): Tree = {
+      val t = captureSetBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
       else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
@@ -2782,7 +2819,10 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
-          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
+          val tapp = atSpan(startOffset(t), in.offset) {
+            val args = typeArgs(namedOK = true, wildOK = false)
+            TypeApply(t, args)
+          }
           simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
@@ -3305,6 +3345,7 @@ object Parsers {
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
+          case nme.cap => Mod.CaptureParam()
         }
     }
 
@@ -3372,7 +3413,7 @@ object Parsers {
      *                  |  override
      *                  |  opaque
      *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased |
-     *                     inline | transparent | infix
+     *                     inline | transparent | infix | cap
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -3461,7 +3502,6 @@ object Parsers {
       recur(numLeadParams, firstClause = true, prevIsTypeClause = false)
     end typeOrTermParamClauses
 
-
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
      *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
      *                         id [HkTypeParamClause] TypeAndCtxBounds
@@ -3486,6 +3526,43 @@ object Parsers {
         in.nextToken()
         ok
 
+      def ensureNoHKParams() = // for cap params
+        if in.token == LBRACKET then
+          syntaxError(em"'cap' parameters cannot have type parameters")
+          in.nextToken()
+
+      def ensureNoVariance() = // for cap params
+        if isIdent(nme.raw.PLUS) || isIdent(nme.raw.MINUS) then
+          syntaxError(em"no `+/-` variance annotation allowed here")
+          in.nextToken()
+
+      def typeOrCapParam(): TypeDef =
+        if isCapKw then
+          in.nextToken()
+          capParam()
+        else typeParam()
+
+      def capParam(): TypeDef = {
+        val start = in.offset
+        var mods = annotsAsMods() | Param
+        if paramOwner.isClass then
+          mods |= PrivateLocal
+        ensureNoVariance() // TODO: in the future, we might want to support variances on capture params, ruled out for now
+        atSpan(start, nameStart) {
+          val name =
+            if paramOwner.acceptsWildcard && in.token == USCORE then
+              in.nextToken()
+              WildcardParamName.fresh().toTypeName
+            else ident().toTypeName
+          ensureNoHKParams()
+          val bounds =
+            if paramOwner.acceptsCtxBounds then captureSetAndCtxBounds(name)
+            else if sourceVersion.enablesNewGivens && paramOwner == ParamOwner.Type then captureSetAndCtxBounds(name)
+            else captureSetBounds()
+          TypeDef(name, bounds).withMods(mods)
+        }
+      }
+
       def typeParam(): TypeDef = {
         val start = in.offset
         var mods = annotsAsMods() | Param
@@ -3509,11 +3586,14 @@ object Parsers {
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
-      commaSeparated(() => typeParam())
+      commaSeparated(() => typeOrCapParam())
     }
 
     def typeParamClauseOpt(paramOwner: ParamOwner): List[TypeDef] =
-      if (in.token == LBRACKET) typeParamClause(paramOwner) else Nil
+      if (in.token == LBRACKET)
+        typeParamClause(paramOwner)
+      else
+        Nil
 
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
@@ -3855,25 +3935,29 @@ object Parsers {
      *             | var VarDef
      *             | def DefDef
      *             | type {nl} TypeDef
+     *             | cap type {nl} CapDef     -- under capture checking
      *             | TmplDef
      *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
      */
-    def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
-      case VAL =>
-        in.nextToken()
-        patDefOrDcl(start, mods)
-      case VAR =>
-        val mod = atSpan(in.skipToken()) { Mod.Var() }
-        val mod1 = addMod(mods, mod)
-        patDefOrDcl(start, mod1)
-      case DEF =>
-        defDefOrDcl(start, in.skipToken(mods))
-      case TYPE =>
-        typeDefOrDcl(start, in.skipToken(mods))
-      case CASE if inEnum =>
-        enumCase(start, mods)
-      case _ =>
-        tmplDef(start, mods)
+    def defOrDcl(start: Int, mods: Modifiers): Tree =
+      in.token match {
+        case VAL =>
+          in.nextToken()
+          patDefOrDcl(start, mods)
+        case VAR =>
+          val mod = atSpan(in.skipToken()) { Mod.Var() }
+          val mod1 = addMod(mods, mod)
+          patDefOrDcl(start, mod1)
+        case DEF =>
+          defDefOrDcl(start, in.skipToken(mods))
+        case TYPE if mods.is(CaptureParam) =>
+          capDefOrDcl(start, in.skipToken(mods))
+        case TYPE =>
+          typeDefOrDcl(start, in.skipToken(mods))
+        case CASE if inEnum =>
+          enumCase(start, mods)
+        case _ =>
+          tmplDef(start, mods)
     }
 
     /** PatDef  ::=  ids [‘:’ Type] [‘=’ Expr]
@@ -4081,6 +4165,43 @@ object Parsers {
         }
       }
     }
+
+    private def concreteCapsType(refs: List[Tree]): Tree =
+      makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, tpnme.retains)
+
+    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSetOrRef]    -- under capture checking
+     */
+    def capDefOrDcl(start: Offset, mods: Modifiers): Tree =
+      newLinesOpt()
+      atSpan(start, nameStart) {
+        val nameIdent = typeIdent()
+        val tname = nameIdent.name.asTypeName
+        if in.token == LBRACKET then syntaxError(em"'cap type' declarations cannot have type parameters")
+
+        def makeCapDef(refs: List[Tree] | Tree): Tree = {
+          val tdef = TypeDef(nameIdent.name.toTypeName,
+                             refs.match
+                                case refs: List[Tree] => concreteCapsType(refs)
+                                case bounds: Tree => bounds)
+
+          if (nameIdent.isBackquoted)
+            tdef.pushAttachment(Backquoted, ())
+          finalizeDef(tdef, mods, start)
+        }
+
+        in.token.match
+          case EQUALS =>
+            in.nextToken()
+            makeCapDef(captureSet())
+          case SUBTYPE | SUPERTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
+            makeCapDef(captureSetAndCtxBounds(tname))
+          case _ if (staged & StageKind.QuotedPattern) != 0
+              || sourceVersion.enablesNewGivens && in.isColon =>
+            makeCapDef(captureSetAndCtxBounds(tname))
+          case _ =>
+            syntaxErrorOrIncomplete(ExpectedCaptureBoundOrEquals(in.token))
+            return EmptyTree // return to avoid setting the span to EmptyTree
+      }
 
     /** TmplDef ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
      *            |  [‘case’] ‘object’ ObjectDef
@@ -4675,6 +4796,7 @@ object Parsers {
      *                     |  ‘var’ VarDef
      *                     |  ‘def’ DefDef
      *                     |  ‘type’ {nl} TypeDef
+     *                     |  ‘cap’ ‘type’ {nl} CapDef -- under capture checking
      *  (in reality we admit class defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
@@ -4699,9 +4821,14 @@ object Parsers {
             fail(em"this kind of definition cannot be a refinement")
 
       while
+        val mods =
+          if isCapTypeKw then // allow `cap type` in refinements
+            in.nextToken()
+            addMod(Modifiers(), Mod.CaptureParam())
+          else Modifiers()
         val dclFound = isDclIntro
         if dclFound then
-          stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
+          stats ++= checkLegal(defOrDcl(in.offset, mods))
         var what = "declaration"
         if inFunReturnType then what += " (possible cause: missing `=` in front of current method body)"
         statSepOrEnd(stats, noPrevStat = !dclFound, what)
