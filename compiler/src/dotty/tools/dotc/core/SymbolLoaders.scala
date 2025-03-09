@@ -27,6 +27,7 @@ import parsing.Parsers.OutlineParser
 import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig, TastyVersion}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 import dotty.tools.tasty.besteffort.BestEffortTastyHeaderUnpickler
+import dotty.tools.dotc.util.SourceFile
 
 object SymbolLoaders {
   import ast.untpd.*
@@ -450,7 +451,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val (classRoot, moduleRoot) = rootDenots(root.asClass)
       if (!isBestEffortTasty || ctx.withBestEffortTasty) then
         val tastyBytes = tastyFile.toByteArray
-        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
+        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource : SourceFile))
         if mayLoadTreesFromTasty || isBestEffortTasty then
           classRoot.classSymbol.rootTreeOrProvider = unpickler
           moduleRoot.classSymbol.rootTreeOrProvider = unpickler

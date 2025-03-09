@@ -124,6 +124,12 @@ object NamedTuple:
    */
   type From[T] <: AnyNamedTuple
 
+  @experimental // extra experimental for now
+  type OptFrom[T] <: Option[AnyNamedTuple]
+
+  @experimental // extra experimental for now
+  type IsNamedTuple[T] <: Boolean
+
   /** The type of the empty named tuple */
   type Empty = NamedTuple[EmptyTuple, EmptyTuple]
 
