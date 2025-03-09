@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 opaque type System = (wires: Any)
 
 extension (system: System)

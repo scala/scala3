@@ -825,7 +825,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def tryNamedTupleSelection() =
       val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes(true)
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
-      if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
+      if nameIdx >= 0 && sourceVersion.enablesNamedTuples then
         typed(
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(qual), nme.apply),
@@ -3500,19 +3500,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
  /** Checks if `tree` is a named tuple with one element that could be
   *  interpreted as an assignment, such as `(x = 1)`. If so, issues a warning.
   */
-  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple)(using Context): Unit =
-    tree.trees match
-      case List(NamedArg(name, value)) =>
+  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple | untpd.Parens)(using Context): Unit =
+    val assignmentArgs = tree match {
+      case untpd.Tuple(List(NamedArg(name, value))) =>
         val tmpCtx = ctx.fresh.setNewTyperState()
         typedAssign(untpd.Assign(untpd.Ident(name), value), WildcardType)(using tmpCtx)
-        if !tmpCtx.reporter.hasErrors then
-          // If there are no errors typing the above, then the named tuple is
-          // ambiguous and we issue a warning.
-          report.migrationWarning(DeprecatedAssignmentSyntax(name, value), tree.srcPos)
-          if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
-            patch(tree.source, Span(tree.span.start, tree.span.start + 1), "{")
-            patch(tree.source, Span(tree.span.end - 1, tree.span.end), "}")
-      case _ => ()
+        Option.unless(tmpCtx.reporter.hasErrors)(name -> value)
+      case untpd.Parens(Assign(ident: untpd.Ident, value)) => Some(ident.name -> value)
+      case _ => None
+    }
+    assignmentArgs.foreach: (name, value) =>
+      // If there are no errors typing the above, then the named tuple is
+      // ambiguous and we issue a warning.
+      report.migrationWarning(DeprecatedAssignmentSyntax(name, value), tree.srcPos)
+      if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
+        patch(tree.source, Span(tree.span.start, tree.span.start + 1), "{")
+        patch(tree.source, Span(tree.span.end - 1, tree.span.end), "}")
 
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(using Context): Symbol = tree.removeAttachment(SymOfTree) match {
@@ -3621,6 +3624,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.SplicePattern => typedSplicePattern(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)
+          case tree: untpd.Parens =>
+            checkDeprecatedAssignmentSyntax(tree)
+            typedUnadapted(desugar(tree, pt), pt, locked)
           case _ => typedUnadapted(desugar(tree, pt), pt, locked)
         }
 

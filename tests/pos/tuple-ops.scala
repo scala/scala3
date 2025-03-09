@@ -1,4 +1,3 @@
-import language.experimental.namedTuples
 import Tuple.*
 
 def test =

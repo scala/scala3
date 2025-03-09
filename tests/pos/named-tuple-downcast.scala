@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 type Person = (name: String, age: Int)
 
 val Bob: Person = (name = "Bob", age = 33)

@@ -1725,8 +1725,7 @@ class CompletionTest {
      .completion(m6, Set())
 
   @Test def namedTupleCompletion: Unit =
-    code"""|import scala.language.experimental.namedTuples
-           |
+    code"""|
            |val person: (name: String, city: String) =
            |  (name = "Jamie", city = "Lausanne")
            |

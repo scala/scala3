@@ -720,8 +720,7 @@ class HoverTermSuite extends BaseHoverSuite:
 
   @Test def `named-tuples`: Unit =
     check(
-      """import scala.language.experimental.namedTuples
-        |
+      """
         |val foo = (name = "Bob", age = 42, height = 1.9d)
         |val foo_name = foo.na@@me
         |""".stripMargin,
@@ -730,9 +729,7 @@ class HoverTermSuite extends BaseHoverSuite:
 
   @Test def `named-tuples2`: Unit =
     check(
-      """|import scala.language.experimental.namedTuples
-         |
-         |import NamedTuple.*
+      """|import NamedTuple.*
          |
          |class NamedTupleSelectable extends Selectable {
          |  type Fields <: AnyNamedTuple

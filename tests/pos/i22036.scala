@@ -1,6 +1,3 @@
-//> using options -experimental -language:experimental.namedTuples
-import language.experimental.namedTuples
-
 type Foo[T] = T
 val x: NamedTuple.From[Tuple.Map[(Int, Int), Foo]] = ???
 val res = x._1
