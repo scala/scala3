@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/capset-members2.scala:4:12 ----------------------------------------------------
+4 |  cap type C[T] // error
+  |            ^
+  |            'cap type' declarations cannot have type parameters
