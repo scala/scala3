@@ -7,9 +7,9 @@ import caps.{CapSet, Capability}
   class C extends Capability
   class D
 
-  def f[X^](x: D^{X^}): D^{X^} = x
-  def g[X^](x: D^{X^}, y: D^{X^}): D^{X^} = x
-  def h[X^](): D^{X^} = ???
+  def f[X^](x: D^{X}): D^{X} = x
+  def g[X^](x: D^{X}, y: D^{X}): D^{X} = x
+  def h[X^](): D^{X} = ???
 
   def test(c1: C, c2: C) =
     val d: D^{c1, c2} = D()

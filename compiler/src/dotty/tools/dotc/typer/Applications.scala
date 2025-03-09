@@ -36,6 +36,7 @@ import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.inlines.Inlines
+import dotty.tools.dotc.cc.isRetains
 
 object Applications {
   import tpd.*
@@ -1114,7 +1115,9 @@ trait Applications extends Compatibility {
             val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)
+            // println(i"typedApply: $funRef, ${tree.args}, ${funRef.symbol.maybeOwner.isRetains}")
+            val applyCtx = if funRef.symbol.maybeOwner.isRetains then ctx.addMode(Mode.InCaptureSet) else ctx
+            val app = ApplyTo(tree, fun1, funRef, proto, pt)(using applyCtx)
             convertNewGenericArray(
               widenEnumCase(
                 postProcessByNameArgs(funRef, app).computeNullable(),
