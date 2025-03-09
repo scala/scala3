@@ -79,6 +79,7 @@ class CompilationTests {
       compileFile("tests/rewrites/i20002.scala", defaultOptions.and("-indent", "-rewrite")),
       compileDir("tests/rewrites/annotation-named-pararamters", defaultOptions.and("-rewrite", "-source:3.6-migration")),
       compileFile("tests/rewrites/i21418.scala", unindentOptions.and("-rewrite", "-source:3.5-migration")),
+      compileFile("tests/rewrites/infix-named-args.scala", defaultOptions.and("-rewrite", "-source:3.7-migration")),
       compileFile("tests/rewrites/ambiguous-named-tuple-assignment.scala", defaultOptions.and("-rewrite", "-source:3.6-migration")),
       compileFile("tests/rewrites/i21382.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/unused.scala", defaultOptions.and("-rewrite", "-Wunused:all")),

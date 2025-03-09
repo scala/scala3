@@ -669,6 +669,7 @@ object StdNames {
     val readResolve: N          = "readResolve"
     val zero: N                 = "zero"
     val zip: N                  = "zip"
+    val `++` : N                = "++"
     val nothingRuntimeClass: N  = "scala.runtime.Nothing$"
     val nullRuntimeClass: N     = "scala.runtime.Null$"
 
