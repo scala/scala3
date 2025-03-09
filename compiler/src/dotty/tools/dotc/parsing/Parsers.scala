@@ -35,6 +35,8 @@ import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.dotc.config.Feature.ccEnabled
+import dotty.tools.dotc.core.Types.AndType.make
 
 object Parsers {
 
@@ -256,6 +258,7 @@ object Parsers {
       || defIntroTokens.contains(in.token)
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
+      || Feature.ccEnabled && isIdent(nme.cap) //TODO have it as proper keyword/token instead?
 
     def isStatSep: Boolean = in.isStatSep
 
@@ -1617,6 +1620,12 @@ object Parsers {
       if in.token == RBRACE then Nil else commaSeparated(captureRef)
     }
 
+    /**  CaptureSetOrRef ::=  `{` CaptureSet `}` | CaptureRef   -- under captureChecking
+     */
+    def captureSetOrRef(): List[Tree] =
+      if in.token == LBRACE then captureSet()
+      else List(captureRef())
+
     def capturesAndResult(core: () => Tree): Tree =
       if Feature.ccEnabled && in.token == LBRACE && in.offset == in.lastOffset
       then CapturesAndResult(captureSet(), core())
@@ -1958,7 +1967,8 @@ object Parsers {
 
     def typeBlockStats(): List[Tree] =
       val tdefs = new ListBuffer[Tree]
-      while in.token == TYPE do tdefs += typeBlockStat()
+      while (in.token == TYPE) do
+        tdefs += typeBlockStat()
       tdefs.toList
 
     /**  TypeBlockStat ::= ‘type’ {nl} TypeDef
@@ -2240,7 +2250,7 @@ object Parsers {
         inBraces(refineStatSeq())
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
-     *              |  `^`                     -- under captureChecking
+     *              |  `^`                     -- under captureChecking TODO remove
      */
     def typeBounds(): TypeBoundsTree =
       atSpan(in.offset):
@@ -2254,10 +2264,32 @@ object Parsers {
       if (in.token == tok) { in.nextToken(); toplevelTyp() }
       else EmptyTree
 
+    private def capsType(refs: List[Tree], isLowerBound: Boolean = false): Tree =
+      if isLowerBound && refs.isEmpty then
+        Select(scalaDot(nme.caps), tpnme.CapSet)
+      else
+        makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, if refs.isEmpty then tpnme.retainsCap else tpnme.retains)
+
+    private def capsBound(tok: Int): Tree =
+      if (in.token == tok) then
+        in.nextToken()
+        capsType(captureSetOrRef(), isLowerBound = tok == SUPERTYPE)
+      else
+        capsType(Nil, isLowerBound = tok == SUPERTYPE)
+
     /** TypeAndCtxBounds  ::=  TypeBounds [`:` ContextBounds]
      */
     def typeAndCtxBounds(pname: TypeName): Tree = {
       val t = typeBounds()
+      val cbs = contextBounds(pname)
+      if (cbs.isEmpty) t
+      else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
+    }
+
+    /** TypeAndCtxBounds  ::=  TypeBounds [`:` ContextBounds]   -- under captureChecking
+     */
+    def captureSetAndCtxBounds(pname: TypeName): Tree = {
+      val t = TypeBoundsTree(capsBound(SUPERTYPE), capsBound(SUBTYPE))
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
       else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
@@ -3855,25 +3887,29 @@ object Parsers {
      *             | var VarDef
      *             | def DefDef
      *             | type {nl} TypeDef
+     *             | cap {nl} CapDef     -- under capture checking
      *             | TmplDef
      *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
      */
-    def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
-      case VAL =>
-        in.nextToken()
-        patDefOrDcl(start, mods)
-      case VAR =>
-        val mod = atSpan(in.skipToken()) { Mod.Var() }
-        val mod1 = addMod(mods, mod)
-        patDefOrDcl(start, mod1)
-      case DEF =>
-        defDefOrDcl(start, in.skipToken(mods))
-      case TYPE =>
-        typeDefOrDcl(start, in.skipToken(mods))
-      case CASE if inEnum =>
-        enumCase(start, mods)
-      case _ =>
-        tmplDef(start, mods)
+    def defOrDcl(start: Int, mods: Modifiers): Tree =
+      in.token match {
+        case VAL =>
+          in.nextToken()
+          patDefOrDcl(start, mods)
+        case VAR =>
+          val mod = atSpan(in.skipToken()) { Mod.Var() }
+          val mod1 = addMod(mods, mod)
+          patDefOrDcl(start, mod1)
+        case DEF =>
+          defDefOrDcl(start, in.skipToken(mods))
+        case TYPE =>
+          typeDefOrDcl(start, in.skipToken(mods))
+        case CASE if inEnum =>
+          enumCase(start, mods)
+        case _ =>
+          if Feature.ccEnabled && isIdent(nme.cap) then //TODO do we want a dedicated CAP token? TokensCommon would need a Ctx to check if ccenabled
+            capDefOrDcl(start, in.skipToken(mods))
+          else tmplDef(start, mods)
     }
 
     /** PatDef  ::=  ids [‘:’ Type] [‘=’ Expr]
@@ -4081,6 +4117,52 @@ object Parsers {
         }
       }
     }
+
+    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSet]    -- under capture checking
+     */
+    def capDefOrDcl(start: Offset, mods: Modifiers): Tree =
+      newLinesOpt()
+      atSpan(start, nameStart) {
+        val nameIdent = typeIdent()
+        val tname = nameIdent.name.asTypeName
+        // val tparams = typeParamClauseOpt(ParamOwner.Hk) TODO: error message: type parameters not allowed
+        // val vparamss = funParamClauses()
+
+        def makeCapDef(refs: List[Tree] | Tree): Tree = {
+          val tdef = TypeDef(nameIdent.name.toTypeName,
+                             refs.match
+                                case refs: List[Tree] => capsType(refs)
+                                case bounds: Tree => bounds)
+
+          if (nameIdent.isBackquoted)
+            tdef.pushAttachment(Backquoted, ())
+          finalizeDef(tdef, mods, start)
+        }
+
+        in.token.match
+          case EQUALS =>
+            in.nextToken()
+            makeCapDef(captureSetOrRef())
+          case SUBTYPE | SUPERTYPE =>
+            captureSetAndCtxBounds(tname) match
+              case bounds: TypeBoundsTree if in.token == EQUALS => //TODO ask Martin: can this case even happen?
+                val eqOffset = in.skipToken()
+                var rhs = capsType(captureSetOrRef())
+                if mods.is(Opaque) then
+                   rhs = TypeBoundsTree(bounds.lo, bounds.hi, rhs)
+                else
+                  syntaxError(em"cannot combine bound and alias", eqOffset)
+                makeCapDef(rhs)
+              case bounds => makeCapDef(bounds)
+          case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
+            makeCapDef(captureSetAndCtxBounds(tname))
+          case _ if (staged & StageKind.QuotedPattern) != 0 //TODO not sure if we need this case for capsets
+              || sourceVersion.enablesNewGivens && in.isColon =>
+            makeCapDef(captureSetAndCtxBounds(tname))
+          case _ =>
+            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token)) //TODO change error message
+            return EmptyTree // return to avoid setting the span to EmptyTree
+      }
 
     /** TmplDef ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
      *            |  [‘case’] ‘object’ ObjectDef
