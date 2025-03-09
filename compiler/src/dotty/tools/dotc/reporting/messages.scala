@@ -3370,14 +3370,6 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
 
   override protected def explain(using Context): String = ""
 
-class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
-  def msg(using Context) =
-    i"""Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
-       |To avoid this warning, either remove the argument names or use dotted selection."""
-        + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
-
-  def explain(using Context) = ""
-
 class GivenSearchPriorityWarning(
     pt: Type,
     cmp: Int,
