@@ -1,7 +1,7 @@
 -- [E203] Syntax Migration Warning: tests/warn/21681b.scala:3:2 --------------------------------------------------------
 3 |  (age = 29) // warn
   |  ^^^^^^^^^^
-  |  Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+  |  Ambiguous syntax: this is interpreted as a named tuple with one element,
   |  not as an assignment.
   |
   |  To assign a value, use curly braces: `{age = 29}`.

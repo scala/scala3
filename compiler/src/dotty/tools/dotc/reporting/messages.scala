@@ -3362,7 +3362,7 @@ end QuotedTypeMissing
 
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
-    i"""Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+    i"""Ambiguous syntax: this is interpreted as a named tuple with one element,
       |not as an assignment.
       |
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
