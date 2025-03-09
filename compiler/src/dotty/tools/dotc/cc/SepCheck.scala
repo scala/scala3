@@ -147,29 +147,6 @@ object SepCheck:
 
   case class DefInfo(tree: ValOrDefDef, symbol: Symbol, hidden: Refs, hiddenPeaks: Refs)
 
-class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
-  import checker.*
-  import SepCheck.*
-
-  /** The set of capabilities that are hidden by a polymorphic result type
-   *  of some previous definition.
-   */
-  private var defsShadow: Refs = emptyRefs
-
-  /** The previous val or def definitions encountered during separation checking
-   *  in reverse order. These all enclose and precede the current traversal node.
-   */
-  private var previousDefs: List[DefInfo] = Nil
-
-  /** The set of references that were consumed so far in the current method */
-  private var consumed: MutConsumedSet = MutConsumedSet()
-
-  /** Infos aboput Labeled expressions enclosing the current traversal point.
-   *  For each labeled expression, it's label name, and a list buffer containing
-   *  all consumed sets of return expressions referring to that label.
-   */
-  private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
-
   extension (refs: Refs)
 
     /** The footprint of a set of references `refs` the smallest set `F` such that
@@ -280,23 +257,36 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       refs.filter: ref =>
         !others.exists(_.covers(ref))
 
-    /** Deduct the footprint of `sym` and `sym*` from `refs` */
-    private def deductSymFootprint(sym: Symbol)(using Context): Refs =
-      val ref = sym.termRef
-      if ref.isTrackableRef then refs.deduct(CaptureSet(ref, ref.reach).elems.footprint())
-      else refs
-
     /** Deduct `sym` and `sym*` from `refs` */
     private def deductSymRefs(sym: Symbol)(using Context): Refs =
       val ref = sym.termRef
       if ref.isTrackableRef then refs.deduct(SimpleIdentitySet(ref, ref.reach))
       else refs
 
-    /** Deduct the footprint of all captures of trees in `deps` from `refs` */
-    private def deductCapturesOf(deps: List[Tree])(using Context): Refs =
-      deps.foldLeft(refs): (refs, dep) =>
-        refs.deduct(captures(dep).footprint())
   end extension
+
+class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
+  import checker.*
+  import SepCheck.*
+
+  /** The set of capabilities that are hidden by a polymorphic result type
+   *  of some previous definition.
+   */
+  private var defsShadow: Refs = emptyRefs
+
+  /** The previous val or def definitions encountered during separation checking
+   *  in reverse order. These all enclose and precede the current traversal node.
+   */
+  private var previousDefs: List[DefInfo] = Nil
+
+  /** The set of references that were consumed so far in the current method */
+  private var consumed: MutConsumedSet = MutConsumedSet()
+
+  /** Infos aboput Labeled expressions enclosing the current traversal point.
+   *  For each labeled expression, it's label name, and a list buffer containing
+   *  all consumed sets of return expressions referring to that label.
+   */
+  private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
 
   /** The deep capture set of an argument or prefix widened to the formal parameter, if
    *  the latter contains a cap.
