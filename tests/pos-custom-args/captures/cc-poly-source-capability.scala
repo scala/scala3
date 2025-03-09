@@ -1,11 +1,11 @@
 import language.experimental.captureChecking
 import annotation.experimental
-import caps.{CapSet, Capability}
+import caps.{CapSet, SharedCapability}
 import caps.use
 
 @experimental object Test:
 
-  class Async extends Capability
+  class Async extends SharedCapability
 
   def listener(async: Async): Listener^{async} = ???
 

@@ -1,0 +1,29 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/erased-methods2.scala:21:9 -------------------------------
+21 |     ?=> (x$2: CT[Ex2]^)        // error
+   |         ^
+   |         Found:    (erased x$2: CT[Ex2]^) ?->{x$1} Unit
+   |         Required: (erased x$2: CT[Ex2]^) ?->? Unit
+   |
+   |         Note that the existential capture root in (erased x$2: CT[Ex2]^) ?=> Unit
+   |         cannot subsume the capability x$1.type
+22 |     ?=>
+23 |      //given (CT[Ex3]^) = x$1
+24 |      Throw(new Ex3)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/erased-methods2.scala:32:9 -------------------------------
+32 |     ?=> (erased x$2: CT[Ex2]^)  // error
+   |         ^
+   |  Found:    (erased x$2: CT[Ex2]^) ?->{x$1} (erased x$2: CT[Ex1]^) ?->{x$1} Unit
+   |  Required: (erased x$1²: CT[Ex2]^) ?->? (erased x$2: CT[Ex1]^) ?->? Unit
+   |
+   |  where:    x$1  is a parameter in an anonymous function in method foo10a
+   |            x$1² is a reference to a value parameter
+   |
+   |
+   |  Note that the existential capture root in (erased x$1: CT[Ex2]^) ?=> (erased x$2: CT[Ex1]^) ?->{localcap} Unit
+   |  cannot subsume the capability x$1.type
+33 |     ?=> (erased x$3: CT[Ex1]^)
+34 |     ?=> Throw(new Ex3)
+   |
+   | longer explanation available when compiling with `-explain`

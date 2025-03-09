@@ -24,7 +24,8 @@ import scala.language.implicitConversions
 import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
-import caps.untrackedCaptures
+import caps.{cap, untrackedCaptures}
+import caps.unsafe.unsafeAssumeSeparate
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -386,12 +387,30 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     */
   def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]^): LazyListIterable[B]^{this, suffix} =
     newLL {
-      if (isEmpty) suffix match {
+      {if (isEmpty) suffix match {
         case lazyList: LazyListIterable[B]       => lazyList.state // don't recompute the LazyListIterable
         case coll if coll.knownSize == 0 => State.Empty
         case coll                        => stateFromIterator(coll.iterator)
       }
       else sCons(head, tail lazyAppendedAll suffix)
+    }.asInstanceOf
+    /* TODO: Without the asInstanceOf, we get
+        [error] 390 |      {if (isEmpty) suffix match {
+        [error]     |      ^y-cc / Compile / compileIncremental 10s
+        [error]     |Found:    () ?->{suffix}
+        [error]     |  scala.collection.immutable.LazyListIterable.State[box B^?]^{unknown.localcap}
+        [error]     |Required: () ?->{fresh}
+        [error]     |  scala.collection.immutable.LazyListIterable.State[box B^?]^{localcap}
+        [error] 391 |        case lazyList: LazyListIterable[B]       => lazyList.state // don't recompute the LazyListIterable
+        [error] 392 |        case coll if coll.knownSize == 0 => State.Empty
+        [error] 393 |        case coll                        => stateFromIterator(coll.iterator)
+        [error] 394 |      }
+        [error] 395 |      else sCons(head, tail lazyAppendedAll suffix)
+        [error] 396 |    }//.asInstanceOf
+        [error]     |
+
+      Figure out why we found a result with capture {unknown.localcap}.
+    */
     }
 
   /** @inheritdoc
@@ -462,8 +481,11 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     * $preservesLaziness
     */
   override def partitionMap[A1, A2](f: A => Either[A1, A2]): (LazyListIterable[A1]^{this, f}, LazyListIterable[A2]^{this, f}) = {
-    val (left, right) = map(f).partition(_.isLeft)
-    (left.map(_.asInstanceOf[Left[A1, _]].value), right.map(_.asInstanceOf[Right[_, A2]].value))
+    unsafeAssumeSeparate:
+      val part = map(f).partition(_.isLeft)
+      val left = part._1
+      val right = part._2
+      (left.map(_.asInstanceOf[Left[A1, _]].value), right.map(_.asInstanceOf[Right[_, A2]].value))
   }
 
   /** @inheritdoc
@@ -674,7 +696,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
   override def dropRight(n: Int): LazyListIterable[A]^{this} = {
     if (n <= 0) this
     else if (knownIsEmpty) LazyListIterable.empty
-    else newLL {
+    else unsafeAssumeSeparate { newLL {
       var scout = this
       var remaining = n
       // advance scout n elements ahead (or until empty)
@@ -683,7 +705,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         scout = scout.tail
       }
       dropRightState(scout)
-    }
+    }}
   }
 
   private def dropRightState(scout: LazyListIterable[_]^): State[A]^{this, scout} =
@@ -878,7 +900,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         // if cursor (eq scout) has state defined, it is empty; else unknown state
         if (!cursor.stateDefined) b.append(sep).append("<not computed>")
       } else {
-        @inline def same(a: LazyListIterable[A]^, b: LazyListIterable[A]^): Boolean = (a eq b) || (a.state eq b.state)
+        @inline def same(a: LazyListIterable[A]^, b: LazyListIterable[A]^{cap, a}): Boolean = (a eq b) || (a.state eq b.state)
         // Cycle.
         // If we have a prefix of length P followed by a cycle of length C,
         // the scout will be at position (P%C) in the cycle when the cursor
@@ -1052,7 +1074,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         val head = it.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        sCons(head, newLL(stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state)))
+        sCons(head, newLL(
+          unsafeAssumeSeparate(
+            stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state))))
       } else State.Empty
     }
   }
@@ -1178,7 +1202,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     *  @param f     the function that's repeatedly applied
     *  @return      the LazyListIterable returning the infinite sequence of values `start, f(start), f(f(start)), ...`
     */
-  def iterate[A](start: => A)(f: A => A): LazyListIterable[A]^{start, f} =
+  def iterate[A](start: => A)(f: A ->{cap, start} A): LazyListIterable[A]^{start, f} =
     newLL {
       val head = start
       sCons(head, iterate(f(head))(f))

@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/sep-list.scala:39:6 -----------------------------------------------------------
+39 |  par(h1, h2) // error
+   |      ^^
+   |      Separation failure: argument of type  (h1 : Ref^{xs*})
+   |      to method par: (x: Ref^, y: Ref^): Unit
+   |      corresponds to capture-polymorphic formal parameter x of type  Ref^
+   |      and hides capabilities  {h1}.
+   |      Some of these overlap with the captures of the second argument with type  (h2 : Ref^{xs*}).
+   |
+   |        Hidden set of current argument        : {h1}
+   |        Hidden footprint of current argument  : {h1, xs*}
+   |        Capture set of second argument        : {h2}
+   |        Footprint set of second argument      : {h2, xs*}
+   |        The two sets overlap at               : {xs*}

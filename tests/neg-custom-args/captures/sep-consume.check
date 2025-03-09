@@ -1,0 +1,28 @@
+-- Error: tests/neg-custom-args/captures/sep-consume.scala:17:2 --------------------------------------------------------
+17 |  x.put(42)  // error
+   |  ^
+   |  Separation failure: Illegal access to (x : Ref^), which was passed to a
+   |  @consume parameter or was used as a prefix to a @consume method on line 16
+   |  and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/sep-consume.scala:18:2 --------------------------------------------------------
+18 |  x.get      // error
+   |  ^
+   |  Separation failure: Illegal access to x.rd, which was passed to a
+   |  @consume parameter or was used as a prefix to a @consume method on line 16
+   |  and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/sep-consume.scala:19:16 -------------------------------------------------------
+19 |  par(rx, () => x.put(42))  // error
+   |                ^
+   |                Separation failure: Illegal access to (x : Ref^), which was passed to a
+   |                @consume parameter or was used as a prefix to a @consume method on line 16
+   |                and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/sep-consume.scala:20:16 -------------------------------------------------------
+20 |  par(rx, () => x.get)  // error
+   |                ^
+   |                Separation failure: Illegal access to x.rd, which was passed to a
+   |                @consume parameter or was used as a prefix to a @consume method on line 16
+   |                and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/sep-consume.scala:24:16 -------------------------------------------------------
+24 |  def foo = bad(f) // error
+   |                ^
+   | Separation failure: argument to @consume parameter with type (f : () ->{x.rd} Unit) refers to non-local value f
