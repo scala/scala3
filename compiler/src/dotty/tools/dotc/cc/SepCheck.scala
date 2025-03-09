@@ -567,23 +567,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         if pos != null then consumeError(ref, pos, tree.srcPos)
   end checkUse
 
-  /** If `tp` denotes some version of a singleton type `x.type` the set `{x}`
+  /** If `tp` denotes some version of a singleton capture ref `x.type` the set `{x, x*}`
    *  otherwise the empty set.
    */
-  def explicitRefs(tp: Type): Refs = tp match
-    case tp: (TermRef | ThisType) => SimpleIdentitySet(tp)
+  def explicitRefs(tp: Type)(using Context): Refs = tp match
+    case tp: (TermRef | ThisType) if tp.isTrackableRef => SimpleIdentitySet(tp, tp.reach)
     case AnnotatedType(parent, _) => explicitRefs(parent)
     case AndType(tp1, tp2) => explicitRefs(tp1) ++ explicitRefs(tp2)
     case OrType(tp1, tp2) => explicitRefs(tp1) ** explicitRefs(tp2)
     case _ => emptyRefs
-
-  /** Deduct some elements from `refs` according to the role of the checked type `tpe`:
-   *   - If the the type apears as a (result-) type of a definition of `x`, deduct
-   *     `x` and `x*`.
-   *   - If `tpe` is morally a singleton type deduct it as well.
-   */
-  def prune(refs: Refs, tpe: Type, role: TypeRole)(using Context): Refs =
-    refs.deductSymFootprint(role.dclSym).deduct(explicitRefs(tpe))
 
   /** Check validity of consumed references `refsToCheck`. The references are consumed
    *  because they are hidden in a Fresh result type or they are referred
@@ -611,7 +603,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
-    for hiddenRef <- prune(refsToCheck, tpe, role) do
+    for hiddenRef <- refsToCheck.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe)) do
       if !hiddenRef.derivesFromSharedCapability then
         hiddenRef.pathRoot match
           case ref: TermRef =>
@@ -662,8 +654,17 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   def checkType(tpe: Type, pos: SrcPos, role: TypeRole)(using Context): Unit =
 
+    /** Deduct some elements from `refs` according to the role of the checked type `tpe`:
+     *   - If the the type apears as a (result-) type of a definition of `x`, deduct
+     *       `x` and `x*`.
+     *   - If the checked type (or, for arguments, the actual type of the argument)
+     *     is morally a singleton type `y.type` deduct `y` and `y*` as well.
+     */
     extension (refs: Refs) def pruned =
-      refs.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe))
+      val deductedType = role match
+        case TypeRole.Argument(arg) => arg.tpe
+        case _ => tpe
+      refs.deductSymRefs(role.dclSym).deduct(explicitRefs(deductedType))
 
     def sepTypeError(parts: List[Type], genPart: Type, otherPart: Type): Unit =
       val captured = genPart.deepCaptureSet.elems
