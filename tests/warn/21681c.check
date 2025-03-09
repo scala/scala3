@@ -1,5 +1,5 @@
--- [E203] Syntax Migration Warning: tests/warn/21681c.scala:7:2 --------------------------------------------------------
-7 |  (age = 29) // warn
+-- [E203] Syntax Migration Warning: tests/warn/21681c.scala:5:2 --------------------------------------------------------
+5 |  (age = 29) // warn
   |  ^^^^^^^^^^
   |  Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
   |  not as an assignment.

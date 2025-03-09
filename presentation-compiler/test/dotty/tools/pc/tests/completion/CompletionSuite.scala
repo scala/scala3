@@ -2032,8 +2032,7 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `namedTuple completions` =
     check(
-      """|import scala.language.experimental.namedTuples
-         |import scala.NamedTuple.*
+      """|import scala.NamedTuple.*
          |
          |val person = (name = "Jamie", city = "Lausanne")
          |
@@ -2044,8 +2043,7 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `Selectable with namedTuple Fields member` =
     check(
-      """|import scala.language.experimental.namedTuples
-         |import scala.NamedTuple.*
+      """|import scala.NamedTuple.*
          |
          |class NamedTupleSelectable extends Selectable {
          |  type Fields <: AnyNamedTuple

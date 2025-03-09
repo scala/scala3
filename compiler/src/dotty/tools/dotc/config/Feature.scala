@@ -33,7 +33,6 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
-  val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
   val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
@@ -64,7 +63,6 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (into, "Allow into modifier on parameter types"),
-    (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
     (betterMatchTypeExtractors, "Enable better match type extractors"),
     (betterFors, "Enable improvements in `for` comprehensions")
