@@ -527,8 +527,6 @@ class ReplDriver(settings: Array[String],
           if (f.isClassContainer) f.iterator.flatMap(flatten)
           else Iterator(f)
 
-        val entries = flatten(jarFile)
-
         def tryClassLoad(classFile: AbstractFile): Option[String] = {
           val input = classFile.input
           try {
@@ -543,27 +541,33 @@ class ReplDriver(settings: Array[String],
           }
         }
 
-        val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
-        if (existingClass.nonEmpty)
-          out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
-          state
-        else inContext(state.context):
-          val jarClassPath = ClassPathFactory.newClassPath(jarFile)
-          val prevOutputDir = ctx.settings.outputDir.value
+        try {
+          val entries = flatten(jarFile)
 
-          // add to compiler class path
-          ctx.platform.addToClassPath(jarClassPath)
-          SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+          val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
+          if (existingClass.nonEmpty)
+            out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+          else inContext(state.context):
+            val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+            val prevOutputDir = ctx.settings.outputDir.value
 
-          // new class loader with previous output dir and specified jar
-          val prevClassLoader = rendering.classLoader()
-          val jarClassLoader = fromURLsParallelCapable(
-            jarClassPath.asURLs, prevClassLoader)
-          rendering.myClassLoader = new AbstractFileClassLoader(
-            prevOutputDir, jarClassLoader)
+            // add to compiler class path
+            ctx.platform.addToClassPath(jarClassPath)
+            SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-          out.println(s"Added '$path' to classpath.")
-          state
+            // new class loader with previous output dir and specified jar
+            val prevClassLoader = rendering.classLoader()
+            val jarClassLoader = fromURLsParallelCapable(
+              jarClassPath.asURLs, prevClassLoader)
+            rendering.myClassLoader = new AbstractFileClassLoader(
+              prevOutputDir, jarClassLoader)
+
+            out.println(s"Added '$path' to classpath.")
+        } catch {
+          case e: Throwable =>
+            out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
+        }
+        state
 
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")
