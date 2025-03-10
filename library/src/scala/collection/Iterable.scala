@@ -725,10 +725,12 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
    *  @return       a new $coll which contains all elements
    *                of this $coll followed by all elements of `suffix`.
    */
-  def concat[B >: A](suffix: IterableOnce[B]): CC[B] = iterableFactory.from(suffix match {
-    case xs: Iterable[B] => new View.Concat(this, xs)
-    case xs => iterator ++ suffix.iterator
-  })
+  def concat[B >: A](suffix: IterableOnce[B]): CC[B] = iterableFactory.from {
+    suffix match {
+      case suffix: Iterable[B] => new View.Concat(this, suffix)
+      case suffix => iterator ++ suffix.iterator
+    }
+  }
 
   /** Alias for `concat` */
   @inline final def ++ [B >: A](suffix: IterableOnce[B]): CC[B] = concat(suffix)

@@ -124,16 +124,16 @@ object Array {
     * @see `java.util.Arrays#copyOf`
     */
   def copyOf[A](original: Array[A], newLength: Int): Array[A] = ((original: @unchecked) match {
-    case x: Array[BoxedUnit]  => newUnitArray(newLength).asInstanceOf[Array[A]]
-    case x: Array[AnyRef]     => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Int]        => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Double]     => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Long]       => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Float]      => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Char]       => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Byte]       => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Short]      => java.util.Arrays.copyOf(x, newLength)
-    case x: Array[Boolean]    => java.util.Arrays.copyOf(x, newLength)
+    case original: Array[BoxedUnit]  => newUnitArray(newLength).asInstanceOf[Array[A]]
+    case original: Array[AnyRef]     => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Int]        => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Double]     => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Long]       => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Float]      => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Char]       => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Byte]       => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Short]      => java.util.Arrays.copyOf(original, newLength)
+    case original: Array[Boolean]    => java.util.Arrays.copyOf(original, newLength)
   }).asInstanceOf[Array[A]]
 
   /** Copy one array to another, truncating or padding with default values (if
