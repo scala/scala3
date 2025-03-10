@@ -16,6 +16,22 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.transform.ValueClasses
 
+/**
+  * This phase transforms every reflectEval call to an actual method call that performs reflection.
+  * Specifically it does:
+  *   - encode symbols to Java
+  *   - box and unbox value classes where necessary
+  *   - box and unbox captured variables where necessary
+  *   - evaluate by-name params where necessary
+  *   - resolve captured variables and check they are available (they may not be captured at runtime)
+  * 
+  * Before:
+  *   this.reflectEval(a, "ReflectEvalStrategy.MethodCall(m)", args)
+  * 
+  * After:
+  *   this.callMethod(a, "example.A", "m", ["ArgType1", "ArgType2"], "ResType", args)
+  *
+  */ 
 private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionStore: ExpressionStore) extends MiniPhase:
   private val reflectEvalName = termName("reflectEval")
   private val elemName = termName("elem")

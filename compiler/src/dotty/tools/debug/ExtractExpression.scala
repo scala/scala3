@@ -17,7 +17,55 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.util.SrcPos
 import scala.annotation.nowarn
 
-private class ExtractExpression(config: ExpressionCompilerConfig, expressionStore: ExpressionStore) extends MacroTransform with DenotTransformer:
+/**
+  * This phase extracts the typed expression from the source tree, transfoms it and places it
+  * in the evaluate method of the Expression class.
+  * 
+  * Before:
+  *   package example:
+  *     class A:
+  *       def m: T =
+  *         val expression =
+  *           println("")
+  *           typed_expr
+  *         body
+  *     
+  *     class Expression(thisObject: Any, names: Array[String], values: Array[Any]):
+  *       def evaluate(): Any = ()
+  * 
+  * After:
+  *   package example:
+  *     class A:
+  *       def m: T = body
+  *     
+  *     class Expression(thisObject: Any, names: Array[String], values: Array[Any]):
+  *       def evaluate(): Any = 
+            {
+  *           transformed_expr
+  *         }
+  * 
+  * Every access to a local variable, or an inaccessible member is transformed into a temporary reflectEval call.
+  * A ReflectEvalStrategy is attached to each reflectEval call to describe what should be evaluated and how.
+  * When printing trees for debugging, the ReflectEvalStrategy appears as a String literal argument.
+  * 
+  * Examples:
+  *
+  * 1. Get local variable `a`:
+  *      reflectEval(null, "ReflectEvalStrategy.LocalValue(a)", [])
+  * 
+  * 2. Call private method `a.m(x1, x2)`:
+  *      reflectEval(a, "ReflectEvalStrategy.MethodCall(m)", [x1, x2])
+  *
+  * 3. Set private field `a.b = c`:
+  *      reflectEval(a, "ReflectEvalStrategy.FieldAssign(b)", [c])
+  * 
+  * etc
+  *
+  */
+private class ExtractExpression(
+    config: ExpressionCompilerConfig,
+    expressionStore: ExpressionStore
+) extends MacroTransform with DenotTransformer:
   override def phaseName: String = ExtractExpression.name
 
   /** Update the owner of the symbols inserted into `evaluate`. */

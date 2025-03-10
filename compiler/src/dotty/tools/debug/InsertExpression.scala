@@ -18,9 +18,28 @@ import dotty.tools.io.VirtualFile
 import java.nio.charset.StandardCharsets
 
 /**
- * This phase inserts the expression being evaluated at the line of the breakpoint
- * and inserts the expression class in the same package (so that it can access package private symbols)
- */
+  * This phase inserts the expression being evaluated at the line of the breakpoint
+  * and inserts the expression class in the same package (so that it can access package private symbols).
+  * 
+  * Before:
+  *   package example:
+  *     class A:
+  *       def m: T =
+  *         body // breakpoint here
+  * 
+  * After:
+  *   package example:
+  *     class A:
+  *       def m: T =
+  *         val expression =
+  *           println("") // effect, to prevent constant-folding
+  *           expr        // inserted expression
+  *         body          // breakpoint here
+  *     
+  *     class Expression(thisObject: Any, names: Array[String], values: Array[Any]):
+  *       def evaluate(): Any = ()
+  * 
+  */
 private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
   private var expressionInserted = false
 
