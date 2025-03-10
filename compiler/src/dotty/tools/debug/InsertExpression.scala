@@ -29,7 +29,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
 
   // TODO move reflection methods (callMethod, getField, etc) to scala3-library
   // under scala.runtime (or scala.debug?) to avoid recompiling them again and again
-  private val evaluationClassSource =
+  private val expressionClassSource =
     s"""|class ${config.expressionClassName}(thisObject: Any, names: Array[String], values: Array[Any]) {
         |  import java.lang.reflect.InvocationTargetException
         |  val classLoader = getClass.getClassLoader
@@ -122,10 +122,10 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |""".stripMargin
 
   override def run(using Context): Unit =
-    val inserter = Inserter(parseExpression, parseEvaluationClass)
+    val inserter = Inserter(parseExpression, parseExpressionClass)
     ctx.compilationUnit.untpdTree = inserter.transform(ctx.compilationUnit.untpdTree)
 
-  class Inserter(expression: Tree, expressionClass: Seq[Tree]) extends UntypedTreeMap:
+  private class Inserter(expression: Tree, expressionClass: Seq[Tree]) extends UntypedTreeMap:
     override def transform(tree: Tree)(using Context): Tree =
       tree match
         case tree: PackageDef =>
@@ -181,9 +181,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
       new VirtualFile("<wrapped-expression>", contentBytes)
     val sourceFile =
       new SourceFile(wrappedExpressionFile, wrappedExpression.toArray):
-        override def start: Int =
-          // prefix.size depends on the OS
-          -prefix.size
+        override def start: Int = -prefix.size
         override def underlying: SourceFile = expressionFile
         override def atSpan(span: Span): SourcePosition =
           if (span.exists) SourcePosition(this, span)
@@ -198,9 +196,8 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
       .body
       .head
 
-  private def parseEvaluationClass(using Context): Seq[Tree] =
-    val sourceFile =
-      SourceFile.virtual("<evaluation class>", evaluationClassSource)
+  private def parseExpressionClass(using Context): Seq[Tree] =
+    val sourceFile = SourceFile.virtual("<expression class>", expressionClassSource)
     parse(sourceFile).asInstanceOf[PackageDef].stats
 
   private def parse(sourceFile: SourceFile)(using Context): Tree =
@@ -233,4 +230,4 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
     else report.warning(msg, srcPos)
 
 private object InsertExpression:
-  val name: String = "insert-expression"
+  val name: String = "insertExpression"
