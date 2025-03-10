@@ -6,6 +6,8 @@ import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys.*
 import sbt.*
+import sbt.nio.FileStamper
+import sbt.nio.Keys.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
@@ -279,6 +281,8 @@ object Build {
 
   val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
+  val extraTestFiles = taskKey[Seq[Path]]("Extra files that affect test execution and caching")
+
   lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
@@ -359,9 +363,14 @@ object Build {
             .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
         )
     },
-    // Deactivate Develocity's test caching because it caches all tests or nothing.
-    // Also at the moment, it does not take compilation files as inputs.
-    Test / develocityBuildCacheClient := None,
+    // Activate test caching on CI only
+    Test / develocityBuildCacheClient := {
+      if (insideCI.value) (Test / develocityBuildCacheClient).value else None
+    },
+    // base configuration of extraTestFiles to add as extra cache input
+    // see https://docs.gradle.com/develocity/sbt-plugin/#declaring_inputs
+    extraTestFiles / outputFileStamper := FileStamper.Hash,
+    extraTestFiles := Seq.empty
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -442,7 +451,12 @@ object Build {
     Compile / packageBin / packageOptions +=
       Package.ManifestAttributes(
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
-      )
+      ),
+    
+    // add stamps of extra test files in cache key
+    Test / test / buildcache.develocityTaskCacheKeyComponents += (extraTestFiles / outputFileStamps).taskValue,
+    Test / testOnly / buildcache.develocityInputTaskCacheKeyComponents += (extraTestFiles / outputFileStamps).taskValue,
+    Test / testQuick / buildcache.develocityInputTaskCacheKeyComponents += (extraTestFiles / outputFileStamps).taskValue
   )
 
   // Settings used for projects compiled only with Java
@@ -1023,6 +1037,12 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+
+    // declare extra test files to compute cache key
+    extraTestFiles ++= {
+      val directory = (ThisBuild / baseDirectory).value / "tests"
+      directory.allPaths.get.map(_.toPath)
+    }
   )
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
@@ -1812,6 +1832,12 @@ object Build {
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
+      // declare extra test files to compute cache key
+      extraTestFiles ++= {
+        val testsDir = (ThisBuild / baseDirectory).value / "tests"
+        val directories = Seq(testsDir / "neg-scalajs", testsDir / "run")
+        directories.flatMap(_.allPaths.get).map(_.toPath)
+      }
     )
 
   lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
@@ -2046,6 +2072,10 @@ object Build {
       testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
       Test / buildInfoPackage := "dotty.tools.scaladoc.test",
       BuildInfoPlugin.buildInfoScopedSettings(Test),
+      extraTestFiles ++= {
+        val directory = (Test / Build.testcasesSourceRoot).value
+        file(directory).allPaths.get.map(_.toPath)
+      }
     )
 
   // various scripted sbt tests
