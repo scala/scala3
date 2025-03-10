@@ -52,6 +52,20 @@ object Load {
   val command: String = ":load"
 }
 
+/** `:require` is a deprecated alias for :jar`
+ */
+case class Require(path: String) extends Command
+object Require {
+  val command: String = ":require"
+}
+
+/** `:jar <path>` adds a jar to the classpath
+ */
+case class JarCmd(path: String) extends Command
+object JarCmd {
+  val command: String = ":jar"
+}
+
 /** `:kind <type>` display the kind of a type. see also :help kind
  */
 case class KindOf(expr: String) extends Command
@@ -151,8 +165,10 @@ object ParseResult {
     Help.command -> (_  => Help),
     Reset.command -> (arg  => Reset(arg)),
     Imports.command -> (_  => Imports),
+    JarCmd.command -> (arg => JarCmd(arg)),
     KindOf.command -> (arg => KindOf(arg)),
     Load.command -> (arg => Load(arg)),
+    Require.command -> (arg => Require(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
     Settings.command -> (arg => Settings(arg)),
