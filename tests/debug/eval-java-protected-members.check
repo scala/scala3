@@ -1,9 +1,9 @@
 break Test$ 3
-eval A.x1
+eval example.A.x1
 result x1
-eval A.x1 = "y1"; A.x1
+eval example.A.x1 = "y1"; example.A.x1
 result y1
-eval A.m1()
+eval example.A.m1()
 result m1
 eval x2
 result x2

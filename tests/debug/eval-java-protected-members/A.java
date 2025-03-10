@@ -1,4 +1,6 @@
-class A {
+package example;
+
+public class A {
   protected static String x1 = "x1";
   protected static String m1() {
     return "m1";

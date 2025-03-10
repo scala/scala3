@@ -283,7 +283,11 @@ private class ExtractExpression(config: ExpressionCompilerConfig, expressionStor
   private def isLocalVariable(symbol: Symbol)(using Context): Boolean =
     !symbol.is(Method) && symbol.isLocalToBlock
 
-  // Check if a term is accessible from the expression class
+  /** Check if a term is accessible from the expression class.
+   *  At this phase, there is no need test privateWithin, as it will no longer be checked.
+   *  This eliminates the need to use reflection to evaluate privateWithin members,
+   *  which would otherwise degrade performances.
+   */
   private def isAccessibleMember(tree: Tree)(using Context): Boolean =
     val symbol = tree.symbol
     symbol.owner.isType &&
