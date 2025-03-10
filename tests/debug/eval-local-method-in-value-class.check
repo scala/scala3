@@ -1,0 +1,15 @@
+break A$ 5
+eval this.m(1)
+result ff
+eval m(3)
+result fofofo
+
+break A$ 4
+eval value
+result foo
+eval size
+result 2
+eval m(1)
+result fo
+eval this.m(3)
+result foofoo

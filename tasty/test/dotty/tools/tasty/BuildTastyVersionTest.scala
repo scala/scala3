@@ -9,10 +9,10 @@ import TastyBuffer._
 class BuildTastyVersionTest {
   
   val CurrentTastyVersion = TastyVersion(TastyFormat.MajorVersion, TastyFormat.MinorVersion, TastyFormat.ExperimentalVersion)
-  
+
   // Needs to be defined in build Test/envVars
   val ExpectedTastyVersionEnvVar = "EXPECTED_TASTY_VERSION"
-  
+
   @Test def testBuildTastyVersion(): Unit = {
     val expectedVersion = sys.env.get(ExpectedTastyVersionEnvVar)
       .getOrElse(fail(s"Env variable $ExpectedTastyVersionEnvVar not defined"))

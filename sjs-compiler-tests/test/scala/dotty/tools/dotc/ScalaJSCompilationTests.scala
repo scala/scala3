@@ -10,21 +10,11 @@ import reporting.TestReporter
 import vulpix._
 
 @Category(Array(classOf[ScalaJSCompilationTests]))
-class ScalaJSCompilationTests extends ParallelTesting {
+class ScalaJSCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
   import ScalaJSCompilationTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 60.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
 
   // Negative tests ------------------------------------------------------------
 
@@ -34,6 +24,30 @@ class ScalaJSCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/neg-scalajs", scalaJSOptions),
     ).checkExpectedErrors()
   }
+
+  @Test def runScalaJS: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runScalaJS")
+    aggregateTests(
+      compileFilesInDir("tests/run", scalaJSOptions),
+    ).checkRuns()
+  }
+}
+
+object ScalaJSCompilationTests extends ParallelTesting {
+  implicit val summaryReport: SummaryReporting = new SummaryReport
+
+  // Test suite configuration --------------------------------------------------
+  def maxDuration = 60.seconds
+  def numberOfSlaves = 5
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
+
+  @AfterClass def tearDown(): Unit =
+    cleanup()
+    summaryReport.echoSummary()
 
   // Run tests -----------------------------------------------------------------
 
@@ -57,16 +71,4 @@ class ScalaJSCompilationTests extends ParallelTesting {
         t.printStackTrace(new java.io.PrintWriter(writer))
         Failure(writer.toString())
   end runMain
-
-  @Test def runScalaJS: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("runScalaJS")
-    aggregateTests(
-      compileFilesInDir("tests/run", scalaJSOptions),
-    ).checkRuns()
-  }
-}
-
-object ScalaJSCompilationTests {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
 }

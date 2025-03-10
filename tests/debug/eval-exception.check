@@ -1,0 +1,11 @@
+break Test$ 7
+eval throwException()
+result java.lang.Exception: foo
+eval throw new Exception("bar")
+result java.lang.Exception: bar
+eval
+  try throwException()
+  catch case e: Exception => "caught"
+result caught
+eval assert(false, "fizz")
+result java.lang.AssertionError: assertion failed: fizz
