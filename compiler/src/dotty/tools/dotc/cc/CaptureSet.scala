@@ -408,14 +408,20 @@ object CaptureSet:
 
   /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
-    defn.captureRoot.termRef.singletonCaptureSet
+    root.cap.singletonCaptureSet
+
+  /** The same as CaptureSet.universal but generated implicitly for
+   * references of Capability subtypes
+   */
+  def universalImpliedByCapability(using Context) =
+    defn.universalCSImpliedByCapability
 
   def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
     root.Fresh.withOwner(owner).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
-    defn.captureRoot.termRef.readOnly.singletonCaptureSet
+    root.cap.readOnly.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)

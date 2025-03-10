@@ -51,9 +51,8 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   extension (x: Any) def readOnlyCapability: Any = x
 
-  /** A trait to allow expressing existential types such as
-   *
-   *      (x: Exists) => A ->{x} B
+  /** A trait that used to allow expressing existential types. Replaced by
+   *  root.Result instances.
    */
   @deprecated
   sealed trait Exists extends Capability
@@ -89,20 +88,14 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class refineOverride extends annotation.StaticAnnotation
 
-  /** An internal annotation placed on a reference to an existential capability.
-   *  That way, we can distinguish different universal capabilties referring to
-   *  the same binder. For instance,
-   *
-   *     () -> (Ref^, Ref^)
-   *
-   *  would be encoded as
-   *
-   *     () -> (ex: Exists) -> (Ref^{ex @ existential}, Ref^{ex @existential})
-   *
-   *  The two capture references are different since they carry two separately
-   *  allocated annotations.
+  /** An annotation used internally for root capability wrappers of `cap` that
+   *  represent either Fresh or Result capabilities.
+   *  A capability is encoded as `caps.cap @rootCapability(...)` where
+   *  `rootCapability(...)` is a special kind of annotation of type `root.Annot`
+   *  that contains either a hidden set for Fresh instances or a method type binder
+   *  for Result instances.
    */
-  final class existential extends annotation.StaticAnnotation
+  final class rootCapability extends annotation.StaticAnnotation
 
   object unsafe:
 

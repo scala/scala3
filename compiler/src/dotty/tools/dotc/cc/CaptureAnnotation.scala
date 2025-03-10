@@ -42,7 +42,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
       case cr: TermRef => ref(cr)
       case cr: TermParamRef => untpd.Ident(cr.paramName).withType(cr)
       case cr: ThisType => This(cr.cls)
-      case root(_) => ref(defn.captureRoot.termRef)
+      case root(_) => ref(root.cap)
       // TODO: Will crash if the type is an annotated type, for example `cap.rd`
     }
     val arg = repeated(elems, TypeTree(defn.AnyType))

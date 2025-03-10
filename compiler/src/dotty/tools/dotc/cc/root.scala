@@ -17,11 +17,53 @@ import util.{SimpleIdentitySet, EqHashMap}
 import util.Spans.NoSpan
 import annotation.internal.sharable
 
+/** A module defining three kinds of root capabilities
+ *   - `cap` of kind `Global`: This is the global root capability. Among others it is
+ *     used in the types of formal parameters, in type bounds, and in self types.
+ *     `cap` does not subsume other capabilities, except in arguments of
+ *     `withCapAsRoot` calls.
+ *   - Instances of Fresh(hidden), of kind Fresh. These do subsume other capabilties in scope.
+ *     They track with hidden sets which other capabilities were subsumed.
+ *     Hidden sets are inspected by separation checking.
+ *   - Instances of Result(binder), of kind Result. These are existentials associated with
+ *     the result types of dependent methods. They don't subsume other capabilties.
+ *
+ *  Representation:
+ *
+ *   - `cap` is just the TermRef `scala.caps.cap` defined in the `caps` module
+ *   - `Fresh` and `Result` instances are annotated types of `scala.caps.cap`
+ *     with a special `root.Annot` annotation. The symbol of the annotation is
+ *     `annotation.internal.rootCapability`. The annotation carries a kind, which provides
+ *     a hidden set for Fresh instances and a binder method type for Result instances.
+ *
+ * Setup:
+ *
+ *  In the setup phase, `cap` instances in the result of a dependent function type
+ *  or method type such as `(x: T): C^{cap}` are converted to `Result(binder)` instances,
+ *  where `binder` refers to the method type. Most other cap instances are mapped to
+ *  Fresh instances instead. For example the `cap` in the result of `T => C^{cap}`
+ *  is mapped to a Fresh instance.
+ *
+ *  If one needs to use a dependent function type yet one still want to map `cap` to
+ *  a fresh instance instead an existential root, one can achieve that by the use
+ *  of a type alias. For instance, the following type creates an existential for `^`:
+ *
+ *       (x: A) => (C^{x}, D^)
+ *
+ *  By contrast, this variant creates a fresh instance instead:
+ *
+ *       type F[X] = (x: A) => (C^{x}, X)
+ *       F[D^]
+ *
+ *  The trick is that the argument D^ is mapped to D^{fresh} before the `F` alias
+ *  is expanded.
+ */
 object root:
 
   enum Kind:
     case Result(binder: MethodType)
     case Fresh(hidden: CaptureSet.HiddenSet)
+    case Global
 
     override def equals(other: Any): Boolean =
       (this eq other.asInstanceOf[AnyRef]) || this.match
@@ -31,6 +73,7 @@ object root:
       case Kind.Fresh(h1) => other match
         case Kind.Fresh(h2) => h1 eq h2
         case _ => false
+      case Kind.Global => false
   end Kind
 
   @sharable private var rootId = 0
@@ -43,7 +86,7 @@ object root:
       rootId += 1
       rootId
 
-    override def symbol(using Context) = defn.FreshCapabilityAnnot
+    override def symbol(using Context) = defn.RootCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
 
@@ -63,6 +106,9 @@ object root:
       case Annot(kind) => this.kind eq kind
       case _ => false
 
+    /** Special treatment of `SubstBindingMaps` which can change the binder of a
+     *  Result instances
+     */
     override def mapWith(tm: TypeMap)(using Context) = kind match
       case Kind.Result(binder) => tm match
         case tm: Substituters.SubstBindingMap[MethodType] @unchecked if tm.from eq binder =>
@@ -70,6 +116,8 @@ object root:
         case _ => this
       case _ => this
   end Annot
+
+  def cap(using Context): TermRef = defn.captureRoot.termRef
 
   /** The type of fresh references */
   type Fresh = AnnotatedType
@@ -79,12 +127,12 @@ object root:
     private def make(owner: Symbol)(using Context): CaptureRef =
       if ccConfig.useSepChecks then
         val hiddenSet = CaptureSet.HiddenSet(owner)
-        val res = AnnotatedType(defn.captureRoot.termRef, Annot(Kind.Fresh(hiddenSet)))
+        val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)))
         hiddenSet.owningCap = res
         //assert(hiddenSet.id != 3)
         res
       else
-        defn.captureRoot.termRef
+        cap
 
     def withOwner(owner: Symbol)(using Context): CaptureRef = make(owner)
     def apply()(using Context): CaptureRef = make(NoSymbol)
@@ -100,7 +148,7 @@ object root:
   object Result:
     def apply(binder: MethodType)(using Context): Result =
       val hiddenSet = CaptureSet.HiddenSet(NoSymbol)
-      val res = AnnotatedType(defn.captureRoot.termRef, Annot(Kind.Result(binder)))
+      val res = AnnotatedType(cap, Annot(Kind.Result(binder)))
       hiddenSet.owningCap = res
       res
 
@@ -109,10 +157,10 @@ object root:
       case _ => None
   end Result
 
-  def unapply(root: AnnotatedType)(using Context): Option[Annot] =
-    root.annot match
-      case ann: Annot => Some(ann)
-      case _ => None
+  def unapply(root: CaptureRef)(using Context): Option[Kind] = root match
+    case root @ AnnotatedType(_, ann: Annot) => Some(ann.kind)
+    case _ if root.isCap => Some(Kind.Global)
+    case _ => None
 
   /** Map each occurrence of cap to a different Sep.Cap instance */
   class CapToFresh(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
@@ -138,7 +186,7 @@ object root:
 
     lazy val inverse: BiTypeMap & FollowAliasesMap = new BiTypeMap with FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case t @ Fresh(_) => defn.captureRoot.termRef
+        case t @ Fresh(_) => cap
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 

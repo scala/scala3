@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType, Existential, readOnly}
+import cc.{CaptureSet, RetainingType, readOnly}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -1073,7 +1073,6 @@ class Definitions {
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
   @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.refineOverride")
-  @tu lazy val ExistentialAnnot:  ClassSymbol = requiredClass("scala.caps.existential")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
@@ -1089,7 +1088,7 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
-  @tu lazy val FreshCapabilityAnnot = requiredClass("scala.annotation.internal.freshCapability")
+  @tu lazy val RootCapabilityAnnot = requiredClass("scala.caps.rootCapability")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
@@ -1561,7 +1560,7 @@ class Definitions {
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
   @tu lazy val capabilityWrapperAnnots: Set[Symbol] =
-    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot, MaybeCapabilityAnnot, FreshCapabilityAnnot)
+    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot, MaybeCapabilityAnnot, RootCapabilityAnnot)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
