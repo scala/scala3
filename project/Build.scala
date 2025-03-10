@@ -349,6 +349,7 @@ object Build {
           buildCache
             .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
             .withRemote(buildCache.remote.withEnabled(true).withStoreEnabled(isInsideCI))
+            .withRequireClean(!isInsideCI)
         )
         .withTestRetry(
           config.testRetry
