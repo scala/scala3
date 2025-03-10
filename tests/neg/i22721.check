@@ -1,0 +1,4 @@
+-- [E161] Naming Error: tests/neg/i22721/test2.scala:3:4 ---------------------------------------------------------------
+3 |val foobar: Int = 0 // error
+  |^^^^^^^^^^^^^^^^^^^
+  |foobar is already defined as value foobar in tests/neg/i22721/test1.scala
