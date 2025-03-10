@@ -16,8 +16,10 @@ class DebugTests:
   import DebugTests.*
   @Test def debug: Unit =
     implicit val testGroup: TestGroup = TestGroup("debug")
-    // compileFile("tests/debug/eval-local-class-in-value-class.scala", TestConfiguration.defaultOptions).checkDebug()
-    compileFilesInDir("tests/debug", TestConfiguration.defaultOptions).checkDebug()
+    CompilationTest.aggregateTests(
+      compileFile("tests/debug-custom-args/eval-explicit-nulls.scala", TestConfiguration.explicitNullsOptions),
+      compileFilesInDir("tests/debug", TestConfiguration.defaultOptions)
+    ).checkDebug()
 
 object DebugTests extends ParallelTesting:
   def maxDuration =
