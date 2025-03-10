@@ -5,6 +5,17 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.ElimByName
 
+/**
+  * The expression compiler powers the debug console in Metals and the IJ Scala plugin,
+  * enabling evaluation of arbitrary Scala expressions at runtime (even macros).
+  * It produces class files that can be loaded by the running Scala program,
+  * to compute the evaluation output.
+  * 
+  * To do so, it extends the Compiler with 3 phases:
+  *  - InsertExpression: parses and inserts the expression in the original source tree
+  *  - ExtractExpression: extract the typed expression and places it in the new expression class
+  *  - ResolveReflectEval: resolves local variables or inacessible members using reflection calls
+  */
 class ExpressionCompiler(config: ExpressionCompilerConfig) extends Compiler:
 
   override protected def frontendPhases: List[List[Phase]] =
