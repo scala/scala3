@@ -23,7 +23,7 @@ trait BadAPI extends InterFace {
     a
   }
   override def call(a: Int,
-                    b: String, // warn
+                    b: String, // no warn (override)
                     c: Double): Int = {
     println(c)
     a
@@ -136,7 +136,7 @@ trait BadMix { self: InterFace =>
 }
 
 class Unequal {
-  override def equals(other: Any) = toString.nonEmpty   // warn
+  override def equals(other: Any) = toString.nonEmpty   // no warn (override)
 }
 
 class Seriously {
