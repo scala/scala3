@@ -66,7 +66,7 @@ trait DungeonDweller:
 trait SadDungeonDweller:
   def f[A](x: Dungeon.IArray[A]) = 27 // x.length // just to confirm, length is not a member
 
-trait Quote:
+trait Quote: // see tests/warn/ext-override.scala
   type Tree <: AnyRef
   given TreeMethods: TreeMethods
   trait TreeMethods:
