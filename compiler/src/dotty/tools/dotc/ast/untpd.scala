@@ -457,7 +457,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def New(tpt: Tree, argss: List[List[Tree]])(using Context): Tree =
     ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
-  /** A new expression with constrictor and possibly type arguments. See
+  /** A new expression with constructor and possibly type arguments. See
    *  `New(tpt, argss)` for details.
    */
   def makeNew(tpt: Tree)(using Context): Tree = {

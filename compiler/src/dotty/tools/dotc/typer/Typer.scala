@@ -2840,8 +2840,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     for (annot <- mdef.mods.annotations)
       val annot1 = typedAnnotation(annot)(using annotCtx)
       checkAnnotApplicable(annot1, sym)
-      if Annotations.annotClass(annot1) == defn.NowarnAnnot then
+      val annotCls = annotClass(annot1)
+      if annotCls == defn.NowarnAnnot then
         registerNowarn(annot1, mdef)
+      else if annotCls.derivesFrom(defn.NowarnAnnot) then
+        val nowarnArgs = Annotation(annot1).argsForSuper(defn.NowarnAnnot)
+        val annot2 = New(defn.NowarnAnnot.typeRef, nowarnArgs).withSpan(annot1.span)
+        registerNowarn(annot2, mdef)
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
@@ -3120,6 +3125,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ =>
           ptrees
 
+    /* add `@superArg` / `@superFwdArg` to subclasses of concrete annotations, e.g.,
+     * `@superArg("value", "cat=deprecation")` for `class nodep extends nowarn("cat=deprecation")`
+     * this is done by duplicating the untyped super arguments before type checking the super call, because the
+     * super call can be transformed by named/default arguments. to build the `@superArg` annotations, the super
+     * call is type checked using `typedAnnotation`, which uses Mode.ANNOTmode. */
+    def promoteSuperArgs(parentTree: Tree, parent: Symbol, constr: DefDef) =
+      val supCls = cls.superClass
+      if !supCls.is(Abstract)
+        && supCls.derivesFrom(defn.AnnotationClass)
+        && supCls.primaryConstructor.paramSymss.sizeIs == 1
+      then
+        val superAnnotArgs = tpd.allTermArguments(parentTree)
+        if superAnnotArgs.nonEmpty then
+          val ps = constr.termParamss.headOrNil.map(_.symbol).toSet
+          parent.primaryConstructor.paramSymss.headOrNil.lazyZip(superAnnotArgs).foreach: (p, arg) =>
+            val key = Literal(Constant(p.name.toString))
+            val annot = if ps(arg.symbol) then
+              Annotation(defn.SuperFwdArgMetaAnnot, List(key, Literal(Constant(arg.symbol.name.toString))), cls.span)
+            else
+              Annotation(defn.SuperArgMetaAnnot, List(key, arg), cls.span)
+            cls.addAnnotation(annot)
+
     /** Checks if one of the decls is a type with the same name as class type member in selfType */
     def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
       val selfType = self.tpt.tpe
@@ -3217,6 +3244,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         parents.mapconserve(typedParent).filterConserve(!_.isEmpty))
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol
+
+    if !ctx.isAfterTyper then promoteSuperArgs(parents1.head, firstParent, constr1)
 
     checkEnumParent(cls, firstParent)
 
