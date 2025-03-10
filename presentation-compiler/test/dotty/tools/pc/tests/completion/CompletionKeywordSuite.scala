@@ -21,6 +21,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|superVisorStrategy: Int (commit: '')
          |super (commit: '')
+         |superArg(p: String, v: Any): superArg - scala.annotation.meta (commit: '')
+         |superFwdArg(p: String, n: String): superFwdArg - scala.annotation.meta (commit: '')
          |""".stripMargin,
       includeCommitCharacter = true
     )
@@ -78,6 +80,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|superVisorStrategy: Int
          |super
+         |superArg(p: String, v: Any): superArg - scala.annotation.meta
+         |superFwdArg(p: String, n: String): superFwdArg - scala.annotation.meta
          |""".stripMargin
     )
 
@@ -98,6 +102,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|superVisorStrategy: Int
          |super
+         |superArg(p: String, v: Any): superArg - scala.annotation.meta
+         |superFwdArg(p: String, n: String): superFwdArg - scala.annotation.meta
          |""".stripMargin
     )
 
@@ -118,6 +124,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|superVisorStrategy: Int
          |super
+         |superArg(p: String, v: Any): superArg - scala.annotation.meta
+         |superFwdArg(p: String, n: String): superFwdArg - scala.annotation.meta
          |""".stripMargin
     )
 
@@ -135,6 +143,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|super
+         |superArg(p: String, v: Any): superArg - scala.annotation.meta
+         |superFwdArg(p: String, n: String): superFwdArg - scala.annotation.meta
          |""".stripMargin
     )
 
@@ -392,6 +402,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|supervisorStrategy: Int
          |super
+         |superArg(p: String, v: Any): superArg - scala.annotation.meta
+         |superFwdArg(p: String, n: String): superFwdArg - scala.annotation.meta
          |""".stripMargin
     )
 
