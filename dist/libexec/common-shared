@@ -13,6 +13,7 @@ if [ -e /usr/bin/tty -a "`tty`" != "not a tty" -a ! -p /dev/stdin ]; then
   # clear on error so we don't later try to restore them
   if [[ ! $? ]]; then
     saved_stty=""
+    isterminal=0
   fi
 else
   isterminal=0
