@@ -26,6 +26,7 @@ import scala.reflect.TypeTest
 import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
 import dotty.tools.dotc.core.Names
+import dotty.tools.dotc.util.Spans.NoCoord
 
 object QuotesImpl {
 
@@ -2692,7 +2693,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         clsPrivateWithin: Symbol,
         conParams: List[(String, TypeRepr)]
       ): Symbol =
-        val (conParamNames, conParamTypes) = conParams.unzip()
+        val (conParamNames, conParamTypes) = conParams.unzip
         newClass(
           owner,
           name,
@@ -2728,14 +2729,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         assert(!conPrivateWithin.exists || conPrivateWithin.isType, "consPrivateWithin must be a type symbol or `Symbol.noSymbol`")
         checkValidFlags(clsFlags.toTypeFlags, Flags.validClassFlags)
         checkValidFlags(conFlags.toTermFlags, Flags.validClassConstructorFlags)
-        val cls = dotc.core.Symbols.newNormalizedClassSymbolUsingClassSymbolinParents(
+        val cls = dotc.core.Symbols.newNormalizedClassSymbol(
           owner,
           name.toTypeName,
           clsFlags,
           parents,
           selfType.getOrElse(Types.NoType),
           clsPrivateWithin,
-          clsAnnotations
+          clsAnnotations,
+          NoCoord,
+          compUnitInfo = null
         )
         val methodType: MethodOrPoly = conMethodType(cls.typeRef)
         def throwShapeException() = throw new Exception("Shapes of conMethodType and conParamFlags differ.")
@@ -2809,14 +2812,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
         assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
-        val mod = dotc.core.Symbols.newNormalizedModuleSymbolUsingClassSymbolInParents(
+        val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
           owner,
           name.toTermName,
           modFlags | dotc.core.Flags.ModuleValCreationFlags,
           clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
           parents,
           dotc.core.Scopes.newScope,
-          privateWithin)
+          privateWithin,
+          NoCoord,
+          compUnitInfo = null
+        )
         val cls = mod.moduleClass.asClass
         cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
         for sym <- decls(cls) do cls.enter(sym)

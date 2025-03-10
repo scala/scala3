@@ -3859,7 +3859,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  Example usage:
        *  ```
-       *  val name = nameExpr.valueOrAbort
+       *  val name = "myClass"
        *  def decls(cls: Symbol): List[Symbol] =
        *    List(Symbol.newMethod(cls, "foo", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit])))
        *  val parents = List(TypeTree.of[Object])
@@ -3881,9 +3881,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *    Some('{println(s"Foo method call with (${${Ref(idxSym).asExpr}}, ${${Ref(strSym).asExpr}})")}.asTerm)
        *  )
        *  val clsDef = ClassDef(cls, parents, body = List(fooDef))
-       *  val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), List(idxExpr.asTerm, strExpr.asTerm))
+       *  val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), List('{0}.asTerm, '{string}.asTerm))
        *
        *  Block(List(clsDef), Apply(Select(newCls, cls.methodMember("foo")(0)), Nil)).asExprOf[Unit]
+       *  ```
+       *  construct the equivalent to
+       *  ```
+       *  '{
+       *    class myClass(idx: Int, str: String) extends Object {
+       *      def foo() =
+       *        println(s"Foo method call with $idx, $str")
+       *    }
+       *    new myClass(0, "string").foo()
+       *  }
        *  ```
        *  @param owner The owner of the class
        *  @param name The name of the class
@@ -3965,7 +3975,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  constructs the equivalent to
        *  ```
        *  '{
-       *    class myClass[T](val param: T) {
+       *    class myClass[T](val param: T) extends Object {
        *      def getParam: T =
        *        println("Calling getParam")
        *        param
