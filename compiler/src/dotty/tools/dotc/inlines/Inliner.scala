@@ -119,12 +119,17 @@ object Inliner:
     override def transform(tree: Tree)(using Context): Tree =
       tree match
       case Typed(expr, tpt) =>
-        tpt.tpe match
-        case AnnotatedType(_, annot) if annot.hasSymbol(defn.NowarnAnnot) =>
-          val argPos = annot.argument(0).getOrElse(tree).sourcePos
-          val conf = annot.argumentConstantString(0).getOrElse("")
-          ctx.run.nn.suppressions.registerNowarn(tree.sourcePos, expr.span)(conf, argPos)
-        case _ =>
+        def loop(tpe: Type): Unit =
+          tpe match
+          case AnnotatedType(parent, annot) =>
+            if annot.hasSymbol(defn.NowarnAnnot) then
+              val argPos = annot.argument(0).getOrElse(tree).sourcePos
+              val conf = annot.argumentConstantString(0).getOrElse("")
+              ctx.run.nn.suppressions.registerNowarn(tree.sourcePos, expr.span)(conf, argPos)
+            else
+              loop(parent)
+          case _ =>
+        loop(tpt.tpe)
       case _ =>
       super.transform(tree)
 

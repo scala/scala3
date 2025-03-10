@@ -1,7 +1,7 @@
 
 package p
 
-import annotation.*
+import annotation.{unchecked as _, *}
 
 @deprecated("old api", since="1.0")
 def g = 42
@@ -12,4 +12,5 @@ inline def f =
   g
 
 transparent inline def body =
-  g: @nowarn
+  g: @nowarn @unchecked
+  g: @unchecked @nowarn
