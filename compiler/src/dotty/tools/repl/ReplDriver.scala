@@ -514,7 +514,7 @@ class ReplDriver(settings: Array[String],
       }
 
     case Require(path) =>
-      out.println(":require has been deprecated and replaced with :jar. Please use :jar")
+      out.println(":require is no longer supported, but has been replaced with :jar. Please use :jar")
       state
 
     case JarCmd(path) =>
