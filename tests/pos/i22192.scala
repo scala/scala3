@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 case class City(name: String, population: Int)
 
 def getCityInfo(city: City) = city match

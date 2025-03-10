@@ -97,6 +97,7 @@ object language:
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
+    @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
     object namedTuples
 
     /** Experimental support for new features for better modularity, including
