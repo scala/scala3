@@ -373,7 +373,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
        */
       def stripImpliedCaptureSet(tp: Type): Type = tp match
         case tp @ CapturingType(parent, refs)
-        if (refs eq defn.universalCSImpliedByCapability) && !tp.isBoxedCapturing =>
+        if (refs eq CaptureSet.universalImpliedByCapability) && !tp.isBoxedCapturing =>
           parent
         case _ => tp
 
@@ -401,7 +401,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           && !t.isSingleton
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
-        then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
+        then CapturingType(t, CaptureSet.universalImpliedByCapability, boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =

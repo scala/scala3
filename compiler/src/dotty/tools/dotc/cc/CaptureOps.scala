@@ -218,7 +218,7 @@ extension (tree: Tree)
       elems
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-      then ref(defn.captureRoot.termRef) :: Nil
+      then ref(root.cap) :: Nil
       else Nil
 
 extension (tp: Type)

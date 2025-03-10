@@ -4076,7 +4076,7 @@ object Types extends TypeUtils {
             case ReachCapability(tp1) =>
               apply(tp1) match
                 case tp1a: CaptureRef if tp1a.isTrackableRef => tp1a.reach
-                case _ => defn.captureRoot.termRef
+                case _ => root.cap
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
               if ann.symbol.isRetainsLike then

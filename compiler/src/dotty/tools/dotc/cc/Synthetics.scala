@@ -132,7 +132,7 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      val paramCaptures = CaptureSet(enclThis, defn.captureRoot.termRef)
+      val paramCaptures = CaptureSet(enclThis, root.cap)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
         mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
@@ -150,7 +150,7 @@ object Synthetics:
     def transformCompareCaptures =
       val (enclThis: ThisType) = symd.owner.thisType: @unchecked
       MethodType(
-        defn.ObjectType.capturing(CaptureSet(defn.captureRoot.termRef, enclThis)) :: Nil,
+        defn.ObjectType.capturing(CaptureSet(root.cap, enclThis)) :: Nil,
         defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
