@@ -27,6 +27,14 @@ on:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
 
+# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag) 
+# For example it would:
+# - terminate previous PR CI execution after pushing more changes to the same PR branch
+# - terminate previous on-push CI run after merging new PR to main 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   DOTTY_CI_RUN: true
 
