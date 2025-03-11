@@ -140,7 +140,7 @@ object language:
      * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
-    @deprecated("The `experimental.betterFors` language import is no longer needed since the feature is now in preview", since = "3.7")
+    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stablised and can be enabled using `-preview` flag", since = "3.7")
     object betterFors
 
     /** Experimental support for package object values
