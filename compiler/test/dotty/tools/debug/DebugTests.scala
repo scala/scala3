@@ -18,7 +18,8 @@ class DebugTests:
     implicit val testGroup: TestGroup = TestGroup("debug")
     CompilationTest.aggregateTests(
       compileFile("tests/debug-custom-args/eval-explicit-nulls.scala", TestConfiguration.explicitNullsOptions),
-      compileFilesInDir("tests/debug", TestConfiguration.defaultOptions)
+      compileFilesInDir("tests/debug", TestConfiguration.defaultOptions),
+      compileFilesInDir("tests/debug-preview", TestConfiguration.defaultOptions.and("-preview"))
     ).checkDebug()
 
 object DebugTests extends ParallelTesting:
