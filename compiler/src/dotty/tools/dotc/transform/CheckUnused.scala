@@ -582,6 +582,7 @@ object CheckUnused:
       end checkExplicit
       // begin
       if !infos.skip(m)
+        && !m.nextOverriddenSymbol.exists
         && !allowed
       then
         checkExplicit()

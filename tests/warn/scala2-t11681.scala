@@ -23,7 +23,7 @@ trait BadAPI extends InterFace {
     a
   }
   override def call(a: Int,
-                    b: String, // warn now
+                    b: String, // no warn (override)
                     c: Double): Int = {
     println(c)
     a
