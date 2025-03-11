@@ -1722,8 +1722,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   EmptyTree
             }
           case tp =>
-            if !tp.isErroneous then
-              throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.span}")
             TypeTree(defn.AnyType)
         }
       else typed(tree.tpt)
