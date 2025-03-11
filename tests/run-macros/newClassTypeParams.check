@@ -1,0 +1,6 @@
+class Test_2$package$foo$1
+{
+  class foo[A, B <: scala.Int](val param1: A, val param2: B) extends java.lang.Object
+
+  (new foo[java.lang.String, scala.Int]("test", 1): scala.Any)
+}
