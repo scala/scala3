@@ -1,0 +1,14 @@
+class Test_2$package$anon$1
+{
+  trait foo[A, B <: scala.Int](val param1: A, val param2: B) extends java.lang.Object
+  class anon() extends java.lang.Object with foo[java.lang.String, scala.Int]("a", 1)
+
+  (new anon(): scala.Any)
+}
+class Test_2$package$anon$2
+{
+  abstract class bar[A, B <: scala.Int](val param1: A, val param2: B) extends java.lang.Object
+  class anon() extends bar[java.lang.String, scala.Int]("a", 1)
+
+  (new anon(): scala.Any)
+}
