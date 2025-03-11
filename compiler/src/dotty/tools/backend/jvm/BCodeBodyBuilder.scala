@@ -1773,8 +1773,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
-      // TODO specialization
-      val instantiatedMethodType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
       val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
@@ -1787,7 +1785,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
 
       val methodName = samMethod.javaSimpleName
-      val samMethodType = asmMethodType(samMethod).toASMType
+      val samMethodBType = asmMethodType(samMethod)
+      val samMethodType = samMethodBType.toASMType
+
+      def boxInstantiated(instantiatedType: BType, samType: BType): BType =
+        if(!samType.isPrimitive && instantiatedType.isPrimitive)
+          boxedClassOfPrimitive(instantiatedType.asPrimitiveBType)
+        else instantiatedType
+      // TODO specialization
+      val instantiatedMethodBType = new MethodBType(
+        lambdaParamTypes.map(p =>  toTypeKind(p)),
+        boxInstantiated(toTypeKind(lambdaTarget.info.resultType), samMethodBType.returnType)
+      )
+
+      val instantiatedMethodType = instantiatedMethodBType.toASMType
+
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
