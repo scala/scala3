@@ -222,6 +222,8 @@ object Parsers {
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     // Are we seeing an `erased` soft keyword that will not be an identifier?
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
+    // Are we seeing a `cap` soft keyword for declaring a capture-set member or at the beginning a capture-variable parameter list?
+    def isCapKw = Feature.ccEnabled && isIdent(nme.cap)
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -258,7 +260,7 @@ object Parsers {
       || defIntroTokens.contains(in.token)
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
-      || Feature.ccEnabled && isIdent(nme.cap) //TODO have it as proper keyword/token instead?
+      || isCapKw
 
     def isStatSep: Boolean = in.isStatSep
 
@@ -2260,12 +2262,18 @@ object Parsers {
         else
           TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
+    /** CaptureSetBounds ::= [`>:' CaptureSetOrRef ] [`<:' CaptureSetOrRef ] --- under captureChecking
+     */
+    def captureSetBounds(): TypeBoundsTree =
+      atSpan(in.offset):
+          TypeBoundsTree(capsBound(SUPERTYPE), capsBound(SUBTYPE))
+
     private def bound(tok: Int): Tree =
       if (in.token == tok) { in.nextToken(); toplevelTyp() }
       else EmptyTree
 
-    private def capsType(refs: List[Tree], isLowerBound: Boolean = false): Tree =
-      if isLowerBound && refs.isEmpty then
+    private def capsBound(refs: List[Tree], isLowerBound: Boolean = false): Tree =
+      if isLowerBound && refs.isEmpty then // lower bounds with empty capture sets become a pure CapSet
         Select(scalaDot(nme.caps), tpnme.CapSet)
       else
         makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, if refs.isEmpty then tpnme.retainsCap else tpnme.retains)
@@ -2273,9 +2281,9 @@ object Parsers {
     private def capsBound(tok: Int): Tree =
       if (in.token == tok) then
         in.nextToken()
-        capsType(captureSetOrRef(), isLowerBound = tok == SUPERTYPE)
+        capsBound(captureSetOrRef(), isLowerBound = tok == SUPERTYPE)
       else
-        capsType(Nil, isLowerBound = tok == SUPERTYPE)
+        capsBound(Nil, isLowerBound = tok == SUPERTYPE)
 
     /** TypeAndCtxBounds  ::=  TypeBounds [`:` ContextBounds]
      */
@@ -2286,10 +2294,10 @@ object Parsers {
       else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
-    /** TypeAndCtxBounds  ::=  TypeBounds [`:` ContextBounds]   -- under captureChecking
+    /** CaptureSetAndCtxBounds  ::=  CaptureSetBounds [`:` ContextBounds]   -- under captureChecking
      */
     def captureSetAndCtxBounds(pname: TypeName): Tree = {
-      val t = TypeBoundsTree(capsBound(SUPERTYPE), capsBound(SUBTYPE))
+      val t = captureSetBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
       else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
@@ -3907,7 +3915,7 @@ object Parsers {
         case CASE if inEnum =>
           enumCase(start, mods)
         case _ =>
-          if Feature.ccEnabled && isIdent(nme.cap) then //TODO do we want a dedicated CAP token? TokensCommon would need a Ctx to check if ccenabled
+          if isCapKw then
             capDefOrDcl(start, in.skipToken(mods))
           else tmplDef(start, mods)
     }
@@ -4118,20 +4126,22 @@ object Parsers {
       }
     }
 
-    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSet]    -- under capture checking
+    private def concreteCapsType(refs: List[Tree]): Tree =
+      makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, tpnme.retains)
+
+    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSetOrRef]    -- under capture checking
      */
     def capDefOrDcl(start: Offset, mods: Modifiers): Tree =
       newLinesOpt()
       atSpan(start, nameStart) {
         val nameIdent = typeIdent()
         val tname = nameIdent.name.asTypeName
-        // val tparams = typeParamClauseOpt(ParamOwner.Hk) TODO: error message: type parameters not allowed
-        // val vparamss = funParamClauses()
+        if in.token == LBRACKET then syntaxError(em"'cap' declarations cannot have type parameters")
 
         def makeCapDef(refs: List[Tree] | Tree): Tree = {
           val tdef = TypeDef(nameIdent.name.toTypeName,
                              refs.match
-                                case refs: List[Tree] => capsType(refs)
+                                case refs: List[Tree] => concreteCapsType(refs)
                                 case bounds: Tree => bounds)
 
           if (nameIdent.isBackquoted)
@@ -4143,24 +4153,13 @@ object Parsers {
           case EQUALS =>
             in.nextToken()
             makeCapDef(captureSetOrRef())
-          case SUBTYPE | SUPERTYPE =>
-            captureSetAndCtxBounds(tname) match
-              case bounds: TypeBoundsTree if in.token == EQUALS => //TODO ask Martin: can this case even happen?
-                val eqOffset = in.skipToken()
-                var rhs = capsType(captureSetOrRef())
-                if mods.is(Opaque) then
-                   rhs = TypeBoundsTree(bounds.lo, bounds.hi, rhs)
-                else
-                  syntaxError(em"cannot combine bound and alias", eqOffset)
-                makeCapDef(rhs)
-              case bounds => makeCapDef(bounds)
-          case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
+          case SUBTYPE | SUPERTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
             makeCapDef(captureSetAndCtxBounds(tname))
-          case _ if (staged & StageKind.QuotedPattern) != 0 //TODO not sure if we need this case for capsets
+          case _ if (staged & StageKind.QuotedPattern) != 0
               || sourceVersion.enablesNewGivens && in.isColon =>
             makeCapDef(captureSetAndCtxBounds(tname))
           case _ =>
-            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token)) //TODO change error message
+            syntaxErrorOrIncomplete(ExpectedCaptureBoundOrEquals(in.token))
             return EmptyTree // return to avoid setting the span to EmptyTree
       }
 
