@@ -1,3 +1,5 @@
+//> using options -preview
+
 @main def Test: Unit =
   for
     x <- Option(23 -> "abc")

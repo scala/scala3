@@ -3,6 +3,8 @@ package dotc
 package config
 
 import core.Decorators.*
+import core.Contexts.*
+import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
@@ -35,6 +37,7 @@ enum SourceVersion:
   def enablesClauseInterleaving = isAtLeast(`3.6`)
   def enablesNewGivens = isAtLeast(`3.6`)
   def enablesNamedTuples = isAtLeast(`3.7`)
+  def enablesBetterFors(using Context) = isAtLeast(`3.7`) && isPreviewEnabled
 
 object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.7`
