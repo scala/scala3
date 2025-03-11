@@ -6,6 +6,8 @@ import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys.*
 import sbt.*
+import sbt.nio.FileStamper
+import sbt.nio.Keys.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
@@ -281,6 +283,8 @@ object Build {
 
   val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
+  val extraDevelocityCacheInputFiles = taskKey[Seq[Path]]("Extra input files for caching")
+
   lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
@@ -351,6 +355,7 @@ object Build {
           buildCache
             .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
             .withRemote(buildCache.remote.withEnabled(true).withStoreEnabled(isInsideCI))
+            .withRequireClean(!isInsideCI)
         )
         .withTestRetry(
           config.testRetry
@@ -363,6 +368,8 @@ object Build {
     // Deactivate Develocity's test caching because it caches all tests or nothing.
     // Also at the moment, it does not take compilation files as inputs.
     Test / develocityBuildCacheClient := None,
+    extraDevelocityCacheInputFiles := Seq.empty,
+    extraDevelocityCacheInputFiles / outputFileStamper := FileStamper.Hash,
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -443,7 +450,17 @@ object Build {
     Compile / packageBin / packageOptions +=
       Package.ManifestAttributes(
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
-      )
+      ),
+
+    // add extraDevelocityCacheInputFiles in cache key components 
+    Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
+      (Compile / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
+    Test / test / buildcache.develocityTaskCacheKeyComponents +=
+      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
+    Test / testOnly / buildcache.develocityInputTaskCacheKeyComponents +=
+      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
+    Test / testQuick / buildcache.develocityInputTaskCacheKeyComponents +=
+      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue
   )
 
   // Settings used for projects compiled only with Java
@@ -612,8 +629,8 @@ object Build {
     },
     Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
     // force recompilation of bootstrapped modules when the compiler changes
-    Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
-      (`scala3-compiler` / Compile / compile / buildcache.develocityTaskCacheKey).taskValue
+    Compile / extraDevelocityCacheInputFiles ++=
+      (`scala3-compiler` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
   )
 
   lazy val commonBenchmarkSettings = Seq(
