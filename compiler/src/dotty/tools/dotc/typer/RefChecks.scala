@@ -445,7 +445,6 @@ object RefChecks {
 
       // todo: align accessibility implication checking with isAccessible in Contexts
       def isOverrideAccessOK =
-        val memberIsPublic = (member.flags & AccessFlags).isEmpty && !member.privateWithin.exists
         def protectedOK = !other.is(Protected) || member.is(Protected)        // if o is protected, so is m
         def accessBoundaryOK =
           val ob = other.accessBoundary(member.owner)
@@ -454,7 +453,7 @@ object RefChecks {
           def companionBoundaryOK = ob.isClass && !ob.isLocalToBlock && mb.is(Module) && (ob.companionModule eq mb.companionModule)
           ob.isContainedIn(mb) || companionBoundaryOK    // m relaxes o's access boundary,
         def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
-        memberIsPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
+        member.isPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
       end isOverrideAccessOK
 
       if !member.hasTargetName(other.targetName) then
@@ -1069,16 +1068,18 @@ object RefChecks {
         target.nonPrivateMember(sym.name)
         .filterWithPredicate:
           member =>
-          val memberIsImplicit = member.info.hasImplicitParams
-          val paramTps =
-            if memberIsImplicit then methTp.stripPoly.firstParamTypes
-            else methTp.firstExplicitParamTypes
+          member.symbol.isPublic && {
+            val memberIsImplicit = member.info.hasImplicitParams
+            val paramTps =
+              if memberIsImplicit then methTp.stripPoly.firstParamTypes
+              else methTp.firstExplicitParamTypes
 
-          paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
-            val memberParamTps = member.info.stripPoly.firstParamTypes
-            !memberParamTps.isEmpty
-            && memberParamTps.lengthCompare(paramTps) == 0
-            && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+            paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
+              val memberParamTps = member.info.stripPoly.firstParamTypes
+              !memberParamTps.isEmpty
+              && memberParamTps.lengthCompare(paramTps) == 0
+              && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+            }
           }
         .exists
       if !target.typeSymbol.denot.isAliasType && !target.typeSymbol.denot.isOpaqueAlias && hidden
