@@ -139,8 +139,10 @@ object WConf:
 class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
   private var _used = false
   def used: Boolean = _used
-  def markUsed(): Unit = { _used = true }
-
+  def markUsed(): Unit =
+    _used = true
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
     pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+
+  override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
