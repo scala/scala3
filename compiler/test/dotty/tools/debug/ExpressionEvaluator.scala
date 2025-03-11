@@ -135,9 +135,9 @@ class ExpressionEvaluator(
       invokeStatic(cls, "valueOf", sig, args)
 
     private def createArray(arrayType: String, values: Seq[Value]): ArrayReference =
-      val arrayClassObject = getClass(arrayType).classObject
-      val reflectArrayClass = getClass("java.lang.reflect.Array")
-      val args = Seq(arrayClassObject, mirrorOf(values.size))
+      val arrayClass = getClass(arrayType)
+      val reflectArrayClass = loadClass(arrayClass.classLoader, "java.lang.reflect.Array")
+      val args = Seq(arrayClass.classObject, mirrorOf(values.size))
       val sig = "(Ljava/lang/Class;I)Ljava/lang/Object;"
       val arrayRef = invokeStatic[ArrayReference](reflectArrayClass, "newInstance", sig, args)
       arrayRef.setValues(values.asJava)
