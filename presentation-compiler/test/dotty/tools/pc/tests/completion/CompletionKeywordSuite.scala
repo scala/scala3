@@ -437,6 +437,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |given
          |extension
          |type
+         |opaque type
          |class
          |enum
          |case class
