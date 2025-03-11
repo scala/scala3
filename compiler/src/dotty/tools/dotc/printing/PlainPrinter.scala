@@ -28,10 +28,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def printDebug = ctx.settings.YprintDebug.value
 
   /** Print Fresh instances as <cap hiding ...> */
-  protected def printFreshDetailed = ctx.settings.YccPrintFresh.value
+  protected def ccVerbose = ctx.settings.YccVerbose.value
 
   /** Print Fresh instances as "fresh" */
-  protected def printFresh = printFreshDetailed || ctx.property(PrintFresh).isDefined
+  protected def printFresh = ccVerbose || ctx.property(PrintFresh).isDefined
 
   private var openRecs: List[RecType] = Nil
 
@@ -464,7 +464,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         vbleText ~ hashStr(binder) ~ Str(idStr).provided(showUniqueIds)
       case tp @ root.Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
-        if printFreshDetailed then s"<cap$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
+        if ccVerbose then s"<fresh$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
         else if printFresh then "fresh"
         else "cap"
       case tp => toText(tp)
