@@ -233,7 +233,7 @@ sealed abstract class CaptureSet extends Showable:
     if result.isOK then
       addDependent(that)
     else
-      ccState.levelError = ccState.levelError.orElse(result.levelError)
+      result.levelError.foreach(ccState.addNote)
       varState.rollBack()
       result
       //.showing(i"subcaptures $this <:< $that = ${result.show}", capt)
@@ -1077,10 +1077,16 @@ object CaptureSet:
   /** A TypeMap that is the identity on capture references */
   trait IdentityCaptRefMap extends TypeMap
 
+  /** A value of this class is produced and added as a note to ccState
+   *  when a subsumes check decides that an existential variable `ex` cannot be
+   *  instantiated to the other capability `other`.
+   */
+  case class ExistentialSubsumesFailure(val ex: root.Result, val other: CaptureRef) extends ErrorNote
+
   enum CompareResult extends Showable:
     case OK
     case Fail(trace: List[CaptureSet])
-    case LevelError(cs: CaptureSet, elem: CaptureRef)
+    case LevelError(cs: CaptureSet, elem: CaptureRef) extends CompareResult, ErrorNote
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
@@ -1104,6 +1110,16 @@ object CaptureSet:
     def levelError: Option[LevelError] = this match
       case result: LevelError => Some(result)
       case _ => None
+
+    private var myErrorNotes: List[ErrorNote] = Nil
+
+    def errorNotes: List[ErrorNote] = myErrorNotes
+
+    def withNotes(notes: List[ErrorNote]): CompareResult = this match
+      case OK => OK
+      case _ =>
+        myErrorNotes = notes
+        this
 
     inline def andAlso(op: Context ?=> CompareResult)(using Context): CompareResult =
       if isOK then op else this
@@ -1412,24 +1428,4 @@ object CaptureSet:
             println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
       }
     else op
-
-  def levelErrors: Addenda = new Addenda:
-    override def toAdd(using Context) =
-      for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
-        ccState.levelError = None
-        if ref.stripReadOnly.isCapOrFresh then
-          def capStr = if ref.isReadOnly then "cap.rd" else "cap"
-          i"""
-            |
-            |Note that the universal capability `$capStr`
-            |cannot be included in capture set $cs"""
-        else
-          val levelStr = ref match
-            case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-            case _ => ""
-          i"""
-            |
-            |Note that reference ${ref}$levelStr
-            |cannot be included in outer capture set $cs"""
-
 end CaptureSet
