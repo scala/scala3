@@ -134,14 +134,14 @@ object Build {
    *  Simplified rules, given 3.$minor.$patch = $developedVersion
    *    - Major version is always 28
    *    - TASTY minor version:
-   *      - in main (NIGHTLY): {if $patch == 0 then $minor else ${minor + 1}}
+   *      - in main (NIGHTLY): {if $patch == 0 || ${referenceVersion.matches(raw"3.$minor.0-RC\d")} then $minor else ${minor + 1}}
    *      - in release branch is always equal to $minor
    *    - TASTY experimental version:
    *      - in main (NIGHTLY) is always experimental
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimetnal
    */
-  val expectedTastyVersion = "28.8-experimental-1"
+  val expectedTastyVersion = "28.7-experimental-1"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
