@@ -39,7 +39,7 @@ object boundary:
     /*message*/ null, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false):
 
     /** Compare the given [[Label]] to the one this [[Break]] was constructed with. */
-    inline def isSameLabelAs(other: Label[T]) = label eq other
+    def isSameLabelAs(other: Label[T]) = label eq other
 
   object Break:
     def apply[T](label: Label[T], value: T) =
