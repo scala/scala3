@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, ExistentialSubsumesFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -354,7 +354,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       if !res.isOK then
         inContext(root.printContext(added, res.blocking)):
-          def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
+          def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
           def descr: String =
             val d = res.blocking.description
             if d.isEmpty then provenance else ""
@@ -363,7 +363,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
-          elem.singletonCaptureSet.subCaptures(cs),
+          ccState.test(elem.singletonCaptureSet.subCaptures(cs)),
           i"$elem cannot be referenced here; it is not",
           elem, pos, provenance)
 
@@ -371,7 +371,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
         provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
-          cs1.subCaptures(cs2),
+          ccState.test(cs1.subCaptures(cs2)),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head}$cs1description is not"
           else i"references $cs1$cs1description are not all",
           cs1, pos, provenance)
@@ -1210,27 +1210,29 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
-    private def boxErrorAddenda(boxErrors: BoxErrors) =
-      if boxErrors == null then NothingToAdd
+    private def errorNotes(notes: List[ErrorNote])(using Context): Addenda =
+      if notes.isEmpty then NothingToAdd
       else new Addenda:
-        override def toAdd(using Context): List[String] =
-          boxErrors.toList.map: msg =>
-            i"""
-              |
-              |Note that ${msg.toString}"""
-
-    private def existentialSubsumesFailureAddenda(using Context): Addenda =
-      ccState.existentialSubsumesFailure match
-        case Some((ex @ root.Result(binder), other)) =>
-          new Addenda:
-            override def toAdd(using Context): List[String] =
-              val ann = ex.rootAnnot
-              i"""
-                |
-                |Note that the existential capture root in ${ex.rootAnnot.originalBinder.resType}
+        override def toAdd(using Context) = notes.map: note =>
+          val msg = note match
+            case CompareResult.LevelError(cs, ref) =>
+              if ref.stripReadOnly.isCapOrFresh then
+                def capStr = if ref.isReadOnly then "cap.rd" else "cap"
+                i"""the universal capability `$capStr`
+                   |cannot be included in capture set $cs"""
+              else
+                val levelStr = ref match
+                  case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
+                  case _ => ""
+                i"""reference ${ref}$levelStr
+                  |cannot be included in outer capture set $cs"""
+            case ExistentialSubsumesFailure(ex, other) =>
+              i"""the existential capture root in ${ex.rootAnnot.originalBinder.resType}
                 |cannot subsume the capability $other"""
-              :: Nil
-        case _ => NothingToAdd
+          i"""
+             |
+             |Note that ${msg.toString}"""
+
 
     /** Addendas for error messages that show where we have under-approximated by
      *  mapping a a capture ref in contravariant position to the empty set because
@@ -1264,15 +1266,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
-      val boxErrors = new mutable.ListBuffer[Message]
-      val actualBoxed = adapt(actual, expected1, tree, boxErrors)
+      val actualBoxed = adapt(actual, expected1, tree)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
-      ccState.existentialSubsumesFailure = None
-      if isCompatible(actualBoxed, expected1) then
+      val result = ccState.testOK(isCompatible(actualBoxed, expected1))
+      if result.isOK then
         if debugSuccesses then tree match
             case Ident(_) =>
               println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
@@ -1283,10 +1284,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         inContext(root.printContext(actualBoxed, expected1)):
           err.typeMismatch(tree.withType(actualBoxed), expected1,
               addApproxAddenda(
-                addenda
-                ++ CaptureSet.levelErrors
-                ++ boxErrorAddenda(boxErrors)
-                ++ existentialSubsumesFailureAddenda,
+                addenda ++ errorNotes(result.errorNotes),
                 expected1))
         actual
     end checkConformsExpr
@@ -1397,7 +1395,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *
      *  @param alwaysConst  always make capture set variables constant after adaptation
      */
-    def adaptBoxed(actual: Type, expected: Type, tree: Tree, covariant: Boolean, alwaysConst: Boolean, boxErrors: BoxErrors)(using Context): Type =
+    def adaptBoxed(actual: Type, expected: Type, tree: Tree, covariant: Boolean, alwaysConst: Boolean)(using Context): Type =
 
       def recur(actual: Type, expected: Type, covariant: Boolean): Type =
 
@@ -1551,7 +1549,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - narrow nested captures of `x`'s underlying type to `{x*}`
      *   - do box adaptation
      */
-    def adapt(actual: Type, expected: Type, tree: Tree, boxErrors: BoxErrors)(using Context): Type =
+    def adapt(actual: Type, expected: Type, tree: Tree)(using Context): Type =
       if noWiden(actual, expected) then
         actual
       else
@@ -1559,7 +1557,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val improved = improveReadOnly(improvedVAR, expected)
         val adapted = adaptBoxed(
             improved.withReachCaptures(actual), expected, tree,
-            covariant = true, alwaysConst = false, boxErrors)
+            covariant = true, alwaysConst = false)
         if adapted eq improvedVAR // no .rd improvement, no box-adaptation
         then actual               // might as well use actual instead of improved widened
         else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
@@ -1585,7 +1583,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             try
               curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
               val adapted =
-                adaptBoxed(actual, expected1, tree, covariant = true, alwaysConst = true, null)
+                adaptBoxed(actual, expected1, tree, covariant = true, alwaysConst = true)
               actual match
                 case _: MethodType =>
                   // We remove the capture set resulted from box adaptation for method types,

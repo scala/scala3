@@ -16,7 +16,7 @@ import config.Feature
 import collection.mutable
 import CCState.*
 import reporting.Message
-import CaptureSet.VarState
+import CaptureSet.{VarState, CompareResult}
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
@@ -76,19 +76,32 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
+/** A base trait for data producing addenda to error messages */
+trait ErrorNote
+
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
 
-  /** The last pair of capture reference and capture set where
-   *  the reference could not be added to the set due to a level conflict.
-   */
-  var levelError: Option[CaptureSet.CompareResult.LevelError] = None
+  /** Error reprting notes produces since the last call to `test` */
+  var notes: List[ErrorNote] = Nil
 
-  /** Optionally, a pair of an existential variable and another capability.
-   *  Set when a subsumes check decides that an existential variable cannot be
-   *  instantiated to the other capability.
-   */
-  var existentialSubsumesFailure: Option[(CaptureRef, CaptureRef)] = None
+  def addNote(note: ErrorNote): Unit =
+    if !notes.exists(_.getClass == note.getClass) then
+      notes = note :: notes
+
+  def test(op: => CompareResult): CompareResult =
+    val saved = notes
+    notes = Nil
+    try op.withNotes(notes)
+    finally notes = saved
+
+  def testOK(op: => Boolean): CompareResult =
+    val saved = notes
+    notes = Nil
+    try
+      if op then CompareResult.OK
+      else CompareResult.Fail(Nil).withNotes(notes)
+    finally notes = saved
 
   /** Warnings relating to upper approximations of capture sets with
    *  existentially bound variables.
