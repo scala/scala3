@@ -4900,6 +4900,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val isUsingApply = pt.applyKind == ApplyKind.Using
     methType.isContextualMethod == isUsingApply
     || methType.isImplicitMethod && isUsingApply // for a transition allow `using` arguments for regular implicit parameters
+    || methType.wasImplicitMethod && !isUsingApply
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for
