@@ -224,6 +224,7 @@ object Parsers {
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
     // Are we seeing a `cap` soft keyword for declaring a capture-set member or at the beginning a capture-variable parameter list?
     def isCapKw = Feature.ccEnabled && isIdent(nme.cap)
+    def isCapKwNext = Feature.ccEnabled && in.lookahead.isIdent(nme.cap)
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -2439,7 +2440,7 @@ object Parsers {
           closure(start, location, modifiers(BitSet(IMPLICIT)))
         case LBRACKET =>
           val start = in.offset
-          val tparams = typeParamClause(ParamOwner.Type)
+          val tparams = if isCapKwNext then capParamClause(ParamOwner.Type) else typeParamClause(ParamOwner.Type) // TODO document grammar
           val arrowOffset = accept(ARROW)
           val body = expr(location)
           makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
@@ -3474,6 +3475,7 @@ object Parsers {
      *  DefParamClause        ::= DefTypeParamClause
      *                          | DefTermParamClause
      *                          | UsingParamClause
+     *                          | CapParamClause                     -- under capture checking
      */
     def typeOrTermParamClauses(
       paramOwner: ParamOwner, numLeadParams: Int = 0): List[List[TypeDef] | List[ValDef]] =
@@ -3491,16 +3493,54 @@ object Parsers {
         else if in.token == LBRACKET then
           if prevIsTypeClause then
             syntaxError(
-              em"Type parameter lists must be separated by a term or using parameter list",
+              em"Type parameter lists must be separated by a term or using parameter list", //TODO adapt for capture params
               in.offset
             )
-          typeParamClause(paramOwner) :: recur(numLeadParams, firstClause, prevIsTypeClause = true)
+          if isCapKwNext then // TODO refine
+            capParamClause(paramOwner) :: recur(numLeadParams, firstClause, prevIsTypeClause = true)
+          else
+            typeParamClause(paramOwner) :: recur(numLeadParams, firstClause, prevIsTypeClause = true)
         else Nil
       end recur
 
       recur(numLeadParams, firstClause = true, prevIsTypeClause = false)
     end typeOrTermParamClauses
 
+    def capParamClause(paramOwner: ParamOwner): List[TypeDef] = inBracketsWithCommas {
+
+      def ensureNoVariance() =
+        if isIdent(nme.raw.PLUS) || isIdent(nme.raw.MINUS) then
+          syntaxError(em"no `+/-` variance annotation allowed here")
+          in.nextToken()
+
+      def ensureNoHKParams() =
+        if in.token == LBRACKET then
+          syntaxError(em"'cap' parameters cannot have type parameters")
+          in.nextToken()
+
+      def captureParam(): TypeDef = {
+        val start = in.offset
+        var mods = annotsAsMods() | Param
+        if paramOwner.isClass then
+          mods |= PrivateLocal
+        ensureNoVariance() // TODO: in the future, we might want to support variances on capture params, ruled out for now
+        atSpan(start, nameStart) {
+          val name =
+            if paramOwner.acceptsWildcard && in.token == USCORE then
+              in.nextToken()
+              WildcardParamName.fresh().toTypeName
+            else ident().toTypeName
+          ensureNoHKParams()
+          val bounds =
+            if paramOwner.acceptsCtxBounds then captureSetAndCtxBounds(name) // TODO: do we need a new attribute for paramOwner?
+            else if sourceVersion.enablesNewGivens && paramOwner == ParamOwner.Type then captureSetAndCtxBounds(name)
+            else captureSetBounds()
+          TypeDef(name, bounds).withMods(mods)
+        }
+      }
+      in.nextToken() // assumes we are just after the opening bracket at the 'cap' soft keyword
+      commaSeparated(() => captureParam())
+    }
 
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
      *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
@@ -3553,7 +3593,11 @@ object Parsers {
     }
 
     def typeParamClauseOpt(paramOwner: ParamOwner): List[TypeDef] =
-      if (in.token == LBRACKET) typeParamClause(paramOwner) else Nil
+      if (in.token == LBRACKET)
+        if isCapKwNext then capParamClause(paramOwner) // TODO grammar doc
+        else typeParamClause(paramOwner)
+      else
+        Nil
 
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
