@@ -885,6 +885,8 @@ trait Applications extends Compatibility {
       val app1 =
         if !success then app0.withType(UnspecifiedErrorType)
         else {
+          if isAnnotConstr(methRef.symbol) && !isJavaAnnotConstr(methRef.symbol) then
+            typedArgs
           if !sameSeq(args, orderedArgs)
              && !isJavaAnnotConstr(methRef.symbol)
              && !typedArgs.forall(isSafeArg)
