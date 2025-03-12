@@ -1,0 +1,25 @@
+[[syntax trees at end of                     typer]] // tests/printing/dependent-annot-default-args.scala
+package <empty> {
+  class annot(x: Any, y: Any) extends annotation.Annotation() {
+    private[this] val x: Any
+    private[this] val y: Any
+  }
+  final lazy module val annot: annot = new annot()
+  final module class annot() extends AnyRef() { this: annot.type =>
+    def $lessinit$greater$default$2: Any @uncheckedVariance = 42
+  }
+  final lazy module val dependent-annot-default-args$package:
+    dependent-annot-default-args$package =
+    new dependent-annot-default-args$package()
+  final module class dependent-annot-default-args$package() extends Object() {
+    this: dependent-annot-default-args$package.type =>
+    def f(x: Int): Int @annot(x) = x
+    def test: Unit =
+      {
+        val y: Int = ???
+        val z: Int @annot(y) = f(y)
+        ()
+      }
+  }
+}
+

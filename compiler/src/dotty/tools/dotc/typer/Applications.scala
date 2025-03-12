@@ -459,7 +459,7 @@ trait Applications extends Compatibility {
         case tp => args.size
       }
 
-      !isJavaAnnotConstr(methRef.symbol) &&
+      !isAnnotConstr(methRef.symbol) &&
       args.size < requiredArgNum(funType)
     }
 
@@ -590,6 +590,11 @@ trait Applications extends Compatibility {
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
+
+
+    /** Is `sym` a constructor of an annotation? */
+    def isAnnotConstr(sym: Symbol): Boolean =
+      sym.isConstructor && sym.owner.isAnnotation
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.

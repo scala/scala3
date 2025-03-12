@@ -138,7 +138,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   def allTermArguments(tree: Tree): List[Tree] = unsplice(tree) match {
     case Apply(fn, args) => allTermArguments(fn) ::: args
     case TypeApply(fn, args) => allTermArguments(fn)
-    case Block(_, expr) => allTermArguments(expr)
+    case Block(Nil, expr) => allTermArguments(expr)
     case _ => Nil
   }
 
@@ -146,7 +146,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   def allArguments(tree: Tree): List[Tree] = unsplice(tree) match {
     case Apply(fn, args) => allArguments(fn) ::: args
     case TypeApply(fn, args) => allArguments(fn) ::: args
-    case Block(_, expr) => allArguments(expr)
+    case Block(Nil, expr) => allArguments(expr)
     case _ => Nil
   }
 
