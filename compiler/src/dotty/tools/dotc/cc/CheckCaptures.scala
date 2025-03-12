@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, ExistentialSubsumesFailure}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, CompareFailure, ExistentialSubsumesFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -352,13 +352,15 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** If `res` is not CompareResult.OK, report an error */
     def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
-      if !res.isOK then
-        inContext(root.printContext(added, res.blocking)):
-          def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
-          def descr: String =
-            val d = res.blocking.description
-            if d.isEmpty then provenance else ""
-          report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
+      res match
+        case res: CompareFailure =>
+          inContext(root.printContext(added, res.blocking)):
+            def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
+            def descr: String =
+              val d = res.blocking.description
+              if d.isEmpty then provenance else ""
+            report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
+        case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
@@ -1272,21 +1274,21 @@ class CheckCaptures extends Recheck, SymTransformer:
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
-      val result = ccState.testOK(isCompatible(actualBoxed, expected1))
-      if result.isOK then
-        if debugSuccesses then tree match
-            case Ident(_) =>
-              println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
-            case _ =>
-        actualBoxed
-      else
-        capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        inContext(root.printContext(actualBoxed, expected1)):
-          err.typeMismatch(tree.withType(actualBoxed), expected1,
-              addApproxAddenda(
-                addenda ++ errorNotes(result.errorNotes),
-                expected1))
-        actual
+      ccState.testOK(isCompatible(actualBoxed, expected1)) match
+        case CompareResult.OK =>
+          if debugSuccesses then tree match
+              case Ident(_) =>
+                println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
+              case _ =>
+          actualBoxed
+        case fail: CompareFailure =>
+          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
+          inContext(root.printContext(actualBoxed, expected1)):
+            err.typeMismatch(tree.withType(actualBoxed), expected1,
+                addApproxAddenda(
+                  addenda ++ errorNotes(fail.errorNotes),
+                  expected1))
+          actual
     end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */

@@ -16,7 +16,7 @@ import config.Feature
 import collection.mutable
 import CCState.*
 import reporting.Message
-import CaptureSet.{VarState, CompareResult}
+import CaptureSet.{VarState, CompareResult, CompareFailure}
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
@@ -92,16 +92,13 @@ class CCState:
   def test(op: => CompareResult): CompareResult =
     val saved = notes
     notes = Nil
-    try op.withNotes(notes)
+    try op match
+      case res: CompareFailure => res.withNotes(notes)
+      case res => res
     finally notes = saved
 
   def testOK(op: => Boolean): CompareResult =
-    val saved = notes
-    notes = Nil
-    try
-      if op then CompareResult.OK
-      else CompareResult.Fail(Nil).withNotes(notes)
-    finally notes = saved
+    test(if op then CompareResult.OK else CompareResult.Fail(Nil))
 
   /** Warnings relating to upper approximations of capture sets with
    *  existentially bound variables.
