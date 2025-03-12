@@ -22,5 +22,5 @@ RUN apt-get update && \
 # Install sbt
 ENV SBT_HOME /usr/local/sbt
 ENV PATH ${SBT_HOME}/bin:${PATH}
-ENV SBT_VERSION 1.9.0
+ENV SBT_VERSION 1.10.5
 RUN curl -sL "https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz" | gunzip | tar -x -C /usr/local
