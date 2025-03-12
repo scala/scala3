@@ -1,3 +1,6 @@
+//> using options -preview
+// import scala.language.experimental.betterFors
+
 def for1 =
   for {
     a = 1
