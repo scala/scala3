@@ -37,6 +37,7 @@ import dotty.tools.dotc.config.MigrationVersion
 import dotty.tools.dotc.util.chaining.*
 import dotty.tools.dotc.config.Feature.ccEnabled
 import dotty.tools.dotc.core.Types.AndType.make
+import dotty.tools.dotc.config.Printers.capt
 
 object Parsers {
 
@@ -2109,7 +2110,7 @@ object Parsers {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atSpan(startOffset(t)) {
         val applied = rejectWildcardType(t)
-        val args = typeArgs(namedOK = false, wildOK = true)
+        val args = if isCapKwNext then captureArgs(namedOK = false, wildOK = false) else typeArgs(namedOK = false, wildOK = true)
 
         if (!ctx.settings.XkindProjector.isDefault) {
           def fail(): Tree = {
@@ -2197,6 +2198,31 @@ object Parsers {
         commaSeparated(() => argType())
     end argTypes
 
+    def argCaps(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] = // TODO grammar doc
+      def argType() =
+        val t = concreteCapsType(captureSetOrRef())
+        if wildOK then t else rejectWildcardType(t) // TODO needed?
+
+      def namedArgType() =
+        atSpan(in.offset):
+          val name = ident()
+          accept(EQUALS)
+          NamedArg(name.toTypeName, argType())
+
+      def namedElem() =
+        atSpan(in.offset):
+          val name = ident()
+          acceptColon()
+          NamedArg(name, argType())
+
+      if namedOK && isIdent && in.lookahead.token == EQUALS then
+        commaSeparated(() => namedArgType())
+      else if tupleOK && isIdent && in.lookahead.isColon && sourceVersion.enablesNamedTuples then
+        commaSeparated(() => namedElem())
+      else
+        commaSeparated(() => argType())
+    end argCaps
+
     def paramTypeOf(core: () => Tree): Tree =
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
         val isImpure = in.token == ARROW
@@ -2243,6 +2269,11 @@ object Parsers {
      */
     def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] =
       inBracketsWithCommas(argTypes(namedOK, wildOK, tupleOK = false))
+
+    def captureArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] = inBracketsWithCommas {
+      in.nextToken() // assumes we are the `cap` soft keyword
+      argCaps(namedOK, wildOK, tupleOK = false) //TODO grammar doc
+    }
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -2823,7 +2854,10 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
-          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
+          val tapp = atSpan(startOffset(t), in.offset) {
+            val args = if isCapKwNext then captureArgs(namedOK = true, wildOK = false) else typeArgs(namedOK = true, wildOK = false)
+            TypeApply(t, args)
+          }
           simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
