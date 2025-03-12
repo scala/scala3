@@ -63,10 +63,10 @@ class DropBreaks extends MiniPhase:
        */
       def unapply(expr: Tree)(using Context): Option[(Symbol, Symbol)] = stripTyped(expr) match
         case If(
-          Apply(Select(Select(ex: Ident, label), eq), (lbl @ Ident(local)) :: Nil),
+          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
           Select(ex2: Ident, value),
           Apply(throww, (ex3: Ident) :: Nil))
-        if label == nme.label && eq == nme.eq && local == nme.local && value == nme.value
+        if isSameLabelAs == nme.isSameLabelAs && local == nme.local && value == nme.value
             && throww.symbol == defn.throwMethod
             && ex.symbol == ex2.symbol && ex.symbol == ex3.symbol =>
           Some((ex.symbol, lbl.symbol))
