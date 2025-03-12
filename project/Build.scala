@@ -103,7 +103,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.6.4"
+  val referenceVersion = "3.7.0-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -114,7 +114,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.7.0"
+  val developedVersion = "3.7.1"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -134,7 +134,7 @@ object Build {
    *  Simplified rules, given 3.$minor.$patch = $developedVersion
    *    - Major version is always 28
    *    - TASTY minor version:
-   *      - in main (NIGHTLY): {if $patch == 0 then $minor else ${minor + 1}}
+   *      - in main (NIGHTLY): {if $patch == 0 || ${referenceVersion.matches(raw"3.$minor.0-RC\d")} then $minor else ${minor + 1}}
    *      - in release branch is always equal to $minor
    *    - TASTY experimental version:
    *      - in main (NIGHTLY) is always experimental
@@ -178,7 +178,7 @@ object Build {
    *   - `3.(M-1).0` if `P = 0`
    *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
-  val mimaPreviousDottyVersion = "3.6.2"
+  val mimaPreviousDottyVersion = "3.7.0-RC1"
 
   /** LTS version against which we check binary compatibility.
    *
@@ -452,7 +452,7 @@ object Build {
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
       ),
 
-    // add extraDevelocityCacheInputFiles in cache key components 
+    // add extraDevelocityCacheInputFiles in cache key components
     Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
       (Compile / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
     Test / test / buildcache.develocityTaskCacheKeyComponents +=
