@@ -2429,7 +2429,7 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
 class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
   extends Message(PureUnitExpressionID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. You may want to use `()`."
+  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. Add `: Unit` to discard silently."
   def explain(using Context) =
     i"""As this expression is not of type Unit, it is desugared into `{ $stat; () }`.
        |Here the `$stat` expression is a pure statement that can be discarded.
@@ -3133,7 +3133,7 @@ class InlinedAnonClassWarning()(using Context)
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
-    def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def msg(using Context) = i"discarded non-Unit value of type ${tp.widen}. Add `: Unit` to discard silently."
     def explain(using Context) = ""
 
 class UnusedNonUnitValue(tp: Type)(using Context)

@@ -1,0 +1,4 @@
+-- Error: tests/neg/i13091.scala:7:16 ----------------------------------------------------------------------------------
+7 |def test = (new Foo): Unit // error: class Foo is marked @experimental ...
+  |                ^^^
+  |                class Foo is marked @experimental and therefore may only be used in an experimental scope.

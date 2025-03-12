@@ -74,6 +74,9 @@ object Typer {
   /** An attachment for GADT constraints that were inferred for a pattern. */
   val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
 
+  /** Indicates that an expression is explicitly ascribed to [[Unit]] type. */
+  val AscribedToUnit = new Property.StickyKey[Unit]
+
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
    */
@@ -992,7 +995,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else tpt
       val expr1 =
         if isWildcard then tree.expr.withType(underlyingTreeTpe.tpe)
-        else typed(tree.expr, underlyingTreeTpe.tpe.widenSkolem)
+        else
+          if underlyingTreeTpe.tpe.isRef(defn.UnitClass) then
+            untpd.unsplice(tree.expr).putAttachment(AscribedToUnit, ())
+          typed(tree.expr, underlyingTreeTpe.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
         .withNotNullInfo(expr1.notNullInfo)
     }
@@ -3009,7 +3015,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else if (ctx.mode.is(Mode.Pattern))
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {
-        val app = typedApply(desugar.binop(l, op, r), pt)
+        val app = typedApply(desugar.binop(l, op, r).withAttachmentsFrom(tree), pt)
         if op.name.isRightAssocOperatorName && !ctx.mode.is(Mode.QuotedPattern) then
           val defs = new mutable.ListBuffer[Tree]
           def lift(app: Tree): Tree = (app: @unchecked) match
@@ -4221,9 +4227,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
-        if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.Whas.valueDiscard && !isThisTypeResult(tree)) {
+
+        if ctx.settings.Whas.valueDiscard
+           && !ctx.isAfterTyper
+           && !tree.isInstanceOf[Inlined]
+           && !isThisTypeResult(tree)
+           && !tree.hasAttachment(AscribedToUnit) then
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
-        }
+
         return tpd.Block(tree1 :: Nil, unitLiteral)
       }
 
@@ -4578,6 +4589,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // sometimes we do not have the original anymore and use the transformed tree instead.
         // But taken together, the two criteria are quite accurate.
         missingArgs(tree, tree.tpe.widen)
+      case _ if tree.hasAttachment(AscribedToUnit) =>
+        // The tree was ascribed to `Unit` explicitly to silence the warning.
+        ()
       case _ if isUnitExpr =>
         report.warning(PureUnitExpression(original, tree.tpe), original.srcPos)
       case _ =>
