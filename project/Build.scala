@@ -114,7 +114,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.7.0"
+  val developedVersion = "3.7.1"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -141,7 +141,7 @@ object Build {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimetnal
    */
-  val expectedTastyVersion = "28.7-experimental-1"
+  val expectedTastyVersion = "28.8-experimental-1"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
@@ -178,7 +178,7 @@ object Build {
    *   - `3.(M-1).0` if `P = 0`
    *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
-  val mimaPreviousDottyVersion = "3.6.2"
+  val mimaPreviousDottyVersion = "3.7.0-RC1"
 
   /** LTS version against which we check binary compatibility.
    *
@@ -452,7 +452,7 @@ object Build {
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
       ),
 
-    // add extraDevelocityCacheInputFiles in cache key components 
+    // add extraDevelocityCacheInputFiles in cache key components
     Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
       (Compile / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
     Test / test / buildcache.develocityTaskCacheKeyComponents +=
