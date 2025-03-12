@@ -225,6 +225,7 @@ object Parsers {
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
     // Are we seeing a `cap` soft keyword for declaring a capture-set member or at the beginning a capture-variable parameter list?
     def isCapKw = Feature.ccEnabled && isIdent(nme.cap)
+    // This will typically be used at the beginning of a type parameter list to check if it is a capture-variable parameter list:
     def isCapKwNext = Feature.ccEnabled && in.lookahead.isIdent(nme.cap)
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
@@ -1916,7 +1917,7 @@ object Parsers {
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
+      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then // TODO remove
         atSpan(t.span.start):
           in.nextToken()
           if in.token == LBRACE
@@ -4858,7 +4859,7 @@ object Parsers {
             fail(em"this kind of definition cannot be a refinement")
 
       while
-        val dclFound = isDclIntro
+        val dclFound = isDclIntro || isCapKw // TODO grammar doc
         if dclFound then
           stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
         var what = "declaration"
