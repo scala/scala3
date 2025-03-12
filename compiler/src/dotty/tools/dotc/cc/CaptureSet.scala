@@ -1083,10 +1083,17 @@ object CaptureSet:
    */
   case class ExistentialSubsumesFailure(val ex: root.Result, val other: CaptureRef) extends ErrorNote
 
+  trait CompareFailure:
+    private var myErrorNotes: List[ErrorNote] = Nil
+    def errorNotes: List[ErrorNote] = myErrorNotes
+    def withNotes(notes: List[ErrorNote]): this.type =
+      myErrorNotes = notes
+      this
+
   enum CompareResult extends Showable:
     case OK
-    case Fail(trace: List[CaptureSet])
-    case LevelError(cs: CaptureSet, elem: CaptureRef) extends CompareResult, ErrorNote
+    case Fail(trace: List[CaptureSet]) extends CompareResult, CompareFailure
+    case LevelError(cs: CaptureSet, elem: CaptureRef) extends CompareResult, CompareFailure, ErrorNote
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
@@ -1110,16 +1117,6 @@ object CaptureSet:
     def levelError: Option[LevelError] = this match
       case result: LevelError => Some(result)
       case _ => None
-
-    private var myErrorNotes: List[ErrorNote] = Nil
-
-    def errorNotes: List[ErrorNote] = myErrorNotes
-
-    def withNotes(notes: List[ErrorNote]): CompareResult = this match
-      case OK => OK
-      case _ =>
-        myErrorNotes = notes
-        this
 
     inline def andAlso(op: Context ?=> CompareResult)(using Context): CompareResult =
       if isOK then op else this
