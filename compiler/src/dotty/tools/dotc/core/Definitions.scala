@@ -1069,6 +1069,7 @@ class Definitions {
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
+
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
@@ -1078,6 +1079,10 @@ class Definitions {
   @tu lazy val SetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.setter")
   @tu lazy val CompanionClassMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.companionClass")
   @tu lazy val CompanionMethodMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.companionMethod")
+  @tu lazy val DefaultArgMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.defaultArg")
+  @tu lazy val SuperArgMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.superArg")
+  @tu lazy val SuperFwdArgMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.superFwdArg")
+
   @tu lazy val ShowAsInfixAnnot: ClassSymbol = requiredClass("scala.annotation.showAsInfix")
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
