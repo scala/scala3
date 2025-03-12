@@ -1953,9 +1953,9 @@ object desugar {
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
-     *  If sourceVersion >= 3.7 are enabled, the creation performs the following rewrite rules:
+     *  If betterFors are enabled, the creation performs the following rewrite rules:
      *
-     *  1. if sourceVersion >= 3.7:
+     *  1. if betterFors is enabled:
      *
      *    for () do E  ==>  E
      *      or
@@ -1986,13 +1986,13 @@ object desugar {
      *      ==>
      *    for (P <- G.withFilter (P => E); ...) ...
      *
-     *  6. For any N, if sourceVersion >= 3.7:
+     *  6. For any N, if betterFors is enabled:
      *
      *    for (P <- G; P_1 = E_1; ... P_N = E_N; P1 <- G1; ...) ...
      *      ==>
      *    G.flatMap (P => for (P_1 = E_1; ... P_N = E_N; ...))
      *
-     *  7. For any N, if sourceVersion >= 3.7:
+     *  7. For any N, if betterFors is enabled:
      *
      *    for (P <- G; P_1 = E_1; ... P_N = E_N) ...
      *      ==>
@@ -2013,7 +2013,7 @@ object desugar {
      *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
      *
-     *  9. For any N, if sourceVersion >= 3.7:
+     *  9. For any N, if betterFors is enabled:
      *
      *    for (P_1 = E_1; ... P_N = E_N; ...)
      *      ==>
@@ -2157,7 +2157,7 @@ object desugar {
           case _ => false
 
       def markTrailingMap(aply: Apply, gen: GenFrom, selectName: TermName): Unit =
-        if sourceVersion.isAtLeast(`3.7`)
+        if sourceVersion.enablesBetterFors
           && selectName == mapName
           && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
           && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil)))
@@ -2165,7 +2165,7 @@ object desugar {
           aply.putAttachment(TrailingForMap, ())
 
       enums match {
-        case Nil if sourceVersion.isAtLeast(`3.7`) => body
+        case Nil if sourceVersion.enablesBetterFors => body
         case (gen: GenFrom) :: Nil =>
           val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
           markTrailingMap(aply, gen, mapName)
@@ -2174,7 +2174,7 @@ object desugar {
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
         case (gen: GenFrom) :: rest
-        if sourceVersion.isAtLeast(`3.7`)
+        if sourceVersion.enablesBetterFors
           && rest.dropWhile(_.isInstanceOf[GenAlias]).headOption.forall(e => e.isInstanceOf[GenFrom]) // possible aliases followed by a generator or end of for
           && !rest.takeWhile(_.isInstanceOf[GenAlias]).exists(a => isNestedGivenPattern(a.asInstanceOf[GenAlias].pat)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
@@ -2202,9 +2202,9 @@ object desugar {
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
-          val genFrom = GenFrom(gen.pat, filtered, if sourceVersion.isAtLeast(`3.7`) then GenCheckMode.Filtered else GenCheckMode.Ignore)
+          val genFrom = GenFrom(gen.pat, filtered, if sourceVersion.enablesBetterFors then GenCheckMode.Filtered else GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
-        case GenAlias(_, _) :: _ if sourceVersion.isAtLeast(`3.7`) =>
+        case GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
           val (valeqs, rest) = enums.span(_.isInstanceOf[GenAlias])
           val pats = valeqs.map { case GenAlias(pat, _) => pat }
           val rhss = valeqs.map { case GenAlias(_, rhs) => rhs }

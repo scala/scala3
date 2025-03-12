@@ -1,4 +1,5 @@
-import scala.language.experimental.betterFors
+//> using options -preview
+// import scala.language.experimental.betterFors
 
 class myOptionModule(doOnMap: => Unit) {
   sealed trait MyOption[+A] {
