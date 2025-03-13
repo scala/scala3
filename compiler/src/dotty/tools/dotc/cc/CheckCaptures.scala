@@ -1458,7 +1458,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             then
               report.error(
                 em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
-                    |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", tree.srcPos)
+                    |since the additional capture set $leaked resulting from box conversion is not allowed in $actual""", tree.srcPos)
             cs
 
         def adaptedType(resultBoxed: Boolean) =
