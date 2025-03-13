@@ -623,6 +623,9 @@ object ProtoTypes {
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
       else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
+
+    def withApplyKind(applyKind: ApplyKind) =
+      new FunProto(args, resType)(typer, applyKind, state)
   }
 
   /** A prototype for expressions that appear in function position

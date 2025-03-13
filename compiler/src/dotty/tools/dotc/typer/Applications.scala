@@ -23,7 +23,7 @@ import ProtoTypes.*
 import Inferencing.*
 import reporting.*
 import Nullables.*, NullOpsDecorator.*
-import config.{Feature, SourceVersion}
+import config.{Feature, MigrationVersion, SourceVersion}
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -607,7 +607,7 @@ trait Applications extends Compatibility {
           fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
-        if success then matchArgs(orderedArgs, methType.paramInfos, 0)
+        if success then matchArgs(orderedArgs, methType.paramInfos, n=0)
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
@@ -765,13 +765,20 @@ trait Applications extends Compatibility {
               }
               else defaultArgument(normalizedFun, n, testOnly)
 
+            // a bug allowed empty parens to expand to implicit args, offer rewrite only on migration
+            def canSupplyImplicits = methodType.isImplicitMethod
+              && (applyKind == ApplyKind.Using || {
+                if args1.isEmpty then
+                  fail(MissingImplicitParameterInEmptyArguments(methodType.paramNames(n), methString))
+                true
+              })
+              && ctx.mode.is(Mode.ImplicitsEnabled)
+
             if !defaultArg.isEmpty then
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
-            else if (methodType.isContextualMethod || applyKind == ApplyKind.Using && methodType.isImplicitMethod)
-              && ctx.mode.is(Mode.ImplicitsEnabled)
-            then
+            else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) || canSupplyImplicits then
               val implicitArg = implicitArgTree(formal, appPos.span)
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
@@ -1149,32 +1156,53 @@ trait Applications extends Compatibility {
             }
           }
 
+      def tryWithUsing(fun1: Tree, proto: FunProto)(using Context): Option[Tree] =
+        tryEither(Option(simpleApply(fun1, proto.withApplyKind(ApplyKind.Using)))): (_, _) =>
+          None
+
        /** If the applied function is an automatically inserted `apply`
-        * method and one of its arguments has a type mismatch , append
-        * a note to the error message that explains where the required
-        * type comes from. See #19680 and associated test case.
+        *  method and one of its arguments has a type mismatch , append
+        *  a note to the error message that explains where the required
+        *  type comes from. See #19680 and associated test case.
         */
       def maybeAddInsertedApplyNote(failedState: TyperState, fun1: Tree)(using Context): Unit =
         if fun1.symbol.name == nme.apply && fun1.span.isSynthetic then
           fun1 match
-            case Select(qualifier, _) =>
-              def mapMessage(dia: Diagnostic): Diagnostic =
-                dia match
-                  case dia: Diagnostic.Error =>
-                    dia.msg match
-                      case msg: TypeMismatch =>
-                        msg.inTree match
-                          case Some(arg) if tree.args.exists(_.span == arg.span) =>
-                            val noteText =
-                              i"""The required type comes from a parameter of the automatically
-                                  |inserted `apply` method of `${qualifier.tpe}`.""".stripMargin
-                            Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), dia.pos)
-                          case _ => dia
-                      case msg => dia
-                  case dia => dia
-              failedState.reporter.mapBufferedMessages(mapMessage)
-            case _ => ()
-        else ()
+          case Select(qualifier, _) =>
+            def mapMessage(dia: Diagnostic): Diagnostic =
+              dia match
+              case dia: Diagnostic.Error =>
+                dia.msg match
+                case msg: TypeMismatch =>
+                  msg.inTree match
+                  case Some(arg) if tree.args.exists(_.span == arg.span) =>
+                    val noteText =
+                      i"""The required type comes from a parameter of the automatically
+                          |inserted `apply` method of `${qualifier.tpe}`.""".stripMargin
+                    Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), dia.pos)
+                  case _ => dia
+                case msg => dia
+              case dia => dia
+            failedState.reporter.mapBufferedMessages(mapMessage)
+          case _ => ()
+
+      def maybePatchBadParensForImplicit(failedState: TyperState)(using Context): Boolean =
+        var retry = false
+        failedState.reporter.mapBufferedMessages: dia =>
+          dia match
+          case err: Diagnostic.Error =>
+            err.msg match
+            case msg: MissingImplicitParameterInEmptyArguments =>
+              val mv = MigrationVersion.ImplicitParamsWithoutUsing
+              if mv.needsPatch then
+                retry = true
+                rewrites.Rewrites.patch(tree.span.withStart(tree.span.point), "") // f() -> f
+                Diagnostic.Warning(err.msg, err.pos)
+              else
+                err
+            case _ => err
+          case dia => dia
+        retry
 
       val result = fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
@@ -1231,10 +1259,13 @@ trait Applications extends Compatibility {
                 errorTree(tree, em"argument to summonFrom must be a pattern matching closure")
             }
           else
-            tryEither {
-              simpleApply(fun1, proto)
-            } {
-              (failedVal, failedState) =>
+            tryEither(simpleApply(fun1, proto)): (failedVal, failedState) =>
+              // a bug allowed empty parens to expand to implicit args, offer rewrite only on migration, then retry
+              if proto.args.isEmpty && maybePatchBadParensForImplicit(failedState) then
+                tryWithUsing(fun1, proto).getOrElse:
+                  failedState.commit()
+                  failedVal
+              else
                 def fail =
                   maybeAddInsertedApplyNote(failedState, fun1)
                   failedState.commit()
@@ -1244,10 +1275,9 @@ trait Applications extends Compatibility {
                 // The reason we need to try both is that the decision whether to use tupled
                 // or not was already taken but might have to be revised when an implicit
                 // is inserted on the qualifier.
-                tryWithImplicitOnQualifier(fun1, originalProto).getOrElse(
+                tryWithImplicitOnQualifier(fun1, originalProto).getOrElse:
                   if (proto eq originalProto) fail
-                  else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
-            }
+                  else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail)
       }
 
       if result.tpe.isNothingType then

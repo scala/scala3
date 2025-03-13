@@ -14,7 +14,7 @@ import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
-import config.{Feature, ScalaVersion}
+import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
@@ -1591,6 +1591,14 @@ class MissingArgument(pname: Name, methString: String)(using Context)
     if pname.firstPart contains '$' then s"not enough arguments for $methString"
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
+
+class MissingImplicitParameterInEmptyArguments(pname: Name, methString: String)(using Context)
+  extends MissingArgument(pname, methString):
+  override def msg(using Context) =
+    val mv = MigrationVersion.ImplicitParamsWithoutUsing
+    super.msg.concat(Message.rewriteNotice("This code", mv.patchFrom)) // patch emitted up the stack
+  override def explain(using Context) =
+    "Old-style implicit argument lists may be omitted but not empty; this syntax was corrected in 3.7."
 
 class MissingArgumentList(method: String, sym: Symbol)(using Context)
   extends TypeMsg(MissingArgumentListID) {
