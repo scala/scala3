@@ -860,10 +860,14 @@ object Types extends TypeUtils {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else rinfo match
-          case AnnotatedType(rinfo1, ann) if ann.symbol == defn.RefineOverrideAnnot =>
-            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo1)
-          case _ =>
+        else
+          val overridingRefinement = rinfo match
+            case AnnotatedType(rinfo1, ann) if ann.symbol == defn.RefineOverrideAnnot => rinfo1
+            case _ if pdenot.symbol.is(Tracked) => rinfo
+            case _ => NoType
+          if overridingRefinement.exists then
+            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
+          else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
             val joint = pdenot.meet(
               new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),

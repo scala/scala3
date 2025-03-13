@@ -935,7 +935,7 @@ object CaptureSet:
   end Intersection
 
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
-    cs1.elems.filter(cs2.mightAccountFor) ++ cs2.elems.filter(cs1.mightAccountFor)
+    cs1.elems.filter(cs2.accountsFor) ++ cs2.elems.filter(cs1.accountsFor)
 
   /** A capture set variable used to record the references hidden by a Fresh instance,
    *  The elems and deps members are repurposed as follows:
