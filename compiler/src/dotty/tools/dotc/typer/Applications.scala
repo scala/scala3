@@ -1058,7 +1058,7 @@ trait Applications extends Compatibility {
             case _ => ()
         else ()
 
-      fun1.tpe match {
+      val result = fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType =>
           val isInsertedApply = fun1 match {
@@ -1132,6 +1132,11 @@ trait Applications extends Compatibility {
                   else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
             }
       }
+
+      if result.tpe.isNothingType then
+        val nnInfo = result.notNullInfo
+        result.withNotNullInfo(nnInfo.terminatedInfo)
+      else result
     }
 
     /** Convert expression like
