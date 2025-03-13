@@ -522,7 +522,7 @@ object desugar {
     if enumTParams.nonEmpty then
       defaultGetters = defaultGetters.map:
         case ddef: DefDef =>
-          val tParams = enumTParams.map(tparam => toMethParam(tparam, KeepAnnotations.All))
+          val tParams = enumTParams.map(tparam => toDefParam(tparam, keepAnnotations = true))
           cpy.DefDef(ddef)(paramss = joinParams(tParams, ddef.trailingParamss))
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
