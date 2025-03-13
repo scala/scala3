@@ -1333,8 +1333,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             return actual
           case _ =>
 
-        trace(adaptStr, capt, show = true) {
-
         // Decompose the actual type into the inner shape type, the capture set and the box status
         val actualShape = if actual.isFromJavaObject then actual else actual.stripCapturing
         val actualIsBoxed = actual.isBoxedCapturing
@@ -1403,7 +1401,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           else adaptedShape
             .capturing(if alwaysConst then CaptureSet(captures.elems) else captures)
             .forceBoxStatus(resultIsBoxed)
-        }
       end recur
 
       recur(actual, expected, covariant)
