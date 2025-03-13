@@ -1127,6 +1127,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** Replace Ident nodes references to the underlying tree that defined them */
     def underlying(using Context): Tree = MapToUnderlying().transform(tree)
 
+    /** Collect all the TypeSymbol's of the type Bind nodes in the tree. */
+    def bindTypeSymbols(using Context): List[TypeSymbol] =
+      tree.collectSubTrees { case b: Bind if b.isType => b.symbol.asType }
+
     // --- Higher order traversal methods -------------------------------
 
     /** Apply `f` to each subtree of this tree */

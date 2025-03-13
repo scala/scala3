@@ -4557,6 +4557,7 @@ object Types extends TypeUtils {
      */
     def isUnreducibleWild(using Context): Boolean =
       tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
+        && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
