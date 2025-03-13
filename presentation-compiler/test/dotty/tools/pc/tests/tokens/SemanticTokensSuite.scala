@@ -436,3 +436,12 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
         |}
         |""".stripMargin
     )
+
+  @Test def `local-object-with-end-i7246` =
+   check(
+      """|def <<bar>>/*method,definition*/ =
+         |  object <<foo>>/*class*/:
+         |    def <<aaa>>/*method,definition*/ = <<???>>/*method*/
+         |  end <<foo>>/*class,definition*/
+         |""".stripMargin
+   )
