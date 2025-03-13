@@ -292,7 +292,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
 
     def matchingSelector(info: ImportInfo): ImportSelector | Null =
       val qtpe = info.site
-      def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol == sym)
+      def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith: alt =>
+           alt.symbol == sym
+        || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
