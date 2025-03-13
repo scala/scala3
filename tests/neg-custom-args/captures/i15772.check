@@ -7,7 +7,7 @@
 22 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
    |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
-   |since the additional capture set {c} resulted from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
+   |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
 -- Error: tests/neg-custom-args/captures/i15772.scala:28:26 ------------------------------------------------------------
 28 |    val c : C^{x} = new C(x) // error
    |                          ^
@@ -17,7 +17,7 @@
 29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
    |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
-   |since the additional capture set {c} resulted from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
+   |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:34 ---------------------------------------
 35 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                                  ^
