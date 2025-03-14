@@ -131,12 +131,12 @@ object CompilationUnit {
     unit1
   }
 
-  /** Create a compilation unit corresponding to an in-memory String. 
+  /** Create a compilation unit corresponding to an in-memory String.
    *  Used for `compiletime.testing.typeChecks`.
    */
   def apply(name: String, source: String)(using Context): CompilationUnit = {
     val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
-    new CompilationUnit(src, null)
+    new CompilationUnit(src)
   }
 
   /** Create a compilation unit corresponding to `source`.
