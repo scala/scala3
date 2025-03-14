@@ -1,4 +1,0 @@
--- Error: tests/neg-custom-args/captures/path-use.scala:18:32 ----------------------------------------------------------
-18 |  val g = () => println(c.procs.head) // error, local reach capability c.procs* leaks
-   |                        ^^^^^^^^^^^^
-   |                        Local reach capability c.procs* leaks into capture scope of method test

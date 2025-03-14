@@ -1,0 +1,65 @@
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:5:10 -----------------------------------------------------------
+5 |  def cc: Object^ = c  // error
+  |          ^^^^^^^
+  |          Separation failure: method cc's result type Object^ hides non-local parameter c
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:13:8 -----------------------------------------------------------
+13 |    { f(c) } // error
+   |        ^
+   |        Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |        of method cc with result type Object^.
+   |        This type hides capabilities  {c}
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:12:10 ----------------------------------------------------------
+12 |  val x4: Object^ = // error
+   |          ^^^^^^^
+   |          Separation failure: value x4's type Object^ hides parameter f.
+   |          The parameter needs to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:16:10 ----------------------------------------------------------
+16 |  def cc: Object^ = c // error
+   |          ^^^^^^^
+   |          Separation failure: method cc's result type Object^ hides non-local parameter c
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:18:6 -----------------------------------------------------------
+18 |    { f(cc) } // error // error
+   |      ^
+   |      Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |      of method cc with result type Object^.
+   |      This type hides capabilities  {c}
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:18:8 -----------------------------------------------------------
+18 |    { f(cc) } // error // error
+   |        ^^
+   |        Separation failure: argument of type  (cc : -> Object^)
+   |        to a function of type (x: Object^) ->{c} Object^
+   |        corresponds to capture-polymorphic formal parameter x of type  Object^
+   |        and hides capabilities  {cap, c}.
+   |        Some of these overlap with the captures of the function prefix.
+   |
+   |          Hidden set of current argument        : {cap, c}
+   |          Hidden footprint of current argument  : {c}
+   |          Capture set of function prefix        : {f}
+   |          Footprint set of function prefix      : {f, c}
+   |          The two sets overlap at               : {c}
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:20:6 -----------------------------------------------------------
+20 |    { f(c) } // error // error
+   |      ^
+   |      Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |      of method cc with result type Object^.
+   |      This type hides capabilities  {c}
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:20:8 -----------------------------------------------------------
+20 |    { f(c) } // error // error
+   |        ^
+   |        Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |        of method cc with result type Object^.
+   |        This type hides capabilities  {c}
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:24:8 -----------------------------------------------------------
+24 |    { f(c) } // error
+   |        ^
+   |        Separation failure: argument of type  (c : Object^)
+   |        to a function of type Object^ ->{c} Object^
+   |        corresponds to capture-polymorphic formal parameter v1 of type  Object^
+   |        and hides capabilities  {c}.
+   |        Some of these overlap with the captures of the function prefix.
+   |
+   |          Hidden set of current argument        : {c}
+   |          Hidden footprint of current argument  : {c}
+   |          Capture set of function prefix        : {f}
+   |          Footprint set of function prefix      : {f, c}
+   |          The two sets overlap at               : {c}

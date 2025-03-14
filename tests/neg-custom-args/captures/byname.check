@@ -1,17 +1,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:10:6 ----------------------------------------
 10 |  h(f2())  // error
    |    ^^^^
-   |    Found:    (x$0: Int) ->{cap1} Int
-   |    Required: (x$0: Int) ->? Int
+   |    Found:    Int ->{cap1} Int
+   |    Required: Int ->? Int
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/byname.scala:19:5 -------------------------------------------------------------
 19 |  h(g()) // error
    |    ^^^
-   |    reference (cap2 : Cap^) is not included in the allowed capture set {cap1}
+   |    reference (cap2 : Cap) is not included in the allowed capture set {cap1}
    |    of an enclosing function literal with expected type () ?->{cap1} I
 -- Error: tests/neg-custom-args/captures/byname.scala:22:12 ------------------------------------------------------------
 22 |  h2(() => g())() // error
    |           ^^^
-   |           reference (cap2 : Cap^) is not included in the allowed capture set {cap1}
+   |           reference (cap2 : Cap) is not included in the allowed capture set {cap1}
    |           of an enclosing function literal with expected type () ->{cap1} I

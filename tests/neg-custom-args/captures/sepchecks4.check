@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/captures/sepchecks4.scala:8:12 ---------------------------------------------------------
+8 |  val x: () => Unit = () => println(io) // error
+  |         ^^^^^^^^^^
+  |         Separation failure: value x's type () => Unit hides parameter io.
+  |         The parameter needs to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/sepchecks4.scala:7:25 ---------------------------------------------------------
+7 |def bad(io: Object^): () => Unit =    // error
+  |                      ^^^^^^^^^^
+  |                      Separation failure: method bad's result type () => Unit hides parameter io.
+  |                      The parameter needs to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/sepchecks4.scala:12:6 ---------------------------------------------------------
+12 |  par(() => println(io))(() => println(io)) // error // (1)
+   |      ^^^^^^^^^^^^^^^^^
+   |      Separation failure: argument of type  () ->{io} Unit
+   |      to method par: (op1: () => Unit)(op2: () => Unit): Unit
+   |      corresponds to capture-polymorphic formal parameter op1 of type  () => Unit
+   |      and hides capabilities  {io}.
+   |      Some of these overlap with the captures of the second argument with type  () ->{io} Unit.
+   |
+   |        Hidden set of current argument        : {io}
+   |        Hidden footprint of current argument  : {io}
+   |        Capture set of second argument        : {io}
+   |        Footprint set of second argument      : {io}
+   |        The two sets overlap at               : {io}

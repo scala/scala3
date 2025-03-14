@@ -15,7 +15,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:17:12 ----------------------------------
 17 |    b = List(g) // error
    |        ^^^^^^^
-   |        Found:    List[box (x$0: String) ->{cap3} String]
+   |        Found:    List[box String ->{cap3} String]
    |        Required: List[box String ->{cap1, cap2} String]
    |
    | longer explanation available when compiling with `-explain`

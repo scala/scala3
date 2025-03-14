@@ -1,0 +1,51 @@
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:10:10 --------------------------------------------------------
+10 |  println(c) // error
+   |          ^
+   |          Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |          of value xs with type List[box () => Unit].
+   |          This type hides capabilities  {c}
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:13:7 ---------------------------------------------------------
+13 |  foo((() => println(c)) :: Nil, c) // error
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |       Separation failure: argument of type  List[box () ->{c} Unit]
+   |       to method foo: (xs: List[box () => Unit], y: Object^): Nothing
+   |       corresponds to capture-polymorphic formal parameter xs of type  List[box () => Unit]
+   |       and hides capabilities  {c}.
+   |       Some of these overlap with the captures of the second argument with type  (c : Object^).
+   |
+   |         Hidden set of current argument        : {c}
+   |         Hidden footprint of current argument  : {c}
+   |         Capture set of second argument        : {c}
+   |         Footprint set of second argument      : {c}
+   |         The two sets overlap at               : {c}
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:14:10 --------------------------------------------------------
+14 |  val x1: (Object^, Object^) = (c, c) // error
+   |          ^^^^^^^^^^^^^^^^^^
+   |          Separation failure in value x1's type (box Object^, box Object^).
+   |          One part,  box Object^, hides capabilities  {c}.
+   |          Another part,  box Object^,  captures capabilities  {c}.
+   |          The two sets overlap at  {c}.
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:15:10 --------------------------------------------------------
+15 |  val x2: (Object^, Object^{d}) = (d, d) // error
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |          Separation failure in value x2's type (box Object^, box Object^{d}).
+   |          One part,  box Object^, hides capabilities  {d}.
+   |          Another part,  box Object^{d},  captures capabilities  {d}.
+   |          The two sets overlap at  {d}.
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:27:6 ---------------------------------------------------------
+27 |  bar((c, c)) // error
+   |      ^^^^^^
+   |      Separation failure in the argument's adapted type (box Object^, box Object^).
+   |      One part,  box Object^, hides capabilities  {c}.
+   |      Another part,  box Object^,  captures capabilities  {c}.
+   |      The two sets overlap at  {c}.
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:30:9 ---------------------------------------------------------
+30 |  val x: (Object^, Object^{c}) = (d, c) // error
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |         Separation failure: value x's type (box Object^, box Object^{c}) hides parameter d.
+   |         The parameter needs to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:33:9 ---------------------------------------------------------
+33 |  val x: (Object^, Object^) = (c, d) // error
+   |         ^^^^^^^^^^^^^^^^^^
+   |         Separation failure: value x's type (box Object^, box Object^) hides parameters c and d.
+   |         The parameters need to be annotated with @consume to allow this.

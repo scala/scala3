@@ -1,0 +1,19 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/readOnly.scala:14:21 -------------------------------------
+14 |  val _: () -> Int = getA // error
+   |                     ^^^^
+   |                     Found:    (getA : () ->{a.rd} Int)
+   |                     Required: () -> Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/readOnly.scala:17:23 -------------------------------------
+17 |  val _: Int -> Unit = putA // error
+   |                       ^^^^
+   |                       Found:    (putA : Int ->{a} Unit)
+   |                       Required: Int -> Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/readOnly.scala:20:23 ----------------------------------------------------------
+20 |    val doit = () => z.put(x.get max y.get) // error
+   |                     ^^^^^
+   |                     cannot call update method put from (z : Ref),
+   |                     since its capture set {z} is read-only
