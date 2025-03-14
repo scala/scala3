@@ -1,0 +1,27 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:8:31 --------------------------------------
+8 |      boundary.break(l2)(using l1) // error
+  |                               ^^
+  |                               Found:    (local : scala.util.boundary.Label[scala.util.boundary.Label[Unit]]^)
+  |                               Required: scala.util.boundary.Label[box scala.util.boundary.Label[Unit]^{local²}]^
+  |
+  |                               where:    local  is a value locally defined in object test
+  |                                         local² is a value locally defined in object test
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:6:32 --------------------------------------
+ 6 |  boundary[boundary.Label[Unit]]: l1 ?=> // error
+   |  ^
+   |  Found:    scala.util.boundary.Break[scala.util.boundary.Label[Unit]] @unchecked
+   |  Required: scala.util.boundary.Break[box scala.util.boundary.Label[Unit]^] @unchecked
+ 7 |    boundary[Unit]: l2 ?=>
+ 8 |      boundary.break(l2)(using l1) // error
+ 9 |    ???
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from boundary.scala:73
+73 |    catch case ex: Break[T] @unchecked =>
+   |                   ^
+    --------------------------------------------------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
