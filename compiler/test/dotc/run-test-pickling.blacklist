@@ -45,3 +45,8 @@ t6138-2
 i12656.scala
 trait-static-forwarder
 i17255
+
+# typecheckErrors method unpickling
+typeCheckErrors.scala
+i18150.scala
+
