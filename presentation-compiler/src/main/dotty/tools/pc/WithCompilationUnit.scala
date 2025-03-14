@@ -76,7 +76,9 @@ class WithCompilationUnit(
         }
       else Set.empty
     val all =
-      if sym.is(Flags.ModuleClass) then
+      if sym.is(Flags.Exported) then
+        Set(sym, sym.sourceSymbol)
+      else if sym.is(Flags.ModuleClass) then
         Set(sym, sym.companionModule, sym.companionModule.companion)
       else if sym.isClass then
         Set(sym, sym.companionModule, sym.companion.moduleClass)

@@ -262,3 +262,20 @@ class HoverDefnSuite extends BaseHoverSuite:
       """|type Numeric: Numeric
          |""".stripMargin.hover
     )
+
+  @Test def i7256 =
+    check(
+      """|object Test:
+         |  def methodA: Unit = ???
+         |export Test.me@@thodA
+         |""".stripMargin,
+      """|**Expression type**:
+         |```scala
+         |=> Unit
+         |```
+         |**Symbol signature**:
+         |```scala
+         |def methodA: Unit
+         |```
+         |""".stripMargin
+    )
