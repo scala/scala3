@@ -6,7 +6,7 @@ trait Async:
 def foo(x: Async) = x.await(???) // error
 
 trait Source[+T, Cap^]:
-  final def await(using ac: Async^{Cap^}) = ac.await[T, Cap](this) // Contains[Cap, ac] is assured because {ac} <: Cap.
+  final def await(using ac: Async^{Cap}) = ac.await[T, Cap](this) // Contains[Cap, ac] is assured because {ac} <: Cap.
 
 def test(using ac1: Async^, ac2: Async^, x: String) =
   val src1 = new Source[Int, CapSet^{ac1}] {}

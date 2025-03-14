@@ -10,11 +10,11 @@ import caps.use
   class Listener
 
   class Source[X^]:
-    private var listeners: Set[Listener^{X^}] = Set.empty
-    def register(x: Listener^{X^}): Unit =
+    private var listeners: Set[Listener^{X}] = Set.empty
+    def register(x: Listener^{X}): Unit =
       listeners += x
 
-    def allListeners: Set[Listener^{X^}] = listeners
+    def allListeners: Set[Listener^{X}] = listeners
 
   def test1(lbl1: Label^, lbl2: Label^) =
     val src = Source[CapSet^{lbl1, lbl2}]
