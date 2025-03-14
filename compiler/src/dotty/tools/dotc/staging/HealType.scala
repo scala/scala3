@@ -76,7 +76,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
     tp match
       case tp @ NamedType(NoPrefix, _) if level > levelOf(tp.symbol) => tp.symbol
       case tp: NamedType if !tp.symbol.isStatic => levelInconsistentRootOfPath(tp.prefix)
-      case tp: ThisType if level > levelOf(tp.cls) => tp.cls
+      case tp: ThisType if level > levelOf(tp.cls) && !tp.cls.isRefinementClass => tp.cls
       case _ => NoSymbol
 
   /** Try to heal reference to type `T` used in a higher level than its definition.
