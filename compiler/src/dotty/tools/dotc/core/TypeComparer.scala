@@ -1944,6 +1944,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else op2
   end necessaryEither
 
+  inline def rollbackConstraintsUnless(inline op: Boolean): Boolean =
+    val saved = constraint
+    var result = false
+    try result = ctx.gadtState.rollbackGadtUnless(op)
+    finally if !result then constraint = saved
+    result
+
   /** Decompose into conjunction of types each of which has only a single refinement */
   def decomposeRefinements(tp: Type, refines: List[(Name, Type)]): Type = tp match
     case RefinedType(parent, rname, rinfo) =>
