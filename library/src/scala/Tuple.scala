@@ -41,7 +41,7 @@ sealed trait Tuple extends Product {
   inline def size[This >: this.type <: Tuple]: Size[This] =
     runtime.Tuples.size(this).asInstanceOf[Size[This]]
 
-  /** Given two tuples, `(a1, ..., an)` and `(a1, ..., an)`, returns a tuple
+  /** Given two tuples, `(a1, ..., an)` and `(b1, ..., bn)`, returns a tuple
    *  `((a1, b1), ..., (an, bn))`. If the two tuples have different sizes,
    *  the extra elements of the larger tuple will be disregarded.
    *  The result is typed as `((A1, B1), ..., (An, Bn))` if at least one of the
