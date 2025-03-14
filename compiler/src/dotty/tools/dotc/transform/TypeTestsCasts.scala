@@ -56,7 +56,7 @@ object TypeTestsCasts {
    *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P).
    *  10. otherwise, ""
    */
-  def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
+  def whyUncheckable(X: Type, P: Type, span: Span, trustTypeApplication: Boolean)(using Context): String = atPhase(Phases.refchecksPhase.next) {
     extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
     extension (inline b: Boolean) inline def |||(inline s: String): String = if b then "" else s
 
@@ -142,7 +142,7 @@ object TypeTestsCasts {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe @ AppliedType(tycon, targs)     =>
+      case tpe @ AppliedType(tycon, targs) if !trustTypeApplication =>
         X.widenDealias match {
           case OrType(tp1, tp2) =>
             // This case is required to retrofit type inference,
@@ -360,8 +360,7 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          if !isTrusted then
-            checkTypePattern(expr.tpe, argType, expr.srcPos)
+          checkTypePattern(expr.tpe, argType, expr.srcPos, isTrusted)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
@@ -386,10 +385,10 @@ object TypeTestsCasts {
   def checkBind(tree: Bind)(using Context) =
     checkTypePattern(defn.ThrowableType, tree.body.tpe, tree.srcPos)
 
-  private def checkTypePattern(exprTpe: Type, castTpe: Type, pos: SrcPos)(using Context) =
+  private def checkTypePattern(exprTpe: Type, castTpe: Type, pos: SrcPos, trustTypeApplication: Boolean = false)(using Context) =
     val isUnchecked = exprTpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
     if !isUnchecked then
-      val whyNot = whyUncheckable(exprTpe, castTpe, pos.span)
+      val whyNot = whyUncheckable(exprTpe, castTpe, pos.span, trustTypeApplication)
       if whyNot.nonEmpty then
         report.uncheckedWarning(UncheckedTypePattern(castTpe, whyNot), pos)
 
