@@ -59,12 +59,14 @@ import scala.util.Using
  *  @param valIndex    the index of next value binding for free expressions
  *  @param imports     a map from object index to the list of user defined imports
  *  @param invalidObjectIndexes the set of object indexes that failed to initialize
+ *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  invalidObjectIndexes: Set[Int],
+                 quiet: Boolean,
                  context: Context):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
@@ -100,7 +102,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState: State = State(0, 0, Map.empty, Set.empty, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, Set.empty, false, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -203,11 +205,6 @@ class ReplDriver(settings: Array[String],
     interpret(ParseResult.complete(input))
   }
 
-  final def runQuietly(input: String)(using State): State = runBody {
-    val parsed = ParseResult(input)
-    interpret(parsed, quiet = true)
-  }
-
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
 
   // TODO: i5069
@@ -291,10 +288,10 @@ class ReplDriver(settings: Array[String],
         .getOrElse(Nil)
   end completionsWithSignatures
 
-  protected def interpret(res: ParseResult, quiet: Boolean = false)(using state: State): State = {
+  protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state, quiet)
+        compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
@@ -312,7 +309,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
-  private def compile(parsed: Parsed, istate: State, quiet: Boolean = false): State = {
+  private def compile(parsed: Parsed, istate: State): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
       case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
@@ -363,11 +360,9 @@ class ReplDriver(settings: Array[String],
               given Ordering[Diagnostic] =
                 Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              if (!quiet) {
-                (definitions ++ warnings)
-                  .sorted
-                  .foreach(printDiagnostic)
-              }
+              (if istate.quiet then warnings else definitions ++ warnings)
+                .sorted
+                .foreach(printDiagnostic)
 
               updatedState
             }
@@ -542,6 +537,8 @@ class ReplDriver(settings: Array[String],
       case _  =>
         rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
         state.copy(context = rootCtx)
+
+    case Silent => state.copy(quiet = !state.quiet)
 
     case Quit =>
       // end of the world!
