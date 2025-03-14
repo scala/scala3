@@ -137,7 +137,7 @@ Otherwise, soft keywords are treated as actual keywords in the following situati
  - `as`, if it appears in a renaming import clause.
  - `derives`, if it appears after an extension clause or after the name and possibly parameters of a class, trait, object, or enum definition.
  - `end`, if it appears at the start of a line following a statement (i.e. definition or toplevel expression) and is followed on the same line by a single non-comment token that is:
-   - one of the keywords `for`, `given`, `if`, `match`, `new`, `this`, `throw`, `try`, `val`, `while`, or
+   - one of the keywords `for`, `given`, `if`, `match`, `new`, `this`, `throw`, `try`, `val`, `while`, `extension` or
    - an identifier.
  - `extension`, if it appears at the start of a statement and is followed by `(` or `[`.
  - `inline`, if it is followed by any token that can start an expression.
