@@ -362,7 +362,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
         val (guardOK, canReduceGuard) =
           if cdef.guard.isEmpty then (true, true)
-          else typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match {
+          else stripInlined(typer.typed(cdef.guard.subst(from, to), defn.BooleanType)) match {
             case ConstantValue(v: Boolean) => (v, true)
             case _ => (false, false)
           }
