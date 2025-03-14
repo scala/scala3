@@ -315,7 +315,7 @@ object EndMarker:
   def getPosition(df: NamedDefTree, pos: SourcePosition, sourceText: String)(
       implicit ct: Context
   ): Option[SourcePosition] =
-    val name = df.name.toString()
+    val name = df.name.toString().stripSuffix("$")
     val endMarkerLine =
       sourceText.slice(df.span.start, df.span.end).split('\n').last
     val index = endMarkerLine.length() - name.length()
