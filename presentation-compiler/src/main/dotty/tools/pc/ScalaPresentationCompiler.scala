@@ -40,6 +40,7 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
+import main.dotty.tools.pc.PcConvertToEnum
 
 
 case class ScalaPresentationCompiler(
@@ -61,7 +62,8 @@ case class ScalaPresentationCompiler(
      CodeActionId.ImplementAbstractMembers,
      CodeActionId.ExtractMethod,
      CodeActionId.InlineValue,
-     CodeActionId.InsertInferredType
+     CodeActionId.InsertInferredType,
+     PcConvertToEnum.codeActionId
    ).asJava
 
   def this() = this("", None, Nil, Nil)
@@ -80,28 +82,32 @@ case class ScalaPresentationCompiler(
     params: OffsetParams,
     codeActionId: String,
     codeActionPayload: Optional[T]
-   ): CompletableFuture[ju.List[TextEdit]] =
-     (codeActionId, codeActionPayload.asScala) match
-       case (
-             CodeActionId.ConvertToNamedArguments,
-             Some(argIndices: ju.List[_])
-           ) =>
-         val payload =
-          argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
-         convertToNamedArguments(params, payload)
-       case (CodeActionId.ImplementAbstractMembers, _) =>
-         implementAbstractMembers(params)
-       case (CodeActionId.InsertInferredType, _) =>
-         insertInferredType(params)
-       case (CodeActionId.InlineValue, _) =>
-         inlineValue(params)
-       case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
-         params match {
-           case range: RangeParams =>
-             extractMethod(range, extractionPos)
-           case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
-         }
-       case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
+  ): CompletableFuture[ju.List[TextEdit]] =
+    (codeActionId, codeActionPayload.asScala) match
+      case (
+            CodeActionId.ConvertToNamedArguments,
+            Some(argIndices: ju.List[_])
+          ) =>
+        val payload =
+         argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
+        convertToNamedArguments(params, payload)
+      case (CodeActionId.ImplementAbstractMembers, _) =>
+        implementAbstractMembers(params)
+      case (CodeActionId.InsertInferredType, _) =>
+        insertInferredType(params)
+      case (CodeActionId.InlineValue, _) =>
+        inlineValue(params)
+      case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
+        params match {
+          case range: RangeParams =>
+            extractMethod(range, extractionPos)
+          case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
+        }
+      case (PcConvertToEnum.codeActionId, _) =>
+        compilerAccess.withNonInterruptableCompiler(List.empty[l.TextEdit].asJava, params.token) {
+          access => PcConvertToEnum(access.compiler(), params).convertToEnum
+        }(params.toQueryContext)
+      case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
 
   private def failedFuture[T](e: Throwable): CompletableFuture[T] =
     val f = new CompletableFuture[T]()
