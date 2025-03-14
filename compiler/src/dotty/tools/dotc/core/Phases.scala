@@ -210,7 +210,7 @@ object Phases {
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
-    private var mySetRootTreePhase: Phase = uninitialized
+    private var mySetRootTreePhase: Phase = _
     private var myInliningPhase: Phase = _
     private var myStagingPhase: Phase = _
     private var mySplicingPhase: Phase = _
