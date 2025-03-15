@@ -11,8 +11,8 @@ To remedy this, Scala 3 only allows type projection if `T` is a concrete type (a
 A type is abstract if it is:
 * An abstract type member (`type T` without `= SomeType`)
 * A type parameter (`[T]`)
-* An alias to an abstract type (`type T = SomeAbstactType`).
-There are no restriction on `A` appart from the fact it has to be a member type of `T`, for example a subclass (`class T { class A }`).
+* An alias to an abstract type (`type T = SomeAbstractType`).
+There are no restriction on `A` apart from the fact it has to be a member type of `T`, for example a subclass (`class T { class A }`).
 
 To rewrite code using type projections on abstract types, consider using
 path-dependent types or implicit parameters.
