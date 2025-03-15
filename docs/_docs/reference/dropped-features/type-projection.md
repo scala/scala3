@@ -1,7 +1,7 @@
 ---
 layout: doc-page
-title: "Tightened Type Projection"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/changed-features/type-projection.html
+title: "Dropped: General Type Projection"
+nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/type-projection.html
 ---
 
 Scala 2 allowed general type projection `T#A` where `T` is an arbitrary type and `A` names a type member of `T`.
