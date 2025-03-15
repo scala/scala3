@@ -1,0 +1,103 @@
+-- [E053] Type Error: tests/neg/type-params.scala:14:13 ----------------------------------------------------------------
+14 |    type t = x[x] // error
+   |             ^^^^
+   |             x does not take type parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E053] Type Error: tests/neg/type-params.scala:16:13 ----------------------------------------------------------------
+16 |    val foo: s[Int] // error
+   |             ^^^^^^
+   |             s does not take type parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/type-params.scala:21:26 ----------------------------------------------------------------------------
+21 |  object mp extends Monad[Tuple2] // error
+   |                          ^^^^^^
+   |                          Type argument [T1, T2] =>> (T1, T2) does not have the same kind as its bound [x]
+-- Error: tests/neg/type-params.scala:24:26 ----------------------------------------------------------------------------
+24 |  trait ms1 extends Monad[String]        // error
+   |                          ^^^^^^
+   |                          Type argument String does not have the same kind as its bound [x]
+-- Error: tests/neg/type-params.scala:25:29 ----------------------------------------------------------------------------
+25 |  trait ms2[t] extends Monad[t]          // error
+   |                             ^
+   |                             Type argument t does not have the same kind as its bound [x]
+-- Error: tests/neg/type-params.scala:26:35 ----------------------------------------------------------------------------
+26 |  trait ms3[m[_], t] extends Monad[m[t]] // error -- added to check regression on bug
+   |                                   ^^^^
+   |                                   Type argument m[t] does not have the same kind as its bound [x]
+-- Error: tests/neg/type-params.scala:31:31 ----------------------------------------------------------------------------
+31 |  trait Bar2[m[_]] extends Foo[m] // error check that m is properly recognized as kind *->*, while * is expected
+   |                               ^
+   |                               Type argument m does not have the same kind as its bound 
+-- [E053] Type Error: tests/neg/type-params.scala:37:20 ----------------------------------------------------------------
+37 |class t1701 extends java.lang.Cloneable[String, Option, Int] // error
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    Cloneable does not take type parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E053] Type Error: tests/neg/type-params.scala:39:24 ----------------------------------------------------------------
+39 |trait t0842[T] { def m: this.type[T] = this } // error
+   |                        ^^^^^^^^^^^^
+   |                        (t0842.this : t0842[T]) does not take type parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E134] Type Error: tests/neg/type-params.scala:45:10 ----------------------------------------------------------------
+45 |  println(a[A]) // error
+   |          ^
+   |          None of the overloaded alternatives of method apply in trait Function1 with types
+   |           (v1: t278.this.A): Unit
+   |           (): Unit
+   |          match type arguments [t278.this.A] and expected type Any
+-- [E120] Naming Error: tests/neg/type-params.scala:44:6 ---------------------------------------------------------------
+44 |  def a = (p: A) => () // error
+   |      ^
+   |      Double definition:
+   |      def a: () => Unit in trait t278 at line 43 and
+   |      def a: t278.this.A => Unit in trait t278 at line 44
+   |      have the same type after erasure.
+   |
+   |      Consider adding a @targetName annotation to one of the conflicting definitions
+   |      for disambiguation.
+-- Error: tests/neg/type-params.scala:4:7 ------------------------------------------------------------------------------
+4 |  "".==[Int] // error
+  |  ^^^^^^^^^^
+  |  method == in class Any does not take type parameters
+-- Error: tests/neg/type-params.scala:5:17 -----------------------------------------------------------------------------
+5 |  ("": AnyRef).==[Int] // error
+  |  ^^^^^^^^^^^^^^^^^^^^
+  |  method == in class Any does not take type parameters
+-- Error: tests/neg/type-params.scala:6:17 -----------------------------------------------------------------------------
+6 |  ("": Object).==[Int] // error
+  |  ^^^^^^^^^^^^^^^^^^^^
+  |  method == in class Any does not take type parameters
+-- Error: tests/neg/type-params.scala:9:14 -----------------------------------------------------------------------------
+9 |  classOf[Int][Int] // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  illegal repeated type application
+  |  You might have meant something like:
+  |  classOf[Int, Int]
+-- [E140] Cyclic Error: tests/neg/type-params.scala:34:11 --------------------------------------------------------------
+34 |  def g[X, A[X] <: A[X]](x: A[X]) = x // error // error
+   |           ^
+   |           illegal cyclic type reference: upper bound ... of type A refers back to the type itself
+   |
+   |            Run with -explain-cyclic for more details.
+-- [E053] Type Error: tests/neg/type-params.scala:34:28 ----------------------------------------------------------------
+34 |  def g[X, A[X] <: A[X]](x: A[X]) = x // error // error
+   |                            ^^^^
+   |                            A does not take type parameters
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E140] Cyclic Error: tests/neg/type-params.scala:35:8 ---------------------------------------------------------------
+35 |  def f[C[X] <: C[X]](l: C[_]) = l.x // error // error
+   |        ^
+   |        illegal cyclic type reference: upper bound ... of type C refers back to the type itself
+   |
+   |         Run with -explain-cyclic for more details.
+-- [E053] Type Error: tests/neg/type-params.scala:35:25 ----------------------------------------------------------------
+35 |  def f[C[X] <: C[X]](l: C[_]) = l.x // error // error
+   |                         ^^^^
+   |                         C does not take type parameters
+   |
+   | longer explanation available when compiling with `-explain`
