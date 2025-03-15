@@ -1,0 +1,6 @@
+-- [E161] Naming Error: tests/neg/i22721/test2.scala:3:12 --------------------------------------------------------------
+3 |private def foobar: Int = 0 // error
+  |^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |foobar is already defined as method foobar in tests/neg/i22721/test1.scala
+  |
+  |Note that overloaded methods must all be defined in the same group of toplevel definitions
