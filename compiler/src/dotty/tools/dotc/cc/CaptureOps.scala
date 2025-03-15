@@ -49,7 +49,7 @@ object ccConfig:
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
 
 end ccConfig
 
@@ -111,6 +111,8 @@ class CCState:
   private var openExistentialScopes: List[MethodType] = Nil
 
   private var capIsRoot: Boolean = false
+
+  var iterCount = 1
 
 object CCState:
 
@@ -335,7 +337,8 @@ extension (tp: Type)
    *  are of the form this.C but their pathroot is still this.C, not this.
    */
   final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) =>
+    case tp1: NamedType
+    if tp1.symbol.maybeOwner.isClass && tp1.symbol != defn.captureRoot && !tp1.symbol.is(TypeParam) =>
       tp1.prefix.pathRoot
     case tp1 => tp1
 

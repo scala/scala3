@@ -412,7 +412,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         i"\nof the enclosing ${owner.showLocated}"
 
     /** Does the given environment belong to a method that is (a) nested in a term
-     *  and (b) not the method of an anonympus function?
+     *  and (b) not the method of an anonymous function?
      */
     def isOfNestedMethod(env: Env | Null)(using Context) =
       env != null
