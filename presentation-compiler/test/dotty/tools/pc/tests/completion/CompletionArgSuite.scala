@@ -1138,6 +1138,6 @@ class CompletionArgSuite extends BaseCompletionSuite:
         |  A(x@@)
         |""".stripMargin,
       """x = : Int
-        |x = ???, y = ???Autofill with default values""".stripMargin,
+        |x = ???, y = ???""".stripMargin,
       // this looks strange due to the Autofill message belonging to the description
     )
