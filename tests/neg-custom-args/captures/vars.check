@@ -25,7 +25,16 @@
    |        Required: List[box String ->{cap1, cap2} String]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:36:2 ---------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:36:8 ------------------------------------------
 36 |  local { cap3 => // error
-   |  ^^^^^
-   |  local reference cap3 leaks into outer capture set of type parameter T of method local
+   |        ^
+   |        Found:    (cap3: CC^) ->? box String ->{cap3} String
+   |        Required: (cap3: CC^) -> box String ->? String
+   |
+   |        Note that reference cap3.type
+   |        cannot be included in outer capture set ?
+37 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
+38 |    g
+39 |  }
+   |
+   | longer explanation available when compiling with `-explain`

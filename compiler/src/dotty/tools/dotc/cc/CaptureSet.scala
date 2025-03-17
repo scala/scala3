@@ -586,6 +586,12 @@ object CaptureSet:
               elem.symbol.ccLevel <= level
         case elem: ThisType if level.isDefined =>
           elem.cls.ccLevel.nextInner <= level
+        case elem: ParamRef if !this.isInstanceOf[Mapped | BiMapped] =>
+          isPartOf(elem.binder.resType)
+          || {
+            capt.println(i"LEVEL ERROR $elem for $this")
+            false
+          }
         case ReachCapability(elem1) =>
           levelOK(elem1)
         case ReadOnlyCapability(elem1) =>

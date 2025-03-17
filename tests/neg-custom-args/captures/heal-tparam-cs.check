@@ -1,11 +1,23 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:23 -------------------------------
+10 |  val test1 = localCap { c => // error
+   |                       ^
+   |                       Found:    (c: Capp^) ->? box () ->{c} Unit
+   |                       Required: (c: Capp^) ->{fresh} box () ->? Unit
+   |
+   |                       Note that reference c.type
+   |                       cannot be included in outer capture set ?
+11 |    () => { c.use() }
+12 |  }
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:15:13 -------------------------------
 15 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^) ->? () ->{x$0} Unit
+   |    Found:    (x$0: Capp^?) ->? () ->{x$0} Unit
    |    Required: (c: Capp^) -> () ->{localcap} Unit
    |
-   |    Note that the existential capture root in () => Unit
-   |    cannot subsume the capability x$0.type
+   |    Note that reference <cap of (x$0: Capp^?): () ->{x$0} Unit>
+   |    cannot be included in outer capture set {x$0}
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }
    |
@@ -13,7 +25,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:25:13 -------------------------------
 25 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^{io}) ->? () ->{x$0} Unit
+   |    Found:    (x$0: Capp^{io}) ->? () ->{x$0, io} Unit
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
@@ -33,7 +45,3 @@
    |          Required: () ->? Unit
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:14 ----------------------------------------------------
-10 |  val test1 = localCap { c => // error
-   |              ^^^^^^^^
-   |              local reference c leaks into outer capture set of type parameter T of method localCap

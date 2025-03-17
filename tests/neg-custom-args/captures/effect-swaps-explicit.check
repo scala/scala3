@@ -14,6 +14,18 @@
     --------------------------------------------------------------------------------------------------------------------
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:69:10 ------------------------
+69 |          Future: fut ?=> // error, type mismatch
+   |          ^
+   |Found:    (contextual$9: boundary.Label[box Result[box Future[box T^?]^?, box E^?]^?]^) ?->{fr, async}
+   |  box Future[box T^?]^{fr, contextual$9}
+   |Required: (contextual$9: boundary.Label[Result[box Future[box T^?]^?, box E^?]]^) ?->{fresh} box Future[box T^?]^?
+   |
+   |Note that reference contextual$9.type
+   |cannot be included in outer capture set ?
+70 |            fr.await.ok
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:74:10 ------------------------
 74 |          Future: fut ?=> // error: type mismatch
    |          ^
@@ -22,8 +34,3 @@
 75 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:68:15 ---------------------------------------------
-68 |        Result.make: //lbl ?=> // error, escaping label from Result
-   |        ^^^^^^^^^^^
-   |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]^):
-   |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result

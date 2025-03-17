@@ -10,21 +10,33 @@
    |                                Required: () ->? Nothing
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:52:2 -------------------------------------------
-47 |val global: () -> Int = handle {
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:35:18 ------------------------------------------
+35 |  val xx = handle {  // error
+   |                  ^
+   |                  Found:    (x: CT[Exception]^) ->? box () ->{x} Int
+   |                  Required: (x: CT[Exception]^) ->{fresh} box () ->? Int
+   |
+   |                  Note that reference x.type
+   |                  cannot be included in outer capture set ?
+36 |    (x: CanThrow[Exception]) =>
+37 |      () =>
+38 |        raise(new Exception)(using x)
+39 |        22
+40 |  } {
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:47:31 ------------------------------------------
+47 |val global: () -> Int = handle { // error
+   |                               ^
+   |                               Found:    (x: CT[Exception]^) ->? box () ->{x} Int
+   |                               Required: (x: CT[Exception]^) ->{fresh} box () ->? Int
+   |
+   |                               Note that reference x.type
+   |                               cannot be included in outer capture set ?
 48 |  (x: CanThrow[Exception]) =>
 49 |    () =>
 50 |      raise(new Exception)(using x)
 51 |      22
-52 |} {  // error
-   |                        ^
-   |                        Found:    () ->{x} Int
-   |                        Required: () -> Int
-53 |  (ex: Exception) => () => 22
-54 |}
+52 |} {
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/try.scala:35:11 ---------------------------------------------------------------
-35 |  val xx = handle {  // error
-   |           ^^^^^^
-   |           local reference x leaks into outer capture set of type parameter R of method handle

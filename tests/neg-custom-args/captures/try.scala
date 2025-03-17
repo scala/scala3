@@ -44,11 +44,11 @@ def test =
   yy // OK
 
 
-val global: () -> Int = handle {
+val global: () -> Int = handle { // error
   (x: CanThrow[Exception]) =>
     () =>
       raise(new Exception)(using x)
       22
-} {  // error
+} {
   (ex: Exception) => () => 22
 }

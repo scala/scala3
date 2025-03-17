@@ -1,12 +1,30 @@
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:22:14 ------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:27 ---------------------------------
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |              ^^^^^^^^^^^^
-   |       local reference f leaks into outer capture set of type parameter T of method usingLogFile in object Test2
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:27:23 ------------------------------------------------------
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           Found:    (f: java.io.FileOutputStream^) ->? box () ->{f} Unit
+   |                           Required: (f: java.io.FileOutputStream^) ->{fresh} box () ->? Unit
+   |
+   |                           Note that reference f.type
+   |                           cannot be included in outer capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:36 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
-   |                       ^^^^^^^^^^^^
-   |       local reference f leaks into outer capture set of type parameter T of method usingLogFile in object Test2
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:43:16 ------------------------------------------------------
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            Found:    (f: java.io.FileOutputStream^) ->? box Test2.Cell[box () ->{f} Unit]^?
+   |                            Required: (f: java.io.FileOutputStream^) ->{fresh} box Test2.Cell[box () ->? Unit]^?
+   |
+   |                            Note that reference f.type
+   |                            cannot be included in outer capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
 43 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
-   |                ^^^^^^^^^
-   |          local reference f leaks into outer capture set of type parameter T of method usingFile in object Test3
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 Found:    (f: java.io.OutputStream^) ->? box Int ->{f} Unit
+   |                                 Required: (f: java.io.OutputStream^) ->{fresh} box Int ->? Unit
+   |
+   |                                 Note that reference f.type
+   |                                 cannot be included in outer capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
