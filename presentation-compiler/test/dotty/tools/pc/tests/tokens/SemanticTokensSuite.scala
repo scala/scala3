@@ -262,7 +262,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
           |  } = new:
           |    def <<scalameta>>/*method,definition*/ = "4.0"
           |  <<V>>/*variable,readonly*/.<<scalameta>>/*method*/
-          |end StructuralTypes
+          |end <<StructuralTypes>>/*class,definition*/
           |""".stripMargin
     )
 
