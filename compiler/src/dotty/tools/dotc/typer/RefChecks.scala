@@ -1150,8 +1150,8 @@ object RefChecks {
    *  This check is suppressed if the method is an override. (Because the type of the receiver
    *  may be narrower in the override.)
    *
-   *  If the extension method is nullary, it is always hidden by a member of the same name.
-   *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
+   *  If the extension method is nilary, it is always hidden by a member of the same name.
+   *  (Either the member is nilary, or the reference is taken as the eta-expansion of the member.)
    *
    *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
    *  That check would account for accessibility and opacity. As a limitation, this check considers
@@ -1175,25 +1175,29 @@ object RefChecks {
       extension (tp: Type)
         def explicit = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true)
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
+        def isNilary = tp.stripPoly match { case mt: MethodType => false case _ => true }
       val explicitInfo = sym.info.explicit // consider explicit value params
-      val target0 = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
-      val target = target0.dealiasKeepOpaques.typeSymbol.info
-      val methTp = explicitInfo.resultType // skip leading implicits and the "receiver" parameter
-      def memberMatchesMethod(member: Denotation) =
+      def memberHidesMethod(member: Denotation): Boolean =
+        val methTp = explicitInfo.resultType // skip leading implicits and the "receiver" parameter
+        if methTp.isNilary then
+          return true // extension without parens is always hidden by a member of same name
         val memberIsImplicit = member.info.hasImplicitParams
-        val paramTps =
-          if memberIsImplicit then methTp.stripPoly.firstParamTypes
-          else methTp.explicit.firstParamTypes
         inline def paramsCorrespond =
+          val paramTps =
+            if memberIsImplicit then methTp.stripPoly.firstParamTypes
+            else methTp.explicit.firstParamTypes
           val memberParamTps = member.info.stripPoly.firstParamTypes
           memberParamTps.corresponds(paramTps): (m, x) =>
             m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias && (x frozen_<:< m)
-        paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || paramsCorrespond
-      def hidden =
-        target.nonPrivateMember(sym.name)
-        .filterWithPredicate: member =>
-          member.symbol.isPublic && memberMatchesMethod(member)
-        .exists
+        memberIsImplicit && !methTp.hasImplicitParams || paramsCorrespond
+      def targetOfHiddenExtension: Symbol =
+        val target =
+          val target0 = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
+          target0.dealiasKeepOpaques.typeSymbol.info
+        val member = target.nonPrivateMember(sym.name)
+          .filterWithPredicate: member =>
+            member.symbol.isPublic && memberHidesMethod(member)
+        if member.exists then target.typeSymbol else NoSymbol
       if sym.is(HasDefaultParams) then
         val getterDenot =
           val receiverName = explicitInfo.firstParamNames.head
@@ -1202,8 +1206,10 @@ object RefChecks {
           sym.owner.info.member(getterName)
         if getterDenot.exists
         then report.warning(ExtensionHasDefault(sym), getterDenot.symbol.srcPos)
-      if !sym.nextOverriddenSymbol.exists && hidden
-      then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
+      if !sym.nextOverriddenSymbol.exists then
+        val target = targetOfHiddenExtension
+        if target.exists then
+          report.warning(ExtensionNullifiedByMember(sym, target), sym.srcPos)
   end checkExtensionMethods
 
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
