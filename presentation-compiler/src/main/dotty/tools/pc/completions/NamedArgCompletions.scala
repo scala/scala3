@@ -339,9 +339,16 @@ object NamedArgCompletions:
               s"${param.nameBackticked.replace("$", "$$")} = $${${index + 1}${findDefaultValue(param)}}"
           }
           .mkString(", ")
+        val labelText = allParams
+          .collect {
+            case param if !param.symbol.is(Flags.HasDefault) =>
+              s"${param.nameBackticked.replace("$", "$$")} = ???"
+          }
+          .mkString(", ")
         List(
           CompletionValue.Autofill(
-            editText
+            editText,
+            labelText,
           )
         )
       else List.empty
