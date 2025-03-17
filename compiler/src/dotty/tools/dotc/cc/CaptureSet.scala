@@ -563,16 +563,21 @@ object CaptureSet:
           elems -= elem
           res.addToTrace(this)
 
+    private def isPartOf(binder: Type)(using Context): Boolean =
+      val find = new TypeAccumulator[Boolean]:
+        def apply(b: Boolean, t: Type) =
+          b || t.match
+            case CapturingType(p, refs) => (refs eq this) || this(b, p)
+            case _ => foldOver(b, t)
+      find(false, binder)
+
     // TODO: Also track allowable TermParamRefs and root.Results in capture sets
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isRootCapability then
         !noUniversal
       else elem match
         case elem @ root.Result(mt) =>
-          !noUniversal
-          && !CCState.openExistentialScopes.contains(elem)
-            // Opened existentials on the left cannot be added to nested capture sets on the right
-            // of a comparison. Test case is open-existential.scala.
+          !noUniversal && isPartOf(mt.resType)
         case elem: TermRef if level.isDefined =>
           elem.prefix match
             case prefix: CaptureRef =>

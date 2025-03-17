@@ -806,8 +806,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (tp1.signature consistentParams tp2.signature) &&
             matchingMethodParams(tp1, tp2) &&
             (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            CCState.inNewExistentialScope(tp2):
-              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
