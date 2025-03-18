@@ -40,6 +40,7 @@ import util.Store
 import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
+import dotty.tools.dotc.coverage.Coverage
 
 object Contexts {
 
@@ -957,6 +958,11 @@ object Contexts {
     /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
+
+    /** If coverage option is used, it stores all instrumented statements (for InstrumentCoverage).
+     * We need this information to be persisted across different runs, so it's stored here.
+     */
+    private[dotc] var coverage: Coverage | Null = null
 
     // Types state
     /** A table for hash consing unique types */
