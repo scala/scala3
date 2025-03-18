@@ -27,7 +27,7 @@ import ScriptParsers.*
 import Decorators.*
 import util.Chars
 import scala.annotation.tailrec
-import rewrites.Rewrites.{patch, overlapsPatch}
+import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
 import reporting.*
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
@@ -2600,6 +2600,12 @@ object Parsers {
           simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
+          if in.rewriteToIndent then
+            app match
+              case Apply(Apply(_, List(Block(_, _))), List(blk @ Block(_, _))) =>
+                unpatch(blk.srcPos.sourcePos.source, Span(blk.span.start, blk.span.start + 1))
+                unpatch(blk.srcPos.sourcePos.source, Span(blk.span.end, blk.span.end + 1))
+              case _ =>
           simpleExprRest(app, location, canApply = true)
         case USCORE =>
           atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
