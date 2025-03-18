@@ -1,2 +1,2 @@
--Xprint:frontend -Ylog:frontend
+-Vprint:frontend -Ylog:frontend
 -Ycheck:all

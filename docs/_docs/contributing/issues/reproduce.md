@@ -39,9 +39,9 @@ $ scalac <OPTIONS> <FILE>
 
 Here are some useful debugging `<OPTIONS>`:
 
-* `-Xprint:PHASE1,PHASE2,...` or `-Xprint:all`: prints the `AST` after each
+* `-Vprint:PHASE1,PHASE2,...` or `-Vprint:all`: prints the `AST` after each
   specified phase. Phase names can be found by examining the
-  `dotty.tools.dotc.transform.*` classes for their `phaseName` field e.g., `-Xprint:erasure`.
+  `dotty.tools.dotc.transform.*` classes for their `phaseName` field e.g., `-Vprint:erasure`.
   You can discover all phases in the `dotty.tools.dotc.Compiler` class
 * `-Ylog:PHASE1,PHASE2,...` or `-Ylog:all`: enables `ctx.log("")` logging for
   the specified phase.
@@ -142,7 +142,7 @@ $ (rm -rv out || true) && mkdir out # clean up compiler output, create `out` dir
 
 scalac  # Invoke the compiler task defined by the Dotty sbt project
   -d $here/out  # All the artefacts go to the `out` folder created earlier
-  # -Xprint:typer  # Useful debug flags, commented out and ready for quick usage. Should you need one, you can quickly access it by uncommenting it.
+  # -Vprint:typer  # Useful debug flags, commented out and ready for quick usage. Should you need one, you can quickly access it by uncommenting it.
   # -Ydebug-error
   # -Yprint-debug
   # -Yprint-debug-owners

@@ -523,7 +523,7 @@ object ReplCompilerTests:
 
 end ReplCompilerTests
 
-class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Xprint:typer"):
+class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Vprint:typer"):
   @Test def i9111 = initially {
     run("""|enum E {
            |  case A

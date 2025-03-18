@@ -1,4 +1,4 @@
-//> using options "-Xprint:typer"
+//> using options "-Vprint:typer"
 
 class myAnnot[T]() extends annotation.Annotation
 
