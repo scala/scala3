@@ -149,7 +149,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  can be retrieved with `knownType`
      */
     private val keepAllTypes = inContext(ictx) {
-      ictx.settings.Xprint.value.containsPhase(thisPhase)
+      ictx.settings.Vprint.value.containsPhase(thisPhase)
     }
 
     /** Should type of `tree` be kept in an attachment so that it can be retrieved with

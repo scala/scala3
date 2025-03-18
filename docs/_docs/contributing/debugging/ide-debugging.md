@@ -140,7 +140,7 @@ And concatenate the output into the classpath argument, which should already con
 
 In the `args` you can add any additional compiler option you want.
 
-For instance you can add `-Xprint:all` to print all the generated trees after each mega phase.
+For instance you can add `-Vprint:all` to print all the generated trees after each mega phase.
 
 Run `scalac -help` to get an overview of the available compiler options.
 
