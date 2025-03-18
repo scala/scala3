@@ -512,7 +512,22 @@ object TypeOps:
         tp
       else (if pre.isSingleton then NoType else tryWiden(tp, tp.prefix)).orElse {
         if (tp.isTerm && variance > 0 && !pre.isSingleton)
-          apply(tp.info.widenExpr)
+          tp.prefix match
+            case inlines.Inliner.OpaqueProxy(ref) =>
+              // Strip refinements on an opaque alias proxy
+              // Using pos/i22068 as an example,
+              // Inliner#addOpaqueProxies add the following opaque alias proxy:
+              //     val $proxy1: foos.type { type Foo[T] = String } =
+              //       foos.$asInstanceOf[foos.type { type Foo[T] = String }]
+              // Then when InlineCall#expand creates a typed Inlined,
+              // we type avoid any local bindings, which includes that opaque alias proxy.
+              // To avoid that the replacement is a non-singleton RefinedType,
+              // we drop the refinements too and return foos.type.
+              // That way, when we inline `def m1` and we calculate the asSeenFrom
+              // of `b1.and(..)` b1 doesn't have an unstable prefix.
+              derivedSelect(tp, ref)
+            case _ =>
+              apply(tp.info.widenExpr)
         else if (upper(pre).member(tp.name).exists)
           super.derivedSelect(tp, pre)
         else
