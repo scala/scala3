@@ -42,6 +42,23 @@ Foo
 Object
 <empty>.Foo
 render
+54
+58
+5
+List
+Ident
+false
+0
+false
+List
+
+2
+i18233/i18233.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+render
 59
 65
 5
@@ -52,7 +69,7 @@ false
 false
 values
 
-2
+3
 i18233/i18233.scala
 <empty>
 Foo
@@ -69,7 +86,7 @@ false
 false
 values.tail
 
-3
+4
 i18233/i18233.scala
 <empty>
 Foo
@@ -86,7 +103,7 @@ false
 false
 List(values.tail*).mkString
 
-4
+5
 i18233/i18233.scala
 <empty>
 Foo
@@ -103,7 +120,7 @@ false
 false
 def render
 
-5
+6
 i18233/i18233.scala
 <empty>
 Test
@@ -120,7 +137,7 @@ false
 false
 println(Foo.render)
 
-6
+7
 i18233/i18233.scala
 <empty>
 Test

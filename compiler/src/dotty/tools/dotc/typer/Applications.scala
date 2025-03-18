@@ -67,6 +67,21 @@ object Applications {
       unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
   }
 
+  /** Does `tp` fit the "product-seq match" conditions for a `NonEmptyTuple` as
+   *  an unapply result type for a pattern with `numArgs` subpatterns?
+   *  This is the case if (1) `tp` derives from `NonEmptyTuple`.
+   *                      (2) `tp.tupleElementTypes` exists.
+   *                      (3) `tp.tupleElementTypes.last` conforms to Seq match
+   */
+  def isNonEmptyTupleSeqMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean = {
+    tp.derivesFrom(defn.NonEmptyTupleClass)
+      && tp.tupleElementTypes.exists { elemTypes =>
+        val arity = elemTypes.size
+        arity > 0 && arity <= numArgs + 1 &&
+          unapplySeqTypeElemTp(elemTypes.last).exists
+      }
+  }
+
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
    *  parameterless `isEmpty` member of result type `Boolean`.
@@ -143,12 +158,17 @@ object Applications {
     }
     else tp :: Nil
 
-  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
-    val selTps = productSelectorTypes(tp, pos)
-    val arity = selTps.length
-    val elemTp = unapplySeqTypeElemTp(selTps.last)
-    (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
-  }
+  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
+    seqSelectors(productSelectorTypes(tp, pos), argsNum)
+
+  def nonEmptyTupleSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
+    seqSelectors(tp.tupleElementTypes.get, argsNum)
+
+  private def seqSelectors(selectorTypes: List[Type], argsNum: Int)(using Context): List[Type] =
+    val arity = selectorTypes.length
+    val elemTp = unapplySeqTypeElemTp(selectorTypes.last)
+    (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
+  end seqSelectors
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] = {
     def getName(fn: Tree): Name =
@@ -169,7 +189,7 @@ object Applications {
       val elemTp = unapplySeqTypeElemTp(tp)
       if (elemTp.exists) args.map(Function.const(elemTp))
       else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
-      else if tp.derivesFrom(defn.NonEmptyTupleClass) then foldApplyTupleType(tp)
+      else if isNonEmptyTupleSeqMatch(tp, args.length, pos) then nonEmptyTupleSeqSelectors(tp, args.length, pos)
       else fallback
     }
 

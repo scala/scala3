@@ -110,6 +110,23 @@ i18233-min$package
 Object
 <empty>.i18233-min$package
 aList
+14
+18
+2
+List
+Ident
+false
+0
+false
+List
+
+6
+i18233-min/i18233-min.scala
+<empty>
+i18233-min$package
+Object
+<empty>.i18233-min$package
+aList
 19
 34
 2
@@ -120,7 +137,7 @@ false
 false
 Array[String]()
 
-6
+7
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -137,7 +154,7 @@ false
 false
 def aList
 
-7
+8
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -154,7 +171,7 @@ false
 false
 Array("abc", "def")
 
-8
+9
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -171,7 +188,7 @@ false
 false
 def arr
 
-9
+10
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -188,7 +205,24 @@ false
 false
 List(arr*)
 
-10
+11
+i18233-min/i18233-min.scala
+<empty>
+i18233-min$package
+Object
+<empty>.i18233-min$package
+anotherList
+91
+95
+8
+List
+Ident
+false
+0
+false
+List
+
+12
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -205,7 +239,7 @@ false
 false
 arr
 
-11
+13
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
