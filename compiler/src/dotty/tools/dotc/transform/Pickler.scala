@@ -293,7 +293,7 @@ class Pickler extends Phase {
         sourceFile = sourceRelativePath,
         scala2StandardLibrary = Feature.shouldBehaveAsScala2,
         explicitNulls = ctx.settings.YexplicitNulls.value,
-        captureChecked = Feature.ccEnabled,
+        captureChecked = Feature.ccEnabled && Feature.ccAnnotationsEnabled,
         withPureFuns = Feature.pureFunsEnabled,
         isJava = isJavaAttr,
         isOutline = isOutline

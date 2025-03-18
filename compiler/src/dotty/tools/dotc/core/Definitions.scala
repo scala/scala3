@@ -1146,6 +1146,20 @@ class Definitions {
     "reactor.util.annotation.NonNullApi" ::
     "io.reactivex.annotations.NonNull" :: Nil)
 
+  // Capture checking annotations
+  @tu lazy val CCAnnots: Set[ClassSymbol] = Set(
+    ReachCapabilityAnnot,
+    RootCapabilityAnnot,
+    ReadOnlyCapabilityAnnot,
+    OnlyCapabilityAnnot,
+    RequiresCapabilityAnnot,
+    RetainsAnnot,
+    RetainsCapAnnot,
+    RetainsByNameAnnot,
+    UseAnnot,
+  )
+
+
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
