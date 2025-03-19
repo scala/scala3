@@ -625,7 +625,8 @@ object ProtoTypes {
       else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
 
     def withApplyKind(applyKind: ApplyKind) =
-      new FunProto(args, resType)(typer, applyKind, state)
+      if applyKind == this.applyKind then this
+      else new FunProto(args, resType)(typer, applyKind, state)
   }
 
   /** A prototype for expressions that appear in function position
