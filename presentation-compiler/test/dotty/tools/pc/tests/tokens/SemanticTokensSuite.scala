@@ -262,7 +262,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
           |  } = new:
           |    def <<scalameta>>/*method,definition*/ = "4.0"
           |  <<V>>/*variable,readonly*/.<<scalameta>>/*method*/
-          |end StructuralTypes
+          |end <<StructuralTypes>>/*class,definition*/
           |""".stripMargin
     )
 
@@ -436,3 +436,12 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
         |}
         |""".stripMargin
     )
+
+  @Test def `local-object-with-end-i7246` =
+   check(
+      """|def <<bar>>/*method,definition*/ =
+         |  object <<foo>>/*class*/:
+         |    def <<aaa>>/*method,definition*/ = <<???>>/*method*/
+         |  end <<foo>>/*class,definition*/
+         |""".stripMargin
+   )
