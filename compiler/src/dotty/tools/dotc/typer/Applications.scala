@@ -34,10 +34,11 @@ import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
-import scala.util.control.NonFatal
-import dotty.tools.dotc.inlines.Inlines
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import dotty.tools.dotc.cc.isRetains
+import dotty.tools.dotc.inlines.Inlines
+import dotty.tools.dotc.util.chaining.*
 
 object Applications {
   import tpd.*
@@ -607,7 +608,7 @@ trait Applications extends Compatibility {
           fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
-        if success then matchArgs(orderedArgs, methType.paramInfos, n=0)
+        if success then matchArgs(orderedArgs, methType.paramInfos, n = 0)
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
@@ -765,20 +766,18 @@ trait Applications extends Compatibility {
               }
               else defaultArgument(normalizedFun, n, testOnly)
 
-            // a bug allowed empty parens to expand to implicit args, offer rewrite only on migration
+            // a bug allowed empty parens to expand to implicit args: fail empty args for rewrite on migration
             def canSupplyImplicits = methodType.isImplicitMethod
-              && (applyKind == ApplyKind.Using || {
-                if args1.isEmpty then
+              && (applyKind == ApplyKind.Using || false.tap: _ =>
+                if Application.this.args.isEmpty then
                   fail(MissingImplicitParameterInEmptyArguments(methodType.paramNames(n), methString))
-                true
-              })
-              && ctx.mode.is(Mode.ImplicitsEnabled)
+              )
 
             if !defaultArg.isEmpty then
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
-            else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) || canSupplyImplicits then
+            else if (methodType.isContextualMethod || canSupplyImplicits) && ctx.mode.is(Mode.ImplicitsEnabled) then
               val implicitArg = implicitArgTree(formal, appPos.span)
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
@@ -1198,8 +1197,7 @@ trait Applications extends Compatibility {
                 retry = true
                 rewrites.Rewrites.patch(tree.span.withStart(tree.span.point), "") // f() -> f
                 Diagnostic.Warning(err.msg, err.pos)
-              else
-                err
+              else err
             case _ => err
           case dia => dia
         retry
