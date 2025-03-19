@@ -1582,9 +1582,18 @@ class CheckCaptures extends Recheck, SymTransformer:
             memberTp match
               case TypeAlias(_) =>
                 otherTp match
-                  case otherTp: RealTypeBounds
-                  if otherTp.hi.isBoxedCapturing || otherTp.lo.isBoxedCapturing =>
-                    Some((memberTp, otherTp.unboxed))
+                  case otherTp: RealTypeBounds =>
+                    if otherTp.hi.isBoxedCapturing || otherTp.lo.isBoxedCapturing then
+                      Some((memberTp, otherTp.unboxed))
+                    else otherTp.hi match
+                      case hi @ CapturingType(parent: TypeRef, refs)
+                      if parent.symbol == defn.Caps_CapSet && refs.isUniversal =>
+                        Some((
+                          memberTp,
+                          otherTp.derivedTypeBounds(
+                            otherTp.lo,
+                            hi.derivedCapturingType(parent, root.Fresh().singletonCaptureSet))))
+                      case _ => None
                   case _ => None
               case _ => None
           else memberTp match

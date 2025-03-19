@@ -214,15 +214,14 @@ object OverridingPairs:
     if member.isType then // intersection of bounds to refined types must be nonempty
       memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi)
       && (
-        CCState.withCapAsRoot: // If upper bound is CapSet^ any capture set of lower bound is OK
-          (memberTp frozen_<:< otherTp)
-          || !member.owner.derivesFrom(other.owner)
-              && {
-                // if member and other come from independent classes or traits, their
-                // bounds must have non-empty-intersection
-                val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
-                jointBounds.lo frozen_<:< jointBounds.hi
-              }
+        (memberTp frozen_<:< otherTp)
+        || !member.owner.derivesFrom(other.owner)
+            && {
+              // if member and other come from independent classes or traits, their
+              // bounds must have non-empty-intersection
+              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
+              jointBounds.lo frozen_<:< jointBounds.hi
+            }
       )
     else
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
