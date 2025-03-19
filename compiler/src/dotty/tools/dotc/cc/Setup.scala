@@ -336,6 +336,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def fail(msg: Message) =
       if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
+    /** If C derives from Capability and we have a C^cs in source, we leave it as is
+     *  instead of expanding it to C^{cap.rd}^cs. We do this by stripping capability-generated
+     *  universal capture sets from the parent of a CapturingType.
+     */
+    def stripImpliedCaptureSet(tp: Type): Type = tp match
+      case tp @ CapturingType(parent, refs)
+      if (refs eq CaptureSet.universalImpliedByCapability) && !tp.isBoxedCapturing =>
+        parent
+      case tp: AliasingBounds =>
+        tp.derivedAlias(stripImpliedCaptureSet(tp.alias))
+      case tp: RealTypeBounds =>
+        tp.derivedTypeBounds(stripImpliedCaptureSet(tp.lo), stripImpliedCaptureSet(tp.hi))
+      case _ => tp
+
     object toCapturing extends DeepTypeMap, SetupTypeMap:
       override def toString = "transformExplicitType"
 
@@ -366,16 +380,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val cs = CaptureSet(encl.map(_.paramRefs.head)*)
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
-
-      /** If C derives from Capability and we have a C^cs in source, we leave it as is
-       *  instead of expanding it to C^{cap.rd}^cs. We do this by stripping capability-generated
-       *  universal capture sets from the parent of a CapturingType.
-       */
-      def stripImpliedCaptureSet(tp: Type): Type = tp match
-        case tp @ CapturingType(parent, refs)
-        if (refs eq CaptureSet.universalImpliedByCapability) && !tp.isBoxedCapturing =>
-          parent
-        case _ => tp
 
       /** Check that types extending SharedCapability don't have a `cap` in their capture set.
        *  TODO This is not enough.
@@ -456,8 +460,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         toCapturing.keepFunAliases = false
         transform(tp1)
       else tp1
-    if freshen then root.capToFresh(tp2).tap(addOwnerAsHidden(_, sym))
-    else tp2
+    val tp3 =
+      if sym.isType then stripImpliedCaptureSet(tp2)
+      else tp2
+    if freshen then root.capToFresh(tp3).tap(addOwnerAsHidden(_, sym))
+    else tp3
   end transformExplicitType
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
