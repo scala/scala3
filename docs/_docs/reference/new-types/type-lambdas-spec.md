@@ -26,11 +26,11 @@ Assume two type lambdas
 type TL1  =  [X >: L1 <: U1] =>> R1
 type TL2  =  [X >: L2 <: U2] =>> R2
 ```
-Then `TL1 <: TL2`, if
+Then `TL2 <: TL1`, if
 
- - the type interval `L2..U2` is contained in the type interval `L1..U1` (i.e.
-`L1 <: L2` and `U2 <: U1`),
- - `R1 <: R2`
+ - the type interval `L1..U1` is contained in the type interval `L2..U2` (i.e.
+`L2 <: L1` and `U1 <: U2`),
+ - `R2 <: R1`
 
 Here we have relied on [alpha renaming](https://en.wikipedia.org/wiki/Lambda_calculus#%CE%B1-conversion) to match the two bound types `X`.
 
