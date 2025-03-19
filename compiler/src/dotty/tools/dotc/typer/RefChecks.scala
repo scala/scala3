@@ -253,6 +253,13 @@ object RefChecks {
      */
     def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean = true
 
+    /** Adapt member type and other type so that they can be compared with `frozen_<:<`.
+     *  @return  optionally, if adaptation is necessary, the pair of adapted types (memberTp', otherTp')
+     *  Note: we return an Option result to avoid a tuple allocation in the normal case
+     *  where no adaptation is necessary.
+     */
+    def adapt(member: Symbol, memberTp: Type, otherTp: Type)(using Context): Option[(Type, Type)] = None
+
     protected def additionalChecks(overriding: Symbol, overridden: Symbol)(using Context): Unit = ()
 
     private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
@@ -429,18 +436,26 @@ object RefChecks {
      * of class `clazz` are met.
      */
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
-      def memberTp(self: Type) =
+      def memberType(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.etaExpand)
         else self.memberInfo(member)
-      def otherTp(self: Type) =
-        self.memberInfo(other)
+      def otherType(self: Type) =
+       self.memberInfo(other)
+
+      var memberTp = memberType(self)
+      var otherTp = otherType(self)
+      checker.adapt(member, memberTp, otherTp) match
+        case Some((mtp, otp)) =>
+          memberTp = mtp
+          otherTp = otp
+        case None =>
 
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 
-      def noErrorType = !memberTp(self).isErroneous && !otherTp(self).isErroneous
+      def noErrorType = !memberTp.isErroneous && !otherTp.isErroneous
 
       def overrideErrorMsg(core: Context ?=> String, compareTypes: Boolean = false): Message =
-        val (mtp, otp) = if compareTypes then (memberTp(self), otherTp(self)) else (NoType, NoType)
+        val (mtp, otp) = if compareTypes then (memberTp, otherTp) else (NoType, NoType)
         OverrideError(core, self, member, other, mtp, otp)
 
       def compatTypes(memberTp: Type, otherTp: Type): Boolean =
@@ -469,7 +484,7 @@ object RefChecks {
           // with box adaptation, we simply ignore capture annotations here.
           // This should be safe since the compatibility under box adaptation is already
           // checked.
-          memberTp(self).matches(otherTp(self))
+          memberTp.matches(otherTp)
         }
 
       def emitOverrideError(fullmsg: Message) =
@@ -624,12 +639,21 @@ object RefChecks {
         overrideError("is not inline, cannot implement an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
-      else if !compatTypes(memberTp(self), otherTp(self))
-           && !compatTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))
+      else if !compatTypes(memberTp, otherTp)
            && !member.is(Tracked)
            	// Tracked members need to be excluded since they are abstract type members with
            	// singleton types. Concrete overrides usually have a wider type.
            	// TODO: Should we exclude all refinements inherited from parents?
+           && {
+              var memberTpUp = memberType(upwardsSelf)
+              var otherTpUp = otherType(upwardsSelf)
+              checker.adapt(member, memberTpUp, otherTpUp) match
+                case Some((mtp, otp)) =>
+                  memberTpUp = mtp
+                  otherTpUp = otp
+                case _ =>
+              !compatTypes(memberTpUp, otherTpUp)
+           }
       then
         overrideError("has incompatible type", compareTypes = true)
       else if (member.targetName != other.targetName)
@@ -637,7 +661,7 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
-      else if intoOccurrences(memberTp(self)) != intoOccurrences(otherTp(self)) then
+      else if intoOccurrences(memberTp) != intoOccurrences(otherTp) then
         overrideError("has different occurrences of `into` modifiers", compareTypes = true)
       else if other.is(ParamAccessor) && !isInheritedAccessor(member, other)
            && !member.is(Tracked) // see remark on tracked members above

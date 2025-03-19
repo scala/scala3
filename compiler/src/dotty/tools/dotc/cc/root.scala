@@ -162,7 +162,9 @@ object root:
     case _ if root.isCap => Some(Kind.Global)
     case _ => None
 
-  /** Map each occurrence of cap to a different Sep.Cap instance */
+  /** Map each occurrence of cap to a different Fresh instance
+   *  Exception: CapSet^ stays as it is.
+   */
   class CapToFresh(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
@@ -171,6 +173,8 @@ object root:
       else t match
         case t: CaptureRef if t.isCap =>
           Fresh.withOwner(owner)
+        case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
+          t
         case t @ CapturingType(_, _) =>
           mapOver(t)
         case t @ AnnotatedType(parent, ann) =>

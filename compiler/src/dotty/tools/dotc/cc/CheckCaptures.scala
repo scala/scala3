@@ -1341,7 +1341,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         else if !owner.exists then false
         else isPure(owner.info) && isPureContext(owner.owner, limit)
 
-      // Augment expeced capture set `erefs` by all references in actual capture
+      // Augment expected capture set `erefs` by all references in actual capture
       // set `arefs` that are outside some `C.this.type` reference in `erefs` for an enclosing
       // class `C`. If an added reference is not a ThisType itself, add it to the capture set
       // (i.e. use set) of the `C`. This makes sure that any outer reference implicitly subsumed
@@ -1574,7 +1574,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         /** Check subtype with box adaptation.
         *  This function is passed to RefChecks to check the compatibility of overriding pairs.
         *  @param sym  symbol of the field definition that is being checked
-        */
+
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
           val expected1 = alignDependentFunction(addOuterRefs(expected, actual, tree.srcPos), actual.stripCapturing)
           val actual1 =
@@ -1593,10 +1593,43 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case _ => adapted
             finally curEnv = saved
           actual1 frozen_<:< expected1
+        */
 
         /** Omit the check if one of {overriding,overridden} was nnot capture checked */
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
+
+        /** Perform box adaptation for override checking */
+        override def adapt(member: Symbol, memberTp: Type, otherTp: Type)(using Context): Option[(Type, Type)] =
+          if member.isType then
+            memberTp match
+              case TypeAlias(_) =>
+                otherTp match
+                  case otherTp: RealTypeBounds
+                  if otherTp.hi.isBoxedCapturing || otherTp.lo.isBoxedCapturing =>
+                    Some((memberTp, otherTp.unboxed))
+                  case _ => None
+              case _ => None
+          else
+            val expected1 = alignDependentFunction(addOuterRefs(otherTp, memberTp, tree.srcPos), memberTp.stripCapturing)
+            val actual1 =
+              val saved = curEnv
+              try
+                curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
+                val adapted =
+                  adaptBoxed(memberTp, expected1, tree, covariant = true, alwaysConst = true)
+                memberTp match
+                  case _: MethodType =>
+                    // We remove the capture set resulted from box adaptation for method types,
+                    // since class methods are always treated as pure, and their captured variables
+                    // are charged to the capture set of the class (which is already done during
+                    // box adaptation).
+                    adapted.stripCapturing
+                  case _ => adapted
+              finally curEnv = saved
+            if (actual1 eq memberTp) && (expected1 eq otherTp) then None
+            else Some((actual1, expected1))
+        end adapt
 
         override def checkInheritedTraitParameters: Boolean = false
 
@@ -1872,7 +1905,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           def traverse(t: Tree)(using Context) = t match
             case tree: InferredTypeTree =>
             case tree: New =>
-            case tree: TypeTree => checkAppliedTypesIn(tree.withType(tree.nuType))
+            case tree: TypeTree =>
+              CCState.withCapAsRoot:
+                checkAppliedTypesIn(tree.withType(tree.nuType))
             case _ => traverseChildren(t)
         checkApplied.traverse(unit)
     end postCheck
