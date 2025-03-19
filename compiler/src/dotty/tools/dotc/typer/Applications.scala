@@ -1258,7 +1258,8 @@ trait Applications extends Compatibility {
             }
           else
             tryEither(simpleApply(fun1, proto)): (failedVal, failedState) =>
-              // a bug allowed empty parens to expand to implicit args, offer rewrite only on migration, then retry
+              // a bug allowed empty parens to expand to implicit args, offer rewrite only on migration,
+              // then retry with using to emulate the bug since rewrites are ignored on error.
               if proto.args.isEmpty && maybePatchBadParensForImplicit(failedState) then
                 tryWithUsing(fun1, proto).getOrElse:
                   failedState.commit()
