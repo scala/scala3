@@ -403,15 +403,8 @@ object Build {
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
     PgpKeys.useGpgPinentry := true,
 
-    javaOptions ++= {
-      val ciOptions = // propagate if this is a CI build
-        sys.props.get("dotty.drone.mem") match {
-          case Some(prop) => List("-Xmx" + prop)
-          case _ => List()
-        }
-      // Do not cut off the bottom of large stack traces (default is 1024)
-      "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions ::: ciOptions
-    },
+    // Do not cut off the bottom of large stack traces (default is 1024)
+    javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions,
 
     excludeLintKeys ++= Set(
       // We set these settings in `commonSettings`, if a project
