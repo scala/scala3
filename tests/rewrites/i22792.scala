@@ -8,4 +8,8 @@ class Foo:
 given Permit = ???
 @main def Test = new Foo().run()
 
-def otherSyntax = Foo()()
+def ctorProxy = Foo().run()
+
+def otherSyntax = new Foo()() // Foo().apply does not work
+
+def kwazySyntax = new Foo() . run  (  /* your args here! */  ) // that was fun
