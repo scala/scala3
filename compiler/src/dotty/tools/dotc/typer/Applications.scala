@@ -1110,6 +1110,21 @@ trait Applications extends Compatibility {
         then originalProto.tupledDual
         else originalProto
 
+      /* TODO (*) Get rid of this case. It is still syntax-based, therefore unreliable.
+       * It is necessary for things like `someDynamic[T](...)`, because in that case,
+       * somehow typedFunPart returns a tree that was typed as `TryDynamicCallType`,
+       * so clearly with the view that an apply insertion was necessary, but doesn't
+       * actually insert the apply!
+       * This is probably something wrong in apply insertion, but I (@sjrd) am out of
+       * my depth there.
+       * In the meantime, this makes tests pass.
+       */
+      def isInsertedApply = fun1 match
+        case Select(_, nme.apply) => fun1.span.isSynthetic
+        case TypeApply(sel @ Select(_, nme.apply), _) => sel.span.isSynthetic
+        case TypeApply(fun, _) => !fun.isInstanceOf[Select] // (*) see explanatory comment
+        case _ => false
+
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
         methPart(fun1).tpe match {
@@ -1186,6 +1201,11 @@ trait Applications extends Compatibility {
           case _ => ()
 
       def maybePatchBadParensForImplicit(failedState: TyperState)(using Context): Boolean =
+        def rewrite(): Unit =
+          val replace =
+            if isInsertedApply then ".apply" // x() -> x.apply
+            else "" // f() -> f where fun1.span.end == tree.span.point
+          rewrites.Rewrites.patch(tree.span.withStart(fun1.span.end), replace)
         var retry = false
         failedState.reporter.mapBufferedMessages: dia =>
           dia match
@@ -1195,7 +1215,7 @@ trait Applications extends Compatibility {
               val mv = MigrationVersion.ImplicitParamsWithoutUsing
               if mv.needsPatch then
                 retry = true
-                rewrites.Rewrites.patch(tree.span.withStart(tree.span.point), "") // f() -> f
+                rewrite()
                 Diagnostic.Warning(err.msg, err.pos)
               else err
             case _ => err
@@ -1205,21 +1225,6 @@ trait Applications extends Compatibility {
       val result = fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType =>
-          val isInsertedApply = fun1 match {
-            case Select(_, nme.apply) => fun1.span.isSynthetic
-            case TypeApply(sel @ Select(_, nme.apply), _) => sel.span.isSynthetic
-            /* TODO Get rid of this case. It is still syntax-based, therefore unreliable.
-             * It is necessary for things like `someDynamic[T](...)`, because in that case,
-             * somehow typedFunPart returns a tree that was typed as `TryDynamicCallType`,
-             * so clearly with the view that an apply insertion was necessary, but doesn't
-             * actually insert the apply!
-             * This is probably something wrong in apply insertion, but I (@sjrd) am out of
-             * my depth there.
-             * In the meantime, this makes tests pass.
-             */
-            case TypeApply(fun, _) => !fun.isInstanceOf[Select]
-            case _ => false
-          }
           val tree1 = fun1 match
             case Select(_, nme.apply) => tree
             case _ => untpd.Apply(fun1, tree.args)
