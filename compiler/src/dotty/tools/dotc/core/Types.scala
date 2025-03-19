@@ -3823,8 +3823,34 @@ object Types extends TypeUtils {
     def integrate(tparams: List[ParamInfo], tp: Type)(using Context): Type =
       (tparams: @unchecked) match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this) // This is where the precondition is necessary.
-        case params: List[Symbol @unchecked] => tp.subst(params, paramRefs)
+        case params: List[Symbol @unchecked] => IntegrateMap(params, paramRefs)(tp)
       }
+
+    /** A map that replaces references to symbols in `params` by the types in
+     *  `paramRefs`.
+     *
+     *  It is similar to [[Substituters#subst]] but avoids reloading denotations
+     *  of named types by overriding `derivedSelect`.
+     *
+     *  This is needed because during integration, [[TermParamRef]]s refer to a
+     *  [[LambdaType]] that is not yet fully constructed, in particular for wich
+     *  `paramInfos` is `null`. In that case all [[TermParamRef]]s have
+     *  [[NoType]] as underlying type. Reloading denotions of selections
+     *  involving such [[TermParamRef]]s in [[NamedType#withPrefix]] could then
+     *  result in a [[NoDenotation]], which would make later disambiguation of
+     *  overloads impossible. See `tests/pos/annot-17242.scala` for example.
+     */
+    private class IntegrateMap(params: List[Symbol], paramRefs: List[Type])(using Context) extends TypeMap:
+      override def apply(tp: Type) =
+        tp match
+          case tp: NamedType if params.contains(tp.symbol) => paramRefs(params.indexOf(tp.symbol))
+          case _: BoundType | _: ThisType => tp
+          case _ => mapOver(tp)
+
+      override def derivedSelect(tp: NamedType, pre: Type): Type =
+        if tp.prefix eq pre then tp
+        else if tp.symbol.exists then NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
+        else NamedType(pre, tp.name)
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
