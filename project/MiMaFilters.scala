@@ -16,6 +16,9 @@ object MiMaFilters {
     // end of New experimental features in 3.3.X
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
+    // Backported in 3.3.6
+    ProblemFilters.exclude[MissingClassProblem]("dotty.tools.tasty.TastyVersion"),
+    ProblemFilters.exclude[MissingClassProblem]("dotty.tools.tasty.TastyVersion$"),
   )
   val Interfaces: Seq[ProblemFilter] = Seq(
   )
