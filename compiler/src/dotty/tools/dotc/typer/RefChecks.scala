@@ -242,12 +242,6 @@ object RefChecks {
       && (inLinearizationOrder(sym1, sym2, parent) || parent.is(JavaDefined))
       && !sym2.is(AbsOverride)
 
-    /** Checks the subtype relationship tp1 <:< tp2.
-     *  It is passed to the `checkOverride` operation in `checkAll`, to be used for
-     *  compatibility checking.
-     */
-    def checkSubType(tp1: Type, tp2: Type)(using Context): Boolean = tp1 frozen_<:< tp2
-
     /** A hook that allows to omit override checks between `overriding` and `overridden`.
      *  Overridden in capture checking to handle non-capture checked classes leniently.
      */
@@ -258,16 +252,14 @@ object RefChecks {
      *  Note: we return an Option result to avoid a tuple allocation in the normal case
      *  where no adaptation is necessary.
      */
-    def adapt(member: Symbol, memberTp: Type, otherTp: Type)(using Context): Option[(Type, Type)] = None
+    def adaptOverridePair(member: Symbol, memberTp: Type, otherTp: Type)(using Context): Option[(Type, Type)] = None
 
     protected def additionalChecks(overriding: Symbol, overridden: Symbol)(using Context): Unit = ()
 
-    private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
-
-    def checkAll(checkOverride: ((Type, Type) => Context ?=> Boolean, Symbol, Symbol) => Unit) =
+    def checkAll(checkOverride: (Symbol, Symbol) => Unit) =
       while hasNext do
         if needsCheck(overriding, overridden) then
-          checkOverride(subtypeChecker, overriding, overridden)
+          checkOverride(overriding, overridden)
           additionalChecks(overriding, overridden)
         next()
 
@@ -282,7 +274,7 @@ object RefChecks {
         if dcl.is(Deferred) then
           for other <- dcl.allOverriddenSymbols do
             if !other.is(Deferred) then
-              checkOverride(subtypeChecker, dcl, other)
+              checkOverride(dcl, other)
     end checkAll
 
     // Disabled for capture checking since traits can get different parameter refinements
@@ -435,7 +427,7 @@ object RefChecks {
     /* Check that all conditions for overriding `other` by `member`
      * of class `clazz` are met.
      */
-    def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
+    def checkOverride(member: Symbol, other: Symbol): Unit =
       def memberType(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.etaExpand)
         else self.memberInfo(member)
@@ -444,7 +436,7 @@ object RefChecks {
 
       var memberTp = memberType(self)
       var otherTp = otherType(self)
-      checker.adapt(member, memberTp, otherTp) match
+      checker.adaptOverridePair(member, memberTp, otherTp) match
         case Some((mtp, otp)) =>
           memberTp = mtp
           otherTp = otp
@@ -463,8 +455,8 @@ object RefChecks {
           isOverridingPair(member, memberTp, other, otherTp,
             fallBack = warnOnMigration(
               overrideErrorMsg("no longer has compatible type"),
-              (if (member.owner == clazz) member else clazz).srcPos, version = `3.0`),
-            isSubType = checkSubType)
+              (if member.owner == clazz then member else clazz).srcPos,
+              version = `3.0`))
         catch case ex: MissingType =>
           // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
           // because in that case we might access types that are not members of the qualifier.
@@ -647,7 +639,7 @@ object RefChecks {
            && {
               var memberTpUp = memberType(upwardsSelf)
               var otherTpUp = otherType(upwardsSelf)
-              checker.adapt(member, memberTpUp, otherTpUp) match
+              checker.adaptOverridePair(member, memberTpUp, otherTpUp) match
                 case Some((mtp, otp)) =>
                   memberTpUp = mtp
                   otherTpUp = otp

@@ -1574,36 +1574,13 @@ class CheckCaptures extends Recheck, SymTransformer:
     */
     def checkOverrides = new TreeTraverser:
       class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, tree: Tree)(using Context) extends OverridingPairsChecker(clazz, self):
-        /** Check subtype with box adaptation.
-        *  This function is passed to RefChecks to check the compatibility of overriding pairs.
-        *  @param sym  symbol of the field definition that is being checked
-
-        override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val expected1 = alignDependentFunction(addOuterRefs(expected, actual, tree.srcPos), actual.stripCapturing)
-          val actual1 =
-            val saved = curEnv
-            try
-              curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
-              val adapted =
-                adaptBoxed(actual, expected1, tree, covariant = true, alwaysConst = true)
-              actual match
-                case _: MethodType =>
-                  // We remove the capture set resulted from box adaptation for method types,
-                  // since class methods are always treated as pure, and their captured variables
-                  // are charged to the capture set of the class (which is already done during
-                  // box adaptation).
-                  adapted.stripCapturing
-                case _ => adapted
-            finally curEnv = saved
-          actual1 frozen_<:< expected1
-        */
 
         /** Omit the check if one of {overriding,overridden} was nnot capture checked */
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
 
         /** Perform box adaptation for override checking */
-        override def adapt(member: Symbol, memberTp: Type, otherTp: Type)(using Context): Option[(Type, Type)] =
+        override def adaptOverridePair(member: Symbol, memberTp: Type, otherTp: Type)(using Context): Option[(Type, Type)] =
           if member.isType then
             memberTp match
               case TypeAlias(_) =>
@@ -1613,26 +1590,36 @@ class CheckCaptures extends Recheck, SymTransformer:
                     Some((memberTp, otherTp.unboxed))
                   case _ => None
               case _ => None
-          else
-            val expected1 = alignDependentFunction(addOuterRefs(otherTp, memberTp, tree.srcPos), memberTp.stripCapturing)
-            val actual1 =
-              val saved = curEnv
-              try
-                curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
-                val adapted =
-                  adaptBoxed(memberTp, expected1, tree, covariant = true, alwaysConst = true)
-                memberTp match
-                  case _: MethodType =>
-                    // We remove the capture set resulted from box adaptation for method types,
-                    // since class methods are always treated as pure, and their captured variables
-                    // are charged to the capture set of the class (which is already done during
-                    // box adaptation).
-                    adapted.stripCapturing
-                  case _ => adapted
-              finally curEnv = saved
-            if (actual1 eq memberTp) && (expected1 eq otherTp) then None
-            else Some((actual1, expected1))
-        end adapt
+          else memberTp match
+            case memberTp @ ExprType(memberRes) =>
+              adaptOverridePair(member, memberRes, otherTp) match
+                case Some((mres, otp)) => Some((memberTp.derivedExprType(mres), otp))
+                case None => None
+            case _ => otherTp match
+              case otherTp @ ExprType(otherRes) =>
+                adaptOverridePair(member, memberTp, otherRes) match
+                  case Some((mtp, ores)) => Some((mtp, otherTp.derivedExprType(ores)))
+                  case None => None
+              case _ =>
+                val expected1 = alignDependentFunction(addOuterRefs(otherTp, memberTp, tree.srcPos), memberTp.stripCapturing)
+                val actual1 =
+                  val saved = curEnv
+                  try
+                    curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
+                    val adapted =
+                      adaptBoxed(memberTp, expected1, tree, covariant = true, alwaysConst = true)
+                    memberTp match
+                      case _: MethodType =>
+                        // We remove the capture set resulted from box adaptation for method types,
+                        // since class methods are always treated as pure, and their captured variables
+                        // are charged to the capture set of the class (which is already done during
+                        // box adaptation).
+                        adapted.stripCapturing
+                      case _ => adapted
+                  finally curEnv = saved
+                if (actual1 eq memberTp) && (expected1 eq otherTp) then None
+                else Some((actual1, expected1))
+        end adaptOverridePair
 
         override def checkInheritedTraitParameters: Boolean = false
 
