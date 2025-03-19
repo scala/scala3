@@ -210,8 +210,7 @@ object OverridingPairs:
    *  @param isSubType  A function to be used for checking subtype relationships
    *                    between term fields.
    */
-  def isOverridingPair(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false,
-                       isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean =
+  def isOverridingPair(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false)(using Context): Boolean =
     if member.isType then // intersection of bounds to refined types must be nonempty
       memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi)
       && (
@@ -227,6 +226,6 @@ object OverridingPairs:
       )
     else
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-      || memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack, isSubType = isSubType)
+      || memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
 
 end OverridingPairs
