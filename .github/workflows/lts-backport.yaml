@@ -7,7 +7,8 @@ on:
 
 jobs:
   add-to-backporting-project:
-    if: "!contains(github.event.push.head_commit.message, '[Next only]')"
+    if: "!contains(github.event.push.head_commit.message, '[Next only]') &&
+         github.repository == 'scala/scala3'"
     runs-on: ubuntu-latest
 
     steps:
