@@ -1236,6 +1236,49 @@ object Build {
     settings(moduleName := "scala2-library")
     // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
 
+  // ==============================================================================================
+  // ========================= SCALA-LIBRARY-CC PROJECTS & CONFIGURATION ==========================
+  // ==============================================================================================
+
+  /** The Experimental Capture Checked Standard Library
+   * 
+   *  This project aggregates the _capture checked_ shared library, often called scala 2 library, and
+   *  the _capture checked_ new library, often called scala 3 library.
+   * 
+   *  It is published under the following name: `org.scala-lang:scala-library-cc:<VERSION>`
+   *  The artifact not only contains TASTy, but it also contains classfiles
+   */
+  lazy val `scala-library-cc` = project.in(file("scala-library-cc"))
+    .aggregate(`scala2-library-cc`, `scala3-library-cc`)
+    .settings(
+      version := dottyVersion,
+      crossPaths := false,
+      // No source files should be included in this project, it aggregates from both libraries
+      Compile / sources := Nil,
+      Test    / sources := Nil,
+      // Include all the files from the shared, what we call scala2-stdlib, library 
+      Compile / packageBin / mappings ++= (`scala2-library-cc` / Compile / packageBin / mappings).value,
+      Compile / packageSrc / mappings ++= (`scala2-library-cc` / Compile / packageSrc / mappings).value,
+      Compile / packageDoc / mappings ++= (`scala2-library-cc` / Compile / packageDoc / mappings).value,
+      // Include all the files from the new, what we call scala3-stdlib, library
+      Compile / packageBin / mappings ++= (`scala3-library-cc` / Compile / packageBin / mappings).value,
+      Compile / packageSrc / mappings ++= (`scala3-library-cc` / Compile / packageSrc / mappings).value,
+      Compile / packageDoc / mappings ++= (`scala3-library-cc` / Compile / packageDoc / mappings).value,
+      // Content of the `META-INF/MANIFEST.MF`
+      Compile / packageOptions := {
+          val manifest = new java.util.jar.Manifest()
+          val attributes = manifest.getMainAttributes
+          Seq(Package.JarManifest(manifest))
+      }
+    )
+
+  lazy val `scala3-library-cc` = project.in(file("library")).asDottyLibrary(Bootstrapped)
+    .dependsOn(`scala2-library-cc`)
+    .settings(
+      libraryDependencies := Seq(), // Drop the dependency to the stable Scala 2 artifact
+      publish / skip := true,       // Do not publish this package alone (it is published as part of scala-library-cc)
+    )
+
   /** Scala 2 library compiled by dotty using the latest published sources of the library.
    *
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
@@ -1245,9 +1288,11 @@ object Build {
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(scala2LibraryBootstrappedSettings).
     settings(
-      moduleName := "scala2-library-cc",
       scalacOptions += "-Ycheck:all",
+      publish / skip := true,       // Do not publish this package alone (it is published as part of scala-library-cc)
     )
+
+  // ==============================================================================================
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,

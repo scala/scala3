@@ -16,7 +16,6 @@ val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
 val `scala3-bench-micro` = Build.`scala3-bench-micro`
 val `scala2-library-bootstrapped` = Build.`scala2-library-bootstrapped`
 val `scala2-library-tasty` = Build.`scala2-library-tasty`
-val `scala2-library-cc` = Build.`scala2-library-cc`
 val `scala2-library-cc-tasty` = Build.`scala2-library-cc-tasty`
 val `tasty-core` = Build.`tasty-core`
 val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
@@ -37,6 +36,11 @@ val `community-build` = Build.`community-build`
 val `sbt-community-build` = Build.`sbt-community-build`
 val `scala3-presentation-compiler` = Build.`scala3-presentation-compiler`
 val `scala3-presentation-compiler-testcases` = Build.`scala3-presentation-compiler-testcases`
+
+// The Capture Checked Standard Library
+val `scala-library-cc` = Build.`scala-library-cc`
+val `scala3-library-cc` = Build.`scala3-library-cc`
+val `scala2-library-cc` = Build.`scala2-library-cc`
 
 val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests
