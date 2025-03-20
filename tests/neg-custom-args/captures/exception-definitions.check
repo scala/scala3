@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:3:8 -----------------------------------------------
 3 |  self: Err^ => // error
   |        ^^^^
-  |reference (caps.cap : caps.Capability) captured by this self type is not included in the allowed capture set {} of pure base class class Throwable
+  |reference (scala.caps.cap : scala.caps.Capability) captured by this self type is not included in the allowed capture set {} of pure base class class Throwable
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:7:12 ----------------------------------------------
 7 |    val x = c  // error
   |            ^
