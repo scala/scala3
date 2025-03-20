@@ -1167,10 +1167,9 @@ object Types extends TypeUtils {
      *
      *  @param isSubType      a function used for checking subtype relationships.
      */
-    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
-                        isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
+    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
       !checkClassInfo && this.isInstanceOf[ClassInfo]
-      || isSubType(this.widenExpr, that.widenExpr)
+      || (this.widenExpr frozen_<:< that.widenExpr)
       || matchLoosely && {
         val this1 = this.widenNullaryMethod
         val that1 = that.widenNullaryMethod
