@@ -1,14 +1,14 @@
 -- Error: tests/neg-custom-args/captures/sep-box.scala:41:9 ------------------------------------------------------------
 41 |  par(h1.value, h2.value) // error
    |      ^^^^^^^^
-   |      Separation failure: argument of type  Ref^{xs*}
+   |      Separation failure: argument of type  Ref^{h1.value*}
    |      to method par: (x: Ref^, y: Ref^): Unit
    |      corresponds to capture-polymorphic formal parameter x of type  Ref^
-   |      and hides capabilities  {xs*}.
-   |      Some of these overlap with the captures of the second argument with type  Ref^{xs*}.
+   |      and hides capabilities  {h1.value*}.
+   |      Some of these overlap with the captures of the second argument with type  Ref^{h2.value*}.
    |
-   |        Hidden set of current argument        : {xs*}
-   |        Hidden footprint of current argument  : {xs*}
-   |        Capture set of second argument        : {xs*}
-   |        Footprint set of second argument      : {xs*}
+   |        Hidden set of current argument        : {h1.value*}
+   |        Hidden footprint of current argument  : {h1.value*, xs*}
+   |        Capture set of second argument        : {h2.value*}
+   |        Footprint set of second argument      : {h2.value*, xs*}
    |        The two sets overlap at               : {xs*}

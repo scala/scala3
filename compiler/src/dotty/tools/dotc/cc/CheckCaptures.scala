@@ -317,14 +317,16 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
      */
-    private def interpolator(startingVariance: Int = 1)(using Context) = new TypeTraverser:
+    private def interpolator(sym: Symbol, startingVariance: Int = 1)(using Context) = new TypeTraverser:
       variance = startingVariance
       override def traverse(t: Type) = t match
         case t @ CapturingType(parent, refs) =>
           refs match
             case refs: CaptureSet.Var if !refs.isConst =>
-              if variance < 0 then refs.solve()
-              else if ccConfig.newScheme then refs.markSolved(provisional = true)
+              if variance < 0 then
+                refs.solve()
+              else if ccConfig.newScheme && !sym.isAnonymousFunction then
+                refs.markSolved(provisional = !sym.isMutableVar)
             case _ =>
           traverse(parent)
         case t @ defn.RefinedFunctionOf(rinfo) =>
@@ -356,7 +358,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private def interpolateVarsIn(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
-        interpolator().traverse(tpt.nuType)
+        interpolator(sym).traverse(tpt.nuType)
           .showing(i"solved vars for $sym in ${tpt.nuType}", capt)
         anchorCaps(sym).traverse(tpt.nuType)
       for msg <- ccState.approxWarnings do
@@ -378,8 +380,9 @@ class CheckCaptures extends Recheck, SymTransformer:
               if d.isEmpty then provenance else ""
             em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd"
           target match
-            case target: CaptureSet.Var if res.blocking.isProvisionallySolved =>
-              report.warning(msg.prepend(i"Another capture checking run needs to be scheduled because:"), pos)
+            case target: CaptureSet.Var
+            if res.blocking.isProvisionallySolved =>
+              report.error(msg.prepend(i"Another capture checking run needs to be scheduled because\n"), pos)
               needAnotherRun = true
               added match
                 case added: CaptureRef => target.elems += added
@@ -745,7 +748,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     protected override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val freshenedFormal = root.capToFresh(formal)
       val argType = recheck(arg, freshenedFormal)
-        .showing(i"recheck arg $arg vs $freshenedFormal", capt)
+        .showing(i"recheck arg $arg vs $freshenedFormal = $result", capt)
       if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
         // The @use and/or @consume annotation is added to `formal` by `prepareFunction`
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
@@ -1016,7 +1019,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         val saved = curEnv
         val localSet = capturedVars(sym)
-        if !localSet.isAlwaysEmpty then
+        if localSet ne CaptureSet.empty then
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv, nestedClosure(tree.rhs))
 
         // ctx with AssumedContains entries for each Contains parameter
@@ -1098,7 +1101,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           .toMap
         def restoreEnvFor(sym: Symbol): Env =
           val localSet = capturedVars(sym)
-          if localSet.isAlwaysEmpty then rootEnv
+          if localSet eq CaptureSet.empty then rootEnv
           else envForOwner.get(sym) match
             case Some(e) => e
             case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
@@ -1125,7 +1128,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
       val saved = curEnv
-      if !localSet.isAlwaysEmpty then
+      if localSet ne CaptureSet.empty then
         curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
@@ -1779,7 +1782,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           inContext(ctx.fresh.setOwner(root)):
             checkSelfAgainstParents(root, root.baseClasses)
             val selfType = root.asClass.classInfo.selfType
-            interpolator(startingVariance = -1).traverse(selfType)
+            interpolator(root, startingVariance = -1).traverse(selfType)
             selfType match
               case CapturingType(_, refs: CaptureSet.Var)
               if !root.isEffectivelySealed

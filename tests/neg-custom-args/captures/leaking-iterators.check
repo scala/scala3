@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaking-iterators.scala:56:16 ----------------------------
 56 |  usingLogFile: log => // error
    |                ^
-   |                Found:    (log: java.io.FileOutputStream^) ->{xs} box cctest.Iterator[Int]^{log}
+   |                Found:    (log: java.io.FileOutputStream^) ->? box cctest.Iterator[Int]^{log}
    |                Required: (log: java.io.FileOutputStream^) ->{fresh} box cctest.Iterator[Int]^?
    |
    |                Note that reference log.type

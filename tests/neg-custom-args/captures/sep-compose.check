@@ -12,20 +12,20 @@
    |         Capture set of second argument        : {f}
    |         Footprint set of second argument      : {f, a, io}
    |         The two sets overlap at               : {f, a, io}
--- Error: tests/neg-custom-args/captures/sep-compose.scala:33:7 --------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:33:10 -------------------------------------------------------
 33 |  seq4(f)(f) // error
-   |       ^
-   |       Separation failure: argument of type  (f : () ->{a} Unit)
-   |       to method seq4: (x: () ->{a, cap} Unit)(y: () => Unit): Unit
-   |       corresponds to capture-polymorphic formal parameter x of type  () ->{a, cap} Unit
-   |       and hides capabilities  {f}.
-   |       Some of these overlap with the captures of the second argument with type  (f : () ->{a} Unit).
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq4: (x: () ->{a, cap} Unit)(y: () => Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () => Unit
+   |          and hides capabilities  {f}.
+   |          Some of these overlap with the captures of the first argument with type  (f : () ->{a} Unit).
    |
-   |         Hidden set of current argument        : {f}
-   |         Hidden footprint of current argument  : {f, a, io}
-   |         Capture set of second argument        : {f}
-   |         Footprint set of second argument      : {f, a, io}
-   |         The two sets overlap at               : {f, a, io}
+   |            Hidden set of current argument        : {f}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Capture set of first argument         : {f}
+   |            Footprint set of first argument       : {f, a, io}
+   |            The two sets overlap at               : {f, a, io}
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:34:7 --------------------------------------------------------
 34 |  seq5(f)(f) // error
    |       ^
@@ -54,20 +54,20 @@
    |         Capture set of second argument        : {f}
    |         Footprint set of second argument      : {f, a, io}
    |         The two sets overlap at               : {f, a, io}
--- Error: tests/neg-custom-args/captures/sep-compose.scala:36:7 --------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:36:10 -------------------------------------------------------
 36 |  seq7(f, f) // error
-   |       ^
-   |       Separation failure: argument of type  (f : () ->{a} Unit)
-   |       to method seq7: (x: () ->{a, cap} Unit, y: () => Unit): Unit
-   |       corresponds to capture-polymorphic formal parameter x of type  () ->{a, cap} Unit
-   |       and hides capabilities  {f}.
-   |       Some of these overlap with the captures of the second argument with type  (f : () ->{a} Unit).
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq7: (x: () ->{a, cap} Unit, y: () => Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () => Unit
+   |          and hides capabilities  {f}.
+   |          Some of these overlap with the captures of the first argument with type  (f : () ->{a} Unit).
    |
-   |         Hidden set of current argument        : {f}
-   |         Hidden footprint of current argument  : {f, a, io}
-   |         Capture set of second argument        : {f}
-   |         Footprint set of second argument      : {f, a, io}
-   |         The two sets overlap at               : {f, a, io}
+   |            Hidden set of current argument        : {f}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Capture set of first argument         : {f}
+   |            Footprint set of first argument       : {f, a, io}
+   |            The two sets overlap at               : {f, a, io}
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:37:7 --------------------------------------------------------
 37 |  seq8(f)(f) // error
    |       ^

@@ -9,10 +9,7 @@
 34 |      (() => f.write()) :: Nil // error
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |       Found:    List[box () ->{f} Unit]
-   |       Required: box List[box () ->{xs*} Unit]^?
-   |
-   |       Note that reference (f : File^), defined in method $anonfun
-   |       cannot be included in outer capture set {xs*} of value cur
+   |       Required: box List[box () ->{xs*} Unit]^{}
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:37:6 ------------------------------------------------------------
@@ -81,31 +78,31 @@
 -- Error: tests/neg-custom-args/captures/reaches.scala:88:28 -----------------------------------------------------------
 88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
    |                            ^
-   |                      Separation failure: argument of type  A ->{x} box A^?
-   |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |                      corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
-   |                      and hides capabilities  {x}.
-   |                      Some of these overlap with the captures of the second argument with type  A ->{y} box A^?.
+   |                            Separation failure: argument of type  A ->{x} A
+   |                            to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
+   |                            corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
+   |                            and hides capabilities  {x}.
+   |                            Some of these overlap with the captures of the second argument with type  A ->{y} A.
    |
-   |                        Hidden set of current argument        : {x}
-   |                        Hidden footprint of current argument  : {x, ps*}
-   |                        Capture set of second argument        : {y}
-   |                        Footprint set of second argument      : {y, ps*}
-   |                        The two sets overlap at               : {ps*}
+   |                              Hidden set of current argument        : {x}
+   |                              Hidden footprint of current argument  : {x, ps*}
+   |                              Capture set of second argument        : {y}
+   |                              Footprint set of second argument      : {y, ps*}
+   |                              The two sets overlap at               : {ps*}
 -- Error: tests/neg-custom-args/captures/reaches.scala:91:28 -----------------------------------------------------------
 91 |  ps.map((x, y) => compose1(x, y)) // error sepcheck
    |                            ^
-   |                      Separation failure: argument of type  A ->{x} box A^?
-   |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |                      corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
-   |                      and hides capabilities  {x}.
-   |                      Some of these overlap with the captures of the second argument with type  A ->{y} box A^?.
+   |                            Separation failure: argument of type  A ->{x} A
+   |                            to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
+   |                            corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
+   |                            and hides capabilities  {x}.
+   |                            Some of these overlap with the captures of the second argument with type  A ->{y} A.
    |
-   |                        Hidden set of current argument        : {x}
-   |                        Hidden footprint of current argument  : {x, ps*}
-   |                        Capture set of second argument        : {y}
-   |                        Footprint set of second argument      : {y, ps*}
-   |                        The two sets overlap at               : {ps*}
+   |                              Hidden set of current argument        : {x}
+   |                              Hidden footprint of current argument  : {x, ps*}
+   |                              Capture set of second argument        : {y}
+   |                              Footprint set of second argument      : {y, ps*}
+   |                              The two sets overlap at               : {ps*}
 -- Error: tests/neg-custom-args/captures/reaches.scala:62:31 -----------------------------------------------------------
 62 |  val leaked = usingFile[File^{id*}]: f => // error
    |                               ^^^

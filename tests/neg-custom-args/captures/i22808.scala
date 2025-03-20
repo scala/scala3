@@ -6,8 +6,8 @@ def test1(io: Object^): Unit =
     val x = () =>
       foo()
     val y = Box(io)
-    println(y.m)
-    val _: () -> Unit = x // error
+    println(y.m)  // error: another run needs to be scheduled
+    val _: () -> Unit = x // was error
 
 def test2(io: Object^): Unit =
   def foo(): Unit = bar()
@@ -16,5 +16,5 @@ def test2(io: Object^): Unit =
       foo()
     val _: () -> Unit = x
     val y = Box(io)
-    println(y.m)  // error
+    println(y.m)  // error: another run needs to be scheduled
     val _: () -> Unit = x
