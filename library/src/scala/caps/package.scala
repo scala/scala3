@@ -3,9 +3,28 @@ package caps
 
 import annotation.{experimental, compileTimeOnly, retainsCap}
 
+/**
+ * Base trait for classes that represent capabilities in the
+ * [object-capability model](https://en.wikipedia.org/wiki/Object-capability_model).
+ *
+ * A capability is a value representing a permission, access right, resource or effect.
+ * Capabilities are typically passed to code as parameters; they should not be global objects.
+ * Often, they come with access restrictions such as scoped lifetimes or limited sharing.
+ *
+ * An example is the [[scala.util.boundary.Label Label]] class in [[scala.util.boundary]].
+ * It represents a capability in the sense that it gives permission to [[scala.util.boundary.break break]]
+ * to the enclosing boundary represented by the `Label`. It has a scoped lifetime, since breaking to
+ * a `Label` after the associated `boundary` was exited gives a runtime exception.
+ *
+ * [[Capability]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
+ * But even without capture checking, extending this trait can be useful for documenting the intended purpose
+ * of a class.
+ */
 trait Capability extends Any
 
-/** The universal capture reference */
+/** The universal capture reference. */
 @experimental
 val cap: Capability = new Capability() {}
 
@@ -18,9 +37,13 @@ val `*`: Capability = cap
 @experimental
 type Cap = Capability
 
+/** Marker trait for classes with methods that requires an exclusive reference. */
 @experimental
 trait Mutable extends Capability
 
+/** Marker trait for capabilities that can be safely shared in a concurrent context.
+  * During separation checking, shared capabilities are not taken into account.
+  */
 @experimental
 trait SharedCapability extends Capability
 
