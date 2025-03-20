@@ -83,6 +83,13 @@ sealed trait Tuple extends Product {
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
+  /** Given a tuple of form `(F[T1], F[T2], ..., F[Tn])` and a function from F[T] to G[T] for any T out of T1...Tn,
+   * returns a new tuple `(G[T1], G[T2], ..., G[Tn])`.
+   */
+  inline def mapKind[F[_], G[_]](fk: [t <: Union[InverseMap[this.type, F]]] => F[t] => G[t]): MapKind[this.type, F, G] =
+    runtime.Tuples.map(this, fk.asInstanceOf).asInstanceOf[MapKind[this.type, F, G]]
+
+
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
    *  of its first n elements.
    */
@@ -218,6 +225,9 @@ object Tuple {
     case F[x] *: t => x *: InverseMap[t, F]
     case EmptyTuple => EmptyTuple
   }
+
+  /** Converts a tuple `(F[T1], F[T2], ..., F[Tn])` to `(G[T1], G[T2], ..., G[Tn])` */
+  type MapKind[T <: Tuple,  F[_], G[_]] = Map[InverseMap[T, F], G]
 
   /** Implicit evidence. IsMappedBy[F][X] is present in the implicit scope iff
    *  X is a tuple for which each element's type is constructed via `F`. E.g.
