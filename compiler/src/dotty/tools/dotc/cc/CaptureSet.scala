@@ -51,12 +51,15 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
    */
-  def isConst: Boolean
+  def isConst(using Context): Boolean
 
   /** Is this capture set always empty? For unsolved capture veriables, returns
    *  always false.
    */
-  def isAlwaysEmpty: Boolean
+  def isAlwaysEmpty(using Context): Boolean
+
+  /** Is this set provisionally solved, so that another cc run might unfreeze it? */
+  def isProvisionallySolved(using Context): Boolean
 
   /** An optional level limit, or undefinedLevel if none exists. All elements of the set
    *  must be at levels equal or smaller than the level of the set, if it is defined.
@@ -71,14 +74,14 @@ sealed abstract class CaptureSet extends Showable:
   final def isNotEmpty: Boolean = !elems.isEmpty
 
   /** Convert to Const. @pre: isConst */
-  def asConst: Const = this match
+  def asConst(using Context): Const = this match
     case c: Const => c
     case v: Var =>
       assert(v.isConst)
       Const(v.elems)
 
   /** Cast to variable. @pre: !isConst */
-  def asVar: Var =
+  def asVar(using Context): Var =
     assert(!isConst)
     asInstanceOf[Var]
 
@@ -316,23 +319,29 @@ sealed abstract class CaptureSet extends Showable:
    *  `OtherMapped` provides some approximation to a solution, but it is neither
    *  sound nor complete.
    */
-  def map(tm: TypeMap)(using Context): CaptureSet = tm match
-    case tm: BiTypeMap =>
-      val mappedElems = elems.map(tm.forward)
-      if isConst then
-        if mappedElems == elems then this
-        else Const(mappedElems)
-      else BiMapped(asVar, tm, mappedElems)
-    case tm: IdentityCaptRefMap =>
-      this
-    case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
-      this
-    case _ =>
-      val mapped = mapRefs(elems, tm, tm.variance)
-      if isConst then
-        if mapped.isConst && mapped.elems == elems && !mapped.keepAlways then this
-        else mapped
-      else Mapped(asVar, tm, tm.variance, mapped)
+  def map(tm: TypeMap)(using Context): CaptureSet =
+    def freeze() = this match
+      case self: Var if !isConst && ccConfig.newScheme =>
+        if tm.variance < 0 then self.solve()
+        else self.markSolved(provisional = true)
+      case _ =>
+    tm match
+      case tm: BiTypeMap =>
+        val mappedElems = elems.map(tm.forward)
+        if isConst then
+          if mappedElems == elems then this
+          else Const(mappedElems)
+        else BiMapped(asVar, tm, mappedElems)
+      case tm: IdentityCaptRefMap =>
+        this
+      case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
+        this
+      case _ =>
+        val mapped = mapRefs(elems, tm, tm.variance)
+        if isConst then
+          if mapped.isConst && mapped.elems == elems && !mapped.keepAlways then this
+          else mapped
+        else Mapped(asVar, tm, tm.variance, mapped)
 
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
   def substParams(tl: BindingType, to: List[Type])(using Context) =
@@ -368,7 +377,7 @@ sealed abstract class CaptureSet extends Showable:
    *  to this set. This might result in the set being solved to be constant
    *  itself.
    */
-  protected def propagateSolved()(using Context): Unit = ()
+  protected def propagateSolved(provisional: Boolean)(using Context): Unit = ()
 
   /** This capture set with a description that tells where it comes from */
   def withDescription(description: String): CaptureSet
@@ -438,8 +447,9 @@ object CaptureSet:
 
   /** The subclass of constant capture sets with given elements `elems` */
   class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
-    def isConst = true
-    def isAlwaysEmpty = elems.isEmpty
+    def isConst(using Context) = true
+    def isAlwaysEmpty(using Context) = elems.isEmpty
+    def isProvisionallySolved(using Context) = false
 
     def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       addIfHiddenOrFail(elem)
@@ -470,7 +480,7 @@ object CaptureSet:
    *  were not yet compiled with capture checking on.
    */
   object Fluid extends Const(emptyRefs):
-    override def isAlwaysEmpty = false
+    override def isAlwaysEmpty(using Context) = false
     override def addThisElem(elem: CaptureRef)(using Context, VarState) = CompareResult.OK
     override def accountsFor(x: CaptureRef)(using Context, VarState): Boolean = true
     override def mightAccountFor(x: CaptureRef)(using Context): Boolean = true
@@ -489,8 +499,13 @@ object CaptureSet:
 
     //assert(id != 40)
 
-    /** A variable is solved if it is aproximated to a from-then-on constant set. */
-    private var isSolved: Boolean = false
+    /** A variable is solved if it is aproximated to a from-then-on constant set.
+     *  Interpretation:
+     *    0              not solved
+     *    Int.MaxValue   definitively solved
+     *    n > 0          provisionally solved in iteration n
+     */
+    private var solved: Int = 0
 
     /** The elements currently known to be in the set */
     protected var myElems: Refs = initialElems
@@ -503,8 +518,9 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def isConst = isSolved
-    def isAlwaysEmpty = isSolved && elems.isEmpty
+    def isConst(using Context) = solved >= ccState.iterCount
+    def isAlwaysEmpty(using Context) = isConst && elems.isEmpty
+    def isProvisionallySolved(using Context): Boolean = solved > 0 && solved != Int.MaxValue
 
     def isMaybeSet = false // overridden in BiMapped
 
@@ -656,21 +672,20 @@ object CaptureSet:
      *  in the results of defs and vals.
      */
     def solve()(using Context): Unit =
-      if !isConst then
-        CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
-          val approx = upperApprox(empty)
-            .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
-            .showing(i"solve $this = $result", capt)
-          //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
-          val newElems = approx.elems -- elems
-          given VarState()
-          if tryInclude(newElems, empty).isOK then
-            markSolved()
+      CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
+        val approx = upperApprox(empty)
+          .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
+          .showing(i"solve $this = $result", capt)
+        //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
+        val newElems = approx.elems -- elems
+        given VarState()
+        if tryInclude(newElems, empty).isOK then
+          markSolved(provisional = false)
 
     /** Mark set as solved and propagate this info to all dependent sets */
-    def markSolved()(using Context): Unit =
-      isSolved = true
-      deps.foreach(_.propagateSolved())
+    def markSolved(provisional: Boolean)(using Context): Unit =
+      solved = if provisional then ccState.iterCount else Int.MaxValue
+      deps.foreach(_.propagateSolved(provisional))
 
     def withDescription(description: String): this.type =
       this.description = this.description.join(" and ", description)
@@ -728,8 +743,8 @@ object CaptureSet:
 
     addAsDependentTo(source)
 
-    override def propagateSolved()(using Context) =
-      if source.isConst && !isConst then markSolved()
+    override def propagateSolved(provisional: Boolean)(using Context) =
+      if source.isConst && !isConst then markSolved(provisional)
   end DerivedVar
 
   /** A variable that changes when `source` changes, where all additional new elements are mapped
@@ -823,8 +838,8 @@ object CaptureSet:
       else
         source.upperApprox(this).map(tm)
 
-    override def propagateSolved()(using Context) =
-      if initial.isConst then super.propagateSolved()
+    override def propagateSolved(provisional: Boolean)(using Context) =
+      if initial.isConst then super.propagateSolved(provisional)
 
     override def toString = s"Mapped$id($source, elems = $elems)"
   end Mapped
@@ -914,8 +929,8 @@ object CaptureSet:
           else res
         else res
 
-    override def propagateSolved()(using Context) =
-      if cs1.isConst && cs2.isConst && !isConst then markSolved()
+    override def propagateSolved(provisional: Boolean)(using Context) =
+      if cs1.isConst && cs2.isConst && !isConst then markSolved(provisional)
   end Union
 
   class Intersection(cs1: CaptureSet, cs2: CaptureSet)(using Context)
@@ -941,8 +956,8 @@ object CaptureSet:
       else
         CaptureSet(elemIntersection(cs1.upperApprox(this), cs2.upperApprox(this)))
 
-    override def propagateSolved()(using Context) =
-      if cs1.isConst && cs2.isConst && !isConst then markSolved()
+    override def propagateSolved(provisional: Boolean)(using Context) =
+      if cs1.isConst && cs2.isConst && !isConst then markSolved(provisional)
   end Intersection
 
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =

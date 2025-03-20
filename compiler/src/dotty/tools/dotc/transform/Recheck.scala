@@ -189,6 +189,9 @@ abstract class Recheck extends Phase, SymTransformer:
     def keepNuTypes(using Context): Boolean =
       ctx.settings.Xprint.value.containsPhase(thisPhase)
 
+    def resetNuTypes()(using Context): Unit =
+      nuTypes.clear(resetToInitial = false)
+
     /** A map from NamedTypes to the denotations they had before this phase.
      *  Needed so that we can `reset` them after this phase.
      */

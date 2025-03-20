@@ -59,7 +59,7 @@ object CheckCaptures:
     def isOutermost = outer0 == null
 
     /** If an environment is open it tracks free references */
-    def isOpen = !captured.isAlwaysEmpty && kind != EnvKind.Boxed
+    def isOpen(using Context) = !captured.isAlwaysEmpty && kind != EnvKind.Boxed
 
     def outersIterator: Iterator[Env] = new:
       private var cur = Env.this
@@ -220,7 +220,7 @@ object CheckCaptures:
 
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
-    def completeDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type
+    def completeDef(tree: ValOrDefDef, sym: Symbol, newInfo: Type)(using Context): Type
 
     extension [T <: Tree](tree: T)
 
@@ -271,6 +271,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx), CheckerAPI:
 
+    // println(i"checking ${ictx.source}"(using ictx))
+
     /** The current environment */
     private val rootEnv: Env = inContext(ictx):
       Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
@@ -292,7 +294,20 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private val sepCheckFormals = util.EqHashMap[Tree, Type]()
 
+    /** The references used at identifier or application trees */
     private val usedSet = util.EqHashMap[Tree, CaptureSet]()
+
+    /** The set of symbols that were rechecked via a completer, mapped to the completer. */
+    private val completed = new mutable.HashMap[Symbol, Type]
+
+    var needAnotherRun = false
+
+    def resetIteration()(using Context): Unit =
+      needAnotherRun = false
+      resetNuTypes()
+      todoAtPostCheck.clear()
+      for (sym, completer) <- completed do sym.info = completer
+      completed.clear()
 
     extension [T <: Tree](tree: T)
       def needsSepCheck: Boolean = sepCheckFormals.contains(tree)
@@ -307,7 +322,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       override def traverse(t: Type) = t match
         case t @ CapturingType(parent, refs) =>
           refs match
-            case refs: CaptureSet.Var if variance < 0 => refs.solve()
+            case refs: CaptureSet.Var if !refs.isConst =>
+              if variance < 0 then refs.solve()
+              else if ccConfig.newScheme then refs.markSolved(provisional = true)
             case _ =>
           traverse(parent)
         case t @ defn.RefinedFunctionOf(rinfo) =>
@@ -340,7 +357,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def interpolateVarsIn(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
         interpolator().traverse(tpt.nuType)
-          .showing(i"solved vars in ${tpt.nuType}", capt)
+          .showing(i"solved vars for $sym in ${tpt.nuType}", capt)
         anchorCaps(sym).traverse(tpt.nuType)
       for msg <- ccState.approxWarnings do
         report.warning(msg, tpt.srcPos)
@@ -351,15 +368,25 @@ class CheckCaptures extends Recheck, SymTransformer:
       assert(cs1.subCaptures(cs2).isOK, i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       res match
         case res: CompareFailure =>
-          inContext(root.printContext(added, res.blocking)):
+          def msg =
             def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
             def descr: String =
               val d = res.blocking.description
               if d.isEmpty then provenance else ""
-            report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
+            em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd"
+          target match
+            case target: CaptureSet.Var if res.blocking.isProvisionallySolved =>
+              report.warning(msg.prepend(i"Another capture checking run needs to be scheduled because:"), pos)
+              needAnotherRun = true
+              added match
+                case added: CaptureRef => target.elems += added
+                case added: CaptureSet => target.elems ++= added.elems
+            case _ =>
+              inContext(root.printContext(added, res.blocking)):
+                report.error(msg, pos)
         case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
@@ -367,7 +394,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       checkOK(
           ccState.test(elem.singletonCaptureSet.subCaptures(cs)),
           i"$elem cannot be referenced here; it is not",
-          elem, pos, provenance)
+          elem, cs, pos, provenance)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
@@ -376,7 +403,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           ccState.test(cs1.subCaptures(cs2)),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head}$cs1description is not"
           else i"references $cs1$cs1description are not all",
-          cs1, pos, provenance)
+          cs1, cs2, pos, provenance)
 
     /** If `sym` is a class or method nested inside a term, a capture set variable representing
      *  the captured variables of the environment associated with `sym`.
@@ -1051,9 +1078,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       tp
     end checkInferredResult
 
-    /** The set of symbols that were rechecked via a completer */
-    private val completed = new mutable.HashSet[Symbol]
-
     /** The normal rechecking if `sym` was already completed before */
     override def skipRecheck(sym: Symbol)(using Context): Boolean =
       completed.contains(sym)
@@ -1062,7 +1086,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  these checks can appear out of order, we need to first create the correct
      *  environment for checking the definition.
      */
-    def completeDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
+    def completeDef(tree: ValOrDefDef, sym: Symbol, newInfo: Type)(using Context): Type =
+      val completer = sym.infoOrCompleter
+      sym.info = newInfo
       val saved = curEnv
       try
         // Setup environment to reflect the new owner.
@@ -1079,7 +1105,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         curEnv = restoreEnvFor(sym.owner)
         capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
         try recheckDef(tree, sym)
-        finally completed += sym
+        finally completed(sym) = completer
       finally
         curEnv = saved
 
@@ -1704,7 +1730,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.echo(s"$echoHeader\n$treeString\n")
 
       withCaptureSetsExplained:
-        super.checkUnit(unit)
+        while
+          super.checkUnit(unit)
+          !ctx.reporter.errorsReported && needAnotherRun
+        do
+          resetIteration()
+          ccState.iterCount += 1
+          println(s"**** capture checking run ${ccState.iterCount} started on ${ctx.source}")
         checkOverrides.traverse(unit.tpdTree)
         postCheck(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)

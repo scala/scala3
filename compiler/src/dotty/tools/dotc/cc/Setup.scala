@@ -728,8 +728,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   assert(ctx.phase == thisPhase.next, i"$sym")
                   capt.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
                   //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
-                  denot.info = newInfo
-                  completeDef(tree, sym)
+                  completeDef(tree, sym, newInfo)
             updateInfo(sym, updatedInfo)
 
       case tree: Bind =>
