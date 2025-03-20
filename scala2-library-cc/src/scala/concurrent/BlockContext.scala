@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 /**
  * A context to be notified by [[scala.concurrent.blocking]] when
  * a thread is about to block. In effect this trait provides

@@ -14,6 +14,8 @@ package scala.concurrent.duration
 
 import DurationConversions._
 
+import language.experimental.captureChecking
+
 // Would be nice to limit the visibility of this trait a little bit,
 // but it crashes scalac to do so.
 trait DurationConversions extends Any {

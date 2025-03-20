@@ -12,7 +12,7 @@
 
 package scala.concurrent.impl
 
-import scala.concurrent.{Batchable, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
+import scala.concurrent.{Batchable, Batchable2, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
 import scala.concurrent.duration.Duration
 import scala.annotation.{nowarn, switch, tailrec}
 import scala.util.control.{ControlThrowable, NonFatal}
@@ -22,6 +22,8 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer
 import java.util.concurrent.atomic.AtomicReference
 import java.util.Objects.requireNonNull
 import java.io.{IOException, NotSerializableException, ObjectInputStream, ObjectOutputStream}
+
+import language.experimental.captureChecking
 
 /**
   * Latch used to implement waiting on a DefaultPromise's result.
@@ -410,13 +412,13 @@ private[concurrent] object Promise {
    * function's type parameters are erased, and the _xform tag will be used to reify them.
    **/
   final class Transformation[-F, T] private[this] (
-    private[this] final var _fun: Any => Any,
+    private[this] final var _fun: Any -> Any,
     private[this] final var _ec: ExecutionContext,
     private[this] final var _arg: Try[F],
     private[this] final val _xform: Int
   ) extends DefaultPromise[T]() with Callbacks[F] with Runnable with Batchable {
     final def this(xform: Int, f: _ => _, ec: ExecutionContext) =
-      this(f.asInstanceOf[Any => Any], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
+      this(f.asInstanceOf[Any -> Any], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
 
     final def benefitsFromBatching: Boolean = _xform != Xform_onComplete && _xform != Xform_foreach
 
@@ -430,7 +432,7 @@ private[concurrent] object Promise {
       try e.execute(this) /* Safe publication of _arg, _fun, _ec */
       catch {
         case t: Throwable =>
-          _fun = null // allow to GC
+          // _fun = null // allow to GC
           _arg = null // see above
           _ec  = null // see above again
           handleFailure(t, e)
@@ -456,7 +458,7 @@ private[concurrent] object Promise {
       val v   = _arg
       val fun = _fun
       val ec  = _ec
-      _fun = null // allow to GC
+      // _fun = null // allow to GC
       _arg = null // see above
       _ec  = null // see above
       try {

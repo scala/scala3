@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 /** A `DelayedLazyVal` is a wrapper for lengthy computations which have a
  *  valid partially computed result.
  *
@@ -24,7 +26,7 @@ package scala.concurrent
  *  @param  body   the computation to run to completion in another thread
  */
 @deprecated("`DelayedLazyVal` Will be removed in the future.", since = "2.13.0")
-class DelayedLazyVal[T](f: () => T, body: => Unit)(implicit exec: ExecutionContext){
+class DelayedLazyVal[T](f: () => T, body: -> Unit)(implicit exec: ExecutionContext) {
   @volatile private[this] var _isDone = false
   private[this] lazy val complete = f()
 

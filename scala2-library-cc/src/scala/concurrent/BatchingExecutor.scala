@@ -17,11 +17,17 @@ import java.util.Objects
 import scala.util.control.NonFatal
 import scala.annotation.{switch, tailrec}
 
+import language.experimental.captureChecking
+
 /**
  * Marker trait to indicate that a Runnable is Batchable by BatchingExecutors
  */
 trait Batchable {
   self: Runnable =>
+}
+
+trait Batchable2 {
+
 }
 
 private[concurrent] object BatchingExecutorStatics {

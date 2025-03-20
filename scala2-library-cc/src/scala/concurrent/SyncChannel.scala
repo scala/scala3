@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 /** A `SyncChannel` allows one to exchange data synchronously between
  *  a reader and a writer thread. The writer thread is blocked until the
  *  data to be written has been read by a corresponding reader thread.

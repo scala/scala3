@@ -24,6 +24,8 @@ import scala.reflect.ClassTag
 
 import scala.concurrent.ExecutionContext.parasitic
 
+import language.experimental.captureChecking
+
 /** A `Future` represents a value which may or may not be currently available,
  *  but will be available at some point, or an exception if that value could not be made available.
  *
@@ -222,7 +224,7 @@ trait Future[+T] extends Awaitable[T] {
    * @return    a `Future` that will be completed with the transformed value
    * @group Transformations
    */
-  def transformWith[S](f: Try[T] => Future[S])(implicit executor: ExecutionContext): Future[S]
+  def transformWith[S](f: Try[T] => Future[S]^{this})(implicit executor: ExecutionContext): Future[S]
 
 
   /** Creates a new future by applying a function to the successful result of
@@ -450,7 +452,7 @@ trait Future[+T] extends Awaitable[T] {
    * @return       a `Future` with the successful result of this or that `Future` or the failure of this `Future` if both fail
    * @group Transformations
    */
-  def fallbackTo[U >: T](that: Future[U]): Future[U] =
+  def fallbackTo[U >: T](that: Future[U]): Future[U]^{this} =
     if (this eq that) this
     else {
       implicit val ec = parasitic

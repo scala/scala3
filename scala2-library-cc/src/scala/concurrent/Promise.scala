@@ -14,6 +14,8 @@ package scala.concurrent
 
 import scala.util.{ Try, Success, Failure }
 
+import language.experimental.captureChecking
+
 /** Promise is an object which can be completed with a value or failed
  *  with an exception.
  *

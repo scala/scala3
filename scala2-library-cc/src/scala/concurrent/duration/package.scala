@@ -14,6 +14,8 @@ package scala.concurrent
 
 import scala.language.implicitConversions
 
+import language.experimental.captureChecking
+
 package object duration {
   /**
    * This object can be used as closing token if you prefer dot-less style but do not want

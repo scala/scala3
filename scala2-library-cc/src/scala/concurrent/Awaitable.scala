@@ -14,7 +14,7 @@ package scala.concurrent
 
 import scala.concurrent.duration.Duration
 
-
+import language.experimental.captureChecking
 
 /**
  * An object that may eventually be completed with a result value of type `T` which may be

@@ -16,6 +16,8 @@ import java.util.concurrent.{ Semaphore, ForkJoinPool, ForkJoinWorkerThread, Cal
 import java.util.Collection
 import scala.concurrent.{ BlockContext, ExecutionContext, CanAwait, ExecutionContextExecutor, ExecutionContextExecutorService }
 
+import language.experimental.captureChecking
+
 private[scala] class ExecutionContextImpl private[impl] (final val executor: Executor, final val reporter: Throwable => Unit) extends ExecutionContextExecutor {
   require(executor ne null, "Executor must not be null")
   override final def execute(runnable: Runnable): Unit = executor execute runnable
@@ -28,7 +30,7 @@ private[concurrent] object ExecutionContextImpl {
     final val daemonic: Boolean,
     final val maxBlockers: Int,
     final val prefix: String,
-    final val uncaught: Thread.UncaughtExceptionHandler) extends ThreadFactory with ForkJoinPool.ForkJoinWorkerThreadFactory {
+    final val uncaught: Thread.UncaughtExceptionHandler^) extends ThreadFactory with ForkJoinPool.ForkJoinWorkerThreadFactory {
 
     require(prefix ne null, "DefaultThreadFactory.prefix must be non null")
     require(maxBlockers >= 0, "DefaultThreadFactory.maxBlockers must be greater-or-equal-to 0")
@@ -51,8 +53,7 @@ private[concurrent] object ExecutionContextImpl {
         final override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T =
           if ((Thread.currentThread eq this) && !isBlocked && blockerPermits.tryAcquire()) {
             try {
-              val b: ForkJoinPool.ManagedBlocker with (() => T) =
-                new ForkJoinPool.ManagedBlocker with (() => T) {
+              class Block extends ForkJoinPool.ManagedBlocker {
                   private[this] final var result: T = null.asInstanceOf[T]
                   private[this] final var done: Boolean = false
                   final override def block(): Boolean = {
@@ -65,8 +66,11 @@ private[concurrent] object ExecutionContextImpl {
                   }
 
                   final override def isReleasable = done
-                  final override def apply(): T = result
-                }
+                  final def apply(): T = result
+              }
+
+              val b: Block^{thunk} = new Block
+
               isBlocked = true
               ForkJoinPool.managedBlock(b)
               b()
@@ -78,7 +82,7 @@ private[concurrent] object ExecutionContextImpl {
       })
   }
 
-  def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService = {
+  def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService^{reporter} = {
     def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
       case e: SecurityException => default
     }) match {
@@ -108,14 +112,14 @@ private[concurrent] object ExecutionContextImpl {
     }
   }
 
-  def fromExecutor(e: Executor, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor =
+  def fromExecutor(e: Executor, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor^{reporter} =
     e match {
       case null => createDefaultExecutorService(reporter)
       case some => new ExecutionContextImpl(some, reporter)
     }
 
   def fromExecutorService(es: ExecutorService, reporter: Throwable => Unit = ExecutionContext.defaultReporter):
-    ExecutionContextExecutorService = es match {
+    ExecutionContextExecutorService^{reporter} = es match {
       case null => createDefaultExecutorService(reporter)
       case some =>
         new ExecutionContextImpl(some, reporter) with ExecutionContextExecutorService {

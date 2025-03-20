@@ -15,6 +15,8 @@ package scala.concurrent.duration
 import java.lang.{ Double => JDouble }
 import scala.collection.StringParsers
 
+import language.experimental.captureChecking
+
 object Duration {
 
   /**

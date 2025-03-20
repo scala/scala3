@@ -14,6 +14,8 @@ package scala.concurrent
 
 import java.util.concurrent.TimeUnit
 
+import language.experimental.captureChecking
+
 /** A class to provide safe concurrent access to a mutable cell.
  *  All methods are synchronized.
  *

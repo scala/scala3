@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 /** This class provides a simple FIFO queue of data objects,
  *  which are read by one or more reader threads.
  *

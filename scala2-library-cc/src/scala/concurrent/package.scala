@@ -15,6 +15,8 @@ package scala
 import scala.concurrent.duration.Duration
 import scala.annotation.implicitNotFound
 
+import language.experimental.captureChecking
+
 /** This package object contains primitives for concurrent and parallel programming.
  *
  * == Guide ==
