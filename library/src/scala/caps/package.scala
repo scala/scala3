@@ -1,32 +1,68 @@
 package scala
+package caps
 
 import annotation.{experimental, compileTimeOnly, retainsCap}
 
-@experimental object caps:
+trait Capability extends Any
 
-  trait Capability extends Any
+/** The universal capture reference */
+@experimental
+val cap: Capability = new Capability() {}
 
-  /** The universal capture reference */
-  val cap: Capability = new Capability() {}
+/** The universal capture reference (deprecated) */
+@deprecated("Use `cap` instead")
+@experimental
+val `*`: Capability = cap
 
-  /** The universal capture reference (deprecated) */
-  @deprecated("Use `cap` instead")
-  val `*`: Capability = cap
+@deprecated("Use `Capability` instead")
+@experimental
+type Cap = Capability
 
-  @deprecated("Use `Capability` instead")
-  type Cap = Capability
+@experimental
+trait Mutable extends Capability
 
-  trait Mutable extends Capability
+@experimental
+trait SharedCapability extends Capability
 
-  trait SharedCapability extends Capability
+/** Carrier trait for capture set type parameters */
+@experimental
+trait CapSet extends Any
 
-  /** Carrier trait for capture set type parameters */
-  trait CapSet extends Any
+/** A type constraint expressing that the capture set `C` needs to contain
+ *  the capability `R`
+ */
+@experimental
+sealed trait Contains[+C >: CapSet <: CapSet @retainsCap, R <: Singleton]
 
-  /** A type constraint expressing that the capture set `C` needs to contain
-   *  the capability `R`
-   */
-  sealed trait Contains[+C >: CapSet <: CapSet @retainsCap, R <: Singleton]
+/** An annotation on parameters `x` stating that the method's body makes
+ *  use of the reach capability `x*`. Consequently, when calling the method
+ *  we need to charge the deep capture set of the actual argiment to the
+ *  environment.
+ *
+ *  Note: This should go into annotations. For now it is here, so that we
+ *  can experiment with it quickly between minor releases
+ */
+@experimental
+final class use extends annotation.StaticAnnotation
+
+/** An annotations on parameters and update methods.
+ *  On a parameter it states that any capabilties passed in the argument
+ *  are no longer available afterwards, unless they are of class `SharableCapabilitty`.
+ *  On an update method, it states that the `this` of the enclosing class is
+ *  consumed, which means that any capabilities of the method prefix are
+ *  no longer available afterwards.
+ */
+@experimental
+final class consume extends annotation.StaticAnnotation
+
+/** A trait that used to allow expressing existential types. Replaced by
+*  root.Result instances.
+*/
+@deprecated
+sealed trait Exists extends Capability
+
+@experimental
+object internal:
 
   /** The only implementation of `Contains`. The constraint that `{R} <: C` is
    *  added separately by the capture checker.
@@ -51,35 +87,10 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   extension (x: Any) def readOnlyCapability: Any = x
 
-  /** A trait that used to allow expressing existential types. Replaced by
-   *  root.Result instances.
-   */
-  @deprecated
-  sealed trait Exists extends Capability
-
   /** This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
   final class untrackedCaptures extends annotation.StaticAnnotation
-
-  /** An annotation on parameters `x` stating that the method's body makes
-   *  use of the reach capability `x*`. Consequently, when calling the method
-   *  we need to charge the deep capture set of the actual argiment to the
-   *  environment.
-   *
-   *  Note: This should go into annotations. For now it is here, so that we
-   *  can experiment with it quickly between minor releases
-   */
-  final class use extends annotation.StaticAnnotation
-
-  /** An annotations on parameters and update methods.
-   *  On a parameter it states that any capabilties passed in the argument
-   *  are no longer available afterwards, unless they are of class `SharableCapabilitty`.
-   *  On an update method, it states that the `this` of the enclosing class is
-   *  consumed, which means that any capabilities of the method prefix are
-   *  no longer available afterwards.
-   */
-  final class consume extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
@@ -97,18 +108,18 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class rootCapability extends annotation.StaticAnnotation
 
-  object unsafe:
+@experimental
+object unsafe:
 
-    extension [T](x: T)
-      /** A specific cast operation to remove a capture set.
-       *  If argument is of type `T^C`, assume it is of type `T` instead.
-       *  Calls to this method are treated specially by the capture checker.
-       */
-      def unsafeAssumePure: T = x
-
-    /** A wrapper around code for which separation checks are suppressed.
+  extension [T](x: T)
+    /** A specific cast operation to remove a capture set.
+     *  If argument is of type `T^C`, assume it is of type `T` instead.
+     *  Calls to this method are treated specially by the capture checker.
      */
-    def unsafeAssumeSeparate(op: Any): op.type = op
+    def unsafeAssumePure: T = x
 
-  end unsafe
-end caps
+  /** A wrapper around code for which separation checks are suppressed.
+   */
+  def unsafeAssumeSeparate(op: Any): op.type = op
+
+end unsafe
