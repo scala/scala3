@@ -57,6 +57,14 @@ trait CapSet extends Any
 @experimental
 sealed trait Contains[+C >: CapSet <: CapSet @retainsCap, R <: Singleton]
 
+@experimental
+object Contains:
+  /** The only implementation of `Contains`. The constraint that `{R} <: C` is
+   *  added separately by the capture checker.
+   */
+  @experimental
+  given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
+
 /** An annotation on parameters `x` stating that the method's body makes
  *  use of the reach capability `x*`. Consequently, when calling the method
  *  we need to charge the deep capture set of the actual argiment to the
@@ -87,11 +95,6 @@ sealed trait Exists extends Capability
 @experimental
 object internal:
 
-  /** The only implementation of `Contains`. The constraint that `{R} <: C` is
-   *  added separately by the capture checker.
-   */
-  given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
-
   /** A wrapper indicating a type variable in a capture argument list of a
    *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
    */
@@ -109,11 +112,6 @@ object internal:
    *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
    */
   extension (x: Any) def readOnlyCapability: Any = x
-
-  /** This should go into annotations. For now it is here, so that we
-   *  can experiment with it quickly between minor releases
-   */
-  final class untrackedCaptures extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
@@ -133,6 +131,15 @@ object internal:
 
 @experimental
 object unsafe:
+  /**
+   * Marks the constructor parameter as untracked.
+   * The capture set of this parameter will not be included in
+   * the capture set of the constructed object.
+   *
+   * @note This should go into annotations. For now it is here, so that we
+   *  can experiment with it quickly between minor releases
+   */
+  final class untrackedCaptures extends annotation.StaticAnnotation
 
   extension [T](x: T)
     /** A specific cast operation to remove a capture set.

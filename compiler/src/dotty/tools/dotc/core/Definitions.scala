@@ -1005,7 +1005,8 @@ class Definitions {
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
-    @tu lazy val Caps_containsImpl: TermSymbol = CapsInternalModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
+    @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
 
@@ -1067,7 +1068,7 @@ class Definitions {
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
-  @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.internal.untrackedCaptures")
+  @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
   @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.internal.refineOverride")
@@ -2098,7 +2099,7 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     RequiresCapabilityAnnot,
-    captureRoot, Caps_CapSet, Caps_ContainsTrait, UseAnnot,
+    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass, UseAnnot,
     Caps_Mutable, Caps_SharedCapability, ConsumeAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass,
     CapsInternalModule, CapsInternalModule.moduleClass,
