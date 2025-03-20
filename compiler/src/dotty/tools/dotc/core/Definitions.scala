@@ -2098,6 +2098,10 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     RequiresCapabilityAnnot,
+    captureRoot, Caps_CapSet, Caps_ContainsTrait, UseAnnot,
+    Caps_Mutable, Caps_SharedCapability, ConsumeAnnot,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass,
+    CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
   /** Experimental language features defined in `scala.runtime.stdLibPatches.language.experimental`.
