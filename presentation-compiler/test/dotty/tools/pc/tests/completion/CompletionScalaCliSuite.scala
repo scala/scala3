@@ -140,6 +140,17 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |io.circul""".stripMargin
     )
 
+  @Test def `lexicographic-order` =
+    checkSubset(
+      """|//> using dep "org.scala-lang@@"
+         |package A
+         |""".stripMargin,
+      """|org.scala-lang
+         |org.scala-lang-osgi
+         |org.scala-lang.modules
+         |""".stripMargin
+    )
+
   @Ignore
   @Test def `multiple-deps2` =
     checkSubset(
