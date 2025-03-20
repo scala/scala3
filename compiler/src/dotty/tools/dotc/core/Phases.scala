@@ -314,7 +314,7 @@ object Phases {
      *  instance, it is possible to print trees after a given phase using:
      *
      *  ```bash
-     *  $ ./bin/scalac -Xprint:<phaseNameHere> sourceFile.scala
+     *  $ ./bin/scalac -Vprint:<phaseNameHere> sourceFile.scala
      *  ```
      */
     def phaseName: String

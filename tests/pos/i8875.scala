@@ -1,4 +1,4 @@
-//> using options -Xprint:getters
+//> using options -Vprint:getters
 
 class A {
   extension (a: Int) {
