@@ -163,9 +163,7 @@ object Scanners {
       strVal = litBuf.toString
       litBuf.clear()
 
-    @inline def isNumberSeparator(c: Char): Boolean = c == '_'
-
-    @inline def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -307,7 +305,7 @@ object Scanners {
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       var noProgress = 0
         // Defensive measure to ensure we always get out of the following while loop
-        // even if source file is weirly formatted (i.e. we never reach EOF)
+        // even if source file is weirdly formatted (i.e. we never reach EOF)
       var prevOffset = offset
       while !atStop && noProgress < 3 do
         nextToken()
@@ -789,20 +787,18 @@ object Scanners {
           then return true
       false
 
-    /** Is there a blank line between the current token and the last one?
-     *  A blank line consists only of characters <= ' '.
-     *  @pre  afterLineEnd().
+    /** Is there a blank line between the last token and the current one?
+     *  A blank line is a sequence of only characters <= ' ', between two LFs (or FFs).
      */
-    private def pastBlankLine: Boolean = {
+    private def pastBlankLine: Boolean =
       val end = offset
       def recur(idx: Offset, isBlank: Boolean): Boolean =
         idx < end && {
           val ch = buf(idx)
-          if (ch == LF || ch == FF) isBlank || recur(idx + 1, true)
-          else recur(idx + 1, isBlank && ch <= ' ')
+          if ch == LF || ch == FF then isBlank || recur(idx + 1, isBlank = true)
+          else recur(idx + 1, isBlank = isBlank && ch <= ' ')
         }
-      recur(lastOffset, false)
-    }
+      recur(lastOffset, isBlank = false)
 
     import Character.{isHighSurrogate, isLowSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart, isValidCodePoint, toCodePoint}
 

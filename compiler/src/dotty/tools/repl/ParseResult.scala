@@ -211,7 +211,8 @@ object ParseResult {
     maybeIncomplete(sourceCode, maybeIncomplete = false)
 
   private def maybeIncomplete(sourceCode: String, maybeIncomplete: Boolean)(using state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = maybeIncomplete))
+    apply:
+      SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete)
 
   /** Check if the input is incomplete.
    *
@@ -219,20 +220,17 @@ object ParseResult {
    *  having to evaluate the expression.
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
-    sourceCode match {
-      case CommandExtract(_) | "" => false
-      case _ => {
-        val reporter = newStoreReporter
-        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode, maybeIncomplete = true)
-        val unit     = CompilationUnit(source, mustExist = false)
-        val localCtx = ctx.fresh
-                          .setCompilationUnit(unit)
-                          .setReporter(reporter)
-        var needsMore = false
-        reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(using localCtx)
-        }
-        !reporter.hasErrors && needsMore
-      }
-    }
+    sourceCode match
+    case CommandExtract(_) | "" => false
+    case _ =>
+      val reporter = newStoreReporter
+      val source   = SourceFile.virtual("<incomplete-handler>", sourceCode, maybeIncomplete = true)
+      val unit     = CompilationUnit(source, mustExist = false)
+      val localCtx = ctx.fresh
+                        .setCompilationUnit(unit)
+                        .setReporter(reporter)
+      var needsMore = false
+      reporter.withIncompleteHandler((_, _) => needsMore = true):
+        parseStats(using localCtx)
+      !reporter.hasErrors && needsMore
 }
