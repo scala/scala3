@@ -26,11 +26,12 @@
 70 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:74:10 ------------------------
-74 |          Future: fut ?=> // error: type mismatch
-   |          ^
-   |          Found:    Future[box T^?]^{fr, lbl}
-   |          Required: Future[box T^?]^?
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:73:35 ------------------------
+73 |        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
+   |                                   ^
+   |Found:    (lbl: boundary.Label[box Result[box Future[box T^?]^?, box E^?]^?]^) ?->{fr, async} Future[box T^?]^{fr, lbl}
+   |Required: (lbl: boundary.Label[Result[Future[T], E]]^) ?->{fresh} Future[T]
+74 |          Future: fut ?=>
 75 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`

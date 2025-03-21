@@ -318,7 +318,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  upper approximation.
      */
     private def interpolate(tp: Type, sym: Symbol, startingVariance: Int = 1)(using Context): Unit =
-    
+
       object variances extends TypeTraverser:
         variance = startingVariance
         val varianceOfVar = EqHashMap[CaptureSet.Var, Int]()
@@ -335,7 +335,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverse(rinfo)
           case _ =>
             traverseChildren(t)
-            
+
       val interpolator = new TypeTraverser:
         override def traverse(t: Type) = t match
           case t @ CapturingType(parent, refs) =>
@@ -349,7 +349,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverse(rinfo)
           case _ =>
             traverseChildren(t)
-      
+
       variances.traverse(tp)
       interpolator.traverse(tp)
     end interpolate
@@ -947,28 +947,51 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      { def $anonfun(...) = ...; closure($anonfun, ...)}
      */
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
+
+      def matchParams(paramss: List[ParamClause], pt: Type): Unit =
+        //println(i"match $mdef against $pt")
+        paramss match
+        case params :: paramss1 => pt match
+          case defn.PolyFunctionOf(poly: PolyType) =>
+            assert(params.hasSameLengthAs(poly.paramInfos))
+            matchParams(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
+          case FunctionOrMethod(argTypes, resType) =>
+            assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
+            for (argType, param) <- argTypes.lazyZip(params) do
+              //println(i"compare $argType against $param")
+              checkConformsExpr(argType, root.freshToCap(param.asInstanceOf[ValDef].tpt.nuType), param)
+            if ccConfig.preTypeClosureResults && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
+              // Check whether the closure's result conforms to the expected type
+              // This constrains parameter types of the closure which can give better
+              // error messages.
+              // But if the closure is an eta expanded method reference it's better to not constrain
+              // its internals early since that would give error messages in generated code
+              // which are less intelligible. An example is the line `a = x` in
+              // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
+              // to apply only to closures that are not eta expansions.
+              assert(paramss1.isEmpty)
+              val respt = root.resultToFresh:
+                pt match
+                  case defn.RefinedFunctionOf(rinfo) =>
+                    val paramTypes = params.map(_.asInstanceOf[ValDef].tpt.nuType)
+                    rinfo.instantiate(paramTypes)
+                  case _ =>
+                    resType
+              val res = root.resultToFresh(mdef.tpt.nuType)
+              // We need to open existentials here in order not to get vars mixed up in them
+              // We do the proper check with existentials when we are finished with the closure block.
+              capt.println(i"pre-check closure $expr of type $res against $respt")
+              checkConformsExpr(res, respt, expr)
+          case _ =>
+        case Nil =>
+
       openClosures = (mdef.symbol, pt) :: openClosures
+        // openClosures is needed for errors but currently makes no difference
+        // TODO follow up on this
       try
-        // Constrain closure's parameters and result from the expected type before
-        // rechecking the body.
-        val res = recheckClosure(expr, pt, forceDependent = true)
-        if !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
-          // Check whether the closure's results conforms to the expected type
-          // This constrains parameter types of the closure which can give better
-          // error messages.
-          // But if the closure is an eta expanded method reference it's better to not constrain
-          // its internals early since that would give error messages in generated code
-          // which are less intelligible. An example is the line `a = x` in
-          // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
-          // to apply only to closures that are not eta expansions.
-          val res1 = root.resultToFresh(res) // TODO: why deep = true?
-          val pt1 = root.resultToFresh(pt)
-            // We need to open existentials here in order not to get vars mixed up in them
-            // We do the proper check with existentials when we are finished with the closure block.
-          capt.println(i"pre-check closure $expr of type $res1 against $pt1")
-          checkConformsExpr(res1, pt1, expr)
+        matchParams(mdef.paramss, pt)
         recheckDef(mdef, mdef.symbol)
-        res
+        recheckClosure(expr, pt, forceDependent = true)
       finally
         openClosures = openClosures.tail
     end recheckClosureBlock

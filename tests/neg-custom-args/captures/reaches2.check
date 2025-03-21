@@ -1,13 +1,13 @@
 -- Error: tests/neg-custom-args/captures/reaches2.scala:10:10 ----------------------------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |          ^
-   |     reference ps* is not included in the allowed capture set {}
-   |     of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box A^? ->? A^?
+   |          Local reach capability ps* leaks into capture scope of method mapCompose.
+   |          To allow this, the parameter ps should be declared with a @use annotation
 -- Error: tests/neg-custom-args/captures/reaches2.scala:10:13 ----------------------------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |             ^
-   |     reference ps* is not included in the allowed capture set {}
-   |     of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box A^? ->? A^?
+   |             Local reach capability ps* leaks into capture scope of method mapCompose.
+   |             To allow this, the parameter ps should be declared with a @use annotation
 -- Error: tests/neg-custom-args/captures/reaches2.scala:10:28 ----------------------------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |                            ^

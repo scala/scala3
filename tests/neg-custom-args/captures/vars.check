@@ -1,7 +1,10 @@
--- Error: tests/neg-custom-args/captures/vars.scala:24:14 --------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:24:8 ------------------------------------------
 24 |    a = x => g(x)      // error
-   |             ^^^^
-   |             reference (cap3 : CC^) is not included in the allowed capture set {cap1} of variable a
+   |        ^^^^^^^^^
+   |        Found:    (x: String) ->{cap3} String
+   |        Required: (x: String) ->{cap1} String
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------
 25 |    a = g      // error
    |        ^

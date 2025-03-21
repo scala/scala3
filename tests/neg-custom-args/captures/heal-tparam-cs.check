@@ -31,17 +31,17 @@
 27 |    }
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:41:10 -------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:41:4 --------------------------------
 41 |    io => () => io.use()  // error
-   |          ^^^^^^^^^^^^^^
-   |          Found:    () ->{io} Unit
-   |          Required: () ->? Unit
+   |    ^^^^^^^^^^^^^^^^^^^^
+   |    Found:    (io: Capp^) ->? () ->{io} Unit
+   |    Required: (io: Capp^) -> () -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:10 -------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:4 --------------------------------
 44 |    io => () => io.use()  // error
-   |          ^^^^^^^^^^^^^^
-   |          Found:    () ->{io} Unit
-   |          Required: () ->? Unit
+   |    ^^^^^^^^^^^^^^^^^^^^
+   |    Found:    (io: Capp^) ->? () ->{io} Unit
+   |    Required: (io: Capp^) -> () -> Unit
    |
    | longer explanation available when compiling with `-explain`

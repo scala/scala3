@@ -21,6 +21,7 @@ import collection.mutable
 import CCState.*
 import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
+import NamerOps.methodType
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -704,6 +705,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // If there's a change in the signature, update the info of `sym`
         if sym.exists && signatureChanges then
           val updatedInfo =
+            if ccConfig.newScheme then
+              def newInfo = root.toResultInResults(report.error(_, tree.srcPos)):
+                if sym.is(Method) then methodType(sym.paramSymss, localReturnType)
+                else tree.tpt.nuType
+              if tree.tpt.isInstanceOf[InferredTypeTree]
+                  && !sym.is(Param) && !sym.is(ParamAccessor)
+              then
+                val prevInfo = sym.info
+                new LazyType:
+                  def complete(denot: SymDenotation)(using Context) =
+                    assert(ctx.phase == thisPhase.next, i"$sym")
+                    capt.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
+                    sym.info = prevInfo // set info provisionally so we can analyze the symbol in recheck
+                    completeDef(tree, sym, this)
+                    sym.info = newInfo
+              else newInfo
+            else
               val newInfo =
                 root.toResultInResults(report.error(_, tree.srcPos)):
                   integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
