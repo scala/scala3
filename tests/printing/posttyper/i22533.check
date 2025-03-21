@@ -10,7 +10,7 @@ package <empty> {
     override def equals(x$0: Any): Boolean =
       x$0 match
         {
-          case x$0 @ _:Foo @unchecked => this.u.==(x$0.u)
+          case x$0 @ _:Foo @unchecked => this.u == x$0.u
           case _ => false
         }
     private[this] val u: Int
