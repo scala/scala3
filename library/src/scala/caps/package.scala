@@ -22,6 +22,7 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
  * But even without capture checking, extending this trait can be useful for documenting the intended purpose
  * of a class.
  */
+@experimental
 trait Capability extends Any
 
 /** The universal capture reference. */
@@ -89,6 +90,7 @@ final class consume extends annotation.StaticAnnotation
 /** A trait that used to allow expressing existential types. Replaced by
 *  root.Result instances.
 */
+@experimental
 @deprecated
 sealed trait Exists extends Capability
 
