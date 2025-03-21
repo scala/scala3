@@ -2805,8 +2805,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
+    val savedGadt = nestedCtx.gadt
     val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
       .mapconserve(ensureValueTypeOrWildcard)
+    nestedCtx.gadtState.restore(savedGadt)  // Disable GADT reasoning for pattern alternatives
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
