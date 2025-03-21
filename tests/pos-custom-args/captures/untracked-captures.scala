@@ -1,4 +1,5 @@
-import caps.untrackedCaptures
+import caps.unsafe.untrackedCaptures
+
 class LL[+A] private (@untrackedCaptures lazyState: () => LL.State[A]^):
   private val res = lazyState()
 
