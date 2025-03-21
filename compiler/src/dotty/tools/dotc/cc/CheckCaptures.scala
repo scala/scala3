@@ -317,20 +317,42 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
      */
-    private def interpolator(sym: Symbol, startingVariance: Int = 1)(using Context) = new TypeTraverser:
-      variance = startingVariance
-      override def traverse(t: Type) = t match
-        case t @ CapturingType(parent, refs) =>
-          refs match
-            case refs: CaptureSet.Var if !refs.isConst =>
-              if variance < 0 then refs.solve()
-              else refs.markSolved(provisional = !sym.isMutableVar)
-            case _ =>
-          traverse(parent)
-        case t @ defn.RefinedFunctionOf(rinfo) =>
-          traverse(rinfo)
-        case _ =>
-          traverseChildren(t)
+    private def interpolate(tp: Type, sym: Symbol, startingVariance: Int = 1)(using Context): Unit =
+    
+      object variances extends TypeTraverser:
+        variance = startingVariance
+        val varianceOfVar = EqHashMap[CaptureSet.Var, Int]()
+        override def traverse(t: Type) = t match
+          case t @ CapturingType(parent, refs) =>
+            refs match
+              case refs: CaptureSet.Var if !refs.isConst =>
+                varianceOfVar(refs) = varianceOfVar.get(refs) match
+                  case Some(v0) => if v0 == 0 then 0 else (v0 + variance) / 2
+                  case None => variance
+              case _ =>
+            traverse(parent)
+          case t @ defn.RefinedFunctionOf(rinfo) =>
+            traverse(rinfo)
+          case _ =>
+            traverseChildren(t)
+            
+      val interpolator = new TypeTraverser:
+        override def traverse(t: Type) = t match
+          case t @ CapturingType(parent, refs) =>
+            refs match
+              case refs: CaptureSet.Var if !refs.isConst =>
+                if variances.varianceOfVar(refs) < 0 then refs.solve()
+                else refs.markSolved(provisional = !sym.isMutableVar)
+              case _ =>
+            traverse(parent)
+          case t @ defn.RefinedFunctionOf(rinfo) =>
+            traverse(rinfo)
+          case _ =>
+            traverseChildren(t)
+      
+      variances.traverse(tp)
+      interpolator.traverse(tp)
+    end interpolate
 
     /*  Also set any previously unset owners of toplevel Fresh instances to improve
      *  error diagnostics in separation checking.
@@ -354,14 +376,14 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
      *  variantly in it. Also anchor Fresh instances with anchorCaps.
      */
-    private def interpolateVarsIn(tpt: Tree, sym: Symbol)(using Context): Unit =
+    private def interpolateIfInferred(tpt: Tree, sym: Symbol)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
-        interpolator(sym).traverse(tpt.nuType)
+        interpolate(tpt.nuType, sym)
           .showing(i"solved vars for $sym in ${tpt.nuType}", capt)
         anchorCaps(sym).traverse(tpt.nuType)
-      for msg <- ccState.approxWarnings do
-        report.warning(msg, tpt.srcPos)
-      ccState.approxWarnings.clear()
+        for msg <- ccState.approxWarnings do
+          report.warning(msg, tpt.srcPos)
+        ccState.approxWarnings.clear()
 
     /** Assert subcapturing `cs1 <: cs2` (available for debugging, otherwise unused) */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
@@ -989,7 +1011,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // for more info from the context, so we cannot interpolate. Note that we cannot
           // expect to have all necessary info available at the point where the anonymous
           // function is compiled since we do not propagate expected types into blocks.
-          interpolateVarsIn(tree.tpt, sym)
+          interpolateIfInferred(tree.tpt, sym)
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,
@@ -1035,7 +1057,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if !sym.isAnonymousFunction then
               // Anonymous functions propagate their type to the enclosing environment
               // so it is not in general sound to interpolate their types.
-              interpolateVarsIn(tree.tpt, sym)
+              interpolateIfInferred(tree.tpt, sym)
             curEnv = saved
     end recheckDefDef
 
@@ -1778,7 +1800,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           inContext(ctx.fresh.setOwner(root)):
             checkSelfAgainstParents(root, root.baseClasses)
             val selfType = root.asClass.classInfo.selfType
-            interpolator(root, startingVariance = -1).traverse(selfType)
+            interpolate(selfType, root, startingVariance = -1)
             selfType match
               case CapturingType(_, refs: CaptureSet.Var)
               if !root.isEffectivelySealed
