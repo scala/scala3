@@ -507,7 +507,8 @@ class TreeUnpickler(reader: TastyReader,
     private def readSymNameRef()(using Context): Type = {
       val sym = readSymRef()
       val prefix = readType()
-      val res = NamedType(prefix, sym)
+      def pre = if TypeOps.isLegalPrefix(prefix) then prefix else QualSkolemType(prefix)
+      val res = NamedType(pre, sym)
       prefix match {
         case prefix: ThisType if (prefix.cls eq sym.owner) && !sym.is(Opaque) =>
           res.withDenot(sym.denot)
