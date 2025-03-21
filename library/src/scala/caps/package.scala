@@ -27,16 +27,7 @@ trait Capability extends Any
 
 /** The universal capture reference. */
 @experimental
-val cap: Capability = new Capability() {}
-
-/** The universal capture reference (deprecated) */
-@deprecated("Use `cap` instead")
-@experimental
-val `*`: Capability = cap
-
-@deprecated("Use `Capability` instead")
-@experimental
-type Cap = Capability
+object cap extends Capability
 
 /** Marker trait for classes with methods that requires an exclusive reference. */
 @experimental
