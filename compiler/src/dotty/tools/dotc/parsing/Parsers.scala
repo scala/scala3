@@ -1365,8 +1365,10 @@ object Parsers {
     def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
-        def digits0 = in.removeNumberSeparators(in.strVal)
-        def digits = if (isNegated) "-" + digits0 else digits0
+        def digits =
+          val s = in.strVal
+          val digits0 = if s.indexOf('_') == -1 then s else s.replace("_", "")
+          if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
           token match {
             case INTLIT  => return Number(digits, NumberKind.Whole(in.base))

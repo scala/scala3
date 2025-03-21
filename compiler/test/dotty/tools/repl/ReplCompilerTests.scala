@@ -511,6 +511,13 @@ class ReplCompilerTests extends ReplTest:
     val all = lines()
     assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
 
+  @Test def `i22844 regression colon eol`: Unit = initially:
+    run:
+      """|println:
+         |  "hello, world"
+         |""".stripMargin // outdent, but this test does not exercise the bug
+    assertEquals(List("hello, world"), lines())
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");

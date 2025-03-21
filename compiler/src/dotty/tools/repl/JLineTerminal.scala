@@ -109,13 +109,12 @@ class JLineTerminal extends java.io.Closeable {
       def words = java.util.Collections.emptyList[String]
     }
 
-    def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine = {
-      def parsedLine(word: String, wordCursor: Int) =
-        new ParsedLine(cursor, input, word, wordCursor)
+    def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
+      def parsedLine(word: String, wordCursor: Int) = ParsedLine(cursor, input, word, wordCursor)
       // Used when no word is being completed
       def defaultParsedLine = parsedLine("", 0)
 
-      def incomplete(): Nothing = throw new EOFError(
+      def incomplete(): Nothing = throw EOFError(
         // Using dummy values, not sure what they are used for
         /* line    = */ -1,
         /* column  = */ -1,
@@ -123,12 +122,13 @@ class JLineTerminal extends java.io.Closeable {
         /* missing = */ newLinePrompt)
 
       case class TokenData(token: Token, start: Int, end: Int)
-      def currentToken: TokenData /* | Null */ = {
+
+      def currentToken: TokenData /* | Null */ =
         val source = SourceFile.virtual("<completions>", input)
         val scanner = new Scanner(source)(using ctx.fresh.setReporter(Reporter.NoReporter))
         var lastBacktickErrorStart: Option[Int] = None
 
-        while (scanner.token != EOF) {
+        while scanner.token != EOF do
           val start = scanner.offset
           val token = scanner.token
           scanner.nextToken()
@@ -138,15 +138,13 @@ class JLineTerminal extends java.io.Closeable {
           if (isCurrentToken)
             return TokenData(token, lastBacktickErrorStart.getOrElse(start), end)
 
-
           // we need to enclose the last backtick, which unclosed produces ERROR token
           if (token == ERROR && input(start) == '`') then
             lastBacktickErrorStart = Some(start)
           else
             lastBacktickErrorStart = None
-        }
         null
-      }
+      end currentToken
 
       def acceptLine = {
         val onLastLine = !input.substring(cursor).contains(System.lineSeparator)
@@ -162,9 +160,9 @@ class JLineTerminal extends java.io.Closeable {
         // complete we need to ensure that the :<partial-word> isn't split into
         // 2 tokens, but rather the entire thing is treated as the "word", in
         //   order to insure the : is replaced in the completion.
-        case ParseContext.COMPLETE if
-          ParseResult.commands.exists(command => command._1.startsWith(input)) =>
-            parsedLine(input, cursor)
+        case ParseContext.COMPLETE
+        if ParseResult.commands.exists(command => command._1.startsWith(input)) =>
+          parsedLine(input, cursor)
 
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
@@ -181,6 +179,6 @@ class JLineTerminal extends java.io.Closeable {
         case _ =>
           incomplete()
       }
-    }
+    end parse
   }
 }
