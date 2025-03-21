@@ -220,7 +220,7 @@ object CheckCaptures:
 
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
-    def completeDef(tree: ValOrDefDef, sym: Symbol, newInfo: Type)(using Context): Type
+    def completeDef(tree: ValOrDefDef, sym: Symbol, completer: LazyType)(using Context): Type
 
     extension [T <: Tree](tree: T)
 
@@ -323,10 +323,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         case t @ CapturingType(parent, refs) =>
           refs match
             case refs: CaptureSet.Var if !refs.isConst =>
-              if variance < 0 then
-                refs.solve()
-              else if ccConfig.newScheme && !sym.isAnonymousFunction then
-                refs.markSolved(provisional = !sym.isMutableVar)
+              if variance < 0 then refs.solve()
+              else refs.markSolved(provisional = !sym.isMutableVar)
             case _ =>
           traverse(parent)
         case t @ defn.RefinedFunctionOf(rinfo) =>
@@ -1089,9 +1087,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  these checks can appear out of order, we need to first create the correct
      *  environment for checking the definition.
      */
-    def completeDef(tree: ValOrDefDef, sym: Symbol, newInfo: Type)(using Context): Type =
-      val completer = sym.infoOrCompleter
-      sym.info = newInfo
+    def completeDef(tree: ValOrDefDef, sym: Symbol, completer: LazyType)(using Context): Type =
       val saved = curEnv
       try
         // Setup environment to reflect the new owner.

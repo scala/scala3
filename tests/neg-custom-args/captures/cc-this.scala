@@ -1,4 +1,3 @@
-import language.`3.8`
 import caps.consume
 
 class Cap extends caps.Capability
@@ -26,7 +25,7 @@ def test2(using @consume cc: Cap) =
     val y: C^ = this
 
   def f = () =>
-    eff
+    eff(using cc)
     1
 
   def c1 = new C(f)

@@ -535,8 +535,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
     import checker.*
 
-    private val paramSigChange = util.EqHashSet[Tree]()
-
     /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
@@ -547,8 +545,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           then transformInferredType(tree.tpe)
           else transformExplicitType(tree.tpe, sym, freshen = !boxed, tptToCheck = tree)
         if boxed then transformed = box(transformed)
-        if sym.is(Param) && (transformed ne tree.tpe) then
-          paramSigChange += tree
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
@@ -653,19 +649,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           else tree.tpt.nuType
 
         // A test whether parameter signature might change. This returns true if one of
-        // the parameters has a new type installee. The idea here is that we store a new
+        // the parameters has a new type installed. The idea here is that we store a new
         // type only if the transformed type is different from the original.
         def paramSignatureChanges = tree.match
           case tree: DefDef =>
             tree.paramss.nestedExists:
-              case param: ValDef =>  paramSigChange.contains(param.tpt)
-              case param: TypeDef => paramSigChange.contains(param.rhs)
+              case param: ValDef =>  param.tpt.hasNuType
+              case param: TypeDef => param.rhs.hasNuType
           case _ => false
 
         // A symbol's signature changes if some of its parameter types or its result type
         // have a new type installed here (meaning hasRememberedType is true)
         def signatureChanges =
-          tree.tpt.hasNuType && !sym.isConstructor || paramSignatureChanges
+          tree.tpt.hasNuType || paramSignatureChanges
 
         // Replace an existing symbol info with inferred types where capture sets of
         // TypeParamRefs and TermParamRefs are put in correspondence by BiTypeMaps with the
@@ -707,12 +703,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         // If there's a change in the signature, update the info of `sym`
         if sym.exists && signatureChanges then
-          val newInfo =
-            root.toResultInResults(report.error(_, tree.srcPos)):
-              integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
-            .showing(i"update info $sym: ${sym.info} = $result", capt)
-          if newInfo ne sym.info then
-            val updatedInfo =
+          val updatedInfo =
+              val newInfo =
+                root.toResultInResults(report.error(_, tree.srcPos)):
+                  integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
+                .showing(i"update info $sym: ${sym.info} = $result", capt)
               if sym.isAnonymousFunction
                   || sym.is(Param)
                   || sym.is(ParamAccessor)
@@ -728,8 +723,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   assert(ctx.phase == thisPhase.next, i"$sym")
                   capt.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
                   //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
-                  completeDef(tree, sym, newInfo)
-            updateInfo(sym, updatedInfo)
+                  sym.info = newInfo
+                  completeDef(tree, sym, this)
+          updateInfo(sym, updatedInfo)
 
       case tree: Bind =>
         val sym = tree.symbol
