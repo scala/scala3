@@ -280,7 +280,7 @@ class SettingsTests:
       val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", "", List("a", "b"), List())
       val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", "", new PlainDirectory(Directory(".")))
       val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
-      val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
+      val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
     import Settings.*
