@@ -682,13 +682,16 @@ object Scanners {
         reset()
         if atEOL then token = COLONeol
 
-    // consume => and insert <indent> if applicable
+    // consume => and insert <indent> if applicable. Used to detect colon arrow: x =>
     def observeArrowIndented(): Unit =
       if isArrow && indentSyntax then
         peekAhead()
-        val atEOL = isAfterLineEnd || token == EOF
+        val atEOL = isAfterLineEnd
+        val atEOF = token == EOF
         reset()
-        if atEOL then
+        if atEOF then
+          token = EOF
+        else if atEOL then
           val nextWidth = indentWidth(next.offset)
           val lastWidth = currentRegion.indentWidth
           if lastWidth < nextWidth then
