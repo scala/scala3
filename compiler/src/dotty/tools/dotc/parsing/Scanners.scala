@@ -163,9 +163,7 @@ object Scanners {
       strVal = litBuf.toString
       litBuf.clear()
 
-    @inline def isNumberSeparator(c: Char): Boolean = c == '_'
-
-    @inline def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -307,7 +305,7 @@ object Scanners {
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       var noProgress = 0
         // Defensive measure to ensure we always get out of the following while loop
-        // even if source file is weirly formatted (i.e. we never reach EOF)
+        // even if source file is weirdly formatted (i.e. we never reach EOF)
       var prevOffset = offset
       while !atStop && noProgress < 3 do
         nextToken()
@@ -603,6 +601,20 @@ object Scanners {
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
+      // can emit OUTDENT if line is not non-empty blank line at EOF
+      inline def isTrailingBlankLine: Boolean =
+        token == EOF && {
+          val end = buf.length - 1 // take terminal NL as empty last line
+          val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
+          prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
+        }
+
+      inline def canDedent: Boolean =
+           lastToken != INDENT
+        && !isLeadingInfixOperator(nextWidth)
+        && !statCtdTokens.contains(lastToken)
+        && !isTrailingBlankLine
+
       if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
@@ -615,9 +627,8 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
+          else if canDedent then
             currentRegion match
-              case _ if token == EOF => // no OUTDENT at EOF
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
@@ -671,13 +682,16 @@ object Scanners {
         reset()
         if atEOL then token = COLONeol
 
-    // consume => and insert <indent> if applicable
+    // consume => and insert <indent> if applicable. Used to detect colon arrow: x =>
     def observeArrowIndented(): Unit =
       if isArrow && indentSyntax then
         peekAhead()
-        val atEOL = isAfterLineEnd || token == EOF
+        val atEOL = isAfterLineEnd
+        val atEOF = token == EOF
         reset()
-        if atEOL then
+        if atEOF then
+          token = EOF
+        else if atEOL then
           val nextWidth = indentWidth(next.offset)
           val lastWidth = currentRegion.indentWidth
           if lastWidth < nextWidth then
@@ -789,20 +803,18 @@ object Scanners {
           then return true
       false
 
-    /** Is there a blank line between the current token and the last one?
-     *  A blank line consists only of characters <= ' '.
-     *  @pre  afterLineEnd().
+    /** Is there a blank line between the last token and the current one?
+     *  A blank line is a sequence of only characters <= ' ', between two LFs (or FFs).
      */
-    private def pastBlankLine: Boolean = {
+    private def pastBlankLine: Boolean =
       val end = offset
       def recur(idx: Offset, isBlank: Boolean): Boolean =
         idx < end && {
           val ch = buf(idx)
-          if (ch == LF || ch == FF) isBlank || recur(idx + 1, true)
-          else recur(idx + 1, isBlank && ch <= ' ')
+          if ch == LF || ch == FF then isBlank || recur(idx + 1, isBlank = true)
+          else recur(idx + 1, isBlank = isBlank && ch <= ' ')
         }
-      recur(lastOffset, false)
-    }
+      recur(lastOffset, isBlank = false)
 
     import Character.{isHighSurrogate, isLowSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart, isValidCodePoint, toCodePoint}
 
