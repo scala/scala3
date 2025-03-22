@@ -518,6 +518,9 @@ class ReplCompilerTests extends ReplTest:
          |""".stripMargin // outdent, but this test does not exercise the bug
     assertEquals(List("hello, world"), lines())
 
+  @Test def `i22844b regression colon arrow eol`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete("List(42).map: x =>"))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
