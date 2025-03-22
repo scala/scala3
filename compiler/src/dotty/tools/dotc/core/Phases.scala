@@ -9,9 +9,9 @@ import DenotTransformers.*
 import Denotations.*
 import Decorators.*
 import config.Printers.config
-import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase.*
 import dotty.tools.dotc.transform.*
+import dotty.tools.dotc.util.chaining.*
 import Periods.*
 import parsing.Parser
 import printing.XprintMode
@@ -20,8 +20,9 @@ import cc.CheckCaptures
 import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
-import scala.util.control.NonFatal
+import scala.collection.mutable.ListBuffer
 import scala.compiletime.uninitialized
+import scala.util.control.NonFatal
 
 object Phases {
 
@@ -58,15 +59,15 @@ object Phases {
     final def phasePlan: List[List[Phase]] = this.phasesPlan
     final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
 
-    /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
-      * Each TreeTransform gets own period,
-      * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
-      */
+    /** Squash TreeTransforms belonging to same sublist to a single TreeTransformer.
+     *  Each TreeTransform gets its own period,
+     *  whereas a combined TreeTransformer gets period equal to union of periods of its TreeTransforms.
+     */
     final def fusePhases(phasess: List[List[Phase]],
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
-                           YCheckAfter: List[String])(using Context): List[Phase] = {
+                           checkAfter: List[String])(using Context): List[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
 
@@ -110,7 +111,7 @@ object Phases {
               phase
             }
           fusedPhases += phaseToAdd
-          val shouldAddYCheck = filteredPhases(i).exists(_.isCheckable) && YCheckAfter.containsPhase(phaseToAdd)
+          val shouldAddYCheck = filteredPhases(i).exists(_.isCheckable) && checkAfter.containsPhase(phaseToAdd)
           if (shouldAddYCheck) {
             val checker = new TreeChecker
             fusedPhases += checker
@@ -130,10 +131,9 @@ object Phases {
 
       val flatPhases = ListBuffer.empty[Phase]
 
-      phasess.foreach {
+      phasess.foreach:
         case p: MegaPhase => flatPhases ++= p.miniPhases
         case p => flatPhases += p
-      }
 
       phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
       setSpecificPhases()
@@ -565,23 +565,26 @@ object Phases {
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
 
-  def assemblePhases()(using Context): FreshContext =
-    val runCtx = ctx.fresh
-
+  def assemblePhases()(using Context): FreshContext = ctx.fresh.tap: runCtx =>
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
-      if (ctx.settings.YtestPickler.value) List("pickler")
+      if ctx.settings.YtestPickler.value then List("pickler")
       else ctx.settings.YstopAfter.value
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
+      phasesToSkip = ctx.settings.Yskip.value,
+      stopBeforePhases = ctx.settings.YstopBefore.value,
+      stopAfterPhases = stopAfter,
+      checkAfter = ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases, runCtx)
 
-    val phasesSettings = List("-Vphases", "-Vprint")
-    for phasesSetting <- ctx.settings.allSettings if phasesSettings.contains(phasesSetting.name) do
-      for case vs: List[String] <- phasesSetting.userValue; p <- vs do
+    val phasesSettings =
+      val ss = ctx.settings
+      import ss.*
+      List(Vprint) // no check for Vphases
+    for phasesSetting <- phasesSettings do
+      for case ps: List[String] <- phasesSetting.userValue; p <- ps do
         if !phases.exists(List(p).containsPhase) then report.warning(s"'$p' specifies no phase")
-    runCtx
   end assemblePhases
 }
