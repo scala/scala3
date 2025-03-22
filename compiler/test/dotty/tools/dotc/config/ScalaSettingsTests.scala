@@ -316,10 +316,6 @@ class ScalaSettingsTests:
       assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
       assertEquals(List("foo","bar","baz"), settings.Vphases.valueIn(summary.sstate))
     locally:
-      val summary = process(List("-Vphases","foo","-Vphases","bar","-Vphases","baz"))
-      assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
-      assertEquals(List("foo","bar","baz"), settings.Vphases.valueIn(summary.sstate))
-    locally:
       val summary = process(List("-Vphases","--","foo"))
       assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
       assertEquals(List("none"), settings.Vphases.valueIn(summary.sstate)) // nonempty default required

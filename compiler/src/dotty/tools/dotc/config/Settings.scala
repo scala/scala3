@@ -122,8 +122,6 @@ object Settings:
 
     def isMultivalue: Boolean = classTag[T] == ListTag
 
-    def acceptsNoArg: Boolean = classTag[T] == BooleanTag || classTag[T] == OptionTag || choices.exists(_.contains(""))
-
     def legalChoices: String =
       choices match
         case Some(xs) if xs.isEmpty => ""
@@ -246,10 +244,11 @@ object Settings:
             update(Some(propertyClass.get.getConstructor().newInstance()), "", args)
           case ct =>
             val argInArgRest = !argRest.isEmpty || legacyArgs
-            inline def argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
+            inline def argAfterParam = args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
+            inline def isMultivalueWithDefault = isMultivalue && !isEmptyDefault
             if argInArgRest then
               doSetArg(argRest, args)
-            else if argAfterParam then
+            else if argAfterParam && !isMultivalueWithDefault then
               doSetArg(args.head, args.tail)
             else if isEmptyDefault then
               missingArg
@@ -418,7 +417,7 @@ object Settings:
     def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[Int] =
