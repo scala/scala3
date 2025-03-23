@@ -15,18 +15,30 @@
    |    ^
    |    Found:    (x$0: Capp^?) ->? () ->{x$0} Unit
    |    Required: (c: Capp^) -> () ->{localcap} Unit
-   |
-   |    Note that reference <cap of (x$0: Capp^?): () ->{x$0} Unit>
-   |    cannot be included in outer capture set {x$0}
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:20:13 -------------------------------
+20 |    localCap { c =>  // error (???) since change to cs mapping
+   |    ^
+   |    Found:    (x$0: Capp^?) ->? () ->{x$0} Unit
+   |    Required: (c: Capp^{io}) -> () ->{io} Unit
+   |
+   |    Note that the existential capture root in () ->? Unit
+   |    cannot subsume the capability <cap of (c1: Capp^?): () ->{c1} Unit>
+21 |      (c1: Capp^{io}) => () => { c1.use() }
+22 |    }
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:25:13 -------------------------------
 25 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^{io}) ->? () ->{x$0, io} Unit
+   |    Found:    (x$0: Capp^?) ->? () ->{x$0} Unit
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
+   |
+   |    Note that the existential capture root in () ->? Unit
+   |    cannot subsume the capability <cap of (c1: Capp^?): () ->{c1} Unit>
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
    |

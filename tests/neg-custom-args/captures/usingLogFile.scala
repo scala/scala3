@@ -49,5 +49,5 @@ object Test3:
 
   def test =
     val later = usingFile("logfile", // now ok
-      usingLogger(_, l => () => l.log("test")))
+      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
     later()

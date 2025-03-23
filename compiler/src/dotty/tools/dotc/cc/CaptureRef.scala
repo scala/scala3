@@ -135,7 +135,11 @@ trait CaptureRef extends TypeProxy, ValueType:
     else
       myCaptureSet = CaptureSet.Pending
       val computed = CaptureSet.ofInfo(this)
-      if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || underlying.isProvisional then
+      if !isCaptureChecking
+          || ctx.mode.is(Mode.IgnoreCaptures)
+          || !underlying.exists
+          || underlying.isProvisional
+      then
         myCaptureSet = null
       else
         myCaptureSet = computed

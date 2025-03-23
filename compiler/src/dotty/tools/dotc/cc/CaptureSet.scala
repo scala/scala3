@@ -341,7 +341,13 @@ sealed abstract class CaptureSet extends Showable:
         if isConst then
           if mapped.isConst && mapped.elems == elems && !mapped.keepAlways then this
           else mapped
-        else Mapped(asVar, tm, tm.variance, mapped)
+        else if ccConfig.newScheme then
+          if mapped.elems == elems then this
+          else
+            asVar.markSolved(provisional = true)
+            mapped
+        else
+          Mapped(asVar, tm, tm.variance, mapped)
 
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
   def substParams(tl: BindingType, to: List[Type])(using Context) =
@@ -1339,6 +1345,10 @@ object CaptureSet:
         .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
     case ReadOnlyCapability(ref1) =>
       ref1.captureSetOfInfo.map(ReadOnlyMap())
+    case ref: ParamRef if !ref.underlying.exists =>
+      // might happen during construction of lambdas, assume `{cap}` in this case so that
+      // `ref` will not seem subsumed by other capabilities in a `++`.
+      universal
     case _ =>
       if ref.isRootCapability then ref.singletonCaptureSet
       else ofType(ref.underlying, followResult = false)

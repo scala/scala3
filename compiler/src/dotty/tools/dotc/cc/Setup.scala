@@ -702,13 +702,25 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               if prevLambdas.isEmpty then resType
               else SubstParams(prevPsymss, prevLambdas)(resType)
 
+        def paramsToCap(mt: Type)(using Context): Type = mt match
+          case mt: MethodType =>
+            mt.derivedLambdaType(
+              paramInfos = mt.paramInfos.map(root.freshToCap),
+              resType = paramsToCap(mt.resType))
+          case mt: PolyType =>
+            mt.derivedLambdaType(resType = paramsToCap(mt.resType))
+          case _ => mt
+
         // If there's a change in the signature, update the info of `sym`
         if sym.exists && signatureChanges then
           val updatedInfo =
             if ccConfig.newScheme then
-              def newInfo = root.toResultInResults(report.error(_, tree.srcPos)):
-                if sym.is(Method) then methodType(sym.paramSymss, localReturnType)
-                else tree.tpt.nuType
+              val paramSymss = sym.paramSymss
+              def newInfo(using Context) = // will be run in this or next phase
+                root.toResultInResults(report.error(_, tree.srcPos)):
+                  if sym.is(Method) then
+                    paramsToCap(methodType(paramSymss, localReturnType))
+                  else tree.tpt.nuType
               if tree.tpt.isInstanceOf[InferredTypeTree]
                   && !sym.is(Param) && !sym.is(ParamAccessor)
               then
@@ -716,10 +728,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 new LazyType:
                   def complete(denot: SymDenotation)(using Context) =
                     assert(ctx.phase == thisPhase.next, i"$sym")
-                    capt.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
                     sym.info = prevInfo // set info provisionally so we can analyze the symbol in recheck
                     completeDef(tree, sym, this)
                     sym.info = newInfo
+                      .showing(i"new info of $sym = $result", capt)
+              else if sym.is(Method) then
+                new LazyType:
+                  def complete(denot: SymDenotation)(using Context) =
+                    sym.info = newInfo
+                      .showing(i"new info of $sym = $result", capt)
               else newInfo
             else
               val newInfo =

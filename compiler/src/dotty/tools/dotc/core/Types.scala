@@ -4715,7 +4715,7 @@ object Types extends TypeUtils {
     override def hashIsStable: Boolean = false
   }
 
-  abstract class ParamRef extends BoundType {
+  abstract class ParamRef extends BoundType, CaptureRef {
     type BT <: LambdaType
     def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
@@ -4762,7 +4762,7 @@ object Types extends TypeUtils {
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int)
-  extends ParamRef, CaptureRef {
+  extends ParamRef {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)

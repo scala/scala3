@@ -28,3 +28,13 @@
    |                                 cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:52:6 ----------------------------------
+52 |      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      Found:    (_$1: java.io.OutputStream^) ->? box () ->{_$1} Unit
+   |      Required: (_$1: java.io.OutputStream^) ->{fresh} box () ->? Unit
+   |
+   |      Note that reference _$1.type
+   |      cannot be included in outer capture set ?
+   |
+   | longer explanation available when compiling with `-explain`

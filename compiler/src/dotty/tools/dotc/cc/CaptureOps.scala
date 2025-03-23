@@ -55,7 +55,7 @@ object ccConfig:
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
 end ccConfig
 
@@ -259,7 +259,8 @@ extension (tp: Type)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
-      tp.derivesFrom(defn.Caps_CapSet)
+      !tp.underlying.exists // might happen during construction of lambdas
+      || tp.derivesFrom(defn.Caps_CapSet)
     case root.Result(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
