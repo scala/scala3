@@ -188,7 +188,7 @@ object root:
 
     override def toString = "CapToFresh"
 
-    lazy val inverse: BiTypeMap & FollowAliasesMap = new BiTypeMap with FollowAliasesMap:
+    object inverse extends BiTypeMap, FollowAliasesMap:
       def apply(t: Type): Type = t match
         case t @ Fresh(_) => cap
         case t @ CapturingType(_, refs) => mapOver(t)

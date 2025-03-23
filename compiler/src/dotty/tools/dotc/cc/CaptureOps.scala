@@ -55,7 +55,7 @@ object ccConfig:
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
 
 end ccConfig
 

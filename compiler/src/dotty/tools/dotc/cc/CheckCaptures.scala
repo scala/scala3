@@ -92,44 +92,6 @@ object CheckCaptures:
     override def toString = "SubstParamsMap"
   end SubstParamsMap
 
-  /** Used for substituting parameters in a special case: when all actual arguments
-   *  are mutually distinct capabilities.
-   */
-  final class SubstParamsBiMap(from: LambdaType, to: List[Type])(using Context)
-  extends BiTypeMap:
-    thisMap =>
-
-    def apply(tp: Type): Type = tp match
-      case tp: ParamRef =>
-        if tp.binder == from then to(tp.paramNum) else tp
-      case tp: NamedType =>
-        if tp.prefix `eq` NoPrefix then tp
-        else tp.derivedSelect(apply(tp.prefix))
-      case _: ThisType =>
-        tp
-      case _ =>
-        mapOver(tp)
-    override def toString = "SubstParamsBiMap"
-
-    lazy val inverse = new BiTypeMap:
-      def apply(tp: Type): Type = tp match
-        case tp: NamedType =>
-          var idx = 0
-          var to1 = to
-          while idx < to.length && (tp ne to(idx)) do
-            idx += 1
-            to1 = to1.tail
-          if idx < to.length then from.paramRefs(idx)
-          else if tp.prefix `eq` NoPrefix then tp
-          else tp.derivedSelect(apply(tp.prefix))
-        case _: ThisType =>
-          tp
-        case _ =>
-          mapOver(tp)
-      override def toString = "SubstParamsBiMap.inverse"
-      def inverse = thisMap
-  end SubstParamsBiMap
-
   /** A prototype that indicates selection with an immutable value */
   class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
 
@@ -825,19 +787,11 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  This means
      *   - Instantiate result type with actual arguments
      *   - if `sym` is a constructor, refine its type with `refineInstanceType`
-     *  If all argument types are mutually different trackable capture references, use a BiTypeMap,
-     *  since that is more precise. Otherwise use a normal idempotent map, which might lose information
-     *  in the case where the result type contains captureset variables that are further
-     *  constrained afterwards.
      */
     override def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       val ownType =
-        if !mt.isResultDependent then
-          mt.resType
-        else if argTypes.forall(_.isTrackableRef) && isDistinct(argTypes) then
-          SubstParamsBiMap(mt, argTypes)(mt.resType)
-        else
-          SubstParamsMap(mt, argTypes)(mt.resType)
+        if !mt.isResultDependent then mt.resType
+        else SubstParamsMap(mt, argTypes)(mt.resType)
       if sym.isConstructor then refineConstructorInstance(ownType, mt, argTypes, sym)
       else ownType
 
@@ -958,8 +912,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
-              //println(i"compare $argType against $param")
-              checkConformsExpr(argType, root.freshToCap(param.asInstanceOf[ValDef].tpt.nuType), param)
+              val paramTpt = param.asInstanceOf[ValDef].tpt
+              val paramType = root.freshToCap(paramTpt.nuType)
+              checkConformsExpr(argType, paramType, param)
+                .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
             if ccConfig.preTypeClosureResults && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
               // Check whether the closure's result conforms to the expected type
               // This constrains parameter types of the closure which can give better

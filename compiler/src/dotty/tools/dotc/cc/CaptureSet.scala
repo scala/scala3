@@ -320,11 +320,6 @@ sealed abstract class CaptureSet extends Showable:
    *  sound nor complete.
    */
   def map(tm: TypeMap)(using Context): CaptureSet =
-    def freeze() = this match
-      case self: Var if !isConst && ccConfig.newScheme =>
-        if tm.variance < 0 then self.solve()
-        else self.markSolved(provisional = true)
-      case _ =>
     tm match
       case tm: BiTypeMap =>
         val mappedElems = elems.map(tm.forward)
@@ -341,7 +336,7 @@ sealed abstract class CaptureSet extends Showable:
         if isConst then
           if mapped.isConst && mapped.elems == elems && !mapped.keepAlways then this
           else mapped
-        else if ccConfig.newScheme then
+        else if true || ccConfig.newScheme then
           if mapped.elems == elems then this
           else
             asVar.markSolved(provisional = true)
@@ -458,7 +453,10 @@ object CaptureSet:
     def isProvisionallySolved(using Context) = false
 
     def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-      addIfHiddenOrFail(elem)
+      val res = addIfHiddenOrFail(elem)
+      if !res.isOK && this.isProvisionallySolved then
+        println(i"Cannot add $elem to provisionally solved $this")
+      res
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
 

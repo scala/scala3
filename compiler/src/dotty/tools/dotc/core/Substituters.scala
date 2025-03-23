@@ -180,7 +180,7 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap, BiTypeMap {
+  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
     def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
   }

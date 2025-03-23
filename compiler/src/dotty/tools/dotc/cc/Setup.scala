@@ -468,44 +468,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     else tp3
   end transformExplicitType
 
-  /** Substitute parameter symbols in `from` to paramRefs in corresponding
-   *  method or poly types `to`. We use a single BiTypeMap to do everything.
-   *  @param from  a list of lists of type or term parameter symbols of a curried method
-   *  @param to    a list of method or poly types corresponding one-to-one to the parameter lists
-   */
-  private class SubstParams(from: List[List[Symbol]], to: List[LambdaType])(using Context)
-  extends DeepTypeMap, BiTypeMap:
-
-    def apply(t: Type): Type = t match
-      case t: NamedType =>
-        if t.prefix == NoPrefix then
-          val sym = t.symbol
-          def outer(froms: List[List[Symbol]], tos: List[LambdaType]): Type =
-            def inner(from: List[Symbol], to: List[ParamRef]): Type =
-              if from.isEmpty then outer(froms.tail, tos.tail)
-              else if sym eq from.head then to.head
-              else inner(from.tail, to.tail)
-            if tos.isEmpty then t
-            else inner(froms.head, tos.head.paramRefs)
-          outer(from, to)
-        else t.derivedSelect(apply(t.prefix))
-      case _ =>
-        mapOver(t)
-
-    lazy val inverse = new BiTypeMap:
-      override def toString = "SubstParams.inverse"
-      def apply(t: Type): Type = t match
-        case t: ParamRef =>
-          def recur(from: List[LambdaType], to: List[List[Symbol]]): Type =
-            if from.isEmpty then t
-            else if t.binder eq from.head then to.head(t.paramNum).namedType
-            else recur(from.tail, to.tail)
-          recur(to, from)
-        case _ =>
-          mapOver(t)
-      def inverse = SubstParams.this
-  end SubstParams
-
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type)(using Context) =
     toBeUpdated += sym
@@ -664,44 +626,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def signatureChanges =
           tree.tpt.hasNuType || paramSignatureChanges
 
-        // Replace an existing symbol info with inferred types where capture sets of
-        // TypeParamRefs and TermParamRefs are put in correspondence by BiTypeMaps with the
-        // capture sets of the types of the method's parameter symbols and result type.
-        def integrateRT(
-            info: Type,                     // symbol info to replace
-            psymss: List[List[Symbol]],     // the local (type and term) parameter symbols corresponding to `info`
-            resType: Type,                  // the locally computed return type
-            prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
-            prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
-          ): Type =
-          info match
-            case mt: MethodOrPoly =>
-              val psyms = psymss.head
-              // TODO: the substitution does not work for param-dependent method types.
-              // For example, `(x: T, y: x.f.type) => Unit`. In this case, when we
-              // substitute `x.f.type`, `x` becomes a `TermParamRef`. But the new method
-              // type is still under initialization and `paramInfos` is still `null`,
-              // so the new `NamedType` will not have a denotation.
-              def adaptedInfo(psym: Symbol, info: mt.PInfo): mt.PInfo = mt.companion match
-                case mtc: MethodTypeCompanion => mtc.adaptParamInfo(psym, info).asInstanceOf[mt.PInfo]
-                case _ => info
-              mt.companion(mt.paramNames)(
-                mt1 =>
-                  if !paramSignatureChanges && !mt.isParamDependent && prevLambdas.isEmpty then
-                    mt.paramInfos
-                  else
-                    val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                    psyms.map(psym => adaptedInfo(psym, subst(root.freshToCap(psym.nextInfo)).asInstanceOf[mt.PInfo])),
-                mt1 =>
-                  integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas)
-              )
-            case info: ExprType =>
-              info.derivedExprType(resType =
-                integrateRT(info.resType, psymss, resType, prevPsymss, prevLambdas))
-            case info =>
-              if prevLambdas.isEmpty then resType
-              else SubstParams(prevPsymss, prevLambdas)(resType)
-
         def paramsToCap(mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             mt.derivedLambdaType(
@@ -714,52 +638,30 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // If there's a change in the signature, update the info of `sym`
         if sym.exists && signatureChanges then
           val updatedInfo =
-            if ccConfig.newScheme then
-              val paramSymss = sym.paramSymss
-              def newInfo(using Context) = // will be run in this or next phase
-                root.toResultInResults(report.error(_, tree.srcPos)):
-                  if sym.is(Method) then
-                    paramsToCap(methodType(paramSymss, localReturnType))
-                  else tree.tpt.nuType
-              if tree.tpt.isInstanceOf[InferredTypeTree]
-                  && !sym.is(Param) && !sym.is(ParamAccessor)
-              then
-                val prevInfo = sym.info
-                new LazyType:
-                  def complete(denot: SymDenotation)(using Context) =
-                    assert(ctx.phase == thisPhase.next, i"$sym")
-                    sym.info = prevInfo // set info provisionally so we can analyze the symbol in recheck
-                    completeDef(tree, sym, this)
-                    sym.info = newInfo
-                      .showing(i"new info of $sym = $result", capt)
-              else if sym.is(Method) then
-                new LazyType:
-                  def complete(denot: SymDenotation)(using Context) =
-                    sym.info = newInfo
-                      .showing(i"new info of $sym = $result", capt)
-              else newInfo
-            else
-              val newInfo =
-                root.toResultInResults(report.error(_, tree.srcPos)):
-                  integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
-                .showing(i"update info $sym: ${sym.info} = $result", capt)
-              if sym.isAnonymousFunction
-                  || sym.is(Param)
-                  || sym.is(ParamAccessor)
-                  || sym.isPrimaryConstructor
-              then
-                // closures are handled specially; the newInfo is constrained from
-                // the expected type and only afterwards we recheck the definition
-                newInfo
-              else new LazyType:
-                // infos of other methods are determined from their definitions, which
-                // are checked on demand
+
+            val paramSymss = sym.paramSymss
+            def newInfo(using Context) = // will be run in this or next phase
+              root.toResultInResults(report.error(_, tree.srcPos)):
+                if sym.is(Method) then
+                  paramsToCap(methodType(paramSymss, localReturnType))
+                else tree.tpt.nuType
+            if tree.tpt.isInstanceOf[InferredTypeTree]
+                && !sym.is(Param) && !sym.is(ParamAccessor)
+            then
+              val prevInfo = sym.info
+              new LazyType:
                 def complete(denot: SymDenotation)(using Context) =
                   assert(ctx.phase == thisPhase.next, i"$sym")
-                  capt.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
-                  //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
-                  sym.info = newInfo
+                  sym.info = prevInfo // set info provisionally so we can analyze the symbol in recheck
                   completeDef(tree, sym, this)
+                  sym.info = newInfo
+                    .showing(i"new info of $sym = $result", capt)
+            else if sym.is(Method) then
+              new LazyType:
+                def complete(denot: SymDenotation)(using Context) =
+                  sym.info = newInfo
+                    .showing(i"new info of $sym = $result", capt)
+            else newInfo
           updateInfo(sym, updatedInfo)
 
       case tree: Bind =>
