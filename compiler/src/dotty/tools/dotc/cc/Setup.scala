@@ -11,7 +11,6 @@ import config.Feature
 import config.Printers.{capt, captDebug}
 import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
-import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
 import Synthetics.isExcluded
 import util.SimpleIdentitySet
 import util.chaining.*
@@ -841,7 +840,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  We don't need to add <fluid> in covariant positions since pure types are
    *  anyway compatible with capturing types.
    */
-  private def fluidify(using Context) = new TypeMap with IdempotentCaptRefMap:
+  private def fluidify(using Context) = new TypeMap:
     def apply(t: Type): Type = t match
       case t: MethodType =>
         mapOver(t)

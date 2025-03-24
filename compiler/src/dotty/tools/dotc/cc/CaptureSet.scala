@@ -302,25 +302,18 @@ sealed abstract class CaptureSet extends Showable:
         case _ => Filtered(asVar, p)
 
   /** Capture set obtained by applying `tm` to all elements of the current capture set
-   *  and joining the results. If the current capture set is a variable, the same
-   *  transformation is applied to all future additions of new elements.
-   *
-   *  Note: We have a problem how we handle the situation where we have a mapped set
-   *
-   *    cs2 = tm(cs1)
-   *
-   *  and then the propagation solver adds a new element `x` to `cs2`. What do we
-   *  know in this case about `cs1`? We can answer this question in a sound way only
-   *  if `tm` is a bijection on capture references or it is idempotent on capture references.
-   *  (see definition in IdempotentCapRefMap).
-   *  If `tm` is a bijection we know that `tm^-1(x)` must be in `cs1`. If `tm` is idempotent
-   *  one possible solution is that `x` is in `cs1`, which is what we assume in this case.
-   *  That strategy is sound but not complete.
-   *
-   *  If `tm` is some other map, we don't know how to handle this case. For now,
-   *  we simply refuse to handle other maps. If they do need to be handled,
-   *  `OtherMapped` provides some approximation to a solution, but it is neither
-   *  sound nor complete.
+   *  and joining the results. If the current capture set is a variable we handle this as
+   *  follows:
+   *    - If the map is a BiTypeMap, the same transformation is applied to all
+   *      future additions of new elements. We try to fuse with previous maps to
+   *      avoid long paths of BiTypeMapped sets.
+   *    - If the map is some other map that maps the current set of elements
+   *      to itself, return the current var. We implicitly assume that the map
+   *      will also map any elements added in the future to themselves. This assumption
+   *      can be tested to hold by setting the ccConfig.checkSkippedMaps setting to true.
+   *    - If the map is some other map that does not map all elements to themselves,
+   *      freeze the current set (i.e. make it porvisionally solved) and return
+   *      the mapped elements as a constant set.
    */
   def map(tm: TypeMap)(using Context): CaptureSet =
     tm match
@@ -342,16 +335,12 @@ sealed abstract class CaptureSet extends Showable:
         this
       case _ =>
         val mapped = mapRefs(elems, tm, tm.variance)
-        if isConst then
-          if mapped.isConst && mapped.elems == elems && !mapped.keepAlways then this
-          else mapped
-        else if true || ccConfig.newScheme then
-          if mapped.elems == elems then this
-          else
-            asVar.markSolved(provisional = true)
-            mapped
+        if mapped.elems == elems then
+          if ccConfig.checkSkippedMaps && !isConst then asVar.skippedMaps += tm
+          this
         else
-          Mapped(asVar, tm, tm.variance, mapped)
+          if !isConst then asVar.markSolved(provisional = true)
+          mapped
 
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
   def substParams(tl: BindingType, to: List[Type])(using Context) =
@@ -571,6 +560,16 @@ object CaptureSet:
     def resetDeps()(using state: VarState): Unit =
       deps = state.deps(this)
 
+    /** Check that all maps recorded in skippedMaps map `elem` to itself
+     *  or something subsumed by it.
+     */
+    private def checkSkippedMaps(elem: CaptureRef)(using Context): Unit =
+      for tm <- skippedMaps do
+        val elem1 = tm(elem)
+        for elem1 <- tm(elem).captureSet.elems do
+          assert(elem.subsumes(elem1),
+            i"Skipped map ${tm.getClass} maps newly added $elem to $elem1 in $this")
+
     final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
@@ -588,6 +587,7 @@ object CaptureSet:
         // assert(id != 5 || elems.size != 3, this)
         val res = (CompareResult.OK /: deps): (r, dep) =>
           r.andAlso(dep.tryInclude(normElem, this))
+        if ccConfig.checkSkippedMaps && res.isOK then checkSkippedMaps(elem)
         res.orElse:
           elems -= elem
           res.addToTrace(this)
@@ -615,7 +615,7 @@ object CaptureSet:
               elem.symbol.ccLevel <= level
         case elem: ThisType if level.isDefined =>
           elem.cls.ccLevel.nextInner <= level
-        case elem: ParamRef if !this.isInstanceOf[Mapped | BiMapped] =>
+        case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
           isPartOf(elem.binder.resType)
           || {
             capt.println(i"LEVEL ERROR $elem for $this")
@@ -700,6 +700,8 @@ object CaptureSet:
       solved = if provisional then ccState.iterCount else Int.MaxValue
       deps.foreach(_.propagateSolved(provisional))
 
+    var skippedMaps: Set[TypeMap] = Set.empty
+
     def withDescription(description: String): this.type =
       this.description = this.description.join(" and ", description)
       this
@@ -748,8 +750,8 @@ object CaptureSet:
   extends Var(owner, initialElems):
 
     // For debugging: A trace where a set was created. Note that logically it would make more
-    // sense to place this variable in Mapped, but that runs afoul of the initializatuon checker.
-    val stack = if debugSets && this.isInstanceOf[Mapped] then (new Throwable).getStackTrace().nn.take(20) else null
+    // sense to place this variable in BiMapped, but that runs afoul of the initializatuon checker.
+    // val stack = if debugSets && this.isInstanceOf[BiMapped] then (new Throwable).getStackTrace().nn.take(20) else null
 
     /** The variable from which this variable is derived */
     def source: Var
@@ -760,7 +762,7 @@ object CaptureSet:
       if source.isConst && !isConst then markSolved(provisional)
 
     // ----------- Longest path recording -------------------------
-    
+
     /** Summarize for set displaying in a path */
     def summarize: String = getClass.toString
 
@@ -778,103 +780,6 @@ object CaptureSet:
       ctx.run.nn.recordPath(pathLength, path)
 
   end DerivedVar
-
-  /** A variable that changes when `source` changes, where all additional new elements are mapped
-   *  using   ∪ { tm(x) | x <- source.elems }.
-   *  @param source   the original set that is mapped
-   *  @param tm       the type map, which is assumed to be idempotent on capture refs
-   *                  (except if ccUnsoundMaps is enabled)
-   *  @param variance the assumed variance with which types with capturesets of size >= 2 are approximated
-   *                  (i.e. co: full capture set, contra: empty set, nonvariant is not allowed.)
-   *  @param initial  The initial mappings of source's elements at the point the Mapped set is created.
-   */
-  class Mapped private[CaptureSet]
-    (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.owner, initial.elems):
-    addAsDependentTo(initial)  // initial mappings could change by propagation
-
-    private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
-
-    assert(ccConfig.allowUnsoundMaps || mapIsIdempotent, tm.getClass)
-
-    private def whereCreated(using Context): String =
-      if stack == null then ""
-      else i"""
-              |Stack trace of variable creation:"
-              |${stack.mkString("\n")}"""
-
-    override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
-      def propagate: CompareResult =
-        if (origin ne source) && (origin ne initial) && mapIsIdempotent then
-          // `tm` is idempotent, propagate back elems from image set.
-          // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
-          // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
-          // It's not necessarily the only possible solution, so the scheme is incomplete.
-          source.tryInclude(elem, this)
-        else if ccConfig.allowUnsoundMaps && !mapIsIdempotent
-            && variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source)
-        then
-          // The map is neither a BiTypeMap nor an idempotent type map.
-          // In that case there's no much we can do.
-          // The scheme then does not propagate added elements back to source and rejects adding
-          // elements from variable sources in contra- and non-variant positions. In essence,
-          // we approximate types resulting from such maps by returning a possible super type
-          // from the actual type. But this is neither sound nor complete.
-          report.warning(em"trying to add $elem from unrecognized source $origin of mapped set $this$whereCreated")
-          CompareResult.Fail(this :: Nil)
-        else
-          CompareResult.OK
-      def propagateIf(cond: Boolean): CompareResult =
-        if cond then propagate else CompareResult.OK
-
-      val mapped = extrapolateCaptureRef(elem, tm, variance)
-
-      def isFixpoint =
-        mapped.isConst && mapped.elems.size == 1 && mapped.elems.contains(elem)
-
-      def failNoFixpoint =
-        val reason =
-          if variance <= 0 then i"the set's variance is $variance"
-          else i"$elem gets mapped to $mapped, which is not a supercapture."
-        report.warning(em"""trying to add $elem from unrecognized source $origin of mapped set $this$whereCreated
-                            |The reference cannot be added since $reason""")
-        CompareResult.Fail(this :: Nil)
-
-      if origin eq source then // elements have to be mapped
-        val added = mapped.elems.filter(!accountsFor(_))
-        addNewElems(added)
-          .andAlso:
-            if mapped.isConst then CompareResult.OK
-            else if mapped.asVar.recordDepsState() then { addAsDependentTo(mapped); CompareResult.OK }
-            else CompareResult.Fail(this :: Nil)
-          .andAlso:
-            propagateIf(!added.isEmpty)
-      else if accountsFor(elem) then
-        CompareResult.OK
-      else if variance > 0 then
-        // we can soundly add nothing to source and `x` to this set
-        addNewElem(elem)
-      else if isFixpoint then
-        // We can soundly add `x` to both this set and source since `f(x) = x`
-        addNewElem(elem).andAlso(propagate)
-      else
-        // we are out of options; fail (which is always sound).
-        failNoFixpoint
-    end tryInclude
-
-    override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      if source eq origin then
-        // it's a mapping of origin, so not a superset of `origin`,
-        // therefore don't contribute to the intersection.
-        universal
-      else
-        source.upperApprox(this).map(tm)
-
-    override def propagateSolved(provisional: Boolean)(using Context) =
-      if initial.isConst then super.propagateSolved(provisional)
-
-    override def toString = s"Mapped$id($source, elems = $elems)"
-  end Mapped
 
   /** A mapping where the type map is required to be a bijection.
    *  Parameters as in Mapped.
@@ -1126,12 +1031,6 @@ object CaptureSet:
       hiRefs.subCaptures(cs2).isOK && cs2.subCaptures(loRefs).isOK
     case _ =>
       false
-
-  /** A TypeMap with the property that every capture reference in the image
-   *  of the map is mapped to itself. I.e. for all capture references r1, r2,
-   *  if M(r1) == r2 then M(r2) == r2.
-   */
-  trait IdempotentCaptRefMap extends TypeMap
 
   /** A TypeMap that is the identity on capture references */
   trait IdentityCaptRefMap extends TypeMap

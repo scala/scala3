@@ -20,7 +20,6 @@ import config.Printers.recheckr
 import util.Property
 import StdNames.nme
 import annotation.constructorOnly
-import cc.CaptureSet.IdempotentCaptRefMap
 import annotation.tailrec
 import dotty.tools.dotc.cc.boxed
 
@@ -291,7 +290,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  The invocation is currently disabled in recheckApply.
      */
     private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
-      val tm = new TypeMap with IdempotentCaptRefMap:
+      val tm = new TypeMap:
         def apply(t: Type) =
           t match
             case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
@@ -586,7 +585,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *          Otherwise, `tp` itself
      */
     def widenSkolems(tp: Type)(using Context): Type =
-      object widenSkolems extends TypeMap, IdempotentCaptRefMap:
+      object widenSkolems extends TypeMap:
         var didWiden: Boolean = false
         def apply(t: Type): Type = t match
           case t: SkolemType if variance >= 0 =>

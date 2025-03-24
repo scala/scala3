@@ -26,12 +26,6 @@ val PrintFresh: Key[Unit] = Key()
 
 object ccConfig:
 
-  /** If true, allow mapping capture set variables under captureChecking with maps that are neither
-   *  bijective nor idempotent. We currently do now know how to do this correctly in all
-   *  cases, though.
-   */
-  inline val allowUnsoundMaps = false
-
   /** If enabled, use a special path in recheckClosure for closures
    *  to compare the result tpt of the anonymous functon with the expected
    *  result type. This can narrow the scope of error messages.
@@ -48,6 +42,14 @@ object ccConfig:
    *  mitigation measures, as shown by unsound-reach-5.scala.
    */
   inline val deferredReaches = false
+
+  /** Check that if a type map (which is not a BiTypeMap) maps initial capture
+   *  set variable elements to themselves it will not map any elements added in
+   *  the future to something else. That is, we can safely use a capture set
+   *  variable itself as the image under the map. By default this is off since it
+   *  is a bit expensive to check.
+   */
+  inline val checkSkippedMaps = false
 
   /** If true, turn on separation checking */
   def useSepChecks(using Context): Boolean =

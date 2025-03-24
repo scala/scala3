@@ -11,7 +11,6 @@ import typer.ErrorReporting.errorType
 import Names.TermName
 import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction
-import CaptureSet.IdempotentCaptRefMap
 import reporting.Message
 import util.{SimpleIdentitySet, EqHashMap}
 import util.Spans.NoSpan
@@ -219,7 +218,7 @@ object root:
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type)(using Context): Type =
-    val subst = new IdempotentCaptRefMap:
+    val subst = new TypeMap:
       val seen = EqHashMap[Annotation, CaptureRef]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
 
