@@ -187,10 +187,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match {
       case tp: TypeType =>
         toTextRHS(tp)
+      case tp: TermRef if tp.isRootCapability =>
+        toTextCaptureRef(tp)
       case tp: TermRef
       if !tp.denotationIsCurrent
           && !homogenizedView // always print underlying when testing picklers
-          && !tp.isRootCapability
           || tp.symbol.is(Module)
           || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
