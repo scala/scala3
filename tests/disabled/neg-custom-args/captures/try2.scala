@@ -5,7 +5,7 @@ import annotation.ability
 @ability erased val canThrow: * = ???
 
 class CanThrow[E <: Exception] extends Retains[canThrow.type]
-type Top  = Any @retains(caps.*)
+type Top  = Any @retains(caps.cap)
 
 infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?=> R
 
