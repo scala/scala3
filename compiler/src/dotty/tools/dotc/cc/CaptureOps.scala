@@ -331,8 +331,7 @@ extension (tp: Type)
   def boxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
-        case ann: CaptureAnnotation =>
-          assert(!parent.derivesFrom(defn.Caps_CapSet))
+        case ann: CaptureAnnotation if !parent.derivesFrom(defn.Caps_CapSet) =>
           AnnotatedType(parent, ann.boxedAnnot)
         case ann => tp
     case tp: RealTypeBounds =>
