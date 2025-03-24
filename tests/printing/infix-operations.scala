@@ -9,7 +9,9 @@ class C(a: Int):
   val v4 = (1 + 2) * 3
   val v5 = (1 + 2):Int
   val v6 = 1 + 2:Int // same as above
+  val v7 = (1 < 2):Boolean
+  val v8 = 1 < 2:Boolean // same as above
 
   val c = new C(2) // must not be printed in infix form
-  val v7 = c.foo(3) // must not be printed in infix form
-  val v8 = c + 3
+  val v9 = c.foo(3) // must not be printed in infix form
+  val v10 = c + 3

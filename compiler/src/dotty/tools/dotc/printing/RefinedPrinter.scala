@@ -516,7 +516,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         }
       case Typed(expr, tpt) =>
-        changePrec(InfixPrec) {
+        changePrec(DotPrec) {
           if isWildcardStarArg(tree) then
             expr match
               case Ident(nme.WILDCARD_STAR) =>

@@ -15,11 +15,13 @@ package <empty> {
         val v2: Int = 1 + (2 + 3)
         val v3: Int = 1 + 2 * 3
         val v4: Int = (1 + 2) * 3
-        val v5: Int = 1 + 2:Int
-        val v6: Int = 1 + 2:Int
+        val v5: Int = (1 + 2):Int
+        val v6: Int = (1 + 2):Int
+        val v7: Boolean = (1 < 2):Boolean
+        val v8: Boolean = (1 < 2):Boolean
         val c: C = new C(2)
-        val v7: C = c.foo(3)
-        val v8: C = c + 3
+        val v9: C = c.foo(3)
+        val v10: C = c + 3
         ()
       }
   }
