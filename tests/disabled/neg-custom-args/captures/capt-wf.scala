@@ -1,7 +1,7 @@
 // No longer valid
 class C
-type Cap = C @retains(caps.*)
-type Top = Any @retains(caps.*)
+type Cap = C @retains(caps.cap)
+type Top = Any @retains(caps.cap)
 
 type T = (x: Cap) => List[String @retains(x)] => Unit // error
 val x: (x: Cap) => Array[String @retains(x)] = ??? // error
