@@ -186,16 +186,26 @@ object root:
         case _ =>
           mapFollowingAliases(t)
 
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: Inverse => assert(false); Some(IdentityTypeMap)
+      case _ => None
+
     override def toString = "CapToFresh"
 
-    object inverse extends BiTypeMap, FollowAliasesMap:
+    class Inverse extends BiTypeMap, FollowAliasesMap:
       def apply(t: Type): Type = t match
         case t @ Fresh(_) => cap
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
+      override def fuse(next: BiTypeMap)(using Context) = next match
+        case next: CapToFresh => assert(false); Some(IdentityTypeMap)
+        case _ => None
+
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
+
+    lazy val inverse = Inverse()
 
   end CapToFresh
 

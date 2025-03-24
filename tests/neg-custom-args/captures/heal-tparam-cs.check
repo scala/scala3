@@ -26,7 +26,7 @@
    |    Required: (c: Capp^{io}) -> () ->{io} Unit
    |
    |    Note that the existential capture root in () ->? Unit
-   |    cannot subsume the capability <cap of (c1: Capp^?): () ->{c1} Unit>
+   |    cannot subsume the capability <cap of (x$0: Capp^?): () ->{x$0} Unit>
 21 |      (c1: Capp^{io}) => () => { c1.use() }
 22 |    }
    |
@@ -38,7 +38,7 @@
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
    |
    |    Note that the existential capture root in () ->? Unit
-   |    cannot subsume the capability <cap of (c1: Capp^?): () ->{c1} Unit>
+   |    cannot subsume the capability <cap of (x$0: Capp^?): () ->{x$0} Unit>
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
    |

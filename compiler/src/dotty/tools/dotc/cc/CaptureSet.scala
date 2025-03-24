@@ -296,7 +296,10 @@ sealed abstract class CaptureSet extends Showable:
       val elems1 = elems.filter(p)
       if elems1 == elems then this
       else Const(elems.filter(p))
-    else Filtered(asVar, p)
+    else
+      this match
+        case self: Filtered => Filtered(self.source, ref => self.p(ref) && p(ref))
+        case _ => Filtered(asVar, p)
 
   /** Capture set obtained by applying `tm` to all elements of the current capture set
    *  and joining the results. If the current capture set is a variable, the same
@@ -326,7 +329,13 @@ sealed abstract class CaptureSet extends Showable:
         if isConst then
           if mappedElems == elems then this
           else Const(mappedElems)
-        else BiMapped(asVar, tm, mappedElems)
+        else
+          def unfused = BiMapped(asVar, tm, mappedElems)
+          this match
+            case self: BiMapped => self.bimap.fuse(tm) match
+              case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
+              case _ => unfused
+            case _ => unfused
       case tm: IdentityCaptRefMap =>
         this
       case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
@@ -749,6 +758,25 @@ object CaptureSet:
 
     override def propagateSolved(provisional: Boolean)(using Context) =
       if source.isConst && !isConst then markSolved(provisional)
+
+    // ----------- Longest path recording -------------------------
+    
+    /** Summarize for set displaying in a path */
+    def summarize: String = getClass.toString
+
+    /** The length of the path of DerivedVars ending in this set */
+    def pathLength: Int = source match
+      case source: DerivedVar => source.pathLength + 1
+      case _ => 1
+
+    /** The path of DerivedVars ending in this set */
+    def path: List[DerivedVar] = source match
+      case source: DerivedVar => this :: source.path
+      case _ => this :: Nil
+
+    if ctx.settings.YccLog.value || util.Stats.enabled then
+      ctx.run.nn.recordPath(pathLength, path)
+
   end DerivedVar
 
   /** A variable that changes when `source` changes, where all additional new elements are mapped
@@ -852,7 +880,7 @@ object CaptureSet:
    *  Parameters as in Mapped.
    */
   final class BiMapped private[CaptureSet]
-    (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
+    (val source: Var, val bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, initialElems):
 
     override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
@@ -881,11 +909,12 @@ object CaptureSet:
 
     override def isMaybeSet: Boolean = bimap.isInstanceOf[MaybeMap]
     override def toString = s"BiMapped$id($source, elems = $elems)"
+    override def summarize = bimap.getClass.toString
   end BiMapped
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
-    (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
+    (val source: Var, val p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, source.elems.filter(p)):
 
     override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
@@ -1298,10 +1327,21 @@ object CaptureSet:
       case t: CaptureRef if t.isTrackableRef => mapRef(t)
       case _ => mapOver(t)
 
-    lazy val inverse = new BiTypeMap:
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: Inverse if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
+      case next: NarrowingCapabilityMap if next.getClass == getClass => assert(false)
+      case _ => None
+
+    class Inverse extends BiTypeMap:
       def apply(t: Type) = t // since f(c) <: c, this is the best inverse
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
+      override def fuse(next: BiTypeMap)(using Context) = next match
+        case next: NarrowingCapabilityMap if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
+        case next: NarrowingCapabilityMap if next.getClass == getClass => assert(false)
+        case _ => None
+
+    lazy val inverse = Inverse()
   end NarrowingCapabilityMap
 
   /** Maps `x` to `x?` */

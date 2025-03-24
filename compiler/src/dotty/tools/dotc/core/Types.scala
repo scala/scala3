@@ -6097,6 +6097,10 @@ object Types extends TypeUtils {
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
       case result: CaptureRef if result.isTrackableRef => result
+
+    /** Fuse with another map */
+    def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
+
   end BiTypeMap
 
   abstract class TypeMap(implicit protected var mapCtx: Context)

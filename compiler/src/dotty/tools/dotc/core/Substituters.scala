@@ -164,8 +164,33 @@ object Substituters:
     }
 
   final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: SubstBindingMap[_] =>
+        if next.from eq to then Some(SubstBindingMap(from, next.to))
+        else Some(SubstBindingsMap(Array(from, next.from), Array(to, next.to)))
+      case _ => None
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
     def inverse = SubstBindingMap(to, from)
+  }
+
+  final class SubstBindingsMap(val from: Array[BindingType], val to: Array[BindingType])(using Context) extends DeepTypeMap, BiTypeMap {
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: SubstBindingMap[_] =>
+        var i = 0
+        while i < from.length && (to(i) ne next.from) do i += 1
+        if i < from.length then Some(SubstBindingsMap(from, to.updated(i, next.to)))
+        else Some(SubstBindingsMap(from :+ next.from, to :+ next.to))
+      case _ => None
+
+    def apply(tp: Type): Type = tp match
+      case tp: BoundType =>
+        var i = 0
+        while i < from.length && (from(i) ne tp.binder) do i += 1
+        if i < from.length then tp.copyBoundType(to(i).asInstanceOf[tp.BT]) else tp
+      case _ =>
+        mapOver(tp)
+
+    def inverse = SubstBindingsMap(to, from)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
