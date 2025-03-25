@@ -1117,9 +1117,7 @@ trait Applications extends Compatibility {
             val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
-            // println(i"typedApply: $funRef, ${tree.args}, ${funRef.symbol.maybeOwner.isRetains}")
-            val applyCtx = if funRef.symbol.maybeOwner.isRetains then ctx.addMode(Mode.InCaptureSet) else ctx
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)(using applyCtx)
+            val app = ApplyTo(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(
               widenEnumCase(
                 postProcessByNameArgs(funRef, app).computeNullable(),

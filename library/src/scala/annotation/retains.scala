@@ -12,7 +12,7 @@ package scala.annotation
  *  non-standard capturing type syntax.
  */
 @experimental
-class retains(xs: (Any@retainsArg)*) extends annotation.StaticAnnotation
+class retains[Args](xs: (Any @retainsArg)*) extends annotation.StaticAnnotation
 
 /** Equivalent in meaning to `@retains(cap)`, but consumes less bytecode.
  */
