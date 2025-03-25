@@ -3543,7 +3543,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                 false
 
           case MatchTypeCasePattern.AbstractTypeConstructor(tycon, argPatterns) =>
-            scrut.dealias match
+            scrut.dealiasKeepOpaques match
               case scrutDealias @ AppliedType(scrutTycon, args) if scrutTycon =:= tycon =>
                 matchArgs(argPatterns, args, tycon.typeParams, scrutIsWidenedAbstract)
               case _ =>
