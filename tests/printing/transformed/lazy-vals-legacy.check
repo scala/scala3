@@ -26,8 +26,8 @@ package <empty> {
         {
           val flag: Long = scala.runtime.LazyVals.get(this, A.OFFSET$_m_0)
           val state: Long = scala.runtime.LazyVals.STATE(flag, 0)
-          if state.==(3) then return A.x$lzy1 else
-            if state.==(0) then
+          if state == 3 then return A.x$lzy1 else
+            if state == 0 then
               if scala.runtime.LazyVals.CAS(this, A.OFFSET$_m_0, flag, 1, 0)
                  then
                 try
