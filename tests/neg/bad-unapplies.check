@@ -10,13 +10,13 @@
 -- [E127] Pattern Match Error: tests/neg/bad-unapplies.scala:23:9 ------------------------------------------------------
 23 |    case B("2") => // error (cannot be used as an extractor)
    |         ^
-   |         B cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+   |B cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
    |
    | longer explanation available when compiling with `-explain`
 -- [E127] Pattern Match Error: tests/neg/bad-unapplies.scala:24:9 ------------------------------------------------------
 24 |    case D("2") => // error (cannot be used as an extractor)
    |         ^
-   |         D cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+   |D cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method with the appropriate signature
    |
    | longer explanation available when compiling with `-explain`
 -- [E050] Type Error: tests/neg/bad-unapplies.scala:25:9 ---------------------------------------------------------------
