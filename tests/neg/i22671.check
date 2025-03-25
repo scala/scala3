@@ -1,0 +1,61 @@
+-- [E007] Type Mismatch Error: tests/neg/i22671.scala:41:22 ------------------------------------------------------------
+41 |    names_times(fields(0)) += fields(1).toLong // error
+   |                ^^^^^^^^^
+   |                Found:    Char
+   |                Required: String
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i22671.scala:45:6 -----------------------------------------------------------------
+45 |  x() += "42" // error
+   |  ^^^^^^
+   |  value += is not a member of Int - did you mean Int.!=? or perhaps Int.<=?
+-- [E052] Type Error: tests/neg/i22671.scala:49:6 ----------------------------------------------------------------------
+49 |    c = 42 // error
+   |    ^^^^^^
+   |    Reassignment to val c
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:9:6 -----------------------------------------------------------------------
+9 |  X.w = 27 // error
+  |  ^^^^^^^^
+  |  Reassignment to val w
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:12:6 ----------------------------------------------------------------------
+12 |  X.x = 27 // error
+   |  ^^^^^^^^
+   |  Reassignment to val x
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:16:4 ----------------------------------------------------------------------
+16 |  x = 27 // error
+   |  ^^^^^^
+   |  Reassignment to val x
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:20:4 ----------------------------------------------------------------------
+20 |  y = 27 // error
+   |  ^^^^^^
+   |  Reassignment to val y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:24:4 ----------------------------------------------------------------------
+24 |  y = 27 // error
+   |  ^^^^^^
+   |  Reassignment to val y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:28:4 ----------------------------------------------------------------------
+28 |  x = 27 // error
+   |  ^^^^^^
+   |  Reassignment to val x
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i22671.scala:31:6 -----------------------------------------------------------------
+31 |  X.x += 27 // error
+   |  ^^^^^^
+   |  value += is not a member of Int - did you mean Int.!=? or perhaps Int.<=?
+-- [E008] Not Found Error: tests/neg/i22671.scala:32:4 -----------------------------------------------------------------
+32 |  1 += 1 // error
+   |  ^^^^
+   |  value += is not a member of Int - did you mean (1 : Int).!=? or perhaps (1 : Int).<=?
