@@ -718,7 +718,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else if name.isTermName && ctx.mode.is(Mode.InCaptureSet) then
       // If we are in a capture set and the identifier is not a term name,
       // try to type it with the same name but as a type
-      typed(untpd.makeCapsOf(untpd.cpy.Ident(tree)(name.toTypeName)), pt)
+      // typed(untpd.makeCapsOf(untpd.cpy.Ident(tree)(name.toTypeName)), pt)
+      typed(untpd.cpy.Ident(tree)(name.toTypeName), pt)
     else
       errorTree(tree, MissingIdent(tree, kind, name, pt))
   end typedIdent
@@ -2538,8 +2539,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       errorTree(tree,
         em"Illegal context bound: ${tycon.tpe} does not take type parameters$selfNote.")
 
-  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): SingletonTypeTree = {
+  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): Tree = {
     val ref1 = typedExpr(tree.ref, SingletonTypeProto)
+    // println(i"typed singleton type $ref1 : ${ref1.tpe}, ${ctx.mode.is(Mode.InCaptureSet)}")
+    ref1.tpe match
+      case _: TypeRef if ctx.mode.is(Mode.InCaptureSet) => return ref1
+      case _ =>
     checkStable(ref1.tpe, tree.srcPos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
@@ -3377,7 +3382,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot0 = withMode(Mode.InAnnotation)(typedExpr(tree.annot))
+    var annotCtx = ctx.addMode(Mode.InAnnotation)
+    if tree.annot.hasAttachment(untpd.RetainsAnnot) then
+      annotCtx = annotCtx.addMode(Mode.InCaptureSet)
+    val annot0 = typedExpr(tree.annot)(using annotCtx)
     val annot1 = checkAnnotClass(annot0)
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then

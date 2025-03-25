@@ -217,10 +217,31 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs = CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
-          //.showing(i"toCaptureSet $tree --> $result", capt)
+        val refs =
+          tree match
+            case Apply(_: TypeApply, _) =>
+              CaptureSet(tree.retainedElemsFromType*)
+            case _ =>
+              CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
+        // println(s"toCaptureSet: $tree -> $refs")
         tree.putAttachment(Captures, refs)
         refs
+
+  def retainedElemsFromType(using Context): List[CaptureRef] =
+    def collectRefs(tp: Type): List[CaptureRef] = tp match
+      case tp: CaptureRef if tp.isTrackableRef =>
+        tp :: Nil
+      case tp: TypeRef if tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet) =>
+        tp :: Nil
+      case OrType(tp1, tp2) =>
+        collectRefs(tp1) ++ collectRefs(tp2)
+      case _ =>
+        Nil
+    tree match
+      case Apply(TypeApply(_, refs :: Nil), _) =>
+        collectRefs(refs.tpe)
+      case _ =>
+        Nil
 
   /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
   def retainedElems(using Context): List[Tree] = tree match
