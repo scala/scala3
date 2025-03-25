@@ -45,8 +45,14 @@ object FromSymbol {
     case tpd.EmptyTree => tpd.DefDef(sym)
   }
 
-  def valDefFromSym(sym: TermSymbol)(using Context): tpd.ValDef = sym.defTree match {
+  def valDefFromSym(sym: TermSymbol)(using Context): tpd.ValOrDefDef = sym.defTree match {
     case tree: tpd.ValDef => tree
+    case tree: tpd.DefDef =>
+      // `Getters` phase replaces val class members with defs,
+      // so we may see a defdef here if we are running this on a symbol compiled
+      // in the same compilation (but before suspension, so that
+      // the symbol could have reached `Getters`).
+      tree
     case tpd.EmptyTree => tpd.ValDef(sym)
   }
 
