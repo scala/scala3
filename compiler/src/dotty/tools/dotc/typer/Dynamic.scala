@@ -136,8 +136,9 @@ trait Dynamic {
         typedDynamicAssign(qual, name, sel.span, Nil)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
-      case _ =>
-        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name))
+      case lhs =>
+        val name = lhs match { case nt: NameTree => nt.name case _ => nme.NO_NAME }
+        errorTree(tree, ReassignmentToVal(lhs.symbol, name, untpd.EmptyTree))
     }
   }
 
