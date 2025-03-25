@@ -1821,16 +1821,15 @@ object Trees {
       }
     }
 
-    def rename(tree: NameTree, newName: Name)(using Context): tree.ThisTree[T] = {
-      tree match {
+    def rename(tree: NameTree, newName: Name)(using Context): tree.ThisTree[T] =
+      tree.match
         case tree: Ident => cpy.Ident(tree)(newName)
         case tree: Select => cpy.Select(tree)(tree.qualifier, newName)
         case tree: Bind => cpy.Bind(tree)(newName, tree.body)
         case tree: ValDef => cpy.ValDef(tree)(name = newName.asTermName)
         case tree: DefDef => cpy.DefDef(tree)(name = newName.asTermName)
         case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
-      }
-    }.asInstanceOf[tree.ThisTree[T]]
+      .asInstanceOf[tree.ThisTree[T]]
 
     object TypeDefs:
       def unapply(xs: List[Tree]): Option[List[TypeDef]] = xs match
