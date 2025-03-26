@@ -44,6 +44,7 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 import dotty.tools.dotc.cc.ccConfig
+import scala.collection.mutable.LinkedHashSet
 
 object Types extends TypeUtils {
 
@@ -1012,6 +1013,23 @@ object Types extends TypeUtils {
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf.toList
     }
+
+    /** For use in quotes reflect.
+     *  A bit slower than the usual approach due to the use of LinkedHashSet.
+     **/
+    def sortedParents(using Context): LinkedHashSet[Type] = this match
+      case tp: ClassInfo =>
+        LinkedHashSet(tp) | LinkedHashSet(tp.declaredParents.flatMap(_.sortedParents.toList)*)
+      case tp: RefinedType =>
+        tp.parent.sortedParents
+      case tp: TypeProxy =>
+        tp.superType.sortedParents
+      case tp: AndType =>
+        tp.tp1.sortedParents | tp.tp2.sortedParents
+      case tp: OrType =>
+        tp.tp1.sortedParents & tp.tp2.sortedParents
+      case _ =>
+        LinkedHashSet()
 
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(using Context): Seq[SingleDenotation] = {
