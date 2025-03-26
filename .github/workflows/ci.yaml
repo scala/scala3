@@ -701,6 +701,10 @@ jobs:
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
+      # Extract the release tag
+      - name: Extract the release tag
+        run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
+
       - name: Check compiler version
         shell: bash
         run : |
@@ -711,52 +715,35 @@ jobs:
             exit 1
           fi
 
+      - name: Install GH CLI
+        uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
+        with:
+          gh-cli-version: 2.59.0
+
       - name: Prepare Release
         run: |
           ./project/scripts/sbt dist/packArchive
           sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
 
+      # Create the GitHub release
       - name: Create GitHub Release
-        id: create_gh_release
-        uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body_path: ./changelogs/${{ env.RELEASE_TAG }}.md
-          draft: true
-          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
-
-      - name: Upload zip archive to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload tar.gz archive to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/sha256sum.txt
-          asset_name: sha256sum.txt
-          asset_content_type: text/plain
+        shell: bash
+        run: |
+          # We need to config safe.directory in every step that might reference git
+          # It is not persisted between steps
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          gh release create \
+          --draft \
+          --title "${{ env.RELEASE_TAG }}" \
+          --notes-file ./changelogs/${{ env.RELEASE_TAG }}.md \
+          --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
+          --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
+          --verify-tag ${{ env.RELEASE_TAG }} \
+          ./dist/target/scala3-${{ env.RELEASE_TAG }}*.zip \
+          ./dist/target/scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          ./dist/target/sha256sum.txt
 
       - name: Publish Release
         run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
