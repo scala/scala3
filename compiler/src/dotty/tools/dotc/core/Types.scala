@@ -984,6 +984,23 @@ object Types extends TypeUtils {
       buf.toList
     }
 
+    /** For use in quotes reflect.
+     *  A bit slower than the usual approach due to the use of LinkedHashSet.
+     **/
+    def sortedParents(using Context): mutable.LinkedHashSet[Type] = this match
+      case tp: ClassInfo =>
+        mutable.LinkedHashSet(tp) | mutable.LinkedHashSet(tp.declaredParents.flatMap(_.sortedParents.toList)*)
+      case tp: RefinedType =>
+        tp.parent.sortedParents
+      case tp: TypeProxy =>
+        tp.superType.sortedParents
+      case tp: AndType =>
+        tp.tp1.sortedParents | tp.tp2.sortedParents
+      case tp: OrType =>
+        tp.tp1.sortedParents & tp.tp2.sortedParents
+      case _ =>
+        mutable.LinkedHashSet()
+
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(using Context): Seq[SingleDenotation] = {
       record("abstractTermMembers")
