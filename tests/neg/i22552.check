@@ -1,0 +1,8 @@
+-- [E040] Syntax Error: tests/neg/i22552.scala:3:10 --------------------------------------------------------------------
+3 |  type A[X: TC]                     // error
+  |          ^
+  |          ']' expected, but ':' found
+-- Error: tests/neg/i22552.scala:4:15 ----------------------------------------------------------------------------------
+4 |  type C = [X: TC] =>> List[X]      // error
+  |               ^^
+  |               context bounds are not allowed in type lambdas
