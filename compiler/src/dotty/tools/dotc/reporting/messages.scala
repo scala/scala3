@@ -1539,6 +1539,19 @@ class ReassignmentToVal(name: Name)(using Context)
         |"""
 }
 
+class ReassignmentToDef(name: Name)(using Context)
+  extends TypeMsg(ReassignmentToDefID) {
+  def msg(using Context) = i"""Reassignment to def $name"""
+  def explain(using Context) =
+    i"""|You can not assign a new definition to $name as definitions can't be changed.
+        |Keep in mind that every statement has a value, so you may e.g. use
+        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
+        |In case you need a reassignable name, you can declare it as
+        |variable
+        |  ${hl("var")} $name ${hl("=")} ...
+        |"""
+}
+
 class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
   extends TypeMsg(TypeDoesNotTakeParametersID) {
   private def fboundsAddendum(using Context) =

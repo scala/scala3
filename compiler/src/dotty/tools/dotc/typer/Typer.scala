@@ -1388,8 +1388,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val lhsCore = typedUnadapted(lhs, LhsProto, locked)
         def lhs1 = adapt(lhsCore, LhsProto, locked)
 
-        def reassignmentToVal =
+        def reassignmentToVal = 
           report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
+          cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
+
+        def reassignmentToDef = 
+          report.error(ReassignmentToDef(lhsCore.symbol.name), tree.srcPos)
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
@@ -1452,8 +1456,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => lhsCore.tpe match {
             case ref: TermRef =>
               val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
+              val isDef = !lhsVal.exists && lhsCore.denot.exists && lhsCore.denot.symbol.is(Method)
               val lhsSym = lhsVal.symbol
-              if canAssign(lhsSym) then
+              if (!isDef && lhsVal.exists && canAssign(lhsVal.symbol)) then
                 rememberNonLocalAssignToPrivate(lhsSym)
                 // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsSym
                 // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
@@ -1472,11 +1477,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
                     typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil), WildcardType, locked)
                   case _ =>
-                    reassignmentToVal
+                      if isDef then reassignmentToDef else reassignmentToVal
                 }
             case TryDynamicCallType =>
               typedDynamicAssign(tree, pt)
-            case tpe =>
+            case tpe => 
               reassignmentToVal
         }
     }
