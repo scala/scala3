@@ -1102,6 +1102,14 @@ object CaptureSet:
     /** A map from captureset variables to their dependent sets at the time of the snapshot. */
     private val depsMap: util.EqHashMap[Var, Deps] = new util.EqHashMap
 
+    /** A map from root.Result values to other such values. If two result values
+     *  `a` and `b` are unified, then `eqResultMap(a) = b` and `eqResultMap(b) = a`.
+     */
+    private var eqResultMap: util.SimpleIdentityMap[root.Result, root.Result] = util.SimpleIdentityMap.empty
+
+    /** A snapshot of the `eqResultMap` value at the start of a VarState transaction */
+    private var eqResultSnapshot: util.SimpleIdentityMap[root.Result, root.Result] | Null = null
+
     /** The recorded elements of `v` (it's required that a recording was made) */
     def elems(v: Var): Refs = elemsMap(v)
 
@@ -1141,10 +1149,31 @@ object CaptureSet:
       hidden.add(elem)(using ctx, this)
       true
 
+    /** If root1 and root2 belong to the same binder but have different originalBinders
+     *  it means that one of the roots was mapped to the binder of the other by a
+     *  substBinder when comparing two method types. In that case we can unify
+     *  the two roots1, provided none of the two roots have already been unified
+     *  themselves. So unification must be 1-1.
+     */
+    def unify(root1: root.Result, root2: root.Result)(using Context): Boolean =
+      (root1, root2) match
+        case (root1 @ root.Result(binder1), root2 @ root.Result(binder2))
+        if (binder1 eq binder2)
+          && (root1.rootAnnot.originalBinder ne root2.rootAnnot.originalBinder)
+          && eqResultMap(root1) == null
+          && eqResultMap(root2) == null
+        =>
+          if eqResultSnapshot == null then eqResultSnapshot = eqResultMap
+          eqResultMap = eqResultMap.updated(root1, root2).updated(root2, root1)
+          true
+        case _ =>
+          false
+
     /** Roll back global state to what was recorded in this VarState */
     def rollBack(): Unit =
       elemsMap.keysIterator.foreach(_.resetElems()(using this))
       depsMap.keysIterator.foreach(_.resetDeps()(using this))
+      if eqResultSnapshot != null then eqResultMap = eqResultSnapshot.nn
 
     private var seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
 

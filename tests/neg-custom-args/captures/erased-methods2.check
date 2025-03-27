@@ -5,7 +5,7 @@
    |    Required: (erased x$1: CT[Ex3]^) ?->{fresh} (erased x$2: CT[Ex2]^) ?->{localcap} Unit
    |
    |    Note that the existential capture root in (erased x$2: CT[Ex2]^) ?=> Unit
-   |    cannot subsume the capability x$1.type
+   |    cannot subsume the capability x$1.type since that capability is not a SharedCapability
 21 |     ?=> (x$2: CT[Ex2]^)
 22 |     ?=>
 23 |      //given (CT[Ex3]^) = x$1
@@ -19,7 +19,7 @@
    |Required: (erased x$1: CT[Ex3]^) ?->{fresh} (erased x$1: CT[Ex2]^) ?->{localcap} (erased x$2: CT[Ex1]^) ?->{localcap} Unit
    |
    |Note that the existential capture root in (erased x$1: CT[Ex2]^) ?=> (erased x$2: CT[Ex1]^) ?->{localcap} Unit
-   |cannot subsume the capability x$1.type
+   |cannot subsume the capability x$1.type since that capability is not a SharedCapability
 32 |     ?=> (erased x$2: CT[Ex2]^)
 33 |     ?=> (erased x$3: CT[Ex1]^)
 34 |     ?=> Throw(new Ex3)

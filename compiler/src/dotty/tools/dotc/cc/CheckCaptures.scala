@@ -1255,8 +1255,11 @@ class CheckCaptures extends Recheck, SymTransformer:
                 i"""reference ${ref}$levelStr
                   |cannot be included in outer capture set $cs"""
             case ExistentialSubsumesFailure(ex, other) =>
+              def since =
+                if other.isRootCapability then ""
+                else " since that capability is not a SharedCapability"
               i"""the existential capture root in ${ex.rootAnnot.originalBinder.resType}
-                |cannot subsume the capability $other"""
+                |cannot subsume the capability $other$since"""
           i"""
              |
              |Note that ${msg.toString}"""

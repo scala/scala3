@@ -258,10 +258,12 @@ trait CaptureRef extends TypeProxy, ValueType:
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
       case x @ root.Result(binder) =>
-        if y.derivesFromSharedCapability then true
-        else
+        val result = y match
+          case y @ root.Result(_) => vs.unify(x, y)
+          case _ => y.derivesFromSharedCapability
+        if !result then
           ccState.addNote(CaptureSet.ExistentialSubsumesFailure(x, y))
-          false
+        result
       case _ =>
         y match
           case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)

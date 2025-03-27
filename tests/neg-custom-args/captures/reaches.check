@@ -56,11 +56,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:32 --------------------------------------
 67 |  val id: (x: File^) -> File^ = x => x // error
    |                                ^^^^^^
-   |                                Found:    (x: File^) ->? File^{x}
-   |                                Required: (x: File^) -> File^{localcap}
+   |                            Found:    (x: File^) ->? File^{x}
+   |                            Required: (x: File^) -> File^{localcap}
    |
-   |                                Note that the existential capture root in File^
-   |                                cannot subsume the capability x.type
+   |                            Note that the existential capture root in File^
+   |                            cannot subsume the capability x.type since that capability is not a SharedCapability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
