@@ -1532,7 +1532,7 @@ class ReassignmentToVal(name: Name)(using Context)
   def explain(using Context) =
     i"""|You can not assign a new value to $name as values can't be changed.
         |Keep in mind that every statement has a value, so you may e.g. use
-        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
+        |  ${hl("val")} $name ${hl("= if condition then 2 else 5")}
         |In case you need a reassignable name, you can declare it as
         |variable
         |  ${hl("var")} $name ${hl("=")} ...
@@ -1543,9 +1543,9 @@ class ReassignmentToDef(name: Name)(using Context)
   extends TypeMsg(ReassignmentToDefID) {
   def msg(using Context) = i"""Reassignment to def $name"""
   def explain(using Context) =
-    i"""|You can not assign a new definition to $name as definitions can't be changed.
+    i"""|You can not assign a new value to $name as definitions can't be changed.
         |Keep in mind that every statement has a value, so you may e.g. use
-        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
+        |  ${hl("def(condition)")} $name ${hl("= if condition then 2 else 5")}
         |In case you need a reassignable name, you can declare it as
         |variable
         |  ${hl("var")} $name ${hl("=")} ...
