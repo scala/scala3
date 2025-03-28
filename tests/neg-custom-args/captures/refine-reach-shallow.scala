@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 trait IO
 def test1(): Unit =
-  val f: IO^ => IO^ = x => x
+  val f: IO^ => IO^ = x => x // error
   val g: IO^ => IO^{f*} = f  // error
 def test2(): Unit =
   val f: [R] -> (IO^ => R) -> R = ???

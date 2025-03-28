@@ -1,8 +1,17 @@
 -- Error: tests/neg-custom-args/captures/try.scala:23:28 ---------------------------------------------------------------
-23 |  val a = handle[Exception, CanThrow[Exception]] { // error
+23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                            ^^^^^^^^^^^^^^^^^^^
    |                            Type variable R of method handle cannot be instantiated to box CT[Exception]^ since
    |                            that type captures the root capability `cap`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
+23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
+   |                                                 ^
+   |                                               Found:    (x: CT[Exception]^) ->? box CT[Exception]^{x}
+   |                                               Required: (x: CT[Exception]^) ->{fresh} box CT[Exception]^{fresh}
+24 |    (x: CanThrow[Exception]) => x
+25 |  }{
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
 29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^

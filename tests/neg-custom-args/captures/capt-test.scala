@@ -20,7 +20,7 @@ def handle[E <: Exception,  R <: Top](op: (CT[E] @retains(caps.cap)) => R)(handl
   catch case ex: E => handler(ex)
 
 def test: Unit =
-  val b = handle[Exception, () => Nothing] { // error
+  val b = handle[Exception, () => Nothing] { // error // error
     (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
   } {
     (ex: Exception) => ???

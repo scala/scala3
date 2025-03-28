@@ -256,7 +256,11 @@ trait CaptureRef extends TypeProxy, ValueType:
     || this.match
       case root.Fresh(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
-        || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
+        || !y.stripReadOnly.isCap
+            && !yIsExistential
+            && !y.isInstanceOf[TermParamRef]
+            && canAddHidden
+            && vs.addHidden(hidden, y)
       case x @ root.Result(binder) =>
         val result = y match
           case y @ root.Result(_) => vs.unify(x, y)

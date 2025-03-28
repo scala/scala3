@@ -56,7 +56,7 @@ def test =
     id(() => f.write()) // was error
 
 def attack2 =
-  val id: File^ -> File^ = x => x
+  val id: File^ -> File^ = x => x // error
     // val id: File^ -> File^{fresh}
 
   val leaked = usingFile[File^{id*}]: f => // error // error

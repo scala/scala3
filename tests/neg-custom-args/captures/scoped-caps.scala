@@ -9,7 +9,7 @@ def test(io: Object^): Unit =
   val _: (x: A^) -> B^ = g // error
   val _: A^ -> B^ = f // error
   val _: A^ -> B^ = g
-  val _: A^ -> B^ = x => g(x)      // should be error, since g is pure, g(x): B^{x} , which does not match B^{fresh}
+  val _: A^ -> B^ = x => g(x)      // error, since g is pure, g(x): B^{x} , which does not match B^{fresh}
   val _: (x: A^) -> B^ = x => f(x) // error: existential in B cannot subsume `x` since `x` is not shared
 
   val h: S -> B^ = ???
@@ -20,9 +20,9 @@ def test(io: Object^): Unit =
   val _: (x: S) -> B^ = j
   val _: (x: S) -> B^ = x => j(x)
   val _: S -> B^ = j               // error
-  val _: S -> B^ = x => j(x)       // should be error
+  val _: S -> B^ = x => j(x)       // error
 
   val g2: A^ => B^ = ???
-  val _: A^ => B^ = x => g2(x)  // should be error: g2(x): B^{g2, x}, and the `x` cannot be subsumed by fresh
+  val _: A^ => B^ = x => g2(x)  // error: g2(x): B^{g2, x}, and the `x` cannot be subsumed by fresh
   val g3: A^ => B^ = ???
   val _: A^{io} => B^ = x => g3(x)  // ok, now g3(x): B^{g3, x}, which is widened to B^{g3, io}
