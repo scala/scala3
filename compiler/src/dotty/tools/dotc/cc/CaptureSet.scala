@@ -596,7 +596,7 @@ object CaptureSet:
       val find = new TypeAccumulator[Boolean]:
         def apply(b: Boolean, t: Type) =
           b || t.match
-            case CapturingType(p, refs) => (refs eq this) || this(b, p)
+            case CapturingType(p, refs) => (refs eq Var.this) || this(b, p)
             case _ => foldOver(b, t)
       find(false, binder)
 
@@ -618,7 +618,9 @@ object CaptureSet:
         case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
           isPartOf(elem.binder.resType)
           || {
-            capt.println(i"LEVEL ERROR $elem for $this")
+            capt.println(
+              i"""LEVEL ERROR $elem for $this
+                 |elem binder = ${elem.binder}""")
             false
           }
         case ReachCapability(elem1) =>
@@ -796,9 +798,13 @@ object CaptureSet:
       else if accountsFor(elem) then
         CompareResult.OK
       else
-        source.tryInclude(bimap.backward(elem), this)
-          .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
-          .andAlso(addNewElem(elem))
+        try
+          source.tryInclude(bimap.backward(elem), this)
+            .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
+            .andAlso(addNewElem(elem))
+        catch case ex: AssertionError =>
+          println(i"fail while tryInclude $elem of ${elem.getClass} in $this / ${this.summarize}")
+          throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if

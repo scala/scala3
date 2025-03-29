@@ -8,7 +8,7 @@ import language.experimental.captureChecking
 
   def map3(f: Int => Int)(xs: List[Int]): List[Int] = xs.map(f)
   private val f2 = map3
-  val fc2: (f: Int => Int) -> List[Int] ->{f} List[Int] = f2 // error (?)
+  val fc2: (f: Int => Int) -> List[Int] ->{f} List[Int] = f2
 
   val f3 = (f: Int => Int) =>
     println(f(3))
@@ -27,7 +27,7 @@ import java.io.*
 def Test4(g: OutputStream^) =
   val xs: List[Int] = ???
   val later = (f: OutputStream^) => (y: Int) => xs.foreach(x => f.write(x + y))
-  val _: (f: OutputStream^) ->{} Int ->{f} Unit = later // error (?)
+  val _: (f: OutputStream^) ->{} Int ->{f} Unit = later
 
   val later2 = () => (y: Int) => xs.foreach(x => g.write(x + y))
   val _: () ->{} Int ->{g} Unit = later2 // error, inferred type is () ->{later2} Int ->{g} Unit

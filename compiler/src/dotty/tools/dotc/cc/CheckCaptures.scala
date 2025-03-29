@@ -1259,7 +1259,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 if other.isRootCapability then ""
                 else " since that capability is not a SharedCapability"
               i"""the existential capture root in ${ex.rootAnnot.originalBinder.resType}
-                |cannot subsume the capability $other$since"""
+                 |cannot subsume the capability $other$since"""
           i"""
              |
              |Note that ${msg.toString}"""

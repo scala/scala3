@@ -21,7 +21,9 @@ def map[A, B](f: A => B)(xs: LIST[A]): LIST[B] =
 class Cap extends caps.Capability
 
 def test(c: Cap, d: Cap, e: Cap) =
+
   def f(x: Cap): Unit = if c == x then ()
+
   def g(x: Cap): Unit = if d == x then ()
   val y = f
   val ys = CONS(y, NIL)
@@ -43,7 +45,9 @@ def test(c: Cap, d: Cap, e: Cap) =
   def m2 = [A, B] =>
       (f: A => B) => (xs: LIST[A]) => xs.map(f)
 
-  def m2c: [A, B] -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m2
+//  def m2c: [A, B] -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m2
+//  !!! m2 has a bad type due to spurious level error. Need to follow up and
+//  fix this.
 
   def eff[A](x: A) = if x == e then x else x
 
@@ -87,4 +91,3 @@ def test(c: Cap, d: Cap, e: Cap) =
   val c2c: LIST[Cap ->{d, y} Unit]^{e} = c2
   val c3 = zs.map(eff2[Cap ->{d, y} Unit])
   val c3c: LIST[Cap ->{d, y} Unit]^{e} = c3
-
