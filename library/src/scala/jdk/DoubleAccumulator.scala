@@ -17,6 +17,7 @@ import java.util.Spliterator
 import java.util.function.{Consumer, DoubleConsumer}
 import java.{lang => jl}
 
+import scala.annotation._
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AnyStepper, DoubleStepper, Factory, SeqFactory, Stepper, StepperShape, mutable}
 import scala.language.implicitConversions
@@ -236,6 +237,7 @@ final class DoubleAccumulator
   }
 
   /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]` */
+  @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Double] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
     val a = new Array[Double](totalSize.toInt)
