@@ -180,11 +180,11 @@ trait SeqOps[+A, +CC[_], +C] extends Any
   def appendedAll[B >: A](suffix: IterableOnce[B]): CC[B] = super.concat(suffix)
 
   /** Alias for `appendedAll`. */
-  @`inline` final def :++ [B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
+  @inline final def :++ [B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
 
   // Make `concat` an alias for `appendedAll` so that it benefits from performance
   // overrides of this method
-  @`inline` final override def concat[B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
+  @inline final override def concat[B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
 
  /** Produces a new sequence which contains all elements of this $coll and also all elements of
    *  a given sequence. `xs union ys`  is equivalent to `xs ++ ys`.
@@ -286,7 +286,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
    *  @param   len   the target length
    *  @param   elem  the padding value
    *  @tparam B      the element type of the returned $coll.
-   *  @return a new $coll consisting of
+   *  @return a new $ccoll consisting of
    *          all elements of this $coll followed by the minimal number of occurrences of `elem` so
    *          that the resulting collection has a length of at least `len`.
    */
