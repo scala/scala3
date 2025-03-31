@@ -16,7 +16,7 @@ object RetainingType:
 
   def apply(tp: Type, typeRefs: Type, byName: Boolean = false)(using Context): Type =
     val annotCls = if byName then defn.RetainsByNameAnnot else defn.RetainsAnnot
-    val annotTree = New(AppliedType(annotCls.typeRef, defn.NothingType :: Nil), Nil)
+    val annotTree = New(AppliedType(annotCls.typeRef, typeRefs :: Nil), Nil)
     AnnotatedType(tp, Annotation(annotTree))
 
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, Type)] =
