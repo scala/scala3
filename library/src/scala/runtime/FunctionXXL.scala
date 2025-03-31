@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 /** A function with all parameters grouped in an array. */
 trait FunctionXXL {
 
