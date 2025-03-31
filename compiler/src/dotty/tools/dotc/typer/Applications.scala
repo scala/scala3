@@ -38,7 +38,6 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import dotty.tools.dotc.cc.isRetains
 import dotty.tools.dotc.inlines.Inlines
-import dotty.tools.dotc.util.chaining.*
 
 object Applications {
   import tpd.*
@@ -767,11 +766,12 @@ trait Applications extends Compatibility {
               else defaultArgument(normalizedFun, n, testOnly)
 
             // a bug allowed empty parens to expand to implicit args: fail empty args for rewrite on migration
-            def canSupplyImplicits = methodType.isImplicitMethod
-              && (applyKind == ApplyKind.Using || false.tap: _ =>
+            def canSupplyImplicits =
+              inline def failEmptyArgs: false =
                 if Application.this.args.isEmpty then
                   fail(MissingImplicitParameterInEmptyArguments(methodType.paramNames(n), methString))
-              )
+                false
+              methodType.isImplicitMethod && (applyKind == ApplyKind.Using || failEmptyArgs)
 
             if !defaultArg.isEmpty then
               defaultArg.tpe.widen match
@@ -1183,8 +1183,7 @@ trait Applications extends Compatibility {
         if fun1.symbol.name == nme.apply && fun1.span.isSynthetic then
           fun1 match
           case Select(qualifier, _) =>
-            def mapMessage(dia: Diagnostic): Diagnostic =
-              dia match
+            failedState.reporter.mapBufferedMessages:
               case dia: Diagnostic.Error =>
                 dia.msg match
                 case msg: TypeMismatch =>
@@ -1197,8 +1196,8 @@ trait Applications extends Compatibility {
                   case _ => dia
                 case msg => dia
               case dia => dia
-            failedState.reporter.mapBufferedMessages(mapMessage)
           case _ => ()
+        end if
 
       def maybePatchBadParensForImplicit(failedState: TyperState)(using Context): Boolean =
         def rewrite(): Unit =
@@ -1207,8 +1206,7 @@ trait Applications extends Compatibility {
             else "" // f() -> f where fun1.span.end == tree.span.point
           rewrites.Rewrites.patch(tree.span.withStart(fun1.span.end), replace)
         var retry = false
-        failedState.reporter.mapBufferedMessages: dia =>
-          dia match
+        failedState.reporter.mapBufferedMessages:
           case err: Diagnostic.Error =>
             err.msg match
             case msg: MissingImplicitParameterInEmptyArguments =>
