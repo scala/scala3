@@ -45,9 +45,7 @@ def test(c: Cap, d: Cap, e: Cap) =
   def m2 = [A, B] =>
       (f: A => B) => (xs: LIST[A]) => xs.map(f)
 
-//  def m2c: [A, B] -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m2
-//  !!! m2 has a bad type due to spurious level error. Need to follow up and
-//  fix this.
+  def m2c: [A, B] -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m2
 
   def eff[A](x: A) = if x == e then x else x
 

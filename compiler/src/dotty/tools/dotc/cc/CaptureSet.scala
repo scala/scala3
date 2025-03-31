@@ -322,13 +322,14 @@ sealed abstract class CaptureSet extends Showable:
         if isConst then
           if mappedElems == elems then this
           else Const(mappedElems)
-        else
+        else if CCState.mapFutureElems then
           def unfused = BiMapped(asVar, tm, mappedElems)
           this match
             case self: BiMapped => self.bimap.fuse(tm) match
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
               case _ => unfused
             case _ => unfused
+        else this
       case tm: IdentityCaptRefMap =>
         this
       case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
@@ -732,11 +733,13 @@ object CaptureSet:
      *  is not derived from some other variable.
      */
     protected def ids(using Context): String =
+      def descr = getClass.getSimpleName.nn.take(1)
       val trail = this.match
-        case dv: DerivedVar => dv.source.ids
-        case _ => ""
-      val descr = getClass.getSimpleName.nn.take(1)
-      s"$id$descr$trail"
+        case dv: DerivedVar =>
+          def summary = if ctx.settings.YccVerbose.value then dv.summarize else descr
+          s"$summary${dv.source.ids}"
+        case _ => descr
+      s"$id$trail"
     override def toString = s"Var$id$elems"
   end Var
 

@@ -4219,6 +4219,35 @@ object Types extends TypeUtils {
           }
       mt
     }
+
+    /** Not safe to use in general: Check that all references to an enclosing
+     *  TermParamRef name point to that TermParamRef
+     */
+    def checkValid2(mt: MethodType)(using Context): mt.type = {
+      var t = new TypeTraverser:
+        val ps = mt.paramNames.zip(mt.paramRefs).toMap
+        def traverse(t: Type) =
+          t match
+            case CapturingType(p, refs) =>
+              def checkRefs(refs: CaptureSet) =
+                for elem <- refs.elems do
+                  elem match
+                    case elem: TermParamRef =>
+                      val elemName = elem.binder.paramNames(elem.paramNum)
+                      //assert(elemName.toString != "f")
+                      ps.get(elemName) match
+                        case Some(elemRef) => assert(elemRef eq elem, i"bad $mt")
+                        case _ =>
+                    case root.Result(binder) if binder ne mt =>
+                      assert(binder.paramNames.toList != mt.paramNames.toList, i"bad $mt")
+                    case _ =>
+              checkRefs(refs)
+              traverse(p)
+            case _ =>
+              traverseChildren(t)
+      t.traverse(mt.resType)
+      mt
+    }
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {

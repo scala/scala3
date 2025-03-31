@@ -120,6 +120,11 @@ class CCState:
 
   private var capIsRoot: Boolean = false
 
+  /** If true, apply a BiTypeMap also to elements added to the set in the future
+   *  (and use its inverse when back-progating).
+   */
+  private var mapFutureElems = true
+
   var iterCount = 1
 
 object CCState:
@@ -178,8 +183,24 @@ object CCState:
       try op finally ccs.capIsRoot = saved
     else op
 
+  /** Don't map future elements in this `op` */
+  inline def withoutMappedFutureElems[T](op: => T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.mapFutureElems
+    ccs.mapFutureElems = false
+    try op finally ccs.mapFutureElems = saved
+
   /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
   def capIsRoot(using Context): Boolean = ccState.capIsRoot
+
+  /** When mapping a capture set with a BiTypeMap, should we create a BiMapped set
+   *  so that future elements can also be mapped, and elements added to the BiMapped
+   *  are back-propagated? Turned off when creating capture set variables for the
+   *  first time, since we then do not want to change the binder to the original type
+   *  without capture sets when back propagating. Error case where this shows:
+   *  pos-customargs/captures/lists.scala, method m2c.
+   */
+  def mapFutureElems(using Context) = ccState.mapFutureElems
 
   /** The currently opened existential scopes */
   def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes

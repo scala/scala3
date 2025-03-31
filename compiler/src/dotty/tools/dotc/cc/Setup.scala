@@ -302,9 +302,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             apply(parent)
           case tp: TypeLambda =>
             // Don't recurse into parameter bounds, just cleanup any stray retains annotations
-            tp.derivedLambdaType(
-              paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
-              resType = this(tp.resType))
+            withoutMappedFutureElems:
+              tp.derivedLambdaType(
+                paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
+                resType = this(tp.resType))
           case _ =>
             mapFollowingAliases(tp)
         addVar(

@@ -112,6 +112,11 @@ object root:
       case Kind.Result(binder) => tm match
         case tm: Substituters.SubstBindingMap[MethodType] @unchecked if tm.from eq binder =>
           derivedAnnotation(tm.to)
+        case tm: Substituters.SubstBindingsMap =>
+          var i = 0
+          while i < tm.from.length && (tm.from(i) ne binder) do i += 1
+          if i < tm.from.length then derivedAnnotation(tm.to(i).asInstanceOf[MethodType])
+          else this
         case _ => this
       case _ => this
   end Annot
@@ -317,7 +322,12 @@ object root:
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
       case _ =>
-        if keepAliases then mapOver(t) else mapFollowingAliases(t)
+        try
+          if keepAliases then mapOver(t)
+          else mapFollowingAliases(t)
+        catch case ex: AssertionError =>
+          println(i"error while mapping $t")
+          throw ex
   end toResultInResults
 
   /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
