@@ -39,9 +39,7 @@ trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
 }
 
 /**
-  * $factoryInfo
-  * @define xcoll mutable sorted set
-  * @define xColl `mutable.SortedSet`
-  */
+ *  $factoryInfo
+ */
 @SerialVersionUID(3L)
 object SortedSet extends SortedIterableFactory.Delegate[SortedSet](TreeSet)
