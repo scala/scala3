@@ -195,12 +195,12 @@ extension (tree: Tree)
    *  throw IllegalCaptureRef otherwise
    */
   def toCaptureRefs(using Context): List[CaptureRef] = tree match
-    case ReachCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.reach)
-    case ReadOnlyCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.readOnly)
-    case CapsOfApply(arg) =>
-      arg.toCaptureRefs
+    // case ReachCapabilityApply(arg) =>
+    //   arg.toCaptureRefs.map(_.reach)
+    // case ReadOnlyCapabilityApply(arg) =>
+    //   arg.toCaptureRefs.map(_.readOnly)
+    // case CapsOfApply(arg) =>
+    //   arg.toCaptureRefs
     case _ => tree.tpe.dealiasKeepAnnots match
       case ref: CaptureRef if ref.isTrackableRef =>
         ref :: Nil
@@ -220,28 +220,20 @@ extension (tree: Tree)
         val refs =
           tree match
             case Apply(_: TypeApply, _) =>
-              CaptureSet(tree.retainedElemsFromType*)
+              CaptureSet(tree.retainedSet.retainedElements*)
             case _ =>
               CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
         // println(s"toCaptureSet: $tree -> $refs")
         tree.putAttachment(Captures, refs)
         refs
 
-  def retainedElemsFromType(using Context): List[CaptureRef] =
-    def collectRefs(tp: Type): List[CaptureRef] = tp match
-      case tp: CaptureRef if tp.isTrackableRef =>
-        tp :: Nil
-      case tp: TypeRef if tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet) =>
-        tp :: Nil
-      case OrType(tp1, tp2) =>
-        collectRefs(tp1) ++ collectRefs(tp2)
-      case _ =>
-        Nil
+  def retainedSet(using Context): Type =
     tree match
-      case Apply(TypeApply(_, refs :: Nil), _) =>
-        collectRefs(refs.tpe)
+      case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
       case _ =>
-        Nil
+        if tree.symbol.maybeOwner == defn.RetainsCapAnnot
+        then root.cap
+        else NoType
 
   /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
   def retainedElems(using Context): List[Tree] = tree match
@@ -253,6 +245,21 @@ extension (tree: Tree)
       else Nil
 
 extension (tp: Type)
+
+  def retainedElements(using Context): List[CaptureRef] = tp match
+    case ReachCapability(tp1) =>
+      tp1.reach :: Nil
+    case ReadOnlyCapability(tp1) =>
+      tp1.readOnly :: Nil
+    case tp: CaptureRef if tp.isTrackableRef =>
+      tp :: Nil
+    case tp: TypeRef if tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet) =>
+      tp :: Nil
+    case OrType(tp1, tp2) =>
+      tp1.retainedElements ++ tp2.retainedElements
+    case _ =>
+      if tp.isNothingType then Nil
+      else throw IllegalCaptureRef(tp)
 
   /** Is this type a CaptureRef that can be tracked?
    *  This is true for
@@ -676,7 +683,7 @@ extension (cls: ClassSymbol)
       || bc.is(CaptureChecked)
           && bc.givenSelfType.dealiasKeepAnnots.match
             case CapturingType(_, refs) => refs.isAlwaysEmpty
-            case RetainingType(_, refs) => refs.isEmpty
+            case RetainingType(_, refs) => refs.retainedElements.isEmpty
             case selfType =>
               isCaptureChecking  // At Setup we have not processed self types yet, so
                                  // unless a self type is explicitly given, we can't tell
@@ -794,7 +801,7 @@ class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type =
     tp match
       case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
-        RetainingType(tp, Nil, byName = annot.symbol == defn.RetainsByNameAnnot)
+        RetainingType(tp, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
       case _ => mapOver(tp)
 
 /** A typemap that follows aliases and keeps their transformed results if
@@ -813,18 +820,18 @@ trait FollowAliasesMap(using Context) extends TypeMap:
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
  *  capability as a tree in a @retains annotation.
  */
-object ReachCapabilityApply:
-  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-    case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
-    case _ => None
+// object ReachCapabilityApply:
+//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+//     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
+//     case _ => None
 
 /** An extractor for `caps.readOnlyCapability(ref)`, which is used to express a read-only
  *  capability as a tree in a @retains annotation.
  */
-object ReadOnlyCapabilityApply:
-  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-    case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
-    case _ => None
+// object ReadOnlyCapabilityApply:
+//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+//     case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
+//     case _ => None
 
 /** An extractor for `caps.capsOf[X]`, which is used to express a generic capture set
  *  as a tree in a @retains annotation.

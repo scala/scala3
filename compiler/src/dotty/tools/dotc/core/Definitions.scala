@@ -123,7 +123,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      ref(captureRoot.termRef) :: Nil)
+                      captureRoot.termRef)
             ))
         else
           val cls = denot.asClass.classSymbol

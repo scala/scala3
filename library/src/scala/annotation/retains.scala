@@ -12,12 +12,12 @@ package scala.annotation
  *  non-standard capturing type syntax.
  */
 @experimental
-class retains[Args](xs: (Any @retainsArg)*) extends annotation.StaticAnnotation
+class retains[Elems] extends annotation.StaticAnnotation
 
 /** Equivalent in meaning to `@retains(cap)`, but consumes less bytecode.
  */
 @experimental
-class retainsCap() extends annotation.StaticAnnotation
+class retainsCap extends annotation.StaticAnnotation
   // This special case is needed to be able to load standard library modules without
   // cyclic reference errors. Specifically, load sequences involving IterableOnce.
 

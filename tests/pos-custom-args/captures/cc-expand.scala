@@ -5,7 +5,7 @@ object Test:
   class B
   class C
   class CTC
-  type CT = CTC @retains(caps.cap)
+  type CT = CTC @retains[caps.cap.type]
 
   def test(ct: CT, dt: CT) =
 
@@ -17,6 +17,6 @@ object Test:
 
     def x4: (x: A @retains(ct)) -> B -> C = ???
 
-    def x5: A -> (x: B @retains(ct)) -> () -> C @retains(dt) = ???
-    def x6: A -> (x: B @retains(ct)) -> (() -> C @retains(dt)) @retains(x, dt) = ???
-    def x7: A -> (x: B @retains(ct)) -> (() -> C @retains(dt)) @retains(x) = ???
+    def x5: A -> (x: B @retains[ct.type]) -> () -> C @retains(dt) = ???
+    def x6: A -> (x: B @retains[ct.type]) -> (() -> C @retains[dt.type]) @retains[x.type | dt.type] = ???
+    def x7: A -> (x: B @retains[ct.type]) -> (() -> C @retains[dt.type]) @retains[x.type] = ???
