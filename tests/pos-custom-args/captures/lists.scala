@@ -47,6 +47,16 @@ def test(c: Cap, d: Cap, e: Cap) =
 
   def m2c: [A, B] -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m2
 
+  def m3 = [A, B] => () =>
+      (f: A => B) => (xs: LIST[A]) => xs.map(f)
+
+  def m3c: [A, B] -> () -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m3
+
+  def m4 = [A, B] =>
+      (f: A => B) => () => (xs: LIST[A]) => xs.map(f)
+
+  def m4c: [A, B] -> (f: A => B) -> () ->{f} LIST[A] ->{f} LIST[B] = m4
+
   def eff[A](x: A) = if x == e then x else x
 
   val eff2 = [A] => (x: A) => if x == e then x else x
