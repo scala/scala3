@@ -1017,6 +1017,12 @@ object ProtoTypes {
         paramInfos = tl.paramInfos.mapConserve(wildApprox(_, theMap, seen, internal1).bounds),
         resType = wildApprox(tl.resType, theMap, seen, internal1)
       )
+    case tp @ AnnotatedType(parent, _) =>
+      val parentApprox = wildApprox(parent, theMap, seen, internal)
+      if tp.isRefining then
+        WildcardType(TypeBounds.upper(parentApprox))
+      else
+        parentApprox
     case _ =>
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen, internal))
         .mapOver(tp)
