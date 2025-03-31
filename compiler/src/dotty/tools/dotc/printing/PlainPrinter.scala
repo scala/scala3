@@ -178,8 +178,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       toTextCaptureRef(ref.typeOpt)
     case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
       toTextRetainedElem(arg)
-    case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
-    case ReadOnlyCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ ".rd"
+    // case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
+    // case ReadOnlyCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ ".rd"
     case _ => toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
@@ -287,9 +287,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
             && refs.isReadOnly
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
-      case tp @ RetainingType(parent, refs) =>
+      case tp @ RetainingType(parent, refsType) =>
+        val refs = refsType.retainedElements
         if Feature.ccEnabledSomewhere then
-          toTextCapturing(parent, refs, "") ~ Str("R").provided(printDebug)
+          toTextCapturing(parent, refs.map(r => ast.tpd.TypeTree(r)), "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
