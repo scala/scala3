@@ -293,7 +293,6 @@ object CaseKeywordCompletion:
 
     val (labels, imports) =
       sortedSubclasses.map((si, label) => (label, si.importSel)).unzip
-
     val (obracket, cbracket) = if noIndent then (" {", "}") else ("", "")
     val basicMatch = CompletionValue.MatchCompletion(
       "match",

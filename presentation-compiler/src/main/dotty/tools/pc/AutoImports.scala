@@ -11,11 +11,13 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
+import dotty.tools.dotc.config.PathResolver.ppcp
 
 object AutoImports:
 
@@ -40,7 +42,7 @@ object AutoImports:
     case class Select(qual: SymbolIdent, name: String) extends SymbolIdent:
       def value: String = s"${qual.value}.$name"
 
-    def direct(name: String): SymbolIdent = Direct(name)
+    def direct(name: Name)(using Context): SymbolIdent = Direct(name.decoded)
 
     def fullIdent(symbol: Symbol)(using Context): SymbolIdent =
       val symbols = symbol.ownersIterator.toList
@@ -49,11 +51,11 @@ object AutoImports:
 
       symbols match
         case head :: tail =>
-          tail.foldLeft(direct(head.nameBackticked))((acc, next) =>
+          tail.foldLeft(direct(head.name))((acc, next) =>
             Select(acc, next.nameBackticked)
           )
         case Nil =>
-          SymbolIdent.direct("<no symbol>")
+          SymbolIdent.direct(nme.NoSymbol)
 
   end SymbolIdent
 
@@ -62,7 +64,7 @@ object AutoImports:
 
   object ImportSel:
     final case class Direct(sym: Symbol) extends ImportSel
-    final case class Rename(sym: Symbol, rename: String) extends ImportSel
+    final case class Rename(sym: Symbol, rename: Name) extends ImportSel
 
   case class SymbolImport(
       sym: Symbol,
@@ -70,12 +72,12 @@ object AutoImports:
       importSel: Option[ImportSel]
   ):
 
-    def name: String = ident.value
+    def name(using Context): String = ident.value
 
   object SymbolImport:
 
     def simple(sym: Symbol)(using Context): SymbolImport =
-      SymbolImport(sym, SymbolIdent.direct(sym.nameBackticked), None)
+      SymbolImport(sym, SymbolIdent.direct(sym.name), None)
 
   /**
    * Returns AutoImportsGenerator
@@ -97,8 +99,8 @@ object AutoImports:
 
     import indexedContext.ctx
 
-    val importPos = autoImportPosition(pos, text, tree, comments)
-    val renameConfig: Map[Symbol, String] = AutoImport.renameConfigMap(config)
+    val importPos = autoImportPosition(pos, text, tree, comments) // TODO: add rename config
+    val renameConfig: Map[Symbol, Name] =  Map.empty //AutoImport.renameConfigMap(config).collect { case (k, v) => k -> indexedContext.find(v) }
 
     val renames =
       (sym: Symbol) =>
@@ -143,7 +145,7 @@ object AutoImports:
       val pos: SourcePosition,
       importPosition: AutoImportPosition,
       indexedContext: IndexedContext,
-      renames: Symbol => Option[String]
+      renames: Symbol => Option[Name]
   ):
 
     import indexedContext.ctx
@@ -190,7 +192,7 @@ object AutoImports:
               )
             else
               (
-                SymbolIdent.direct(symbol.nameBackticked),
+                SymbolIdent.direct(symbol.name),
                 Some(ImportSel.Direct(symbol)),
               )
           end val
@@ -205,7 +207,7 @@ object AutoImports:
           renames(owner) match
             case Some(rename) =>
               val importSel =
-                if rename != owner.showName then
+                if rename != owner.name then
                   Some(ImportSel.Rename(owner, rename)).filter(_ =>
                     !indexedContext.hasRename(owner, rename)
                   )
@@ -223,14 +225,18 @@ object AutoImports:
                 importSel
               )
             case None =>
+              val reverse = symbol.ownersIterator.toList.reverse
+              val fullName = reverse.drop(1).foldLeft(SymbolIdent.direct(reverse.head.name)){
+                case (acc, sym) => SymbolIdent.Select(acc, sym.nameBackticked(false))
+              } // TODO fullName should work
               SymbolImport(
                 symbol,
-                SymbolIdent.direct(symbol.fullNameBackticked),
+                SymbolIdent.Select(SymbolIdent.direct(owner.name), symbol.nameBackticked(false)),
                 None
               )
           end match
         case IndexedContext.Result.InScope =>
-          val direct = renames(symbol).getOrElse(symbol.nameBackticked)
+          val direct = renames(symbol).getOrElse(symbol.name)
           SymbolImport(symbol, SymbolIdent.direct(direct), None)
       end match
     end inferSymbolImport
@@ -267,13 +273,13 @@ object AutoImports:
     end renderImports
 
     private def importName(sym: Symbol): String =
-      if indexedContext.importContext.toplevelClashes(sym) then
+      if indexedContext.toplevelClashes(sym) then
         s"_root_.${sym.fullNameBackticked(false)}"
       else
         sym.ownersIterator.zipWithIndex.foldLeft((List.empty[String], false)) { case ((acc, isDone), (sym, idx)) =>
           if(isDone || sym.isEmptyPackage || sym.isRoot) (acc, true)
           else indexedContext.rename(sym) match
-            case Some(renamed) => (renamed :: acc, true)
+            case Some(renamed) => (renamed.decoded :: acc, true)
             case None if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
             case None => (acc, false)
         }._1.mkString(".")

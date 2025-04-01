@@ -51,7 +51,7 @@ final class PcInlineValueProviderImpl(
         }
         .toRight(Errors.didNotFindDefinition)
       path = Interactive.pathTo(unit.tpdTree, definition.tree.rhs.span)(using newctx)
-      indexedContext = IndexedContext(Interactive.contextOfPath(path)(using newctx))
+      indexedContext = IndexedContext(pos)(using Interactive.contextOfPath(path)(using newctx))
       symbols = symbolsUsedInDefn(definition.tree.rhs).filter(indexedContext.lookupSym(_) == Result.InScope)
       references <- getReferencesToInline(definition, allOccurences, symbols)
     yield
@@ -163,8 +163,8 @@ final class PcInlineValueProviderImpl(
     def buildRef(occurrence: Occurence): Either[String, Reference] =
       val path =
         Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx)
-      val indexedContext = IndexedContext(
-        Interactive.contextOfPath(path)(using newctx)
+      val indexedContext = IndexedContext(pos)(
+        using Interactive.contextOfPath(path)(using newctx)
       )
       import indexedContext.ctx
       val conflictingSymbols = symbols

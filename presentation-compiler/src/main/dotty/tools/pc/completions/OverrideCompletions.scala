@@ -191,7 +191,7 @@ object OverrideCompletions:
               template :: path
             case path => path
 
-        val indexedContext = IndexedContext(
+        val indexedContext = IndexedContext(pos)(using
           Interactive.contextOfPath(path)(using newctx)
         )
         import indexedContext.ctx
@@ -407,7 +407,7 @@ object OverrideCompletions:
     val printer = ShortenedTypePrinter(
       search,
       includeDefaultParam = IncludeDefaultParam.Never,
-      renameConfigMap = renames
+      renameConfigMap = renames.map { case (k, v) => k -> v }
     )(using indexedContext)
     val overrideKeyword: String =
       // if the overriding method is not an abstract member, add `override` keyword

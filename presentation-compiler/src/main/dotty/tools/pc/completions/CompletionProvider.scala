@@ -107,7 +107,7 @@ class CompletionProvider(
 
 
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(locatedCtx)
+        val indexedCtx = IndexedContext(pos)(using locatedCtx)
 
         val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
 

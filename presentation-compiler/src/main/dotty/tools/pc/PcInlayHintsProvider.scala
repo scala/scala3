@@ -18,6 +18,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
@@ -125,7 +126,7 @@ class PcInlayHintsProvider(
     val tpdPath =
       Interactive.pathTo(unit.tpdTree, pos.span)
 
-    val indexedCtx = IndexedContext(Interactive.contextOfPath(tpdPath))
+    val indexedCtx = IndexedContext(pos)(using Interactive.contextOfPath(tpdPath))
     val printer = ShortenedTypePrinter(
       symbolSearch
     )(using indexedCtx)
@@ -149,7 +150,7 @@ class PcInlayHintsProvider(
     InlayHints.makeLabelParts(parts, tpeStr)
   end toLabelParts
 
-  private val definitions = IndexedContext(ctx).ctx.definitions
+  private val definitions = IndexedContext(pos)(using ctx).ctx.definitions
   private def syntheticTupleApply(tree: Tree): Boolean =
     tree match
       case sel: Select =>
@@ -179,12 +180,12 @@ class PcInlayHintsProvider(
 
   private def partsFromType(
       tpe: Type,
-      usedRenames: Map[Symbol, String],
+      usedRenames: Map[Symbol, Name],
   ): List[LabelPart] =
     NamedPartsAccumulator(_ => true)(Nil, tpe)
       .filter(_.symbol != NoSymbol)
       .map { t =>
-        val label = usedRenames.get(t.symbol).getOrElse(t.symbol.decodedName)
+        val label = usedRenames.get(t.symbol).map(_.decoded).getOrElse(t.symbol.decodedName)
         labelPart(t.symbol, label)
       }
 

@@ -63,15 +63,15 @@ class ShortenedTypePrinter(
       Lazy
     )
 
-  private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
+  private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, Name]
 
   override def nameString(name: Name): String =
     val nameStr = super.nameString(name)
     if (nameStr.nonEmpty) KeywordWrapper.Scala3Keywords.backtickWrap(nameStr)
     else nameStr
 
-  def getUsedRenames: Map[Symbol, String] =
-    foundRenames.toMap.filter { case (k, v) => k.showName != v }
+  def getUsedRenames: Map[Symbol, Name] =
+    foundRenames.toMap.filter { case (k, v) => k.name != v }
 
   def getUsedRenamesInfo(using Context): List[String] =
     foundRenames.map { (from, to) =>
@@ -104,16 +104,16 @@ class ShortenedTypePrinter(
 
   sealed trait SymbolRenameSearchResult:
     val owner: Symbol
-    val rename: String
+    val rename: Name
     val prefixAfterRename: List[Symbol]
 
     def toPrefixText: Text =
-      Str(rename) ~ prefixAfterRename.foldLeft(Text())((acc, sym) =>
+      Str(rename.decoded) ~ prefixAfterRename.foldLeft(Text())((acc, sym) =>
         acc ~ "." ~ toText(sym.name)
       ) ~ "."
 
-  case class Found(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
-  case class Missing(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
+  case class Found(owner: Symbol, rename: Name, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
+  case class Missing(owner: Symbol, rename: Name, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
 
   /**
    *  In shortened type printer, we don't want to omit the prefix unless it is empty package
@@ -133,11 +133,11 @@ class ShortenedTypePrinter(
     prefixIterator.flatMap { owner =>
       val prefixAfterRename = ownersAfterRename(owner)
       val ownerRename = indexedCtx.rename(owner)
-        ownerRename.foreach(rename => foundRenames += owner -> rename)
+      ownerRename.foreach(rename => foundRenames += owner -> rename)
       val currentRenamesSearchResult =
-        ownerRename.map(Found(owner, _, prefixAfterRename))
+      ownerRename.map(Found(owner, _, prefixAfterRename))
       lazy val configRenamesSearchResult =
-        renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
+        renameConfigMap.get(owner).map(_ => Missing(owner, StdNames.nme.NoSymbol, prefixAfterRename))
       currentRenamesSearchResult orElse configRenamesSearchResult
     }.nextOption
 
@@ -165,7 +165,7 @@ class ShortenedTypePrinter(
         case res: Found => res.toPrefixText
         case res: Missing =>
           val importSel =
-            if res.owner.name.toString == res.rename then
+            if res.owner.name == res.rename then
               ImportSel.Direct(res.owner)
             else ImportSel.Rename(res.owner, res.rename)
 
@@ -197,10 +197,11 @@ class ShortenedTypePrinter(
   }
 
   override protected def selectionString(tp: NamedType): String =
+
     indexedCtx.rename(tp.symbol) match
       case Some(value) =>
         foundRenames += tp.symbol -> value
-        value
+        value.decoded
       case None => super.selectionString(tp)
 
   override def toText(tp: Type): Text =

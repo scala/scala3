@@ -149,7 +149,7 @@ object NamedArgCompletions:
                 Some(symbol.owner)
               else Try(symbol.info.classSymbol).toOption
             ownerSymbol.map(sym =>
-              (name, IndexedContext(context.localContext(from, sym)))
+              (name, IndexedContext(sym.sourcePos)(using context.localContext(from, sym)))
             )
           case Apply(fun, _) => maybeNameAndIndexedContext(fun)
           case _ => None
