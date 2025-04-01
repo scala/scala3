@@ -3564,8 +3564,9 @@ object Parsers {
 
       def typeOrCapParam(): TypeDef =
         val start = in.offset
-        val mods = annotsAsMods() | Param
+        var mods = annotsAsMods() | Param
         if isCapKw then
+          mods |= CaptureParam
           in.nextToken()
           capParam(start, mods)
         else typeParam(start, mods)
