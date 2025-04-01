@@ -35,7 +35,6 @@ import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
 import dotty.tools.dotc.util.chaining.*
-import dotty.tools.dotc.config.Feature.ccEnabled
 
 object Parsers {
 
@@ -225,6 +224,15 @@ object Parsers {
     def isCapKw = Feature.ccEnabled && isIdent(nme.cap)
     // 'cap type' ?
     def isCapTypeKw = isCapKw && in.lookahead.token == TYPE
+    // Are the next two tokens 'cap type'?
+    def isCapTypeKwNext = {
+      if Feature.ccEnabled then
+        val lookahead = in.LookaheadScanner()
+        lookahead.nextToken()
+        val res = lookahead.isIdent(nme.cap) && lookahead.lookahead.token == TYPE
+        res
+      else false
+    }
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -232,6 +240,7 @@ object Parsers {
     def isNumericLit = numericLitTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
+    def isDclIntroNext = dclIntroTokens contains in.lookahead.token
     def isStatSeqEnd = in.isNestedEnd || in.token == EOF || in.token == RPAREN
     def mustStartStat = mustStartStatTokens contains in.token
 
@@ -1922,7 +1931,7 @@ object Parsers {
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
-      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then // TODO remove
+      else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
         atSpan(t.span.start):
           in.nextToken()
           if in.token == LBRACE
@@ -2179,13 +2188,19 @@ object Parsers {
      *    NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
      *    NameAndType       ::=  id ':' Type
      */
-    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] = //TOOD grammar doc
-      def withWildCard(gen: => Tree) =
+    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] = //TODO grammar doc
+      inline def wildCardCheck(inline gen: Tree): Tree =
         val t = gen
         if wildOK then t else rejectWildcardType(t)
 
-      def argType() = withWildCard(typ())
-      def argOrCapType() = withWildCard(if in.token == LBRACE then concreteCapsType(captureSet()) else typ())
+      def argType() = wildCardCheck:
+        typ()
+
+      def argOrCapType() = wildCardCheck:
+        if Feature.ccEnabled && in.token == LBRACE && !isDclIntroNext && !isCapTypeKwNext then // is this a capture set and not a refinement type?
+          // This case is ambiguous w.r.t. an Object literal {}. But since CC is enabled, we probably expect it to designate the empty set
+          concreteCapsType(captureSet())
+        else typ()
 
       def namedArgType() =
         atSpan(in.offset):
