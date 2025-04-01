@@ -229,8 +229,14 @@ object Parsers {
       if Feature.ccEnabled then
         val lookahead = in.LookaheadScanner()
         lookahead.nextToken()
-        val res = lookahead.isIdent(nme.cap) && lookahead.lookahead.token == TYPE
-        res
+        lookahead.isIdent(nme.cap) && lookahead.lookahead.token == TYPE
+      else false
+    }
+    def isCapAssignmentNext = {
+      if isCapKw then
+        val lookahead = in.LookaheadScanner()
+        lookahead.nextToken()
+        lookahead.isIdent && lookahead.lookahead.token == EQUALS
       else false
     }
     def isSimpleLiteral =
@@ -1614,7 +1620,7 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]
      *                |  [ { SimpleRef `.` } SimpleRef `.` ] id
      */
     def captureRef(): Tree =
@@ -1894,7 +1900,7 @@ object Parsers {
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
-     *             |  RefinedType `^`   // under capture checking
+     *             |  RefinedType `^`   -- under captureChecking
      */
     def infixType(inContextBound: Boolean = false): Tree = infixTypeRest(inContextBound)(refinedType())
 
@@ -2182,44 +2188,47 @@ object Parsers {
       atSpan(startOffset(t), startOffset(id)) { Select(t, id.name) }
     }
 
-    /**   ArgTypes          ::=  Type {`,' Type}
-     *                        |  NamedTypeArg {`,' NamedTypeArg}
-     *    NamedTypeArg      ::=  id `=' Type
+    /**   ArgTypes          ::=  TypeArg {‘,’ TypeArg}
+     *                        |  NamedTypeArg {‘,’ NamedTypeArg}
+     *    TypeArg           ::=  Type
+     *                       |   CaptureSet                       -- under captureChecking
+     *    NamedTypeArg      ::=  id ‘=’  Type
+     *                        |  ‘cap’ id ‘=’ CaptureSet          -- under captureChecking
      *    NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
-     *    NameAndType       ::=  id ':' Type
+     *    NameAndType       ::=  id ‘:’ Type
      */
-    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] = //TODO grammar doc
+    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] =
       inline def wildCardCheck(inline gen: Tree): Tree =
         val t = gen
         if wildOK then t else rejectWildcardType(t)
 
-      def argType() = wildCardCheck:
-        typ()
+      def argType() = wildCardCheck(typ())
 
-      def argOrCapType() = wildCardCheck:
+      def typeArg() = wildCardCheck:
         if Feature.ccEnabled && in.token == LBRACE && !isDclIntroNext && !isCapTypeKwNext then // is this a capture set and not a refinement type?
           // This case is ambiguous w.r.t. an Object literal {}. But since CC is enabled, we probably expect it to designate the empty set
           concreteCapsType(captureSet())
         else typ()
 
-      def namedArgType() =
+      def namedTypeArg() =
         atSpan(in.offset):
+          val isCap = if isCapKw then { in.nextToken(); true } else false
           val name = ident()
           accept(EQUALS)
-          NamedArg(name.toTypeName, argType())
+          NamedArg(name.toTypeName, if isCap then concreteCapsType(captureSet()) else argType())
 
-      def namedElem() =
+      def nameAndType() =
         atSpan(in.offset):
           val name = ident()
           acceptColon()
-          NamedArg(name, argType()) // TODO allow capsets here?
+          NamedArg(name, argType())
 
-      if namedOK && isIdent && in.lookahead.token == EQUALS then // TOOD support for named cap args
-          commaSeparated(() => namedArgType())
+      if namedOK && (isIdent && in.lookahead.token == EQUALS || isCapAssignmentNext) then
+        commaSeparated(() => namedTypeArg())
       else if tupleOK && isIdent && in.lookahead.isColon && sourceVersion.enablesNamedTuples then
-        commaSeparated(() => namedElem())
+        commaSeparated(() => nameAndType())
       else
-        commaSeparated(() => argOrCapType())
+        commaSeparated(() => typeArg())
     end argTypes
 
     def paramTypeOf(core: () => Tree): Tree =
@@ -3439,7 +3448,7 @@ object Parsers {
      *                  |  opaque
      *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased |
      *                     inline | transparent | infix |
-     *                     mut | cap                             -- under cc
+     *                     mut | cap                             -- under captureChecking
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -3529,20 +3538,24 @@ object Parsers {
     end typeOrTermParamClauses
 
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-     *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
-     *                         id [HkTypeParamClause] TypeAndCtxBounds
+     *  ClsTypeParam      ::=   {Annotation} [‘+’ | ‘-’]
+     *                          id [HkTypeParamClause] TypeAndCtxBounds
+     *                        | {Annotation} ‘cap’ id CaptureSetAndCtxBounds         -- under captureChecking
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-     *  DefTypeParam      ::=  {Annotation}
-     *                         id [HkTypeParamClause] TypeAndCtxBounds
+     *  DefTypeParam      ::=   {Annotation}
+     *                          id [HkTypeParamClause] TypeAndCtxBounds
+     *                        | {Annotation} ‘cap’ id CaptureSetAndCtxBounds         -- under captureChecking
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-     *  TypTypeParam      ::=  {Annotation}
-     *                         (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
+     *  TypTypeParam      ::=   {Annotation}
+     *                          (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
+     *                        | {Annotation} ‘cap’ (id | ‘_’) CaptureSetAndCtxBounds -- under captureChecking
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
-     *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’]
-     *                         (id | ‘_’) [HkTypePamClause] TypeBounds
+     *  HkTypeParam       ::=   {Annotation} [‘+’ | ‘-’]
+     *                          (id | ‘_’) [HkTypePamClause] TypeBounds
+     *                        | {Annotation} ‘cap’ (id | ‘_’) CaptureSetBounds       -- under captureChecking
      */
     def typeParamClause(paramOwner: ParamOwner): List[TypeDef] = inBracketsWithCommas {
 
@@ -3571,7 +3584,7 @@ object Parsers {
           capParam(start, mods)
         else typeParam(start, mods)
 
-      def capParam(startOffset: Int, mods0: Modifiers): TypeDef = { // TODO grammar doc
+      def capParam(startOffset: Int, mods0: Modifiers): TypeDef = {
         val start = startOffset
         var mods = mods0
         if paramOwner.isClass then
@@ -3964,7 +3977,7 @@ object Parsers {
      *             | var VarDef
      *             | def DefDef
      *             | type {nl} TypeDef
-     *             | cap type {nl} CapDef     -- under capture checking
+     *             | cap type {nl} CapDef     -- under captureChecking
      *             | TmplDef
      *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
      */
@@ -4198,7 +4211,7 @@ object Parsers {
     private def concreteCapsType(refs: List[Tree]): Tree =
       makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, tpnme.retains)
 
-    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSetOrRef]    -- under capture checking
+    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSetOrRef]    -- under captureChecking
      */
     def capDefOrDcl(start: Offset, mods: Modifiers): Tree =
       newLinesOpt()
@@ -4825,7 +4838,7 @@ object Parsers {
      *                     |  ‘var’ VarDef
      *                     |  ‘def’ DefDef
      *                     |  ‘type’ {nl} TypeDef
-     *                     |  ‘cap’ ‘type’ {nl} CapDef -- under capture checking
+     *                     |  ‘cap’ ‘type’ {nl} CapDef -- under captureChecking
      *  (in reality we admit class defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {

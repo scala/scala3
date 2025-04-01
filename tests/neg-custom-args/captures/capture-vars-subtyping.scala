@@ -7,8 +7,6 @@ def test[cap C] =
   val c: C = b
   val d: CapSet^{C, c} = a
 
-// TODO: make "CapSet-ness" of type variables somehow contagious?
-// Then we don't have to spell out the bounds explicitly...
 def testTrans[cap C, cap D <: {C}, cap E <: {D}, cap F >: {C}] =
   val d1: D = ???
   val d2: CapSet^{D} = d1
