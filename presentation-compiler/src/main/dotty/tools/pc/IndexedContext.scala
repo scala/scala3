@@ -116,11 +116,18 @@ object IndexedContext:
     val outer: IndexedContext = IndexedContext(ctx.outer)
     val names: Names = extractNames(ctx)
 
+
+    def isAccessibleFromSafe(sym: Symbol, site: Type): Boolean =
+      try sym.isAccessibleFrom(site, superAccess = false)(using ctx)
+      catch
+        case NonFatal(e) =>
+          false
+
     def findSymbol(name: String): Option[List[Symbol]] =
       names.symbols
         .get(name)
         .map(_.toList)
-        .orElse(outer.findSymbol(name))
+        .orElse(outer.findSymbol(name)).map(_.filter(sym => isAccessibleFromSafe(sym, ctx.importInfo.nn.site)))
 
     def scopeSymbols: List[Symbol] =
       val acc = Set.newBuilder[Symbol]
@@ -155,25 +162,15 @@ object IndexedContext:
   )
 
   private def extractNames(ctx: Context): Names =
-    def isAccessibleFromSafe(sym: Symbol, site: Type): Boolean =
-      try sym.isAccessibleFrom(site, superAccess = false)
-      catch
-        case NonFatal(e) =>
-          false
 
-    def accessibleSymbols(site: Type, tpe: Type)(using
+
+    def foundSymbols(site: Type, tpe: Type)(using
         Context
     ): List[Symbol] =
-      tpe.decls.toList.filter(sym => isAccessibleFromSafe(sym, site))
+      tpe.decls.toList
 
     def accesibleMembers(site: Type)(using Context): List[Symbol] =
       site.allMembers
-        .filter(denot =>
-          try isAccessibleFromSafe(denot.symbol, site)
-          catch
-            case NonFatal(e) =>
-              false
-        )
         .map(_.symbol)
         .toList
 
@@ -181,11 +178,11 @@ object IndexedContext:
         tpe: Type,
         filter: Symbol => Boolean = _ => true
     )(using Context): List[Symbol] =
-      val initial = accessibleSymbols(tpe, tpe).filter(filter)
+      val initial = foundSymbols(tpe, tpe).filter(filter)
       val fromPackageObjects =
         initial
           .filter(_.isPackageObject)
-          .flatMap(sym => accessibleSymbols(tpe, sym.thisType))
+          .flatMap(sym => foundSymbols(tpe, sym.thisType))
       initial ++ fromPackageObjects
 
     def fromImport(site: Type, name: Name)(using Context): List[Symbol] =
