@@ -48,26 +48,6 @@ def ccState(using Context): CCState =
 
 extension (tree: Tree)
 
-  /** Map tree with CaptureRef type to its type,
-   *  map CapSet^{refs} to the `refs` references,
-   *  throw IllegalCaptureRef otherwise
-   */
-  def toCaptureRefs(using Context): List[CaptureRef] = tree match
-    // case ReachCapabilityApply(arg) =>
-    //   arg.toCaptureRefs.map(_.reach)
-    // case ReadOnlyCapabilityApply(arg) =>
-    //   arg.toCaptureRefs.map(_.readOnly)
-    // case CapsOfApply(arg) =>
-    //   arg.toCaptureRefs
-    case _ => tree.tpe.dealiasKeepAnnots match
-      case ref: CaptureRef if ref.isTrackableRef =>
-        ref :: Nil
-      case AnnotatedType(parent, ann)
-      if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
-        ann.tree.toCaptureSet.elems.toList
-      case tpe =>
-        throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
-
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
    *  For efficience, the result is cached as an Attachment on the tree.
    */
@@ -75,13 +55,7 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs =
-          tree match
-            case Apply(_: TypeApply, _) =>
-              CaptureSet(tree.retainedSet.retainedElements*)
-            case _ =>
-              CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
-        // println(s"toCaptureSet: $tree -> $refs")
+        val refs = CaptureSet(tree.retainedSet.retainedElements*)
         tree.putAttachment(Captures, refs)
         refs
 

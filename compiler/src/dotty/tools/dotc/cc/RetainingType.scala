@@ -12,11 +12,9 @@ import Decorators.i
  */
 object RetainingType:
 
-  // def apply(tp: Type, refs: List[CaptureRef], byName: Boolean = false)(using Context): Type = ???
-
-  def apply(tp: Type, typeRefs: Type, byName: Boolean = false)(using Context): Type =
+  def apply(tp: Type, typeElems: Type, byName: Boolean = false)(using Context): Type =
     val annotCls = if byName then defn.RetainsByNameAnnot else defn.RetainsAnnot
-    val annotTree = New(AppliedType(annotCls.typeRef, typeRefs :: Nil), Nil)
+    val annotTree = New(AppliedType(annotCls.typeRef, typeElems :: Nil), Nil)
     AnnotatedType(tp, Annotation(annotTree))
 
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, Type)] =
