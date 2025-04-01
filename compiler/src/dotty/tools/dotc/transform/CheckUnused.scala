@@ -923,7 +923,7 @@ object CheckUnused:
       }
     def isEffectivelyPrivate: Boolean =
       sym.is(Private, butNot = ParamAccessor)
-      || sym.owner.isAnonymousClass && !sym.nextOverriddenSymbol.exists
+      || sym.owner.isAnonymousClass && !sym.is(Override) && !sym.nextOverriddenSymbol.exists
     // pick the symbol the user wrote for purposes of tracking
     inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
