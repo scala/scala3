@@ -38,7 +38,7 @@ object boundary:
   /** Labels are targets indicating which boundary will be exited by a `break`.
    */
   @implicitNotFound("explain=A Label is generated from an enclosing `scala.util.boundary` call.\nMaybe that boundary is missing?")
-  final class Label[-T]
+  final class Label[-T] extends caps.Control
 
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.
@@ -60,7 +60,7 @@ object boundary:
     val local = Label[T]()
     try body(using local)
     catch case ex: Break[T] @unchecked =>
-      if ex.label eq local then ex.value
+      if ex.isSameLabelAs(local) then ex.value
       else throw ex
 
 end boundary
