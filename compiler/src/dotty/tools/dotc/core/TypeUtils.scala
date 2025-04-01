@@ -127,6 +127,16 @@ class TypeUtils:
       case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
       case _ => false
 
+   /** Is this a type deriving only from transparent classes?
+     *  @param traitOnly  if true, all class symbols must be transparent traits
+     */
+    def isTransparent(traitOnly: Boolean = false)(using Context): Boolean = self match
+      case AndType(tp1, tp2) =>
+        tp1.isTransparent(traitOnly) && tp2.isTransparent(traitOnly)
+      case _ =>
+        val cls = self.underlyingClassRef(refinementOK = false).typeSymbol
+        cls.isTransparentClass && (!traitOnly || cls.is(Trait))
+
     /** The constructors of this type that are applicable to `argTypes`, without needing
      *  an implicit conversion. Curried constructors are always excluded.
      *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to

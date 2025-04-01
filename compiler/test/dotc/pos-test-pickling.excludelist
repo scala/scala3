@@ -141,3 +141,6 @@ hylolib
 
 # typecheckErrors method unpickling
 i21415.scala
+
+# LTS specific
+i21390.TrieMap.scala
