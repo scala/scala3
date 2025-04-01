@@ -536,6 +536,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     else
       val trefs =
         if refs.isEmpty then ref(defn.NothingType)
+        // TODO: choose a reduce direction
         else refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
       annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
       annot.putAttachment(RetainsAnnot, ())
