@@ -97,6 +97,8 @@ object Completion:
       else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
       else Mode.None // import scala.{util => u@@}
     case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
+    case untpd.InterpolatedString(_, untpd.Literal(Constants.Constant(_: String)) :: _) :: _ =>
+      Mode.Term | Mode.Scope
     case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
     case (ref: untpd.RefTree) :: _ =>
       val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
@@ -221,7 +223,17 @@ object Completion:
       // Ignore synthetic select from `This` because in code it was `Ident`
       // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
       case tpd.Select(qual @ tpd.This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions
-      case tpd.Select(qual, _) :: _               if qual.typeOpt.hasSimpleKind => completer.selectionCompletions(qual)
+      case tpd.Select(b @ tpd.Apply(c @ tpd.Select(d @ tpd.Select(_, StdNames.nme.StringContext), _), _), _) :: _ =>
+        Seq(b,c,d).foreach { tree =>
+          println("---------------------------")
+          println(tree)
+          println(tree.show)
+          println(completer.selectionCompletions(tree))
+        }
+        println(completer.scopeCompletions)
+        completer.scopeCompletions ++ completer.selectionCompletions(b)
+      case tpd.Select(qual, _) :: _               if qual.typeOpt.hasSimpleKind => 
+        completer.selectionCompletions(qual)
       case tpd.Select(qual, _) :: _                                             => Map.empty
       case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
       case _                                                                    => completer.scopeCompletions
