@@ -1620,7 +1620,7 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]  -- under captureChecking
      *                |  [ { SimpleRef `.` } SimpleRef `.` ] id
      */
     def captureRef(): Tree =
@@ -2292,7 +2292,7 @@ object Parsers {
       atSpan(in.offset):
         TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
-    /** CaptureSetBounds ::= [`>:' CaptureSetOrRef ] [`<:' CaptureSetOrRef ] --- under captureChecking
+    /** CaptureSetBounds ::= [`>:' CaptureSet ] [`<:' CaptureSet ] --- under captureChecking
      */
     def captureSetBounds(): TypeBoundsTree =
       atSpan(in.offset):
@@ -3973,13 +3973,13 @@ object Parsers {
       () => atSpan(in.offset) { importSelection(simpleRef()) }
     end importExpr
 
-    /** Def      ::= val PatDef
-     *             | var VarDef
-     *             | def DefDef
-     *             | type {nl} TypeDef
-     *             | cap type {nl} CapDef     -- under captureChecking
+    /** Def      ::= ‘val’ PatDef
+     *             | ‘var’ VarDef
+     *             | ‘def’ DefDef
+     *             | ‘type’ {nl} TypeDef
+     *             | ‘cap’ ‘type’ {nl} CapDef     -- under captureChecking
      *             | TmplDef
-     *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
+     *  EnumCase ::= ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree =
       in.token match {
@@ -4211,7 +4211,7 @@ object Parsers {
     private def concreteCapsType(refs: List[Tree]): Tree =
       makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refs, tpnme.retains)
 
-    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSetOrRef]    -- under captureChecking
+    /** CapDef ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSet]    -- under captureChecking
      */
     def capDefOrDcl(start: Offset, mods: Modifiers): Tree =
       newLinesOpt()
