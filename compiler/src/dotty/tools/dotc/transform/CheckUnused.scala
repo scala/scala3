@@ -614,6 +614,7 @@ object CheckUnused:
         || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
+        && !m.nextOverriddenSymbol.exists
         && !allowed
       then
         if m.isPrimaryConstructor then

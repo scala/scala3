@@ -42,7 +42,7 @@ object ExampleWithoutWith:
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None
 
-//absolving names on matches of quote trees requires consulting non-abstract types in QuotesImpl
+//nowarning names on matches of quote trees requires consulting non-abstract types in QuotesImpl
 object Unmatched:
   import scala.quoted.*
   def transform[T](e: Expr[T])(using Quotes): Expr[T] =
@@ -84,3 +84,18 @@ package givens:
   given namely: (x: X) => Y: // warn protected param to given class
     def doY = "8"
 end givens
+
+object i22895:
+  trait Test[F[_], Ev] {
+    def apply[A, B](fa: F[A])(f: A => B)(using ev: Ev): F[B]
+  }
+  given testId: Test[[a] =>> a, Unit] =
+    new Test[[a] =>> a, Unit] {
+      def apply[A, B](fa: A)(f: A => B)(using ev: Unit): B = f(fa) // nowarn override
+    }
+  class C:
+    def f(using s: String) = s.toInt
+  class D(i: Int) extends C:
+    override def f(using String) = compute(i) // nowarn override
+    def g(using sss: String) = compute(i) // warn
+    def compute(i: Int) = i * 42 // returning a class param is deemed trivial, make it non-trivial
