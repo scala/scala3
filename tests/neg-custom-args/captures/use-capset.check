@@ -1,17 +1,17 @@
--- Error: tests/neg-custom-args/captures/use-capset.scala:5:49 ---------------------------------------------------------
-5 |private def g[C^] = (xs: List[Object^{C}]) => xs.head // error
-  |                                              ^^^^^^^
-  |                                              Capture set parameter C leaks into capture scope of method g.
-  |                                              To allow this, the type C should be declared with a @use annotation
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:11:22 -----------------------------------
-11 |  val _: () -> Unit = h // error: should be ->{io}
+-- Error: tests/neg-custom-args/captures/use-capset.scala:6:52 ---------------------------------------------------------
+6 |private def g[cap C] = (xs: List[Object^{C}]) => xs.head // error
+  |                                                 ^^^^^^^
+  |                                               Capture set parameter C leaks into capture scope of method g.
+  |                                               To allow this, the type C should be declared with a @use annotation
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:12:22 -----------------------------------
+12 |  val _: () -> Unit = h // error: should be ->{io}
    |                      ^
    |                      Found:    (h : () ->{io} Unit)
    |                      Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:13:50 -----------------------------------
-13 |  val _: () -> List[Object^{io}] -> Object^{io} = h2 // error, should be ->{io}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:14:50 -----------------------------------
+14 |  val _: () -> List[Object^{io}] -> Object^{io} = h2 // error, should be ->{io}
    |                                                  ^^
    |                                             Found:    (h2 : () ->? List[box Object^{io}]^{} ->{io} Object^{io})
    |                                             Required: () -> List[box Object^{io}] -> Object^{io}

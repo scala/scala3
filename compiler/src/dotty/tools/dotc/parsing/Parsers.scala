@@ -2278,15 +2278,10 @@ object Parsers {
         inBraces(refineStatSeq())
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
-     *              |  `^`                     -- under captureChecking TODO remove
      */
     def typeBounds(): TypeBoundsTree =
       atSpan(in.offset):
-        if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
-          in.nextToken()
-          makeCapsBound()
-        else
-          TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
+        TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
     /** CaptureSetBounds ::= [`>:' CaptureSetOrRef ] [`<:' CaptureSetOrRef ] --- under captureChecking
      */
@@ -3568,14 +3563,16 @@ object Parsers {
           in.nextToken()
 
       def typeOrCapParam(): TypeDef =
+        val start = in.offset
+        val mods = annotsAsMods() | Param
         if isCapKw then
           in.nextToken()
-          capParam()
-        else typeParam()
+          capParam(start, mods)
+        else typeParam(start, mods)
 
-      def capParam(): TypeDef = {
-        val start = in.offset
-        var mods = annotsAsMods() | Param
+      def capParam(startOffset: Int, mods0: Modifiers): TypeDef = { // TODO grammar doc
+        val start = startOffset
+        var mods = mods0
         if paramOwner.isClass then
           mods |= PrivateLocal
         ensureNoVariance() // TODO: in the future, we might want to support variances on capture params, ruled out for now
@@ -3594,9 +3591,9 @@ object Parsers {
         }
       }
 
-      def typeParam(): TypeDef = {
-        val start = in.offset
-        var mods = annotsAsMods() | Param
+      def typeParam(startOffset: Int, mods0: Modifiers): TypeDef = {
+        val start = startOffset
+        var mods = mods0
         if paramOwner.isClass then
           mods |= PrivateLocal
         if isIdent(nme.raw.PLUS) && checkVarianceOK() then

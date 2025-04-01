@@ -1,8 +1,8 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-poly-2.scala:14:19 ------------------------------------
-14 |    f[CapSet^{c1}](d) // error
-   |                   ^
-   |                   Found:    (d : Test.D^)
-   |                   Required: Test.D^{c1}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-poly-2.scala:14:12 ------------------------------------
+14 |    f[{c1}](d) // error
+   |            ^
+   |            Found:    (d : Test.D^)
+   |            Required: Test.D^{c1}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-poly-2.scala:16:20 ------------------------------------

@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import caps.*
 
-def test[C^] =
+def test[cap C] =
   val a: C = ???
   val b: CapSet^{C} = a
   val c: C = b
@@ -9,7 +9,7 @@ def test[C^] =
 
 // TODO: make "CapSet-ness" of type variables somehow contagious?
 // Then we don't have to spell out the bounds explicitly...
-def testTrans[C^, D >: CapSet <: C, E >: CapSet <: D, F >: C <: CapSet^] =
+def testTrans[cap C, cap D <: {C}, cap E <: {D}, cap F >: {C}] =
   val d1: D = ???
   val d2: CapSet^{D} = d1
   val d3: D = d2
@@ -35,14 +35,14 @@ trait A[+T]
 
 trait B[-C]
 
-def testCong[C^, D^] =
+def testCong[cap C, cap D] =
   val a: A[C] = ???
-  val b: A[CapSet^{C}] = a
-  val c: A[CapSet^{D}] = a // error
-  val d: A[CapSet^{C,D}] = a
+  val b: A[{C}] = a
+  val c: A[{D}] = a // error
+  val d: A[{C,D}] = a
   val e: A[C] = d // error
   val f: B[C] = ???
-  val g: B[CapSet^{C}] = f
+  val g: B[{C}] = f
   val h: B[C] = g
-  val i: B[CapSet^{C,D}] = h // error
+  val i: B[{C,D}] = h // error
   val j: B[C] = i
