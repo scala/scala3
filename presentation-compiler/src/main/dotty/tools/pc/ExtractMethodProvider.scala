@@ -51,7 +51,7 @@ final class ExtractMethodProvider(
     given locatedCtx: Context =
       val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
       Interactive.contextOfPath(path)(using newctx)
-    val indexedCtx = IndexedContext(locatedCtx)
+    val indexedCtx = IndexedContext(pos)(using locatedCtx)
     val printer =
       ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedCtx)
     def prettyPrint(tpe: Type) =

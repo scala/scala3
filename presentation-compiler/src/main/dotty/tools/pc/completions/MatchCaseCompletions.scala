@@ -147,7 +147,7 @@ object CaseKeywordCompletion:
             definitions.NullClass,
             definitions.NothingClass,
           )
-          val tpes = Set(selectorSym, selectorSym.companion)
+          val tpes = Set(selectorSym, selectorSym.companion).filter(_ != NoSymbol)
           def isSubclass(sym: Symbol) = tpes.exists(par => sym.isSubClass(par))
 
           def visit(symImport: SymbolImport): Unit =
@@ -174,8 +174,9 @@ object CaseKeywordCompletion:
 
           indexedContext.scopeSymbols
             .foreach(s =>
-              val ts = s.info.deepDealias.typeSymbol
-              if isValid(ts) then visit(autoImportsGen.inferSymbolImport(ts))
+              val ts = if s.is(Flags.Module) then s.info.typeSymbol else s.dealiasType
+              if isValid(ts) then
+                visit(autoImportsGen.inferSymbolImport(ts))
             )
           // Step 2: walk through known subclasses of sealed types.
           val sealedDescs = subclassesForType(
@@ -185,6 +186,7 @@ object CaseKeywordCompletion:
             val symbolImport = autoImportsGen.inferSymbolImport(sym)
             visit(symbolImport)
           }
+
           val res = result.result().flatMap {
             case si @ SymbolImport(sym, name, importSel) =>
               completionGenerator.labelForCaseMember(sym, name.value).map {
@@ -293,7 +295,6 @@ object CaseKeywordCompletion:
 
     val (labels, imports) =
       sortedSubclasses.map((si, label) => (label, si.importSel)).unzip
-
     val (obracket, cbracket) = if noIndent then (" {", "}") else ("", "")
     val basicMatch = CompletionValue.MatchCompletion(
       "match",

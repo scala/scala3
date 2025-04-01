@@ -107,7 +107,7 @@ class CompletionProvider(
 
 
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(locatedCtx)
+        val indexedCtx = IndexedContext(pos)(using locatedCtx)
 
         val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
 
@@ -222,7 +222,6 @@ class CompletionProvider(
       if config.isDetailIncludedInLabel then completion.labelWithDescription(printer)
       else completion.label
     val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
-
     lazy val isInStringInterpolation =
       path match
         // s"My name is $name"

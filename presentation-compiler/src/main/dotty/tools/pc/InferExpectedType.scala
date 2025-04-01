@@ -51,7 +51,7 @@ class InferExpectedType(
           )
         val locatedCtx =
           Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(locatedCtx)
+        val indexedCtx = IndexedContext(pos)(using locatedCtx)
         val printer =
           ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedCtx)
         InterCompletionType.inferType(path)(using newctx).map{

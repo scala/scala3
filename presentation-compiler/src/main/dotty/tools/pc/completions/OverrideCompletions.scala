@@ -191,7 +191,7 @@ object OverrideCompletions:
               template :: path
             case path => path
 
-        val indexedContext = IndexedContext(
+        val indexedContext = IndexedContext(pos)(using
           Interactive.contextOfPath(path)(using newctx)
         )
         import indexedContext.ctx

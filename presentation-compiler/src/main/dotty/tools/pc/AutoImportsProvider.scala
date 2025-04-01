@@ -44,8 +44,8 @@ final class AutoImportsProvider(
     val path =
       Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
 
-    val indexedContext = IndexedContext(
-      Interactive.contextOfPath(path)(using newctx)
+    val indexedContext = IndexedContext(pos)(
+      using Interactive.contextOfPath(path)(using newctx)
     )
     import indexedContext.ctx
 
@@ -96,7 +96,7 @@ final class AutoImportsProvider(
                 text,
                 tree,
                 unit.comments,
-                indexedContext.importContext,
+                indexedContext,
                 config
               )
             (sym: Symbol) => generator.forSymbol(sym)
