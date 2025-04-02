@@ -590,7 +590,7 @@ object CheckUnused:
       end checkExplicit
       // begin
       if !infos.skip(m)
-        && !m.nextOverriddenSymbol.exists
+        && !m.isEffectivelyOverride
         && !allowed
       then
         checkExplicit()
@@ -614,7 +614,7 @@ object CheckUnused:
         || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
-        && !m.nextOverriddenSymbol.exists
+        && !m.isEffectivelyOverride
         && !allowed
       then
         if m.isPrimaryConstructor then
@@ -924,7 +924,9 @@ object CheckUnused:
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
     def isEffectivelyPrivate(using Context): Boolean =
       sym.is(Private, butNot = ParamAccessor)
-      || sym.owner.isAnonymousClass && !sym.is(Override) && !sym.nextOverriddenSymbol.exists
+      || sym.owner.isAnonymousClass && !sym.isEffectivelyOverride
+    def isEffectivelyOverride(using Context): Boolean =
+      sym.is(Override) || sym.nextOverriddenSymbol.exists
     // pick the symbol the user wrote for purposes of tracking
     inline def userSymbol(using Context): Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
