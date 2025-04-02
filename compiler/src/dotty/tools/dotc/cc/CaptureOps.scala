@@ -674,14 +674,6 @@ trait FollowAliasesMap(using Context) extends TypeMap:
 //     case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
 //     case _ => None
 
-/** An extractor for `caps.capsOf[X]`, which is used to express a generic capture set
- *  as a tree in a @retains annotation.
- */
-object CapsOfApply:
-  def unapply(tree: TypeApply)(using Context): Option[Tree] = tree match
-    case TypeApply(capsOf, arg :: Nil) if capsOf.symbol == defn.Caps_capsOf => Some(arg)
-    case _ => None
-
 abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =
     assert(tp.isTrackableRef, i"not a trackable ref: $tp")

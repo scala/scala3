@@ -2,7 +2,7 @@ package scala.annotation
 
 /** An annotation that indicates capture of a set of references under capture checking.
  *
- *      T @retains(x, y, z)
+ *      T @retains[x.type | y.type | z.type]
  *
  *  is the internal representation used for the capturing type
  *
@@ -14,7 +14,7 @@ package scala.annotation
 @experimental
 class retains[Elems] extends annotation.StaticAnnotation
 
-/** Equivalent in meaning to `@retains(cap)`, but consumes less bytecode.
+/** Equivalent in meaning to `@retains[cap.type]`, but consumes less bytecode.
  */
 @experimental
 class retainsCap extends annotation.StaticAnnotation

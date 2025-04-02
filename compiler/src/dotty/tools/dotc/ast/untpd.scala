@@ -542,9 +542,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       annot.putAttachment(RetainsAnnot, ())
     Annotated(parent, annot)
 
-  def makeCapsOf(tp: RefTree)(using Context): Tree =
-    TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
-
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
 

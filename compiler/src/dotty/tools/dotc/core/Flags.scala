@@ -380,6 +380,8 @@ object Flags {
   /** Tracked modifier for class parameter / a class with some tracked parameters */
   val (Tracked @ _, _, Dependent @ _) = newFlags(46, "tracked")
 
+  val (CaptureParam @ _, _, _) = newFlags(47, "capture-param")
+
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
@@ -449,7 +451,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased, CaptureParam)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
@@ -469,7 +471,7 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessor,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
-    OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
+    OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked, CaptureParam,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
     SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
 
