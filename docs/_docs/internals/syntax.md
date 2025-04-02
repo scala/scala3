@@ -141,7 +141,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  opaque  open  throws tracked transparent  using  |  *  +  -
+as  cap  derives  end  erased  extension  infix  inline  mut  opaque  open  throws tracked transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -182,7 +182,9 @@ Type              ::=  FunType
                     |  MatchType
                     |  InfixType
 FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods, erasedParams)
-                    |  TypTypeParamClause '=>' Type                             PolyFunction(ps, t)
+                    |  FunTypeArgs (‘->’ | ‘?->’) [CaptureSet] Type             -- under pureFunctions and captureChecking
+                    |  TypTypeParamClause ‘=>’ Type                             PolyFunction(ps, t)
+                    |  TypTypeParamClause ‘->’ [CaptureSet] Type                -- under pureFunctions and captureChecking
 FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
@@ -190,7 +192,9 @@ FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  [`erased`] id ‘:’ Type
 MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
+                    |  RefinedType ‘^’                                          -- under captureChecking
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
+                    |  AnnotType {[nl] Refinement} [‘^’ CaptureSet]             -- under captureChecking
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 AnnotType1        ::=  SimpleType1 {Annotation}                                 Annotated(t, annot)
 
@@ -210,8 +214,10 @@ Singleton         ::=  SimpleRef
                     |  Singleton ‘.’ id
 FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
+                    |  ‘->’ [CaptureSet] Type                                   -- under captureChecking
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
+                    |  ‘->’ [CaptureSet] ParamValueType                         -- under captureChecking
 ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
                     |  IntoType
                     |  ‘(’ IntoType ‘)’ ‘*’                                     PostfixOp(t, "*")
@@ -219,7 +225,7 @@ IntoType          ::=  [‘into’] IntoTargetType                              
                     |  ‘(’ IntoType ‘)’
 IntoTargetType    ::=  Type
                     |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
-TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
+TypeArgs          ::=  ‘[’ TypeArg {‘,’ TypeArg} ‘]’                            ts
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]                           ContextBounds(typeBounds, tps)
@@ -228,8 +234,15 @@ ContextBounds     ::=  ContextBound
                     |  '{' ContextBound {',' ContextBound} '}'
 ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
+TypeArg           ::=  Type
+                    |  CaptureSet                                               -- under captureChecking
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
+CaptureSet             ::=  ‘{’ CaptureRef {‘,’ CaptureRef} ‘}’                 -- under captureChecking
+CaptureRef             ::=  { SimpleRef ‘.’ } SimpleRef [‘*’] [‘.’ ‘rd’]        -- under captureChecking
+                         |  [ { SimpleRef ‘.’ } SimpleRef ‘.’ ] id              -- under captureChecking
+CaptureSetBounds       ::=  [‘>:’ CaptureSet ] [‘<:’ CaptureSet ]               -- under captureChecking
+CaptureSetAndCtxBounds ::=  CaptureSetBounds [‘:’ ContextBounds]                -- under captureChecking
 ```
 
 ### Expressions
@@ -365,16 +378,20 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                 TypeDef(Modifiers, name, tparams, bounds)
                        id [HkTypeParamClause] TypeAndCtxBounds                  Bound(below, above, context)
+                    |  {Annotation} ‘cap’ id CaptureSetAndCtxBounds             -- under captureChecking
 
 DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
 DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
+                    |  {Annotation} ‘cap’ id CaptureSetAndCtxBounds             -- under captureChecking
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeBounds
+                    |  {Annotation} ‘cap’ id CaptureSetAndCtxBounds             -- under captureChecking
 
 HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
 HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id  | ‘_’) [HkTypeParamClause]
                        TypeBounds
+                    |  {Annotation} ‘cap’ id CaptureSetAndCtxBounds             -- under captureChecking
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
@@ -419,6 +436,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘infix’
                     |  ‘erased’
                     |  ‘tracked’
+                    |  ‘mut’                                                      -- under captureChecking
+                    |  ‘cap’                                                      -- under captureChecking
 
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
@@ -448,6 +467,7 @@ RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘var’ ValDcl
                     |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDef
+                    |  ‘cap’ ‘type’ {nl} CapDef                                 -- under captureChecking
 ValDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
 
@@ -455,6 +475,7 @@ Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
                     |  ‘def’ DefDef
                     |  ‘type’ {nl} TypeDef
+                    |  ‘cap’ ‘type’ {nl} CapDef                                 -- under captureChecking
                     |  TmplDef
 PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
                     |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
@@ -463,6 +484,7 @@ DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                     
 DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
 TypeDef           ::=  id [HkTypeParamClause] {FunParamClause} TypeAndCtxBounds   TypeDefTree(_, name, tparams, bound
                        [‘=’ Type]
+CapDef            ::=  id CaptureSetAndCtxBounds [‘=’ CaptureSet]               -- under captureChecking
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef

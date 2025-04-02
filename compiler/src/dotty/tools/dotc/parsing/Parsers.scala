@@ -220,11 +220,11 @@ object Parsers {
     def isErased = isIdent(nme.erased) && in.erasedEnabled
     // Are we seeing an `erased` soft keyword that will not be an identifier?
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
-    // Are we seeing a `cap` soft keyword for declaring a capture-set member or at the beginning a capture-variable parameter list?
+    // Are we seeing a `cap` soft keyword for declaring a capture-set member or a capture-variable parameter?
     def isCapKw = Feature.ccEnabled && isIdent(nme.cap)
-    // 'cap type' ?
+    // Are we seeing 'cap type' ?
     def isCapTypeKw = isCapKw && in.lookahead.token == TYPE
-    // Are the next two tokens 'cap type'?
+    // Are the next two tokens after the current 'cap type'?
     def isCapTypeKwNext = {
       if Feature.ccEnabled then
         val lookahead = in.LookaheadScanner()
@@ -232,6 +232,7 @@ object Parsers {
         lookahead.isIdent(nme.cap) && lookahead.lookahead.token == TYPE
       else false
     }
+    // Are we seeing a named cap parameter assignment? `'cap' id '='` (under namedTypeArguments)
     def isCapAssignmentNext = {
       if isCapKw then
         val lookahead = in.LookaheadScanner()
@@ -1620,8 +1621,8 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]  -- under captureChecking
-     *                |  [ { SimpleRef `.` } SimpleRef `.` ] id
+    /** CaptureRef  ::=  { SimpleRef ‘.’ } SimpleRef [‘*’] [‘.’ ‘rd’] -- under captureChecking
+     *                |  [ { SimpleRef ‘.’ } SimpleRef ‘.’ ] id
      */
     def captureRef(): Tree =
 
@@ -1645,7 +1646,7 @@ object Parsers {
       recur(simpleRef())
     end captureRef
 
-    /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
+    /**  CaptureSet ::=  ‘{’ CaptureRef {‘,’ CaptureRef} ‘}’    -- under captureChecking
      */
     def captureSet(): List[Tree] = inBraces {
       if in.token == RBRACE then Nil else commaSeparated(captureRef)
@@ -1663,9 +1664,9 @@ object Parsers {
      *                   |  InfixType
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions
+     *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions and captureChecking
      *  PolyFunType    ::=  TypTypeParamClause '=>' Type
-     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
+     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions and captureChecking
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
@@ -2192,8 +2193,8 @@ object Parsers {
      *                        |  NamedTypeArg {‘,’ NamedTypeArg}
      *    TypeArg           ::=  Type
      *                       |   CaptureSet                       -- under captureChecking
-     *    NamedTypeArg      ::=  id ‘=’  Type
-     *                        |  ‘cap’ id ‘=’ CaptureSet          -- under captureChecking
+     *    NamedTypeArg      ::=  id ‘=’  Type                     -- under namedTypeArguments
+     *                        |  ‘cap’ id ‘=’ CaptureSet          -- under namedTypeArguments and captureChecking
      *    NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
      *    NameAndType       ::=  id ‘:’ Type
      */
@@ -2272,7 +2273,7 @@ object Parsers {
           PostfixOp(t, Ident(tpnme.raw.STAR))
       else t
 
-    /** TypeArgs      ::= `[' Type {`,' Type} `]'
+    /** TypeArgs      ::= `[' TypeArg {`,' TypeArg} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
     def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] =
@@ -3540,22 +3541,22 @@ object Parsers {
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
      *  ClsTypeParam      ::=   {Annotation} [‘+’ | ‘-’]
      *                          id [HkTypeParamClause] TypeAndCtxBounds
-     *                        | {Annotation} ‘cap’ id CaptureSetAndCtxBounds         -- under captureChecking
+     *                      |   {Annotation} ‘cap’ id CaptureSetAndCtxBounds         -- under captureChecking
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
      *  DefTypeParam      ::=   {Annotation}
      *                          id [HkTypeParamClause] TypeAndCtxBounds
-     *                        | {Annotation} ‘cap’ id CaptureSetAndCtxBounds         -- under captureChecking
+     *                      |   {Annotation} ‘cap’ id CaptureSetAndCtxBounds         -- under captureChecking
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=   {Annotation}
      *                          (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
-     *                        | {Annotation} ‘cap’ (id | ‘_’) CaptureSetAndCtxBounds -- under captureChecking
+     *                      |   {Annotation} ‘cap’ (id | ‘_’) CaptureSetAndCtxBounds -- under captureChecking
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=   {Annotation} [‘+’ | ‘-’]
      *                          (id | ‘_’) [HkTypePamClause] TypeBounds
-     *                        | {Annotation} ‘cap’ (id | ‘_’) CaptureSetBounds       -- under captureChecking
+     *                      |   {Annotation} ‘cap’ (id | ‘_’) CaptureSetBounds       -- under captureChecking
      */
     def typeParamClause(paramOwner: ParamOwner): List[TypeDef] = inBracketsWithCommas {
 
