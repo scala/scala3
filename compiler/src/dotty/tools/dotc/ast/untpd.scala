@@ -542,9 +542,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       annot.putAttachment(RetainsAnnot, ())
     Annotated(parent, annot)
 
-  def makeCapsOf(tp: RefTree)(using Context): Tree =
-    TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
-
   // Capture set variable `[C^]` becomes: `[C >: CapSet <: CapSet^{cap}]`
   def makeCapsBound()(using Context): TypeBoundsTree =
     TypeBoundsTree(

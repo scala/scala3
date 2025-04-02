@@ -317,4 +317,17 @@ object NamerOps:
             ann.tree match
               case ast.tpd.WitnessNamesAnnot(witnessNames) =>
                 addContextBoundCompanionFor(sym, witnessNames, Nil)
+
+  /** Add a dummy term symbol for a type def that has capture parameter flag.
+   *  The dummy symbol has the same name as the original type symbol and is stable.
+   *
+   *  @param param the original type symbol of the capture parameter
+   */
+  def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
+    val name = param.name.toTermName
+    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam | StableRealizable | Synthetic
+    val dummy = newSymbol(param.owner, name, flags, param.typeRef)
+    typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
+    ctx.enter(dummy)
+
 end NamerOps
