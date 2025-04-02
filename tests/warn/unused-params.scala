@@ -122,7 +122,7 @@ trait BadMix { self: InterFace =>
     a
   }
   override def call(a: Int,
-                    XXXX: String,               // warn no longer excused because required by superclass
+                    XXXX: String, // no warn still excused because override (required by self type)
                     c: Double): Int = {
     println(c)
     a
@@ -134,6 +134,14 @@ trait BadMix { self: InterFace =>
 
   def i(implicit s: String) = answer           // warn
 }
+
+trait ImplFace:
+  self: InterFace =>
+  def call(a: Int,
+           b: String, // no warn required by self type
+           c: Double): Int =
+    println(c)
+    a
 
 class Unequal {
   override def equals(other: Any) = toString.nonEmpty   // no warn (override)

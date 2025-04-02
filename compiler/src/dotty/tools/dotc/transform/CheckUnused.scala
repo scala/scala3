@@ -926,7 +926,13 @@ object CheckUnused:
       sym.is(Private, butNot = ParamAccessor)
       || sym.owner.isAnonymousClass && !sym.isEffectivelyOverride
     def isEffectivelyOverride: Boolean =
-      sym.is(Override) || sym.allOverriddenSymbols.hasNext
+      sym.is(Override)
+      ||
+      sym.canMatchInheritedSymbols && { // inline allOverriddenSymbols using owner.info or thisType
+        val owner = sym.owner.asClass
+        val base = if owner.classInfo.selfInfo != NoType then owner.thisType else owner.info
+        base.baseClasses.drop(1).iterator.exists(sym.overriddenSymbol(_).exists)
+      }
     // pick the symbol the user wrote for purposes of tracking
     inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
