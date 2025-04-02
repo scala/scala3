@@ -892,43 +892,43 @@ object CheckUnused:
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
     inline def isWildcard: Boolean = nm == nme.WILDCARD || nm.is(WildcardParamName)
 
-  extension (tp: Type)
-    def importPrefix(using Context): Type = tp match
+  extension (tp: Type)(using Context)
+    def importPrefix: Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.superType.normalizedPrefix
       case _ => NoType
-    def underlyingPrefix(using Context): Type = tp match
+    def underlyingPrefix: Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.underlying.underlyingPrefix
       case _ => NoType
-    def skipPackageObject(using Context): Type =
+    def skipPackageObject: Type =
       if tp.typeSymbol.isPackageObject then tp.underlyingPrefix else tp
-    def underlying(using Context): Type = tp match
+    def underlying: Type = tp match
       case tp: TypeProxy => tp.underlying
       case _ => tp
 
   private val serializationNames: Set[TermName] =
     Set("readResolve", "readObject", "readObjectNoData", "writeObject", "writeReplace").map(termName(_))
 
-  extension (sym: Symbol)
-    def isSerializationSupport(using Context): Boolean =
+  extension (sym: Symbol)(using Context)
+    def isSerializationSupport: Boolean =
       sym.is(Method) && serializationNames(sym.name.toTermName) && sym.owner.isClass
         && sym.owner.derivesFrom(defn.JavaSerializableClass)
-    def isCanEqual(using Context): Boolean =
+    def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
-    def isMarkerTrait(using Context): Boolean =
+    def isMarkerTrait: Boolean =
       sym.isClass && sym.info.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
-    def isEffectivelyPrivate(using Context): Boolean =
+    def isEffectivelyPrivate: Boolean =
       sym.is(Private, butNot = ParamAccessor)
       || sym.owner.isAnonymousClass && !sym.isEffectivelyOverride
-    def isEffectivelyOverride(using Context): Boolean =
+    def isEffectivelyOverride: Boolean =
       sym.is(Override) || sym.nextOverriddenSymbol.exists
     // pick the symbol the user wrote for purposes of tracking
-    inline def userSymbol(using Context): Symbol=
+    inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
 
   extension (sel: ImportSelector)
@@ -942,13 +942,13 @@ object CheckUnused:
       case untpd.Ident(nme.WILDCARD) => true
       case _ => false
 
-  extension (imp: Import)
+  extension (imp: Import)(using Context)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
-    def isPrimaryClause(using Context): Boolean =
+    def isPrimaryClause: Boolean =
       imp.srcPos.span.pointDelta > 0 // primary clause starts at `import` keyword with point at clause proper
 
     /** Generated import of cases from enum companion. */
-    def isGeneratedByEnum(using Context): Boolean =
+    def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
 
     /** Under -Wunused:strict-no-implicit-warn, avoid false positives
@@ -956,7 +956,7 @@ object CheckUnused:
      *  specifically does import an implicit.
      *  Similarly, import of CanEqual must not warn, as it is always witness.
      */
-    def isLoose(sel: ImportSelector)(using Context): Boolean =
+    def isLoose(sel: ImportSelector): Boolean =
       if ctx.settings.WunusedHas.strictNoImplicitWarn then
         if sel.isWildcard
           || imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isOneOf(GivenOrImplicit))
