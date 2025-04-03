@@ -156,6 +156,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
       }
     }
+
+    final override def toString: String = sourceFiles match {
+      case Array(f) => f.getPath
+      case _        => outDir.getPath.stripPrefix(defaultOutputDir).stripPrefix(name).stripPrefix("/")
+    }
   }
 
   /** A group of files that may all be compiled together, with the same flags
@@ -170,8 +175,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     decompilation: Boolean = false
   ) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
-
-    override def toString() = sourceFiles match { case Array(f) => f.getPath case _ => outDir.getPath }
   }
 
   /** A test source whose files will be compiled separately according to their
