@@ -124,6 +124,7 @@ private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})
 private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
 private val directiveJavacOptions = raw"//> using javacOpt (.*)".r.unanchored
 private val directiveTargetOptions = raw"//> using target.platform (jvm|scala-js)".r.unanchored
+private val directiveUnsupported = raw"//> using (scala) (.*)".r.unanchored
 private val directiveUnknown = raw"//> using (.*)".r.unanchored
 
 // Inspect the lines for compiler options of the form
@@ -141,6 +142,7 @@ def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,S
     case directiveOptionsArg(args) => List(("scalac", args))
     case directiveJavacOptions(args) => List(("javac", args))
     case directiveTargetOptions(platform) => List(("target", platform))
+    case directiveUnsupported(name, args) => Nil
     case directiveUnknown(rest) => sys.error(s"Unknown directive: `//> using ${CommandLineParser.tokenize(rest).headOption.getOrElse("''")}`${filename.fold("")(f => s" in file $f")}")
     case _ => Nil
   }
