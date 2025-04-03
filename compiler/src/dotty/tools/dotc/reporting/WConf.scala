@@ -134,7 +134,7 @@ object WConf:
       if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
       else Right(WConf(configs))
 
-class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, end: Int, val verbose: Boolean):
+class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
   private[this] var _used = false
   def used: Boolean = _used
   def markUsed(): Unit = { _used = true }
