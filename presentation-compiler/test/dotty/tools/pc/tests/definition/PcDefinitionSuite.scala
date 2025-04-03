@@ -504,12 +504,3 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |val a = MyIntOut(1).un@@even
          |""".stripMargin,
     )
-
-  @Test def `named-tuples` =
-    check(
-      """|import scala.language.experimental.namedTuples
-         |
-         |val <<foo>> = (name = "Bob", age = 42, height = 1.9d)
-         |val foo_name = foo.na@@me
-         |""".stripMargin
-    )

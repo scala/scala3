@@ -203,20 +203,6 @@ object MetalsInteractive:
           case _ =>
             Nil
 
-      // Handle select on named tuples
-      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
-        if fun.symbol.exists && fun.symbol.name == nme.apply &&
-            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
-        def getIndex(t: Tree): Option[Type] =
-          t.tpe.dealias match
-            case AppliedType(_, args) => args.get(i)
-            case _ => None
-        val name = getIndex(t1) match
-          case Some(c: ConstantType) => c.value.stringValue
-          case _ => ""
-        val tpe = getIndex(t2).getOrElse(NoType)
-        List((ddef.symbol, tpe, Some(name)))
-
       case path @ head :: tail =>
         if head.symbol.is(Exported) then
           val sym = head.symbol.sourceSymbol

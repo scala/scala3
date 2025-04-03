@@ -107,7 +107,7 @@ object HoverProvider:
         case (symbol, tpe, _) :: _
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer, contentType)
-        case symbolTpes @ ((symbol, tpe, None) :: _) =>
+        case symbolTpes @ ((symbol, tpe, _) :: _) =>
           val exprTpw = tpe.widenTermRefExpr.deepDealias
           val hoverString =
             tpw match
@@ -153,21 +153,6 @@ object HoverProvider:
             case _ =>
               ju.Optional.empty().nn
           end match
-        case (_, tpe, Some(namedTupleArg)) :: _ =>
-          val exprTpw = tpe.widenTermRefExpr.deepDealias
-          printer.expressionType(exprTpw) match
-            case Some(tpe) =>
-              ju.Optional.of(
-                new ScalaHover(
-                  expressionType = Some(tpe),
-                  symbolSignature = Some(s"$namedTupleArg: $tpe"),
-                  docstring = None,
-                  forceExpressionType = false,
-                  contextInfo = printer.getUsedRenamesInfo,
-                  contentType = contentType
-                )
-              ).nn
-            case _ => ju.Optional.empty().nn
       end match
     end if
   end hover
@@ -183,7 +168,7 @@ object HoverProvider:
     case SelectDynamicExtractor(sel, n, name, rest) =>
       def findRefinement(tp: Type): Option[HoverSignature] =
         tp match
-          case RefinedType(_, refName, tpe) if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
+          case RefinedType(_, refName, tpe) if name == refName.toString() =>
             val resultType =
               rest match
                 case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
@@ -196,8 +181,7 @@ object HoverProvider:
               else printer.tpe(resultType)
 
             val valOrDef =
-              if refName.toString() == nme.Fields.toString() then ""
-              else if n == nme.selectDynamic && !tpe.isInstanceOf[ExprType]
+              if n == nme.selectDynamic && !tpe.isInstanceOf[ExprType]
               then "val "
               else "def "
 
