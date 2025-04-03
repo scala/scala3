@@ -83,15 +83,13 @@ extension (tp: Type)
       tp1.reach :: Nil
     case ReadOnlyCapability(tp1) =>
       tp1.readOnly :: Nil
-    case tp: CaptureRef if tp.isTrackableRef =>
-      tp :: Nil
-    case tp: TypeRef if tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet) =>
-      tp :: Nil
+    case tp: CaptureRef =>
+      if tp.isNothingType then Nil
+      else tp :: Nil // should be checked by wellformedness
     case OrType(tp1, tp2) =>
       tp1.retainedElements ++ tp2.retainedElements
     case _ =>
-      if tp.isNothingType then Nil
-      else throw IllegalCaptureRef(tp)
+      throw IllegalCaptureRef(tp)
 
   /** Is this type a CaptureRef that can be tracked?
    *  This is true for
