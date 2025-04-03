@@ -152,10 +152,16 @@ object ScalaRunTime {
   // More background at ticket #2318.
   def ensureAccessible(m: JMethod): JMethod = scala.reflect.ensureAccessible(m)
 
+  // This is called by the synthetic case class `toString` method.
+  // It originally had a `CaseClass` parameter type which was changed to `Product`.
   def _toString(x: Product): String =
     x.productIterator.mkString(x.productPrefix + "(", ",", ")")
 
-  def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.productHash(x)
+  // This method is called by case classes compiled by older Scala 2.13 / Scala 3 versions, so it needs to stay.
+  // In newer versions, the synthetic case class `hashCode` has either the calculation inlined or calls
+  // `MurmurHash3.productHash`.
+  // There used to be an `_equals` method as well which was removed in 5e7e81ab2a.
+  def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.caseClassHash(x)
 
   /** A helper for case classes. */
   def typedProductIterator[T](x: Product): Iterator[T] = {
