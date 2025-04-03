@@ -407,6 +407,52 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
       InlineErrors.variablesAreShadowed("T.a")
     )
 
+  @Test def `i7137` =
+    checkEdit(
+      """|object O {
+         |  def foo = {
+         |    val newValue =
+         |      val x = true
+         |      x
+         |    val xx =new<<V>>alue
+         |  }
+         |}
+         |""".stripMargin,
+      """|object O {
+         |  def foo = {
+         |    val xx =
+         |      val x = true
+         |      x
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `i7137a` =
+      checkEdit(
+        """|object O {
+            |  def foo = {
+            |    val newValue = {
+            |      val x = true
+            |      x
+            |    }
+            |    def bar =
+            |      val xx = new<<V>>alue
+            |  }
+            |}
+            |""".stripMargin,
+        """|object O {
+            |  def foo = {
+            |    def bar =
+            |      val xx = {
+            |        val x = true
+            |        x
+            |      }
+            |  }
+            |}
+            |""".stripMargin
+      )
+
   def checkEdit(
       original: String,
       expected: String,
