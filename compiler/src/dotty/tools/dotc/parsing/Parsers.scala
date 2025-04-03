@@ -732,16 +732,17 @@ object Parsers {
 
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
       val txt = source.content
-      idx < txt.length && p(txt(idx))
+      idx >= 0 && idx < txt.length && p(txt(idx))
     }
 
     def testChar(idx: Int, c: Char): Boolean = {
       val txt = source.content
-      idx < txt.length && txt(idx) == c
+      idx >= 0 && idx < txt.length && txt(idx) == c
     }
 
     def testChars(from: Int, str: String): Boolean =
-      str.isEmpty ||
+      str.isEmpty
+      ||
       testChar(from, str.head) && testChars(from + 1, str.tail)
 
     def skipBlanks(idx: Int, step: Int = 1): Int =
