@@ -959,7 +959,9 @@ object Build {
   }
 
   // Settings shared between scala3-library, scala3-library-bootstrapped and scala3-library-bootstrappedJS
-  lazy val dottyLibrarySettings = Seq(
+  def dottyLibrarySettings(implicit mode: Mode) = Seq(
+    versionScheme := Some("semver-spec"),
+    libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
@@ -2043,16 +2045,9 @@ object Build {
       settings(dottyCompilerSettings)
 
     def asDottyLibrary(implicit mode: Mode): Project = {
-      val base =
-        project.withCommonSettings.
-          settings(
-            versionScheme := Some("semver-spec"),
-            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-            // Make sure we do not refer to experimental features outside an experimental scope.
-            // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
-            scalacOptions += "-Yno-experimental",
-          ).
-          settings(dottyLibrarySettings)
+      val base = project
+        .withCommonSettings
+        .settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
         base.settings(
           (Compile/doc) := {
@@ -2111,6 +2106,7 @@ object Build {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
     })
+
   }
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
