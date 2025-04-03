@@ -904,7 +904,7 @@ class ClassfileParser(
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
   // instead of ScalaSignature before 2.13.0-M2, see https://github.com/scala/scala/pull/5952
-  private val scalaUnpickleWhitelist = List(tpnme.nothingClass, tpnme.nullClass)
+  private val scalaUnpickleAllowlist = List(tpnme.nothingClass, tpnme.nullClass)
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
@@ -1028,7 +1028,7 @@ class ClassfileParser(
           report.error(s"Found a TASTY attribute with a length different from 16 in $classfile. This is likely a bug in the compiler. Please report.", NoSourcePosition)
       }
 
-      if scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)
+      if scan(tpnme.ScalaATTR) && !scalaUnpickleAllowlist.contains(classRoot.name)
         && !(classRoot.name.startsWith("Tuple") && classRoot.name.endsWith("$sp"))
         && !(classRoot.name.startsWith("Product") && classRoot.name.endsWith("$sp"))
       then
