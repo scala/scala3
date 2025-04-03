@@ -4,7 +4,7 @@ import language.experimental.captureChecking
 
 class Box[Cap^] {}
 
-def run[Cap^](f: Box[Cap]^{Cap^} => Unit): Box[Cap]^{Cap^} = ???
+def run[Cap^](f: Box[Cap]^{Cap} => Unit): Box[Cap]^{Cap} = ???
 
 def main() =
   val b = run(_ => ())
