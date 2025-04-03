@@ -1953,7 +1953,7 @@ object SymDenotations {
       case _ => NoSymbol
 
     /** The explicitly given self type (self types of modules are assumed to be
-     *  explcitly given here).
+     *  explicitly given here).
      */
     def givenSelfType(using Context): Type = classInfo.selfInfo match {
       case tp: Type => tp
