@@ -363,8 +363,8 @@ DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParam
 DefParamClause    ::=  DefTypeParamClause
                     |  DefTermParamClause
                     |  UsingParamClause
-TypelessClauses   ::=  TypelessClause {TypelessClause}
-TypelessClause    ::=  DefTermParamClause
+ConstrParamClauses::=  ConstrParamClause {ConstrParamClause}
+ConstrParamClause ::=  DefTermParamClause
                     |  UsingParamClause
 
 DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
@@ -433,7 +433,7 @@ Def               ::=  ‘val’ PatDef
 PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
                     |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
 DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                             DefDef(_, name, paramss, tpe, expr)
-                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
+                    |  ‘this’ ConstrParamClauses [DefImplicitClause] ‘=’ ConstrExpr DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
 DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
 TypeDef           ::=  id [HkTypeParamClause] {FunParamClause}TypeBounds         TypeDefTree(_, name, tparams, bound
                        [‘=’ Type]
