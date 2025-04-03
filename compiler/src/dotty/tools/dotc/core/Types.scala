@@ -1365,15 +1365,15 @@ object Types extends TypeUtils {
      *  and going to the operands of & and |.
      *  Overridden and cached in OrType.
      */
-    def widenSingletons(using Context): Type = dealias match {
+    def widenSingletons(skipSoftUnions: Boolean = false)(using Context): Type = dealias match {
       case tp: SingletonType =>
         tp.widen
       case tp: OrType =>
-        val tp1w = tp.widenSingletons
+        val tp1w = tp.widenSingletons(skipSoftUnions)
         if (tp1w eq tp) this else tp1w
       case tp: AndType =>
-        val tp1w = tp.tp1.widenSingletons
-        val tp2w = tp.tp2.widenSingletons
+        val tp1w = tp.tp1.widenSingletons(skipSoftUnions)
+        val tp2w = tp.tp2.widenSingletons(skipSoftUnions)
         if ((tp.tp1 eq tp1w) && (tp.tp2 eq tp2w)) this else tp1w & tp2w
       case _ =>
         this
@@ -3532,8 +3532,8 @@ object Types extends TypeUtils {
       else tp1.atoms | tp2.atoms
 
     private def computeWidenSingletons()(using Context): Type =
-      val tp1w = tp1.widenSingletons
-      val tp2w = tp2.widenSingletons
+      val tp1w = tp1.widenSingletons()
+      val tp2w = tp2.widenSingletons()
       if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
 
     override def atoms(using Context): Atoms =
@@ -3542,11 +3542,13 @@ object Types extends TypeUtils {
         if !isProvisional then atomsRunId = ctx.runId
       myAtoms
 
-    override def widenSingletons(using Context): Type =
-      if widenedRunId != ctx.runId then
-        myWidened = computeWidenSingletons()
-        if !isProvisional then widenedRunId = ctx.runId
-      myWidened
+    override def widenSingletons(skipSoftUnions: Boolean)(using Context): Type =
+      if isSoft && skipSoftUnions then this
+      else
+        if widenedRunId != ctx.runId then
+          myWidened = computeWidenSingletons()
+          if !isProvisional then widenedRunId = ctx.runId
+        myWidened
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this
