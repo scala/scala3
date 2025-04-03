@@ -5967,6 +5967,8 @@ object Types extends TypeUtils {
       override def stopAt = thisMap.stopAt
       def apply(tp: Type) = f(thisMap(tp))
     }
+
+    override def toString = s"${getClass.getSimpleName}@$hashCode" // otherwise would print as <function1>
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
