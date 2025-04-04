@@ -1648,9 +1648,13 @@ object Parsers {
 
     /**  CaptureSet ::=  ‘{’ CaptureRef {‘,’ CaptureRef} ‘}’    -- under captureChecking
      */
-    def captureSet(): List[Tree] = inBraces {
-      if in.token == RBRACE then Nil else commaSeparated(captureRef)
-    }
+    def captureSet(): List[Tree] =
+      if in.token != LBRACE then
+        syntaxError(em"expected '{' to start capture set", in.offset)
+        Nil
+      else inBraces {
+        if in.token == RBRACE then Nil else commaSeparated(captureRef)
+      }
 
     def capturesAndResult(core: () => Tree): Tree =
       if Feature.ccEnabled && in.token == LBRACE && canStartCaptureSetContentsTokens.contains(in.lookahead.token)
