@@ -29,8 +29,9 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
   def argType(argi: Int, types: Type*): Type =
     require(argi < argc, s"$argi out of range picking from $types")
     val tpe = argTypes(argi)
-    types.find(t => argConformsTo(argi, tpe, t))
-      .orElse(types.find(t => argConvertsTo(argi, tpe, t)))
+    types.find(t => t != defn.AnyType && argConformsTo(argi, tpe, t))
+      .orElse(types.find(t => t != defn.AnyType && argConvertsTo(argi, tpe, t)))
+      .orElse(types.find(t => t == defn.AnyType && argConformsTo(argi, tpe, t)))
       .getOrElse {
         report.argError(s"Found: ${tpe.show}, Required: ${types.map(_.show).mkString(", ")}", argi)
         actuals += args(argi)
@@ -63,7 +64,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
 
   /** For N part strings and N-1 args to interpolate, normalize parts and check arg types.
    *
-   *  Returns normalized part strings and args, where args correcpond to conversions in tail of parts.
+   *  Returns normalized part strings and args, where args correspond to conversions in tail of parts.
    */
   def checked: (List[String], List[Tree]) =
     val amended = ListBuffer.empty[String]
@@ -72,21 +73,25 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     @tailrec
     def loop(remaining: List[String], n: Int): Unit =
       remaining match
-        case part0 :: more =>
+        case part0 :: remaining =>
           def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage.nn, index = n, offset = 0))
           val part = try StringContext.processEscapes(part0) catch badPart
           val matches = formatPattern.findAllMatchIn(part)
 
           def insertStringConversion(): Unit =
             amended += "%s" + part
-            convert += Conversion(formatPattern.findAllMatchIn("%s").next(), n)  // improve
-            argType(n-1, defn.AnyType)
+            val cv = Conversion(n)
+            cv.accepts(argType(n-1, defn.AnyType))
+            convert += cv
+            cv.lintToString(argTypes(n-1))
+
           def errorLeading(op: Conversion) = op.errorAt(Spec)(s"conversions must follow a splice; ${Conversion.literalHelp}")
           def accept(op: Conversion): Unit =
             if !op.isLeading then errorLeading(op)
             op.accepts(argType(n-1, op.acceptableVariants*))
             amended += part
             convert += op
+            op.lintToString(argTypes(n-1))
 
           // after the first part, a leading specifier is required for the interpolated arg; %s is supplied if needed
           if n == 0 then amended += part
@@ -104,8 +109,8 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
             if n == 0 && cv.hasFlag('<') then cv.badFlag('<', "No last arg")
             else if !cv.isLiteral && !cv.isIndexed then errorLeading(cv)
 
-          loop(more, n + 1)
-        case Nil => ()
+          loop(remaining, n + 1)
+        case Nil =>
     end loop
 
     loop(parts, n = 0)
@@ -146,9 +151,10 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     // the conversion char is the head of the op string (but see DateTimeXn)
     val cc: Char =
       kind match
-        case ErrorXn => if op.isEmpty then '?' else op(0)
-        case DateTimeXn => if op.length > 1 then op(1) else '?'
-        case _ => op(0)
+        case ErrorXn    => if op.isEmpty then '?' else op(0)
+        case DateTimeXn => if op.length <= 1 then '?' else op(1)
+        case StringXn   => if op.isEmpty then 's' else op(0) // accommodate the default %s
+        case _          => op(0)
 
     def isIndexed: Boolean = index.nonEmpty || hasFlag('<')
     def isError: Boolean   = kind == ErrorXn
@@ -209,17 +215,20 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     def accepts(arg: Type): Boolean =
       kind match
         case BooleanXn  => arg == defn.BooleanType orElse warningAt(CC)("Boolean format is null test for non-Boolean")
-        case IntegralXn =>
-          arg == BigIntType || !cond(cc) {
-            case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")) ; true
-          }
+        case IntegralXn => arg == BigIntType || !cond(cc) {
+          case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")); true
+        }
         case _ => true
+
+    def lintToString(arg: Type): Unit =
+      if ctx.settings.Whas.toStringInterpolated && kind == StringXn && !(arg.widen =:= defn.StringType) && !arg.isPrimitiveValueType
+      then warningAt(CC)("interpolation uses toString")
 
     // what arg type if any does the conversion accept
     def acceptableVariants: List[Type] =
       kind match
         case StringXn        => if hasFlag('#') then FormattableType :: Nil else defn.AnyType :: Nil
-        case BooleanXn       => defn.BooleanType :: defn.NullType :: Nil
+        case BooleanXn       => defn.BooleanType :: defn.NullType :: defn.AnyType :: Nil // warn if not boolean
         case HashXn          => defn.AnyType :: Nil
         case CharacterXn     => defn.CharType :: defn.ByteType :: defn.ShortType :: defn.IntType :: Nil
         case IntegralXn      => defn.IntType :: defn.LongType :: defn.ByteType :: defn.ShortType :: BigIntType :: Nil
@@ -267,6 +276,8 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
         case Some(cc) => new Conversion(m, i, kindOf(cc(0))).tap(_.verify)
         case None     => new Conversion(m, i, ErrorXn).tap(_.errorAt(Spec)(s"Missing conversion operator in '${m.matched}'; $literalHelp"))
     end apply
+    // construct a default %s conversion
+    def apply(i: Int): Conversion = new Conversion(formatPattern.findAllMatchIn("%").next(), i, StringXn)
     val literalHelp = "use %% for literal %, %n for newline"
   end Conversion
 
