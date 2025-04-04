@@ -380,6 +380,9 @@ object Flags {
   /** Tracked modifier for class parameter / a class with some tracked parameters */
   val (Tracked @ _, _, Dependent @ _) = newFlags(46, "tracked")
 
+  /** Cap modifier for capture-set parameters and capture-set members */
+  val (_, _, CaptureParam @ _) = newFlags(47, "cap")
+
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
