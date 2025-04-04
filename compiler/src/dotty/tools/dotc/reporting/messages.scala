@@ -1926,7 +1926,7 @@ class ExpectedCaptureBoundOrEquals(found: Token)(using Context)
         |Such capture bounds limit the concrete values of the capture variables and possibly
         |reveal more information about the members of such captures.
         |
-        |A lower type bound ${hl("B >: A")} expresses that the capture variable ${hl("B")}
+        |A lower capture bound ${hl("B >: A")} expresses that the capture variable ${hl("B")}
         |refers to a super capture of capture ${hl("A")}.
         |
         |An upper capture bound ${hl("T <: A")} declares that capture variable ${hl("T")}

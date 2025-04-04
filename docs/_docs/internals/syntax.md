@@ -194,7 +194,7 @@ MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
                     |  RefinedType ‘^’                                          -- under captureChecking
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
-                    |  AnnotType {[nl] Refinement} [‘^’ CaptureSet]             -- under captureChecking
+                    |  AnnotType {[nl] Refinement} ‘^’ CaptureSet               -- under captureChecking
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 AnnotType1        ::=  SimpleType1 {Annotation}                                 Annotated(t, annot)
 

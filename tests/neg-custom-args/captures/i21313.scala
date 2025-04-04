@@ -1,7 +1,7 @@
 import caps.CapSet
 
 trait Async:
-  def await[T, cap Cap](using caps.Contains[{Cap}, this.type])(src: Source[T, {Cap}]^): T
+  def await[T, cap Cap](using caps.Contains[Cap, this.type])(src: Source[T, {Cap}]^): T
 
 def foo(x: Async) = x.await(???) // error
 

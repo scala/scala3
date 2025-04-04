@@ -5,7 +5,7 @@ trait AbstractWrong:
   def f(): Unit^{C} // error
 
 trait Abstract1:
-  type C >: CapSet <: CapSet^
+  cap type C
   def f(): Unit^{C}
 
 // class Abstract2:
