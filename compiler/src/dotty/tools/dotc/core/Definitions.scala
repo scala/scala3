@@ -618,6 +618,7 @@ class Definitions {
     @tu lazy val Int_== : Symbol = IntClass.requiredMethod(nme.EQ, List(IntType))
     @tu lazy val Int_>= : Symbol = IntClass.requiredMethod(nme.GE, List(IntType))
     @tu lazy val Int_<= : Symbol = IntClass.requiredMethod(nme.LE, List(IntType))
+    @tu lazy val Int_>  : Symbol = IntClass.requiredMethod(nme.GT, List(IntType))
   @tu lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass(using Context): ClassSymbol = LongType.symbol.asClass
     @tu lazy val Long_+ : Symbol = LongClass.requiredMethod(nme.PLUS, List(LongType))
@@ -829,6 +830,7 @@ class Definitions {
 
   @tu lazy val ReflectSelectableTypeRef: TypeRef = requiredClassRef("scala.reflect.Selectable")
 
+  @tu lazy val TypeableType: TypeSymbol = requiredPackage("scala.reflect.Typeable$package").moduleClass.requiredType("Typeable")
   @tu lazy val TypeTestClass: ClassSymbol = requiredClass("scala.reflect.TypeTest")
     @tu lazy val TypeTest_unapply: Symbol = TypeTestClass.requiredMethod(nme.unapply)
   @tu lazy val TypeTestModule_identity: Symbol = TypeTestClass.companionModule.requiredMethod(nme.identity)
@@ -1057,6 +1059,7 @@ class Definitions {
   @tu lazy val CompileTimeOnlyAnnot: ClassSymbol = requiredClass("scala.annotation.compileTimeOnly")
   @tu lazy val SwitchAnnot: ClassSymbol = requiredClass("scala.annotation.switch")
   @tu lazy val ExperimentalAnnot: ClassSymbol = requiredClass("scala.annotation.experimental")
+  @tu lazy val PreviewAnnot: ClassSymbol = requiredClass("scala.annotation.internal.preview")
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
@@ -1340,12 +1343,19 @@ class Definitions {
     case ByNameFunction(_) => true
     case _ => false
 
+  object NamedTupleDirect:
+    def unapply(t: Type)(using Context): Option[(Type, Type)] =
+      t match
+        case AppliedType(tycon, nmes :: vals :: Nil) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+          Some((nmes, vals))
+        case _ => None
+
   object NamedTuple:
     def apply(nmes: Type, vals: Type)(using Context): Type =
       AppliedType(NamedTupleTypeRef, nmes :: vals :: Nil)
     def unapply(t: Type)(using Context): Option[(Type, Type)] =
       t match
-        case AppliedType(tycon, nmes :: vals :: Nil) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+        case NamedTupleDirect(nmes, vals) =>
           Some((nmes, vals))
         case tp: TypeProxy =>
           val t = unapply(tp.superType); t
@@ -1798,18 +1808,24 @@ class Definitions {
     || (sym eq Any_typeTest)
     || (sym eq Any_typeCast)
 
-  /** Is this type a `TupleN` type?
+  /** Is `tp` a `TupleN` type?
+    *
+    * @return true if the type of `tp` is `TupleN[T1, T2, ..., Tn]`
+    */
+  def isDirectTupleNType(tp: Type)(using Context): Boolean =
+    val arity = tp.argInfos.length
+    arity <= MaxTupleArity && {
+      val tupletp = TupleType(arity)
+      tupletp != null && tp.isRef(tupletp.symbol)
+    }
+
+  /** Is `tp` (an alias of) a `TupleN` type?
    *
    * @return true if the dealiased type of `tp` is `TupleN[T1, T2, ..., Tn]`
    */
-  def isTupleNType(tp: Type)(using Context): Boolean = {
+  def isTupleNType(tp: Type)(using Context): Boolean =
     val tp1 = tp.dealias
-    val arity = tp1.argInfos.length
-    arity <= MaxTupleArity && {
-      val tupletp = TupleType(arity)
-      tupletp != null && tp1.isRef(tupletp.symbol)
-    }
-  }
+    isDirectTupleNType(tp1)
 
   def tupleType(elems: List[Type]): Type = {
     val arity = elems.length

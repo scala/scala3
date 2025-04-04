@@ -57,7 +57,7 @@ class PcInlayHintsProvider(
       .headOption
       .getOrElse(unit.tpdTree)
       .enclosedChildren(pos.span)
-      .flatMap(tpdTree => deepFolder(InlayHints.empty, tpdTree).result())
+      .flatMap(tpdTree => deepFolder(InlayHints.empty(params.uri()), tpdTree).result())
 
   private def adjustPos(pos: SourcePosition): SourcePosition =
     pos.adjust(text)._1

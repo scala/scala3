@@ -1,0 +1,7 @@
+break Test$ 7
+eval patch.span
+result 0
+eval patch.span = Span(1)
+result ()
+eval patch.span
+result 1

@@ -2317,7 +2317,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2513,6 +2513,17 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
        |it should not be defined as an extension.
        |
        |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
+
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -3351,7 +3362,7 @@ end QuotedTypeMissing
 
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
-    i"""Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+    i"""Deprecated syntax: since 3.7 this is interpreted as a named tuple with one element,
       |not as an assignment.
       |
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
@@ -3361,9 +3372,9 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
 
 class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
   def msg(using Context) =
-    i"""Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
        |To avoid this warning, either remove the argument names or use dotted selection."""
-        + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+        + Message.rewriteNotice("This", version = SourceVersion.`3.7-migration`)
 
   def explain(using Context) = ""
 

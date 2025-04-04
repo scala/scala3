@@ -1,0 +1,57 @@
+break A 26
+eval (new B).m
+result x1x2x3x4
+
+break A$B$1 22
+eval x1
+result x1
+eval m // local def m
+result x1x2x3x4
+eval (new B).m
+result x1x2x3x4
+eval A.this.m // compiles but throws NoSuchFieldException
+result java.lang.NoSuchFieldException: $outer
+
+break A$B$1 21
+eval x1
+result x1
+eval x2
+result x2
+eval m
+result x1x2x3x4
+eval (new C).m
+result x1x2x3x4
+eval (new B).m
+result x1x2x3x4
+
+break A$B$1$C$1 19
+eval x1
+result x1
+eval x2
+result x2
+eval x3
+result x3
+eval x4
+result x4
+eval m
+result x1x2x3x4
+eval (new C).m
+result x1x2x3x4
+eval (new B).m
+result x1x2x3x4
+
+break A$B$1$C$1 18
+eval x1
+result x1
+eval x2
+result x2
+eval x3
+result x3
+eval x4
+result x4
+eval m
+result x1x2x3x4
+eval (new C).m
+result x1x2x3x4
+eval (new B).m
+result x1x2x3x4

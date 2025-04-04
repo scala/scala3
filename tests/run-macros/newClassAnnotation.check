@@ -1,0 +1,7 @@
+{
+  @JavaAnnot("string in a java annotation") @ScalaAnnotation("string in a scala annotation") class name() extends java.lang.Object
+
+  (new name(): scala.Any)
+}
+class Test_2$package$name$1
+string in a java annotation

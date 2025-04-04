@@ -1232,6 +1232,15 @@ object SymDenotations {
       else if (this.exists) owner.enclosingMethod
       else NoSymbol
 
+    /** The closest enclosing method or static symbol containing this definition.
+     *  A local dummy owner is mapped to the primary constructor of the class.
+     */
+    final def enclosingMethodOrStatic(using Context): Symbol =
+      if this.is(Method) || this.hasAnnotation(defn.ScalaStaticAnnot) then symbol
+      else if this.isClass then primaryConstructor
+      else if this.exists then owner.enclosingMethodOrStatic
+      else NoSymbol
+
     /** The closest enclosing extension method containing this definition,
      *  including methods outside the current class.
      */
@@ -1950,7 +1959,6 @@ object SymDenotations {
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
-     *  - for a module class `m`: A term ref to m's source module.
      *  - for all other classes `c` with owner `o`: ThisType(TypeRef(o.thisType, c))
      */
     override def thisType(using Context): Type = {

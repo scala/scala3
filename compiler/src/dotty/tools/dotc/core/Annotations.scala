@@ -303,5 +303,16 @@ object Annotations {
         case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
       }
   }
-
+  
+  object PreviewAnnotation {
+    /** Matches and extracts the message from an instance of `@preview(msg)`
+     *  Returns `Some("")` for `@preview` with no message.
+     */
+    def unapply(a: Annotation)(using Context): Option[String] =
+      if a.symbol ne defn.PreviewAnnot then
+        None
+      else a.argumentConstant(0) match
+        case Some(Constant(msg: String)) => Some(msg)
+        case _ => Some("")
+  }
 }

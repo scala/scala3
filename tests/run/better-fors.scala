@@ -1,4 +1,5 @@
-import scala.language.experimental.betterFors
+//> using options -preview
+// import scala.language.experimental.betterFors
 
 def for1 =
   for {

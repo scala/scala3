@@ -237,7 +237,7 @@ object SpaceEngine {
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1, tp2) && covers(fun, tp1, ss.length) then
+        if isSubType(tp1.stripNamedTuple, tp2) && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a
@@ -674,7 +674,7 @@ object SpaceEngine {
           val superType = child.typeRef.superType
           if typeArgs.exists(_.isBottomType) && superType.isInstanceOf[ClassInfo] then
             val parentClass = superType.asInstanceOf[ClassInfo].declaredParents.find(_.classSymbol == parent).get
-            val paramTypeMap = Map.from(parentClass.argTypes.map(_.typeSymbol).zip(typeArgs))
+            val paramTypeMap = Map.from(parentClass.argInfos.map(_.typeSymbol).zip(typeArgs))
             val substArgs = child.typeRef.typeParamSymbols.map(param => paramTypeMap.getOrElse(param, WildcardType))
             substArgs
           else Nil
@@ -804,8 +804,8 @@ object SpaceEngine {
         else tp.symbol.showName
       case Typ(tp, decomposed) =>
         val cls = tp.classSymbol
-        if ctx.definitions.isTupleNType(tp) then
-          params(tp).map(_ => "_").mkString("(", ", ", ")")
+        if ctx.definitions.isTupleNType(tp.stripNamedTuple) then
+          params(tp.stripNamedTuple).map(_ => "_").mkString("(", ", ", ")")
         else if defn.ListType.isRef(cls) then
           if flattenList then "_*" else "_: List"
         else if (defn.ConsType.isRef(cls))
@@ -841,8 +841,6 @@ object SpaceEngine {
     if Nullables.unsafeNullsEnabled then self.stripNull() else self
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
-    val seen = collection.mutable.Set.empty[Symbol]
-
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
       val tpw = tp.widen.dealias.stripUnsafeNulls()
@@ -856,10 +854,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) && {
-        if seen.add(classSym) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
-        else true // recursive case class: return true and other members can still fail the check
-      }
+      classSym.is(Case)
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
@@ -922,6 +917,7 @@ object SpaceEngine {
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
+    && tpd.enclosingInlineds.isEmpty // Skip reachability on inlined code (eg i19157/i22212)
 
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias

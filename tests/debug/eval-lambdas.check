@@ -1,0 +1,7 @@
+break Test$ 6
+eval List(1, 2, 3).map(_ * a * b * c).sum
+result 36
+
+break A 14
+eval List(1, 2, 3).map(_ * a * b * c).sum
+result 36

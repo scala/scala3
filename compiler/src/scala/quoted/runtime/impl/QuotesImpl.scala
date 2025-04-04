@@ -25,6 +25,8 @@ import scala.quoted.runtime.impl.printers.*
 import scala.reflect.TypeTest
 import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
+import dotty.tools.dotc.core.Names
+import dotty.tools.dotc.util.Spans.NoCoord
 
 object QuotesImpl {
 
@@ -241,9 +243,35 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ClassDef extends ClassDefModule:
       def apply(cls: Symbol, parents: List[Tree], body: List[Statement]): ClassDef =
-        val untpdCtr = untpd.DefDef(nme.CONSTRUCTOR, Nil, tpd.TypeTree(dotc.core.Symbols.defn.UnitClass.typeRef), tpd.EmptyTree)
+        val paramsDefs: List[untpd.ParamClause] =
+          cls.primaryConstructor.paramSymss.map { paramSym =>
+            if paramSym.headOption.map(_.isType).getOrElse(false) then
+              paramSym.map(sym => TypeDef(sym))
+            else
+              paramSym.map(ValDef(_, None))
+          }
+        def throwError() =
+          throw new RuntimeException(
+            "Symbols necessary for creation of the ClassDef tree could not be found."
+          )
+        val paramsAccessDefs: List[untpd.ParamClause] =
+          cls.primaryConstructor.paramSymss.map { paramSym =>
+            if paramSym.headOption.map(_.isType).getOrElse(false) then
+              paramSym.map { symm =>
+                def isParamAccessor(memberSym: Symbol) = memberSym.flags.is(Flags.Param) && memberSym.name == symm.name
+                TypeDef(cls.typeMembers.find(isParamAccessor).getOrElse(throwError()))
+              }
+            else
+              paramSym.map { symm =>
+                def isParam(memberSym: Symbol) = memberSym.flags.is(Flags.ParamAccessor) && memberSym.name == symm.name
+                ValDef(cls.fieldMembers.find(isParam).getOrElse(throwError()), None)
+              }
+          }
+
+        val termSymbol: dotc.core.Symbols.TermSymbol = cls.primaryConstructor.asTerm
+        val untpdCtr = untpd.DefDef(nme.CONSTRUCTOR, paramsDefs, tpd.TypeTree(dotc.core.Symbols.defn.UnitClass.typeRef), tpd.EmptyTree)
         val ctr = ctx.typeAssigner.assignType(untpdCtr, cls.primaryConstructor)
-        tpd.ClassDefWithParents(cls.asClass, ctr, parents, body)
+        tpd.ClassDefWithParents(cls.asClass, ctr, parents, paramsAccessDefs.flatten ++ body)
 
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original: @unchecked
@@ -473,7 +501,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
       def apply(sym: Symbol): Ref =
         assert(sym.isTerm, s"expected a term symbol, but received $sym")
-        val refTree = tpd.ref(sym) match
+        val refTree = tpd.generalisedRef(sym) match
           case t @ tpd.This(ident) => // not a RefTree, so we need to work around this - issue #19732
             // ident in `This` can be a TypeIdent of sym, so we manually prepare the ref here,
             // knowing that the owner is actually `This`.
@@ -824,7 +852,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object BlockTypeTest extends TypeTest[Tree, Block]:
       def unapply(x: Tree): Option[Block & x.type] = x match
-        case x: (tpd.Block & x.type) => Some(x)
+        case x: (tpd.Block & x.type) if x.isTerm => Some(x)
         case _ => None
     end BlockTypeTest
 
@@ -1413,7 +1441,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeBlockTypeTest extends TypeTest[Tree, TypeBlock]:
       def unapply(x: Tree): Option[TypeBlock & x.type] = x match
-        case tpt: (tpd.Block & x.type) => Some(tpt)
+        case tpt: (tpd.Block & x.type) if x.isType => Some(tpt)
         case _ => None
     end TypeBlockTypeTest
 
@@ -1694,6 +1722,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SimpleSelectorTypeTest
 
     object SimpleSelector extends SimpleSelectorModule:
+      def apply(name: String): SimpleSelector =
+        withDefaultPos(untpd.ImportSelector(untpd.Ident(name.toTermName)))
       def unapply(x: SimpleSelector): Some[String] = Some(x.name.toString)
     end SimpleSelector
 
@@ -1713,6 +1743,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RenameSelectorTypeTest
 
     object RenameSelector extends RenameSelectorModule:
+      def apply(fromName: String, toName: String): RenameSelector =
+        withDefaultPos(untpd.ImportSelector(untpd.Ident(fromName.toTermName), untpd.Ident(toName.toTermName)))
       def unapply(x: RenameSelector): (String, String) = (x.fromName, x.toName)
     end RenameSelector
 
@@ -1738,6 +1770,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end OmitSelectorTypeTest
 
     object OmitSelector extends OmitSelectorModule:
+      def apply(name: String): OmitSelector =
+        withDefaultPos(untpd.ImportSelector(untpd.Ident(name.toTermName), untpd.Ident(nme.WILDCARD)))
       def unapply(x: OmitSelector): Some[String] = Some(x.imported.name.toString)
     end OmitSelector
 
@@ -1758,6 +1792,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end GivenSelectorTypeTest
 
     object GivenSelector extends GivenSelectorModule:
+      def apply(bound: Option[TypeTree]): GivenSelector =
+        withDefaultPos(untpd.ImportSelector(
+          untpd.Ident(nme.EMPTY),
+          bound = bound.map(tpt => untpd.TypedSplice(tpt)).getOrElse(EmptyTree)
+        ))
       def unapply(x: GivenSelector): Some[Option[TypeTree]] =
         Some(GivenSelectorMethods.bound(x))
     end GivenSelector
@@ -1826,7 +1865,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def termSymbol: Symbol = self.termSymbol
         def isSingleton: Boolean = self.isSingleton
         def memberType(member: Symbol): TypeRepr =
-          member.info.asSeenFrom(self, member.owner)
+          // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
+          val memberInfo =
+            if self.typeSymbol.isClassDef then
+              member.info.substThis(self.classSymbol.asClass, self)
+            else
+              member.info
+          memberInfo
+            .asSeenFrom(self, member.owner)
+
         def baseClasses: List[Symbol] = self.baseClasses
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)
@@ -2519,7 +2566,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ClassOfConstant extends ClassOfConstantModule:
       def apply(x: TypeRepr): ClassOfConstant =
-        // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
+        // We only check if the supplied TypeRepr is valid if it contains an Array,
+        // as so far only that Array could cause issues
+        def correctTypeApplicationForArray(typeRepr: TypeRepr): Boolean =
+            val isArray = typeRepr.typeSymbol != dotc.core.Symbols.defn.ArrayClass
+            typeRepr match
+              case AppliedType(_, targs) if !targs.isEmpty => true
+              case _ => isArray
+        xCheckMacroAssert(
+          correctTypeApplicationForArray(x),
+          "Illegal empty Array type constructor. Please supply a type parameter."
+        )
         dotc.core.Constants.Constant(x)
       def unapply(constant: ClassOfConstant): Some[TypeRepr] = Some(constant.typeValue)
     end ClassOfConstant
@@ -2528,6 +2585,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def search(tpe: TypeRepr): ImplicitSearchResult =
         import tpd.TreeOps
         val implicitTree = ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
+        // Make sure that we do not have any uninstantiated type variables.
+        // See tests/pos-macros/i16636.
+        // See tests/pos-macros/exprSummonWithTypeVar with -Xcheck-macros.
+        dotc.typer.Inferencing.fullyDefinedType(implicitTree.tpe, "", implicitTree)
+        implicitTree
+      def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult =
+        import tpd.TreeOps
+        val implicitTree = ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span, ignored.toSet)
         // Make sure that we do not have any uninstantiated type variables.
         // See tests/pos-macros/i16636.
         // See tests/pos-macros/exprSummonWithTypeVar with -Xcheck-macros.
@@ -2618,8 +2683,134 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
-      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
-        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+      def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol,
+        conParams: List[(String, TypeRepr)]
+      ): Symbol =
+        val (conParamNames, conParamTypes) = conParams.unzip
+        newClass(
+          owner,
+          name,
+          parents,
+          decls,
+          selfType,
+          clsFlags,
+          clsPrivateWithin,
+          Nil,
+          conMethodType = res => MethodType(conParamNames)(_ => conParamTypes, _ => res),
+          conFlags = Flags.EmptyFlags,
+          conPrivateWithin = Symbol.noSymbol,
+          conParamFlags = List(for i <- conParamNames yield Flags.EmptyFlags),
+          conParamPrivateWithins = List(for i <- conParamNames yield Symbol.noSymbol)
+        )
+
+      def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol,
+        clsAnnotations: List[Term],
+        conMethodType: TypeRepr => MethodOrPoly,
+        conFlags: Flags,
+        conPrivateWithin: Symbol,
+        conParamFlags: List[List[Flags]],
+        conParamPrivateWithins: List[List[Symbol]]
+      ) =
+        assert(!clsPrivateWithin.exists || clsPrivateWithin.isType, "clsPrivateWithin must be a type symbol or `Symbol.noSymbol`")
+        assert(!conPrivateWithin.exists || conPrivateWithin.isType, "consPrivateWithin must be a type symbol or `Symbol.noSymbol`")
+        checkValidFlags(clsFlags.toTypeFlags, Flags.validClassFlags)
+        checkValidFlags(conFlags.toTermFlags, Flags.validClassConstructorFlags)
+        val cls = dotc.core.Symbols.newNormalizedClassSymbol(
+          owner,
+          name.toTypeName,
+          clsFlags,
+          parents,
+          selfType.getOrElse(Types.NoType),
+          clsPrivateWithin,
+          clsAnnotations,
+          NoCoord,
+          compUnitInfo = null
+        )
+        val methodType: MethodOrPoly = conMethodType(cls.typeRef)
+        def throwShapeException() = throw new Exception("Shapes of conMethodType and conParamFlags differ.")
+        def checkMethodOrPolyShape(checkedMethodType: TypeRepr, clauseIdx: Int): Unit =
+          checkedMethodType match
+            case PolyType(params, _, res) if clauseIdx == 0 =>
+              if (conParamFlags.length < clauseIdx) throwShapeException()
+              if (conParamFlags(clauseIdx).length != params.length) throwShapeException()
+              checkMethodOrPolyShape(res, clauseIdx + 1)
+            case PolyType(_, _, _) => throw new Exception("Clause interleaving not supported for constructors")
+            case MethodType(params, _, res) =>
+              if (conParamFlags.length <= clauseIdx) throwShapeException()
+              if (conParamFlags(clauseIdx).length != params.length) throwShapeException()
+              checkMethodOrPolyShape(res, clauseIdx + 1)
+            case other =>
+              xCheckMacroAssert(
+                other.typeSymbol == cls,
+                "Incorrect type returned from the innermost PolyOrMethod."
+              )
+              (other, methodType) match
+                case (AppliedType(tycon, args), pt: PolyType) =>
+                  xCheckMacroAssert(
+                    args.length == pt.typeParams.length &&
+                    args.zip(pt.typeParams).forall {
+                      case (arg, param) => arg == param.paramRef
+                    },
+                    "Constructor result type does not correspond to the declared type parameters"
+                  )
+                case _ =>
+                  xCheckMacroAssert(
+                    !(other.isInstanceOf[AppliedType] || methodType.isInstanceOf[PolyType]),
+                    "AppliedType has to be the innermost resultTypeExp result if and only if conMethodType returns a PolyType"
+                  )
+        checkMethodOrPolyShape(methodType, clauseIdx = 0)
+
+        cls.enter(dotc.core.Symbols.newSymbol(cls, nme.CONSTRUCTOR, Flags.Synthetic | Flags.Method | conFlags, methodType, conPrivateWithin, dotty.tools.dotc.util.Spans.NoCoord))
+
+        case class ParamSymbolData(name: String, tpe: TypeRepr, isTypeParam: Boolean, clauseIdx: Int, elementIdx: Int)
+        def getParamSymbolsData(methodType: TypeRepr, clauseIdx: Int): List[ParamSymbolData] =
+          methodType match
+            case MethodType(paramInfosExp, resultTypeExp, res) =>
+              paramInfosExp.zip(resultTypeExp).zipWithIndex.map { case ((name, tpe), elementIdx) =>
+                ParamSymbolData(name, tpe, isTypeParam = false, clauseIdx, elementIdx)
+              } ++ getParamSymbolsData(res, clauseIdx + 1)
+            case pt @ PolyType(paramNames, paramBounds, res) =>
+              paramNames.zip(paramBounds).zipWithIndex.map {case ((name, tpe), elementIdx) =>
+                ParamSymbolData(name, tpe, isTypeParam = true, clauseIdx, elementIdx)
+              } ++ getParamSymbolsData(res, clauseIdx + 1)
+            case result =>
+              List()
+        // Maps PolyType indexes to type parameter symbol typerefs
+        val paramRefMap = collection.mutable.HashMap[Int, Symbol]()
+        val paramRefRemapper = new Types.TypeMap {
+          def apply(tp: Types.Type) = tp match {
+            case pRef: ParamRef if pRef.binder == methodType => paramRefMap(pRef.paramNum).typeRef
+            case _ => mapOver(tp)
+          }
+        }
+        for case ParamSymbolData(name, tpe, isTypeParam, clauseIdx, elementIdx) <- getParamSymbolsData(methodType, 0) do
+          if isTypeParam then
+            checkValidFlags(conParamFlags(clauseIdx)(elementIdx).toTypeFlags, Flags.validClassTypeParamFlags)
+            val symbol = dotc.core.Symbols.newSymbol(cls, name.toTypeName, Flags.Param | Flags.Deferred | Flags.Private | Flags.PrivateLocal | Flags.Local | conParamFlags(clauseIdx)(elementIdx), tpe, conParamPrivateWithins(clauseIdx)(elementIdx))
+            paramRefMap.addOne(elementIdx, symbol)
+            cls.enter(symbol)
+          else
+            checkValidFlags(conParamFlags(clauseIdx)(elementIdx).toTermFlags, Flags.validClassTermParamFlags)
+            val fixedType = paramRefRemapper(tpe)
+            cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor | conParamFlags(clauseIdx)(elementIdx), fixedType, conParamPrivateWithins(clauseIdx)(elementIdx)))
+        for sym <- decls(cls) do cls.enter(sym)
+        cls
+
+      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
         assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
           owner,
@@ -2628,7 +2819,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
           parents,
           dotc.core.Scopes.newScope,
-          privateWithin)
+          privateWithin,
+          NoCoord,
+          compUnitInfo = null
+        )
         val cls = mod.moduleClass.asClass
         cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
         for sym <- decls(cls) do cls.enter(sym)
@@ -3025,6 +3219,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       // Keep: aligned with Quotes's `newTypeAlias` doc
       private[QuotesImpl] def validTypeAliasFlags: Flags = Private | Protected | Override | Final | Infix | Local
+
+      // Keep: aligned with Quotes's `newClass`
+      private[QuotesImpl] def validClassFlags: Flags = Private | Protected | PrivateLocal | Local | Final | Trait | Abstract | Open
+
+      // Keep: aligned with Quote's 'newClass'
+      private[QuotesImpl] def validClassConstructorFlags: Flags = Synthetic | Method | Private | Protected | PrivateLocal | Local
+
+      // Keep: aligned with Quotes's `newClass`
+      private[QuotesImpl] def validClassTypeParamFlags: Flags = Param | Deferred | Private | PrivateLocal | Local
+
+      // Keep: aligned with Quotes's `newClass`
+      private[QuotesImpl] def validClassTermParamFlags: Flags = ParamAccessor | Private | Protected | PrivateLocal | Local
 
     end Flags
 

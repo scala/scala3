@@ -694,9 +694,11 @@ trait Applications extends Compatibility {
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
 
 
-    /** Is `sym` a constructor of an annotation? */
-    def isAnnotConstr(sym: Symbol): Boolean =
-      sym.isConstructor && sym.owner.isAnnotation
+    /** Is `sym` a constructor of an annotation class, and are we in an
+     *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
+     */
+    protected final def isAnnotConstr(sym: Symbol): Boolean =
+      ctx.mode.is(Mode.InAnnotation) && sym.isConstructor && sym.owner.isAnnotation
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
@@ -755,13 +757,14 @@ trait Applications extends Compatibility {
               }
               else defaultArgument(normalizedFun, n, testOnly)
 
-            def implicitArg = implicitArgTree(formal, appPos.span)
-
             if !defaultArg.isEmpty then
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
-            else if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+            else if (methodType.isContextualMethod || applyKind == ApplyKind.Using && methodType.isImplicitMethod)
+              && ctx.mode.is(Mode.ImplicitsEnabled)
+            then
+              val implicitArg = implicitArgTree(formal, appPos.span)
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
@@ -994,9 +997,7 @@ trait Applications extends Compatibility {
                 case (arg: NamedArg, _) => arg
                 case (arg, name)        => NamedArg(name, arg)
               }
-          else if isAnnotConstr(methRef.symbol) then
-            typedArgs
-          else if !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
+          else if !isAnnotConstr(methRef.symbol) && !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             // (never do this for Java annotation constructors, hence the 'else if')
@@ -1198,9 +1199,8 @@ trait Applications extends Compatibility {
             //
             //    summonFrom {
             //      case given A[t] =>
-            //        summonFrom
+            //        summonFrom:
             //          case given `t` => ...
-            //        }
             //    }
             //
             // the second `summonFrom` should expand only once the first `summonFrom` is
@@ -2119,16 +2119,27 @@ trait Applications extends Compatibility {
   def resolveOverloaded(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
     record("resolveOverloaded")
 
-    /** Is `alt` a method or polytype whose result type after the first value parameter
+    /** Is `alt` a method or polytype whose approximated result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
+     *
+     *  Using an approximated result type is necessary to avoid false negatives
+     *  due to incomplete type inference such as in tests/pos/i21410.scala and tests/pos/i21410b.scala.
      */
     def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(using Context): Boolean =
       resultType.revealIgnored match {
         case resultType: ValueType =>
           altType.widen match {
-            case tp: PolyType => resultConforms(altSym, instantiateWithTypeVars(tp), resultType)
-            case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
+            case tp: PolyType => resultConforms(altSym, tp.resultType, resultType)
+            case tp: MethodType =>
+              val wildRes = wildApprox(tp.resultType)
+
+              class ResultApprox extends AvoidWildcardsMap:
+                // Avoid false negatives by approximating to a lower bound
+                variance = -1
+
+              val approx = ResultApprox()(wildRes)
+              constrainResult(altSym, approx, resultType)
             case _ => true
           }
         case _ => true
@@ -2500,6 +2511,7 @@ trait Applications extends Compatibility {
       if t.exists && alt.symbol.exists then
         val (trimmed, skipped) = trimParamss(t.stripPoly, alt.symbol.rawParamss)
         val mappedSym = alt.symbol.asTerm.copy(info = t)
+        mappedSym.annotations = alt.symbol.annotations
         mappedSym.rawParamss = trimmed
         val (pre, totalSkipped) = mappedAltInfo(alt.symbol) match
           case Some((pre, prevSkipped)) =>

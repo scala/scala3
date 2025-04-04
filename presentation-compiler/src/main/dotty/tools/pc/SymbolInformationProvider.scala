@@ -55,7 +55,13 @@ class SymbolInformationProvider(using Context):
         val classOwner =
           sym.ownersIterator.drop(1).find(s => s.isClass || s.is(Flags.Module))
         val overridden = sym.denot.allOverriddenSymbols.toList
-        val memberDefAnnots = sym.info.membersBasedOnFlags(Flags.Method, Flags.EmptyFlags).flatMap(_.allSymbols).flatMap(_.denot.annotations)
+        val memberDefAnnots =
+          if classSym.exists then
+            classSym.info
+              .membersBasedOnFlags(Flags.Method, Flags.EmptyFlags)
+              .flatMap(_.allSymbols)
+              .flatMap(_.denot.annotations)
+          else Nil
 
         val pcSymbolInformation =
           PcSymbolInformation(

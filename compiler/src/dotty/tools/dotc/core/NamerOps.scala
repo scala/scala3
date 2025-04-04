@@ -39,14 +39,17 @@ object NamerOps:
    */
   extension (tp: Type)
     def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null)(using Context): Type =
+      val widenSkolemsMap = new TypeMap:
+        def apply(tp: Type) = mapOver(tp.widenSkolem)
       tp match
         case RefinedType(tp1, rname, rinfo) =>
           try tp1.separateRefinements(cls, refinements)
           finally
             if refinements != null then
+              val rinfo1 = widenSkolemsMap(rinfo)
               refinements(rname) = refinements.get(rname) match
-                case Some(tp) => tp & rinfo
-                case None => rinfo
+                case Some(tp) => tp & rinfo1
+                case None => rinfo1
         case tp @ AnnotatedType(tp1, ann) =>
           tp.derivedAnnotatedType(tp1.separateRefinements(cls, refinements), ann)
         case tp: RecType =>
@@ -146,9 +149,11 @@ object NamerOps:
    */
   def addConstructorApplies(scope: MutableScope, cls: ClassSymbol, modcls: ClassSymbol)(using Context): scope.type =
     def proxy(constr: Symbol): Symbol =
+      var flags = ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags)
+      if cls.is(Protected) && !modcls.is(Protected) then flags |= Protected
       newSymbol(
         modcls, nme.apply,
-        ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
+        flags,
         ApplyProxyCompleter(constr),
         cls.privateWithin,
         constr.coord)
@@ -172,12 +177,15 @@ object NamerOps:
 
   /** A new symbol that is the constructor companion for class `cls` */
   def classConstructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
+    var flags = ConstructorCompanionFlags
+    if cls.is(Protected) then flags |= Protected
     val companion = newModuleSymbol(
         cls.owner, cls.name.toTermName,
-        ConstructorCompanionFlags, ConstructorCompanionFlags,
+        flags, flags,
         constructorCompanionCompleter(cls),
-        coord = cls.coord,
-        compUnitInfo = cls.compUnitInfo)
+        cls.privateWithin,
+        cls.coord,
+        cls.compUnitInfo)
     companion.moduleClass.registerCompanion(cls)
     cls.registerCompanion(companion.moduleClass)
     companion

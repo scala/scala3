@@ -1,0 +1,8 @@
+break A$B$C 6
+eval a + a
+result aa
+
+break A$D 10
+// the compilation succeeds but the evaluation throws a NoSuchFieldException
+eval a + a
+result java.lang.NoSuchFieldException: $outer

@@ -1,0 +1,37 @@
+break Test$ 24
+eval b1
+result foo
+eval size.value
+result 2
+eval b2.take(size)
+result ba
+eval m(bar)
+result B(bar)
+eval new B("fizz")
+result fizz
+eval b1 + new B("buzz")
+result foobuzz
+eval new Msg(new Size(3))
+result Hel
+
+break B$ 6
+eval x
+result foo
+eval take(size)
+result fo
+
+break Test$ 25
+eval b1 = new B("fizz")
+result ()
+eval size = new Size(3)
+result ()
+
+break Test$ 29
+eval a
+result B(fizzbar)
+eval a.take(this.size)
+result B(fiz)
+eval a.asInstanceOf[B] + B("buzz")
+result fizzbarbuzz
+
+break B$ 6

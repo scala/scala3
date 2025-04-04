@@ -1,0 +1,8 @@
+-- [E172] Type Error: tests/neg/named-tuples-mirror.scala:5:47 ---------------------------------------------------------
+5 |  summon[Mirror.SumOf[(foo: Int, bla: String)]] // error
+  |                                               ^
+  |No given instance of type scala.deriving.Mirror.SumOf[(foo : Int, bla : String)] was found for parameter x of method summon in object Predef. Failed to synthesize an instance of type scala.deriving.Mirror.SumOf[(foo : Int, bla : String)]: type `(foo : Int, bla : String)` is not a generic sum because named tuples are not sealed classes
+-- Error: tests/neg/named-tuples-mirror.scala:8:4 ----------------------------------------------------------------------
+8 |  }]// error
+  |    ^
+  |MirroredElemLabels mismatch, expected: (("foo" : String), ("bla" : String)), found: (("foo" : String), ("ba" : String)).

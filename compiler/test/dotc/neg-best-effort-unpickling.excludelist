@@ -15,3 +15,6 @@ overrideClass.scala
 
 # repeating <error> on a top level type definition
 i18750.scala
+
+# Crash on invalid prefix ([A] =>> Int)
+i22357a.scala

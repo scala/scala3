@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.classpath.ClassPathFactory
 import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts.*
@@ -21,6 +22,7 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.SymbolLoaders
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -39,6 +41,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
+import scala.tools.asm.ClassReader
 import scala.util.control.NonFatal
 import scala.util.Using
 
@@ -153,7 +156,9 @@ class ReplDriver(settings: Array[String],
    *
    *  Possible reason for unsuccessful run are raised flags in CLI like --help or --version
    */
-  final def tryRunning = if shouldStart then runUntilQuit()
+  final def tryRunning = if shouldStart then
+    if rootCtx.settings.replQuitAfterInit.value(using rootCtx) then initialState
+    else runUntilQuit()
 
   /** Run REPL with `state` until `:quit` command found
    *
@@ -510,6 +515,65 @@ class ReplDriver(settings: Array[String],
         state
       }
 
+    case Require(path) =>
+      out.println(":require is no longer supported, but has been replaced with :jar. Please use :jar")
+      state
+
+    case JarCmd(path) =>
+      val jarFile = AbstractFile.getDirectory(path)
+      if (jarFile == null)
+        out.println(s"""Cannot add "$path" to classpath.""")
+        state
+      else
+        def flatten(f: AbstractFile): Iterator[AbstractFile] =
+          if (f.isClassContainer) f.iterator.flatMap(flatten)
+          else Iterator(f)
+
+        def tryClassLoad(classFile: AbstractFile): Option[String] = {
+          val input = classFile.input
+          try {
+            val reader = new ClassReader(input)
+            val clsName = reader.getClassName.replace('/', '.')
+            rendering.myClassLoader.loadClass(clsName)
+            Some(clsName)
+          } catch
+            case _: ClassNotFoundException => None
+          finally {
+            input.close()
+          }
+        }
+
+        try {
+          val entries = flatten(jarFile)
+
+          val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
+          if (existingClass.nonEmpty)
+            out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+          else inContext(state.context):
+            val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+            val prevOutputDir = ctx.settings.outputDir.value
+
+            // add to compiler class path
+            ctx.platform.addToClassPath(jarClassPath)
+            SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+
+            // new class loader with previous output dir and specified jar
+            val prevClassLoader = rendering.classLoader()
+            val jarClassLoader = fromURLsParallelCapable(
+              jarClassPath.asURLs, prevClassLoader)
+            rendering.myClassLoader = new AbstractFileClassLoader(
+              prevOutputDir, jarClassLoader)
+
+            out.println(s"Added '$path' to classpath.")
+        } catch {
+          case e: Throwable =>
+            out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
+        }
+        state
+
+    case KindOf(expr) =>
+      out.println(s"""The :kind command is not currently supported.""")
+      state
     case TypeOf(expr) =>
       expr match {
         case "" => out.println(s":type <expression>")
@@ -530,6 +594,10 @@ class ReplDriver(settings: Array[String],
             res => out.println(res)
           )
       }
+      state
+
+    case Sh(expr) =>
+      out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")
       state
 
     case Settings(arg) => arg match

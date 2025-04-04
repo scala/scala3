@@ -1,0 +1,27 @@
+break Test$ 5 // in main
+eval list(0)
+result 1
+// TODO can we remove debug line in adapted methods?
+break Test$ 5 // in main$$anonfun$adapted$1
+break Test$ 6 // in main$$anonfun$1
+eval list(0)
+result 1
+eval x
+result 1
+break Test$ 7 // in main$$anonfun$1$$anonfun$1
+eval x + y
+result 2
+
+break Test$ 11 // in main$$anonfun$2
+eval x
+result 1
+
+break Test$ 13 // in main
+eval list(0)
+result 1
+break Test$ 13 // in main$$anonfun$4
+
+break Test$ 14 // in main
+eval list(0)
+result 1
+break Test$ 14 // in main$$anonfun$5

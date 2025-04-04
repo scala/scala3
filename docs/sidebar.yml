@@ -72,6 +72,7 @@ subsection:
           - page: reference/other-new-features/export.md
           - page: reference/other-new-features/opaques.md
           - page: reference/other-new-features/opaques-details.md
+          - page: reference/other-new-features/named-tuples.md
           - page: reference/other-new-features/open-classes.md
           - page: reference/other-new-features/parameter-untupling.md
           - page: reference/other-new-features/parameter-untupling-spec.md
@@ -85,6 +86,7 @@ subsection:
           - page: reference/other-new-features/safe-initialization.md
           - page: reference/other-new-features/type-test.md
           - page: reference/other-new-features/experimental-defs.md
+          - page: reference/other-new-features/preview-defs.md
           - page: reference/other-new-features/binary-literals.md
       - title: Other Changed Features
         directory: changed-features
@@ -123,7 +125,6 @@ subsection:
           - page: reference/dropped-features/type-projection.md
           - page: reference/dropped-features/do-while.md
           - page: reference/dropped-features/procedure-syntax.md
-          - page: reference/dropped-features/package-objects.md
           - page: reference/dropped-features/early-initializers.md
           - page: reference/dropped-features/class-shadowing.md
           - page: reference/dropped-features/class-shadowing-spec.md
@@ -138,6 +139,11 @@ subsection:
           - page: reference/dropped-features/nonlocal-returns.md
           - page: reference/dropped-features/this-qualifier.md
           - page: reference/dropped-features/wildcard-init.md
+      - title: Preview Features
+        directory: preview
+        index: reference/preview/overview.md
+        subsection:
+          - page: reference/preview/better-fors.md
       - title: Experimental Features
         directory: experimental
         index: reference/experimental/overview.md
@@ -158,12 +164,11 @@ subsection:
           - page: reference/experimental/cc.md
           - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
-          - page: reference/experimental/named-tuples.md
           - page: reference/experimental/modularity.md
           - page: reference/experimental/typeclasses.md
           - page: reference/experimental/runtimeChecked.md
-          - page: reference/experimental/better-fors.md
           - page: reference/experimental/unrolled-defs.md
+          - page: reference/experimental/package-object-values.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

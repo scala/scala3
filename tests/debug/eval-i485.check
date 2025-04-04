@@ -1,0 +1,11 @@
+break Test$ 16
+eval b.a1
+result a1
+eval b.a2 = 2; b.a2
+result 2
+eval b.m
+result m
+eval new b.D
+result D
+eval b.D
+result D$

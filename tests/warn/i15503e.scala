@@ -70,10 +70,10 @@ package foo.test.i16865:
   trait Bar extends Foo
 
   object Ex extends Bar:
-    def fn(a: Int, b: Int): Int = b + 3 // warn
+    def fn(a: Int, b: Int): Int = b + 3 // no warn (override)
 
   object Ex2 extends Bar:
-    override def fn(a: Int, b: Int): Int = b + 3 // warn
+    override def fn(a: Int, b: Int): Int = b + 3 // no warn (override)
 
 final class alpha(externalName: String) extends StaticAnnotation // no warn annotation arg
 

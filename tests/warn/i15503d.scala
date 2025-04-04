@@ -1,7 +1,5 @@
 //> using options -Wunused:patvars
 
-import scala.reflect.Typeable
-
 sealed trait Calc
 sealed trait Const extends Calc
 case class Sum(a: Calc, b: Calc) extends Calc
@@ -24,7 +22,7 @@ case class K(i: Int, j: Int)
 
 class C(c0: Option[Int], k0: K):
   private val Some(c) = c0: @unchecked  // warn valdef from pattern
-  private val K(i, j) = k0              // warn // warn valdefs from pattern (RHS patvars are NoWarn)
+  private val K(i, j) = k0              // nowarn (name of case class element is nowarn)
   val K(v, w) = k0                      // nowarn nonprivate
   private val K(r, s) = k0              // warn // warn valdefs from pattern
   def f(x: Option[Int]) = x match
@@ -74,13 +72,6 @@ class C(c0: Option[Int], k0: K):
     for case Some(value) <- List(Option(42))
     yield 27
 
-    /*
-  def tester[A](a: A)(using Typeable[K]) =
-    a match
-    case S(i, j) => i + j
-    case _ => 0
-    */
-
 class Wild:
   def f(x: Any) =
     x match
@@ -124,3 +115,9 @@ object `mutable patvar in for`:
 class `unset var requires -Wunused`:
   private var i = 0 // no warn as we didn't ask for it
   def f = println(i)
+
+class `i22743 lazy vals are defs`:
+  def f: (Int, String) = (42, "hello, world")
+  lazy val (i, s) = f // no warn because def is neither local nor private
+  val (j, t) = f // existing no warn for val with attachment
+  private lazy val (k, u) = f // warn // warn a warning so nice, they warn it twice

@@ -71,13 +71,6 @@ object ProtoTypes {
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
-              // Remove all type lambdas and tvars introduced by testCompat
-              for tvar <- newctx.typerState.ownedVars do
-                inContext(newctx):
-                  if !tvar.isInstantiated then
-                    tvar.instantiate(fromBelow = false) // any direction
-
-              // commit any remaining changes in typer state
               newctx.typerState.commit()
             result
           case _ => testCompat
@@ -536,8 +529,8 @@ object ProtoTypes {
     def typedArg(arg: untpd.Tree, formal: Type)(using Context): Tree = {
       val wideFormal = formal.widenExpr
       val argCtx =
-        if wideFormal eq formal then ctx
-        else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
+        if wideFormal eq formal then ctx.retractMode(Mode.InAnnotation)
+        else ctx.retractMode(Mode.InAnnotation).withNotNullInfos(ctx.notNullInfos.retractMutables)
       val locked = ctx.typerState.ownedVars
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),

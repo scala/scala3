@@ -1,0 +1,12 @@
+-- Warning: tests/init-global/warn-tasty/unapplySeq-implicit-arg2.scala:4:9 --------------------------------------------
+4 |    Some(i1 +: seqi) // warn
+  |         ^^
+  |Access uninitialized field value i1. Calling trace:
+  |├── object Bar {	[ unapplySeq-implicit-arg2.scala:1 ]
+  |│   ^
+  |├── case Bar(i) => i	[ unapplySeq-implicit-arg2.scala:7 ]
+  |│        ^^^^^^
+  |├── def unapplySeq(using f1: Foo)(using f2: Foo)(seqi: Seq[Int])(using Foo): Option[Seq[Int]] =	[ unapplySeq-implicit-arg2.scala:3 ]
+  |│   ^
+  |└── Some(i1 +: seqi) // warn	[ unapplySeq-implicit-arg2.scala:4 ]
+  |         ^^

@@ -8,6 +8,9 @@ import scala.meta.pc.PcSymbolInformation
 import dotty.tools.pc.base.BasePCSuite
 import scala.language.unsafeNulls
 import org.junit.Test
+import scala.meta.internal.metals.CompilerOffsetParams
+import java.nio.file.Paths
+import scala.annotation.nowarn
 
 class InfoSuite extends BasePCSuite {
 
@@ -53,4 +56,48 @@ class InfoSuite extends BasePCSuite {
          |scala/collection/IterableOnceOps#flatMap().
          |""".stripMargin
     )
+
+  @Test def i7251 =
+    withSource(
+      """|package a
+         |sealed trait TA:
+         |  type SomeType
+         |trait TB extends TA:
+         |  type SomeType = Int
+         |""".stripMargin
+    )
+    val info = presentationCompiler.info("a/TA#SomeType#").get()
+    assertNoDiff(info.get().symbol(), "a/TA#SomeType#")
+
+  @Test def memberDefsAnnotations =
+    def assertMemberDefsAnnotations(symbol: String, expected: String) =
+      val info = presentationCompiler.info(symbol).get()
+      assertNoDiff(info.get().memberDefsAnnotations().asScala.mkString("\n"), expected, Some(symbol))
+    withSource(
+      """|package a
+         |import scala.annotation.nowarn
+         |sealed trait TA:
+         | @nowarn
+         | def aaa = 1
+         |
+         |object O:
+         | @nowarn
+         | def aaa = 1
+         |
+         |class D:
+         | @nowarn
+         | def bbb = 1
+         |""".stripMargin
+    )
+    assertMemberDefsAnnotations("a/TA#", "scala.annotation.nowarn")
+    assertMemberDefsAnnotations("a/O.", "scala.annotation.nowarn")
+    assertMemberDefsAnnotations("a/D#", "scala.annotation.nowarn")
+    assertMemberDefsAnnotations("a/D#bbb().", "")
+
+  // hacky way to add a source file to the presentation compiler sources
+  private def withSource(code: String) =
+    val filename = "Hover.scala"
+    val pcParams = CompilerOffsetParams(Paths.get(filename).toUri(), code, 0)
+    presentationCompiler.hover(pcParams).get()
+
 }

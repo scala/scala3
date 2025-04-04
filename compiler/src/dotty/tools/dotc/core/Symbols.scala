@@ -357,13 +357,25 @@ object Symbols extends SymUtils {
         targets.match
           case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
           case _                    => this
-      else if (denot.is(Synthetic)) {
+      else if denot.is(Synthetic) then
         val linked = denot.linkedClass
         if (linked.exists && !linked.is(Synthetic))
           linked
         else
           denot.owner.sourceSymbol
-      }
+      else if (
+        denot.is(TypeParam) &&
+        denot.maybeOwner.maybeOwner.isAllOf(EnumCase) &&
+        denot.maybeOwner.isPrimaryConstructor
+      ) then
+        val enclosingEnumCase = denot.maybeOwner.maybeOwner
+        val caseTypeParam = enclosingEnumCase.typeParams.find(_.name == denot.name)
+        if caseTypeParam.exists(_.is(Synthetic)) then
+          val enumClass = enclosingEnumCase.info.firstParent.typeSymbol
+          val sourceTypeParam = enumClass.typeParams.find(_.name == denot.name)
+          sourceTypeParam.getOrElse(this)
+        else
+          caseTypeParam.getOrElse(this)
       else if (denot.isPrimaryConstructor)
         denot.owner.sourceSymbol
       else this
@@ -629,6 +641,32 @@ object Symbols extends SymUtils {
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
   }
 
+  /** Same as the other `newNormalizedClassSymbol` except that `parents` can be a function returning a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings and annotations can be assigned in the completer.
+   */
+  def newNormalizedClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parentTypes: Symbol => List[Type],
+      selfInfo: Type,
+      privateWithin: Symbol,
+      annotations: List[Tree],
+      coord: Coord,
+      compUnitInfo: CompilationUnitInfo | Null)(using Context): ClassSymbol = {
+    def completer = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parents = parentTypes(cls).map(_.dealias)
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        denot.info = ClassInfo(owner.thisType, cls, parents, decls, selfInfo)
+        denot.annotations = annotations.map(Annotations.Annotation(_))
+      }
+    }
+    newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
+  }
+
   def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
     newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, newScope, coord = coord)
 
@@ -698,6 +736,34 @@ object Symbols extends SymUtils {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls, TermRef(owner.thisType, module))
+      }
+    }
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => completer(module),
+        privateWithin, coord, compUnitInfo)
+  }
+
+  /** Same as `newNormalizedModuleSymbol` except that `parents` can be a function returning a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parentTypes: ClassSymbol => List[Type],
+      decls: Scope,
+      privateWithin: Symbol,
+      coord: Coord,
+      compUnitInfo: CompilationUnitInfo | Null)(using Context): TermSymbol = {
+    def completer(module: Symbol) = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parents = parentTypes(cls).map(_.dealias)
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        denot.info = ClassInfo(owner.thisType, cls, parents, decls, TermRef(owner.thisType, module))
       }
     }
     newModuleSymbol(

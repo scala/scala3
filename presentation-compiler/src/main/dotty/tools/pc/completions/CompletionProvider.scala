@@ -99,9 +99,9 @@ class CompletionProvider(
              *  4|     $1$.sliding@@[Int](size, step)
              *
              */
-            if qual.symbol.is(Flags.Synthetic) && qual.symbol.name.isInstanceOf[DerivedName] =>
+            if qual.symbol.is(Flags.Synthetic) && qual.span.isZeroExtent && qual.symbol.name.isInstanceOf[DerivedName] =>
               qual.symbol.defTree match
-                case valdef: ValDef => Select(valdef.rhs, name) :: tail
+                case valdef: ValDef if !valdef.rhs.isEmpty => Select(valdef.rhs, name) :: tail
                 case _ => tpdPath0
           case _ => tpdPath0
 
@@ -248,10 +248,17 @@ class CompletionProvider(
         range: Option[LspRange] = None
     ): CompletionItem =
       val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
-      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
+      val trimmedNewText = {
+        var nt = newText
+        if (completionPos.hasLeadingBacktick) nt = nt.stripPrefix("`")
+        if (completionPos.hasTrailingBacktick) nt = nt.stripSuffix("`")
+        nt
+      }
+
+      val editRange = if trimmedNewText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
-      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(newText))
+      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(trimmedNewText))
 
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")
