@@ -7,7 +7,6 @@ import core.Contexts.*
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
-import annotation.tailrec
 import annotation.internal.unshared
 import collection.mutable.ArrayBuffer
 import collection.mutable
@@ -16,6 +15,8 @@ import scala.util.{Success, Failure}
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 
 object Settings:
+
+  private inline def classTag[T](using ctag: ClassTag[T]): ClassTag[T] = ctag
 
   val BooleanTag: ClassTag[Boolean]      = ClassTag.Boolean
   val IntTag: ClassTag[Int]              = ClassTag.Int
@@ -104,21 +105,24 @@ object Settings:
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
-    assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
+    assert(!(classTag[T] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases
 
+    def isPresentIn(state: SettingsState): Boolean = state.wasChanged(idx)
+
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
+
+    def userValueIn(state: SettingsState): Option[T] = if isPresentIn(state) then Some(valueIn(state)) else None
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)
-      case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: ${summon[ClassTag[T]]}")
+      case null => throw IllegalArgumentException(s"attempt to set null ${classTag[T]}")
+      case _    => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: ${classTag[T]}")
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
-    def isMultivalue: Boolean = summon[ClassTag[T]] == ListTag
-
-    def acceptsNoArg: Boolean = summon[ClassTag[T]] == BooleanTag || summon[ClassTag[T]] == OptionTag || choices.exists(_.contains(""))
+    def isMultivalue: Boolean = classTag[T] == ListTag
 
     def legalChoices: String =
       choices match
@@ -134,7 +138,7 @@ object Settings:
         * Updates the value in state
         *
         * @param getValue it is crucial that this argument is passed by name, as [setOutput] have side effects.
-        * @param argStringValue string value of currently proccessed argument that will be used to set deprecation replacement
+        * @param argStringValue string value of currently processed argument that will be used to set deprecation replacement
         * @param args remaining arguments to process
         * @return new argumment state
         */
@@ -170,11 +174,17 @@ object Settings:
 
       def missingArg =
         val msg = s"missing argument for option $name"
-        if ignoreInvalidArgs then state.warn(msg + ", the tag was ignored") else state.fail(msg)
+        if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored") else state.fail(msg)
 
       def invalidChoices(invalid: List[String]) =
         val msg = s"invalid choice(s) for $name: ${invalid.mkString(",")}"
-        if ignoreInvalidArgs then state.warn(msg + ", the tag was ignored") else state.fail(msg)
+        if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored") else state.fail(msg)
+
+      def isEmptyDefault = default == null.asInstanceOf[T] || classTag[T].match
+        case ListTag   => default.asInstanceOf[List[?]].isEmpty
+        case StringTag => default.asInstanceOf[String].isEmpty
+        case OptionTag => default.asInstanceOf[Option[?]].isEmpty
+        case _         => false
 
       def setBoolean(argValue: String, args: List[String]) =
         if argValue.equalsIgnoreCase("true") || argValue.isEmpty then update(true, argValue, args)
@@ -203,11 +213,11 @@ object Settings:
       def setOutput(argValue: String, args: List[String]) =
         val path = Directory(argValue)
         val isJar = path.ext.isJar
-        if (!isJar && !path.isDirectory) then
+        if !isJar && !path.isDirectory then
           state.fail(s"'$argValue' does not exist or is not a directory or .jar file")
         else
           /* Side effect, do not change this method to evaluate eagerly */
-          def output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+          def output = if isJar then JarArchive.create(path) else new PlainDirectory(path)
           update(output, argValue, args)
 
       def setVersion(argValue: String, args: List[String]) =
@@ -228,25 +238,34 @@ object Settings:
           case _ => update(strings, argValue, args)
 
       def doSet(argRest: String) =
-        ((summon[ClassTag[T]], args): @unchecked) match
-          case (BooleanTag, _) =>
+        classTag[T] match
+          case BooleanTag =>
             if sstate.wasChanged(idx) && preferPrevious then ignoreValue(args)
             else setBoolean(argRest, args)
-          case (OptionTag, _) =>
+          case OptionTag =>
             update(Some(propertyClass.get.getConstructor().newInstance()), "", args)
-          case (ct, args) =>
+          case ct =>
             val argInArgRest = !argRest.isEmpty || legacyArgs
-            val argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
+            inline def argAfterParam = args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
+            inline def isMultivalueWithDefault = isMultivalue && !isEmptyDefault
             if argInArgRest then
               doSetArg(argRest, args)
-            else if argAfterParam then
+            else if argAfterParam && !isMultivalueWithDefault then
               doSetArg(args.head, args.tail)
-            else missingArg
+            else if isEmptyDefault then
+              missingArg
+            else
+              doSetArg(arg = null, args) // update with default
 
-      def doSetArg(arg: String, argsLeft: List[String]) = summon[ClassTag[T]] match
+      def doSetArg(arg: String | Null, argsLeft: List[String]) =
+        classTag[T] match
+          case ListTag if arg == null =>
+            update(default, argStringValue = "", argsLeft)
           case ListTag =>
             val strings = arg.split(",").toList
             appendList(strings, arg, argsLeft)
+          case _ if arg == null =>
+            missingArg
           case StringTag =>
             setString(arg, argsLeft)
           case OutputTag =>
@@ -262,10 +281,10 @@ object Settings:
             missingArg
 
       def matches(argName: String): Boolean =
-        (allFullNames).exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
+        allFullNames.exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
 
       def argValRest: String =
-        if(prefix.isEmpty) arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
+        if prefix.isEmpty then arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
 
       if matches(arg) then
         deprecation match
@@ -299,8 +318,10 @@ object Settings:
   object Setting:
     extension [T](setting: Setting[T])
       def value(using Context): T = setting.valueIn(ctx.settingsState)
+      def userValue(using Context): Option[T] = setting.userValueIn(ctx.settingsState)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
+      def isPresent(using Context): Boolean = setting.isPresentIn(ctx.settingsState)
 
     /**
      * A choice with help description.
@@ -353,7 +374,6 @@ object Settings:
      *
      *  to get their arguments.
      */
-    @tailrec
     final def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary =
       def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match
@@ -362,11 +382,11 @@ object Settings:
         case "--" :: args =>
           checkDependencies(stateWithArgs(skipped ++ args))
         case x :: _ if x startsWith "-" =>
-          @tailrec def loop(settings: List[Setting[?]]): ArgsSummary = settings match
-            case setting :: settings1 =>
+          def loop(settings: List[Setting[?]]): ArgsSummary = settings match
+            case setting :: settings =>
               val state1 = setting.tryToSet(state)
               if state1 ne state then state1
-              else loop(settings1)
+              else loop(settings)
             case Nil =>
               state.warn(s"bad option '$x' was ignored")
           processArguments(loop(allSettings.toList), processAll, skipped)
@@ -376,7 +396,7 @@ object Settings:
     end processArguments
 
     def processArguments(arguments: List[String], processAll: Boolean, settingsState: SettingsState = defaultState): ArgsSummary =
-      processArguments(ArgsSummary(settingsState, arguments, Nil, Nil), processAll, Nil)
+      processArguments(ArgsSummary(settingsState, arguments, errors = Nil, warnings = Nil), processAll, skipped = Nil)
 
     def publish[T](settingf: Int => Setting[T]): Setting[T] =
       val setting = settingf(_allSettings.length)
@@ -399,7 +419,7 @@ object Settings:
     def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[Int] =
@@ -429,7 +449,7 @@ object Settings:
       publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs, deprecation = deprecation))
 
     def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[Option[T]] =
-      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases, deprecation = deprecation))
+      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(classTag[T].runtimeClass), aliases = aliases, deprecation = deprecation))
 
   end SettingGroup
 end Settings
