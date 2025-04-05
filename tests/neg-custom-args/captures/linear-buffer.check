@@ -11,7 +11,7 @@
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:6:9 -------------------------------------------------------
 6 |  def foo = // error
   |         ^
-  |Separation failure: method foo's inferred result type BadBuffer[box T^?]^ hides non-local this of class class BadBuffer.
+  |Separation failure: method foo's inferred result type BadBuffer[box T^{}]^ hides non-local this of class class BadBuffer.
   |The access must be in a @consume method to allow this.
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:19:17 -----------------------------------------------------
 19 |  val buf3 = app(buf, 3) // error

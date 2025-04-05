@@ -1,13 +1,13 @@
 -- Error: tests/neg-custom-args/captures/delayedRunops.scala:17:13 -----------------------------------------------------
 17 |      runOps(ops1)  // error
    |             ^^^^
-   |             reference ops* is not included in the allowed capture set {}
-   |             of an enclosing function literal with expected type () -> Unit
+   |             Local reach capability ops* leaks into capture scope of method delayedRunOps1.
+   |             To allow this, the parameter ops should be declared with a @use annotation
 -- Error: tests/neg-custom-args/captures/delayedRunops.scala:29:13 -----------------------------------------------------
 29 |      runOps(ops1)  // error
    |             ^^^^
-   |             reference ops* is not included in the allowed capture set {}
-   |             of an enclosing function literal with expected type () -> Unit
+   |             Local reach capability ops* leaks into capture scope of method delayedRunOps3.
+   |             To allow this, the parameter ops should be declared with a @use annotation
 -- Error: tests/neg-custom-args/captures/delayedRunops.scala:22:16 -----------------------------------------------------
 22 |      val ops1: List[() => Unit] = ops // error
    |                ^^^^^^^^^^^^^^^^

@@ -4,10 +4,17 @@
    |              Type variable T of object Boxed cannot be instantiated to box IO^ since
    |              that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/i21401.scala:15:18 ------------------------------------------------------------
-15 |  val a = usingIO[IO^](x => x) // error
+15 |  val a = usingIO[IO^](x => x) // error // error
    |                  ^^^
    |                  Type variable R of method usingIO cannot be instantiated to box IO^ since
    |                  that type captures the root capability `cap`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:15:23 ---------------------------------------
+15 |  val a = usingIO[IO^](x => x) // error // error
+   |                       ^^^^^^
+   |                       Found:    (x: IO^) ->? box IO^{x}
+   |                       Required: (x: IO^) ->{fresh} box IO^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
 16 |  val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error
    |                                                                  ^^^

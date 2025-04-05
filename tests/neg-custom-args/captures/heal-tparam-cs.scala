@@ -17,7 +17,7 @@ def main(io: Capp^, net: Capp^): Unit = {
     }
 
   val test3: (c: Capp^{io}) -> () ->{io} Unit =
-    localCap { c =>  // ok
+    localCap { c =>
       (c1: Capp^{io}) => () => { c1.use() }
     }
 

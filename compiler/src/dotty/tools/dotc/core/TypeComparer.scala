@@ -256,7 +256,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           report.log(explained(_.isSubType(tp1, tp2, approx), short = false))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
-      val normalize = new TypeMap with CaptureSet.IdempotentCaptRefMap {
+      val normalize = new TypeMap {
         val DerefLimit = 10
         var derefCount = 0
         def apply(t: Type) = t match {
@@ -426,7 +426,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if isCaptureVarComparison then
-              return subCaptures(tp1.captureSet, tp2.captureSet).isOK
+              return CCState.withCapAsRoot:
+                subCaptures(tp1.captureSet, tp2.captureSet).isOK
             if (tp1 eq NothingType) || isBottom(tp1) then
               return true
         }
@@ -575,7 +576,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
         if isCaptureVarComparison then
-          return subCaptures(tp1.captureSet, tp2.captureSet).isOK
+          return CCState.withCapAsRoot:
+            subCaptures(tp1.captureSet, tp2.captureSet).isOK
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
@@ -804,8 +806,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (tp1.signature consistentParams tp2.signature) &&
             matchingMethodParams(tp1, tp2) &&
             (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            CCState.inNewExistentialScope(tp2):
-              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod

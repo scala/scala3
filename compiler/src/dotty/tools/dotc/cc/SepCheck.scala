@@ -477,6 +477,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
          |  actualCaptures = ${args.map(arg => CaptureSet(captures(arg)))},
          |  deps = ${deps.toList}""")
     val parts = qual :: args
+    var reported: SimpleIdentitySet[Tree] = SimpleIdentitySet.empty
 
     for arg <- args do
       val argPeaks = PeaksPair(
@@ -495,7 +496,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       // 1. test argPeaks.actual against previously captured hidden sets
       if !argPeaks.actual.sharedWith(currentPeaks.hidden).isEmpty then
         val clashing = clashingPart(argPeaks.actual, _.hidden)
-        if !clashing.isEmpty then sepApplyError(fn, parts, clashing, arg)
+        if !clashing.isEmpty then
+          sepApplyError(fn, parts, clashing, arg)
+          reported += clashing
         else assert(!argDeps.isEmpty)
 
       if arg.needsSepCheck then
@@ -505,9 +508,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         if !argPeaks.hidden.sharedWith(currentPeaks.actual).isEmpty then
           val clashing = clashingPart(argPeaks.hidden, _.actual)
           if !clashing.isEmpty then
-            if !clashing.needsSepCheck then
-              // if clashing needs a separation check then we already got an erro
-              // in (1) at position of clashing. No need to report it twice.
+            if !reported.contains(clashing) then
               //println(i"CLASH $arg / ${argPeaks.formal} vs $clashing / ${peaksOfTree(clashing).actual} / ${captures(clashing).peaks}")
               sepApplyError(fn, parts, arg, clashing)
           else assert(!argDeps.isEmpty)

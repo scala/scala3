@@ -9,12 +9,19 @@ import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
-import Periods.NoRunId
+import Periods.{NoRunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.VarState
 import Annotations.Annotation
 import config.Printers.capt
+
+object CaptureRef:
+  opaque type Validity = Int
+  def validId(runId: Int, iterId: Int): Validity =
+    runId + (iterId << RunWidth)
+  def currentId(using Context): Validity = validId(ctx.runId, ccState.iterCount)
+  val invalid: Validity = validId(NoRunId, 0)
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
@@ -22,8 +29,10 @@ import config.Printers.capt
  *  `*` first, `.rd` next, `?` last.
  */
 trait CaptureRef extends TypeProxy, ValueType:
+  import CaptureRef.*
+
   private var myCaptureSet: CaptureSet | Null = uninitialized
-  private var myCaptureSetRunId: Int = NoRunId
+  private var myCaptureSetValid: Validity = invalid
   private var mySingletonCaptureSet: CaptureSet.Const | Null = null
   private var myDerivedRefs: List[AnnotatedType] = Nil
 
@@ -130,20 +139,24 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** The capture set of the type underlying this reference */
   final def captureSetOfInfo(using Context): CaptureSet =
-    if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
+    if myCaptureSetValid == currentId then myCaptureSet.nn
     else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
     else
       myCaptureSet = CaptureSet.Pending
       val computed = CaptureSet.ofInfo(this)
-      if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || underlying.isProvisional then
+      if !isCaptureChecking
+          || ctx.mode.is(Mode.IgnoreCaptures)
+          || !underlying.exists
+          || underlying.isProvisional
+      then
         myCaptureSet = null
       else
         myCaptureSet = computed
-        myCaptureSetRunId = ctx.runId
+        myCaptureSetValid = currentId
       computed
 
   final def invalidateCaches() =
-    myCaptureSetRunId = NoRunId
+    myCaptureSetValid = invalid
 
   /**  x subsumes x
    *   x =:= y       ==>  x subsumes y
@@ -252,12 +265,18 @@ trait CaptureRef extends TypeProxy, ValueType:
     || this.match
       case root.Fresh(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
-        || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
+        || !y.stripReadOnly.isCap
+            && !yIsExistential
+            && !y.isInstanceOf[TermParamRef]
+            && canAddHidden
+            && vs.addHidden(hidden, y)
       case x @ root.Result(binder) =>
-        if y.derivesFromSharedCapability then true
-        else
+        val result = y match
+          case y @ root.Result(_) => vs.unify(x, y)
+          case _ => y.derivesFromSharedCapability
+        if !result then
           ccState.addNote(CaptureSet.ExistentialSubsumesFailure(x, y))
-          false
+        result
       case _ =>
         y match
           case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)

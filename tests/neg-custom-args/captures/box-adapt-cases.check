@@ -8,7 +8,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:15:10 ------------------------------
 15 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
-   |          Found:    (cap: box Cap^?) ->{io} Int
+   |          Found:    (cap: box Cap^{io}) ->{io} Int
    |          Required: (cap: box Cap^{io}) -> Int
    |
    | longer explanation available when compiling with `-explain`

@@ -1,13 +1,17 @@
--- Error: tests/neg-custom-args/captures/capt1.scala:5:11 --------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:5:2 ------------------------------------------
 5 |  () => if x == null then y else y  // error
-  |           ^
-  |           reference (x : C^) is not included in the allowed capture set {}
-  |           of an enclosing function literal with expected type () -> C
--- Error: tests/neg-custom-args/captures/capt1.scala:8:11 --------------------------------------------------------------
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    () ->{x} C^?
+  |  Required: () -> C
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:8:2 ------------------------------------------
 8 |  () => if x == null then y else y  // error
-  |           ^
-  |           reference (x : C^) is not included in the allowed capture set {}
-  |           of an enclosing function literal with expected type Matchable
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    () ->{x} C^?
+  |  Required: Matchable
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:15:2 -----------------------------------------
 15 |  def f(y: Int) = if x == null then y else y  // error
    |  ^
@@ -38,11 +42,13 @@
    |             ^^^^^^^^^
    |             Type variable X of method h cannot be instantiated to () -> box C^ since
    |             the part box C^ of that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/capt1.scala:36:30 -------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
-   |                              ^
-   |                              reference (x : C^) is not included in the allowed capture set {}
-   |                              of an enclosing function literal with expected type () -> box C^
+   |                        ^^^^^^^
+   |                        Found:    () ->{x} box C^{x}
+   |                        Required: () -> box C^
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
 38 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
    |             ^^^^^^^^^^^^^^^^^^^^^^^

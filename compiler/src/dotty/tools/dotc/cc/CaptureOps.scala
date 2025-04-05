@@ -26,14 +26,14 @@ val PrintFresh: Key[Unit] = Key()
 
 object ccConfig:
 
-  /** If true, allow mapping capture set variables under captureChecking with maps that are neither
-   *  bijective nor idempotent. We currently do now know how to do this correctly in all
-   *  cases, though.
-   */
-  inline val allowUnsoundMaps = false
-
   /** If enabled, use a special path in recheckClosure for closures
-   *  that are eta expansions. This can improve some error messages.
+   *  to compare the result tpt of the anonymous functon with the expected
+   *  result type. This can narrow the scope of error messages.
+   */
+  inline val preTypeClosureResults = false
+
+  /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
+   *  for eta expansions. This can improve some error messages.
    */
   inline val handleEtaExpansionsSpecially = true
 
@@ -43,13 +43,35 @@ object ccConfig:
    */
   inline val deferredReaches = false
 
+  /** Check that if a type map (which is not a BiTypeMap) maps initial capture
+   *  set variable elements to themselves it will not map any elements added in
+   *  the future to something else. That is, we can safely use a capture set
+   *  variable itself as the image under the map. By default this is off since it
+   *  is a bit expensive to check.
+   */
+  inline val checkSkippedMaps = false
+
+  /** Always repeat a capture checking run at least once if there are no errors
+   *  yet. Used for stress-testing the logic for when a new capture checking run needs
+   *  to be scheduled because a provisionally solved capture set was later extended.
+   *  So far this happens only in very few tests. With the flag on, the logic is
+   *  tested for all tests except neg tests.
+   */
+  inline val alwaysRepeatRun = false
+
+  /** After capture checking, check that no capture set contains ParamRefs that are outside
+   *  its scope. This used to occur and was fixed by healTypeParam. It should no longer
+   *  occur now.
+   */
+  inline val postCheckCapturesets = false
+
   /** If true, turn on separation checking */
   def useSepChecks(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
 
 end ccConfig
 
@@ -112,6 +134,13 @@ class CCState:
 
   private var capIsRoot: Boolean = false
 
+  /** If true, apply a BiTypeMap also to elements added to the set in the future
+   *  (and use its inverse when back-progating).
+   */
+  private var mapFutureElems = true
+
+  var iterCount = 1
+
 object CCState:
 
   opaque type Level = Int
@@ -168,8 +197,24 @@ object CCState:
       try op finally ccs.capIsRoot = saved
     else op
 
+  /** Don't map future elements in this `op` */
+  inline def withoutMappedFutureElems[T](op: => T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.mapFutureElems
+    ccs.mapFutureElems = false
+    try op finally ccs.mapFutureElems = saved
+
   /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
   def capIsRoot(using Context): Boolean = ccState.capIsRoot
+
+  /** When mapping a capture set with a BiTypeMap, should we create a BiMapped set
+   *  so that future elements can also be mapped, and elements added to the BiMapped
+   *  are back-propagated? Turned off when creating capture set variables for the
+   *  first time, since we then do not want to change the binder to the original type
+   *  without capture sets when back propagating. Error case where this shows:
+   *  pos-customargs/captures/lists.scala, method m2c.
+   */
+  def mapFutureElems(using Context) = ccState.mapFutureElems
 
   /** The currently opened existential scopes */
   def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
@@ -251,7 +296,8 @@ extension (tp: Type)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
-      tp.derivesFrom(defn.Caps_CapSet)
+      !tp.underlying.exists // might happen during construction of lambdas
+      || tp.derivesFrom(defn.Caps_CapSet)
     case root.Result(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
@@ -322,8 +368,7 @@ extension (tp: Type)
   def boxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
-        case ann: CaptureAnnotation =>
-          assert(!parent.derivesFrom(defn.Caps_CapSet))
+        case ann: CaptureAnnotation if !parent.derivesFrom(defn.Caps_CapSet) =>
           AnnotatedType(parent, ann.boxedAnnot)
         case ann => tp
     case tp: RealTypeBounds =>
@@ -335,7 +380,8 @@ extension (tp: Type)
    *  are of the form this.C but their pathroot is still this.C, not this.
    */
   final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) =>
+    case tp1: NamedType
+    if tp1.symbol.maybeOwner.isClass && tp1.symbol != defn.captureRoot && !tp1.symbol.is(TypeParam) =>
       tp1.prefix.pathRoot
     case tp1 => tp1
 

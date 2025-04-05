@@ -65,12 +65,12 @@ def test[T, E](using Async) =
           fr.await.ok
 
     def fail4[T, E](fr: Future[Result[T, E]]^) =
-        Result.make: // error: local reference leaks
-          Future: fut ?=>
+        Result.make:
+          Future: fut ?=> // error, type mismatch
             fr.await.ok
 
     def fail5[T, E](fr: Future[Result[T, E]]^) =
-        Result.make[Future[T], E]: lbl ?=>
-          Future: fut ?=> // error: type mismatch
+        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
+          Future: fut ?=>
             fr.await.ok
 

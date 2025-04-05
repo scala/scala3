@@ -11,7 +11,6 @@ import typer.ErrorReporting.errorType
 import Names.TermName
 import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction
-import CaptureSet.IdempotentCaptRefMap
 import reporting.Message
 import util.{SimpleIdentitySet, EqHashMap}
 import util.Spans.NoSpan
@@ -113,6 +112,11 @@ object root:
       case Kind.Result(binder) => tm match
         case tm: Substituters.SubstBindingMap[MethodType] @unchecked if tm.from eq binder =>
           derivedAnnotation(tm.to)
+        case tm: Substituters.SubstBindingsMap =>
+          var i = 0
+          while i < tm.from.length && (tm.from(i) ne binder) do i += 1
+          if i < tm.from.length then derivedAnnotation(tm.to(i).asInstanceOf[MethodType])
+          else this
         case _ => this
       case _ => this
   end Annot
@@ -162,7 +166,9 @@ object root:
     case _ if root.isCap => Some(Kind.Global)
     case _ => None
 
-  /** Map each occurrence of cap to a different Sep.Cap instance */
+  /** Map each occurrence of cap to a different Fresh instance
+   *  Exception: CapSet^ stays as it is.
+   */
   class CapToFresh(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
@@ -171,6 +177,8 @@ object root:
       else t match
         case t: CaptureRef if t.isCap =>
           Fresh.withOwner(owner)
+        case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
+          t
         case t @ CapturingType(_, _) =>
           mapOver(t)
         case t @ AnnotatedType(parent, ann) =>
@@ -182,16 +190,26 @@ object root:
         case _ =>
           mapFollowingAliases(t)
 
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: Inverse => assert(false); Some(IdentityTypeMap)
+      case _ => None
+
     override def toString = "CapToFresh"
 
-    lazy val inverse: BiTypeMap & FollowAliasesMap = new BiTypeMap with FollowAliasesMap:
+    class Inverse extends BiTypeMap, FollowAliasesMap:
       def apply(t: Type): Type = t match
         case t @ Fresh(_) => cap
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
+      override def fuse(next: BiTypeMap)(using Context) = next match
+        case next: CapToFresh => assert(false); Some(IdentityTypeMap)
+        case _ => None
+
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
+
+    lazy val inverse = Inverse()
 
   end CapToFresh
 
@@ -205,7 +223,7 @@ object root:
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type)(using Context): Type =
-    val subst = new IdempotentCaptRefMap:
+    val subst = new TypeMap:
       val seen = EqHashMap[Annotation, CaptureRef]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
 
@@ -304,7 +322,12 @@ object root:
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
       case _ =>
-        if keepAliases then mapOver(t) else mapFollowingAliases(t)
+        try
+          if keepAliases then mapOver(t)
+          else mapFollowingAliases(t)
+        catch case ex: AssertionError =>
+          println(i"error while mapping $t")
+          throw ex
   end toResultInResults
 
   /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
