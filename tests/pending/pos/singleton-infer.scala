@@ -1,4 +1,4 @@
-//> using options -Xprint:typer -language:experimental.modularity -source future
+//> using options -Vprint:typer -language:experimental.modularity -source future
 
 def f1[S, T <: S : Singleton](x: S) = ()
 def f2[S, T >: S : Singleton](x: S) = ()

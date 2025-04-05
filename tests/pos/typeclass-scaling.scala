@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 
 // The following command:
 //
-//     sc typeclass-scaling.scala -Xmax-inlines 100 -Xprint:typer -color:never -pagewidth 1000 >& x
+//     sc typeclass-scaling.scala -Xmax-inlines 100 -Vprint:typer -color:never -pagewidth 1000 >& x
 //
 // produces an output file with `wc` measures (lines/words/chars):
 //
