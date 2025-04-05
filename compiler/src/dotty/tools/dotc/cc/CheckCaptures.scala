@@ -268,7 +268,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       needAnotherRun = false
       resetNuTypes()
       todoAtPostCheck.clear()
-      for (sym, completer) <- completed do sym.info = completer
+      for (sym, completer) <- completed do
+        sym.info = completer
+        sym.resetFlag(Touched)
       completed.clear()
 
     extension [T <: Tree](tree: T)
