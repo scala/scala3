@@ -37,6 +37,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFilesInDir("tests/pos-scala2", defaultOptions.and("-source", "3.0-migration")),
+      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
@@ -54,12 +55,6 @@ class CompilationTests {
 
     aggregateTests(tests*).checkCompile()
   }
-
-  @Test def posCC: Unit =
-    given TestGroup = TestGroup("compilePosCC")
-    aggregateTests(
-      compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
-    ).checkCompile()
 
   @Test def rewrites: Unit = {
     implicit val testGroup: TestGroup = TestGroup("rewrites")
