@@ -1807,65 +1807,26 @@ class CheckCaptures extends Recheck, SymTransformer:
             capt.println(i"checked $root with $selfType")
     end checkSelfTypes
 
-    /** Heal ill-formed capture sets in the type parameter.
-     *
-     *  We can push parameter refs into a capture set in type parameters
-     *  that this type parameter can't see.
-     *  For example, when capture checking the following expression:
-     *
-     *    def usingLogFile[T](op: File^ => T): T = ...
-     *
-     *    usingLogFile[box ?1 () -> Unit] { (f: File^) => () => { f.write(0) } }
-     *
-     *  We may propagate `f` into ?1, making ?1 ill-formed.
-     *  This also causes soundness issues, since `f` in ?1 should be widened to `cap`,
-     *  giving rise to an error that `cap` cannot be included in a boxed capture set.
-     *
-     *  To solve this, we still allow ?1 to capture parameter refs like `f`, but
-     *  compensate this by pushing the widened capture set of `f` into ?1.
-     *  This solves the soundness issue caused by the ill-formness of ?1.
+    /** Check ill-formed capture sets in a type parameter. We used to be able to
+     *  push parameter refs into a capture set in type parameters that this type
+     *  parameter can't see. We used to heal this by replacing illegal refs by their
+     *  underlying capture sets. But now these should no longer be necessary, so
+     *  instead of errors we use assertions.
      */
-    private def healTypeParam(tree: Tree, paramName: TypeName, meth: Symbol)(using Context): Unit =
+    private def checkTypeParam(tree: Tree, paramName: TypeName, meth: Symbol)(using Context): Unit =
       val checker = new TypeTraverser:
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
-        private def isAllowed(ref: CaptureRef): Boolean = ref match
-          case ref: TermParamRef => allowed.contains(ref)
-          case _ => true
-
-        private def healCaptureSet(cs: CaptureSet): Unit =
-          cs.ensureWellformed: elem =>
-            ctx ?=>
-              var seen = new util.HashSet[CaptureRef]
-              def recur(ref: CaptureRef): Unit = ref.stripReach match
-                case ref: TermParamRef
-                if !allowed.contains(ref) && !seen.contains(ref) =>
-                  seen += ref
-                  if ref.isRootCapability then
-                    report.error(i"escaping local reference $ref", tree.srcPos)
-                  else
-                    val widened = ref.captureSetOfInfo
-                    val added = widened.filter(isAllowed(_))
-                    capt.println(i"heal $ref in $cs by widening to $added")
-                    if !added.subCaptures(cs).isOK then
-                      val location = if meth.exists then i" of ${meth.showLocated}" else ""
-                      val paramInfo =
-                        if ref.paramName.info.kind.isInstanceOf[UniqueNameKind]
-                        then i"${ref.paramName} from ${ref.binder}"
-                        else i"${ref.paramName}"
-                      val debugSetInfo = if ctx.settings.YccDebug.value then i" $cs" else ""
-                      report.error(
-                        i"local reference $paramInfo leaks into outer capture set$debugSetInfo of type parameter $paramName$location",
-                        tree.srcPos)
-                    else
-                      widened.elems.foreach(recur)
-                case _ =>
-              recur(elem)
+        private def checkCaptureSet(cs: CaptureSet): Unit =
+          for elem <- cs.elems do
+            elem.stripReach match
+              case ref: TermParamRef => assert(allowed.contains(ref))
+              case _ =>
 
         def traverse(tp: Type) =
           tp match
             case CapturingType(parent, refs) =>
-              healCaptureSet(refs)
+              checkCaptureSet(refs)
               traverse(parent)
             case defn.RefinedFunctionOf(rinfo: MethodType) =>
               traverse(rinfo)
@@ -1880,7 +1841,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       if tree.isInstanceOf[InferredTypeTree] then
         checker.traverse(tree.nuType)
-    end healTypeParam
+    end checkTypeParam
 
     /** Under the unsealed policy: Arrays are like vars, check that their element types
      *  do not contains `cap` (in fact it would work also to check on array creation
@@ -1904,9 +1865,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
       check.traverse(tp)
 
-    /** Perform the following kinds of checks
-     *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
-     *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
+    /** Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       val checker = new TreeTraverser:
@@ -1926,7 +1885,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
                 CCState.withCapAsRoot: // OK? We need this since bounds use `cap` instead of `fresh`
                   checkBounds(normArgs, tl)
-                args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
+                if ccConfig.postCheckCapturesets then
+                  args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case _ =>
         end check

@@ -59,6 +59,12 @@ object ccConfig:
    */
   inline val alwaysRepeatRun = false
 
+  /** After capture checking, check that no capture set contains ParamRefs that are outside
+   *  its scope. This used to occur and was fixed by healTypeParam. It should no longer
+   *  occur now.
+   */
+  inline val postCheckCapturesets = false
+
   /** If true, turn on separation checking */
   def useSepChecks(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
