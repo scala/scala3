@@ -51,6 +51,14 @@ object ccConfig:
    */
   inline val checkSkippedMaps = false
 
+  /** Always repeat a capture checking run at least once if there are no errors
+   *  yet. Used for stress-testing the logic for when a new capture checking run needs
+   *  to be scheduled because a provisionally solved capture set was later extended.
+   *  So far this happens only in very few tests. With the flag on, the logic is
+   *  tested for all tests except neg tests.
+   */
+  inline val alwaysRepeatRun = false
+
   /** If true, turn on separation checking */
   def useSepChecks(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)

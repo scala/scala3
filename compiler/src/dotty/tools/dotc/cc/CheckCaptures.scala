@@ -259,8 +259,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The references used at identifier or application trees */
     private val usedSet = util.EqHashMap[Tree, CaptureSet]()
 
-    /** The set of symbols that were rechecked via a completer, mapped to the completer. */
-    private val completed = new mutable.HashMap[Symbol, Type]
+    /** The set of symbols that were rechecked via a completer */
+    private val completed = new mutable.HashSet[Symbol]
 
     var needAnotherRun = false
 
@@ -268,9 +268,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       needAnotherRun = false
       resetNuTypes()
       todoAtPostCheck.clear()
-      for (sym, completer) <- completed do
-        sym.info = completer
-        sym.resetFlag(Touched)
       completed.clear()
 
     extension [T <: Tree](tree: T)
@@ -357,23 +354,27 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       res match
         case res: CompareFailure =>
-          def msg =
+          def msg(provisional: Boolean) =
             def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
             def descr: String =
               val d = res.blocking.description
               if d.isEmpty then provenance else ""
-            em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd"
+            def kind = if provisional then "previously estimated\n" else "allowed "
+            em"$prefix included in the ${kind}capture set ${res.blocking}$descr$toAdd"
           target match
             case target: CaptureSet.Var
             if res.blocking.isProvisionallySolved =>
-              report.error(msg.prepend(i"Another capture checking run needs to be scheduled because\n"), pos)
+              report.warning(
+                msg(provisional = true)
+                  .prepend(i"Another capture checking run needs to be scheduled because\n"),
+                pos)
               needAnotherRun = true
               added match
                 case added: CaptureRef => target.elems += added
                 case added: CaptureSet => target.elems ++= added.elems
             case _ =>
               inContext(root.printContext(added, res.blocking)):
-                report.error(msg, pos)
+                report.error(msg(provisional = false), pos)
         case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
@@ -1107,7 +1108,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         curEnv = restoreEnvFor(sym.owner)
         capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
         try recheckDef(tree, sym)
-        finally completed(sym) = completer
+        finally completed += sym
       finally
         curEnv = saved
 
@@ -1737,11 +1738,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       withCaptureSetsExplained:
         while
           super.checkUnit(unit)
-          !ctx.reporter.errorsReported && needAnotherRun
+          !ctx.reporter.errorsReported
+          && (needAnotherRun || ccConfig.alwaysRepeatRun && ccState.iterCount == 1)
         do
           resetIteration()
+          setup.setupUnit(unit.tpdTree, this)
           ccState.iterCount += 1
-          println(s"**** capture checking run ${ccState.iterCount} started on ${ctx.source}")
+          capt.println(s"**** capture checking run ${ccState.iterCount} started on ${ctx.source}")
+
         checkOverrides.traverse(unit.tpdTree)
         postCheck(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)

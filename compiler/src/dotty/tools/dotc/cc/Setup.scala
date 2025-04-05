@@ -705,7 +705,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if cls.is(ModuleClass) then
                   // if it's a module, the capture set of the module reference is the capture set of the self type
                   val modul = cls.sourceModule
-                  updateInfo(modul, CapturingType(modul.info, selfInfo1.asInstanceOf[Type].captureSet))
+                  val selfCaptures = selfInfo1 match
+                    case CapturingType(_, refs) => refs
+                    case _ => CaptureSet.empty
+                  // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
+                  // This would potentially give stackoverflows when setup is run repeatedly.
+                  // One test case is pos-custom-args/captures/checkbounds.scala under
+                  // ccConfig.alwaysRepeatRun = true.
+                  updateInfo(modul, CapturingType(modul.info, selfCaptures))
                   modul.termRef.invalidateCaches()
           case _ =>
       case _ =>
