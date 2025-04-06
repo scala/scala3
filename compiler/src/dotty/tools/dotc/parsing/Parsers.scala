@@ -3555,7 +3555,7 @@ object Parsers {
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
      *                         [{Modifier} (‘val’ | ‘var’)] Param
-     *  TypelessClause    ::= DefTermParamClause
+     *  ConstrParamClause ::= DefTermParamClause
      *                      | UsingParamClause
      *
      *  DefTermParamClause::= [nl] ‘(’ [DefTermParams] ‘)’
@@ -3681,7 +3681,7 @@ object Parsers {
     }
 
     /** ClsTermParamClauses   ::=  {ClsTermParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-     *  TypelessClauses       ::=  TypelessClause {TypelessClause}
+     *  ConstrParamClauses    ::=  ConstrParamClause {ConstrParamClause}
      *
      *  @return  The parameter definitions
      */
@@ -3955,7 +3955,7 @@ object Parsers {
     }
 
     /** DefDef  ::=  DefSig [‘:’ Type] [‘=’ Expr]
-     *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
+     *            |  this ConstrParamClauses [DefImplicitClause] `=' ConstrExpr
      *  DefSig  ::=  id [DefParamClauses] [DefImplicitClause]
      */
     def defDefOrDcl(start: Offset, mods: Modifiers, numLeadParams: Int = 0): DefDef = atSpan(start, nameStart) {
