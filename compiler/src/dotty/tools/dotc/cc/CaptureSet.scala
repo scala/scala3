@@ -322,7 +322,7 @@ sealed abstract class CaptureSet extends Showable:
         if isConst then
           if mappedElems == elems then this
           else Const(mappedElems)
-        else if CCState.mapFutureElems then
+        else if ccState.mapFutureElems then
           def unfused = BiMapped(asVar, tm, mappedElems)
           this match
             case self: BiMapped => self.bimap.fuse(tm) match
@@ -521,7 +521,7 @@ object CaptureSet:
      */
     var deps: Deps = SimpleIdentitySet.empty
 
-    def isConst(using Context) = solved >= ccState.iterCount
+    def isConst(using Context) = solved >= ccState.iterationId
     def isAlwaysEmpty(using Context) = isConst && elems.isEmpty
     def isProvisionallySolved(using Context): Boolean = solved > 0 && solved != Int.MaxValue
 
@@ -613,9 +613,9 @@ object CaptureSet:
             case prefix: CaptureRef =>
               levelOK(prefix)
             case _ =>
-              elem.symbol.ccLevel <= level
+              ccState.symLevel(elem.symbol) <= level
         case elem: ThisType if level.isDefined =>
-          elem.cls.ccLevel.nextInner <= level
+          ccState.symLevel(elem.cls).nextInner <= level
         case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
           isPartOf(elem.binder.resType)
           || {
@@ -700,7 +700,7 @@ object CaptureSet:
 
     /** Mark set as solved and propagate this info to all dependent sets */
     def markSolved(provisional: Boolean)(using Context): Unit =
-      solved = if provisional then ccState.iterCount else Int.MaxValue
+      solved = if provisional then ccState.iterationId else Int.MaxValue
       deps.foreach(_.propagateSolved(provisional))
 
     var skippedMaps: Set[TypeMap] = Set.empty

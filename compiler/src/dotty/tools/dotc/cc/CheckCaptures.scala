@@ -399,7 +399,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
         if sym.ownersIterator.exists(_.isTerm)
-        then CaptureSet.Var(sym.owner, level = sym.ccLevel)
+        then CaptureSet.Var(sym.owner, level = ccState.symLevel(sym))
         else CaptureSet.empty)
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
@@ -888,7 +888,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       case _ =>
 
     override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
-      inNestedLevel(super.recheckBlock(tree, pt))
+      ccState.inNestedLevel(super.recheckBlock(tree, pt))
 
     /** Recheck Closure node: add the captured vars of the anonymoys function
      *  to the result type. See also `recheckClosureBlock` which rechecks the
@@ -1033,7 +1033,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
-        inNestedLevel: // TODO: nestedLevel needed here?
+        ccState.inNestedLevel: // TODO: nestedLevel needed here?
           try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
           finally
             if !sym.isAnonymousFunction then
@@ -1153,7 +1153,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case AppliedType(fn, args) =>
               disallowCapInTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
-        inNestedLevelUnless(cls.is(Module)):
+        ccState.inNestedLevelUnless(cls.is(Module)):
           super.recheckClassDef(tree, impl, cls)
       finally
         curEnv = saved
@@ -1211,7 +1211,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val saved = curEnv
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
-          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner, level = currentLevel), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner, level = ccState.currentLevel), curEnv)
         case _ =>
       val res =
         try
@@ -1441,7 +1441,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val saved = curEnv
             curEnv = Env(
               curEnv.owner, EnvKind.NestedInOwner,
-              CaptureSet.Var(curEnv.owner, level = currentLevel),
+              CaptureSet.Var(curEnv.owner, level = ccState.currentLevel),
               if boxed then null else curEnv)
             try
               val (eargs, eres) = expected.dealias.stripCapturing match
@@ -1736,16 +1736,19 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.echo(s"$echoHeader\n$treeString\n")
 
       withCaptureSetsExplained:
-        while
+        def iterate(): Unit =
           super.checkUnit(unit)
-          !ctx.reporter.errorsReported
-          && (needAnotherRun || ccConfig.alwaysRepeatRun && ccState.iterCount == 1)
-        do
-          resetIteration()
-          setup.setupUnit(unit.tpdTree, this)
-          ccState.iterCount += 1
-          capt.println(s"**** capture checking run ${ccState.iterCount} started on ${ctx.source}")
+          if !ctx.reporter.errorsReported
+              && (needAnotherRun
+                  || ccConfig.alwaysRepeatRun && ccState.iterationId == 1)
+          then
+            resetIteration()
+            ccState.nextIteration:
+              setup.setupUnit(unit.tpdTree, this)
+              capt.println(s"**** capture checking run ${ccState.iterationId} started on ${ctx.source}")
+              iterate()
 
+        iterate()
         checkOverrides.traverse(unit.tpdTree)
         postCheck(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)

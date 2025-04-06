@@ -302,7 +302,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             apply(parent)
           case tp: TypeLambda =>
             // Don't recurse into parameter bounds, just cleanup any stray retains annotations
-            withoutMappedFutureElems:
+            ccState.withoutMappedFutureElems:
               tp.derivedLambdaType(
                 paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
                 resType = this(tp.resType))
@@ -541,8 +541,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if isExcluded(meth) then
             return
 
-          meth.recordLevel()
-          inNestedLevel:
+          ccState.recordLevel(meth)
+          ccState.inNestedLevel:
             inContext(ctx.withOwner(meth)):
               paramss.foreach(traverse)
               transformResultType(tpt, meth)
@@ -550,7 +550,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ ValDef(_, tpt: TypeTree, _) =>
           val sym = tree.symbol
-          sym.recordLevel()
+          ccState.recordLevel(sym)
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             transformResultType(tpt, sym)
@@ -566,8 +566,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
-          sym.recordLevel()
-          inNestedLevelUnless(sym.is(Module)):
+          ccState.recordLevel(sym)
+          ccState.inNestedLevelUnless(sym.is(Module)):
             inContext(ctx.withOwner(sym))
               traverseChildren(tree)
 
@@ -579,7 +579,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           tpt.setNuType(box(transformInferredType(tpt.tpe)))
 
         case tree: Block =>
-          inNestedLevel(traverseChildren(tree))
+          ccState.inNestedLevel(traverseChildren(tree))
 
         case _ =>
           traverseChildren(tree)
@@ -670,7 +670,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
-            inNestedLevelUnless(cls.is(Module)):
+            ccState.inNestedLevelUnless(cls.is(Module)):
               val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
               // Compute new self type
@@ -690,7 +690,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // Infer the self type for the rest, which is all classes without explicit
                   // self types (to which we also add nested module classes), provided they are
                   // neither pure, nor are publicily extensible with an unconstrained self type.
-                  CapturingType(cinfo.selfType, CaptureSet.Var(cls, level = currentLevel))
+                  CapturingType(cinfo.selfType, CaptureSet.Var(cls, level = ccState.currentLevel))
 
               // Compute new parent types
               val ps1 = inContext(ctx.withOwner(cls)):
@@ -840,7 +840,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Add a capture set variable to `tp` if necessary. */
   private def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp, CaptureSet.Var(owner, _, level = currentLevel))
+    decorate(tp, CaptureSet.Var(owner, _, level = ccState.currentLevel))
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types

@@ -48,134 +48,6 @@ class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 /** A base trait for data producing addenda to error messages */
 trait ErrorNote
 
-/** Capture checking state, which is known to other capture checking components */
-class CCState:
-
-  /** Error reprting notes produces since the last call to `test` */
-  var notes: List[ErrorNote] = Nil
-
-  def addNote(note: ErrorNote): Unit =
-    if !notes.exists(_.getClass == note.getClass) then
-      notes = note :: notes
-
-  def test(op: => CompareResult): CompareResult =
-    val saved = notes
-    notes = Nil
-    try op match
-      case res: CompareFailure => res.withNotes(notes)
-      case res => res
-    finally notes = saved
-
-  def testOK(op: => Boolean): CompareResult =
-    test(if op then CompareResult.OK else CompareResult.Fail(Nil))
-
-  /** Warnings relating to upper approximations of capture sets with
-   *  existentially bound variables.
-   */
-  val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
-
-  private var curLevel: Level = outermostLevel
-  private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
-
-  private var openExistentialScopes: List[MethodType] = Nil
-
-  private var capIsRoot: Boolean = false
-
-  /** If true, apply a BiTypeMap also to elements added to the set in the future
-   *  (and use its inverse when back-progating).
-   */
-  private var mapFutureElems = true
-
-  var iterCount = 1
-
-object CCState:
-
-  opaque type Level = Int
-
-  val undefinedLevel: Level = -1
-
-  val outermostLevel: Level = 0
-
-  /** The level of the current environment. Levels start at 0 and increase for
-   *  each nested function or class. -1 means the level is undefined.
-   */
-  def currentLevel(using Context): Level = ccState.curLevel
-
-  /** Perform `op` in the next inner level
-   *  @pre We are currently in capture checking or setup
-   */
-  inline def inNestedLevel[T](inline op: T)(using Context): T =
-    val ccs = ccState
-    val saved = ccs.curLevel
-    ccs.curLevel = ccs.curLevel.nextInner
-    try op finally ccs.curLevel = saved
-
-  /** Perform `op` in the next inner level unless `p` holds.
-   *  @pre We are currently in capture checking or setup
-   */
-  inline def inNestedLevelUnless[T](inline p: Boolean)(inline op: T)(using Context): T =
-    val ccs = ccState
-    val saved = ccs.curLevel
-    if !p then ccs.curLevel = ccs.curLevel.nextInner
-    try op finally ccs.curLevel = saved
-
-  /** If we are currently in capture checking or setup, and `mt` is a method
-   *  type that is not a prefix of a curried method, perform `op` assuming
-   *  a fresh enclosing existential scope `mt`, otherwise perform `op` directly.
-   */
-  inline def inNewExistentialScope[T](mt: MethodType)(op: => T)(using Context): T =
-    if isCaptureCheckingOrSetup then
-      val ccs = ccState
-      val saved = ccs.openExistentialScopes
-      if mt.marksExistentialScope then ccs.openExistentialScopes = mt :: ccs.openExistentialScopes
-      try op finally ccs.openExistentialScopes = saved
-    else
-      op
-
-  /** Run `op` under the assumption that `cap` can subsume all other capabilties
-   *  except Result capabilities. Every use of this method should be scrutinized
-   *  for whether it introduces an unsoundness hole.
-   */
-  inline def withCapAsRoot[T](op: => T)(using Context): T =
-    if isCaptureCheckingOrSetup then
-      val ccs = ccState
-      val saved = ccs.capIsRoot
-      ccs.capIsRoot = true
-      try op finally ccs.capIsRoot = saved
-    else op
-
-  /** Don't map future elements in this `op` */
-  inline def withoutMappedFutureElems[T](op: => T)(using Context): T =
-    val ccs = ccState
-    val saved = ccs.mapFutureElems
-    ccs.mapFutureElems = false
-    try op finally ccs.mapFutureElems = saved
-
-  /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
-  def capIsRoot(using Context): Boolean = ccState.capIsRoot
-
-  /** When mapping a capture set with a BiTypeMap, should we create a BiMapped set
-   *  so that future elements can also be mapped, and elements added to the BiMapped
-   *  are back-propagated? Turned off when creating capture set variables for the
-   *  first time, since we then do not want to change the binder to the original type
-   *  without capture sets when back propagating. Error case where this shows:
-   *  pos-customargs/captures/lists.scala, method m2c.
-   */
-  def mapFutureElems(using Context) = ccState.mapFutureElems
-
-  /** The currently opened existential scopes */
-  def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
-
-  extension (x: Level)
-    def isDefined: Boolean = x >= 0
-    def <= (y: Level) = (x: Int) <= y
-    def nextInner: Level = if isDefined then x + 1 else x
-
-  extension (sym: Symbol)(using Context)
-    def ccLevel: Level = ccState.symLevel.getOrElse(sym, -1)
-    def recordLevel() = ccState.symLevel(sym) = currentLevel
-end CCState
-
 /** The currently valid CCState */
 def ccState(using Context): CCState =
   Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState1
@@ -631,8 +503,8 @@ extension (tp: Type)
 
   def level(using Context): Level =
     tp match
-    case tp: TermRef => tp.symbol.ccLevel
-    case tp: ThisType => tp.cls.ccLevel.nextInner
+    case tp: TermRef => ccState.symLevel(tp.symbol)
+    case tp: ThisType => ccState.symLevel(tp.cls).nextInner
     case _ => undefinedLevel
 
 extension (tp: MethodType)

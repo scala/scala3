@@ -20,7 +20,7 @@ object CaptureRef:
   opaque type Validity = Int
   def validId(runId: Int, iterId: Int): Validity =
     runId + (iterId << RunWidth)
-  def currentId(using Context): Validity = validId(ctx.runId, ccState.iterCount)
+  def currentId(using Context): Validity = validId(ctx.runId, ccState.iterationId)
   val invalid: Validity = validId(NoRunId, 0)
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
