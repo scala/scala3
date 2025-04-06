@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import CaptureSet.{CompareResult, CompareFailure}
+import CaptureSet.{CompareResult, CompareFailure, VarState}
 import collection.mutable
 import reporting.Message
 import Contexts.Context
@@ -95,6 +95,22 @@ class CCState:
   def nextIteration[T](op: => T): T =
     iterCount += 1
     try op finally iterCount -= 1
+
+  // ------ Global counters -----------------------
+
+  /** Next CaptureSet.Var id */
+  var varId = 0
+
+  /** Next root id */
+  var rootId = 0
+
+  // ------ VarState singleton objects ------------
+  // See CaptureSet.VarState creation methods for documentation
+
+  object Separate extends VarState.Separating
+  object HardSeparate extends VarState.Separating
+  object Unrecorded extends VarState.Unrecorded
+  object ClosedUnrecorded extends VarState.ClosedUnrecorded
 
   // ------ Context info accessed from companion object when isCaptureCheckingOrSetup is true
 

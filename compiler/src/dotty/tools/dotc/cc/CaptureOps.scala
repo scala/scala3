@@ -10,11 +10,7 @@ import Decorators.*, NameOps.*
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
-import StdNames.nme
-import collection.mutable
-import CCState.*
-import reporting.Message
-import CaptureSet.{VarState, CompareResult, CompareFailure}
+import CaptureSet.VarState
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
@@ -501,11 +497,11 @@ extension (tp: Type)
             foldOver(x, t)
     acc(false, tp)
 
-  def level(using Context): Level =
+  def level(using Context): CCState.Level =
     tp match
     case tp: TermRef => ccState.symLevel(tp.symbol)
     case tp: ThisType => ccState.symLevel(tp.cls).nextInner
-    case _ => undefinedLevel
+    case _ => CCState.undefinedLevel
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */

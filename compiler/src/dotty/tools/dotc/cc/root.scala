@@ -14,7 +14,7 @@ import NameOps.isImpureFunction
 import reporting.Message
 import util.{SimpleIdentitySet, EqHashMap}
 import util.Spans.NoSpan
-import annotation.internal.sharable
+import annotation.constructorOnly
 
 /** A module defining three kinds of root capabilities
  *   - `cap` of kind `Global`: This is the global root capability. Among others it is
@@ -75,15 +75,14 @@ object root:
       case Kind.Global => false
   end Kind
 
-  @sharable private var rootId = 0
-
   /** The annotation of a root instance */
-  case class Annot(kind: Kind) extends Annotation:
+  case class Annot(kind: Kind)(using @constructorOnly ictx: Context) extends Annotation:
 
     /** id printed under -uniqid, for debugging */
     val id =
-      rootId += 1
-      rootId
+      val ccs = ccState
+      ccs.rootId += 1
+      ccs.rootId
 
     override def symbol(using Context) = defn.RootCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)

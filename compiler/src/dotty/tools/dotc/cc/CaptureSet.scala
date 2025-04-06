@@ -181,7 +181,7 @@ sealed abstract class CaptureSet extends Showable:
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */
-  def accountsFor(x: CaptureRef)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+  def accountsFor(x: CaptureRef)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
 
     def debugInfo(using Context) = i"$this accountsFor $x, which has capture set ${x.captureSetOfInfo}"
 
@@ -210,7 +210,7 @@ sealed abstract class CaptureSet extends Showable:
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
       CCState.withCapAsRoot: // OK here since we opportunistically choose an alternative which gets checked later
-        elems.exists(_.subsumes(x)(using ctx, VarState.ClosedUnrecorded))
+        elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems
@@ -405,8 +405,6 @@ object CaptureSet:
   type Vars = SimpleIdentitySet[Var]
   type Deps = SimpleIdentitySet[CaptureSet]
 
-  @sharable private var varId = 0
-
   /** If set to `true`, capture stack traces that tell us where sets are created */
   private final val debugSets = false
 
@@ -485,7 +483,7 @@ object CaptureSet:
   object Fluid extends Const(emptyRefs):
     override def isAlwaysEmpty(using Context) = false
     override def addThisElem(elem: CaptureRef)(using Context, VarState) = CompareResult.OK
-    override def accountsFor(x: CaptureRef)(using Context, VarState): Boolean = true
+    override def accountsFor(x: CaptureRef)(using Context)(using VarState): Boolean = true
     override def mightAccountFor(x: CaptureRef)(using Context): Boolean = true
     override def toString = "<fluid>"
   end Fluid
@@ -497,8 +495,9 @@ object CaptureSet:
 
     /** A unique identification number for diagnostics */
     val id =
-      varId += 1
-      varId
+      val ccs = ccState
+      ccs.varId += 1
+      ccs.varId
 
     //assert(id != 40)
 
@@ -1221,37 +1220,36 @@ object CaptureSet:
      *  reference `r` only if `r` is already present in the hidden set of the instance.
      *  No new references can be added.
      */
-    @sharable
-    object Separate extends Separating
+    def Separate(using Context): Separating = ccState.Separate
 
     /** Like Separate but in addition we assume that `cap` never subsumes anything else.
      *  Used in `++` to not lose track of dependencies between function parameters.
      */
-    @sharable
-    object HardSeparate extends Separating
+    def HardSeparate(using Context): Separating = ccState.HardSeparate
 
     /** A special state that turns off recording of elements. Used only
-     *  in `addSub` to prevent cycles in recordings.
+     *  in `addSub` to prevent cycles in recordings. Instantiated in ccState.Unrecorded.
      */
-    @sharable
-    private[CaptureSet] object Unrecorded extends VarState:
+    class Unrecorded extends VarState:
       override def putElems(v: Var, refs: Refs) = true
       override def putDeps(v: Var, deps: Deps) = true
       override def rollBack(): Unit = ()
       override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = true
       override def toString = "unrecorded varState"
 
+    def Unrecorded(using Context): Unrecorded = ccState.Unrecorded
+
     /** A closed state that turns off recording of hidden elements (but allows
-     *  adding them). Used in `mightAccountFor`.
+     *  adding them). Used in `mightAccountFor`. Instantiated in ccState.ClosedUnrecorded.
      */
-    @sharable
-    private[CaptureSet] object ClosedUnrecorded extends Closed:
+    class ClosedUnrecorded extends Closed:
       override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = true
       override def toString = "closed unrecorded varState"
 
+    def ClosedUnrecorded(using Context): ClosedUnrecorded = ccState.ClosedUnrecorded
+
   end VarState
 
-  @sharable
   /** The current VarState, as passed by the implicit context */
   def varState(using state: VarState): VarState = state
 

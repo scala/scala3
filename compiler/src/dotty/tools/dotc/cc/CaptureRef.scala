@@ -170,7 +170,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
    *   Contains[X, y]  ==>  X subsumes y
    */
-  final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+  final def subsumes(y: CaptureRef)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
@@ -255,7 +255,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    *                       the test again with canAddHidden = true as a last effort before we
    *                       fail a comparison.
    */
-  def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+  def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
     def yIsExistential = y.stripReadOnly match
       case root.Result(_) =>
         capt.println(i"failed existential $this >: $y")
