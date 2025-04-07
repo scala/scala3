@@ -132,9 +132,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         then
           false // not an error, but not an expandable unrolled method
         else if
-          method.is(Deferred)
+            method.isLocal
+          || !method.isEffectivelyFinal
           || isCtor && method.owner.is(Trait)
-          || !(isCtor || method.is(Final) || method.owner.is(ModuleClass))
           || method.owner.companionClass.is(CaseClass)
             && (method.name == nme.apply || method.name == nme.fromProduct)
           || method.owner.is(CaseClass) && method.name == nme.copy
