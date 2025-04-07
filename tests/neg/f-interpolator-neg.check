@@ -17,7 +17,7 @@
 -- Warning: tests/neg/f-interpolator-neg.scala:11:9 --------------------------------------------------------------------
 11 |    f"$s%b" // warn only
    |         ^
-   |         Boolean format is null test for non-Boolean
+   |         non-Boolean value formats as "true" for non-null references and boxed primitives, otherwise "false"
 -- Error: tests/neg/f-interpolator-neg.scala:12:7 ----------------------------------------------------------------------
 12 |    f"$s%c" // error
    |       ^
