@@ -14,9 +14,9 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.IndexedContext.Result
