@@ -3208,3 +3208,8 @@ final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxM
 
     def explain(using Context) = ""
 end EnumMayNotBeValueClasses
+
+class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
+  def kind = MessageKind.Interpolation
+  def msg(using Context) = errorText
+  def explain(using Context) = ""
