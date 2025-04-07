@@ -5,8 +5,6 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex.Match
 
-import PartialFunction.cond
-
 import dotty.tools.dotc.ast.tpd.{Match => _, *}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Symbols.*
@@ -129,10 +127,8 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     def intOf(g: SpecGroup): Option[Int] = group(g).map(_.toInt)
 
   extension (inline value: Boolean)
-    inline def or(inline body: => Unit): Boolean     = value || { body ; false }
-    inline def orElse(inline body: => Unit): Boolean = value || { body ; true }
-    inline def and(inline body: => Unit): Boolean    = value && { body ; true }
-    inline def but(inline body: => Unit): Boolean    = value && { body ; false }
+    inline infix def or(inline body: => Unit): Boolean  = value || { body; false }
+    inline infix def and(inline body: => Unit): Boolean = value && { body; true }
 
   enum Kind:
     case StringXn, HashXn, BooleanXn, CharacterXn, IntegralXn, FloatingPointXn, DateTimeXn, LiteralXn, ErrorXn
@@ -214,11 +210,18 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     // is the specifier OK with the given arg
     def accepts(arg: Type): Boolean =
       kind match
-        case BooleanXn  => arg == defn.BooleanType orElse warningAt(CC)("Boolean format is null test for non-Boolean")
-        case IntegralXn => arg == BigIntType || !cond(cc) {
-          case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")); true
-        }
+      case BooleanXn if arg != defn.BooleanType =>
+        warningAt(CC):
+          """non-Boolean value formats as "true" for non-null references and boxed primitives, otherwise "false""""
+        true
+      case IntegralXn if arg != BigIntType =>
+        cc match
+        case 'o' | 'x' | 'X' if hasAnyFlag("+ (") =>
+          "+ (".filter(hasFlag).foreach: bad =>
+            badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")
+          false
         case _ => true
+      case _ => true
 
     def lintToString(arg: Type): Unit =
       if ctx.settings.Whas.toStringInterpolated && kind == StringXn && !(arg.widen =:= defn.StringType) && !arg.isPrimitiveValueType
