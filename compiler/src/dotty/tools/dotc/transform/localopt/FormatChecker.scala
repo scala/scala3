@@ -68,48 +68,51 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     val amended = ListBuffer.empty[String]
     val convert = ListBuffer.empty[Conversion]
 
+    def checkPart(part: String, n: Int): Unit =
+      val matches = formatPattern.findAllMatchIn(part)
+
+      def insertStringConversion(): Unit =
+        amended += "%s" + part
+        val cv = Conversion.stringXn(n)
+        cv.accepts(argType(n-1, defn.AnyType))
+        convert += cv
+        cv.lintToString(argTypes(n-1))
+
+      def errorLeading(op: Conversion) = op.errorAt(Spec):
+        s"conversions must follow a splice; ${Conversion.literalHelp}"
+
+      def accept(op: Conversion): Unit =
+        if !op.isLeading then errorLeading(op)
+        op.accepts(argType(n-1, op.acceptableVariants*))
+        amended += part
+        convert += op
+        op.lintToString(argTypes(n-1))
+
+      // after the first part, a leading specifier is required for the interpolated arg; %s is supplied if needed
+      if n == 0 then amended += part
+      else if !matches.hasNext then insertStringConversion()
+      else
+        val cv = Conversion(matches.next(), n)
+        if cv.isLiteral then insertStringConversion()
+        else if cv.isIndexed then
+          if cv.index.getOrElse(-1) == n then accept(cv) else insertStringConversion()
+        else if !cv.isError then accept(cv)
+
+      // any remaining conversions in this part must be either literals or indexed
+      while matches.hasNext do
+        val cv = Conversion(matches.next(), n)
+        if n == 0 && cv.hasFlag('<') then cv.badFlag('<', "No last arg")
+        else if !cv.isLiteral && !cv.isIndexed then errorLeading(cv)
+    end checkPart
+
     @tailrec
-    def loop(remaining: List[String], n: Int): Unit =
-      remaining match
-        case part0 :: remaining =>
-          def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage.nn, index = n, offset = 0))
-          val part = try StringContext.processEscapes(part0) catch badPart
-          val matches = formatPattern.findAllMatchIn(part)
-
-          def insertStringConversion(): Unit =
-            amended += "%s" + part
-            val cv = Conversion(n)
-            cv.accepts(argType(n-1, defn.AnyType))
-            convert += cv
-            cv.lintToString(argTypes(n-1))
-
-          def errorLeading(op: Conversion) = op.errorAt(Spec)(s"conversions must follow a splice; ${Conversion.literalHelp}")
-          def accept(op: Conversion): Unit =
-            if !op.isLeading then errorLeading(op)
-            op.accepts(argType(n-1, op.acceptableVariants*))
-            amended += part
-            convert += op
-            op.lintToString(argTypes(n-1))
-
-          // after the first part, a leading specifier is required for the interpolated arg; %s is supplied if needed
-          if n == 0 then amended += part
-          else if !matches.hasNext then insertStringConversion()
-          else
-            val cv = Conversion(matches.next(), n)
-            if cv.isLiteral then insertStringConversion()
-            else if cv.isIndexed then
-              if cv.index.getOrElse(-1) == n then accept(cv) else insertStringConversion()
-            else if !cv.isError then accept(cv)
-
-          // any remaining conversions in this part must be either literals or indexed
-          while matches.hasNext do
-            val cv = Conversion(matches.next(), n)
-            if n == 0 && cv.hasFlag('<') then cv.badFlag('<', "No last arg")
-            else if !cv.isLiteral && !cv.isIndexed then errorLeading(cv)
-
-          loop(remaining, n + 1)
-        case Nil =>
-    end loop
+    def loop(remaining: List[String], n: Int): Unit = remaining match
+      case part0 :: remaining =>
+        def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage.nn, index = n, offset = 0))
+        val part = try StringContext.processEscapes(part0) catch badPart
+        checkPart(part, n)
+        loop(remaining, n + 1)
+      case Nil =>
 
     loop(parts, n = 0)
     if reported then (Nil, Nil)
@@ -260,27 +263,30 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
 
   object Conversion:
     def apply(m: Match, i: Int): Conversion =
-      def kindOf(cc: Char) = cc match
-        case 's' | 'S' => StringXn
-        case 'h' | 'H' => HashXn
-        case 'b' | 'B' => BooleanXn
-        case 'c' | 'C' => CharacterXn
-        case 'd' | 'o' |
-             'x' | 'X' => IntegralXn
-        case 'e' | 'E' |
-             'f' |
-             'g' | 'G' |
-             'a' | 'A' => FloatingPointXn
-        case 't' | 'T' => DateTimeXn
-        case '%' | 'n' => LiteralXn
-        case _         => ErrorXn
-      end kindOf
       m.group(CC) match
-        case Some(cc) => new Conversion(m, i, kindOf(cc(0))).tap(_.verify)
-        case None     => new Conversion(m, i, ErrorXn).tap(_.errorAt(Spec)(s"Missing conversion operator in '${m.matched}'; $literalHelp"))
+      case Some(cc) =>
+        val xn = cc(0) match
+          case 's' | 'S' => StringXn
+          case 'h' | 'H' => HashXn
+          case 'b' | 'B' => BooleanXn
+          case 'c' | 'C' => CharacterXn
+          case 'd' | 'o' |
+               'x' | 'X' => IntegralXn
+          case 'e' | 'E' |
+               'f' |
+               'g' | 'G' |
+               'a' | 'A' => FloatingPointXn
+          case 't' | 'T' => DateTimeXn
+          case '%' | 'n' => LiteralXn
+          case _         => ErrorXn
+        new Conversion(m, i, xn)
+          .tap(_.verify)
+      case None =>
+        new Conversion(m, i, ErrorXn)
+          .tap(_.errorAt(Spec)(s"Missing conversion operator in '${m.matched}'; $literalHelp"))
     end apply
     // construct a default %s conversion
-    def apply(i: Int): Conversion = new Conversion(formatPattern.findAllMatchIn("%").next(), i, StringXn)
+    def stringXn(i: Int): Conversion = new Conversion(formatPattern.findAllMatchIn("%").next(), i, StringXn)
     val literalHelp = "use %% for literal %, %n for newline"
   end Conversion
 
