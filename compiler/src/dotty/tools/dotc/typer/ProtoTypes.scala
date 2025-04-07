@@ -344,6 +344,7 @@ object ProtoTypes {
   trait ApplyingProto extends ProtoType   // common trait of ViewProto and FunProto
   trait FunOrPolyProto extends ProtoType: // common trait of PolyProto and FunProto
     def applyKind: ApplyKind = ApplyKind.Regular
+    def applyStyle: ApplyStyle = ApplyStyle.Unknown
 
   class FunProtoState {
 
@@ -368,9 +369,10 @@ object ProtoTypes {
    *  [](args): resultType
    *
    *  @param  args      The untyped arguments to which the function is applied
-   *  @param  resType   The expeected result type
+   *  @param  resType   The expected result type
    *  @param  typer     The typer to use for typing the arguments
    *  @param  applyKind The kind of application (regular/using/tupled infix operand)
+   *  @param  applyStyle The [[ApplyStyle]] of the application
    *  @param  state     The state object to use for tracking the changes to this prototype
    *  @param  constrainResultDeep
    *                    A flag to indicate that constrainResult on this prototype
@@ -379,6 +381,7 @@ object ProtoTypes {
   case class FunProto(args: List[untpd.Tree], resType: Type)(
     typer: Typer,
     override val applyKind: ApplyKind,
+    override val applyStyle: ApplyStyle,
     state: FunProtoState = new FunProtoState,
     val constrainResultDeep: Boolean = false)(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
@@ -402,7 +405,7 @@ object ProtoTypes {
           && (typer eq this.typer)
           && constrainResultDeep == this.constrainResultDeep
       then this
-      else new FunProto(args, resultType)(typer, applyKind, constrainResultDeep = constrainResultDeep)
+      else new FunProto(args, resultType)(typer, applyKind, applyStyle, constrainResultDeep = constrainResultDeep)
 
     /** @return True if all arguments have types.
      */
@@ -572,7 +575,7 @@ object ProtoTypes {
         val dualArgs = args match
           case untpd.Tuple(elems) :: Nil => elems
           case _ => untpd.Tuple(args) :: Nil
-        state.tupledDual = new FunProto(dualArgs, resultType)(typer, applyKind)
+        state.tupledDual = new FunProto(dualArgs, resultType)(typer, applyKind, applyStyle)
         tupledDual
     }
 
@@ -614,15 +617,15 @@ object ProtoTypes {
 
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
-      else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
+      else new FunProto(args, resType)(typer, applyKind, applyStyle, state)(using newCtx)
   }
 
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType, where args are known to be typed
    */
-  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
-  extends FunProto(args, resultType)(typer, applyKind):
+  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind, applyStyle: ApplyStyle)(using Context)
+  extends FunProto(args, resultType)(typer, applyKind, applyStyle):
     override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): List[tpd.Tree] = args
     override def typedArg(arg: untpd.Tree, formal: Type)(using Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
     override def allArgTypesAreCurrent()(using Context): Boolean = true
@@ -684,7 +687,10 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(using Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source)) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source)) :: Nil, WildcardType
+  )(
+    typer, applyKind = ApplyKind.Regular, applyStyle = ApplyStyle.Parentheses
+  )
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -1006,7 +1012,7 @@ object ProtoTypes {
       if (args eq tp.args) && (resTp eq tp.resultType) then
         tp
       else
-        FunProtoTyped(args, resTp)(ctx.typer, tp.applyKind)
+        FunProtoTyped(args, resTp)(ctx.typer, tp.applyKind, tp.applyStyle)
     case tp: IgnoredProto =>
       WildcardType
     case  _: ThisType | _: BoundType => // default case, inlined for speed

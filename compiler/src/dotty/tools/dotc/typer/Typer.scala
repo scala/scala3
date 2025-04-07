@@ -1861,7 +1861,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val nestedCtx = outerCtx.fresh.setNewTyperState()
               inContext(nestedCtx) {
                 val protoArgs = args map (_ withType WildcardType)
-                val callProto = FunProto(protoArgs, WildcardType)(this, app.applyKind)
+                val callProto = FunProto(protoArgs, WildcardType)(this, app.applyKind, app.applyStyle)
                 val expr1 = typedExpr(expr, callProto)
                 if nestedCtx.reporter.hasErrors then NoType
                 else inContext(outerCtx) {

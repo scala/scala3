@@ -2805,7 +2805,8 @@ object Parsers {
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
-          val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
+          val beforeArgs = in.token
+          val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs(), beforeArgs) }
           if in.rewriteToIndent then
             app match
               case Apply(Apply(_, List(Block(_, _))), List(blk @ Block(_, _))) =>
@@ -2827,8 +2828,9 @@ object Parsers {
                 }
               case _ => t
           else if isColonLambda then
+            val beforeArgs = in.token
             val app = atSpan(startOffset(t), in.skipToken()) {
-              Apply(t, expr(Location.InColonArg) :: Nil)
+              mkApply(t, (expr(Location.InColonArg) :: Nil, false), beforeArgs)
             }
             simpleExprRest(app, location, canApply = true)
           else t
@@ -2892,8 +2894,22 @@ object Parsers {
     def argumentExprs(): (List[Tree], Boolean) =
       if (in.isNestedStart) (blockExpr() :: Nil, false) else parArgumentExprs()
 
-    def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
+    /** Creates an [[Apply]] tree.
+     *
+     *  @param fn         The function to apply.
+     *  @param args       A pair containing the list of arguments and a boolean
+     *                    indicating if the list is preceded by `using`.
+     *  @param beforeArgs The token that precedes the arguments.
+     */
+    def mkApply(fn: Tree, args: (List[Tree], Boolean), beforeArgs: Token): Tree =
       val res = Apply(fn, args._1)
+      val applyStyle =
+        beforeArgs match
+          case LPAREN => ApplyStyle.Parentheses
+          case LBRACE => ApplyStyle.TrailingBraces
+          case INDENT | COLONfollow | COLONeol => ApplyStyle.TrailingColon
+          case _ => ApplyStyle.Unknown
+      res.setApplyStyle(applyStyle)
       if args._2 then res.setApplyKind(ApplyKind.Using)
       res
 
@@ -2905,7 +2921,9 @@ object Parsers {
      */
     def argumentExprss(fn: Tree): Tree = {
       argumentStart()
-      if (in.token == LPAREN || in.isNestedStart) argumentExprss(mkApply(fn, argumentExprs()))
+      if in.token == LPAREN || in.isNestedStart then
+        val beforeArgs = in.token
+        argumentExprss(mkApply(fn, argumentExprs(), beforeArgs))
       else fn
     }
 
@@ -2930,8 +2948,9 @@ object Parsers {
         }
       }
       if (in.token == LPAREN && (!inClassConstrAnnots || isLegalAnnotArg))
+        val beforeArgs = in.token
         parArgumentExprss(
-          atSpan(startOffset(fn)) { mkApply(fn, parArgumentExprs()) }
+          atSpan(startOffset(fn)) { mkApply(fn, parArgumentExprs(), beforeArgs) }
         )
       else fn
     }
@@ -4046,7 +4065,8 @@ object Parsers {
     def selfInvocation(): Tree =
       atSpan(accept(THIS)) {
         argumentStart()
-        argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
+        val beforeArgs = in.token
+        argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs(), beforeArgs))
       }
 
     /** TypeDef ::=  id [HkTypeParamClause] {FunParamClause} TypeAndCtxBounds [‘=’ Type]

@@ -1085,7 +1085,7 @@ trait Applications extends Compatibility {
           // Do ignore other expected result types, since there might be an implicit conversion
           // on the result. We could drop this if we disallow unrestricted implicit conversions.
       val originalProto =
-        new FunProto(tree.args, resultProto)(this, tree.applyKind)(using argCtx(tree))
+        new FunProto(tree.args, resultProto)(this, tree.applyKind, tree.applyStyle)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
 

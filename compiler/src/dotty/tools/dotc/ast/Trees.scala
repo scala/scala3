@@ -513,6 +513,21 @@ object Trees {
     case Using        // r.f(using x)
     case InfixTuple   // r f (x1, ..., xN) where N != 1;  needs to be treated specially for an error message in typedApply
 
+  /** The syntax used to pass the arguments in an application. */
+  enum ApplyStyle:
+    /** The arguments are passed in parentheses, e.g. `f(x)`. */
+    case Parentheses
+    /** A single argument is passed as a trailing lambda with braces, e.g.
+      * `f { x => ... }`.
+      */
+    case TrailingBraces
+    /** A single argument is passed as a trailing lambda with colon and
+      * indentation, e.g. `f: x => ...`.
+      */
+    case TrailingColon
+    /** The syntax used to pass the arguments is unknown. */
+    case Unknown
+
   /** fun(args) */
   case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends GenericApply[T] {
@@ -527,6 +542,13 @@ object Trees {
      */
     def applyKind: ApplyKind =
       attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
+
+    def setApplyStyle(style: ApplyStyle) =
+      putAttachment(untpd.StyleOfApply, style)
+      this
+
+    def applyStyle: ApplyStyle =
+      attachmentOrElse(untpd.StyleOfApply, ApplyStyle.Unknown)
   }
 
   /** fun[args] */

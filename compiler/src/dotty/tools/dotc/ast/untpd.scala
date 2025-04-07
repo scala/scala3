@@ -386,6 +386,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** Property key for contextual Apply trees of the form `fn given arg` */
   val KindOfApply: Property.StickyKey[ApplyKind] = Property.StickyKey()
 
+  /** Property key to attach an [[ApplyStyle]] to [[Apply]] trees. */
+  val StyleOfApply: Property.StickyKey[ApplyStyle] = Property.StickyKey()
+
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
@@ -859,5 +862,5 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   protected def FunProto(args: List[Tree], resType: Type)(using Context) =
-    ProtoTypes.FunProto(args, resType)(ctx.typer, ApplyKind.Regular)
+    ProtoTypes.FunProto(args, resType)(ctx.typer, ApplyKind.Regular, ApplyStyle.Unknown)
 }
