@@ -23,7 +23,7 @@ import dotty.tools.pc.IndexedContext.Result
 
 import org.eclipse.lsp4j as l
 
-final class PcInlineValueProviderImpl(
+final class PcInlineValueProvider(
     driver: InteractiveDriver,
     val params: OffsetParams
 ) extends WithSymbolSearchCollector[Option[Occurence]](driver, params):
@@ -128,24 +128,17 @@ final class PcInlineValueProviderImpl(
     end for
   end defAndRefs
 
-  extension (t : untpd.Tree)
-    def isIndentationSensitive: Boolean = t match
-      case blck : untpd.Block =>
-        val untpd.Block(stats, expr) = blck
-        (stats :+ expr).head.span != blck.span
-      case _ => false
-
   private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String): String =
     val rhsLines = rhs.split("\n").toList
     rhsLines match
+      case h :: Nil => rhs
       case h :: t =>
         val noPrefixH = h.stripPrefix(refIndent)
         if noPrefixH.startsWith("{") then
           noPrefixH ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n","\n", "")
         else
           (("  " ++ h) :: t).map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
-      case Nil =>
-        rhsLines.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
+      case Nil => rhs
 
   private def definitionRequiresBrackets(tree: Tree)(using Context): Boolean =
     NavigateAST
@@ -179,13 +172,12 @@ final class PcInlineValueProviderImpl(
 
   end referenceRequiresBrackets
 
-  private def adjustRhs(pos: SourcePosition) =
-    //TODO(kπ) doc
+  private def extendWithSurroundingParens(pos: SourcePosition) =
+    /** Move `point` by `step` as long as the character at `point` is `acceptedChar` */
     def extend(point: Int, acceptedChar: Char, step: Int): Int =
       val newPoint = point + step
-      if newPoint > 0 && newPoint < text.length && text(
-          newPoint
-        ) == acceptedChar
+      if newPoint > 0 && newPoint < text.length &&
+        text(newPoint) == acceptedChar
       then extend(newPoint, acceptedChar, step)
       else point
     val adjustedStart = extend(pos.start, '(', -1)
@@ -271,7 +263,7 @@ final class PcInlineValueProviderImpl(
           Reference(
             occurrence.pos.toLsp,
             stripIndentPrefix(
-              adjustRhs(definition.tree.rhs.sourcePos),
+              extendWithSurroundingParens(definition.tree.rhs.sourcePos),
               occurrence.tree.startPos.startColumnIndentPadding,
               definition.tree.startPos.startColumnIndentPadding
             ),
@@ -293,7 +285,7 @@ final class PcInlineValueProviderImpl(
     )
   end makeRefsEdits
 
-end PcInlineValueProviderImpl
+end PcInlineValueProvider
 
 case class Occurence(tree: Tree, parent: Option[Tree], pos: SourcePosition):
   def isDefn =

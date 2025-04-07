@@ -228,7 +228,8 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |  for {
          |    i <- List(1,2,3)
          |  } yield i + 1
-         |val b = (for {
+         |val b = (
+         |  for {
          |    i <- List(1,2,3)
          |  } yield i + 1).map(_ + 1)
          |}""".stripMargin
