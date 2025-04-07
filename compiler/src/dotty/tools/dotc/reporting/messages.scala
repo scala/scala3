@@ -3444,3 +3444,8 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
 
   def explain(using Context) = ""
 end IllegalUnrollPlacement
+
+class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
+  def kind = MessageKind.Interpolation
+  def msg(using Context) = errorText
+  def explain(using Context) = ""

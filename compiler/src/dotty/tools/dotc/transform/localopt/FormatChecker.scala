@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Phases.typerPhase
+import dotty.tools.dotc.reporting.BadFormatInterpolation
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.chaining.*
 
@@ -296,10 +297,16 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     val pos = partsElems(index).sourcePos
     val bgn = pos.span.start + offset
     val fin = if end < 0 then pos.span.end else pos.span.start + end
-    pos.withSpan(Span(bgn, fin, bgn))
+    pos.withSpan(Span(start = bgn, end = fin, point = bgn))
 
   extension (r: report.type)
-    def argError(message: String, index: Int): Unit = r.error(message, args(index).srcPos).tap(_ => reported = true)
-    def partError(message: String, index: Int, offset: Int, end: Int = -1): Unit = r.error(message, partPosAt(index, offset, end)).tap(_ => reported = true)
-    def partWarning(message: String, index: Int, offset: Int, end: Int = -1): Unit = r.warning(message, partPosAt(index, offset, end)).tap(_ => reported = true)
+    def argError(message: String, index: Int): Unit =
+      r.error(BadFormatInterpolation(message), args(index).srcPos)
+        .tap(_ => reported = true)
+    def partError(message: String, index: Int, offset: Int, end: Int = -1): Unit =
+      r.error(BadFormatInterpolation(message), partPosAt(index, offset, end))
+        .tap(_ => reported = true)
+    def partWarning(message: String, index: Int, offset: Int, end: Int): Unit =
+      r.warning(BadFormatInterpolation(message), partPosAt(index, offset, end))
+        .tap(_ => reported = true)
 end TypedFormatChecker
