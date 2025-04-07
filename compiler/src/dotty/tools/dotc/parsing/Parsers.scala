@@ -641,7 +641,7 @@ object Parsers {
     def inBracesOrIndented[T](body: => T, rewriteWithColon: Boolean = false): T =
       if in.token == INDENT then
         val rewriteToBraces = in.rewriteNoIndent
-          && !testChars(in.lastOffset - 3, " =>") // braces are always optional after `=>` so none should be inserted
+          && !testCharsSafe(in.lastOffset - 3, " =>") // braces are optional after `=>` so none should be inserted
         if rewriteToBraces then indentedToBraces(body)
         else enclosed(INDENT, body)
       else
@@ -743,6 +743,9 @@ object Parsers {
     def testChars(from: Int, str: String): Boolean =
       str.isEmpty ||
       testChar(from, str.head) && testChars(from + 1, str.tail)
+
+    def testCharsSafe(from: Int, str: String): Boolean =
+      from >= 0 && testChars(from, str)
 
     def skipBlanks(idx: Int, step: Int = 1): Int =
       if (testChar(idx, c => c == ' ' || c == '\t' || c == Chars.CR)) skipBlanks(idx + step, step)
@@ -860,7 +863,7 @@ object Parsers {
         case _ => false
       }
       var canRewrite = allBraces(in.currentRegion) && // test (1)
-        !testChars(in.lastOffset - 3, " =>") // test(6)
+        !testCharsSafe(in.lastOffset - 3, " =>") // test(6)
 
       def isStartOfSymbolicFunction: Boolean =
         opStack.headOption.exists { x =>
