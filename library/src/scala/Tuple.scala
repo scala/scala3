@@ -1,5 +1,6 @@
 package scala
 
+import language.experimental.captureChecking
 import annotation.showAsInfix
 import compiletime.*
 import compiletime.ops.int.*
@@ -174,13 +175,13 @@ object Tuple {
     case h *: t => F[h, Fold[t, Z, F]]
 
   /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
-  type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match {
+  type Map[Tup <: Tuple, F[_]] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => F[h] *: Map[t, F]
   }
 
   /** Converts a tuple `(T1, ..., Tn)` to a flattened `(..F[T1], ..., ..F[Tn])` */
-  type FlatMap[Tup <: Tuple, F[_ <: Union[Tup]] <: Tuple] <: Tuple = Tup match {
+  type FlatMap[Tup <: Tuple, F[_] <: Tuple] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => Concat[F[h], FlatMap[t, F]]
   }
@@ -196,7 +197,7 @@ object Tuple {
    *  ```
    *  @syntax markdown
    */
-  type Filter[Tup <: Tuple, P[_ <: Union[Tup]] <: Boolean] <: Tuple = Tup match {
+  type Filter[Tup <: Tuple, P[_] <: Boolean] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => P[h] match {
       case true => h *: Filter[t, P]
