@@ -79,7 +79,8 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
               else Some((paramClauseIndex, annotationIndices))
           if indices.nonEmpty then
             // pre-validation should have occurred in posttyper
-            assert(annotated.is(Final, butNot = Deferred) || annotated.isConstructor || annotated.owner.is(ModuleClass) || annotated.name.is(DefaultGetterName),
+            assert(!annotated.isLocal, i"$annotated is local")
+            assert(annotated.isEffectivelyFinal || annotated.name.is(DefaultGetterName),
               i"$annotated is not final&concrete, or a constructor")
           indices
       })

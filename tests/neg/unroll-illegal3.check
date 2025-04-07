@@ -1,12 +1,12 @@
 -- [E207] Declaration Error: tests/neg/unroll-illegal3.scala:7:31 ------------------------------------------------------
 7 |    def foo(s: String, @unroll y: Boolean) = s + y // error
   |                               ^
-  |                               Cannot unroll parameters of method foo: it is not final
+  |                               Cannot unroll parameters of method foo because it is a local method
 -- [E207] Declaration Error: tests/neg/unroll-illegal3.scala:12:29 -----------------------------------------------------
 12 |  def foo(s: String, @unroll y: Boolean) = s + y // error
    |                             ^
-   |                             Cannot unroll parameters of method foo: it is not final
+   |                             Cannot unroll parameters of method foo because it can be overridden
 -- [E207] Declaration Error: tests/neg/unroll-illegal3.scala:16:29 -----------------------------------------------------
 16 |  def foo(s: String, @unroll y: Boolean): String // error
    |                             ^
-   |                             Cannot unroll parameters of method foo: it must not be abstract
+   |                             Cannot unroll parameters of method foo because it can be overridden
