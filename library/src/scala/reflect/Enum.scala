@@ -1,5 +1,7 @@
 package scala.reflect
 
+import language.experimental.captureChecking
+
 /** A base trait of all Scala enum definitions */
 transparent trait Enum extends Any, Product, Serializable:
 
