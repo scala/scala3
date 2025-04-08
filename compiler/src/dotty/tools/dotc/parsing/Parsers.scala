@@ -1798,22 +1798,9 @@ object Parsers {
         val start = in.offset
         val tparams = typeParamClause(ParamOwner.Type)
         if in.token == TLARROW then
-          val hasContextBounds = tparams.exists(_.rhs match {
-            case x: ContextBounds => true
-            case _ => false
-          })
-          if hasContextBounds then
-            // Filter illegal context bounds and report syntax error
-            atSpan(start, in.skipToken()):
-              LambdaTypeTree(tparams.map {
-                case TypeDef(name, rhs: ContextBounds) =>
-                  syntaxError(em"context bounds are not allowed in type lambdas", rhs.span)
-                  TypeDef(name, TypeBoundsTree(EmptyTree, EmptyTree))
-                case other => other
-              }, toplevelTyp())
-          else
-            atSpan(start, in.skipToken()):
-              LambdaTypeTree(tparams, toplevelTyp())
+          // Filter illegal context bounds and report syntax error
+          atSpan(start, in.skipToken()):
+            LambdaTypeTree(tparams.mapConserve(stripContextBounds("type lambdas")), toplevelTyp())
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp(nestedIntoOK(in.token))
@@ -1828,6 +1815,13 @@ object Parsers {
       else
         typeRest(infixType(inContextBound))
     end typ
+
+    /** Removes context bounds from TypeDefs and returns a syntax error. */
+    private def stripContextBounds(in: String)(tparam: TypeDef) = tparam match
+      case TypeDef(name, rhs: ContextBounds) =>
+        syntaxError(em"context bounds are not allowed in $in", rhs.span)
+        TypeDef(name, rhs.bounds)
+      case other => other
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
