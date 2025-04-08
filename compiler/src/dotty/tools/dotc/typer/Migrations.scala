@@ -138,7 +138,19 @@ trait Migrations:
             |""", 
         pt.args.head.srcPos, mversion)
       if mversion.needsPatch then
-        patch(Span(pt.args.head.span.start), "using ")
+        // In order to insert a `using`, the application needs to be done with
+        // parentheses syntax. See issue #22927 and related tests.
+        patch(Span(tree.span.end, pt.args.head.span.start), "(using ")
+        // Tentative heuristic: the application was done with parentheses syntax
+        // if there is a `(` between the function and the first argument.
+        val hasParentheses =
+          ctx.source.content
+            .slice(tree.span.end, pt.args.head.span.start)
+            .exists(_ == '(')
+        if !hasParentheses then
+          // If the application wasn't done with the parentheses syntax, we need
+          // to add a trailing closing parenthesis.
+          patch(Span(pt.args.head.span.end), ")")
   end implicitParams
 
 end Migrations
