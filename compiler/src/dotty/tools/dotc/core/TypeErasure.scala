@@ -364,6 +364,8 @@ object TypeErasure {
       case tp: MatchType =>
         val alts = tp.alternatives
         alts.nonEmpty && !fitsInJVMArray(alts.reduce(OrType(_, _, soft = true)))
+      case tp @ AppliedType(tycon, _) if tycon.isLambdaSub =>
+        !fitsInJVMArray(tp.translucentSuperType)
       case tp: TypeProxy =>
         isGenericArrayElement(tp.translucentSuperType, isScala2)
       case tp: AndType =>
@@ -781,11 +783,11 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp: @unchecked
-    if isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2) then 
+    if isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2) then
       defn.ObjectType
     else if sourceLanguage.isScala2 && (elemtp.hiBound.isNullType || elemtp.hiBound.isNothingType) then
       JavaArrayType(defn.ObjectType)
-    else 
+    else
       try erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
         case _: WildcardType => WildcardType
         case elem => JavaArrayType(elem)
