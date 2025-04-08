@@ -281,7 +281,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
             sym,
             () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
             contentType,
-          )
+          ).nn
       documentation.nn.toScala
     end symbolDocumentation
   end extension

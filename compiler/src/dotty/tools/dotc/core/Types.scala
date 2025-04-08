@@ -5794,11 +5794,13 @@ object Types extends TypeUtils {
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
+    protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
+      case arg: TypeBounds => this(arg)
+      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = arg match
-          case arg: TypeBounds => this(arg)
-          case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
+        val arg1 = mapArg(arg, tparams.head)
         val otherArgs1 = mapArgs(otherArgs, tparams.tail)
         if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
         else arg1 :: otherArgs1
