@@ -49,7 +49,7 @@
 - [ ] library/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala
 - [ ] library/src/scala/annotation/unchecked/uncheckedCaptures.scala
 - [ ] library/src/scala/annotation/unroll.scala
-- [ ] library/src/scala/caps/package.scala
+- [x] library/src/scala/caps/package.scala
 - [ ] library/src/scala/compiletime/ops/any.scala
 - [ ] library/src/scala/compiletime/ops/boolean.scala
 - [ ] library/src/scala/compiletime/ops/double.scala
