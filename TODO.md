@@ -1,3 +1,13 @@
+- [x] library/src/scala/CanEqual.scala
+- [x] library/src/scala/CanThrow.scala
+- [x] library/src/scala/Conversion.scala
+- [x] library/src/scala/IArray.scala
+- [x] library/src/scala/NamedTuple.scala
+- [x] library/src/scala/PolyFunction.scala
+- [x] library/src/scala/Precise.scala
+- [x] library/src/scala/Pure.scala
+- [x] library/src/scala/Selectable.scala
+- [x] library/src/scala/Tuple.scala
 - [ ] library/src/scala/annotation/MacroAnnotation.scala
 - [ ] library/src/scala/annotation/RefiningAnnotation.scala
 - [ ] library/src/scala/annotation/alpha.scala
@@ -10,6 +20,7 @@
 - [ ] library/src/scala/annotation/internal/AnnotationDefault.scala
 - [ ] library/src/scala/annotation/internal/AssignedNonLocally.scala
 - [ ] library/src/scala/annotation/internal/Body.scala
+- [ ] library/src/scala/annotation/internal/CaptureChecked.scala
 - [ ] library/src/scala/annotation/internal/Child.scala
 - [ ] library/src/scala/annotation/internal/ContextResultCount.scala
 - [ ] library/src/scala/annotation/internal/ErasedParam.scala
@@ -38,6 +49,7 @@
 - [ ] library/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala
 - [ ] library/src/scala/annotation/unchecked/uncheckedCaptures.scala
 - [ ] library/src/scala/annotation/unroll.scala
+- [ ] library/src/scala/caps/package.scala
 - [ ] library/src/scala/compiletime/ops/any.scala
 - [ ] library/src/scala/compiletime/ops/boolean.scala
 - [ ] library/src/scala/compiletime/ops/double.scala
@@ -46,10 +58,10 @@
 - [ ] library/src/scala/compiletime/ops/long.scala
 - [ ] library/src/scala/compiletime/ops/string.scala
 - [ ] library/src/scala/compiletime/package.scala
-- [ ] library/src/scala/compiletime/testing/Error.scala
-- [ ] library/src/scala/compiletime/testing/ErrorKind.scala
-- [ ] library/src/scala/compiletime/testing/package.scala
-- [ ] library/src/scala/deriving/Mirror.scala
+- [x] library/src/scala/compiletime/testing/Error.scala
+- [x] library/src/scala/compiletime/testing/ErrorKind.scala
+- [x] library/src/scala/compiletime/testing/package.scala
+- [x] library/src/scala/main.scala
 - [ ] library/src/scala/quoted/Expr.scala
 - [ ] library/src/scala/quoted/ExprMap.scala
 - [ ] library/src/scala/quoted/Exprs.scala
@@ -64,3 +76,28 @@
 - [ ] library/src/scala/quoted/runtime/QuoteUnpickler.scala
 - [ ] library/src/scala/quoted/runtime/SplicedType.scala
 - [ ] library/src/scala/quoted/runtime/StopMacroExpansion.scala
+- [x] library/src/scala/reflect/Enum.scala
+- [x] library/src/scala/reflect/Selectable.scala
+- [x] library/src/scala/reflect/TypeTest.scala
+- [x] library/src/scala/reflect/Typeable.scala
+- [x] library/src/scala/runtime/$throws.scala
+- [x] library/src/scala/runtime/Arrays.scala
+- [x] library/src/scala/runtime/EnumValue.scala
+- [x] library/src/scala/runtime/FunctionXXL.scala
+- [x] library/src/scala/runtime/LazyVals.scala
+- [x] library/src/scala/runtime/MatchCase.scala
+- [x] library/src/scala/runtime/Scala3RunTime.scala
+- [x] library/src/scala/runtime/TupleMirror.scala
+- [x] library/src/scala/runtime/TupleXXL.scala
+- [x] library/src/scala/runtime/TupledFunctions.scala
+- [x] library/src/scala/runtime/Tuples.scala
+- [x] library/src/scala/runtime/TypeBox.scala
+- [x] library/src/scala/runtime/coverage/Invoker.scala
+- [ ] library/src/scala/runtime/stdLibPatches/Predef.scala
+- [ ] library/src/scala/runtime/stdLibPatches/language.scala
+- [x] library/src/scala/util/CommandLineParser.scala
+- [x] library/src/scala/util/FromDigits.scala
+- [x] library/src/scala/util/NotGiven.scala
+- [x] library/src/scala/util/TupledFunction.scala
+- [x] library/src/scala/util/boundary.scala
+- [x] library/src/scala/util/control/NonLocalReturns.scala
