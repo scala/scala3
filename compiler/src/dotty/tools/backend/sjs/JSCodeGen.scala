@@ -1496,7 +1496,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       def jsParams = params.map(genParamDef(_))
 
-      if (primitives.isPrimitive(sym)) {
+      if (primitives.isPrimitive(sym) && sym != defn.newArrayMethod) {
         None
       } else if (sym.is(Deferred) && currentClassSym.isNonNativeJSClass) {
         // scala-js/#4409: Do not emit abstract methods in non-native JS classes
