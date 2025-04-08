@@ -2,48 +2,49 @@ def foo(implicit f: () => Unit): Unit = ???
 def bar(a: Int)(implicit f: () => Unit): Unit = ???
 
 @main def main =
-  // Trailing lambdas with braces:
-  foo(using { () => 43 })
-  foo(using { () => val x = 42; 43 })
-  foo(using { () => val x = 42; 43 })
-  foo(using {() => val x = 42; 43})
-  bar(1)(using { () =>
-    val x = 42
-    43 })
-
-  // Parentheses:
-  foo(using () => 43 )
-  foo(using () =>
+  // `using` can automatically be added when the application is done with parentheses
+  foo ( using () => 43 )
+  foo ( using () =>
     val x = 42
     43
   )
-  foo(using () =>
+  foo( using () =>
     val x = 42
     43
   )
-  foo(using () =>
+  foo (using () =>
     val x = 42
     43
   )
-  bar(1)(using () =>
+  bar(1) ( using () =>
     val x = 42
     43 )
 
-  // Trailing lambdas with column and indentation:
-  foo(using () =>
-    43)
-  foo(using () =>
+  // `using` cannot automatically be added when the application is done with trailing lambda syntax
+  foo { () => 43 }
+  foo { () => val x = 42; 43 }
+  foo{ () => val x = 42; 43 }
+  foo {() => val x = 42; 43}
+  bar(1) { () =>
     val x = 42
-    43)
-  foo(using () =>
+    43 }
+  foo: () =>
+    43
+  foo : () =>
     val x = 42
-    43)
-  foo(using () =>
+    43
+  foo :() =>
     val x = 42
-    43)
-  foo(using () =>
+    43
+  foo
+  : () =>
+    val x = 42
+    43
+  foo
+  :
+    () =>
       val x = 42
-      43)
-  bar(1)(using () =>
+      43
+  bar(1) : () =>
     val x = 42
-    43)
+    43

@@ -2,16 +2,7 @@ def foo(implicit f: () => Unit): Unit = ???
 def bar(a: Int)(implicit f: () => Unit): Unit = ???
 
 @main def main =
-  // Trailing lambdas with braces:
-  foo { () => 43 }
-  foo { () => val x = 42; 43 }
-  foo{ () => val x = 42; 43 }
-  foo {() => val x = 42; 43}
-  bar(1) { () =>
-    val x = 42
-    43 }
-
-  // Parentheses:
+  // `using` can automatically be added when the application is done with parentheses
   foo ( () => 43 )
   foo ( () =>
     val x = 42
@@ -29,7 +20,14 @@ def bar(a: Int)(implicit f: () => Unit): Unit = ???
     val x = 42
     43 )
 
-  // Trailing lambdas with column and indentation:
+  // `using` cannot automatically be added when the application is done with trailing lambda syntax
+  foo { () => 43 }
+  foo { () => val x = 42; 43 }
+  foo{ () => val x = 42; 43 }
+  foo {() => val x = 42; 43}
+  bar(1) { () =>
+    val x = 42
+    43 }
   foo: () =>
     43
   foo : () =>

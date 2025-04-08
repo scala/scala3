@@ -6,6 +6,6 @@ object Decoder:
   inline def apply[T](implicit f: () => Unit): Decoder[T] = ???
 
 object Input:
-  given Decoder[Input] = Decoder(using { () =>
+  given Decoder[Input] = Decoder { () =>
     Input("")
-  })
+  }
