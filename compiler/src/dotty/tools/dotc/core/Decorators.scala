@@ -251,22 +251,19 @@ object Decorators {
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-   extension (names: List[String])
+  extension (names: List[String])
     def containsPhase(phase: Phase): Boolean =
-      names.nonEmpty && {
-        phase match {
-          case phase: MegaPhase => phase.miniPhases.exists(x => names.containsPhase(x))
-          case _ =>
-            names exists { name =>
-              name == "all" || {
-                val strippedName = name.stripSuffix("+")
-                val logNextPhase = name != strippedName
-                phase.phaseName.startsWith(strippedName) ||
-                  (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
-              }
-            }
-        }
-      }
+      names.nonEmpty &&
+        phase.match
+        case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
+        case _ =>
+          names.exists:
+            case "all" => true
+            case name =>
+              val strippedName = name.stripSuffix("+")
+              val logNextPhase = name != strippedName
+                 phase.phaseName.startsWith(strippedName)
+              || logNextPhase && phase.prev.phaseName.startsWith(strippedName)
 
   extension [T](x: T)
     def showing[U](
