@@ -8,6 +8,7 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
       ),
 
       // Additions since last LTS

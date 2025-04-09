@@ -167,6 +167,7 @@ private sealed trait WarningSettings:
   private val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
   private val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
   private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+  private val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -308,6 +309,7 @@ private sealed trait WarningSettings:
     def enumCommentDiscard(using Context): Boolean = allOr(WenumCommentDiscard)
     def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
     def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
+    def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
     def checkInit(using Context): Boolean = allOr(WcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
@@ -443,7 +445,8 @@ private sealed trait YSettings:
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
 
   // Experimental language features
-  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism.")
+  @deprecated(message = "This flag has no effect and will be removed in a future version.", since = "3.7.0")
+  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism. (This flag has no effect)", deprecation = Deprecation.removed())
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
   val YcheckInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
@@ -452,6 +455,7 @@ private sealed trait YSettings:
   val YccDebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
   val YccNew: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-new", "Used in conjunction with captureChecking language import, try out new variants (debug option)")
   val YccLog: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-log", "Used in conjunction with captureChecking language import, print tracing and debug info")
+  val YccVerbose: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-verbose", "Print root capabilities with more details")
   val YccPrintSetup: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-print-setup", "Used in conjunction with captureChecking language import, print trees after cc.Setup phase")
 
   /** Area-specific debug output */

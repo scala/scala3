@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType, Existential}
+import cc.{CaptureSet, RetainingType, readOnly}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -449,10 +449,7 @@ class Definitions {
 
   @tu lazy val AnyKindClass: ClassSymbol = {
     val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil, newScope(0))
-    if (!ctx.settings.YnoKindPolymorphism.value)
-      // Enable kind-polymorphism by exposing scala.AnyKind
-      cls.entered
-    cls
+    cls.entered
   }
   def AnyKindType: TypeRef = AnyKindClass.typeRef
 
@@ -507,6 +504,9 @@ class Definitions {
     @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
     @tu lazy val ScalaRuntime_toArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toArray)
     @tu lazy val ScalaRuntime_toObjectArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toObjectArray)
+
+  @tu lazy val MurmurHash3Module: Symbol = requiredModule("scala.util.hashing.MurmurHash3")
+    @tu lazy val MurmurHash3_productHash = MurmurHash3Module.info.member(termName("productHash")).suchThat(_.info.firstParamTypes.size == 3).symbol
 
   @tu lazy val BoxesRunTimeModule: Symbol = requiredModule("scala.runtime.BoxesRunTime")
     @tu lazy val BoxesRunTimeModule_externalEquals: Symbol = BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
@@ -996,20 +996,25 @@ class Definitions {
   @tu lazy val LabelClass: Symbol = requiredClass("scala.util.boundary.Label")
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
 
-  @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
+  @tu lazy val CapsModule: Symbol = requiredPackage("scala.caps")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
-    @tu lazy val Caps_Capability: TypeSymbol = CapsModule.requiredType("Capability")
+    @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
-    @tu lazy val Caps_reachCapability: TermSymbol = CapsModule.requiredMethod("reachCapability")
-    @tu lazy val Caps_capsOf: TermSymbol = CapsModule.requiredMethod("capsOf")
-    @tu lazy val Caps_Exists: ClassSymbol = requiredClass("scala.caps.Exists")
+    @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
+    @tu lazy val Caps_reachCapability: TermSymbol = CapsInternalModule.requiredMethod("reachCapability")
+    @tu lazy val Caps_readOnlyCapability: TermSymbol = CapsInternalModule.requiredMethod("readOnlyCapability")
+    @tu lazy val Caps_capsOf: TermSymbol = CapsInternalModule.requiredMethod("capsOf")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
+    @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
-    @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
+    @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
+    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
 
   /** The same as CaptureSet.universal but generated implicitly for references of Capability subtypes */
-  @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef)
+  @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef.readOnly)
 
   @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 
@@ -1066,8 +1071,10 @@ class Definitions {
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
-  @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
+  @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
+  @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
+  @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.internal.refineOverride")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
@@ -1083,6 +1090,8 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
+  @tu lazy val RootCapabilityAnnot = requiredClass("scala.caps.internal.rootCapability")
+  @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
@@ -1105,6 +1114,10 @@ class Definitions {
     Set(PublicInBinaryAnnot)
   @tu lazy val MetaAnnots: Set[Symbol] =
     NonBeanMetaAnnots + BeanGetterMetaAnnot + BeanSetterMetaAnnot
+
+  // Set of annotations that are not printed in types except under -Yprint-debug
+  @tu lazy val SilentAnnots: Set[Symbol] =
+    Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
@@ -1212,13 +1225,8 @@ class Definitions {
      */
     def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
       tpe.refinedInfo match
-        case mt: MethodType
-        if tpe.refinedName == nme.apply
-            && isFunctionType(tpe.parent)
-            && !Existential.isExistentialMethod(mt) => Some(mt)
-        case mt: PolyType
-        if tpe.refinedName == nme.apply
-            && isFunctionType(tpe.parent) => Some(mt)
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply && isFunctionType(tpe.parent) => Some(mt)
         case _ => None
 
   end RefinedFunctionOf
@@ -1552,6 +1560,9 @@ class Definitions {
    */
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
+
+  @tu lazy val capabilityWrapperAnnots: Set[Symbol] =
+    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot, MaybeCapabilityAnnot, RootCapabilityAnnot)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
@@ -2090,7 +2101,12 @@ class Definitions {
    */
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
+    Caps_Capability, // TODO: Remove when Capability is stabilized
     RequiresCapabilityAnnot,
+    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass, UseAnnot,
+    Caps_Mutable, Caps_SharedCapability, ConsumeAnnot,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass,
+    CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
   /** Experimental language features defined in `scala.runtime.stdLibPatches.language.experimental`.

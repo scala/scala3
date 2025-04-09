@@ -1393,7 +1393,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
-          sym.is(Mutable, butNot = Accessor) ||
+          sym.isMutableVar ||
           ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.maybeOwner == ctx.owner.owner ||
             // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
@@ -2805,8 +2805,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
+    val savedGadt = nestedCtx.gadt
     val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
       .mapconserve(ensureValueTypeOrWildcard)
+    nestedCtx.gadtState.restore(savedGadt)  // Disable GADT reasoning for pattern alternatives
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 

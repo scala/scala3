@@ -206,6 +206,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Var()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
+    case class Mut()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
+
     case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
 
     case class Given()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Given)
@@ -332,6 +334,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
+    def isMutableVar: Boolean = is(Mutable) && mods.exists(_.isInstanceOf[Mod.Var])
   }
 
   @sharable val EmptyModifiers: Modifiers = Modifiers()
@@ -518,6 +521,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
 
+  def capsInternalDot(name: Name)(using SourceFile): Select =
+    Select(Select(scalaDot(nme.caps), nme.internal), name)
+
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
@@ -525,7 +531,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
 
   def makeCapsOf(tp: RefTree)(using Context): Tree =
-    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
+    TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
 
   // Capture set variable `[C^]` becomes: `[C >: CapSet <: CapSet^{cap}]`
   def makeCapsBound()(using Context): TypeBoundsTree =

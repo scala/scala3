@@ -145,9 +145,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     refInfos.inlined.push(tree.call.srcPos)
     ctx
   override def transformInlined(tree: Inlined)(using Context): tree.type =
-    transformAllDeep(tree.expansion) // traverse expansion with nonempty inlined stack to avoid registering defs
+    //transformAllDeep(tree.expansion) // traverse expansion with nonempty inlined stack to avoid registering defs
     val _ = refInfos.inlined.pop()
-    transformAllDeep(tree.call)
+    if !tree.call.isEmpty && phaseMode.eq(PhaseMode.Aggregate) then
+      transformAllDeep(tree.call)
     tree
 
   override def prepareForBind(tree: Bind)(using Context): Context =
@@ -291,7 +292,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
 
     def matchingSelector(info: ImportInfo): ImportSelector | Null =
       val qtpe = info.site
-      def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol == sym)
+      def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith: alt =>
+           alt.symbol == sym
+        || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -587,7 +590,7 @@ object CheckUnused:
       end checkExplicit
       // begin
       if !infos.skip(m)
-        && !m.nextOverriddenSymbol.exists
+        && !m.isEffectivelyOverride
         && !allowed
       then
         checkExplicit()
@@ -611,6 +614,7 @@ object CheckUnused:
         || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
+        && !m.isEffectivelyOverride
         && !allowed
       then
         if m.isPrimaryConstructor then
@@ -888,41 +892,49 @@ object CheckUnused:
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
     inline def isWildcard: Boolean = nm == nme.WILDCARD || nm.is(WildcardParamName)
 
-  extension (tp: Type)
-    def importPrefix(using Context): Type = tp match
+  extension (tp: Type)(using Context)
+    def importPrefix: Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.superType.normalizedPrefix
       case _ => NoType
-    def underlyingPrefix(using Context): Type = tp match
+    def underlyingPrefix: Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.underlying.underlyingPrefix
       case _ => NoType
-    def skipPackageObject(using Context): Type =
+    def skipPackageObject: Type =
       if tp.typeSymbol.isPackageObject then tp.underlyingPrefix else tp
-    def underlying(using Context): Type = tp match
+    def underlying: Type = tp match
       case tp: TypeProxy => tp.underlying
       case _ => tp
 
   private val serializationNames: Set[TermName] =
     Set("readResolve", "readObject", "readObjectNoData", "writeObject", "writeReplace").map(termName(_))
 
-  extension (sym: Symbol)
-    def isSerializationSupport(using Context): Boolean =
+  extension (sym: Symbol)(using Context)
+    def isSerializationSupport: Boolean =
       sym.is(Method) && serializationNames(sym.name.toTermName) && sym.owner.isClass
         && sym.owner.derivesFrom(defn.JavaSerializableClass)
-    def isCanEqual(using Context): Boolean =
+    def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
-    def isMarkerTrait(using Context): Boolean =
+    def isMarkerTrait: Boolean =
       sym.isClass && sym.info.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
-    def isEffectivelyPrivate(using Context): Boolean =
+    def isEffectivelyPrivate: Boolean =
       sym.is(Private, butNot = ParamAccessor)
-      || sym.owner.isAnonymousClass && !sym.nextOverriddenSymbol.exists
+      || sym.owner.isAnonymousClass && !sym.isEffectivelyOverride
+    def isEffectivelyOverride: Boolean =
+      sym.is(Override)
+      ||
+      sym.canMatchInheritedSymbols && { // inline allOverriddenSymbols using owner.info or thisType
+        val owner = sym.owner.asClass
+        val base = if owner.classInfo.selfInfo != NoType then owner.thisType else owner.info
+        base.baseClasses.drop(1).iterator.exists(sym.overriddenSymbol(_).exists)
+      }
     // pick the symbol the user wrote for purposes of tracking
-    inline def userSymbol(using Context): Symbol=
+    inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
 
   extension (sel: ImportSelector)
@@ -936,13 +948,13 @@ object CheckUnused:
       case untpd.Ident(nme.WILDCARD) => true
       case _ => false
 
-  extension (imp: Import)
+  extension (imp: Import)(using Context)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
-    def isPrimaryClause(using Context): Boolean =
+    def isPrimaryClause: Boolean =
       imp.srcPos.span.pointDelta > 0 // primary clause starts at `import` keyword with point at clause proper
 
     /** Generated import of cases from enum companion. */
-    def isGeneratedByEnum(using Context): Boolean =
+    def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
 
     /** Under -Wunused:strict-no-implicit-warn, avoid false positives
@@ -950,7 +962,7 @@ object CheckUnused:
      *  specifically does import an implicit.
      *  Similarly, import of CanEqual must not warn, as it is always witness.
      */
-    def isLoose(sel: ImportSelector)(using Context): Boolean =
+    def isLoose(sel: ImportSelector): Boolean =
       if ctx.settings.WunusedHas.strictNoImplicitWarn then
         if sel.isWildcard
           || imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isOneOf(GivenOrImplicit))

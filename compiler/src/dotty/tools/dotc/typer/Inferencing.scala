@@ -509,10 +509,15 @@ object Inferencing {
           }
         }
     }
-    val res = patternBindings.toList.map { (boundSym, _) =>
+    val res = patternBindings.toList.map { (boundSym, origin) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
       for (wildCard, param) <- patternBindings do
         boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)
+
+      // also substitute in any GADT bounds
+      // e.g. in i22879, replace the `T` in `X <: Iterable[T]` with the pattern bound `T$1`
+      ctx.gadtState.replace(origin, boundSym.typeRef)
+
       boundSym
     }
 

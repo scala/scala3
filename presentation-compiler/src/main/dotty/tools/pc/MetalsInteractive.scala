@@ -100,9 +100,9 @@ object MetalsInteractive:
       pos: SourcePosition,
       indexed: IndexedContext,
       skipCheckOnName: Boolean = false
-  ): List[Symbol] =
+  )(using Context): List[Symbol] =
     enclosingSymbolsWithExpressionType(path, pos, indexed, skipCheckOnName)
-      .map(_._1)
+      .map(_._1.sourceSymbol)
 
   /**
    * Returns the list of tuple enclosing symbol and
@@ -216,6 +216,15 @@ object MetalsInteractive:
           case _ => ""
         val tpe = getIndex(t2).getOrElse(NoType)
         List((ddef.symbol, tpe, Some(name)))
+
+      case head :: (sel @ Select(_, name)) :: _
+        if head.sourcePos.encloses(sel.sourcePos) && (name == StdNames.nme.apply || name == StdNames.nme.unapply) =>
+          val optObjectSymbol = List(head.symbol).filter(sym => !(sym.is(Synthetic) && sym.is(Module)))
+          val classSymbol = head.symbol.companionClass
+          val optApplySymbol = List(sel.symbol).filter(sym => !sym.is(Synthetic))
+          val symbols = optObjectSymbol ++ (classSymbol :: optApplySymbol)
+          symbols.collect:
+            case sym if sym.exists => (sym, sym.info, None)
 
       case path @ head :: tail =>
         if head.symbol.is(Exported) then

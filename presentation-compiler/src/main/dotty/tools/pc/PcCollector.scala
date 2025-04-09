@@ -160,7 +160,7 @@ trait PcCollector[T]:
           def collectEndMarker =
             EndMarker.getPosition(df, pos, sourceText).map:
               collect(EndMarker(df.symbol), _)
-          val annots = collectTrees(df.mods.annotations)
+          val annots = collectTrees(df.symbol.annotations.map(_.tree))
           val traverser =
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
@@ -215,8 +215,8 @@ trait PcCollector[T]:
          * @<<JsonNotification>>("")
          * def params() = ???
          */
-        case mdf: MemberDef if mdf.mods.annotations.nonEmpty =>
-          val trees = collectTrees(mdf.mods.annotations)
+        case mdf: MemberDef if mdf.symbol.annotations.nonEmpty =>
+          val trees = collectTrees(mdf.symbol.annotations.map(_.tree))
           val traverser =
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
@@ -315,7 +315,7 @@ object EndMarker:
   def getPosition(df: NamedDefTree, pos: SourcePosition, sourceText: String)(
       implicit ct: Context
   ): Option[SourcePosition] =
-    val name = df.name.toString()
+    val name = df.name.toString().stripSuffix("$")
     val endMarkerLine =
       sourceText.slice(df.span.start, df.span.end).split('\n').last
     val index = endMarkerLine.length() - name.length()

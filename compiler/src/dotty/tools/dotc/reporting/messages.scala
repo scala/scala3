@@ -1694,7 +1694,7 @@ class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
 
   def msg(using Context) = i"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
   def explain(using Context) =
-    if sym.is(Mutable) then "Note that variables need to be initialized to be defined."
+    if sym.isMutableVarOrAccessor then "Note that variables need to be initialized to be defined."
     else ""
 }
 
@@ -3444,3 +3444,8 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
 
   def explain(using Context) = ""
 end IllegalUnrollPlacement
+
+class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
+  def kind = MessageKind.Interpolation
+  def msg(using Context) = errorText
+  def explain(using Context) = ""

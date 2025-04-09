@@ -120,7 +120,7 @@ object CapturedVars:
     def traverse(tree: Tree)(using Context) = tree match
       case id: Ident =>
         val sym = id.symbol
-        if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
+        if sym.isMutableVar && sym.owner.isTerm then
           val enclMeth = ctx.owner.enclosingMethod
           if sym.enclosingMethod != enclMeth then
             report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
