@@ -3840,14 +3840,26 @@ object Types extends TypeUtils {
      *  result in a [[NoDenotation]], which would make later disambiguation of
      *  overloads impossible. See `tests/pos/annot-17242.scala` for example.
      */
-    private class IntegrateMap(params: List[Symbol], paramRefs: List[Type])(using Context) extends TypeMap:
+    private class IntegrateMap(from: List[Symbol], to: List[Type])(using Context) extends TypeMap:
       override def apply(tp: Type) =
+        // Same implementation as in `SubstMap`, except the `derivedSelect` in
+        // the `NamedType` case, and the default case that just calls `mapOver`.
         tp match
-          case tp: NamedType if params.contains(tp.symbol) => paramRefs(params.indexOf(tp.symbol))
+          case tp: NamedType =>
+            val sym = tp.symbol
+            var fs = from
+            var ts = to
+            while (fs.nonEmpty && ts.nonEmpty) {
+              if (fs.head eq sym) return ts.head
+              fs = fs.tail
+              ts = ts.tail
+            }
+            if (tp.prefix `eq` NoPrefix) tp
+            else derivedSelect(tp, apply(tp.prefix))
           case _: BoundType | _: ThisType => tp
           case _ => mapOver(tp)
 
-      override def derivedSelect(tp: NamedType, pre: Type): Type =
+      override final def derivedSelect(tp: NamedType, pre: Type): Type =
         if tp.prefix eq pre then tp
         else if tp.symbol.exists then NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
         else NamedType(pre, tp.name)
