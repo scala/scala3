@@ -5,7 +5,7 @@ import core.*
 import Symbols.*, Types.*, Contexts.*, Decorators.*, util.Spans.*, Flags.*, Constants.*
 import StdNames.{nme, tpnme}
 import ast.Trees.*
-import Names.Name
+import Names.{Name, termName}
 import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation
@@ -94,7 +94,12 @@ object MainProxies {
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
         EmptyTree,
-        Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
+        Block(
+          List(Apply(ref(defn.CLP_showError.termRef), errVar :: Nil)),
+          Apply(Select(Select(Select(Ident(termName("java")), termName("lang")), termName("System")), termName("exit")),
+            List(Literal(Constant(1))))
+        )
+      )
       val body = Try(call, handler :: Nil, EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
