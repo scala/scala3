@@ -78,7 +78,7 @@ object SymbolLoaders {
    *  and give them `completer` as type.
    */
   def enterPackage(owner: Symbol, pname: TermName, completer: (TermSymbol, ClassSymbol) => PackageLoader)(using Context): Symbol = {
-    val preExisting = owner.info.decls lookup pname
+    val preExisting = owner.info.decls.lookup(pname)
     if (preExisting != NoSymbol)
       // Some jars (often, obfuscated ones) include a package and
       // object with the same name. Rather than render them unusable,
@@ -95,6 +95,18 @@ object SymbolLoaders {
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
+      else if pname == nme.caps && owner == defn.ScalaPackageClass then
+        // `scala.caps`` was an object until 3.6, it is a package from 3.7. Without special handling
+        // this would cause a TypeError to be thrown below if a build has several versions of the
+        // Scala standard library on the classpath. This was the case for 29 projects in OpenCB.
+        // These projects should be updated. But until that's the case we issue a warning instead
+        // of a hard failure.
+        report.warning(
+          em"""$owner contains object and package with same name: $pname.
+             |This indicates that there are several versions of the Scala standard library on the classpath.
+             |The build should be reconfigured so that only one version of the standard library is on the classpath.""")
+        owner.info.decls.openForMutations.unlink(preExisting)
+        owner.info.decls.openForMutations.unlink(preExisting.moduleClass)
       else
         throw TypeError(
           em"""$owner contains object and package with same name: $pname
