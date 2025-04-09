@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.language.experimental.captureChecking
+
 import scala.annotation.compileTimeOnly
 
 /** Scala 3 additions and replacements to the `scala.language` object.

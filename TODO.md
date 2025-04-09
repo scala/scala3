@@ -93,8 +93,8 @@
 - [x] library/src/scala/runtime/Tuples.scala
 - [x] library/src/scala/runtime/TypeBox.scala
 - [x] library/src/scala/runtime/coverage/Invoker.scala
-- [ ] library/src/scala/runtime/stdLibPatches/Predef.scala
-- [ ] library/src/scala/runtime/stdLibPatches/language.scala
+- [x] library/src/scala/runtime/stdLibPatches/Predef.scala
+- [x] library/src/scala/runtime/stdLibPatches/language.scala
 - [x] library/src/scala/util/CommandLineParser.scala
 - [x] library/src/scala/util/FromDigits.scala
 - [x] library/src/scala/util/NotGiven.scala
