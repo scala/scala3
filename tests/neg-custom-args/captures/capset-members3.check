@@ -1,0 +1,6 @@
+-- [E209] Syntax Error: tests/neg-custom-args/captures/capset-members3.scala:4:13 --------------------------------------
+4 |  cap type C _ // error
+  |             ^
+  |             =, >:, or <: expected, but '_' found
+  |
+  | longer explanation available when compiling with `-explain`

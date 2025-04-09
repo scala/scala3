@@ -726,34 +726,38 @@ Reach capabilities take the form `x*` where `x` is syntactically a regular capab
 It is sometimes convenient to write operations that are parameterized with a capture set of capabilities. For instance consider a type of event sources
 `Source` on which `Listener`s can be registered. Listeners can hold certain capabilities, which show up as a parameter to `Source`:
 ```scala
-  class Source[X^]:
-    private var listeners: Set[Listener^{X^}] = Set.empty
-    def register(x: Listener^{X^}): Unit =
-      listeners += x
+class Source[cap X]:
+  private var listeners: Set[Listener^{X}] = Set.empty
+  def register(x: Listener^{X}): Unit =
+    listeners += x
 
-    def allListeners: Set[Listener^{X^}] = listeners
+  def allListeners: Set[Listener^{X}] = listeners
 ```
-The type variable `X^` can be instantiated with a set of capabilities. It can occur in capture sets in its scope. For instance, in the example above
-we see a variable `listeners` that has as type a `Set` of `Listeners` capturing `X^`. The `register` method takes a listener of this type
+The type variable `cap X` (with `cap` being a soft modifier) can be instantiated with a set of capabilities. It can occur in capture sets in its scope. For instance, in the example above
+we see a variable `listeners` that has as type a `Set` of `Listeners` capturing `X`. The `register` method takes a listener of this type
 and assigns it to the variable.
 
-Capture set variables `X^` are represented as regular type variables with a
-special upper bound `CapSet`. For instance, `Source` could be equivalently
+Capture-set variables `cap X` are represented as regular type variables within the special interval
+ `>: CapSet <: CapSet^`. For instance, `Source` could be equivalently
 defined as follows:
 ```scala
-  class Source[X <: CapSet^]:
-    ...
+class Source[X >: CapSet <: CapSet^]:
+  ...
 ```
-`CapSet` is a sealed trait in the `caps` object. It cannot be instantiated or inherited, so its only purpose is to identify capture set type variables and types. Capture set variables can be inferred like regular type variables. When they should be instantiated explicitly one uses a capturing
-type `CapSet`. For instance:
+`CapSet` is a sealed trait in the `caps` object. It cannot be instantiated or inherited, so its only
+purpose is to identify capture-set type variables and types. This representation based on `CapSet` is subject to change and
+its direct use is discouraged.
+
+Capture-set variables can be inferred like regular type variables. When they should be instantiated
+explicitly one supplies a concrete capture set. For instance:
 ```scala
-  class Async extends caps.Capability
+class Async extends caps.Capability
 
-  def listener(async: Async): Listener^{async} = ???
+def listener(async: Async): Listener^{async} = ???
 
-  def test1(async1: Async, others: List[Async]) =
-    val src = Source[CapSet^{async1, others*}]
-    ...
+def test1(async1: Async, others: List[Async]) =
+  val src = Source[{async1, others*}]
+  ...
 ```
 Here, `src` is created as a `Source` on which listeners can be registered that refer to the `async` capability or to any of the capabilities in list `others`. So we can continue the example code above as follows:
 ```scala
@@ -761,6 +765,100 @@ Here, `src` is created as a `Source` on which listeners can be registered that r
   others.map(listener).foreach(src.register)
   val ls: Set[Listener^{async, others*}] = src.allListeners
 ```
+A common use-case for explicit capture parameters is describing changes to the captures of mutable fields, such as concatenating
+effectful iterators:
+```scala
+class ConcatIterator[A, cap C](var iterators: mutable.List[IterableOnce[A]^{C}]):
+  def concat(it: IterableOnce[A]^): ConcatIterator[A, {this.C, it}]^{this, it} =
+    iterators ++= it                             //            ^
+    this                                         // track contents of `it` in the result
+```
+In such a scenario, we also should ensure that any pre-existing alias of a `ConcatIterator` object should become
+inaccessible after invoking its `concat` method. This is achieved with mutation and separation tracking which are
+currently in development.
+
+Finally, analogously to type parameters, we can lower- and upper-bound capability parameters where the bounds consist of concrete capture sets:
+```scala
+  // We can close over anything subsumed branded by the 'trusted' capability, but nothing else
+  def runSecure[cap C >: {trusted} <: {trusted}](block: () ->{C} Unit): Unit = ...
+
+  // This is a 'brand" capability to mark what can be mentioned in trusted code
+  object trusted extends caps.Capability
+
+  // These capabilities are trusted:
+  val trustedLogger: Logger^{trusted}
+  val trustedChannel: Channel[String]^{trusted}
+  // These aren't:
+  val untrustedLogger: Logger^
+  val untrustedChannel: Channel[String]^
+
+  runSecure: () =>
+    trustedLogger.log("Hello from trusted code") // ok
+
+  runSecure: () =>
+    trustedChannel.send("I can send")            // ok
+    trustedLogger.log(trustedChannel.recv())     // ok
+
+  runSecure: () => "I am pure and that's ok"     // ok
+
+  runSecure: () =>
+    untrustedLogger.log("I can't be used")       // error
+    untrustedChannel.send("I can't be used")     // error
+```
+The idea is that every capability derived from the marker capability `trusted` (and only those) are eligible to be used in the `block` closure
+passed to `runSecure`. We can enforce this by an explicit capability parameter `C` constraining the possible captures of `block` to the interval `>: {trusted} <: {trusted}`
+
+## Capability Members
+
+Just as parametrization by types can be equally expressed with type members, we could
+also define the `Source[cap X]` class above could using a _capability member_:
+```scala
+class Source:
+  cap type X
+  private var listeners: Set[Listener^{this.X}] = Set.empty
+  ... // as before
+```
+Here, we can refer to capability members using paths in capture sets (such as `{this.X}`). Similarly to type members,
+capability members can be upper- and lower-bounded with capture sets:
+```scala
+trait Thread:
+  cap type Cap
+  def run(block: () ->{this.Cap} -> Unit): Unit
+
+trait GPUThread extends Thread:
+  cap type Cap >: {cudaMalloc, cudaFree} <: {caps.cap}
+```
+
+
+We conclude with a more advanced example, showing how capability members and paths to these members can prevent leakage
+of labels for lexically-delimited control operators:
+```scala
+trait Label extends Capability:
+  cap type Fv // the capability set occurring freely in the `block` passed to `boundary` below.
+
+def boundary[T, cap C](block: Label{cap type Fv = {C} } ->{C} T): T = ??? // ensure free caps of label and block match
+def suspend[U](label: Label)[cap D <: {label.Fv}](handler: () ->{D} U): U = ??? // may only capture the free capabilities of label
+
+def test =
+  val x = 1
+  boundary: outer =>
+    val y = 2
+    boundary: inner =>
+      val z = 3
+      val w = suspend(outer) {() => z} // ok
+      val v = suspend(inner) {() => y} // ok
+      val u = suspend(inner): () =>
+        suspend(outer) {() => w + v} // ok
+        y
+      suspend(outer): () =>
+        println(inner) // error (would leak the inner label)
+        x + y + z
+```
+A key property is that `suspend` (think `shift` from delimited continuations) targeting a specific label (such as `outer`) should not accidentally close over labels from a nested `boundary` (such as `inner`), because they would escape their defining scope this way.
+By leveraging capability polymorphism, capability members, and path-dependent capabilities, we can prevent such leaks from occurring at compile time:
+
+* `Label`s store the free capabilities `C` of the `block` passed to `boundary` in their capability member `Fv`.
+* When suspending on a given label, the suspension handler can capture at most the capabilities that occur freely at the `boundary` that introduced the label. That prevents mentioning nested bound labels.
 
 ## Compilation Options
 

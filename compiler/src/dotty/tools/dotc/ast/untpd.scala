@@ -236,6 +236,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Tracked()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Tracked)
 
+    case class CaptureParam()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.CaptureParam)
+
     /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }
@@ -534,12 +536,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
 
   // Capture set variable `[C^]` becomes: `[C >: CapSet <: CapSet^{cap}]`
-  def makeCapsBound()(using Context): TypeBoundsTree =
-    TypeBoundsTree(
-      Select(scalaDot(nme.caps), tpnme.CapSet),
-      makeRetaining(
-        Select(scalaDot(nme.caps), tpnme.CapSet),
-        Nil, tpnme.retainsCap))
+  def makeCapsBound(refsL: List[Tree] = Nil, refsU: List[Tree] = Nil)(using Context): TypeBoundsTree =
+    val lower = refsL match
+      case Nil => Select(scalaDot(nme.caps), tpnme.CapSet)
+      case refsL => makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refsL, tpnme.retains)
+    val upper =
+      makeRetaining(Select(scalaDot(nme.caps), tpnme.CapSet), refsU, if refsU.isEmpty then tpnme.retainsCap else tpnme.retains)
+    TypeBoundsTree(lower, upper)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
