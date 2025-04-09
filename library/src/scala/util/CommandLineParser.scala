@@ -1,23 +1,22 @@
 package scala.util
 
+import scala.util.control.ControlThrowable
+
 /** A utility object to support command line parsing for @main methods */
 object CommandLineParser {
 
   /** An exception raised for an illegal command line
-    *  @param idx  The index of the argument that's faulty (starting from 0)
-    *  @param msg  The error message
-    */
-  class ParseError(val idx: Int, val msg: String) extends Exception
+   *  @param idx  The index of the argument that's faulty (starting from 0)
+   *  @param msg  The error message
+   */
+  class ParseError(val idx: Int, val msg: String) extends Exception(msg)
 
   /** Parse command line argument `s`, which has index `n`, as a value of type `T`
    *  @throws ParseError if argument cannot be converted to type `T`.
    */
-  def parseString[T](str: String, n: Int)(using fs: FromString[T]): T = {
+  def parseString[T](str: String, n: Int)(using fs: FromString[T]): T =
     try fs.fromString(str)
-    catch {
-      case ex: IllegalArgumentException => throw ParseError(n, ex.toString)
-    }
-  }
+    catch case ex: IllegalArgumentException => throw ParseError(n, ex.toString)
 
   /** Parse `n`'th argument in `args` (counting from 0) as a value of type `T`
    *  @throws ParseError if argument does not exist or cannot be converted to type `T`.
