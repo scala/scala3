@@ -12,10 +12,15 @@ public class ChildJVMMain {
     static final String MessageStart = "##THIS IS THE START FOR ME, HELLO##";
     static final String MessageEnd = "##THIS IS THE END FOR ME, GOODBYE##";
 
-    private static void runMain(String dir) throws Exception {
+    private static void runMain(String line) throws Exception {
         Method meth = null;
-        Object[] args = new Object[]{ new String[]{ } };
+        String[] args = new String[]{ };
         try {
+	    String[] tokens = line.split("\\s+", 2);
+	    String dir = tokens[0];
+	    if (tokens.length > 1) {
+	      args = tokens[1].split("\\s+");
+	    }
             String jcp = System.getProperty("java.class.path");
             String sep = File.pathSeparator;
             System.setProperty("java.class.path", jcp == null ? dir : dir + sep + jcp);
@@ -37,15 +42,15 @@ public class ChildJVMMain {
         }
         System.out.println(MessageStart);
 
-        meth.invoke(null, args);
+        meth.invoke(null, new Object[] { args });
     }
 
     public static void main(String[] args) throws Exception {
-      BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
+        BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
 
-      while (true) {
-          runMain(stdin.readLine());
-          System.out.println(MessageEnd);
-      }
+        while (true) {
+            runMain(stdin.readLine());
+            System.out.println(MessageEnd);
+        }
     }
 }
