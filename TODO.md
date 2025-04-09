@@ -50,14 +50,14 @@
 - [ ] library/src/scala/annotation/unchecked/uncheckedCaptures.scala
 - [ ] library/src/scala/annotation/unroll.scala
 - [x] library/src/scala/caps/package.scala
-- [ ] library/src/scala/compiletime/ops/any.scala
-- [ ] library/src/scala/compiletime/ops/boolean.scala
-- [ ] library/src/scala/compiletime/ops/double.scala
-- [ ] library/src/scala/compiletime/ops/float.scala
-- [ ] library/src/scala/compiletime/ops/int.scala
-- [ ] library/src/scala/compiletime/ops/long.scala
-- [ ] library/src/scala/compiletime/ops/string.scala
-- [ ] library/src/scala/compiletime/package.scala
+- [x] library/src/scala/compiletime/ops/any.scala
+- [x] library/src/scala/compiletime/ops/boolean.scala
+- [x] library/src/scala/compiletime/ops/double.scala
+- [x] library/src/scala/compiletime/ops/float.scala
+- [x] library/src/scala/compiletime/ops/int.scala
+- [x] library/src/scala/compiletime/ops/long.scala
+- [x] library/src/scala/compiletime/ops/string.scala
+- [x] library/src/scala/compiletime/package.scala
 - [x] library/src/scala/compiletime/testing/Error.scala
 - [x] library/src/scala/compiletime/testing/ErrorKind.scala
 - [x] library/src/scala/compiletime/testing/package.scala
