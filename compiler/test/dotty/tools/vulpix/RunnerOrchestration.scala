@@ -53,7 +53,7 @@ trait RunnerOrchestration {
 
   /** Running a `Test` class's main method from the specified `classpath` */
   def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
-    monitor.runMain(classPath)
+    monitor.runMain(classPath, toolArgs.getOrElse(ToolName.Java, Nil))
 
   /** Each method of Debuggee can be called only once, in the order of definition.*/
   trait Debuggee:
@@ -86,8 +86,8 @@ trait RunnerOrchestration {
    */
   private class RunnerMonitor {
 
-    def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
-      withRunner(_.runMain(classPath))
+    def runMain(classPath: String, args: List[String])(implicit summaryReport: SummaryReporting): Status =
+      withRunner(_.runMain(classPath, args))
 
     def debugMain(classPath: String)(f: Debuggee => Unit)(implicit summaryReport: SummaryReporting): Unit =
       withRunner(_.debugMain(classPath)(f))
@@ -132,9 +132,9 @@ trait RunnerOrchestration {
         process = null
 
       /** Blocks less than `maxDuration` while running `Test.main` from `dir` */
-      def runMain(classPath: String): Status =
+      def runMain(classPath: String, args: List[String]): Status =
         assert(process ne null, "Runner was killed and then reused without setting a new process")
-        awaitStatusOrRespawn(startMain(classPath))
+        awaitStatusOrRespawn(startMain(classPath, args))
 
       def debugMain(classPath: String)(f: Debuggee => Unit): Unit =
         assert(process ne null, "Runner was killed and then reused without setting a new process")
@@ -142,7 +142,7 @@ trait RunnerOrchestration {
         val debuggee = new Debuggee:
           private var mainFuture: Future[Status] = null
           def readJdiPort(): Int = process.getJdiPort()
-          def launch(): Unit = mainFuture = startMain(classPath)
+          def launch(): Unit = mainFuture = startMain(classPath, Nil)
           def exit(): Status =
             awaitStatusOrRespawn(mainFuture)
 
@@ -153,9 +153,10 @@ trait RunnerOrchestration {
           throw e
       end debugMain
 
-      private def startMain(classPath: String): Future[Status] =
+      private def startMain(classPath: String, args: List[String]): Future[Status] =
+        val line = if args.isEmpty then classPath else s"$classPath ${args.mkString(" ")}"
         // pass classpath to running process
-        process.printLine(classPath)
+        process.printLine(line)
 
         // Create a future reading the object:
         Future:

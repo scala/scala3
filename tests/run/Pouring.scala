@@ -1,3 +1,5 @@
+// java: 6 4 7
+
 type Glass = Int
 type Levels = Vector[Int]
 

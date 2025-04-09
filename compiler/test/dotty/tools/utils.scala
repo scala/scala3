@@ -12,10 +12,10 @@ import scala.io.Source
 import scala.jdk.StreamConverters._
 import scala.reflect.ClassTag
 import scala.util.Using.resource
-import scala.util.chaining.given
 import scala.util.control.{ControlThrowable, NonFatal}
 
 import dotc.config.CommandLineParser
+import dotc.util.chaining.*
 
 object Dummy
 
@@ -76,7 +76,11 @@ object ToolName:
   def named(s: String): ToolName = values.find(_.toString.equalsIgnoreCase(s)).getOrElse(throw IllegalArgumentException(s))
 
 type ToolArgs = Map[ToolName, List[String]]
+object ToolArgs:
+  def empty = Map.empty[ToolName, List[String]]
 type PlatformFiles = Map[TestPlatform, List[String]]
+object PlatformFiles:
+  def empty = Map.empty[TestPlatform, List[String]]
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
@@ -90,21 +94,23 @@ def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
  *  If the ToolName is Target, then also accumulate the file name associated with the given platform.
  */
 def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
-  files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>
+  files.foldLeft((PlatformFiles.empty, ToolArgs.empty)) { (res, path) =>
     val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)), Some(path.toString))
     toolargs.foldLeft(res) {
-      case ((plat, acc), (tool, args)) =>
+      case ((plats, tools), (tool, args)) =>
         val name = ToolName.named(tool)
         val tokens = CommandLineParser.tokenize(args)
 
-        val plat1 = if name eq ToolName.Target then
+        val plats1 = if name eq ToolName.Target then
           val testPlatform = TestPlatform.named(tokens.head)
           val fileName = path.toString
-          plat.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
+          plats.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
         else
-          plat
+          plats
 
-        plat1 -> acc.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
+        val tools1 = tools.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
+
+        (plats1, tools1)
     }
   }
 
@@ -131,19 +137,18 @@ private val directiveUnknown = raw"//> using (.*)".r.unanchored
 // If args string ends in close comment, stop at the `*` `/`.
 // Returns all the matches by the regex.
 def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,String)] =
-  lines.flatMap {
+  lines.flatMap:
     case toolArg("scalac", _) => sys.error(s"`// scalac: args` not supported. Please use `//> using options args`${filename.fold("")(f => s" in file $f")}")
     case toolArg("javac", _) => sys.error(s"`// javac: args` not supported. Please use `//> using javacOpt args`${filename.fold("")(f => s" in file $f")}")
     case toolArg(name, args) => List((name, args))
     case _ => Nil
-  } ++
-  lines.flatMap {
+  ++
+  lines.flatMap:
     case directiveOptionsArg(args) => List(("scalac", args))
     case directiveJavacOptions(args) => List(("javac", args))
     case directiveTargetOptions(platform) => List(("target", platform))
     case directiveUnknown(rest) => sys.error(s"Unknown directive: `//> using ${CommandLineParser.tokenize(rest).headOption.getOrElse("''")}`${filename.fold("")(f => s" in file $f")}")
     case _ => Nil
-  }
 
 import org.junit.Test
 import org.junit.Assert._
