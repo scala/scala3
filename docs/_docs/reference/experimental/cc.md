@@ -779,7 +779,8 @@ currently in development.
 
 Finally, analogously to type parameters, we can lower- and upper-bound capability parameters where the bounds consist of concrete capture sets:
 ```scala
-  // We can close over anything subsumed branded by the 'trusted' capability, but nothing else
+def main() =
+  // We can close over anything branded by the 'trusted' capability, but nothing else
   def runSecure[cap C >: {trusted} <: {trusted}](block: () ->{C} Unit): Unit = ...
 
   // This is a 'brand" capability to mark what can be mentioned in trusted code
@@ -806,7 +807,12 @@ Finally, analogously to type parameters, we can lower- and upper-bound capabilit
     untrustedChannel.send("I can't be used")     // error
 ```
 The idea is that every capability derived from the marker capability `trusted` (and only those) are eligible to be used in the `block` closure
-passed to `runSecure`. We can enforce this by an explicit capability parameter `C` constraining the possible captures of `block` to the interval `>: {trusted} <: {trusted}`
+passed to `runSecure`. We can enforce this by an explicit capability parameter `C` constraining the possible captures of `block` to the interval `>: {trusted} <: {trusted}`.
+
+Note that since capabilities of function types are covariant, we could have equivalently specified `runSecure`'s signature using implicit capture polymorphism to achieve the same behavior:
+```scala
+def runSecure(block: () ->{trusted} Unit): Unit
+```
 
 ## Capability Members
 
@@ -828,7 +834,8 @@ trait Thread:
 trait GPUThread extends Thread:
   cap type Cap >: {cudaMalloc, cudaFree} <: {caps.cap}
 ```
-
+Since `caps.cap` is the top element for subcapturing, we could have also left out the
+upper bound: `cap type Cap >: {cudaMalloc, cudaFree}`.
 
 We conclude with a more advanced example, showing how capability members and paths to these members can prevent leakage
 of labels for lexically-delimited control operators:
