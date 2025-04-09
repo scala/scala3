@@ -397,10 +397,18 @@ object projects:
 
   lazy val munit = SbtCommunityProject(
     project = "munit",
-    sbtTestCommand  = "testsJVM/test;testsJS/test;",
-    sbtPublishCommand = "munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal",
+    sbtTestCommand  = "testsJVM/test;testsJS/test;munitDiffJVM/test;munitDiffJS/test",
+    sbtPublishCommand = "munitJVM/publishLocal; munitJS/publishLocal; munitDiffJVM/publishLocal; munitDiffJS/publishLocal; junit/publishLocal",
     sbtDocCommand   = "junit/doc; munitJVM/doc",
     dependencies = List(scalacheck)
+  )
+
+  lazy val munitScalacheck = SbtCommunityProject(
+    project = "munit-scalacheck",
+    sbtTestCommand  = "testsJVM/test;testsJS/test;",
+    sbtPublishCommand = "munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal",
+    sbtDocCommand   = "munitScalacheckJVM/doc",
+    dependencies = List(munit, scalacheck)
   )
 
   lazy val scodecBits = SbtCommunityProject(
@@ -462,7 +470,7 @@ object projects:
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
     sbtTestCommand = "ciJVM",
-    sbtPublishCommand = "publishLocal",
+    sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal; kernelJVM/publishLocal; kernelJS/publishLocal; stdJVM/publishLocal; stdJS/publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
     dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
@@ -505,12 +513,12 @@ object projects:
     project = "discipline-munit",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(discipline, munit)
+    dependencies = List(discipline, munit, munitScalacheck)
   )
 
   lazy val disciplineSpecs2 = SbtCommunityProject(
     project = "discipline-specs2",
-    sbtTestCommand = "test",
+    sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init")
@@ -524,8 +532,8 @@ object projects:
 
   lazy val cats = SbtCommunityProject(
     project = "cats",
-    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;rootJVM/test;rootJS/test",
-    sbtPublishCommand = "rootJVM/publishLocal;rootJS/publishLocal",
+    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;catsJVM/test;catsJS/test",
+    sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init") // disable -Ysafe-init or -Wsafe-init, due to -Xfatal-warning
   )
@@ -539,7 +547,7 @@ object projects:
 
   lazy val coop = SbtCommunityProject(
     project = "coop",
-    sbtTestCommand = "test",
+    sbtTestCommand = "rootJVM/test;rootJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(cats, catsMtl)
   )
@@ -677,16 +685,16 @@ object projects:
 
   lazy val munitCatsEffect = SbtCommunityProject(
     project = "munit-cats-effect",
-    sbtTestCommand = "ce3JVM/test; ce3JS/test",
-    sbtPublishCommand = "ce3JVM/publishLocal; ce3JS/publishLocal",
+    sbtTestCommand = "rootJVM/test; rootJS/test",
+    sbtPublishCommand = "rootJVM/publishLocal; rootJS/publishLocal",
     dependencies = List(munit, catsEffect3)
   )
 
   lazy val scalacheckEffect = SbtCommunityProject(
     project = "scalacheck-effect",
-    sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
-    dependencies = List(cats, catsEffect3, munit, scalacheck)
+    sbtTestCommand = "rootJVM/test; rootJS/test",
+    sbtPublishCommand = "rootJVM/publishLocal; rootJS/publishLocal",
+    dependencies = List(cats, catsEffect3, munit, munitScalacheck, scalacheck)
   )
 
   lazy val fs2 = SbtCommunityProject(

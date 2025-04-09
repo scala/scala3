@@ -221,3 +221,6 @@
 [submodule "community-build/community-projects/shapeless-3"]
 	path = community-build/community-projects/shapeless-3
 	url = https://github.com/dotty-staging/shapeless-3.git
+[submodule "community-build/community-projects/munit-scalacheck"]
+	path = community-build/community-projects/munit-scalacheck
+	url = https://github.com/dotty-staging/munit-scalacheck.git
