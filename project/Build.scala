@@ -123,7 +123,7 @@ object Build {
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
   */
-  val baseVersion = s"$developedVersion-RC1"
+  val baseVersion = s"$developedVersion-RC2"
 
   /** The version of TASTY that should be emitted, checked in runtime test
    *  For defails on how TASTY version should be set see related discussions:
@@ -452,7 +452,7 @@ object Build {
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
       ),
 
-    // add extraDevelocityCacheInputFiles in cache key components 
+    // add extraDevelocityCacheInputFiles in cache key components
     Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
       (Compile / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
     Test / test / buildcache.develocityTaskCacheKeyComponents +=
