@@ -296,7 +296,7 @@ trait Future[+T] extends Awaitable[T] {
    * @return    a `Future` which will hold the successful result of this `Future` if it matches the predicate or a `NoSuchElementException`
    * @group Transformations
    */
-  def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] =
+  def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T]^{p, executor, this} =
     transform {
       t =>
         if (t.isInstanceOf[Success[T]]) {
@@ -308,7 +308,7 @@ trait Future[+T] extends Awaitable[T] {
   /** Used by for-comprehensions.
    * @group Transformations
    */
-  final def withFilter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = filter(p)(executor)
+  final def withFilter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T]^{p, executor, this} = filter(p)(executor)
 
   /** Creates a new future by mapping the value of the current future, if the given partial function is defined at that value.
    *

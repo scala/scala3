@@ -16,6 +16,7 @@ import java.util.concurrent.{ ExecutorService, Executor }
 import scala.annotation.implicitNotFound
 
 import language.experimental.captureChecking
+import caps.Capability
 
 /**
  * An `ExecutionContext` can execute program logic asynchronously,
@@ -70,7 +71,7 @@ consider using Scala's global ExecutionContext by defining
 the following:
 
 implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global""")
-trait ExecutionContext {
+trait ExecutionContext extends Capability {
 
   /** Runs a block of code on this execution context.
    *

@@ -12,7 +12,7 @@
 
 package scala.concurrent.impl
 
-import scala.concurrent.{Batchable, Batchable2, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
+import scala.concurrent.{Batchable, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
 import scala.concurrent.duration.Duration
 import scala.annotation.{nowarn, switch, tailrec}
 import scala.util.control.{ControlThrowable, NonFatal}
@@ -24,6 +24,7 @@ import java.util.Objects.requireNonNull
 import java.io.{IOException, NotSerializableException, ObjectInputStream, ObjectOutputStream}
 
 import language.experimental.captureChecking
+import caps.unsafe.*
 
 /**
   * Latch used to implement waiting on a DefaultPromise's result.
@@ -61,11 +62,11 @@ private[concurrent] object Promise {
    * If when compressing a chain of Links it is discovered that the root has been completed,
    * the `owner`'s value is completed with that value, and the Link chain is discarded.
    **/
-  private[concurrent] final class Link[T](to: DefaultPromise[T]) extends AtomicReference[DefaultPromise[T]](to) {
+  private[concurrent] final class Link[T](to: DefaultPromise[T]^) extends AtomicReference[DefaultPromise[T]^{to}](to) {
     /**
      * Compresses this chain and returns the currently known root of this chain of Links.
      **/
-    final def promise(owner: DefaultPromise[T]): DefaultPromise[T] = {
+    final def promise(owner: DefaultPromise[T]^): DefaultPromise[T]^{this, to, owner} = {
       val c = get()
       compressed(current = c, target = c, owner = owner)
     }
@@ -73,7 +74,7 @@ private[concurrent] object Promise {
     /**
      * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
      **/
-    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
+    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T]^, target: DefaultPromise[T]^, owner: DefaultPromise[T]^): DefaultPromise[T]^{this, current, target, owner} = {
       val value = target.get()
       if (value.isInstanceOf[Callbacks[_]]) {
         if (compareAndSet(current, target)) target // Link
@@ -105,6 +106,7 @@ private[concurrent] object Promise {
 
   // Left non-final to enable addition of extra fields by Java/Scala converters in scala-java8-compat.
   class DefaultPromise[T] private[this] (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
+    self: DefaultPromise[T]^ =>
     /**
      * Constructs a new, completed, Promise.
      */
@@ -125,7 +127,7 @@ private[concurrent] object Promise {
     /**
      * Returns the associated `Future` with this `Promise`
      */
-    override final def future: Future[T] = this
+    override final def future: Future[T]^ = (this : Future[T]^)
 
     override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transform, f, executor))
@@ -186,7 +188,7 @@ private[concurrent] object Promise {
       else this.asInstanceOf[Future[S]]
     }
 
-    override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = {
+    override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T]^{p, executor, this} = {
       val state = get()
       if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, T](Xform_filter, p, executor)) // Short-circuit if we get a Success
       else this
@@ -343,7 +345,7 @@ private[concurrent] object Promise {
 
     /** Link this promise to the root of another promise.
      */
-    @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T], link: Link[T]): Unit =
+    @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T]^, link: Link[T]^): Unit =
       if (this ne target) {
         val state = get()
         if (state.isInstanceOf[Try[_]]) {
@@ -412,13 +414,13 @@ private[concurrent] object Promise {
    * function's type parameters are erased, and the _xform tag will be used to reify them.
    **/
   final class Transformation[-F, T] private[this] (
-    private[this] final var _fun: Any -> Any,
-    private[this] final var _ec: ExecutionContext,
+    private[this] final val _fun: Any => Any,
+    private[this] final val _ec: ExecutionContext,
     private[this] final var _arg: Try[F],
     private[this] final val _xform: Int
   ) extends DefaultPromise[T]() with Callbacks[F] with Runnable with Batchable {
     final def this(xform: Int, f: _ => _, ec: ExecutionContext) =
-      this(f.asInstanceOf[Any -> Any], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
+      this(f.asInstanceOf[Any => Any], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
 
     final def benefitsFromBatching: Boolean = _xform != Xform_onComplete && _xform != Xform_foreach
 
@@ -429,12 +431,12 @@ private[concurrent] object Promise {
     final def submitWithValue(resolved: Try[F]): this.type = {
       _arg = resolved
       val e = _ec
-      try e.execute(this) /* Safe publication of _arg, _fun, _ec */
+      try e.execute(this.unsafeAssumePure) /* Safe publication of _arg, _fun, _ec */
       catch {
         case t: Throwable =>
           // _fun = null // allow to GC
           _arg = null // see above
-          _ec  = null // see above again
+          // _ec  = null // see above again
           handleFailure(t, e)
       }
 
@@ -460,7 +462,7 @@ private[concurrent] object Promise {
       val ec  = _ec
       // _fun = null // allow to GC
       _arg = null // see above
-      _ec  = null // see above
+      // _ec  = null // see above
       try {
         val resolvedResult: Try[_] =
           (_xform: @switch) match {

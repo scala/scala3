@@ -82,7 +82,7 @@ private[concurrent] object ExecutionContextImpl {
       })
   }
 
-  def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService^{reporter} = {
+  def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService^ = {
     def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
       case e: SecurityException => default
     }) match {
@@ -112,14 +112,14 @@ private[concurrent] object ExecutionContextImpl {
     }
   }
 
-  def fromExecutor(e: Executor, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor^{reporter} =
+  def fromExecutor(e: Executor, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor^ =
     e match {
       case null => createDefaultExecutorService(reporter)
       case some => new ExecutionContextImpl(some, reporter)
     }
 
   def fromExecutorService(es: ExecutorService, reporter: Throwable => Unit = ExecutionContext.defaultReporter):
-    ExecutionContextExecutorService^{reporter} = es match {
+    ExecutionContextExecutorService^ = es match {
       case null => createDefaultExecutorService(reporter)
       case some =>
         new ExecutionContextImpl(some, reporter) with ExecutionContextExecutorService {

@@ -23,11 +23,7 @@ import language.experimental.captureChecking
  * Marker trait to indicate that a Runnable is Batchable by BatchingExecutors
  */
 trait Batchable {
-  self: Runnable =>
-}
-
-trait Batchable2 {
-
+  self: Runnable^ =>
 }
 
 private[concurrent] object BatchingExecutorStatics {

@@ -38,7 +38,7 @@ import language.experimental.captureChecking
 trait Promise[T] {
   /** Future containing the value of this promise.
    */
-  def future: Future[T]
+  def future: Future[T]^
 
   /** Returns whether the promise has already been completed with
    *  a value or an exception.
