@@ -20,6 +20,8 @@ import cc.*
 import CaptureSet.Mutability
 import Capabilities.*
 
+import java.lang.StringBuilder
+
 class PlainPrinter(_ctx: Context) extends Printer {
 
   /** The context of all public methods in Printer and subclasses.
@@ -704,22 +706,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
-  private def escapedChar(ch: Char): String = (ch: @switch) match {
-    case '\b' => "\\b"
-    case '\t' => "\\t"
-    case '\n' => "\\n"
-    case '\f' => "\\f"
-    case '\r' => "\\r"
-    case '"' => "\\\""
-    case '\'' => "\\\'"
-    case '\\' => "\\\\"
-    case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
-  }
+  private def escapedChar(ch: Char): String =
+    if requiresFormat(ch) then
+      val b = StringBuilder().append('\'')
+      escapedChar(b, ch)
+      b.append('\'').toString
+    else
+      "'" + ch + "'"
 
   def toText(const: Constant): Text = const.tag match {
-    case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
+    case StringTag => stringText(escapedString(const.value.toString, quoted = true))
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
-    case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
+    case CharTag => literalText(escapedChar(const.charValue))
     case LongTag => literalText(const.longValue.toString + "L")
     case DoubleTag => literalText(const.doubleValue.toString + "d")
     case FloatTag => literalText(const.floatValue.toString + "f")
@@ -741,7 +739,57 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ~ (if param.isTypeParam then "" else ": ")
     ~ toText(param.paramInfo)
 
-  protected def escapedString(str: String): String = str flatMap escapedChar
+  protected final def escapedString(str: String): String = escapedString(str, quoted = false)
+
+  private def requiresFormat(c: Char): Boolean = (c: @switch) match
+    case '\b' | '\t' | '\n' | '\f' | '\r' | '"' | '\'' | '\\' => true
+    case c => c.isControl
+
+  private def escapedString(text: String, quoted: Boolean): String =
+    def mustBuild: Boolean =
+      var i = 0
+      while i < text.length do
+        if requiresFormat(text.charAt(i)) then return true
+        i += 1
+      false
+    if mustBuild then
+      val b = StringBuilder(text.length + 16)
+      if quoted then
+        b.append('"')
+      var i = 0
+      while i < text.length do
+        escapedChar(b, text.charAt(i))
+        i += 1
+      if quoted then
+        b.append('"')
+      b.toString
+    else if quoted then "\"" + text + "\""
+    else text
+
+  private def escapedChar(b: StringBuilder, c: Char): Unit =
+    def quadNibble(b: StringBuilder, x: Int, i: Int): Unit =
+      if i < 4 then
+        quadNibble(b, x >> 4, i + 1)
+        val n = x & 0xF
+        val c = if (n < 10) '0' + n else 'a' + (n - 10)
+        b.append(c.toChar)
+    val replace = (c: @switch) match
+      case '\b' => "\\b"
+      case '\t' => "\\t"
+      case '\n' => "\\n"
+      case '\f' => "\\f"
+      case '\r' => "\\r"
+      case '"'  => "\\\""
+      case '\'' => "\\\'"
+      case '\\' => "\\\\"
+      case c =>
+        if c.isControl then
+          b.append("\\u")
+          quadNibble(b, c.toInt, 0)
+        else
+          b.append(c)
+        return
+    b.append(replace)
 
   def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
 
