@@ -436,9 +436,6 @@ object Flags {
   /** Symbol is a constructor proxy (either companion, or apply method) */
   val (ConstructorProxy @ _, _, _) = newFlags(62, "<constructor proxy>") // (could be merged with Lifted)
 
-  /** Changed from implicit with -Yimplicits-as-given flags */
-  val (FromImplicit @ _, _,  _) = newFlags(63, "<from implicit>")
-
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** All possible flags */

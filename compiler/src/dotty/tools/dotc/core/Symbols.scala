@@ -392,6 +392,14 @@ object Symbols extends SymUtils {
     def paramVariance(using Context): Variance = denot.variance
     def paramRef(using Context): TypeRef = denot.typeRef
 
+    /** Was it an implicit, changed into a given with `-Yimplicit-as-given` */
+    def isGivenFromImplicit(using Context): Boolean =
+      ctx.settings.YimplicitAsGiven.value && (
+        defTree match
+          case defTree: DefTree => defTree.mods.mods.exists(_.isInstanceOf[untpd.Mod.GivenFromImplicit])
+          case _ => false
+      )
+
     /** Copy a symbol, overriding selective fields.
      *  Note that `coord` and `compilationUnitInfo` will be set from the fields in `owner`, not
      *  the fields in `sym`. */
