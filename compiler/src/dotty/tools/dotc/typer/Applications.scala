@@ -2126,19 +2126,19 @@ trait Applications extends Compatibility {
      *  Using an approximated result type is necessary to avoid false negatives
      *  due to incomplete type inference such as in tests/pos/i21410.scala and tests/pos/i21410b.scala.
      */
-    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(using Context): Boolean =
+    def resultConforms(altSym: Symbol, altType: Type, resultType: Type, avoidFalseNegatives: Boolean)(using Context): Boolean =
       resultType.revealIgnored match {
         case resultType: ValueType =>
           altType.widen match {
-            case tp: PolyType => resultConforms(altSym, tp.resultType, resultType)
+            case tp: PolyType => resultConforms(altSym, tp.resultType, resultType, avoidFalseNegatives)
             case tp: MethodType =>
               val wildRes = wildApprox(tp.resultType)
 
-              class ResultApprox extends AvoidWildcardsMap:
-                // Avoid false negatives by approximating to a lower bound
+              class UnderApprox extends AvoidWildcardsMap:
+                // Prefer false positives to false negatives by approximating to a lower bound
                 variance = -1
 
-              val approx = ResultApprox()(wildRes)
+              val approx = if avoidFalseNegatives then UnderApprox()(wildRes) else wildRes
               constrainResult(altSym, approx, resultType)
             case _ => true
           }
@@ -2158,9 +2158,9 @@ trait Applications extends Compatibility {
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef, alts: List[TermRef]) = pt match {
-      case pt: FunProto if !explore(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
+      case pt: FunProto if !explore(resultConforms(chosen.symbol, chosen, pt.resultType, avoidFalseNegatives = true)) =>
         val conformingAlts = alts.filterConserve(alt =>
-          (alt ne chosen) && explore(resultConforms(alt.symbol, alt, pt.resultType)))
+          (alt ne chosen) && explore(resultConforms(alt.symbol, alt, pt.resultType, avoidFalseNegatives = false)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2
