@@ -63,7 +63,7 @@ object NamerOps:
     if !isConstructor then paramss
     else paramss match
       case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) || vparam.is(FromImplicit) => Nil :: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)

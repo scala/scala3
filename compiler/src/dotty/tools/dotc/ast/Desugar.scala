@@ -635,7 +635,7 @@ object desugar {
     ValDef(vparam.name, vparam.tpt, vparam.rhs)
       .withSpan(vparam.span)
       .withAttachmentsFrom(vparam)
-      .withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked) | Param)
+      .withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked | FromImplicit) | Param)
   }
 
   /** Desugar type def (not param): Under x.moduliity this can expand
