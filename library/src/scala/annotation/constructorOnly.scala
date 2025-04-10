@@ -8,6 +8,8 @@
 
 package scala.annotation
 
+import language.experimental.captureChecking
+
 import scala.annotation.meta.*
 
 /** An annotation that goes on parameters of classes or traits. It asserts

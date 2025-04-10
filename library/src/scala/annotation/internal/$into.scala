@@ -1,4 +1,7 @@
 package scala.annotation.internal
+
+import language.experimental.captureChecking
+
 import annotation.experimental
 
 /** An internal annotation on (part of) a parameter type that serves as a marker where

@@ -8,47 +8,47 @@
 - [x] library/src/scala/Pure.scala
 - [x] library/src/scala/Selectable.scala
 - [x] library/src/scala/Tuple.scala
-- [ ] library/src/scala/annotation/MacroAnnotation.scala
-- [ ] library/src/scala/annotation/RefiningAnnotation.scala
-- [ ] library/src/scala/annotation/alpha.scala
-- [ ] library/src/scala/annotation/capability.scala
-- [ ] library/src/scala/annotation/constructorOnly.scala
-- [ ] library/src/scala/annotation/experimental.scala
-- [ ] library/src/scala/annotation/init.scala
-- [ ] library/src/scala/annotation/internal/$into.scala
-- [ ] library/src/scala/annotation/internal/Alias.scala
-- [ ] library/src/scala/annotation/internal/AnnotationDefault.scala
-- [ ] library/src/scala/annotation/internal/AssignedNonLocally.scala
-- [ ] library/src/scala/annotation/internal/Body.scala
-- [ ] library/src/scala/annotation/internal/CaptureChecked.scala
-- [ ] library/src/scala/annotation/internal/Child.scala
-- [ ] library/src/scala/annotation/internal/ContextResultCount.scala
-- [ ] library/src/scala/annotation/internal/ErasedParam.scala
-- [ ] library/src/scala/annotation/internal/InlineParam.scala
-- [ ] library/src/scala/annotation/internal/MappedAlternative.scala
-- [ ] library/src/scala/annotation/internal/ProvisionalSuperClass.scala
-- [ ] library/src/scala/annotation/internal/Repeated.scala
-- [ ] library/src/scala/annotation/internal/RuntimeChecked.scala
-- [ ] library/src/scala/annotation/internal/SourceFile.scala
-- [ ] library/src/scala/annotation/internal/WithPureFuns.scala
-- [ ] library/src/scala/annotation/internal/WitnessNames.scala
-- [ ] library/src/scala/annotation/internal/preview.scala
-- [ ] library/src/scala/annotation/internal/reachCapability.scala
-- [ ] library/src/scala/annotation/internal/readOnlyCapability.scala
-- [ ] library/src/scala/annotation/internal/requiresCapability.scala
-- [ ] library/src/scala/annotation/internal/sharable.scala
-- [ ] library/src/scala/annotation/internal/unshared.scala
-- [ ] library/src/scala/annotation/into.scala
-- [ ] library/src/scala/annotation/publicInBinary.scala
-- [ ] library/src/scala/annotation/retains.scala
-- [ ] library/src/scala/annotation/retainsByName.scala
-- [ ] library/src/scala/annotation/static.scala
-- [ ] library/src/scala/annotation/targetName.scala
-- [ ] library/src/scala/annotation/threadUnsafe.scala
-- [ ] library/src/scala/annotation/transparentTrait.scala
+- [x] library/src/scala/annotation/MacroAnnotation.scala
+- [x] library/src/scala/annotation/RefiningAnnotation.scala
+- [x] library/src/scala/annotation/alpha.scala
+- [x] library/src/scala/annotation/capability.scala
+- [x] library/src/scala/annotation/constructorOnly.scala
+- [x] library/src/scala/annotation/experimental.scala
+- [x] library/src/scala/annotation/init.scala
+- [x] library/src/scala/annotation/internal/$into.scala
+- [x] library/src/scala/annotation/internal/Alias.scala
+- [x] library/src/scala/annotation/internal/AnnotationDefault.scala
+- [x] library/src/scala/annotation/internal/AssignedNonLocally.scala
+- [x] library/src/scala/annotation/internal/Body.scala
+- [x] library/src/scala/annotation/internal/CaptureChecked.scala
+- [x] library/src/scala/annotation/internal/Child.scala
+- [x] library/src/scala/annotation/internal/ContextResultCount.scala
+- [x] library/src/scala/annotation/internal/ErasedParam.scala
+- [x] library/src/scala/annotation/internal/InlineParam.scala
+- [x] library/src/scala/annotation/internal/MappedAlternative.scala
+- [x] library/src/scala/annotation/internal/ProvisionalSuperClass.scala
+- [x] library/src/scala/annotation/internal/Repeated.scala
+- [x] library/src/scala/annotation/internal/RuntimeChecked.scala
+- [x] library/src/scala/annotation/internal/SourceFile.scala
+- [x] library/src/scala/annotation/internal/WithPureFuns.scala
+- [x] library/src/scala/annotation/internal/WitnessNames.scala
+- [x] library/src/scala/annotation/internal/preview.scala
+- [x] library/src/scala/annotation/internal/reachCapability.scala
+- [x] library/src/scala/annotation/internal/readOnlyCapability.scala
+- [x] library/src/scala/annotation/internal/requiresCapability.scala
+- [x] library/src/scala/annotation/internal/sharable.scala
+- [x] library/src/scala/annotation/internal/unshared.scala
+- [x] library/src/scala/annotation/into.scala
+- [x] library/src/scala/annotation/publicInBinary.scala
+- [x] library/src/scala/annotation/retains.scala
+- [x] library/src/scala/annotation/retainsByName.scala
+- [x] library/src/scala/annotation/static.scala
+- [x] library/src/scala/annotation/targetName.scala
+- [x] library/src/scala/annotation/threadUnsafe.scala
+- [x] library/src/scala/annotation/transparentTrait.scala
 - [ ] library/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala
-- [ ] library/src/scala/annotation/unchecked/uncheckedCaptures.scala
-- [ ] library/src/scala/annotation/unroll.scala
+- [x] library/src/scala/annotation/unchecked/uncheckedCaptures.scala
+- [x] library/src/scala/annotation/unroll.scala
 - [x] library/src/scala/caps/package.scala
 - [x] library/src/scala/compiletime/ops/any.scala
 - [x] library/src/scala/compiletime/ops/boolean.scala

@@ -1,6 +1,8 @@
 package scala.annotation
 package internal
 
+import language.experimental.captureChecking
+
 /** An annotation to indicate a child class or object of the annotated class.
  *  E.g. if we have
  *

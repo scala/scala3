@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 /** An annotation that indicates capture of a set of references under capture checking.
  *
  *      T @retains[x.type | y.type | z.type]

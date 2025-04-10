@@ -1,5 +1,7 @@
 package scala.annotation.internal
 
+import language.experimental.captureChecking
+
 import scala.annotation.Annotation
 import scala.annotation.experimental
 

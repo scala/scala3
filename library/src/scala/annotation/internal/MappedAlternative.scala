@@ -1,6 +1,8 @@
 package scala.annotation
 package internal
 
+import language.experimental.captureChecking
+
 /** An annotation added by overloading resoluton to mapped symbols that
  *  explore deeper into the types of the opverloaded alternatives.
  *  Its tree is a TypeTree with two parameters which are both needed to
