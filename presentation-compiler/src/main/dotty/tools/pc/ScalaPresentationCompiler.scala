@@ -355,7 +355,7 @@ case class ScalaPresentationCompiler(
     val empty: Either[String, List[l.TextEdit]] = Right(List())
     (compilerAccess
       .withInterruptableCompiler(empty, params.token()) { pc =>
-        new PcInlineValueProviderImpl(pc.compiler(), params)
+        new PcInlineValueProvider(pc.compiler(), params)
           .getInlineTextEdits()
       }(params.toQueryContext))
       .thenApply {

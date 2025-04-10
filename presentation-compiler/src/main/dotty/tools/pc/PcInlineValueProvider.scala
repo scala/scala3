@@ -16,17 +16,76 @@ import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.IndexedContext.Result
 
 import org.eclipse.lsp4j as l
 
-final class PcInlineValueProviderImpl(
+final class PcInlineValueProvider(
     driver: InteractiveDriver,
     val params: OffsetParams
-) extends WithSymbolSearchCollector[Option[Occurence]](driver, params)
-    with InlineValueProvider:
+) extends WithSymbolSearchCollector[Option[Occurence]](driver, params):
+
+  // We return a result or an error
+  def getInlineTextEdits(): Either[String, List[l.TextEdit]] =
+    defAndRefs() match {
+      case Right((defn, refs)) =>
+        val edits =
+          if (defn.shouldBeRemoved) {
+            val defEdit = definitionTextEdit(defn)
+            val refsEdits = refs.map(referenceTextEdit(defn))
+            defEdit :: refsEdits
+          } else refs.map(referenceTextEdit(defn))
+        Right(edits)
+      case Left(error) => Left(error)
+    }
+
+  private def referenceTextEdit(
+      definition: Definition
+  )(ref: Reference): l.TextEdit =
+    if (definition.requiresBrackets && ref.requiresBrackets)
+      new l.TextEdit(
+        ref.range,
+        s"""(${ref.rhs})"""
+      )
+    else new l.TextEdit(ref.range, ref.rhs)
+
+  private def definitionTextEdit(definition: Definition): l.TextEdit =
+    new l.TextEdit(
+      extend(
+        definition.rangeOffsets.start,
+        definition.rangeOffsets.end,
+        definition.range
+      ),
+      ""
+    )
+
+  private def extend(
+      startOffset: Int,
+      endOffset: Int,
+      range: l.Range
+  ): l.Range = {
+    val (startWithSpace, endWithSpace): (Int, Int) =
+      extendRangeToIncludeWhiteCharsAndTheFollowingNewLine(
+        text
+      )(startOffset, endOffset)
+    val startPos = new l.Position(
+      range.getStart.getLine,
+      range.getStart.getCharacter - (startOffset - startWithSpace)
+    )
+    val endPos =
+      if (endWithSpace - 1 >= 0 && text(endWithSpace - 1) == '\n')
+        new l.Position(range.getEnd.getLine + 1, 0)
+      else
+        new l.Position(
+          range.getEnd.getLine,
+          range.getEnd.getCharacter + endWithSpace - endOffset
+        )
+
+    new l.Range(startPos, endPos)
+  }
 
   val position: l.Position = pos.toLsp.getStart().nn
 
@@ -41,7 +100,7 @@ final class PcInlineValueProviderImpl(
         Some(Occurence(tree, parent, adjustedPos))
       case _ => None
 
-  override def defAndRefs(): Either[String, (Definition, List[Reference])] =
+  def defAndRefs(): Either[String, (Definition, List[Reference])] =
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val allOccurences = result().flatten
     for
@@ -60,7 +119,6 @@ final class PcInlineValueProviderImpl(
       val defPos = definition.tree.sourcePos
       val defEdit = Definition(
         defPos.toLsp,
-        adjustRhs(definition.tree.rhs.sourcePos),
         RangeOffset(defPos.start, defPos.end),
         definitionRequiresBrackets(definition.tree.rhs)(using newctx),
         deleteDefinition
@@ -69,6 +127,18 @@ final class PcInlineValueProviderImpl(
       (defEdit, refsEdits)
     end for
   end defAndRefs
+
+  private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String): String =
+    val rhsLines = rhs.split("\n").toList
+    rhsLines match
+      case h :: Nil => rhs
+      case h :: t =>
+        val noPrefixH = h.stripPrefix(refIndent)
+        if noPrefixH.startsWith("{") then
+          noPrefixH ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n","\n", "")
+        else
+          (("  " ++ h) :: t).map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
+      case Nil => rhs
 
   private def definitionRequiresBrackets(tree: Tree)(using Context): Boolean =
     NavigateAST
@@ -102,12 +172,12 @@ final class PcInlineValueProviderImpl(
 
   end referenceRequiresBrackets
 
-  private def adjustRhs(pos: SourcePosition) =
+  private def extendWithSurroundingParens(pos: SourcePosition) =
+    /** Move `point` by `step` as long as the character at `point` is `acceptedChar` */
     def extend(point: Int, acceptedChar: Char, step: Int): Int =
       val newPoint = point + step
-      if newPoint > 0 && newPoint < text.length && text(
-          newPoint
-        ) == acceptedChar
+      if newPoint > 0 && newPoint < text.length &&
+        text(newPoint) == acceptedChar
       then extend(newPoint, acceptedChar, step)
       else point
     val adjustedStart = extend(pos.start, '(', -1)
@@ -139,7 +209,7 @@ final class PcInlineValueProviderImpl(
       .exists(e => e.isTerm)
     def allreferences = allOccurences.filterNot(_.isDefn)
     def inlineAll() =
-      makeRefsEdits(allreferences, symbols).map((true, _))
+      makeRefsEdits(allreferences, symbols, definition).map((true, _))
     if definition.tree.sourcePos.toLsp.encloses(position)
     then if defIsLocal then inlineAll() else Left(Errors.notLocal)
     else
@@ -150,14 +220,28 @@ final class PcInlineValueProviderImpl(
             ref <- list
               .find(_.pos.toLsp.encloses(position))
               .toRight(Errors.didNotFindReference)
-            refEdits <- makeRefsEdits(List(ref), symbols)
+            refEdits <- makeRefsEdits(List(ref), symbols, definition)
           yield (false, refEdits)
     end if
   end getReferencesToInline
 
+  extension (pos: SourcePosition)
+    def startColumnIndentPadding: String = {
+      val source = pos.source
+      val offset = pos.start
+      var idx = source.startOfLine(offset)
+      val pad = new StringBuilder
+      while (idx != offset && idx < source.content().length && source.content()(idx).isWhitespace) {
+        pad.append(if (idx < source.content().length && source.content()(idx) == '\t') '\t' else ' ')
+        idx += 1
+      }
+      pad.result()
+    }
+
   private def makeRefsEdits(
       refs: List[Occurence],
-      symbols: Set[Symbol]
+      symbols: Set[Symbol],
+      definition: DefinitionTree
   ): Either[String, List[Reference]] =
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     def buildRef(occurrence: Occurence): Either[String, Reference] =
@@ -178,6 +262,11 @@ final class PcInlineValueProviderImpl(
         Right(
           Reference(
             occurrence.pos.toLsp,
+            stripIndentPrefix(
+              extendWithSurroundingParens(definition.tree.rhs.sourcePos),
+              occurrence.tree.startPos.startColumnIndentPadding,
+              definition.tree.startPos.startColumnIndentPadding
+            ),
             occurrence.parent.map(p =>
               RangeOffset(p.sourcePos.start, p.sourcePos.end)
             ),
@@ -196,7 +285,7 @@ final class PcInlineValueProviderImpl(
     )
   end makeRefsEdits
 
-end PcInlineValueProviderImpl
+end PcInlineValueProvider
 
 case class Occurence(tree: Tree, parent: Option[Tree], pos: SourcePosition):
   def isDefn =
@@ -205,3 +294,19 @@ case class Occurence(tree: Tree, parent: Option[Tree], pos: SourcePosition):
       case _ => false
 
 case class DefinitionTree(tree: ValDef, pos: SourcePosition)
+
+case class RangeOffset(start: Int, end: Int)
+
+case class Definition(
+    range: l.Range,
+    rangeOffsets: RangeOffset,
+    requiresBrackets: Boolean,
+    shouldBeRemoved: Boolean
+)
+
+case class Reference(
+    range: l.Range,
+    rhs: String,
+    parentOffsets: Option[RangeOffset],
+    requiresBrackets: Boolean
+)
