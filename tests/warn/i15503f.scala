@@ -33,15 +33,6 @@ object Example:
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None
 
-object ExampleWithoutWith:
-  import scala.quoted.*
-  given [T] => (Type[T], FromExpr[T]) => FromExpr[Option[T]]:
-    def unapply(x: Expr[Option[T]])(using Quotes) = x match
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
-      case '{ None } => Some(None)
-      case '{ ${Expr(opt)} : Some[T] } => Some(opt)
-      case _ => None
-
 //absolving names on matches of quote trees requires consulting non-abstract types in QuotesImpl
 object Unmatched:
   import scala.quoted.*

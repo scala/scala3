@@ -7,7 +7,7 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
-import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, isContextFunction}
 import dotty.tools.dotc.core.NameKinds.{ContextBoundParamName, ContextFunctionParamName, WildcardParamName}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
@@ -123,7 +123,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
     tree.tpe match
     case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
-    case tpt if tpt.typeSymbol.exists => resolveUsage(tpt.typeSymbol, tpt.typeSymbol.name, NoPrefix)
+    case tpt if !tree.isInferred && tpt.typeSymbol.exists => resolveUsage(tpt.typeSymbol, tpt.typeSymbol.name, NoPrefix)
     case _ =>
     tree
 
@@ -557,7 +557,7 @@ object CheckUnused:
         val dd = defn
            m.isDeprecated
         || m.is(Synthetic)
-        || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
+        || sym.owner.name.isContextFunction    // a ubiquitous parameter
         || sym.name.is(ContextBoundParamName) && sym.info.typeSymbol.isMarkerTrait // a ubiquitous parameter
         || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
         || sym.info.typeSymbol.match                // more ubiquity
@@ -569,13 +569,17 @@ object CheckUnused:
         || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
+        && !m.isEffectivelyOverride
         && !allowed
       then
         if m.isPrimaryConstructor then
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.is(ParamAccessor) && !infos.refs(alias.symbol) then
+            val checking =
+                 aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+              || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
+            if checking && !infos.refs(alias.symbol) then
               warnAt(pos)(UnusedSymbol.implicitParams)
         else
           warnAt(pos)(UnusedSymbol.implicitParams)
@@ -845,17 +849,24 @@ object CheckUnused:
   private val serializationNames: Set[TermName] =
     Set("readResolve", "readObject", "readObjectNoData", "writeObject", "writeReplace").map(termName(_))
 
-  extension (sym: Symbol)
-    def isSerializationSupport(using Context): Boolean =
+  extension (sym: Symbol)(using Context)
+    def isSerializationSupport: Boolean =
       sym.is(Method) && serializationNames(sym.name.toTermName) && sym.owner.isClass
         && sym.owner.derivesFrom(defn.JavaSerializableClass)
-    def isCanEqual(using Context): Boolean =
+    def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
-    def isMarkerTrait(using Context): Boolean =
+    def isMarkerTrait: Boolean =
       sym.isClass && sym.info.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
-
+    def isEffectivelyOverride: Boolean =
+      sym.is(Override)
+      ||
+      sym.canMatchInheritedSymbols && { // inline allOverriddenSymbols using owner.info or thisType
+        val owner = sym.owner.asClass
+        val base = if owner.classInfo.selfInfo != NoType then owner.thisType else owner.info
+        base.baseClasses.drop(1).iterator.exists(sym.overriddenSymbol(_).exists)
+      }
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match
       case untpd.TypedSplice(tree) => tree.tpe
@@ -893,7 +904,7 @@ object CheckUnused:
       else imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isCanEqual)
 
   extension (pos: SrcPos)
-    def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.start == pos.span.end
+    def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
 
   extension [A <: AnyRef](arr: Array[A])
     // returns `until` if not satisfied
