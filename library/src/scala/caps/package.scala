@@ -88,24 +88,6 @@ sealed trait Exists extends Capability
 @experimental
 object internal:
 
-  /** A wrapper indicating a type variable in a capture argument list of a
-   *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
-   */
-  @compileTimeOnly("Should be be used only internally by the Scala compiler")
-  def capsOf[CS >: CapSet <: CapSet @retainsCap]: Any = ???
-
-  /** Reach capabilities x* which appear as terms in @retains annotations are encoded
-   *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.reachCapability`.
-   */
-  extension (x: Any) def reachCapability: Any = x
-
-  /** Read-only capabilities x.rd which appear as terms in @retains annotations are encoded
-   *  as `caps.readOnlyCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
-   */
-  extension (x: Any) def readOnlyCapability: Any = x
-
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.
