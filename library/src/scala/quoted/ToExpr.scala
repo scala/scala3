@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.reflect.ClassTag
 
 /** A type class for types that can convert a value of `T` into `quoted.Expr[T]`

@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 /** Quoted expression of type `T`.
  *
  *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.

@@ -62,20 +62,20 @@
 - [x] library/src/scala/compiletime/testing/ErrorKind.scala
 - [x] library/src/scala/compiletime/testing/package.scala
 - [x] library/src/scala/main.scala
-- [ ] library/src/scala/quoted/Expr.scala
-- [ ] library/src/scala/quoted/ExprMap.scala
-- [ ] library/src/scala/quoted/Exprs.scala
-- [ ] library/src/scala/quoted/FromExpr.scala
-- [ ] library/src/scala/quoted/Quotes.scala
-- [ ] library/src/scala/quoted/ToExpr.scala
-- [ ] library/src/scala/quoted/Type.scala
-- [ ] library/src/scala/quoted/Varargs.scala
-- [ ] library/src/scala/quoted/runtime/Expr.scala
-- [ ] library/src/scala/quoted/runtime/Patterns.scala
-- [ ] library/src/scala/quoted/runtime/QuoteMatching.scala
-- [ ] library/src/scala/quoted/runtime/QuoteUnpickler.scala
-- [ ] library/src/scala/quoted/runtime/SplicedType.scala
-- [ ] library/src/scala/quoted/runtime/StopMacroExpansion.scala
+- [x] library/src/scala/quoted/Expr.scala
+- [x] library/src/scala/quoted/ExprMap.scala
+- [x] library/src/scala/quoted/Exprs.scala
+- [x] library/src/scala/quoted/FromExpr.scala
+- [x] library/src/scala/quoted/Quotes.scala
+- [x] library/src/scala/quoted/ToExpr.scala
+- [x] library/src/scala/quoted/Type.scala
+- [x] library/src/scala/quoted/Varargs.scala
+- [x] library/src/scala/quoted/runtime/Expr.scala
+- [x] library/src/scala/quoted/runtime/Patterns.scala
+- [x] library/src/scala/quoted/runtime/QuoteMatching.scala
+- [x] library/src/scala/quoted/runtime/QuoteUnpickler.scala
+- [x] library/src/scala/quoted/runtime/SplicedType.scala
+- [x] library/src/scala/quoted/runtime/StopMacroExpansion.scala
 - [x] library/src/scala/reflect/Enum.scala
 - [x] library/src/scala/reflect/Selectable.scala
 - [x] library/src/scala/reflect/TypeTest.scala
