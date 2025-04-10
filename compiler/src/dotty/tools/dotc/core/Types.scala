@@ -4059,12 +4059,13 @@ object Types extends TypeUtils {
     def isParamDependent(using Context): Boolean =
       paramDependencyStatus == TrueDeps
 
-    /** Like resultDependent || paramDependent, but without attempt to eliminate
-     *  dependencies with de-aliasing
-     */
-    def looksDependent(using Context): Boolean =
+    /** Like isResultDependent, but without attempt to eliminate dependencies with de-aliasing */
+    def looksResultDependent(using Context): Boolean =
       (dependencyStatus & StatusMask) != NoDeps
-      || (paramDependencyStatus & StatusMask) != NoDeps
+
+    /** Like isParamDependent, but without attempt to eliminate dependencies with de-aliasing */
+    def looksParamDependent(using Context): Boolean =
+      (paramDependencyStatus & StatusMask) != NoDeps
 
     def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
