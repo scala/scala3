@@ -14,7 +14,7 @@ class A: //unexpected
    = 1
   var aVar1: 1
    = 1
-  type HKT[T[_], X] //expected: final type HKT = [T[_], X] =>> a.HKT[T, X]
+  type HKT[T[_], X] //expected: final type HKT = a.HKT
    = T[X]
   type SomeRandomType = (List[?] | Seq[?]) & String //expected: final type SomeRandomType = a.SomeRandomType
   def x[T[_], X](x: X): HKT[T, X] //expected: def x[T[_], X](x: X): A.this.HKT[T, X]
