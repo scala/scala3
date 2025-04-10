@@ -1,1 +1,1 @@
-List(Error(value check is not a member of Unit,compileError("1" * 2).check(""),22,Typer), Error(argument to compileError must be a statically known String but was: augmentString("1").*(2),compileError("1" * 2).check(""),13,Typer))
+List(Error(value check is not a member of Unit,compileError("1" * 2).check(""),22,Typer), Error(argument to compileError must be a statically known String but was: augmentString("1") * 2,compileError("1" * 2).check(""),13,Typer))

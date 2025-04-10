@@ -24,14 +24,14 @@ package <empty> {
       {
         val result: Object = A.x$lzy1
         if result.isInstanceOf[Int] then Int.unbox(result) else
-          if result.eq(scala.runtime.LazyVals.NullValue) then Int.unbox(null)
+          if result eq scala.runtime.LazyVals.NullValue then Int.unbox(null)
              else Int.unbox(A.x$lzyINIT1())
       }
     private def x$lzyINIT1(): Object =
       while <empty> do
         {
           val current: Object = A.x$lzy1
-          if current.eq(null) then
+          if current eq null then
             if
               scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, null,
                 scala.runtime.LazyVals.Evaluating)
@@ -42,7 +42,7 @@ package <empty> {
                 try
                   {
                     resultNullable = Int.box(2)
-                    if resultNullable.eq(null) then
+                    if resultNullable eq null then
                       result = scala.runtime.LazyVals.NullValue else
                       result = resultNullable
                     ()
@@ -69,7 +69,7 @@ package <empty> {
               current.isInstanceOf[
                 scala.runtime.LazyVals.LazyVals$LazyValControlState]
              then
-              if current.eq(scala.runtime.LazyVals.Evaluating) then
+              if current eq scala.runtime.LazyVals.Evaluating then
                 {
                   scala.runtime.LazyVals.objCAS(this, A.OFFSET$_m_0, current,
                     new scala.runtime.LazyVals.LazyVals$Waiting())

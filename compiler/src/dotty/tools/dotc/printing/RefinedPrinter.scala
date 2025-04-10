@@ -32,6 +32,7 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 import cc.*
 import dotty.tools.dotc.parsing.JavaParsers
+import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -387,6 +388,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def optDotPrefix(tree: This) = optText(tree.qual)(_ ~ ".") provided !isLocalThis(tree)
 
+    /** Should a binary operation with this operator be printed infix? */
+    def isInfix(op: Symbol) =
+      op.exists && (op.isDeclaredInfix || op.name.isOperatorName)
+
     def caseBlockText(tree: Tree): Text = tree match {
       case Block(stats, expr) => toText(stats :+ expr, "\n")
       case expr => toText(expr)
@@ -478,6 +483,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
+      case BinaryOp(l, op, r) if isInfix(op) =>
+        val isRightAssoc = op.name.endsWith(":")
+        val opPrec = parsing.precedence(op.name)
+        val leftPrec = if isRightAssoc then opPrec + 1 else opPrec
+        val rightPrec = if !isRightAssoc then opPrec + 1 else opPrec
+        changePrec(opPrec):
+          atPrec(leftPrec)(toText(l))  ~ " " ~ toText(op.name) ~ " " ~ atPrec(rightPrec)(toText(r))
       case app @ Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {
@@ -504,7 +516,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         }
       case Typed(expr, tpt) =>
-        changePrec(InfixPrec) {
+        changePrec(DotPrec) {
           if isWildcardStarArg(tree) then
             expr match
               case Ident(nme.WILDCARD_STAR) =>
