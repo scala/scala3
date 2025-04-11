@@ -479,6 +479,8 @@ object Types extends TypeUtils {
     /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
 
+    def wasImplicitMethod: Boolean = false
+
     /** Is this a Method or PolyType which has contextual parameters as first value parameter list? */
     def isContextualMethod: Boolean = false
 
@@ -4119,7 +4121,10 @@ object Types extends TypeUtils {
       paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
     final override def isContextualMethod: Boolean =
-      companion.eq(ContextualMethodType)
+      companion.eq(ContextualMethodType) || companion.eq(ContextualFromImplicitMethodType)
+
+    final override def wasImplicitMethod: Boolean =
+      companion.eq(ContextualFromImplicitMethodType)
 
     def erasedParams(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
@@ -4223,14 +4228,16 @@ object Types extends TypeUtils {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isContextual: Boolean = false, isImplicit: Boolean = false): MethodTypeCompanion =
-      if (isContextual) ContextualMethodType
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, fromImplicit: Boolean = false): MethodTypeCompanion =
+      if (fromImplicit) ContextualFromImplicitMethodType
+      else if (isContextual) ContextualMethodType
       else if (isImplicit) ImplicitMethodType
       else MethodType
   }
 
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
   object ImplicitMethodType extends MethodTypeCompanion("ImplicitMethodType")
+  object ContextualFromImplicitMethodType extends MethodTypeCompanion("ContextualFromImplicitMethodType")
 
   /** A ternary extractor for MethodType */
   object MethodTpe {

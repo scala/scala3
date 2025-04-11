@@ -66,7 +66,7 @@ object NamerOps:
     if !isConstructor then paramss
     else paramss match
       case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) || vparam.isGivenFromImplicit => Nil :: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
@@ -81,10 +81,10 @@ object NamerOps:
       case Nil =>
         resultType
       case TermSymbols(params) :: paramss1 =>
-        val (isContextual, isImplicit) =
-          if params.isEmpty then (false, false)
-          else (params.head.is(Given), params.head.is(Implicit))
-        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit)
+        val (isContextual, isImplicit, fromImplicit) =
+          if params.isEmpty then (false, false, false)
+          else (params.head.is(Given), params.head.is(Implicit), params.head.isGivenFromImplicit)
+        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit, fromImplicit = fromImplicit)
         if isJava then
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
