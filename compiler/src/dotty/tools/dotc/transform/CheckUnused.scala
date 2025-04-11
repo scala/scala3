@@ -52,6 +52,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
+    refInfos.isAssignment = tree.hasAttachment(AssignmentTarget)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
@@ -68,10 +69,12 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject)
     else if tree.hasType then
       resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject)
+    refInfos.isAssignment = false
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
   override def transformSelect(tree: Select)(using Context): tree.type =
+    refInfos.isAssignment = tree.hasAttachment(AssignmentTarget)
     val name = tree.removeAttachment(OriginalName).getOrElse(nme.NO_NAME)
     inline def isImportable = tree.qualifier.srcPos.isSynthetic
       && tree.qualifier.tpe.match
@@ -92,6 +95,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         resolveUsage(tree.symbol, name, tree.qualifier.tpe)
     else if !ignoreTree(tree) then
       refUsage(tree.symbol)
+    refInfos.isAssignment = false
     tree
 
   override def transformLiteral(tree: Literal)(using Context): tree.type =
@@ -113,13 +117,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     ctx
 
   override def prepareForAssign(tree: Assign)(using Context): Context =
-    tree.lhs.putAttachment(Ignore, ()) // don't take LHS reference as a read
+    tree.lhs.putAttachment(AssignmentTarget, ()) // don't take LHS reference as a read
     ctx
   override def transformAssign(tree: Assign)(using Context): tree.type =
-    tree.lhs.removeAttachment(Ignore)
-    val sym = tree.lhs.symbol
-    if sym.exists then
-      refInfos.asss.addOne(sym)
+    tree.lhs.removeAttachment(AssignmentTarget)
     tree
 
   override def prepareForMatch(tree: Match)(using Context): Context =
@@ -301,7 +302,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   // if sym is not an enclosing element, record the reference
   def refUsage(sym: Symbol)(using Context): Unit =
     if !ctx.outersIterator.exists(cur => cur.owner eq sym) then
-      refInfos.refs.addOne(sym)
+      refInfos.addRef(sym)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -360,7 +361,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         case none =>
 
     // Avoid spurious NoSymbol and also primary ctors which are never warned about.
-    // Selections C.this.toString should be already excluded, but backtopped here for eq, etc.
+    // Selections C.this.toString should be already excluded, but backstopped here for eq, etc.
     if !sym.exists || sym.isPrimaryConstructor || sym.isEffectiveRoot || defn.topClasses(sym.owner) then return
 
     // Find the innermost, highest precedence. Contexts have no nesting levels but assume correctness.
@@ -430,7 +431,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     end while
     // record usage and possibly an import
     if !enclosed then
-      refInfos.refs.addOne(sym)
+      refInfos.addRef(sym)
     if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
     // possibly record that we have performed this look-up
@@ -468,6 +469,9 @@ object CheckUnused:
 
   /** Ignore reference. */
   val Ignore = Property.StickyKey[Unit]
+
+  /** Tree is LHS of Assign. */
+  val AssignmentTarget = Property.StickyKey[Unit]
 
   class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper")
 
@@ -513,6 +517,14 @@ object CheckUnused:
 
     val inlined = Stack.empty[SrcPos] // enclosing call.srcPos of inlined code (expansions)
     var inliners = 0 // depth of inline def (not inlined yet)
+
+    // instead of refs.addOne, use addRef to distinguish a read from a write to var
+    var isAssignment = false
+    def addRef(sym: Symbol): Unit =
+      if isAssignment then
+        asss.addOne(sym)
+      else
+        refs.addOne(sym)
   end RefInfos
 
   // Symbols already resolved in the given Context (with name and prefix of lookup).
