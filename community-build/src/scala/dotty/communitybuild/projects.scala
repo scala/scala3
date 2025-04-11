@@ -524,8 +524,8 @@ object projects:
 
   lazy val cats = SbtCommunityProject(
     project = "cats",
-    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;rootJVM/test;rootJS/test",
-    sbtPublishCommand = "rootJVM/publishLocal;rootJS/publishLocal",
+    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;catsJVM/test;catsJS/test",
+    sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init") // disable -Ysafe-init or -Wsafe-init, due to -Xfatal-warning
   )
