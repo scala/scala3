@@ -1,0 +1,24 @@
+-- Error: tests/neg/i22423.scala:35:14 ---------------------------------------------------------------------------------
+35 |  exportReader[Settings] // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^
+   |  cannot reduce summonFrom with
+   |   patterns :  case given reader @ _:ConfigReader[List[String]]
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i22423.scala:12
+12 |    summonFrom { case reader: ConfigReader[A] => reader }
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i22423.scala:12
+15 |    summonConfigReader[List[String]]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i22423.scala:12
+ 8 |    readCaseClass()
+   |    ^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i22423.scala:12
+30 |inline given exportReader[A]: Exported[ConfigReader[A]] = Exported(HintsAwareConfigReaderDerivation.deriveReader[A])
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------

@@ -1294,11 +1294,15 @@ trait Implicits:
         val history = ctx.searchHistory.nest(cand, pt)
         val typingCtx =
           searchContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
+        val alreadyStoppedInlining = ctx.base.stopInlining
         val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
         result match
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(wideProto, res)
           case _ =>
+            if !alreadyStoppedInlining && ctx.base.stopInlining then
+              // a call overflowed as part of the expansion when typing the implicit
+              ctx.base.stopInlining = false
             // Since the search failed, the local typerstate will be discarded
             // without being committed, but type variables local to that state
             // might still appear in an error message, so we run `gc()` here to
