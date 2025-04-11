@@ -95,12 +95,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def apply(x: Boolean, tp: Type): Boolean =
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true
-        else tp match
+        else tp.dealiasKeepAnnots match
           case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
           case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
             seen += t.symbol
             apply(x, t.info.bounds.hi)
-          case _ => foldOver(x, tp)
+          case tp1 =>
+            foldOver(x, tp1)
       def apply(tp: Type): Boolean = apply(false, tp)
 
     if symd.symbol.isRefiningParamAccessor
@@ -270,6 +271,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def mapInferred(refine: Boolean): TypeMap = new TypeMap with SetupTypeMap:
       override def toString = "map inferred"
 
+      var refiningNames: Set[Name] = Set()
+
       /** Refine a possibly applied class type C where the class has tracked parameters
        *  x_1: T_1, ..., x_n: T_n to C { val x_1: T_1^{CV_1}, ..., val x_n: T_n^{CV_n} }
        *  where CV_1, ..., CV_n are fresh capture set variables.
@@ -282,7 +285,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               cls.paramGetters.foldLeft(tp) { (core, getter) =>
                 if atPhase(thisPhase.next)(getter.hasTrackedParts)
                     && getter.isRefiningParamAccessor
-                    && !getter.is(Tracked)
+                    && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
                 then
                   val getterType =
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
@@ -306,6 +309,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               tp.derivedLambdaType(
                 paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
                 resType = this(tp.resType))
+          case tp @ RefinedType(parent, rname, rinfo) =>
+            val saved = refiningNames
+            refiningNames += rname
+            val parent1 = try this(parent) finally refiningNames = saved
+            tp.derivedRefinedType(parent1, rname, this(rinfo))
           case _ =>
             mapFollowingAliases(tp)
         addVar(
