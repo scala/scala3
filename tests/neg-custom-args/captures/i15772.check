@@ -1,18 +1,8 @@
--- Error: tests/neg-custom-args/captures/i15772.scala:21:26 ------------------------------------------------------------
-21 |    val c : C^{x} = new C(x)  // error
-   |                          ^
-   |                          reference (x : C^) is not included in the allowed capture set {}
-   |                          of an enclosing function literal with expected type () -> Int
 -- Error: tests/neg-custom-args/captures/i15772.scala:22:46 ------------------------------------------------------------
 22 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
    |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
    |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
--- Error: tests/neg-custom-args/captures/i15772.scala:28:26 ------------------------------------------------------------
-28 |    val c : C^{x} = new C(x) // error
-   |                          ^
-   |                          reference (x : C^) is not included in the allowed capture set {}
-   |                          of an enclosing function literal with expected type () -> Int
 -- Error: tests/neg-custom-args/captures/i15772.scala:29:35 ------------------------------------------------------------
 29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^

@@ -7,51 +7,16 @@ import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import Names.TermName
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
-import config.SourceVersion
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
-import StdNames.nme
-import config.Feature
-import collection.mutable
-import CCState.*
-import reporting.Message
-import CaptureSet.{VarState, CompareResult, CompareFailure}
+import CaptureSet.VarState
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
 
 /** Context property to print root.Fresh(...) as "fresh" instead of "cap" */
 val PrintFresh: Key[Unit] = Key()
-
-object ccConfig:
-
-  /** If true, allow mapping capture set variables under captureChecking with maps that are neither
-   *  bijective nor idempotent. We currently do now know how to do this correctly in all
-   *  cases, though.
-   */
-  inline val allowUnsoundMaps = false
-
-  /** If enabled, use a special path in recheckClosure for closures
-   *  that are eta expansions. This can improve some error messages.
-   */
-  inline val handleEtaExpansionsSpecially = true
-
-  /** Don't require @use for reach capabilities that are accessed
-   *  only in a nested closure. This is unsound without additional
-   *  mitigation measures, as shown by unsound-reach-5.scala.
-   */
-  inline val deferredReaches = false
-
-  /** If true, turn on separation checking */
-  def useSepChecks(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
-
-  /** Not used currently. Handy for trying out new features */
-  def newScheme(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
-
-end ccConfig
 
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
@@ -78,111 +43,6 @@ class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
 /** A base trait for data producing addenda to error messages */
 trait ErrorNote
-
-/** Capture checking state, which is known to other capture checking components */
-class CCState:
-
-  /** Error reprting notes produces since the last call to `test` */
-  var notes: List[ErrorNote] = Nil
-
-  def addNote(note: ErrorNote): Unit =
-    if !notes.exists(_.getClass == note.getClass) then
-      notes = note :: notes
-
-  def test(op: => CompareResult): CompareResult =
-    val saved = notes
-    notes = Nil
-    try op match
-      case res: CompareFailure => res.withNotes(notes)
-      case res => res
-    finally notes = saved
-
-  def testOK(op: => Boolean): CompareResult =
-    test(if op then CompareResult.OK else CompareResult.Fail(Nil))
-
-  /** Warnings relating to upper approximations of capture sets with
-   *  existentially bound variables.
-   */
-  val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
-
-  private var curLevel: Level = outermostLevel
-  private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
-
-  private var openExistentialScopes: List[MethodType] = Nil
-
-  private var capIsRoot: Boolean = false
-
-object CCState:
-
-  opaque type Level = Int
-
-  val undefinedLevel: Level = -1
-
-  val outermostLevel: Level = 0
-
-  /** The level of the current environment. Levels start at 0 and increase for
-   *  each nested function or class. -1 means the level is undefined.
-   */
-  def currentLevel(using Context): Level = ccState.curLevel
-
-  /** Perform `op` in the next inner level
-   *  @pre We are currently in capture checking or setup
-   */
-  inline def inNestedLevel[T](inline op: T)(using Context): T =
-    val ccs = ccState
-    val saved = ccs.curLevel
-    ccs.curLevel = ccs.curLevel.nextInner
-    try op finally ccs.curLevel = saved
-
-  /** Perform `op` in the next inner level unless `p` holds.
-   *  @pre We are currently in capture checking or setup
-   */
-  inline def inNestedLevelUnless[T](inline p: Boolean)(inline op: T)(using Context): T =
-    val ccs = ccState
-    val saved = ccs.curLevel
-    if !p then ccs.curLevel = ccs.curLevel.nextInner
-    try op finally ccs.curLevel = saved
-
-  /** If we are currently in capture checking or setup, and `mt` is a method
-   *  type that is not a prefix of a curried method, perform `op` assuming
-   *  a fresh enclosing existential scope `mt`, otherwise perform `op` directly.
-   */
-  inline def inNewExistentialScope[T](mt: MethodType)(op: => T)(using Context): T =
-    if isCaptureCheckingOrSetup then
-      val ccs = ccState
-      val saved = ccs.openExistentialScopes
-      if mt.marksExistentialScope then ccs.openExistentialScopes = mt :: ccs.openExistentialScopes
-      try op finally ccs.openExistentialScopes = saved
-    else
-      op
-
-  /** Run `op` under the assumption that `cap` can subsume all other capabilties
-   *  except Result capabilities. Every use of this method should be scrutinized
-   *  for whether it introduces an unsoundness hole.
-   */
-  inline def withCapAsRoot[T](op: => T)(using Context): T =
-    if isCaptureCheckingOrSetup then
-      val ccs = ccState
-      val saved = ccs.capIsRoot
-      ccs.capIsRoot = true
-      try op finally ccs.capIsRoot = saved
-    else op
-
-  /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
-  def capIsRoot(using Context): Boolean = ccState.capIsRoot
-
-  /** The currently opened existential scopes */
-  def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
-
-  extension (x: Level)
-    def isDefined: Boolean = x >= 0
-    def <= (y: Level) = (x: Int) <= y
-    def nextInner: Level = if isDefined then x + 1 else x
-
-  extension (sym: Symbol)(using Context)
-    def ccLevel: Level = ccState.symLevel.getOrElse(sym, -1)
-    def recordLevel() = ccState.symLevel(sym) = currentLevel
-end CCState
 
 /** The currently valid CCState */
 def ccState(using Context): CCState =
@@ -251,7 +111,8 @@ extension (tp: Type)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
-      tp.derivesFrom(defn.Caps_CapSet)
+      !tp.underlying.exists // might happen during construction of lambdas
+      || tp.derivesFrom(defn.Caps_CapSet)
     case root.Result(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
@@ -322,8 +183,7 @@ extension (tp: Type)
   def boxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
-        case ann: CaptureAnnotation =>
-          assert(!parent.derivesFrom(defn.Caps_CapSet))
+        case ann: CaptureAnnotation if !parent.derivesFrom(defn.Caps_CapSet) =>
           AnnotatedType(parent, ann.boxedAnnot)
         case ann => tp
     case tp: RealTypeBounds =>
@@ -335,7 +195,8 @@ extension (tp: Type)
    *  are of the form this.C but their pathroot is still this.C, not this.
    */
   final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) =>
+    case tp1: NamedType
+    if tp1.symbol.maybeOwner.isClass && tp1.symbol != defn.captureRoot && !tp1.symbol.is(TypeParam) =>
       tp1.prefix.pathRoot
     case tp1 => tp1
 
@@ -636,11 +497,11 @@ extension (tp: Type)
             foldOver(x, t)
     acc(false, tp)
 
-  def level(using Context): Level =
+  def level(using Context): CCState.Level =
     tp match
-    case tp: TermRef => tp.symbol.ccLevel
-    case tp: ThisType => tp.cls.ccLevel.nextInner
-    case _ => undefinedLevel
+    case tp: TermRef => ccState.symLevel(tp.symbol)
+    case tp: ThisType => ccState.symLevel(tp.cls).nextInner
+    case _ => CCState.undefinedLevel
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */

@@ -39,7 +39,7 @@ import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
 import cc.*
-import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
+import CaptureSet.{CompareResult, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -1166,10 +1166,9 @@ object Types extends TypeUtils {
      *
      *  @param isSubType      a function used for checking subtype relationships.
      */
-    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
-                        isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
+    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
       !checkClassInfo && this.isInstanceOf[ClassInfo]
-      || isSubType(this.widenExpr, that.widenExpr)
+      || (this.widenExpr frozen_<:< that.widenExpr)
       || matchLoosely && {
         val this1 = this.widenNullaryMethod
         val that1 = that.widenNullaryMethod
@@ -4069,7 +4068,7 @@ object Types extends TypeUtils {
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
-        val dropDependencies = new ApproximatingTypeMap with IdempotentCaptRefMap {
+        val dropDependencies = new ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
@@ -4216,6 +4215,35 @@ object Types extends TypeUtils {
             case TermParamRef(`mt`, j) => assert(j < idx, mt)
             case _ =>
           }
+      mt
+    }
+
+    /** Not safe to use in general: Check that all references to an enclosing
+     *  TermParamRef name point to that TermParamRef
+     */
+    def checkValid2(mt: MethodType)(using Context): mt.type = {
+      var t = new TypeTraverser:
+        val ps = mt.paramNames.zip(mt.paramRefs).toMap
+        def traverse(t: Type) =
+          t match
+            case CapturingType(p, refs) =>
+              def checkRefs(refs: CaptureSet) =
+                for elem <- refs.elems do
+                  elem match
+                    case elem: TermParamRef =>
+                      val elemName = elem.binder.paramNames(elem.paramNum)
+                      //assert(elemName.toString != "f")
+                      ps.get(elemName) match
+                        case Some(elemRef) => assert(elemRef eq elem, i"bad $mt")
+                        case _ =>
+                    case root.Result(binder) if binder ne mt =>
+                      assert(binder.paramNames.toList != mt.paramNames.toList, i"bad $mt")
+                    case _ =>
+              checkRefs(refs)
+              traverse(p)
+            case _ =>
+              traverseChildren(t)
+      t.traverse(mt.resType)
       mt
     }
   }
@@ -4714,7 +4742,7 @@ object Types extends TypeUtils {
     override def hashIsStable: Boolean = false
   }
 
-  abstract class ParamRef extends BoundType {
+  abstract class ParamRef extends BoundType, CaptureRef {
     type BT <: LambdaType
     def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
@@ -4761,7 +4789,7 @@ object Types extends TypeUtils {
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int)
-  extends ParamRef, CaptureRef {
+  extends ParamRef {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -6084,9 +6112,6 @@ object Types extends TypeUtils {
     def forward(ref: CaptureRef): CaptureRef =
       val result = this(ref)
       def ensureTrackable(tp: Type): CaptureRef = tp match
-        /* Issue #22437: handle case when info is not yet available during postProcess in CC setup */
-        case tp: (TypeParamRef | TermRef) if tp.underlying == NoType =>
-          tp
         case tp: CaptureRef =>
           if tp.isTrackableRef then tp
           else ensureTrackable(tp.underlying)
@@ -6098,10 +6123,11 @@ object Types extends TypeUtils {
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
-      /* Ensure bijection for issue #22437 fix in method forward above:  */
-      case result: (TypeParamRef | TermRef) if result.underlying == NoType =>
-        result
       case result: CaptureRef if result.isTrackableRef => result
+
+    /** Fuse with another map */
+    def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
+
   end BiTypeMap
 
   abstract class TypeMap(implicit protected var mapCtx: Context)

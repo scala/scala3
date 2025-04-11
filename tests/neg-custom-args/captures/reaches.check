@@ -1,18 +1,18 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:23:11 --------------------------------------
-23 |    cur = (() => f.write()) :: Nil // error
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
-   |           Found:    List[box () ->{f} Unit]
-   |           Required: List[box () ->{xs*} Unit]
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:13 --------------------------------------
+22 |  usingFile: f => // error
+   |             ^
+   |             Found:    (f: File^?) ->? Unit
+   |             Required: (f: File^) ->{fresh} Unit
+23 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:34:7 ---------------------------------------
-34 |      (() => f.write()) :: Nil // error
-   |       ^^^^^^^^^^^^^^^^^^^^^^^
-   |       Found:    List[box () ->{f} Unit]
-   |       Required: box List[box () ->{xs*} Unit]^?
-   |
-   |       Note that reference (f : File^), defined in method $anonfun
-   |       cannot be included in outer capture set {xs*} of value cur
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:32:13 --------------------------------------
+32 |  usingFile: f => // error
+   |             ^
+   |             Found:    (f: File^?) ->? Unit
+   |             Required: (f: File^) ->{fresh} Unit
+33 |    cur.set:
+34 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:37:6 ------------------------------------------------------------
@@ -44,81 +44,58 @@
    |                                                   ^
    |                                Type variable A of constructor Id cannot be instantiated to box () => Unit since
    |                                that type captures the root capability `cap`.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:63:27 --------------------------------------
-63 |    val f1: File^{id*} = id(f) // error // error
-   |                         ^^^^^
-   |                         Found:    File^{f}
-   |                         Required: File^{id*}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:27 --------------------------------------
+59 |  val id: File^ -> File^ = x => x // error
+   |                           ^^^^^^
+   |                           Found:    (x: File^) ->? File^{x}
+   |                           Required: (x: File^) -> File^{fresh}
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:37 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:38 --------------------------------------
+62 |  val leaked = usingFile[File^{id*}]: f => // error // error
+   |                                      ^
+   |                                      Found:    (f: File^?) ->? box File^?
+   |                                      Required: (f: File^) ->{fresh} box File^{id*}
+63 |    val f1: File^{id*} = id(f)
+64 |    f1
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:32 --------------------------------------
 67 |  val id: (x: File^) -> File^ = x => x // error
-   |                                     ^
-   |                                     Found:    (x : File^)
-   |                                     Required: File^?
+   |                                ^^^^^^
+   |                            Found:    (x: File^) ->? File^{x}
+   |                            Required: (x: File^) -> File^{localcap}
    |
-   |                                     Note that the existential capture root in File^
-   |                                     cannot subsume the capability x.type
+   |                            Note that the existential capture root in File^
+   |                            cannot subsume the capability x.type since that capability is not a SharedCapability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:71:27 --------------------------------------
-71 |    val f1: File^{id*} = id(f) // error // error
-   |                         ^^^^^
-   |                         Found:    File^{f}
-   |                         Required: File^{id*}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
+70 |  val leaked = usingFile[File^{id*}]: f => // error // error
+   |                                      ^
+   |                                      Found:    (f: File^?) ->? box File^?
+   |                                      Required: (f: File^) ->{fresh} box File^{id*}
+71 |    val f1: File^{id*} = id(f)
+72 |    f1
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:88:10 -----------------------------------------------------------
-88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
+88 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^
    |          Local reach capability ps* leaks into capture scope of method mapCompose.
    |          To allow this, the parameter ps should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/reaches.scala:88:13 -----------------------------------------------------------
-88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
-   |             ^
-   |             Local reach capability ps* leaks into capture scope of method mapCompose.
-   |             To allow this, the parameter ps should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/reaches.scala:88:28 -----------------------------------------------------------
-88 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
-   |                            ^
-   |                      Separation failure: argument of type  A ->{x} box A^?
-   |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |                      corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
-   |                      and hides capabilities  {x}.
-   |                      Some of these overlap with the captures of the second argument with type  A ->{y} box A^?.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:91:10 --------------------------------------
+91 |  ps.map((x, y) => compose1(x, y)) // error
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |          Found:    (x$1: (box (x$0: A^) ->? A^?, box (x$0: A^) ->? A^?)^?) ->? box (x$0: A^?) ->? A^?
+   |          Required: (x$1: (box A ->{ps*} A, box A ->{ps*} A)) ->{fresh} box (x$0: A^?) ->? A^?
    |
-   |                        Hidden set of current argument        : {x}
-   |                        Hidden footprint of current argument  : {x, ps*}
-   |                        Capture set of second argument        : {y}
-   |                        Footprint set of second argument      : {y, ps*}
-   |                        The two sets overlap at               : {ps*}
--- Error: tests/neg-custom-args/captures/reaches.scala:91:28 -----------------------------------------------------------
-91 |  ps.map((x, y) => compose1(x, y)) // error sepcheck
-   |                            ^
-   |                      Separation failure: argument of type  A ->{x} box A^?
-   |                      to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |                      corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
-   |                      and hides capabilities  {x}.
-   |                      Some of these overlap with the captures of the second argument with type  A ->{y} box A^?.
-   |
-   |                        Hidden set of current argument        : {x}
-   |                        Hidden footprint of current argument  : {x, ps*}
-   |                        Capture set of second argument        : {y}
-   |                        Footprint set of second argument      : {y, ps*}
-   |                        The two sets overlap at               : {ps*}
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:62:31 -----------------------------------------------------------
-62 |  val leaked = usingFile[File^{id*}]: f => // error
+62 |  val leaked = usingFile[File^{id*}]: f => // error // error
    |                               ^^^
    |                               id* cannot be tracked since its deep capture set is empty
--- Error: tests/neg-custom-args/captures/reaches.scala:63:18 -----------------------------------------------------------
-63 |    val f1: File^{id*} = id(f) // error // error
-   |                  ^^^
-   |                  id* cannot be tracked since its deep capture set is empty
 -- Error: tests/neg-custom-args/captures/reaches.scala:70:31 -----------------------------------------------------------
-70 |  val leaked = usingFile[File^{id*}]: f => // error
+70 |  val leaked = usingFile[File^{id*}]: f => // error // error
    |                               ^^^
    |                               id* cannot be tracked since its deep capture set is empty
--- Error: tests/neg-custom-args/captures/reaches.scala:71:18 -----------------------------------------------------------
-71 |    val f1: File^{id*} = id(f) // error // error
-   |                  ^^^
-   |                  id* cannot be tracked since its deep capture set is empty

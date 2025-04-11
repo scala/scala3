@@ -9,12 +9,19 @@ import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
-import Periods.NoRunId
+import Periods.{NoRunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.VarState
 import Annotations.Annotation
 import config.Printers.capt
+
+object CaptureRef:
+  opaque type Validity = Int
+  def validId(runId: Int, iterId: Int): Validity =
+    runId + (iterId << RunWidth)
+  def currentId(using Context): Validity = validId(ctx.runId, ccState.iterationId)
+  val invalid: Validity = validId(NoRunId, 0)
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
@@ -22,8 +29,10 @@ import config.Printers.capt
  *  `*` first, `.rd` next, `?` last.
  */
 trait CaptureRef extends TypeProxy, ValueType:
+  import CaptureRef.*
+
   private var myCaptureSet: CaptureSet | Null = uninitialized
-  private var myCaptureSetRunId: Int = NoRunId
+  private var myCaptureSetValid: Validity = invalid
   private var mySingletonCaptureSet: CaptureSet.Const | Null = null
   private var myDerivedRefs: List[AnnotatedType] = Nil
 
@@ -130,20 +139,24 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** The capture set of the type underlying this reference */
   final def captureSetOfInfo(using Context): CaptureSet =
-    if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
+    if myCaptureSetValid == currentId then myCaptureSet.nn
     else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
     else
       myCaptureSet = CaptureSet.Pending
       val computed = CaptureSet.ofInfo(this)
-      if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || underlying.isProvisional then
+      if !isCaptureChecking
+          || ctx.mode.is(Mode.IgnoreCaptures)
+          || !underlying.exists
+          || underlying.isProvisional
+      then
         myCaptureSet = null
       else
         myCaptureSet = computed
-        myCaptureSetRunId = ctx.runId
+        myCaptureSetValid = currentId
       computed
 
   final def invalidateCaches() =
-    myCaptureSetRunId = NoRunId
+    myCaptureSetValid = invalid
 
   /**  x subsumes x
    *   x =:= y       ==>  x subsumes y
@@ -157,7 +170,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
    *   Contains[X, y]  ==>  X subsumes y
    */
-  final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+  final def subsumes(y: CaptureRef)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
@@ -242,7 +255,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    *                       the test again with canAddHidden = true as a last effort before we
    *                       fail a comparison.
    */
-  def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+  def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
     def yIsExistential = y.stripReadOnly match
       case root.Result(_) =>
         capt.println(i"failed existential $this >: $y")
@@ -252,12 +265,18 @@ trait CaptureRef extends TypeProxy, ValueType:
     || this.match
       case root.Fresh(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
-        || !y.stripReadOnly.isCap && !yIsExistential && canAddHidden && vs.addHidden(hidden, y)
+        || !y.stripReadOnly.isCap
+            && !yIsExistential
+            && !y.isInstanceOf[TermParamRef]
+            && canAddHidden
+            && vs.addHidden(hidden, y)
       case x @ root.Result(binder) =>
-        if y.derivesFromSharedCapability then true
-        else
+        val result = y match
+          case y @ root.Result(_) => vs.unify(x, y)
+          case _ => y.derivesFromSharedCapability
+        if !result then
           ccState.addNote(CaptureSet.ExistentialSubsumesFailure(x, y))
-          false
+        result
       case _ =>
         y match
           case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)

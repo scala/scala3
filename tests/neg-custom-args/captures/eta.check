@@ -5,8 +5,10 @@
   |         Required: () -> Proc^{f}
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/eta.scala:6:20 ----------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/eta.scala:6:14 -------------------------------------------
 6 |         bar( () => f )  // error
-  |                    ^
-  |                    reference (f : Proc^) is not included in the allowed capture set {}
-  |                    of an enclosing function literal with expected type () -> box () ->? Unit
+  |              ^^^^^^^
+  |              Found:    () ->{f} box () ->{f} Unit
+  |              Required: () -> box () ->? Unit
+  |
+  | longer explanation available when compiling with `-explain`

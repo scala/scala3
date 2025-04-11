@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package core
 
 import Types.*, Symbols.*, Contexts.*
-import cc.CaptureSet.IdempotentCaptRefMap
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -164,8 +163,33 @@ object Substituters:
     }
 
   final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: SubstBindingMap[_] =>
+        if next.from eq to then Some(SubstBindingMap(from, next.to))
+        else Some(SubstBindingsMap(Array(from, next.from), Array(to, next.to)))
+      case _ => None
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
     def inverse = SubstBindingMap(to, from)
+  }
+
+  final class SubstBindingsMap(val from: Array[BindingType], val to: Array[BindingType])(using Context) extends DeepTypeMap, BiTypeMap {
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: SubstBindingMap[_] =>
+        var i = 0
+        while i < from.length && (to(i) ne next.from) do i += 1
+        if i < from.length then Some(SubstBindingsMap(from, to.updated(i, next.to)))
+        else Some(SubstBindingsMap(from :+ next.from, to :+ next.to))
+      case _ => None
+
+    def apply(tp: Type): Type = tp match
+      case tp: BoundType =>
+        var i = 0
+        while i < from.length && (from(i) ne tp.binder) do i += 1
+        if i < from.length then tp.copyBoundType(to(i).asInstanceOf[tp.BT]) else tp
+      case _ =>
+        mapOver(tp)
+
+    def inverse = SubstBindingsMap(to, from)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
@@ -180,7 +204,7 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap, BiTypeMap {
+  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
     def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
   }
@@ -189,15 +213,15 @@ object Substituters:
     def apply(tp: Type): Type = substThis(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstRecThisMap(from: Type, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
+  final class SubstRecThisMap(from: Type, to: Type)(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substRecThis(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
+  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
+  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
   }
 

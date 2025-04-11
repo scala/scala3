@@ -7,8 +7,8 @@ trait Iterator[+A] extends IterableOnce[A]:
 trait IterableOnce[+A] extends Any:
   def iterator: Iterator[A]^{this}
 
-final class Cell[A](head: => IterableOnce[A]^):
-  def headIterator: Iterator[A]^{this} = head.iterator
+final class Cell[A](head: () => IterableOnce[A]^):
+  def headIterator: Iterator[A]^{this} = head().iterator
 
 class File private ():
   private var closed = false
@@ -31,6 +31,6 @@ object Seq:
   def apply[A](xs: A*): IterableOnce[A] = ???
 
 @main def Main() =
-  val cell: Cell[File] = File.open(f => Cell(Seq(f))) // error
+  val cell: Cell[File] = File.open(f => Cell(() => Seq(f))) // error
   val file = cell.headIterator.next()
   file.read()
