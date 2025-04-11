@@ -2455,21 +2455,36 @@ object Types extends TypeUtils {
         d
       }
 
-      def fromDesignator = designator match {
+      def fromDesignator(lastdMaybe: Option[SingleDenotation]) = designator match {
         case name: Name =>
           val sym = lastSymbol
           val allowPrivate = sym == null || (sym == NoSymbol) || sym.lastKnownDenotation.flagsUNSAFE.is(Private)
           finish(memberDenot(name, allowPrivate))
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
-          if (symd.validFor.runId != ctx.runId && !stillValid(symd))
-            finish(memberDenot(symd.initial.name, allowPrivate = false))
-          else if (prefix.isArgPrefixOf(symd))
-            finish(argDenot(sym.asType))
-          else if (infoDependsOnPrefix(symd, prefix))
-            finish(memberDenot(symd.initial.name, allowPrivate = symd.is(Private)))
-          else
-            finish(symd.current)
+              if (symd.validFor.runId != ctx.runId && !stillValid(symd))
+                val res0 = memberDenot(symd.initial.name, allowPrivate = false)
+                val res = lastdMaybe match
+                  case Some(lastd) if hasSkolems(lastd.info) =>
+                    // When updating denotation, changing types from skolem may cause issues
+                    // with other parts of the tree
+                    finish(lastd.derivedSingleDenotation(res0.symbol, lastd.info, prefix))
+                  case _ =>
+                    res0
+                finish(res)
+              else if (prefix.isArgPrefixOf(symd))
+                finish(argDenot(sym.asType))
+              else if (infoDependsOnPrefix(symd, prefix))
+                val res = lastdMaybe match
+                  case Some(lastd) if hasSkolems(lastd.info) =>
+                    // When updating denotation, changing types from skolem may cause issues
+                    // with other parts of the tree
+                    finish(lastd.derivedSingleDenotation(sym, lastd.info, prefix))
+                  case _ =>
+                    memberDenot(symd.initial.name, allowPrivate = symd.is(Private))
+                finish(res)
+              else
+                finish(symd.current)
       }
 
       lastDenotation match {
@@ -2482,9 +2497,9 @@ object Types extends TypeUtils {
               if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
               else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
             case _ =>
-              fromDesignator
+              fromDesignator(Some(lastd))
           }
-        case _ => fromDesignator
+        case _ => fromDesignator(None)
       }
     }
 
@@ -7023,6 +7038,16 @@ object Types extends TypeUtils {
     def apply(pre: Type, name: Name)(using Context): Boolean = true
     def isStable = true
   }
+
+  def hasSkolems(tpe: Type)(using Context) =
+    object hasSkolemsAcc extends TypeAccumulator[Boolean]:
+      def apply(x: Boolean, tp: Type): Boolean =
+        x || {
+          tp match
+            case _: SkolemType => true
+            case _ => foldOver(false, tp)
+        }
+    hasSkolemsAcc(false, tpe)
 
   // ----- Debug ---------------------------------------------------------
 
