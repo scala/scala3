@@ -2039,12 +2039,10 @@ class Namer { typer: Typer =>
     lazy val isRefInSignatures =
       psym.maybeOwner.isPrimaryConstructor
       && isReferencedInPublicSignatures(psym)
+    lazy val needsTrackedSimp = needsTrackedSimple(psym, param, owningSym)
     !psym.is(Tracked)
     && psym.isTerm
-    && (
-      abstractContextBound
-      || isRefInSignatures
-    )
+    && needsTrackedSimp
 
   /** Under x.modularity, we add `tracked` to context bound witnesses and
    *  explicit evidence parameters that have abstract type members
@@ -2053,6 +2051,13 @@ class Namer { typer: Typer =>
     val accessorSyms = maybeParamAccessors(owningSym, psym)
     (owningSym.isClass || owningSym.isAllOf(Given | Method))
     && (param.hasAttachment(ContextBoundParam) || (psym.isOneOf(GivenOrImplicit) && !accessorSyms.forall(_.isOneOf(PrivateLocal))))
+    && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
+
+  private def needsTrackedSimple(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
+    val accessorSyms = maybeParamAccessors(owningSym, psym)
+    (owningSym.isClass || owningSym.isAllOf(Given | Method))
+    && !accessorSyms.exists(_.is(Mutable))
+    && (param.hasAttachment(ContextBoundParam) || !accessorSyms.forall(_.isOneOf(PrivateLocal)))
     && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
 
   extension (sym: Symbol)
@@ -2102,8 +2107,7 @@ class Namer { typer: Typer =>
   def setTrackedConstrParam(param: ValDef)(using Context): Unit =
     val sym = symbolOfTree(param)
     sym.maybeOwner.maybeOwner.infoOrCompleter match
-      case info: ClassInfo
-        if !sym.is(Tracked) && isContextBoundWitnessWithAbstractMembers(sym, param, sym.maybeOwner.maybeOwner) =>
+      case info: ClassInfo if needsTracked(sym, param, sym.maybeOwner.maybeOwner) =>
         typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
         setParamTrackedWithAccessors(sym, info)
       case _ =>
