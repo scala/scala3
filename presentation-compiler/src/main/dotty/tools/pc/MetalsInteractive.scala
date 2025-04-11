@@ -230,13 +230,6 @@ object MetalsInteractive:
         if head.symbol.is(Exported) then
           val sym = head.symbol.sourceSymbol
           List((sym, sym.info, None))
-        else if head.symbol.is(Synthetic) then
-          enclosingSymbolsWithExpressionType(
-            tail,
-            pos,
-            indexed,
-            skipCheckOnName
-          )
         else if head.symbol != NoSymbol then
           if skipCheckOnName ||
             MetalsInteractive.isOnName(
@@ -245,6 +238,13 @@ object MetalsInteractive:
               indexed.ctx.source
             )
           then List((head.symbol, head.typeOpt, None))
+          else if head.symbol.is(Synthetic) then
+            enclosingSymbolsWithExpressionType(
+              tail,
+              pos,
+              indexed,
+              skipCheckOnName
+            )
           /* Type tree for List(1) has an Int type variable, which has span
            * but doesn't exist in code.
            * https://github.com/scala/scala3/issues/15937
