@@ -215,8 +215,18 @@ class CompilationTests {
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls" and "-Yno-flexible-types"),
-    )
-  }.checkCompile()
+    ).checkCompile()
+
+    locally {
+      val tests = List(
+        compileFile("tests/explicit-nulls/flexible-unpickle/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
+        compileFile("tests/explicit-nulls/flexible-unpickle/Flexible_2.scala", explicitNullsOptions.withClasspath(
+          defaultOutputDir + testGroup + "/Unsafe_1/flexible-unpickle/Unsafe_1")),
+      ).map(_.keepOutput.checkCompile())
+
+      tests.foreach(_.delete())
+    }
+  }
 
   @Test def explicitNullsWarn: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
