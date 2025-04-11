@@ -392,10 +392,9 @@ object Types extends TypeUtils {
       case _ => false
 
     /** Does the type carry an annotation that is an instance of `cls`? */
-    @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match {
-      case AnnotatedType(tp, annot) => (annot matches cls) || (tp hasAnnotation cls)
+    @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match
+      case AnnotatedType(tp, annot) => annot.matches(cls) || tp.hasAnnotation(cls)
       case _ => false
-    }
 
     /** Does this type have a supertype with an annotation satisfying given predicate `p`? */
     def derivesAnnotWith(p: Annotation => Boolean)(using Context): Boolean = this match {
@@ -556,8 +555,8 @@ object Types extends TypeUtils {
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
-        if (lsym isSubClass rsym) lsym
-        else if (rsym isSubClass lsym) rsym
+        if lsym.isSubClass(rsym) then lsym
+        else if rsym.isSubClass(lsym) then rsym
         else NoSymbol
       case tp: OrType =>
         if tp.tp1.hasClassSymbol(defn.NothingClass) then
@@ -696,7 +695,7 @@ object Types extends TypeUtils {
       case tp: TypeProxy =>
         tp.superType.findDecl(name, excluded)
       case err: ErrorType =>
-        newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
+        newErrorSymbol(classSymbol.orElse(defn.RootClass), name, err.msg)
       case _ =>
         NoDenotation
     }
@@ -777,7 +776,7 @@ object Types extends TypeUtils {
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
-          newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
+          newErrorSymbol(pre.classSymbol.orElse(defn.RootClass), name, err.msg)
         case _ =>
           NoDenotation
       }
@@ -872,7 +871,7 @@ object Types extends TypeUtils {
           // member in Super instead of Sub.
           // As an example of this in the wild, see
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
-          go(tp.cls.typeRef) orElse d
+          go(tp.cls.typeRef).orElse(d)
 
       def goParam(tp: TypeParamRef) = {
         val next = tp.underlying
@@ -1110,7 +1109,7 @@ object Types extends TypeUtils {
         false
 
     def relaxed_<:<(that: Type)(using Context): Boolean =
-      (this <:< that) || (this isValueSubType that)
+      (this <:< that) || this.isValueSubType(that)
 
     /** Is this type a legal type for member `sym1` that overrides another
      *  member `sym2` of type `that`? This is the same as `<:<`, except that
@@ -1164,10 +1163,10 @@ object Types extends TypeUtils {
      *  vice versa.
      */
     def matchesLoosely(that: Type)(using Context): Boolean =
-      (this matches that) || {
+      this.matches(that) || {
         val thisResult = this.widenExpr
         val thatResult = that.widenExpr
-        (this eq thisResult) != (that eq thatResult) && (thisResult matchesLoosely thatResult)
+        (this eq thisResult) != (that eq thatResult) && thisResult.matchesLoosely(thatResult)
       }
 
     /** The basetype of this type with given class symbol, NoType if `base` is not a class. */
@@ -1798,7 +1797,7 @@ object Types extends TypeUtils {
      *  no symbol it tries `member` as an alternative.
      */
     def typeParamNamed(name: TypeName)(using Context): Symbol =
-      classSymbol.unforcedDecls.lookup(name) orElse member(name).symbol
+      classSymbol.unforcedDecls.lookup(name).orElse(member(name).symbol)
 
     /** If this is a prototype with some ignored component, reveal one more
      *  layer of it. Otherwise the type itself.
@@ -1931,9 +1930,9 @@ object Types extends TypeUtils {
     def annotatedToRepeated(using Context): Type = this match {
       case tp @ ExprType(tp1) =>
         tp.derivedExprType(tp1.annotatedToRepeated)
-      case self @ AnnotatedType(tp, annot) if annot matches defn.RetainsByNameAnnot =>
+      case self @ AnnotatedType(tp, annot) if annot.matches(defn.RetainsByNameAnnot) =>
         self.derivedAnnotatedType(tp.annotatedToRepeated, annot)
-      case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
+      case AnnotatedType(tp, annot) if annot.matches(defn.RepeatedAnnot) =>
         val typeSym = tp.typeSymbol.asClass
         assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
         tp.translateParameterized(typeSym, defn.RepeatedParamClass)
@@ -2633,9 +2632,9 @@ object Types extends TypeUtils {
      */
     final def controlled[T](op: => T)(using Context): T = try {
       ctx.base.underlyingRecursions += 1
-      if (ctx.base.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
+      if ctx.base.underlyingRecursions < Config.LogPendingUnderlyingThreshold then
         op
-      else if (ctx.pendingUnderlying contains this)
+      else if ctx.pendingUnderlying.contains(this) then
         throw CyclicReference(symbol)
       else
         try {
@@ -3375,8 +3374,8 @@ object Types extends TypeUtils {
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
           case bc2 :: bcs2rest =>
-            if (bcs1set contains bc2)
-              if (bc2.is(Trait)) recur(bcs2rest)
+            if bcs1set.contains(bc2) then
+              if bc2.is(Trait) then recur(bcs2rest)
               else bcs1 // common class, therefore rest is the same in both sequences
             else bc2 :: recur(bcs2rest)
           case nil => bcs1
@@ -3472,9 +3471,8 @@ object Types extends TypeUtils {
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
           case bc2 :: bcs2rest =>
-            if (bcs1set contains bc2)
-              if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
-              else bcs2
+            if bcs1set.contains(bc2) then
+              if bc2.is(Trait) then bc2 :: recur(bcs2rest) else bcs2
             else recur(bcs2rest)
           case nil =>
             bcs2
@@ -5415,11 +5413,11 @@ object Types extends TypeUtils {
       parent.hashIsStable
 
     override def eql(that: Type): Boolean = that match
-      case that: AnnotatedType => (parent eq that.parent) && (annot eql that.annot)
+      case that: AnnotatedType => (parent eq that.parent) && annot.eql(that.annot)
       case _ => false
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match
-      case that: AnnotatedType => parent.equals(that.parent, bs) && (annot eql that.annot)
+      case that: AnnotatedType => parent.equals(that.parent, bs) && annot.eql(that.annot)
       case _ => false
   }
 
@@ -5986,7 +5984,7 @@ object Types extends TypeUtils {
     }
   }
 
-  @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
+  @sharable object IdentityTypeMap extends TypeMap()(using NoContext) {
     def apply(tp: Type): Type = tp
   }
 
@@ -6457,7 +6455,7 @@ object Types extends TypeUtils {
     def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
     val seen = util.HashSet[Type]()
     def apply(xs: List[NamedType], tp: Type): List[NamedType] =
-      if seen contains tp then xs
+      if seen.contains(tp) then xs
       else
         seen += tp
         tp match
@@ -6636,7 +6634,7 @@ object Types extends TypeUtils {
 
   object fieldFilter extends NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean =
-      name.isTermName && (pre member name).hasAltWith(!_.symbol.is(Method))
+      name.isTermName && pre.member(name).hasAltWith(!_.symbol.is(Method))
     def isStable = true
   }
 
