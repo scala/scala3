@@ -744,3 +744,17 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "name: String".hover
     )
+
+  @Test def `value-of`: Unit =
+    check(
+      """|enum Foo(val key: String) {
+         |  case Bar extends Foo("b")
+         |  case Baz extends Foo("z")
+         |}
+         |
+         |object Foo {
+         |  def parse(key: String) = Foo.va@@lueOf("b")
+         |
+         |""".stripMargin,
+         "def valueOf($name: String): Foo".hover
+    )
