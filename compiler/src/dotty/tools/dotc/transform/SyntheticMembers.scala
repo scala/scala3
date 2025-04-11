@@ -81,9 +81,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val existing = sym.matchingMember(clazz.thisType)
     if ctx.settings.YcompileScala2Library.value && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
       NoSymbol
-    else if existing != sym && !existing.is(Deferred) then 
-      existing 
-    else 
+    else if existing != sym && !existing.is(Deferred) then
+      existing
+    else
       NoSymbol
   end existingDef
 
@@ -569,8 +569,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       newSymbol(ctx.owner, pref.paramName.freshened, Synthetic,
         pref.underlying.translateFromRepeated(toArray = false), coord = ctx.owner.span.focus)
     val bindingRefs = bindingSyms.map(TermRef(NoPrefix, _))
-    // Fix the infos for dependent parameters
-    if constrMeth.isParamDependent then
+    // Fix the infos for dependent parameters. We also need to include false dependencies that would
+    // be fixed by de-aliasing since we do no such de-aliasing here. See i22944.scala.
+    if constrMeth.looksParamDependent then
       bindingSyms.foreach: bindingSym =>
         bindingSym.info = bindingSym.info.substParams(constrMeth, bindingRefs)
 
