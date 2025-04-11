@@ -19,10 +19,14 @@ import NameKinds.OuterSelectName
 import StdNames.*
 import config.Feature
 import inlines.Inlines.inInlineMethod
+import util.Property
 
 object FirstTransform {
   val name: String = "firstTransform"
   val description: String = "some transformations to put trees into a canonical form"
+
+  /** Attachment key for named argument patterns */
+  val WasNamedArg: Property.StickyKey[Unit] = Property.StickyKey()
 }
 
 /** The first tree transform
@@ -38,6 +42,7 @@ object FirstTransform {
  */
 class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd.*
+  import FirstTransform.*
 
   override def phaseName: String = FirstTransform.name
 
@@ -156,7 +161,13 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
 
   override def transformOther(tree: Tree)(using Context): Tree = tree match {
     case tree: Export => EmptyTree
-    case tree: NamedArg => transformAllDeep(tree.arg)
+    case tree: NamedArg =>
+      val res = transformAllDeep(tree.arg)
+      if ctx.mode.is(Mode.Pattern) then
+        // Need to keep NamedArg status for pattern matcher to work correctly when faced
+        // with single-element named tuples.
+        res.pushAttachment(WasNamedArg, ())
+      res
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }
 

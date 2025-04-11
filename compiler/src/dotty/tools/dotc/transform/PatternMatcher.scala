@@ -386,9 +386,20 @@ object PatternMatcher {
                   }
                 else
                   letAbstract(get) { getResult =>
-                    val selectors =
-                      if (args.tail.isEmpty) ref(getResult) :: Nil
-                      else productSelectors(getResult.info).map(ref(getResult).select(_))
+                    def isUnaryNamedTupleSelectArg(arg: Tree) =
+                      get.tpe.widenDealias.isNamedTupleType
+                      && arg.removeAttachment(FirstTransform.WasNamedArg).isDefined
+                    // Special case: Normally, we pull out the argument wholesale if
+                    // there is only one. But if the argument is a named argument for
+                    // a single-element named tuple, we have to select the field instead.
+                    // NamedArg trees are eliminated in FirstTransform but for named arguments
+                    // of patterns we add a WasNamedArg attachment, which is used to guide the
+                    // logic here. See i22900.scala for test cases.
+                    val selectors = args match
+                      case arg :: Nil if !isUnaryNamedTupleSelectArg(arg) =>
+                        ref(getResult) :: Nil
+                      case _ =>
+                        productSelectors(getResult.info).map(ref(getResult).select(_))
                     matchArgsPlan(selectors, args, onSuccess)
                   }
               }
