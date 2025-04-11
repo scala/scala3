@@ -737,15 +737,22 @@ The type variable `cap X` (with `cap` being a soft modifier) can be instantiated
 we see a variable `listeners` that has as type a `Set` of `Listeners` capturing `X`. The `register` method takes a listener of this type
 and assigns it to the variable.
 
-Capture-set variables `cap X` are represented as regular type variables within the special interval
- `>: CapSet <: CapSet^`. For instance, `Source` could be equivalently
+Capture-set variables `cap X` without user-annotated bounds by default range over the interval `>: {} <: {caps.cap}` which is the universe of capture sets instead of regular types.
+
+Under the hood, such capture-set variables are represented as regular type variables within the special interval
+ `>: CapSet <: CapSet^`.
+For instance, `Source` from above could be equivalently
 defined as follows:
 ```scala
 class Source[X >: CapSet <: CapSet^]:
   ...
 ```
 `CapSet` is a sealed trait in the `caps` object. It cannot be instantiated or inherited, so its only
-purpose is to identify capture-set type variables and types. This representation based on `CapSet` is subject to change and
+purpose is to identify type variables which are capture sets. In non-capture-checked
+usage contexts, the type system will treat `CapSet^{a}` and `CapSet^{a,b}` as the type `CapSet`, whereas
+with capture checking enabled, it will take the annotated capture sets into account,
+so that `CapSet^{a}` and `CapSet^{a,b}` are distinct.
+This representation based on `CapSet` is subject to change and
 its direct use is discouraged.
 
 Capture-set variables can be inferred like regular type variables. When they should be instantiated
