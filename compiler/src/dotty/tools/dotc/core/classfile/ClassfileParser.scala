@@ -525,7 +525,7 @@ class ClassfileParser(
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
-      if (ctx.explicitNulls) denot.info = ImplicitNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
+      if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
 
       // seal java enums
       if (isEnum) {

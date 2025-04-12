@@ -35,7 +35,7 @@ import dotty.tools.dotc.core.Decorators.i
  *   to handle the full spectrum of Scala types. Additionally, some kinds of symbols like constructors and
  *   enum instances get special treatment.
  */
-object ImplicitNullInterop {
+object JavaNullInterop {
 
   /** Transforms the type `tp` of Java member `sym` to be explicitly nullable.
    *  `tp` is needed because the type inside `sym` might not be set when this method is called.
@@ -55,6 +55,7 @@ object ImplicitNullInterop {
    */
   def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = trace(i"nullifyMember ${sym}, ${tp}"){
     assert(ctx.explicitNulls)
+    // assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
     // Some special cases when nullifying the type
     if isEnumValueDef || sym.name == nme.TYPE_ // Don't nullify the `TYPE` field in every class and Java enum instances
@@ -80,14 +81,14 @@ object ImplicitNullInterop {
    *  but the result type is not nullable.
    */
   private def nullifyExceptReturnType(tp: Type)(using Context): Type =
-    new ImplicitNullMap(outermostLevelAlreadyNullable = true)(tp)
+    new JavaNullMap(outermostLevelAlreadyNullable = true)(tp)
 
-  /** Nullifies a type by adding `| Null` in the relevant places. */
+  /** Nullifies a Java type by adding `| Null` in the relevant places. */
   private def nullifyType(tp: Type)(using Context): Type =
-    new ImplicitNullMap(outermostLevelAlreadyNullable = false)(tp)
+    new JavaNullMap(outermostLevelAlreadyNullable = false)(tp)
 
-  /** A type map that implements the nullification function on types. Given a Java-sourced type or an
-   *  implicitly null type, this adds `| Null` in the right places to make the nulls explicit.
+  /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| Null`
+   *  in the right places to make the nulls explicit in Scala.
    *
    *  @param outermostLevelAlreadyNullable whether this type is already nullable at the outermost level.
    *                                       For example, `Array[String] | Null` is already nullable at the
@@ -97,7 +98,7 @@ object ImplicitNullInterop {
    *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
    *                                       to `(A & B) | Null`, instead of `(A | Null & B | Null) | Null`.
    */
-  private class ImplicitNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap {
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap {
     def nullify(tp: Type): Type = if ctx.flexibleTypes then FlexibleType(tp) else OrNull(tp)
 
     /** Should we nullify `tp` at the outermost level? */
