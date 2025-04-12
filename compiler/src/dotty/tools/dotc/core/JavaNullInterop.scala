@@ -55,7 +55,7 @@ object JavaNullInterop {
    */
   def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = trace(i"nullifyMember ${sym}, ${tp}"){
     assert(ctx.explicitNulls)
-    // assert(sym.is(JavaDefined), "can only nullify java-defined members")
+    assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
     // Some special cases when nullifying the type
     if isEnumValueDef || sym.name == nme.TYPE_ then
