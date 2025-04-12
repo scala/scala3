@@ -133,11 +133,8 @@ final class PcInlineValueProvider(
     rhsLines match
       case h :: Nil => rhs
       case h :: t =>
-        val noPrefixH = h.stripPrefix(refIndent)
-        if noPrefixH.startsWith("{") then
-          noPrefixH ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n","\n", "")
-        else
-          (("  " ++ h) :: t).map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
+        val header = if h.startsWith("{") then h else "\n" ++ refIndent ++ "  " ++ h
+        header ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
       case Nil => rhs
 
   private def definitionRequiresBrackets(tree: Tree)(using Context): Boolean =
@@ -232,7 +229,7 @@ final class PcInlineValueProvider(
       var idx = source.startOfLine(offset)
       val pad = new StringBuilder
       while (idx != offset && idx < source.content().length && source.content()(idx).isWhitespace) {
-        pad.append(if (idx < source.content().length && source.content()(idx) == '\t') '\t' else ' ')
+        pad.append(source.content()(idx))
         idx += 1
       }
       pad.result()

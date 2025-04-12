@@ -430,6 +430,25 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
     )
 
   @Test def `i7137a` =
+    checkEdit(
+      """|def foo = {
+         |  val newValue =
+         |    val x = true
+         |    x
+         |  def bar =
+         |    val xx =new<<V>>alue
+         |}
+         |""".stripMargin,
+      """|def foo = {
+         |  def bar =
+         |    val xx =
+         |      val x = true
+         |      x
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `i7137b` =
       checkEdit(
         """|object O {
             |  def foo = {
