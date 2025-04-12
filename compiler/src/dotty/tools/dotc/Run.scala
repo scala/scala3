@@ -12,7 +12,7 @@ import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators.*
 import io.AbstractFile
-import Phases.{unfusedPhases, Phase}
+import Phases.{assemblePhases, unfusedPhases, Phase}
 
 import sbt.interfaces.ProgressCallback
 
@@ -295,18 +295,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
 
-  /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
-   *  when we first build the compiler. But we modify them with -Yskip, -Ystop
-   *  on each run. That modification needs to either transform the tree structure,
-   *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
-   *  account. I think the latter would be preferable.
-   */
   def compileSources(sources: List[SourceFile]): Unit =
     if (sources forall (_.exists)) {
       units = sources.map(CompilationUnit(_))
       compileUnits()
     }
-
 
   def compileUnits(us: List[CompilationUnit]): Unit = {
     units = us
@@ -333,18 +326,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       then ActiveProfile(ctx.settings.VprofileDetails.value.max(0).min(1000))
       else NoProfile
 
-    // If testing pickler, make sure to stop after pickling phase:
-    val stopAfter =
-      if (ctx.settings.YtestPickler.value) List("pickler")
-      else ctx.settings.YstopAfter.value
-
-    val runCtx = ctx.fresh
+    val runCtx = assemblePhases()
     runCtx.setProfiler(Profiler())
-
-    val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
-    val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
-    ctx.base.usePhases(phases, runCtx)
 
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
@@ -355,7 +338,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       var phasesWereAdjusted = false
 
       var forceReachPhaseMaybe =
-        if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
+        if (ctx.isBestEffort && allPhases.exists(_.phaseName == "typer")) Some("typer")
         else None
 
       for phase <- allPhases do
@@ -367,7 +350,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
             profiler.onPhase(phase):
               try units = phase.runOn(units)
               catch case _: InterruptedException => cancelInterrupted()
-            if (ctx.settings.Xprint.value.containsPhase(phase))
+            for printAt <- ctx.settings.Vprint.userValue if printAt.containsPhase(phase) do
               for (unit <- units)
                 def printCtx(unit: CompilationUnit) = phase.printingContext(
                   ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
