@@ -1902,7 +1902,7 @@ class Namer { typer: Typer =>
 
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
-      ImplicitNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
+      JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
   }
 

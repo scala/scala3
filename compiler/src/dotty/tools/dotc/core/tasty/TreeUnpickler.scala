@@ -981,12 +981,6 @@ class TreeUnpickler(reader: TastyReader,
           sym.info = tpt.tpe
           ValDef(tpt)
       }
-
-      // If explicit nulls is enabled, and the source file did not have explicit
-      // nulls enabled, nullify the member to allow for compatibility.
-      if (ctx.explicitNulls && !explicitNulls) then
-        sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
-
       goto(end)
       setSpan(start, tree)
 
