@@ -15,6 +15,9 @@ import config.Printers.init as printer
 import Trace.*
 
 object Util:
+  /** Exception used for errors encountered when reading TASTy. */
+  case class TastyTreeException(msg: String) extends RuntimeException(msg)
+  
   /** Utility definition used for better error-reporting of argument errors */
   case class TraceValue[T](value: T, trace: Trace)
 
@@ -43,6 +46,8 @@ object Util:
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
+        if (args.size != argTps.size)
+          report.warning("[Internal error] Number of arguments do not match number of argument types in " + tree.symbol.name)
         val normArgs: List[Arg] = args.zip(argTps).map {
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
