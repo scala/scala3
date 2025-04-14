@@ -3430,12 +3430,12 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
       val isCtor = method.isConstructor
       def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
       val prefix = s"Cannot unroll parameters of $what"
-      if method.is(Deferred) then
-        i"$prefix: it must not be abstract"
+      if method.isLocal then
+        i"$prefix because it is a local method"
+      else if !method.isEffectivelyFinal then
+        i"$prefix because it can be overridden"
       else if isCtor && method.owner.is(Trait) then
         i"implementation restriction: $prefix"
-      else if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
-        i"$prefix: it is not final"
       else if method.owner.companionClass.is(CaseClass) then
         i"$prefix of a case class companion object: please annotate the class constructor instead"
       else
