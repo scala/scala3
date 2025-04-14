@@ -96,8 +96,9 @@ object MainProxies {
         EmptyTree,
         Block(
           List(Apply(ref(defn.CLP_showError.termRef), errVar :: Nil)),
-          Apply(Select(Select(Select(Ident(termName("java")), termName("lang")), termName("System")), termName("exit")),
-            List(Literal(Constant(1))))
+          Throw(errVar)
+        //Apply(Select(Select(Select(Ident(termName("java")), termName("lang")), termName("System")), termName("exit")),
+        //  List(Literal(Constant(1))))
         )
       )
       val body = Try(call, handler :: Nil, EmptyTree)

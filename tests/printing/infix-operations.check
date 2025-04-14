@@ -31,6 +31,7 @@ package <empty> {
         {
           case error @ _:scala.util.CommandLineParser.ParseError =>
             scala.util.CommandLineParser.showError(error)
+            throw error
         }
   }
 }

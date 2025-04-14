@@ -9,7 +9,7 @@ object CommandLineParser {
    *  @param idx  The index of the argument that's faulty (starting from 0)
    *  @param msg  The error message
    */
-  class ParseError(val idx: Int, val msg: String) extends Exception(msg)
+  class ParseError(val idx: Int, val msg: String) extends Exception(msg, null, false, false)
 
   /** Parse command line argument `s`, which has index `n`, as a value of type `T`
    *  @throws ParseError if argument cannot be converted to type `T`.
