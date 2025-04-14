@@ -55,18 +55,18 @@ object Option {
  *  `foreach`:
  *
  *  {{{
- *  val name: Option[String] = request getParameter "name"
- *  val upper = name map { _.trim } filter { _.length != 0 } map { _.toUpperCase }
- *  println(upper getOrElse "")
+ *  val name: Option[String] = request.getParameter("name")
+ *  val upper = name.map(_.trim).filter(_.length != 0).map(_.toUpperCase)
+ *  println(upper.getOrElse(""))
  *  }}}
  *
  *  Note that this is equivalent to {{{
  *  val upper = for {
- *    name <- request getParameter "name"
+ *    name <- request.getParameter("name")
  *    trimmed <- Some(name.trim)
  *    upper <- Some(trimmed.toUpperCase) if trimmed.length != 0
  *  } yield upper
- *  println(upper getOrElse "")
+ *  println(upper.getOrElse(""))
  *  }}}
  *
  *  Because of how for comprehension works, if $none is returned
@@ -254,7 +254,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    * }}}
    * This is also equivalent to:
    * {{{
-   * option map f getOrElse ifEmpty
+   * option.map(f).getOrElse(ifEmpty)
    * }}}
    *  @param  ifEmpty the expression to evaluate if empty.
    *  @param  f       the function to apply if nonempty.
