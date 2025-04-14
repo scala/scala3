@@ -1036,6 +1036,8 @@ trait Checking {
             pats.forall(recur(_, pt))
           case Typed(arg, tpt) =>
             check(pat, pt) && recur(arg, pt)
+          case NamedArg(name, pat) =>
+            recur(pat, pt)
           case Ident(nme.WILDCARD) =>
             true
           case pat: QuotePattern =>
