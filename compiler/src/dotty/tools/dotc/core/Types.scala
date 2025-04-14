@@ -43,7 +43,6 @@ import CaptureSet.{CompareResult, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
-import dotty.tools.dotc.cc.ccConfig
 
 object Types extends TypeUtils {
 
