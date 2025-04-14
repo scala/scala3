@@ -78,9 +78,6 @@ object Parsers {
   enum ParseKind:
     case Expr, Type, Pattern
 
-  enum IntoOK:
-    case Yes, No, Nested
-
   type StageKind = Int
   object StageKind {
     val None = 0
@@ -1582,8 +1579,8 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(intoOK: IntoOK = IntoOK.No, inContextBound: Boolean = false): Tree =
-      rejectWildcardType(typ(intoOK, inContextBound))
+    def toplevelTyp(inContextBound: Boolean = false): Tree =
+      rejectWildcardType(typ(inContextBound))
 
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
@@ -1642,20 +1639,11 @@ object Parsers {
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
      *  MatchType      ::=  InfixType `match` <<< TypeCaseClauses >>>
-     *  IntoType       ::=  [‘into’] IntoTargetType
-     *                   |  ‘( IntoType ‘)’
-     *  IntoTargetType ::=  Type
-     *                   |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
      */
-    def typ(intoOK: IntoOK = IntoOK.No, inContextBound: Boolean = false): Tree =
+    def typ(inContextBound: Boolean = false): Tree =
       val start = in.offset
       var imods = Modifiers()
       val erasedArgs: ListBuffer[Boolean] = ListBuffer()
-
-      def nestedIntoOK(token: Int) =
-        if token == TLARROW then IntoOK.No
-        else if intoOK == IntoOK.Nested then IntoOK.Yes
-        else intoOK
 
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
@@ -1685,9 +1673,8 @@ object Parsers {
           else
             accept(ARROW)
 
-          def resType() = typ(nestedIntoOK(token))
           val resultType =
-            if isPure then capturesAndResult(resType) else resType()
+            if isPure then capturesAndResult(typ) else typ()
           if token == TLARROW then
             for case ValDef(_, tpt, _) <- params do
               if isByNameType(tpt) then
@@ -1721,12 +1708,6 @@ object Parsers {
           if erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods] then
             syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           t
-
-      def isIntoPrefix: Boolean =
-        intoOK == IntoOK.Yes
-        && in.isIdent(nme.into)
-        && in.featureEnabled(Feature.into)
-        && canStartTypeTokens.contains(in.lookahead.token)
 
       def convertToElem(t: Tree): Tree = t match
         case ByNameTypeTree(t1) =>
@@ -1764,32 +1745,6 @@ object Parsers {
                     funArgType()
                   commaSeparatedRest(t, funArg)
           accept(RPAREN)
-
-          val intoAllowed =
-            intoOK == IntoOK.Yes
-            && args.lengthCompare(1) == 0
-            && (!canFollowSimpleTypeTokens.contains(in.token) || followingIsVararg())
-          val byNameAllowed = in.isArrow || isPureArrow
-
-          def sanitize(arg: Tree): Tree = arg match
-            case ByNameTypeTree(t) if !byNameAllowed =>
-              syntaxError(ByNameParameterNotSupported(t), t.span)
-              t
-            case PrefixOp(id @ Ident(tpnme.into), t) if !intoAllowed =>
-              syntaxError(em"no `into` modifier allowed here", id.span)
-              t
-            case Parens(t) =>
-              cpy.Parens(arg)(sanitize(t))
-            case arg: FunctionWithMods =>
-              val body1 = sanitize(arg.body)
-              if body1 eq arg.body then arg
-              else FunctionWithMods(arg.args, body1, arg.mods, arg.erasedParams).withSpan(arg.span)
-            case Function(args, res) if !intoAllowed =>
-              cpy.Function(arg)(args, sanitize(res))
-            case arg =>
-              arg
-          val args1 = args.mapConserve(sanitize)
-
           if in.isArrow || isPureArrow || erasedArgs.contains(true) then
             functionRest(args)
           else
@@ -1817,8 +1772,6 @@ object Parsers {
           typ()
       else if in.token == INDENT then
         enclosed(INDENT, typ())
-      else if isIntoPrefix then
-        PrefixOp(typeIdent(), typ(IntoOK.Nested))
       else
         typeRest(infixType(inContextBound))
     end typ
@@ -2228,9 +2181,7 @@ object Parsers {
      *               |  `=>' Type
      *               |  `->' [CaptureSet] Type
      */
-    val funArgType: () => Tree =
-      () => paramTypeOf(() => typ(IntoOK.Yes))
-        // We allow intoOK and filter out afterwards in typ()
+    val funArgType: () => Tree = () => paramTypeOf(typ)
 
     /** ParamType  ::=  ParamValueType
      *               |  `=>' ParamValueType
@@ -2239,11 +2190,9 @@ object Parsers {
     def paramType(): Tree = paramTypeOf(paramValueType)
 
     /** ParamValueType ::= Type [`*']
-     *                   | IntoType
-     *                   | ‘(’ IntoType ‘)’ `*'
      */
     def paramValueType(): Tree =
-      val t = toplevelTyp(IntoOK.Yes)
+      val t = toplevelTyp()
       if isIdent(nme.raw.STAR) then
         if !t.isInstanceOf[Parens] && isInto(t) then
           syntaxError(
@@ -3573,7 +3522,7 @@ object Parsers {
      */
     def contextTypes(paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
       typesToParams(
-        commaSeparated(() => paramTypeOf(() => toplevelTyp())),
+        commaSeparated(() => paramTypeOf(toplevelTyp)),
         paramOwner, numLeadParams, impliedMods)
 
     def typesToParams(tps: List[Tree], paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =

@@ -2268,11 +2268,8 @@ object desugar {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
       case PrefixOp(op, t) =>
-        if op.name == tpnme.into then
-          Annotated(t, New(ref(defn.IntoAnnot.typeRef), Nil :: Nil))
-        else
-          val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
-          Select(t, nspace.UNARY_PREFIX ++ op.name)
+        val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+        Select(t, nspace.UNARY_PREFIX ++ op.name)
       case ForDo(enums, body) =>
         makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
       case ForYield(enums, body) =>

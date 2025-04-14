@@ -565,12 +565,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 
-  def isInto(t: Tree)(using Context): Boolean = t match
-    case PrefixOp(Ident(tpnme.into), _) => true
-    case Function(_, res) => isInto(res)
-    case Parens(t) => isInto(t)
-    case _ => false
-
   def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
     params match
       case Nil               => tpt
