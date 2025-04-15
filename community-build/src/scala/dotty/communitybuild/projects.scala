@@ -106,7 +106,7 @@ final case class SbtCommunityProject(
     scalacOptions.map("\"" + _ + "\"").mkString("List(", ",", ")")
 
   private val baseCommand =
-    "clean; set Global/logLevel := Level.Error; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
+    "clean; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
     ++ (if scalacOptions.isEmpty then "" else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
     ++ s"++$compilerVersion!; "
 
