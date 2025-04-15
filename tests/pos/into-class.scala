@@ -1,8 +1,9 @@
 import language.experimental.into
+import Conversion.into
 
 class Text(str: String)
 
-case class C(x: into Text)
+case class C(x: into[Text])
 
 case class D(x: Text)
 

@@ -374,52 +374,6 @@ object RefChecks {
       && atPhase(typerPhase):
         loop(member.info.paramInfoss, other.info.paramInfoss)
 
-    /** A map of all occurrences of `into` in a member type.
-     *  Key: number of parameter carrying `into` annotation(s)
-     *  Value: A list of all depths of into annotations, where each
-     *  function arrow increases the depth.
-     *  Example:
-     *      def foo(x: into A, y: => [X] => into (x: X) => into B): C
-     *  produces the map
-     *      (0 -> List(0), 1 -> List(1, 2))
-     */
-    type IntoOccurrenceMap = immutable.Map[Int, List[Int]]
-
-    def intoOccurrences(tp: Type): IntoOccurrenceMap =
-
-      def traverseInfo(depth: Int, tp: Type): List[Int] = tp match
-        case AnnotatedType(tp, annot) if annot.symbol == defn.IntoParamAnnot =>
-          depth :: traverseInfo(depth, tp)
-        case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.RepeatedParamClass =>
-          traverseInfo(depth, arg)
-        case defn.FunctionOf(_, resType, _) =>
-          traverseInfo(depth + 1, resType)
-        case RefinedType(parent, rname, mt: MethodOrPoly) =>
-          traverseInfo(depth, mt)
-        case tp: MethodOrPoly =>
-          traverseInfo(depth + 1, tp.resType)
-        case tp: ExprType =>
-          traverseInfo(depth, tp.resType)
-        case _ =>
-          Nil
-
-      def traverseParams(n: Int, formals: List[Type], acc: IntoOccurrenceMap): IntoOccurrenceMap =
-        if formals.isEmpty then acc
-        else
-          val occs = traverseInfo(0, formals.head)
-          traverseParams(n + 1, formals.tail, if occs.isEmpty then acc else acc + (n -> occs))
-
-      def traverse(n: Int, tp: Type, acc: IntoOccurrenceMap): IntoOccurrenceMap = tp match
-        case tp: PolyType =>
-          traverse(n, tp.resType, acc)
-        case tp: MethodType =>
-          traverse(n + tp.paramInfos.length, tp.resType, traverseParams(n, tp.paramInfos, acc))
-        case _ =>
-          acc
-
-      traverse(0, tp, immutable.Map.empty)
-    end intoOccurrences
-
     val checker =
       if makeOverridingPairsChecker == null then OverridingPairsChecker(clazz, self)
       else makeOverridingPairsChecker(clazz, self)
@@ -653,8 +607,6 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
-      else if intoOccurrences(memberTp) != intoOccurrences(otherTp) then
-        overrideError("has different occurrences of `into` modifiers", compareTypes = true)
       else if other.is(ParamAccessor) && !isInheritedAccessor(member, other)
            && !member.is(Tracked) // see remark on tracked members above
       then // (1.12)
