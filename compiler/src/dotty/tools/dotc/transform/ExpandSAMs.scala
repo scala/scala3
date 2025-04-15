@@ -126,10 +126,16 @@ class ExpandSAMs extends MiniPhase:
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
     // Otherwise construct a match `x match case _ => rhs` where `x` is the parameter of the closure.
-    def partialFunRHS(tree: Tree): Match = tree match
+    def partialFunRHS(tree: Tree): Match =
+      inline def checkMatch(): Unit =
+        tree match
+        case Block(_, m: Match) => report.warning(reporting.MatchIsNotPartialFunction(), m.srcPos)
+        case _ =>
+      tree match
       case m: Match => m
       case Block(Nil, expr) => partialFunRHS(expr)
       case _ =>
+        checkMatch()
         Match(ref(param.symbol),
           CaseDef(untpd.Ident(nme.WILDCARD).withType(param.symbol.info), EmptyTree, tree) :: Nil)
 
