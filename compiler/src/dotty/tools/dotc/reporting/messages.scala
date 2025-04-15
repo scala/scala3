@@ -3455,5 +3455,35 @@ end IllegalUnrollPlacement
 
 class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
   def kind = MessageKind.Interpolation
-  def msg(using Context) = errorText
-  def explain(using Context) = ""
+  protected def msg(using Context) = errorText
+  protected def explain(using Context) = ""
+
+class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotPartialFunctionID):
+  protected def msg(using Context) =
+    "match expression in result of block will not be used to synthesize partial function"
+  protected def explain(using Context) =
+    i"""A `PartialFunction` can be synthesized from a function literal if its body is just a pattern match.
+       |
+       |For example, `collect` takes a `PartialFunction`.
+       |  (1 to 10).collect(i => i match { case n if n % 2 == 0 => n })
+       |is equivalent to using a "pattern-matching anonymous function" directly:
+       |  (1 to 10).collect { case n if n % 2 == 0 => n }
+       |Compare an operation that requires a `Function1` instead:
+       |  (1 to 10).map { case n if n % 2 == 0 => n case n => n + 1 }
+       |
+       |As a convenience, the "selector expression" of the match can be an arbitrary expression:
+       |  List("1", "two", "3").collect(x => Try(x.toInt) match { case Success(i) => i })
+       |In this example, `isDefinedAt` evaluates the selector expression and any guard expressions
+       |in the pattern match in order to report whether an input is in the domain of the function.
+       |
+       |However, blocks of statements are not supported by this idiom:
+       |  List("1", "two", "3").collect: x =>
+       |    val maybe = Try(x.toInt) // statements preceding the match
+       |    maybe match
+       |    case Success(i) if i % 2 == 0 => i // throws MatchError on cases not covered
+       |
+       |This restriction is enforced to simplify the evaluation semantics of the partial function.
+       |Otherwise, it might not be clear what is computed by `isDefinedAt`.
+       |
+       |Efficient operations will use `applyOrElse` to avoid computing the match twice,
+       |but the `apply` body would be executed "per element" in the example."""
