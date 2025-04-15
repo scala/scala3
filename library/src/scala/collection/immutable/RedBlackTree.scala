@@ -19,12 +19,12 @@ import scala.annotation.tailrec
 import scala.runtime.Statics.releaseFence
 
 /** An object containing the RedBlack tree implementation used by for `TreeMaps` and `TreeSets`.
-  *
-  *  Implementation note: since efficiency is important for data structures this implementation
-  *  uses `null` to represent empty trees. This also means pattern matching cannot
-  *  easily be used. The API represented by the RedBlackTree object tries to hide these
-  *  optimizations behind a reasonably clean API.
-  */
+ *
+ *  Implementation note: since efficiency is important for data structures this implementation
+ *  uses `null` to represent empty trees. This also means pattern matching cannot
+ *  easily be used. The API represented by the RedBlackTree object tries to hide these
+ *  optimizations behind a reasonably clean API.
+ */
 private[collection] object RedBlackTree {
   def validate[A](tree: Tree[A, _])(implicit ordering: Ordering[A]): tree.type = {
     def impl(tree: Tree[A, _], keyProp: A => Boolean): Int = {

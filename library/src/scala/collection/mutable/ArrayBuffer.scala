@@ -21,23 +21,22 @@ import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.PStatics.VM_MaxArraySize
 
 /** An implementation of the `Buffer` class using an array to
-  *  represent the assembled sequence internally. Append, update and random
-  *  access take constant time (amortized time). Prepends and removes are
-  *  linear in the buffer size.
-  *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#array-buffers "Scala's Collection Library overview"]]
-  *  section on `Array Buffers` for more information.
-
-  *
-  *  @tparam A    the type of this arraybuffer's elements.
-  *
-  *  @define Coll `mutable.ArrayBuffer`
-  *  @define coll array buffer
-  *  @define orderDependent
-  *  @define orderDependentFold
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *  represent the assembled sequence internally. Append, update and random
+ *  access take constant time (amortized time). Prepends and removes are
+ *  linear in the buffer size.
+ *
+ *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#array-buffers "Scala's Collection Library overview"]]
+ *  section on `Array Buffers` for more information.
+ *
+ *  @tparam A    the type of this arraybuffer's elements.
+ *
+ *  @define Coll `mutable.ArrayBuffer`
+ *  @define coll array buffer
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @SerialVersionUID(-1582447879429021880L)
 class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   extends AbstractBuffer[A]
