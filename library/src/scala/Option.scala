@@ -99,7 +99,7 @@ object Option {
  *  - [[toList]] — Unary list of optional value, otherwise the empty list
  *
  *  A less-idiomatic way to use $option values is via pattern matching: {{{
- *  val nameMaybe = request getParameter "name"
+ *  val nameMaybe = request.getParameter("name")
  *  nameMaybe match {
  *    case Some(name) =>
  *      println(name.trim.toUppercase)

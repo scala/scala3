@@ -35,48 +35,59 @@ import scala.annotation.nowarn
  *  which is expected to be more efficient than calling both `isDefinedAt`
  *  and `apply`.
  *
- *  The main distinction between `PartialFunction` and [[scala.Function1]] is
- *  that the user of a `PartialFunction` may choose to do something different
- *  with input that is declared to be outside its domain. For example:
+ *  Note that `isDefinedAt` may itself throw an exception while evaluating pattern guards
+ *  or other parts of the `PartialFunction`. The same caveat holds for `applyOrElse`.
  *
  *  {{{
  *  val sample = 1 to 10
  *  def isEven(n: Int) = n % 2 == 0
+ *
  *  val eveningNews: PartialFunction[Int, String] = {
  *    case x if isEven(x) => s"\$x is even"
  *  }
  *
- *  // The method collect is described as "filter + map"
+ *  // The method "collect" is described as "filter + map"
  *  // because it uses a PartialFunction to select elements
  *  // to which the function is applied.
  *  val evenNumbers = sample.collect(eveningNews)
  *
+ *  // It's more usual to write the PartialFunction as a block of case clauses
+ *  // called an "anonymous pattern-matching function". Since the collect method
+ *  // expects a PartialFunction, one is synthesized from the case clauses.
+ *  def evenly = sample.collect { case x if isEven(x) => s"\$x is even" }
+ *
+ *  // A method that takes a Function will get one, using the same syntax.
+ *  // Note that all cases are supplied since Function has no `isDefinedAt`.
+ *  def evened = sample.map { case odd if !isEven(odd) => odd + 1 case even => even }
+ *  }}}
+ *
+ *  The main distinction between `PartialFunction` and [[scala.Function1]] is
+ *  that the client of a `PartialFunction` can perform an alternative computation
+ *  with input that is reported to be outside the domain of the function.
+ *
+ *  For example:
+ *
+ *  {{{
  *  val oddlyEnough: PartialFunction[Int, String] = {
  *    case x if !isEven(x) => s"\$x is odd"
  *  }
  *
  *  // The method orElse allows chaining another PartialFunction
  *  // to handle input outside the declared domain.
- *  val numbers = sample.map(eveningNews orElse oddlyEnough)
+ *  val numbers = sample.map(eveningNews.orElse(oddlyEnough))
  *
- *  // same as
+ *  // The same computation but with a function literal that calls applyOrElse
+ *  // with oddlyEnough as fallback, which it can do because a PartialFunction is a Function.
  *  val numbers = sample.map(n => eveningNews.applyOrElse(n, oddlyEnough))
+ *  }}}
  *
- *  val half: PartialFunction[Int, Int] = {
- *    case x if isEven(x) => x / 2
- *  }
+ *  As a convenience, function literals can also be adapted into partial functions
+ *  when needed. If the body of the function is a match expression, then the cases
+ *  are used to synthesize the PartialFunction as already shown.
  *
- *  // Calculating the domain of a composition can be expensive.
- *  val oddByHalf = half.andThen(oddlyEnough)
- *
- *  // Invokes `half.apply` on even elements!
- *  val oddBalls = sample.filter(oddByHalf.isDefinedAt)
- *
- *  // Better than filter(oddByHalf.isDefinedAt).map(oddByHalf)
- *  val oddBalls = sample.collect(oddByHalf)
- *
- *  // Providing "default" values.
- *  val oddsAndEnds = sample.map(n => oddByHalf.applyOrElse(n, (i: Int) => s"[\$i]"))
+ *  {{{
+ *  // The partial function isDefinedAt inputs resulting in the Success case.
+ *  val inputs = List("1", "two", "3").collect(x => Try(x.toInt) match { case Success(i) => i })
  *  }}}
  *
  *  @note Optional [[Function]]s, [[PartialFunction]]s and extractor objects
@@ -86,7 +97,7 @@ import scala.annotation.nowarn
  * | :---:  | ---  | --- | --- |
  * | from a [[PartialFunction]] | [[Predef.identity]] | [[lift]] | [[Predef.identity]] |
  * | from optional [[Function]] | [[Function1.UnliftOps#unlift]] or [[Function.unlift]] | [[Predef.identity]] | [[Function1.UnliftOps#unlift]] |
- * | from an extractor | `{ case extractor(x) => x }` | `extractor.unapply _` | [[Predef.identity]] |
+ * | from an extractor | `{ case extractor(x) => x }` | `extractor.unapply(_)` | [[Predef.identity]] |
  *  &nbsp;
  *
  * @define applyOrElseOrElse Note that calling [[isDefinedAt]] on the resulting partial function
