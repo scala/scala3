@@ -18,6 +18,7 @@ import typer.ForceDegree
 import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
+import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
 import CaptureSet.{CompareResult, IdentityCaptRefMap, VarState}
 
@@ -943,6 +944,28 @@ object TypeOps:
 
   class StripTypeVarsMap(using Context) extends TypeMap:
     def apply(tp: Type) = mapOver(tp).stripTypeVar
+
+  /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
+  def suppressInto(using Context) = new FollowAliasesMap:
+    def apply(t: Type): Type =
+      if variance <= 0 then t
+      else t match
+        case AppliedType(tycon: TypeRef, arg :: Nil) if defn.isInto(tycon.symbol) =>
+          AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
+        case _ =>
+          mapFollowingAliases(t)
+
+  /** Map no-flip covariant occurrences of `T @$into` to `into[T]` */
+  def revealInto(using Context) = new FollowAliasesMap:
+    def apply(t: Type): Type =
+      if variance <= 0 then t
+      else t match
+        case AnnotatedType(t1, ann) if ann.symbol == defn.SilentIntoAnnot =>
+          AppliedType(
+            defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
+            t1 :: Nil)
+        case _ =>
+          mapFollowingAliases(t)
 
   /** Apply [[Type.stripTypeVar]] recursively. */
   def stripTypeVars(tp: Type)(using Context): Type =

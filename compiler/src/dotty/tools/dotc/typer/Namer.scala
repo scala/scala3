@@ -833,7 +833,9 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+        else
+          valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+            .suppressIntoIfParam(sym)
       case original: DefDef =>
         // For the primary constructor DefDef, it is:
         // * indexed as a part of completing the class, with indexConstructor; and
