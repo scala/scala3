@@ -180,11 +180,11 @@ trait SeqOps[+A, +CC[_], +C] extends Any
   def appendedAll[B >: A](suffix: IterableOnce[B]): CC[B] = super.concat(suffix)
 
   /** Alias for `appendedAll`. */
-  @`inline` final def :++ [B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
+  @inline final def :++ [B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
 
   // Make `concat` an alias for `appendedAll` so that it benefits from performance
   // overrides of this method
-  @`inline` final override def concat[B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
+  @inline final override def concat[B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
 
  /** Produces a new sequence which contains all elements of this $coll and also all elements of
    *  a given sequence. `xs union ys`  is equivalent to `xs ++ ys`.
@@ -286,7 +286,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
    *  @param   len   the target length
    *  @param   elem  the padding value
    *  @tparam B      the element type of the returned $coll.
-   *  @return a new $coll consisting of
+   *  @return a new $ccoll consisting of
    *          all elements of this $coll followed by the minimal number of occurrences of `elem` so
    *          that the resulting collection has a length of at least `len`.
    */
@@ -843,16 +843,23 @@ trait SeqOps[+A, +CC[_], +C] extends Any
 
   override def isEmpty: Boolean = lengthCompare(0) == 0
 
-  /** Tests whether the elements of this collection are the same (and in the same order)
-    * as those of `that`.
-    */
+  /** Checks whether corresponding elements of the given iterable collection
+   *  compare equal (with respect to `==`) to elements of this $coll.
+   *
+   *  @param that  the collection to compare
+   *  @tparam B    the type of the elements of collection `that`.
+   *  @return `true` if both collections contain equal elements in the same order, `false` otherwise.
+   */
   def sameElements[B >: A](that: IterableOnce[B]): Boolean = {
     val thisKnownSize = knownSize
-    val knownSizeDifference = thisKnownSize != -1 && {
+    if (thisKnownSize != -1) {
       val thatKnownSize = that.knownSize
-      thatKnownSize != -1 && thisKnownSize != thatKnownSize
+      if (thatKnownSize != -1) {
+        if (thisKnownSize != thatKnownSize) return false
+        if (thisKnownSize == 0) return true
+      }
     }
-    !knownSizeDifference && iterator.sameElements(that)
+    iterator.sameElements(that)
   }
 
   /** Tests whether every element of this $coll relates to the

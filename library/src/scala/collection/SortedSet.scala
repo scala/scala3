@@ -57,6 +57,7 @@ trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
     */
   def sortedIterableFactory: SortedIterableFactory[CC]
 
+  /** Widens the type of this set to its unsorted counterpart. */
   def unsorted: Set[A]
 
   /**

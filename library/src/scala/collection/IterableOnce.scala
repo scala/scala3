@@ -40,6 +40,7 @@ import scala.runtime.{AbstractFunction1, AbstractFunction2}
   * without inheriting unwanted implementations.
   *
   * @define coll collection
+  * @define ccoll $coll
   */
 trait IterableOnce[+A] extends Any {
 
@@ -318,8 +319,6 @@ object IterableOnce {
   *              The order of applications of the operator is unspecified and may be nondeterministic.
   * @define exactlyOnce
   *              Each element appears exactly once in the computation.
-  * @define coll collection
-  *
   */
 trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
@@ -439,51 +438,50 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
    */
   def slice(from: Int, until: Int): C
 
-  /** Builds a new $coll by applying a function to all elements of this $coll.
+  /** Builds a new $ccoll by applying a function to all elements of this $coll.
    *
    *  @param f      the function to apply to each element.
-   *  @tparam B     the element type of the returned $coll.
-   *  @return       a new $coll resulting from applying the given function
+   *  @tparam B     the element type of the returned $ccoll.
+   *  @return       a new $ccoll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
    */
   def map[B](f: A => B): CC[B]
 
-  /** Builds a new $coll by applying a function to all elements of this $coll
+  /** Builds a new $ccoll by applying a function to all elements of this $coll
    *  and using the elements of the resulting collections.
    *
    *    For example:
    *
    *    {{{
-   *      def getWords(lines: Seq[String]): Seq[String] = lines flatMap (line => line split "\\W+")
+   *      def getWords(lines: Seq[String]): Seq[String] = lines.flatMap(line => line.split("\\W+"))
    *    }}}
    *
-   *    The type of the resulting collection is guided by the static type of $coll. This might
+   *    The type of the resulting collection is guided by the static type of this $coll. This might
    *    cause unexpected results sometimes. For example:
    *
    *    {{{
    *      // lettersOf will return a Seq[Char] of likely repeated letters, instead of a Set
-   *      def lettersOf(words: Seq[String]) = words flatMap (word => word.toSet)
+   *      def lettersOf(words: Seq[String]) = words.flatMap(word => word.toSet)
    *
    *      // lettersOf will return a Set[Char], not a Seq
-   *      def lettersOf(words: Seq[String]) = words.toSet flatMap ((word: String) => word.toSeq)
+   *      def lettersOf(words: Seq[String]) = words.toSet.flatMap(word => word.toSeq)
    *
    *      // xs will be an Iterable[Int]
-   *      val xs = Map("a" -> List(11,111), "b" -> List(22,222)).flatMap(_._2)
+   *      val xs = Map("a" -> List(11, 111), "b" -> List(22, 222)).flatMap(_._2)
    *
    *      // ys will be a Map[Int, Int]
-   *      val ys = Map("a" -> List(1 -> 11,1 -> 111), "b" -> List(2 -> 22,2 -> 222)).flatMap(_._2)
+   *      val ys = Map("a" -> List(1 -> 11, 1 -> 111), "b" -> List(2 -> 22, 2 -> 222)).flatMap(_._2)
    *    }}}
    *
    *  @param f      the function to apply to each element.
    *  @tparam B     the element type of the returned collection.
-   *  @return       a new $coll resulting from applying the given collection-valued function
+   *  @return       a new $ccoll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
    */
   def flatMap[B](f: A => IterableOnce[B]): CC[B]
 
-  /** Converts this $coll of iterable collections into
-   *  a $coll formed by the elements of these iterable
-   *  collections.
+  /** Given that the elements of this collection are themselves iterable collections,
+   *  converts this $coll into a $ccoll comprising the elements of these iterable collections.
    *
    *    The resulting collection's type will be guided by the
    *    type of $coll. For example:
@@ -505,16 +503,16 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
    *  @tparam B the type of the elements of each iterable collection.
    *  @param asIterable an implicit conversion which asserts that the element
    *          type of this $coll is an `Iterable`.
-   *  @return a new $coll resulting from concatenating all element ${coll}s.
+   *  @return a new $ccoll resulting from concatenating all element collections.
    */
   def flatten[B](implicit asIterable: A => IterableOnce[B]): CC[B]
 
-  /** Builds a new $coll by applying a partial function to all elements of this $coll
+  /** Builds a new $ccoll by applying a partial function to all elements of this $coll
    *  on which the function is defined.
    *
    *  @param pf     the partial function which filters and maps the $coll.
    *  @tparam B     the element type of the returned $coll.
-   *  @return       a new $coll resulting from applying the given partial function
+   *  @return       a new $ccoll resulting from applying the given partial function
    *                `pf` to each element on which it is defined and collecting the results.
    *                The order of the elements is preserved.
    */
@@ -522,7 +520,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
 
   /** Zips this $coll with its indices.
    *
-   *  @return        A new $coll containing pairs consisting of all elements of this $coll paired with their index.
+   *  @return        A new $ccoll containing pairs consisting of all elements of this $coll paired with their index.
    *                 Indices start at `0`.
    *  @example
    *    `List("a", "b", "c").zipWithIndex == List(("a", 0), ("b", 1), ("c", 2))`
@@ -533,7 +531,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
    *
    *  Note: `c span p`  is equivalent to (but possibly more efficient than)
    *  `(c takeWhile p, c dropWhile p)`, provided the evaluation of the
-   *  predicate `p` does not cause any side-effects.
+   *  predicate `p` does not cause any side effects.
    *  $orderDependent
    *
    *  @param p the test predicate

@@ -16,7 +16,11 @@ package mutable
 import scala.annotation.nowarn
 
 
-/** A `Buffer` is a growable and shrinkable `Seq`. */
+/** A `Buffer` is a growable and shrinkable `Seq`.
+ *
+ *  @define coll buffer
+ *  @define Coll `Buffer`
+ */
 trait Buffer[A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
