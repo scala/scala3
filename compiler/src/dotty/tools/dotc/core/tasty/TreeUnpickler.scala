@@ -933,7 +933,7 @@ class TreeUnpickler(reader: TastyReader,
           DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
-          sym.info = tpt.tpe
+          sym.info = tpt.tpe.suppressIntoIfParam(sym)
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
@@ -978,7 +978,7 @@ class TreeUnpickler(reader: TastyReader,
         case PARAM =>
           val tpt = readTpt()(using localCtx)
           assert(nothingButMods(end))
-          sym.info = tpt.tpe
+          sym.info = tpt.tpe.suppressIntoIfParam(sym)
           ValDef(tpt)
       }
       goto(end)

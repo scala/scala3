@@ -41,21 +41,15 @@
    |                                            Missing return type
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/into-syntax.scala:7:17 ------------------------------------------------------------
+-- Error: tests/neg/into-syntax.scala:7:17 -----------------------------------------------------------------------------
 7 |  def f1(x: List[into Int]) = () // error // error
   |                 ^^^^
-  |                 Not found: type into - did you mean into.type?
-  |
-  | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/into-syntax.scala:21:18 -----------------------------------------------------------
+  |                 Type argument into does not have the same kind as its bound 
+-- [E056] Syntax Error: tests/neg/into-syntax.scala:21:18 --------------------------------------------------------------
 21 |  def f11(x: ((y: into Int) => into Int => Int)*) = () // error // error
    |                  ^^^^
-   |                  Not found: type into - did you mean into.type?
-   |
-   | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/into-syntax.scala:27:22 -----------------------------------------------------------
+   |                  Missing type parameter for into
+-- Error: tests/neg/into-syntax.scala:27:22 ----------------------------------------------------------------------------
 27 |  def f17(x: into (y: into Int, z: into Int) => into Int) = () // error // error // error
    |                      ^^^^
-   |                      Not found: type into - did you mean into.type?
-   |
-   | longer explanation available when compiling with `-explain`
+   |                      Type argument into does not have the same kind as its bound 

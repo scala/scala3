@@ -1,6 +1,7 @@
 //> using options -Xfatal-warnings
 
 import language.experimental.into
+import Conversion.into
 
 class Text(val str: String)
 
@@ -12,12 +13,12 @@ trait A[X]:
 trait B[X] extends A[X]:
   override def f(x: X) = super.f(x)
 
-trait C[X] extends A[X]:
-  override def f(x: into X) = super.f(x)    // error
+trait C[X] extends A[X]:  // error
+  override def f(x: into[X]) = super.f(x)
 
 class D[X] extends B[X], C[X] // error
 
-trait E[X] extends C[X]:
-  override def f(x: X) = super.f(x) // error
+trait E[X] extends C[X]: // error
+  override def f(x: X) = super.f(x)
 
-def f = new D[Text].f("abc")
+

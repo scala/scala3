@@ -1688,7 +1688,7 @@ object Parsers {
             accept(ARROW)
 
           val resultType =
-            if isPure then capturesAndResult(typ) else typ()
+            if isPure then capturesAndResult(() => typ()) else typ()
           if token == TLARROW then
             for case ValDef(_, tpt, _) <- params do
               if isByNameType(tpt) then
@@ -1779,7 +1779,7 @@ object Parsers {
             LambdaTypeTree(tparams.mapConserve(stripContextBounds("type lambdas")), toplevelTyp())
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
-          val body = toplevelTyp(nestedIntoOK(in.token))
+          val body = toplevelTyp()
           makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
         else
           accept(TLARROW)
@@ -2179,7 +2179,7 @@ object Parsers {
      *               |  `=>' Type
      *               |  `->' [CaptureSet] Type
      */
-    val funArgType: () => Tree = () => paramTypeOf(typ)
+    val funArgType: () => Tree = () => paramTypeOf(() => typ())
 
     /** ParamType  ::=  ParamValueType
      *               |  `=>' ParamValueType
@@ -2192,11 +2192,6 @@ object Parsers {
     def paramValueType(): Tree =
       val t = toplevelTyp()
       if isIdent(nme.raw.STAR) then
-        if !t.isInstanceOf[Parens] && isInto(t) then
-          syntaxError(
-            em"""`*` cannot directly follow `into` parameter
-                |the `into` parameter needs to be put in parentheses""",
-            in.offset)
         in.nextToken()
         atSpan(startOffset(t)):
           PostfixOp(t, Ident(tpnme.raw.STAR))
@@ -3498,7 +3493,7 @@ object Parsers {
      */
     def contextTypes(paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
       typesToParams(
-        commaSeparated(() => paramTypeOf(toplevelTyp)),
+        commaSeparated(() => paramTypeOf(() => toplevelTyp())),
         paramOwner, numLeadParams, impliedMods)
 
     def typesToParams(tps: List[Tree], paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =

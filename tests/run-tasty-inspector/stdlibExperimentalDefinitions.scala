@@ -50,7 +50,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.use",
 
   //// New feature: into
-  "scala.annotation.into",
+  "scala.Conversion$.into",
+  "scala.Conversion$.underlying",
   "scala.annotation.internal.$into",
 
   //// New feature: Macro annotations
