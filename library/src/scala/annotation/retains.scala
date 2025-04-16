@@ -2,7 +2,7 @@ package scala.annotation
 
 /** An annotation that indicates capture of a set of references under capture checking.
  *
- *      T @retains(x, y, z)
+ *      T @retains[x.type | y.type | z.type]
  *
  *  is the internal representation used for the capturing type
  *
@@ -12,20 +12,11 @@ package scala.annotation
  *  non-standard capturing type syntax.
  */
 @experimental
-class retains(xs: (Any@retainsArg)*) extends annotation.StaticAnnotation
+class retains[Elems] extends annotation.StaticAnnotation
 
-/** Equivalent in meaning to `@retains(cap)`, but consumes less bytecode.
+/** Equivalent in meaning to `@retains[cap.type]`, but consumes less bytecode.
  */
 @experimental
-class retainsCap() extends annotation.StaticAnnotation
+class retainsCap extends annotation.StaticAnnotation
   // This special case is needed to be able to load standard library modules without
   // cyclic reference errors. Specifically, load sequences involving IterableOnce.
-
-/** Internal use, only for parameters of `retains` and `retainsByName`.
- */
-@experimental
-class retainsArg extends annotation.StaticAnnotation
-  // This annotation prevents argument references to retains and retainsByName from being
-  // augmented with explicit arguments. That's unsound in general, but necessary
-  // since a captureRef could have an impure context function type, A ?=> B, but
-  // we still need to have the unapplied captureRef in the annotation.

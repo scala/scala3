@@ -348,6 +348,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         unusable(ConstructorProxyNotValue(_))
       else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
+      else if tree.symbol.isDummyCaptureParam then
+        throw new Exception(s"Dummy capture param ${tree.symbol} should not be used as a value")
       else
         tree
 

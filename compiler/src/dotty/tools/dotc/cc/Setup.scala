@@ -764,7 +764,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case CapturingType(_, refs) =>
         !refs.isAlwaysEmpty
       case RetainingType(parent, refs) =>
-        !refs.isEmpty
+        !refs.retainedElements.isEmpty
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass
@@ -810,7 +810,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
       case RetainingType(parent, refs) =>
         needsVariable(parent)
-        && !refs.tpes.exists:
+        && !refs.retainedElements.exists:
             case ref: TermRef => ref.isCap
             case _ => false
       case AnnotatedType(parent, _) =>
@@ -905,19 +905,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  @param tpt      the tree for which an error or warning should be reported
    */
   private def checkWellformed(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
-    capt.println(i"checkWF post $parent ${ann.retainedElems} in $tpt")
-    var retained = ann.retainedElems.toArray
-    for i <- 0 until retained.length do
-      val refTree = retained(i)
-      val refs =
-        try refTree.toCaptureRefs
-        catch case ex: IllegalCaptureRef =>
-          report.error(em"Illegal capture reference: ${ex.getMessage.nn}", refTree.srcPos)
-          Nil
-      for ref <- refs do
+    capt.println(i"checkWF post $parent ${ann.retainedSet} in $tpt")
+    try
+      val retainedRefs = ann.retainedSet.retainedElements.toArray
+      for i <- 0 until retainedRefs.length do
+        val ref = retainedRefs(i)
         def pos =
-          if refTree.span.exists then refTree.srcPos
-          else if ann.span.exists then ann.srcPos
+          if ann.span.exists then ann.srcPos
           else tpt.srcPos
 
         def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
@@ -933,14 +927,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         val others =
           for
-            j <- 0 until retained.length if j != i
-            r <- retained(j).toCaptureRefs
+            j <- 0 until retainedRefs.length if j != i
+            r = retainedRefs(j)
             if !r.isRootCapability
           yield r
         val remaining = CaptureSet(others*)
         check(remaining, remaining)
       end for
-    end for
+    catch case ex: IllegalCaptureRef =>
+      report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tpt.srcPos)
   end checkWellformed
 
   /** Check well formed at post check time. We need to wait until after

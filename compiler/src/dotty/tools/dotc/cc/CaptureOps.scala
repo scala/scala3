@@ -50,26 +50,6 @@ def ccState(using Context): CCState =
 
 extension (tree: Tree)
 
-  /** Map tree with CaptureRef type to its type,
-   *  map CapSet^{refs} to the `refs` references,
-   *  throw IllegalCaptureRef otherwise
-   */
-  def toCaptureRefs(using Context): List[CaptureRef] = tree match
-    case ReachCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.reach)
-    case ReadOnlyCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.readOnly)
-    case CapsOfApply(arg) =>
-      arg.toCaptureRefs
-    case _ => tree.tpe.dealiasKeepAnnots match
-      case ref: CaptureRef if ref.isTrackableRef =>
-        ref :: Nil
-      case AnnotatedType(parent, ann)
-      if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
-        ann.tree.toCaptureSet.elems.toList
-      case tpe =>
-        throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
-
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
    *  For efficience, the result is cached as an Attachment on the tree.
    */
@@ -77,10 +57,17 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs = CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
-          //.showing(i"toCaptureSet $tree --> $result", capt)
+        val refs = CaptureSet(tree.retainedSet.retainedElements*)
         tree.putAttachment(Captures, refs)
         refs
+
+  def retainedSet(using Context): Type =
+    tree match
+      case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
+      case _ =>
+        if tree.symbol.maybeOwner == defn.RetainsCapAnnot
+        then root.cap
+        else NoType
 
   /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
   def retainedElems(using Context): List[Tree] = tree match
@@ -92,6 +79,21 @@ extension (tree: Tree)
       else Nil
 
 extension (tp: Type)
+
+  def retainedElements(using Context): List[CaptureRef] = tp match
+    case ReachCapability(tp1) =>
+      tp1.reach :: Nil
+    case ReadOnlyCapability(tp1) =>
+      tp1.readOnly :: Nil
+    case tp: CaptureRef if tp.isTrackableRef =>
+      tp :: Nil
+    case tp: TypeRef if tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet) =>
+      tp :: Nil
+    case OrType(tp1, tp2) =>
+      tp1.retainedElements ++ tp2.retainedElements
+    case _ =>
+      if tp.isNothingType then Nil
+      else throw IllegalCaptureRef(tp)
 
   /** Is this type a CaptureRef that can be tracked?
    *  This is true for
@@ -516,7 +518,7 @@ extension (cls: ClassSymbol)
       || bc.is(CaptureChecked)
           && bc.givenSelfType.dealiasKeepAnnots.match
             case CapturingType(_, refs) => refs.isAlwaysEmpty
-            case RetainingType(_, refs) => refs.isEmpty
+            case RetainingType(_, refs) => refs.retainedElements.isEmpty
             case selfType =>
               isCaptureChecking  // At Setup we have not processed self types yet, so
                                  // unless a self type is explicitly given, we can't tell
@@ -634,7 +636,7 @@ class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type =
     tp match
       case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
-        RetainingType(tp, Nil, byName = annot.symbol == defn.RetainsByNameAnnot)
+        RetainingType(tp, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
       case _ => mapOver(tp)
 
 /** A typemap that follows aliases and keeps their transformed results if
@@ -653,26 +655,18 @@ trait FollowAliasesMap(using Context) extends TypeMap:
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
  *  capability as a tree in a @retains annotation.
  */
-object ReachCapabilityApply:
-  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-    case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
-    case _ => None
+// object ReachCapabilityApply:
+//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+//     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
+//     case _ => None
 
 /** An extractor for `caps.readOnlyCapability(ref)`, which is used to express a read-only
  *  capability as a tree in a @retains annotation.
  */
-object ReadOnlyCapabilityApply:
-  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-    case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
-    case _ => None
-
-/** An extractor for `caps.capsOf[X]`, which is used to express a generic capture set
- *  as a tree in a @retains annotation.
- */
-object CapsOfApply:
-  def unapply(tree: TypeApply)(using Context): Option[Tree] = tree match
-    case TypeApply(capsOf, arg :: Nil) if capsOf.symbol == defn.Caps_capsOf => Some(arg)
-    case _ => None
+// object ReadOnlyCapabilityApply:
+//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+//     case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
+//     case _ => None
 
 abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =

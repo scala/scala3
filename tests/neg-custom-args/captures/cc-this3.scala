@@ -1,3 +1,4 @@
+import language.experimental.captureChecking
 class Cap extends caps.Capability
 
 def eff(using Cap): Unit = ()

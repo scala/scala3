@@ -173,10 +173,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
     case ref: RefTree[?] if ref.typeOpt.exists =>
       toTextCaptureRef(ref.typeOpt)
-    case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
-      toTextRetainedElem(arg)
-    case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
-    case ReadOnlyCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ ".rd"
     case _ => toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
@@ -277,11 +273,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
             else
               toTextCaptureSet(refs)
           toTextCapturing(parent, refsText, boxText)
-      case tp @ RetainingType(parent, refs) =>
+      case tp @ RetainingType(parent, refsType) =>
+        val refs = refsType.retainedElements
         if Feature.ccEnabledSomewhere then
           val refsText = refs match
-            case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
-            case _ => toTextRetainedElems(refs)
+            case (ref: TermRef) :: Nil if ref.symbol == defn.captureRoot => rootSetText
+            case _ => toTextRetainedElems(refs.map(r => ast.tpd.TypeTree(r)))
           toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
