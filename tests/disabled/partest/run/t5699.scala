@@ -7,7 +7,7 @@ object Test extends DirectTest {
     |public @interface MyAnnotation { String value(); }
   """.stripMargin
 
-  override def extraSettings: String = "-usejavacp -Ystop-after:typer -Xprint:parser"
+  override def extraSettings: String = "-usejavacp -Ystop-after:typer -Vprint:parser"
 
   override def show(): Unit = {
     // redirect err to out, for logging

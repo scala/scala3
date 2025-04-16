@@ -3,7 +3,7 @@ import java.io.{Console => _, _}
 
 object Test extends DirectTest {
 
-  override def extraSettings: String = "-usejavacp -Xprint:patmat -Xprint-pos -d " + testOutput.path
+  override def extraSettings: String = "-usejavacp -Vprint:patmat -Xprint-pos -d " + testOutput.path
 
   override def code =
     """
