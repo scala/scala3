@@ -83,7 +83,8 @@ class TypeUtils:
           case _ =>
             if defn.isTupleClass(tp.typeSymbol) && !normalize then Some(tp.dealias.argInfos)
             else None
-      recur(self.stripTypeVar, bound)
+      val stripped = if normalize then self.stripTypeVar.dealias else self.stripTypeVar // keep error reporting aliased
+      recur(stripped, bound)
 
     /** Is this a generic tuple but not already an instance of one of Tuple1..22? */
     def isGenericTuple(using Context): Boolean =
