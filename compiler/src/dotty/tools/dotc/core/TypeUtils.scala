@@ -68,7 +68,7 @@ class TypeUtils:
     def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[List[Type]] =
       def recur(tp: Type, bound: Int): Option[List[Type]] =
         if bound < 0 then Some(Nil)
-        else (if normalize then tp.normalized else tp).dealias match
+        else (if normalize then tp.dealias.normalized else tp).dealias match
           case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
             recur(tl, bound - 1).map(hd :: _)
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
@@ -83,8 +83,7 @@ class TypeUtils:
           case _ =>
             if defn.isTupleClass(tp.typeSymbol) && !normalize then Some(tp.dealias.argInfos)
             else None
-      val stripped = if normalize then self.stripTypeVar.dealias else self.stripTypeVar // keep error reporting aliased
-      recur(stripped, bound)
+      recur(self.stripTypeVar, bound)
 
     /** Is this a generic tuple but not already an instance of one of Tuple1..22? */
     def isGenericTuple(using Context): Boolean =
