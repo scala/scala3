@@ -142,7 +142,7 @@ class PcInlayHintsProvider(
       if isInScope(tpe) then tpe
       else tpe.deepDealias(using indexedCtx.ctx)
 
-    val dealiased = optDealias(tpe)
+    val dealiased = if tpe.isNamedTupleType then tpe else optDealias(tpe)
     val tpeStr = printer.tpe(dealiased)
     val usedRenames = printer.getUsedRenames
     val parts = partsFromType(dealiased, usedRenames)

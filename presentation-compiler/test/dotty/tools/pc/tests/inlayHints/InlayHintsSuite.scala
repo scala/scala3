@@ -1055,4 +1055,24 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |}
          |""".stripMargin
     )
+
+  @Test def `named-tuples` =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      """|def hello/*: (path : String<<java/lang/String#>>, num : Int<<scala/Int#>>)*/ = (path = ".", num = 5)/*[(String<<java/lang/String#>>, Int<<scala/Int#>>)]*/
+         |
+         |def test/*: Concat<<scala/NamedTuple.Concat#>>[(path : String<<java/lang/String#>>, num : Int<<scala/Int#>>), (line : Int<<scala/Int#>>)]*/ =
+         |  hello ++/*[Tuple1<<scala/Tuple1#>>["line"], Tuple1<<scala/Tuple1#>>[Int<<scala/Int#>>]]*/ (line = 1)/*(using refl<<scala/`<:<`.refl().>>)*//*[Tuple1<<scala/Tuple1#>>[Int<<scala/Int#>>]]*/
+         |
+         |@main def bla/*: Unit<<scala/Unit#>>*/ =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin
+    )
 }
