@@ -9,6 +9,8 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
       ),
 
       // Additions since last LTS
