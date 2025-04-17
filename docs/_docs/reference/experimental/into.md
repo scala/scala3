@@ -17,8 +17,8 @@ import scala.language.implicitConversions
 ```
 in any code that uses them as implicit conversions (code that calls conversions explicitly is not affected). If the import is missing, a feature warning is currently issued, and this will become an error in future versions of Scala 3. The motivation for this restriction is two-fold:
 
- - Code with hidden implicit conversions is hard to understand and might have correctness or performance problems that go undetected.
- - If we require explicit user-opt in for implicit conversions, we can significantly improve type inference by propagating expected type information more widely.
+ - Code with hidden implicit conversions is hard to understand and might have correctness or performance issues that go undetected.
+ - If we require explicit user-opt in for implicit conversions, we can significantly improve type inference by propagating expected type information more widely in those parts of the program where there is no opt-in.
 
 There is one broad use case, however, where implicit conversions are very hard to replace. This is the case where an implicit conversion is used to adapt a method argument to its formal parameter type. An example from the standard library:
 ```scala
@@ -27,8 +27,7 @@ scala> val ys = Array(2, 3)
 scala> xs ++ ys
 val res0: List[Int] = List(0, 1, 2, 3)
 ```
-The last input made use of an implicit conversion from `Array[Int]` to `IterableOnce[Int]` which is defined as a Scala 2 style implicit conversion in the standard library. Once the standard library is rewritten with Scala 3 conversions, this will
-require a language import at the use site, which is clearly unacceptable. It is possible to avoid the need for implicit conversions using method overloading or type classes, but this often leads to longer and more complicated code, and neither of these alternatives work for vararg parameters.
+The input line `xs ++ ys` makes use of an implicit conversion from `Array[Int]` to `IterableOnce[Int]`. This conversion is defined in the standard library as an `implicit def`. Once the standard library is rewritten with Scala 3 conversions, this will require a language import at the use site, which is clearly unacceptable. It is possible to avoid the need for implicit conversions using method overloading or type classes, but this often leads to longer and more complicated code, and neither of these alternatives work for vararg parameters.
 
 This is where the `into` type alias comes in. Here is a signature of a `++` method on `List[A]` that uses it:
 
@@ -54,8 +53,6 @@ val ys: Array[Int] = Array(2, 3)
 xs ++ ys
 ```
 This inserts the given conversion on the `ys` argument in `xs ++ ys`. It typechecks without a feature warning since the formal parameter of `++` is of type `into[IterableOnce]`, which is also the expected type of `ys`.
-
-The
 
 ## `into` in Function Results
 
@@ -122,18 +119,18 @@ as they are seen in a method body. Here is an example:
       buf += elems
     buf.toList
 ```
-Inside the `++` method, `elems` is of type `IterableOnce[A]`, not `into[IterableOne[A]]`. Hence, we can simply write `elems.iterator` to get at the `iterator` method of the `IterableOnce` class.
+Inside the `++` method, the `elems` parameter is of type `IterableOnce[A]`, not `into[IterableOne[A]]`. Hence, we can simply write `elems.iterator` to get at the `iterator` method of the `IterableOnce` class.
 
-Specifically, we erase all `into` wrappers in the local types of parameter types, on the top-level of these
-types as well as in all top-level co-variant subparts. Here, a part `S` of a type `T` is
-top-level covariant, if it is not enclosed in some type that appears in contra-variant or invariant position in `T`.
+Specifically (meaning in spec-language): We erase all `into` wrappers in the local types of parameter types, on the top-level of these types as well as in all _top-level covariant_ subparts. Here, a part `S` of a type `T` is top-level covariant it is not enclosed in some type that appears in contra-variant or invariant position in `T`.
 
 ## Into in Aliases
 
 Since `into` is a regular type constructor, it can be used anywhere, including in type aliases and type parameters. This gives a lot of flexibility to enable implicit conversions for user-visible types. For instance, the Laminar framework
-defined a type `Modifier` that is commonly used as a parameter type of user-defined methods and that should support implicit conversions into it. Pattern like this can be supported by defining a type alias such as
+defines a type `Modifier` that is commonly used as a parameter type of user-defined methods and that should support implicit conversions into it. Patterns like this can be supported by defining a type alias such as
 ```scala
 type Modifier = into[ModifierClass]
 ```
-The into-erasure for function parameters also works for aliases. So a function defining parameters of `Modifier` type can use them internally as if they were from the underlying `ModifierClass`.
+The into-erasure for function parameters also works in aliased types. So a function defining parameters of `Modifier` type can use them internally as if they were from the underlying `ModifierClass`.
+
+## Alternatives
 
