@@ -43,7 +43,6 @@ import CaptureSet.{CompareResult, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
-import dotty.tools.dotc.cc.ccConfig
 
 object Types extends TypeUtils {
 
@@ -446,9 +445,11 @@ object Types extends TypeUtils {
     def isRepeatedParam(using Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
-    /** Is this a parameter type that allows implicit argument converson? */
+    /** Is this type of the form `compiletime.into[T]`, which means it can be the
+     *  target of an implicit converson without requiring a language import?
+     */
     def isInto(using Context): Boolean = this match
-      case AnnotatedType(_, annot) => annot.symbol == defn.IntoParamAnnot
+      case AppliedType(tycon: TypeRef, arg :: Nil) => defn.isInto(tycon.symbol)
       case _ => false
 
     /** Is this the type of a method that has a repeated parameter type as
@@ -1966,8 +1967,7 @@ object Types extends TypeUtils {
           }
           defn.FunctionNOf(
             mt.paramInfos.mapConserve:
-              _.translateFromRepeated(toArray = isJava)
-               .mapIntoAnnot(defn.IntoParamAnnot, null),
+              _.translateFromRepeated(toArray = isJava),
             result1, isContextual)
         if mt.hasErasedParams then
           defn.PolyFunctionOf(mt)
@@ -2014,38 +2014,6 @@ object Types extends TypeUtils {
         tp.translateParameterized(typeSym, defn.RepeatedParamClass)
       case _ => this
     }
-
-    /** A mapping between mapping one kind of into annotation to another or
-     *  dropping into annotations.
-     *  @param from the into annotation to map
-     *  @param to   either the replacement annotation symbol, or `null`
-     *              in which case the `from` annotations are dropped.
-     */
-    def mapIntoAnnot(from: ClassSymbol, to: ClassSymbol | Null)(using Context): Type = this match
-      case self @ AnnotatedType(tp, annot) =>
-        val tp1 = tp.mapIntoAnnot(from, to)
-        if annot.symbol == from then
-          if to == null then tp1
-          else AnnotatedType(tp1, Annotation(to, annot.tree.span))
-        else self.derivedAnnotatedType(tp1, annot)
-      case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.RepeatedParamClass =>
-        val arg1 = arg.mapIntoAnnot(from, to)
-        if arg1 eq arg then this
-        else AppliedType(tycon, arg1 :: Nil)
-      case defn.FunctionOf(argTypes, resType, isContextual) =>
-        val resType1 = resType.mapIntoAnnot(from, to)
-        if resType1 eq resType then this
-        else defn.FunctionOf(argTypes, resType1, isContextual)
-      case RefinedType(parent, rname, mt: MethodOrPoly) =>
-        val mt1 = mt.mapIntoAnnot(from, to)
-        if mt1 eq mt then this
-        else RefinedType(parent.mapIntoAnnot(from, to), rname, mt1)
-      case mt: MethodOrPoly =>
-        mt.derivedLambdaType(resType = mt.resType.mapIntoAnnot(from, to))
-      case tp: ExprType =>
-        tp.derivedExprType(tp.resType.mapIntoAnnot(from, to))
-      case _ =>
-        this
 
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
@@ -4176,11 +4144,11 @@ object Types extends TypeUtils {
 
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
-     *   - replace @repeated annotations on Seq or Array types by <repeated> types
+     *   - replace `@repeated` annotations on Seq or Array types by <repeated> types
      *   - map into annotations to $into annotations
-     *   - add @inlineParam to inline parameters
-     *   - add @erasedParam to erased parameters
-     *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
+     *   - add `@inlineParam` to inline parameters
+     *   - add `@erasedParam` to erased parameters
+     *   - map `T @$into` types to `into[T]`
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
       apply(params.map(_.name.asTermName))(
@@ -4194,9 +4162,7 @@ object Types extends TypeUtils {
       def addAnnotation(tp: Type, cls: ClassSymbol, param: Symbol): Type = tp match
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
-      var paramType = pinfo
-        .annotatedToRepeated
-        .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
+      var paramType = TypeOps.revealInto(pinfo).annotatedToRepeated
       if param.is(Inline) then
         paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
       if param.is(Erased) then
@@ -6130,6 +6096,18 @@ object Types extends TypeUtils {
     def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
 
   end BiTypeMap
+
+  /** A typemap that follows aliases and keeps their transformed results if
+  *  there is a change.
+  */
+  trait FollowAliasesMap(using Context) extends TypeMap:
+    def mapFollowingAliases(t: Type): Type =
+      val t1 = t.dealiasKeepAnnots
+      if t1 ne t then
+        val t2 = apply(t1)
+        if t2 ne t1 then t2
+        else t
+      else mapOver(t)
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>

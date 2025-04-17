@@ -1,8 +1,15 @@
-type Person = (name: String, age: Int)
 
-trait A:
-  type T
+package foo
 
-class B:
-  type U =:= A { type T = U }
+package object bar:
+  opaque type O[X] >: X = X
+
+class Test:
+  import bar.O
+
+  val x = "abc"
+  val y: O[String] = x
+  //val z: String = y
+
+
 
