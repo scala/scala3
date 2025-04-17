@@ -154,6 +154,19 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForBind(tree: Bind)(using Context): Context =
     refInfos.register(tree)
     ctx
+  /* cf QuotePattern
+  override def transformBind(tree: Bind)(using Context): tree.type =
+    tree.symbol.info match
+    case TypeBounds(lo, hi) =>
+      def resolve(tpe: Type): Unit =
+        val sym = tpe.typeSymbol
+        if sym.exists then
+          resolveUsage(sym, sym.name, NoPrefix)
+      resolve(lo)
+      resolve(hi)
+    case _ =>
+    tree
+  */
 
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
@@ -250,7 +263,17 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case Splice(expr) =>
       transformAllDeep(expr)
     case QuotePattern(bindings, body, quotes) =>
-      bindings.foreach(transformAllDeep)
+      bindings.foreach:
+        case b @ Bind(_, _) =>
+          b.symbol.info match
+          case TypeBounds(lo, hi) =>
+            def resolve(tpe: Type): Unit =
+              val sym = tpe.typeSymbol
+              if sym.exists then
+                resolveUsage(sym, sym.name, NoPrefix)
+            resolve(lo)
+            resolve(hi)
+          case _ =>
       transformAllDeep(body)
       transformAllDeep(quotes)
     case SplicePattern(body, typeargs, args) =>
