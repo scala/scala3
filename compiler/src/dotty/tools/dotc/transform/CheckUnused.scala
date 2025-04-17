@@ -330,7 +330,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     def addCached(where: Context, result: Precedence): Unit =
       if where.moreProperties ne null then
         where.property(resolvedKey) match
-        case Some(resolved) =>
+        case Some(resolved) if where.owner.isLocalToBlock || where.owner.info =:= prefix =>
           resolved.record(sym, name, prefix, result)
         case none =>
 
@@ -361,7 +361,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           cur.property(resolvedKey) match
           case Some(resolved) =>
             // conservative, cache must be nested below the result context
-            if precedence.isNone then
+            if precedence.isNone && (cur.owner.isLocalToBlock || cur.owner.info =:= prefix) then
               cachePoint = cur // no result yet, and future result could be cached here
             resolved.hasRecord(sym, name, prefix)
           case none => NoPrecedence
