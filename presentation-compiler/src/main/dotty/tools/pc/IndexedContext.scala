@@ -4,64 +4,45 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Denotations.PreDenotation
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameOps.moduleClassName
+import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.typer.ImportInfo
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 sealed trait IndexedContext:
   given ctx: Context
   def scopeSymbols: List[Symbol]
-  def names: IndexedContext.Names
   def rename(sym: Symbol): Option[String]
-  def outer: IndexedContext
-
-  def findSymbol(name: String): Option[List[Symbol]]
-
-  final def findSymbol(name: Name): Option[List[Symbol]] =
-    findSymbol(name.decoded)
+  def findSymbol(name: Name): Option[List[Symbol]]
+  def findSymbolInLocalScope(name: String): Option[List[Symbol]]
 
   final def lookupSym(sym: Symbol): Result =
-    findSymbol(sym.decodedName) match
-      case Some(symbols) if symbols.exists(_ == sym) =>
-        Result.InScope
-      case Some(symbols)
-          if symbols.exists(s => isNotConflictingWithDefault(s, sym) || isTypeAliasOf(s, sym) || isTermAliasOf(s, sym)) =>
-            Result.InScope
-      // when all the conflicting symbols came from an old version of the file
+    def all(symbol: Symbol): Set[Symbol] = Set(symbol, symbol.companionModule, symbol.companionClass, symbol.companion).filter(_ != NoSymbol)
+    val isRelated = all(sym) ++ all(sym.dealiasType)
+    findSymbol(sym.name) match
+      case Some(symbols) if symbols.exists(isRelated) => Result.InScope
+      case Some(symbols) if symbols.exists(isTermAliasOf(_, sym)) => Result.InScope
+      case Some(symbols) if symbols.map(_.dealiasType).exists(isRelated) => Result.InScope
       case Some(symbols) if symbols.nonEmpty && symbols.forall(_.isStale) => Result.Missing
-      case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
+      case Some(symbols) if symbols.exists(rename(_).isEmpty) && rename(sym).isEmpty => Result.Conflict
+      case Some(symbols) => Result.InScope
       case _ => Result.Missing
   end lookupSym
 
-  /**
-   * Scala by default imports following packages:
-   * https://scala-lang.org/files/archive/spec/3.4/02-identifiers-names-and-scopes.html
-   * import java.lang.*
-   * {
-   *   import scala.*
-   *   {
-   *     import Predef.*
-   *     { /* source */ }
-   *   }
-   * }
-   *
-   * This check is necessary for proper scope resolution, because when we compare symbols from
-   * index including the underlying type like scala.collection.immutable.List it actually
-   * is in current scope in form of type forwarder imported from Predef.
-   */
-  private def isNotConflictingWithDefault(sym: Symbol, queriedSym: Symbol): Boolean =
-    sym.info.widenDealias =:= queriedSym.info.widenDealias && (Interactive.isImportedByDefault(sym))
-
   final def hasRename(sym: Symbol, as: String): Boolean =
     rename(sym) match
-      case Some(v) => v == as
+      case Some(v) =>
+        v == as
       case None => false
 
   // detects import scope aliases like
@@ -74,73 +55,71 @@ sealed trait IndexedContext:
         case _ => false
     )
 
-  private def isTypeAliasOf(alias: Symbol, queriedSym: Symbol): Boolean =
-    alias.isAliasType && alias.info.deepDealias.typeSymbol  == queriedSym
-
-  final def isEmpty: Boolean = this match
-    case IndexedContext.Empty => true
-    case _ => false
-
-  final def importContext: IndexedContext =
-    this match
-      case IndexedContext.Empty => this
-      case _ if ctx.owner.is(Package) => this
-      case _ => outer.importContext
-
   @tailrec
-  final def toplevelClashes(sym: Symbol): Boolean =
+  final def toplevelClashes(sym: Symbol, inImportScope: Boolean): Boolean =
     if sym == NoSymbol || sym.owner == NoSymbol || sym.owner.isRoot then
-      lookupSym(sym) match
-        case IndexedContext.Result.Conflict => true
+      // we need to fix the import only if the toplevel package conflicts with the imported one
+      findSymbolInLocalScope(sym.name.show) match
+        case Some(symbols) if !symbols.contains(sym) && (symbols.exists(_.owner.is(Package)) || !inImportScope) => true
         case _ => false
-    else toplevelClashes(sym.owner)
+    else toplevelClashes(sym.owner, inImportScope)
 
 end IndexedContext
 
 object IndexedContext:
 
-  def apply(ctx: Context): IndexedContext =
+  def apply(pos: SourcePosition)(using Context): IndexedContext =
     ctx match
       case NoContext => Empty
-      case _ => LazyWrapper(using ctx)
+      case _ => LazyWrapper(pos)(using ctx)
 
   case object Empty extends IndexedContext:
     given ctx: Context = NoContext
-    def findSymbol(name: String): Option[List[Symbol]] = None
+    def findSymbol(name: Name): Option[List[Symbol]] = None
+    def findSymbolInLocalScope(name: String): Option[List[Symbol]] = None
     def scopeSymbols: List[Symbol] = List.empty
-    val names: Names = Names(Map.empty, Map.empty)
     def rename(sym: Symbol): Option[String] = None
-    def outer: IndexedContext = this
 
-  class LazyWrapper(using val ctx: Context) extends IndexedContext:
-    val outer: IndexedContext = IndexedContext(ctx.outer)
-    val names: Names = extractNames(ctx)
+  class LazyWrapper(pos: SourcePosition)(using val ctx: Context) extends IndexedContext:
 
-    def findSymbol(name: String): Option[List[Symbol]] =
-      names.symbols
-        .get(name)
-        .map(_.toList)
-        .orElse(outer.findSymbol(name))
+    val completionContext = Completion.scopeContext(pos)
+    val names: Map[String, Seq[SingleDenotation]] = completionContext.names.toList.groupBy(_._1.show).map{
+      case (name, denotations) =>
+        val denots = denotations.flatMap(_._2)
+        val nonRoot = denots.filter(!_.symbol.owner.isRoot)
+        def hasImportedByDefault = denots.exists(denot => Interactive.isImportedByDefault(denot.symbol))
+        def hasConflictingValue = denots.exists(denot => !Interactive.isImportedByDefault(denot.symbol))
+        if hasImportedByDefault && hasConflictingValue then
+          name.trim -> nonRoot.filter(denot => !Interactive.isImportedByDefault(denot.symbol))
+        else
+          name.trim -> nonRoot
+    }
+    val renames = completionContext.renames
+
+    def defaultScopes(name: Name): Option[List[Symbol]] =
+      val fromPredef = defn.ScalaPredefModuleClass.membersNamed(name)
+      val fromScala = defn.ScalaPackageClass.membersNamed(name)
+      val fromJava = defn.JavaLangPackageClass.membersNamed(name)
+      val predefList = if fromPredef.exists then List(fromPredef.first.symbol) else Nil
+      val scalaList = if fromScala.exists then List(fromScala.first.symbol) else Nil
+      val javaList = if fromJava.exists then List(fromJava.first.symbol) else Nil
+      val combined = predefList ++ scalaList ++ javaList
+      if combined.nonEmpty then Some(combined) else None
+
+    override def findSymbolInLocalScope(name: String): Option[List[Symbol]] =
+      names.get(name).map(_.map(_.symbol).toList).filter(_.nonEmpty)
+    def findSymbol(name: Name): Option[List[Symbol]] =
+      names
+        .get(name.show)
+        .map(_.map(_.symbol).toList)
+        .orElse(defaultScopes(name))
 
     def scopeSymbols: List[Symbol] =
-      val acc = Set.newBuilder[Symbol]
-      (this :: outers).foreach { ref =>
-        acc ++= ref.names.symbols.values.flatten
-      }
-      acc.result.toList
+      names.values.flatten.map(_.symbol).toList
 
     def rename(sym: Symbol): Option[String] =
-      names.renames
-        .get(sym)
-        .orElse(outer.rename(sym))
+      renames.get(sym).orElse(renames.get(sym.companion)).map(_.decoded)
 
-    private def outers: List[IndexedContext] =
-      val builder = List.newBuilder[IndexedContext]
-      var curr = outer
-      while !curr.isEmpty do
-        builder += curr
-        curr = curr.outer
-      builder.result
   end LazyWrapper
 
   enum Result:
@@ -149,97 +128,5 @@ object IndexedContext:
       case InScope | Conflict => true
       case Missing => false
 
-  case class Names(
-      symbols: Map[String, List[Symbol]],
-      renames: Map[Symbol, String]
-  )
 
-  private def extractNames(ctx: Context): Names =
-    def isAccessibleFromSafe(sym: Symbol, site: Type): Boolean =
-      try sym.isAccessibleFrom(site, superAccess = false)
-      catch
-        case NonFatal(e) =>
-          false
-
-    def accessibleSymbols(site: Type, tpe: Type)(using
-        Context
-    ): List[Symbol] =
-      tpe.decls.toList.filter(sym => isAccessibleFromSafe(sym, site))
-
-    def accesibleMembers(site: Type)(using Context): List[Symbol] =
-      site.allMembers
-        .filter(denot =>
-          try isAccessibleFromSafe(denot.symbol, site)
-          catch
-            case NonFatal(e) =>
-              false
-        )
-        .map(_.symbol)
-        .toList
-
-    def allAccessibleSymbols(
-        tpe: Type,
-        filter: Symbol => Boolean = _ => true
-    )(using Context): List[Symbol] =
-      val initial = accessibleSymbols(tpe, tpe).filter(filter)
-      val fromPackageObjects =
-        initial
-          .filter(_.isPackageObject)
-          .flatMap(sym => accessibleSymbols(tpe, sym.thisType))
-      initial ++ fromPackageObjects
-
-    def fromImport(site: Type, name: Name)(using Context): List[Symbol] =
-      List(
-        site.member(name.toTypeName),
-        site.member(name.toTermName),
-        site.member(name.moduleClassName),
-      )
-        .flatMap(_.alternatives)
-        .map(_.symbol)
-
-    def fromImportInfo(
-        imp: ImportInfo
-    )(using Context): List[(Symbol, Option[TermName])] =
-      val excludedNames = imp.excluded.map(_.decoded)
-
-      if imp.isWildcardImport then
-        allAccessibleSymbols(
-          imp.site,
-          sym => !excludedNames.contains(sym.name.decoded)
-        ).map((_, None))
-      else
-        imp.forwardMapping.toList.flatMap { (name, rename) =>
-          val isRename = name != rename
-          if !isRename && !excludedNames.contains(name.decoded) then
-            fromImport(imp.site, name).map((_, None))
-          else if isRename then
-            fromImport(imp.site, name).map((_, Some(rename)))
-          else Nil
-        }
-      end if
-    end fromImportInfo
-
-    given Context = ctx
-    val (symbols, renames) =
-      if ctx.isImportContext then
-        val (syms, renames) =
-          fromImportInfo(ctx.importInfo.nn)
-            .map((sym, rename) => (sym, rename.map(r => sym -> r.decoded)))
-            .unzip
-        (syms, renames.flatten.toMap)
-      else if ctx.owner.isClass then
-        val site = ctx.owner.thisType
-        (accesibleMembers(site), Map.empty)
-      else if ctx.scope != EmptyScope then (ctx.scope.toList, Map.empty)
-      else (List.empty, Map.empty)
-
-    val initial = Map.empty[String, List[Symbol]]
-    val values =
-      symbols.foldLeft(initial) { (acc, sym) =>
-        val name = sym.decodedName
-        val syms = acc.getOrElse(name, List.empty)
-        acc.updated(name, sym :: syms)
-      }
-    Names(values, renames)
-  end extractNames
 end IndexedContext

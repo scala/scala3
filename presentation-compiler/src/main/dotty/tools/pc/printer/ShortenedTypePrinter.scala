@@ -133,11 +133,16 @@ class ShortenedTypePrinter(
     prefixIterator.flatMap { owner =>
       val prefixAfterRename = ownersAfterRename(owner)
       val ownerRename = indexedCtx.rename(owner)
-        ownerRename.foreach(rename => foundRenames += owner -> rename)
+      ownerRename.foreach(rename => foundRenames += owner -> rename)
       val currentRenamesSearchResult =
-        ownerRename.map(Found(owner, _, prefixAfterRename))
+      ownerRename.map(rename => Found(owner, rename, prefixAfterRename))
       lazy val configRenamesSearchResult =
-        renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
+        renameConfigMap.get(owner).flatMap{rename =>
+          // if the rename is taken, we don't want to use it
+          indexedCtx.findSymbolInLocalScope(rename) match
+            case Some(symbols) => None
+            case None => Some(Missing(owner, rename, prefixAfterRename))
+        }
       currentRenamesSearchResult orElse configRenamesSearchResult
     }.nextOption
 
@@ -150,28 +155,24 @@ class ShortenedTypePrinter(
   private def optionalRootPrefix(sym: Symbol): Text =
     // If the symbol has toplevel clash we need to prepend `_root_.` to the symbol to disambiguate
     // it from the local symbol. It is only required when we are computing text for text edit.
-    if isTextEdit && indexedCtx.toplevelClashes(sym) then
+    if isTextEdit && indexedCtx.toplevelClashes(sym, inImportScope = false) then
       Str("_root_.")
     else
       Text()
 
   private def findRename(tp: NamedType): Option[Text] =
     val maybePrefixRename = findPrefixRename(tp.symbol.maybeOwner)
+    maybePrefixRename.map {
+      case res: Found => res.toPrefixText
+      case res: Missing =>
+        val importSel =
+          if res.owner.name.decoded == res.rename then
+            ImportSel.Direct(res.owner)
+          else ImportSel.Rename(res.owner, res.rename)
 
-    if maybePrefixRename.exists(importRename => indexedCtx.findSymbol(importRename.rename).isDefined) then
-      Some(super.toTextPrefixOf(tp))
-    else
-      maybePrefixRename.map {
-        case res: Found => res.toPrefixText
-        case res: Missing =>
-          val importSel =
-            if res.owner.name.toString == res.rename then
-              ImportSel.Direct(res.owner)
-            else ImportSel.Rename(res.owner, res.rename)
-
-          missingImports += importSel
-          res.toPrefixText
-      }
+        missingImports += importSel
+        res.toPrefixText
+    }
 
 
   override def toTextPrefixOf(tp: NamedType): Text = controlled {
@@ -184,7 +185,10 @@ class ShortenedTypePrinter(
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
             maybeRenamedPrefix.getOrElse:
-              missingImports += ImportSel.Direct(tp.symbol)
+              indexedCtx.rename(tp.symbol) match
+                case None =>
+                  missingImports += ImportSel.Direct(tp.symbol)
+                case _ =>
               Text()
           // the symbol is in scope, we can omit the prefix
           case Result.InScope => Text()

@@ -125,7 +125,7 @@ class PcInlayHintsProvider(
     val tpdPath =
       Interactive.pathTo(unit.tpdTree, pos.span)
 
-    val indexedCtx = IndexedContext(Interactive.contextOfPath(tpdPath))
+    val indexedCtx = IndexedContext(pos)(using Interactive.contextOfPath(tpdPath))
     val printer = ShortenedTypePrinter(
       symbolSearch
     )(using indexedCtx)
@@ -149,7 +149,7 @@ class PcInlayHintsProvider(
     InlayHints.makeLabelParts(parts, tpeStr)
   end toLabelParts
 
-  private val definitions = IndexedContext(ctx).ctx.definitions
+  private val definitions = IndexedContext(pos)(using ctx).ctx.definitions
   private def syntheticTupleApply(tree: Tree): Boolean =
     tree match
       case sel: Select =>

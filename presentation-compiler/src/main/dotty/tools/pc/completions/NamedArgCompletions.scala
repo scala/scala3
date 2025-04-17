@@ -30,6 +30,9 @@ import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import scala.annotation.tailrec
+import dotty.tools.dotc.core.Denotations.Denotation
+import dotty.tools.dotc.core.Denotations.MultiDenotation
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 
 object NamedArgCompletions:
 
@@ -138,44 +141,40 @@ object NamedArgCompletions:
     def fallbackFindMatchingMethods() =
       def maybeNameAndIndexedContext(
           method: Tree
-      ): Option[(Name, IndexedContext)] =
+      ): List[Symbol] =
         method match
-          case Ident(name) => Some((name, indexedContext))
-          case Select(This(_), name) => Some((name, indexedContext))
-          case Select(from, name) =>
+          case Ident(name) => indexedContext.findSymbol(name).getOrElse(Nil)
+          case Select(This(_), name) => indexedContext.findSymbol(name).getOrElse(Nil)
+          case sel @ Select(from, name) =>
             val symbol = from.symbol
             val ownerSymbol =
               if symbol.is(Method) && symbol.owner.isClass then
                 Some(symbol.owner)
               else Try(symbol.info.classSymbol).toOption
-            ownerSymbol.map(sym =>
-              (name, IndexedContext(context.localContext(from, sym)))
-            )
+            ownerSymbol.map(sym =>  sym.info.member(name)).collect{
+              case single: SingleDenotation => List(single.symbol)
+              case multi: MultiDenotation => multi.allSymbols
+            }.getOrElse(Nil)
           case Apply(fun, _) => maybeNameAndIndexedContext(fun)
-          case _ => None
+          case _ => Nil
       val matchingMethods =
         for
-          (name, indexedContext) <- maybeNameAndIndexedContext(method)
-          potentialMatches <- indexedContext.findSymbol(name)
-        yield
-          potentialMatches.collect {
-            case m
-              if m.is(Flags.Method) &&
-                m.vparamss.length >= argss.length &&
-                Try(m.isAccessibleFrom(apply.symbol.info)).toOption
+          potentialMatch <- maybeNameAndIndexedContext(method)
+          if potentialMatch.is(Flags.Method) &&
+                potentialMatch.vparamss.length >= argss.length &&
+                Try(potentialMatch.isAccessibleFrom(apply.symbol.info)).toOption
                   .getOrElse(false) &&
-                m.vparamss
+                potentialMatch.vparamss
                   .zip(argss)
                   .reverse
                   .zipWithIndex
                   .forall { case (pair, index) =>
-                    FuzzyArgMatcher(m.tparams)
+                    FuzzyArgMatcher(potentialMatch.tparams)
                       .doMatch(allArgsProvided = index != 0, ident)
                       .tupled(pair)
-                  } =>
-            m
-        }
-      matchingMethods.getOrElse(Nil)
+                    }
+        yield potentialMatch
+      matchingMethods
     end fallbackFindMatchingMethods
 
     val matchingMethods: List[Symbols.Symbol] =

@@ -177,6 +177,9 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def companion: Symbol =
       if sym.is(Module) then sym.companionClass else sym.companionModule
 
+    def dealiasType: Symbol =
+      if sym.isType then sym.info.deepDealias.typeSymbol else sym
+
     def nameBackticked: String = nameBackticked(Set.empty[String])
 
     def nameBackticked(backtickSoftKeyword: Boolean = true): String =

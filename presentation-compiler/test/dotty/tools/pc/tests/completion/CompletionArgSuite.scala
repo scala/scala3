@@ -826,8 +826,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |aaa = g : Int
-         |abb = : Option[Int]
          |abb = : Int
+         |abb = : Option[Int]
          |abb = g : Int
          |""".stripMargin,
       topLines = Some(5),

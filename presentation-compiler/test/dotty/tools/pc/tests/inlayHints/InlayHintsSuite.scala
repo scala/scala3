@@ -655,7 +655,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |    val y/*: S<<scala/collection/Set#>>[Char<<scala/Char#>>]*/ = f
         |    ???
         |  }
-        |  val x/*: AB<<scala/collection/AbstractMap#>>[Int<<scala/Int#>>, String<<scala/Predef.String#>>]*/ = test(Set/*[Int<<scala/Int#>>]*/(1), Set/*[Char<<scala/Char#>>]*/('a'))
+        |  val x/*: AB<<scala/collection/AbstractMap#>>[Int<<scala/Int#>>, String<<java/lang/String#>>]*/ = test(Set/*[Int<<scala/Int#>>]*/(1), Set/*[Char<<scala/Char#>>]*/('a'))
         |}
         |""".stripMargin,
     )

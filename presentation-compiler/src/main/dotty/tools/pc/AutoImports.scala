@@ -40,7 +40,7 @@ object AutoImports:
     case class Select(qual: SymbolIdent, name: String) extends SymbolIdent:
       def value: String = s"${qual.value}.$name"
 
-    def direct(name: String): SymbolIdent = Direct(name)
+    def direct(name: String)(using Context): SymbolIdent = Direct(name)
 
     def fullIdent(symbol: Symbol)(using Context): SymbolIdent =
       val symbols = symbol.ownersIterator.toList
@@ -70,7 +70,7 @@ object AutoImports:
       importSel: Option[ImportSel]
   ):
 
-    def name: String = ident.value
+    def name(using Context): String = ident.value
 
   object SymbolImport:
 
@@ -189,10 +189,13 @@ object AutoImports:
                 ownerImport.importSel,
               )
             else
-              (
-                SymbolIdent.direct(symbol.nameBackticked),
-                Some(ImportSel.Direct(symbol)),
-              )
+              renames(symbol) match
+                case Some(rename) => (SymbolIdent.direct(rename), None)
+                case None =>
+                  (
+                    SymbolIdent.direct(symbol.nameBackticked),
+                    Some(ImportSel.Direct(symbol)),
+                  )
           end val
 
           SymbolImport(
@@ -223,9 +226,13 @@ object AutoImports:
                 importSel
               )
             case None =>
+              val reverse = symbol.ownersIterator.toList.reverse
+              val fullName = reverse.drop(1).foldLeft(SymbolIdent.direct(reverse.head.nameBackticked)){
+                case (acc, sym) => SymbolIdent.Select(acc, sym.nameBackticked(false))
+              }
               SymbolImport(
                 symbol,
-                SymbolIdent.direct(symbol.fullNameBackticked),
+                SymbolIdent.Direct(symbol.fullNameBackticked),
                 None
               )
           end match
@@ -252,7 +259,6 @@ object AutoImports:
         val topPadding =
           if importPosition.padTop then "\n"
           else ""
-
         val formatted = imports
           .map {
             case ImportSel.Direct(sym) => importName(sym)
@@ -267,15 +273,16 @@ object AutoImports:
     end renderImports
 
     private def importName(sym: Symbol): String =
-      if indexedContext.importContext.toplevelClashes(sym) then
+      if indexedContext.toplevelClashes(sym, inImportScope = true) then
         s"_root_.${sym.fullNameBackticked(false)}"
       else
         sym.ownersIterator.zipWithIndex.foldLeft((List.empty[String], false)) { case ((acc, isDone), (sym, idx)) =>
           if(isDone || sym.isEmptyPackage || sym.isRoot) (acc, true)
           else indexedContext.rename(sym) match
-            case Some(renamed) => (renamed :: acc, true)
-            case None if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
-            case None => (acc, false)
+            // we can't import first part
+            case Some(renamed) if idx != 0 => (renamed :: acc, true)
+            case _ if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
+            case _ => (acc, false)
         }._1.mkString(".")
   end AutoImportsGenerator
 
