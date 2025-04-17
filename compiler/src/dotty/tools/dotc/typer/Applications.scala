@@ -2447,10 +2447,12 @@ trait Applications extends Compatibility {
         deepPt match
           case pt @ FunProto(_, PolyProto(targs, resType)) =>
             // try to narrow further with snd argument list and following type params
+            pretypeArgs(candidates, pt)
             resolveMapped(candidates,
               skipParamClause(pt.typedArgs().tpes, targs.tpes), resType)
           case pt @ FunProto(_, resType: FunOrPolyProto) =>
             // try to narrow further with snd argument list
+            pretypeArgs(candidates, pt)
             resolveMapped(candidates,
               skipParamClause(pt.typedArgs().tpes, Nil), resType)
           case _ =>
