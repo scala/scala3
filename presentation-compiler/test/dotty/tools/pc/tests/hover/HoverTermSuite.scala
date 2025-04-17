@@ -745,6 +745,47 @@ class HoverTermSuite extends BaseHoverSuite:
       "name: String".hover
     )
 
+
+  @Test def `named-tuples3`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est
+         |""".stripMargin,
+      "def test: (path : String, num : Int, line : Int)".hover
+    )
+
+
+  @Test def `named-tuples4`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hel@@lo ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      "def hello: (path : String, num : Int)".hover
+    )
+
+  @Test def `named-tuples5`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test(x: (path: String, num: Int)) =
+         |  x ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est(hello)
+         |""".stripMargin,
+      "def test(x: (path : String, num : Int)): (path : String, num : Int, line : Int)".hover
+    )
+
   @Test def `value-of`: Unit =
     check(
       """|enum Foo(val key: String) {

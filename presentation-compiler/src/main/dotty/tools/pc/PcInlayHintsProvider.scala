@@ -140,9 +140,9 @@ class PcInlayHintsProvider(
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
       if isInScope(tpe) then tpe
-      else tpe.deepDealias(using indexedCtx.ctx)
+      else tpe.deepDealiasAndSimplify(using indexedCtx.ctx)
 
-    val dealiased = if tpe.isNamedTupleType then tpe else optDealias(tpe)
+    val dealiased = optDealias(tpe)
     val tpeStr = printer.tpe(dealiased)
     val usedRenames = printer.getUsedRenames
     val parts = partsFromType(dealiased, usedRenames)
