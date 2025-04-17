@@ -778,6 +778,8 @@ object Checking {
         }
         clParamAccessors match {
           case param :: params =>
+            if (defn.isContextFunctionType(param.info))
+              report.error("value classes are not allowed for context function types", param.srcPos)
             if (param.is(Mutable))
               report.error(ValueClassParameterMayNotBeAVar(clazz, param), param.srcPos)
             if (param.info.isInstanceOf[ExprType])
