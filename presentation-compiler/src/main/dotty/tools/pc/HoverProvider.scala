@@ -110,22 +110,23 @@ object HoverProvider:
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer, contentType)
         case symbolTpes @ ((symbol, tpe, None) :: _) =>
-          val exprTpw = tpe.widenTermRefExpr.deepDealias
+          val exprTpw = dealiased(tpe.widenTermRefExpr)
           val hoverString =
             tpw match
               // https://github.com/scala/scala3/issues/8891
               case tpw: ImportType =>
                 printer.hoverSymbol(symbol, symbol.paramRef)
               case _ =>
-                val (tpe, sym) =
+                val (innerTpe, sym) =
                   if symbol.isType then (symbol.typeRef, symbol)
                   else enclosing.head.seenFrom(symbol)
 
                 val finalTpe =
-                  if tpe != NoType then tpe
+                  if tpe.isNamedTupleType then tpe.widenTermRefExpr
+                  else if innerTpe != NoType then innerTpe
                   else tpw
 
-                printer.hoverSymbol(sym, finalTpe.deepDealias)
+                printer.hoverSymbol(sym, dealiased(finalTpe))
             end match
           end hoverString
 
@@ -134,7 +135,7 @@ object HoverProvider:
             .map(_.docstring())
             .mkString("\n")
 
-          val expresionTypeOpt = 
+          val expresionTypeOpt =
             if symbol.name == StdNames.nme.??? then
               InferExpectedType(search, driver, params).infer()
             else printer.expressionType(exprTpw)
@@ -161,7 +162,7 @@ object HoverProvider:
               ju.Optional.empty().nn
           end match
         case (_, tpe, Some(namedTupleArg)) :: _ =>
-          val exprTpw = tpe.widenTermRefExpr.deepDealias
+          val exprTpw = dealiased(tpe.widenTermRefExpr)
           printer.expressionType(exprTpw) match
             case Some(tpe) =>
               ju.Optional.of(
@@ -179,6 +180,8 @@ object HoverProvider:
     end if
   end hover
 
+  private def dealiased(tpe: Type)(using Context): Type = if tpe.isNamedTupleType then tpe.deepDealias.simplified else tpe.deepDealias
+
   extension (pos: SourcePosition)
     private def isPoint: Boolean = pos.start == pos.end
 
@@ -194,7 +197,7 @@ object HoverProvider:
             val resultType =
               rest match
                 case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
-                    tpe.tpe.widenTermRefExpr.deepDealias
+                  dealiased(tpe.tpe.widenTermRefExpr)
                 case _ if n == nme.selectDynamic => tpe.resultType
                 case _ => tpe
 
@@ -220,9 +223,9 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.typeOpt.widen.deepDealias match
+      val refTpe = dealiased(sel.typeOpt.widen) match
         case r: RefinedType => Some(r)
-        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.deepDealias)
+        case t: (TermRef | TypeProxy) => Some(dealiased(t.termSymbol.info))
         case _ => None
 
       refTpe.flatMap(findRefinement).asJava

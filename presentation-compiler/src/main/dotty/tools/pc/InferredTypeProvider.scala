@@ -99,8 +99,8 @@ final class InferredTypeProvider(
           case AppliedType(tycon, args) =>
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
-      if isInScope(tpe)
-      then tpe
+      if isInScope(tpe) then tpe
+      else if tpe.isNamedTupleType then tpe.dealias.simplified
       else tpe.deepDealias
 
     val printer = ShortenedTypePrinter(
