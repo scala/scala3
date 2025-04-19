@@ -35,7 +35,7 @@ import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
 
-import collection.mutable
+import collection.mutable, mutable.ListBuffer
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
@@ -207,7 +207,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *                     a reference for `m` is searched. `null` in all other situations.
    */
   def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos,
-      altImports: mutable.ListBuffer[TermRef] | Null = null)(using Context): Type = {
+      altImports: ListBuffer[TermRef] | Null = null)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
     def suppressErrors = excluded.is(ConstructorProxy)
@@ -3435,7 +3435,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else {
         val app = typedApply(desugar.binop(l, op, r).withAttachmentsFrom(tree), pt)
         if op.name.isRightAssocOperatorName && !ctx.mode.is(Mode.QuotedExprPattern) then
-          val defs = new mutable.ListBuffer[Tree]
+          val defs = ListBuffer.empty[Tree]
           def lift(app: Tree): Tree = (app: @unchecked) match
             case Apply(fn, args) =>
               if (app.tpe.isError) app
@@ -3735,7 +3735,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     trees mapconserve (typed(_))
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
-    val buf = new mutable.ListBuffer[Tree]
+    val buf = ListBuffer.empty[Tree]
     var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
     val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
@@ -3779,7 +3779,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         traverse(xtree :: rest)
       case stat :: rest =>
         val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
-        if !Linter.warnOnInterestingResultInStatement(stat1) then checkStatementPurity(stat1)(stat, exprOwner)
+        if !Linter.warnOnInterestingResultInStatement(stat1) then
+          checkStatementPurity(stat1)(stat, exprOwner, isUnitExpr = false)
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
       case nil =>
@@ -3986,7 +3987,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect, tree.nameSpan)
 
     def tryExtension(using Context): Tree =
-      val altImports = new mutable.ListBuffer[TermRef]()
+      val altImports = ListBuffer.empty[TermRef]
       findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos, altImports) match
         case ref: TermRef =>
           def tryExtMethod(ref: TermRef)(using Context) =
@@ -3995,7 +3996,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tryExtMethod(ref)
           else
             // Try all possible imports and collect successes and failures
-            val successes, failures = new mutable.ListBuffer[(Tree, TyperState)]
+            val successes, failures = ListBuffer.empty[(Tree, TyperState)]
             for alt <- ref :: altImports.toList do
               val nestedCtx = ctx.fresh.setNewTyperState()
               val app = tryExtMethod(alt)(using nestedCtx)
@@ -4653,19 +4654,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return readapt(tree.cast(captured))
 
       // drop type if prototype is Unit
-      if (pt isRef defn.UnitClass) {
+      if (pt.isRef(defn.UnitClass)) {
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
 
-        if ctx.settings.Whas.valueDiscard
-           && !ctx.isAfterTyper
-           && !tree.isInstanceOf[Inlined]
-           && !isThisTypeResult(tree)
-           && !tree.hasAttachment(AscribedToUnit) then
-          report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
-
+        if ctx.settings.Whas.valueDiscard && !ctx.isAfterTyper then
+          val warnable = tree match
+            case inlined: Inlined => inlined.expansion
+            case tree => tree
+          if !isThisTypeResult(warnable) && !warnable.hasAttachment(AscribedToUnit)
+          then
+            report.warning(ValueDiscarding(warnable.tpe), tree.srcPos)
         return tpd.Block(tree1 :: Nil, unitLiteral)
       }
 
@@ -4925,7 +4926,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedExpr(cmp, defn.BooleanType)
       case _ =>
 
-  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean = false)(using Context): Unit =
+  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean)(using Context): Unit =
     if !tree.tpe.isErroneous
       && !ctx.isAfterTyper
       && !tree.isInstanceOf[Inlined]
