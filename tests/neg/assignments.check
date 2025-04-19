@@ -1,0 +1,12 @@
+-- [E052] Type Error: tests/neg/assignments.scala:16:8 -----------------------------------------------------------------
+16 |    x_= = 2  // error should give missing arguments
+   |    ^^^^^^^
+   |    Bad assignment to x_=
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E083] Type Error: tests/neg/assignments.scala:20:9 -----------------------------------------------------------------
+20 |  import c._ // error should give: prefix is not stable
+   |         ^
+   |         (assignments.c : assignments.C) is not a valid import prefix, since it is not an immutable path
+   |
+   | longer explanation available when compiling with `-explain`
