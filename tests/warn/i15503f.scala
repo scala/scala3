@@ -19,7 +19,7 @@ trait T
 object T:
   def hole(using T) = ()
 
-class C(using T) // warn
+class C(using T) // no warn marker trait is evidence only
 
 class D(using T):
   def t = T.hole // nowarn
@@ -53,7 +53,8 @@ object Unmatched:
       case _ =>
     e
 
-trait Ctx
+trait Ctx:
+  val state: Int
 case class K(i: Int)(using val ctx: Ctx) // nowarn
 class L(val i: Int)(using val ctx: Ctx) // nowarn
 class M(val i: Int)(using ctx: Ctx) // warn
