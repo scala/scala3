@@ -1223,20 +1223,21 @@ class Namer { typer: Typer =>
           Yes
       }
 
-      def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
+      def foreachDefaultGetterOf(sym: TermSymbol, alias: TermName)(op: (TermSymbol, TermName) => Unit): Unit =
         var n = 0
-        val methodName =
-          if sym.name == nme.apply && sym.is(Synthetic) && sym.owner.companionClass.is(Case) then
-            // The synthesized `apply` methods of case classes use the constructor's default getters
-            nme.CONSTRUCTOR
-          else sym.name
+        // The synthesized `apply` methods of case classes use the constructor's default getters
+        val useConstructor = sym.name == nme.apply && sym.is(Synthetic) && sym.owner.companionClass.is(Case)
+        val methodName     = if useConstructor then nme.CONSTRUCTOR else sym.name
+        val aliasedName    = if useConstructor then nme.CONSTRUCTOR else alias
+        val useAliased     = !useConstructor && methodName != aliasedName
         for params <- sym.paramSymss; param <- params do
           if param.isTerm then
             if param.is(HasDefault) then
               val getterName = DefaultGetterName(methodName, n)
               val getter = pathType.member(getterName).symbol
               assert(getter.exists, i"$path does not have a default getter named $getterName")
-              op(getter.asTerm)
+              val targetName = if useAliased then DefaultGetterName(aliasedName, n) else getterName
+              op(getter.asTerm, targetName)
             n += 1
 
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
@@ -1358,9 +1359,8 @@ class Namer { typer: Typer =>
             })
             buf += ddef.withSpan(span)
             if hasDefaults then
-              foreachDefaultGetterOf(sym.asTerm,
-                getter => addForwarder(
-                  getter.name.asTermName, getter.asSeenFrom(path.tpe), span))
+              foreachDefaultGetterOf(sym.asTerm, alias): (getter, getterName) =>
+                addForwarder(getterName, getter.asSeenFrom(path.tpe), span)
 
             // adding annotations and flags at the parameter level
             // TODO: This probably needs to be filtered to avoid adding some annotation
@@ -1415,13 +1415,13 @@ class Namer { typer: Typer =>
               addWildcardForwardersNamed(alias, span)
 
       def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
-        case sel :: sels1 =>
+        case sel :: sels =>
           if sel.isWildcard then
             addWildcardForwarders(seen, sel.span)
           else
             if !sel.isUnimport then
               addForwardersNamed(sel.name, sel.rename, sel.span)
-            addForwarders(sels1, sel.name :: seen)
+            addForwarders(sels, sel.name :: seen)
         case _ =>
 
       /** Avoid a clash of export forwarder `forwarder` with other forwarders in `forwarders`.
