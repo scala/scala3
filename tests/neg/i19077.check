@@ -1,0 +1,17 @@
+-- Error: tests/neg/i19077.scala:5:15 ----------------------------------------------------------------------------------
+5 |  f(1, 2, 3, x = 42) // error
+  |             ^^^^^^
+  |             parameter x of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+-- Error: tests/neg/i19077.scala:6:15 ----------------------------------------------------------------------------------
+6 |  f(1, 2, 3, w = 42) // error
+  |             ^^^^^^
+  |             parameter w of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+-- Error: tests/neg/i19077.scala:7:20 ----------------------------------------------------------------------------------
+7 |  f(1, 2, w = 42, z = 27) // error
+  |                  ^^^^^^
+  |                  parameter z of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+-- Error: tests/neg/i19077.scala:8:20 ----------------------------------------------------------------------------------
+8 |  f(1, 2, z = 42, w = 27) // error
+  |                  ^^^^^^
+  |                  parameter w of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+there was 1 deprecation warning; re-run with -deprecation for details
