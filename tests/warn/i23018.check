@@ -1,0 +1,32 @@
+-- [E190] Potential Issue Warning: tests/warn/i23018.scala:6:17 --------------------------------------------------------
+6 |def tata: Unit = toto // warn pure Discard
+  |                 ^^^^
+  |                 Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E175] Potential Issue Warning: tests/warn/i23018.scala:19:37 -------------------------------------------------------
+19 |transparent inline def even: Unit = (42: C) // warn impure discard
+   |                                     ^^^^^
+   |                                     discarded non-Unit value of type C. Add `: Unit` to discard silently.
+-- [E190] Potential Issue Warning: tests/warn/i23018.scala:21:22 -------------------------------------------------------
+21 |def literally: Unit = 42 // warn pure Discard
+   |                      ^^
+   |                      Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E175] Potential Issue Warning: tests/warn/i23018.scala:24:21 -------------------------------------------------------
+24 |def impurely: Unit = impure // warn impure discard
+   |                     ^^^^^^
+   |                     discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+-- [E129] Potential Issue Warning: tests/warn/i23018.scala:28:2 --------------------------------------------------------
+28 |  () // warn pure expression (but not Discard)
+   |  ^^
+   |  A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E190] Potential Issue Warning: tests/warn/i23018.scala:37:27 -------------------------------------------------------
+37 |def embodied: Unit = bodily(toto) // warn pure Discard
+   |                     ^^^^^^^^^^^^
+   |                     Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+   |
+   | longer explanation available when compiling with `-explain`
