@@ -1813,6 +1813,12 @@ class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(u
   def explain(using Context) = ""
 }
 
+class ValueClassCannotExtendAliasOfAnyVal(valueClass: Symbol, alias: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A value class cannot extend a type alias ($alias) of ${hl("AnyVal")}"""
+  def explain(using Context) = ""
+}
+
 class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
   extends SyntaxMsg(SuperCallsNotAllowedInlineableID) {
   def msg(using Context) = i"Super call not allowed in inlineable $symbol"
