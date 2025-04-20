@@ -4250,11 +4250,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
-            val pt1 = pt.deepenProtoTrans
-            if ((pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)) {
-              return implicitArgs(formals, argIndex, pt1)
+            val newctx = ctx.fresh.setNewTyperState()
+            val pt1 = pt.deepenProtoTrans(using newctx)
+            val arg = if ((pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)(using newctx)) {
+              inferImplicitArg(formal, tree.span.endPos)(using newctx)
+            } else {
+              inferImplicitArg(formal, tree.span.endPos)
             }
-            val arg = inferImplicitArg(formal, tree.span.endPos)
             arg.tpe match
               case failed: AmbiguousImplicits =>
                 arg :: implicitArgs(formals1, argIndex + 1, pt1)
