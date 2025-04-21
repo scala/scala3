@@ -1,4 +1,4 @@
-//> using options -Wunused:imports
+//> using options -Werror -Wunused:imports
 
 object decisions4s{
   trait HKD
@@ -7,7 +7,7 @@ object decisions4s{
 
 object DiagnosticsExample {
   import decisions4s.HKD
-  val _ = new HKD {}
+  case class Input[F[_]]() extends HKD
   import decisions4s.*
-  val _ = new DecisionTable {}
+  val decisionTable: DecisionTable = ???
 }

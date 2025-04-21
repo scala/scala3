@@ -193,7 +193,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                     ++ sym.annotations)
           else
             if sym.is(Param) then
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              // @unused is getter/setter but we want it on ordinary method params
+              if !sym.owner.is(Method) || sym.owner.isConstructor then
+                sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
             else

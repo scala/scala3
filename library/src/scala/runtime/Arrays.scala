@@ -1,5 +1,6 @@
 package scala.runtime
 
+import scala.annotation.unused
 import scala.reflect.ClassTag
 
 import java.lang.{reflect => jlr}
@@ -26,6 +27,6 @@ object Arrays {
 
   /** Create an array of a reference type T.
    */
-  def newArray[Arr](componentType: Class[_], returnType: Class[Arr], dimensions: Array[Int]): Arr =
+  def newArray[Arr](componentType: Class[_], @unused returnType: Class[Arr], dimensions: Array[Int]): Arr =
     jlr.Array.newInstance(componentType, dimensions: _*).asInstanceOf[Arr]
 }

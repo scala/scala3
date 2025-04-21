@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
 def foo: Unit =
   object O:
@@ -8,5 +8,5 @@ def foo: Unit =
 
   val x: O.A = ???
   x match
-    case x: B => ???
-    case x: C => ???
+  case _: B => ???
+  case _: C => ???

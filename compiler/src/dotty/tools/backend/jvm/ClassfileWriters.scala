@@ -12,10 +12,10 @@ import java.util.zip.{CRC32, Deflater, ZipEntry, ZipOutputStream}
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.util.chaining.*
 import dotty.tools.io.{AbstractFile, PlainFile, VirtualFile}
 import dotty.tools.io.PlainFile.toPlainFile
 import BTypes.InternalName
-import scala.util.chaining._
 import dotty.tools.io.JarArchive
 
 import scala.language.unsafeNulls
@@ -180,7 +180,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       // important detail here, even on Windows, Zinc expects the separator within the jar
       // to be the system default, (even if in the actual jar file the entry always uses '/').
       // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
-      val pathInJar = 
+      val pathInJar =
         if File.separatorChar == '/' then relativePath
         else relativePath.replace('/', File.separatorChar)
       PlainFile.toPlainFile(Paths.get(s"${file.absolutePath}!$pathInJar"))

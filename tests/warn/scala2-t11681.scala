@@ -23,7 +23,7 @@ trait BadAPI extends InterFace {
     a
   }
   override def call(a: Int,
-                    b: String,               // OK
+                    b: String, // warn now
                     c: Double): Int = {
     println(c)
     a
@@ -33,7 +33,7 @@ trait BadAPI extends InterFace {
 
   override def equals(other: Any): Boolean = true  // OK
 
-  def i(implicit s: String) = answer           // ok
+  def i(implicit s: String) = answer // warn now
 
   /*
   def future(x: Int): Int = {
@@ -59,10 +59,10 @@ class Revaluing(u: Int) { def f = u } // OK
 
 case class CaseyKasem(k: Int)        // OK
 
-case class CaseyAtTheBat(k: Int)(s: String)        // ok
+case class CaseyAtTheBat(k: Int)(s: String)        // warn unused s
 
 trait Ignorance {
-  def f(readResolve: Int) = answer           // ok
+  def f(readResolve: Int) = answer  // warn now
 }
 
 class Reusing(u: Int) extends Unusing(u)   // OK
@@ -78,30 +78,30 @@ trait Unimplementation {
 
 trait DumbStuff {
   def f(implicit dummy: DummyImplicit) = answer // ok
-  def g(dummy: DummyImplicit) = answer // ok
+  def g(dummy: DummyImplicit) = answer // warn now
 }
 trait Proofs {
   def f[A, B](implicit ev: A =:= B) = answer // ok
   def g[A, B](implicit ev: A <:< B) = answer // ok
-  def f2[A, B](ev: A =:= B) = answer // ok
-  def g2[A, B](ev: A <:< B) = answer // ok
+  def f2[A, B](ev: A =:= B) = answer // warn now
+  def g2[A, B](ev: A <:< B) = answer // warn now
 }
 
 trait Anonymous {
-  def f = (i: Int) => answer      // ok
+  def f = (i: Int) => answer      // warn now
 
   def f1 = (_: Int) => answer     // OK
 
   def f2: Int => Int = _ + 1  // OK
 
-  def g = for (i <- List(1)) yield answer    // ok
+  def g = for (i <- List(1)) yield answer    // no warn (that is a patvar)
 }
 trait Context[A]
 trait Implicits {
-  def f[A](implicit ctx: Context[A]) = answer // ok
-  def g[A: Context] = answer // OK
+  def f[A](implicit ctx: Context[A]) = answer // warn implicit param even though only marker
+  def g[A: Context] = answer // no warn bound that is marker only
 }
-class Bound[A: Context] // OK
+class Bound[A: Context] // no warn bound that is marker only
 object Answers {
   def answer: Int = 42
 }

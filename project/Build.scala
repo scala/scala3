@@ -240,7 +240,9 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Xfatal-warnings",                         // -Werror in modern usage
+      "-Werror",
+      //"-Wunused:all",
+      //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
       "-language:implicitConversions",
     ),
@@ -1068,7 +1070,7 @@ object Build {
         )
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions -= "-Xfatal-warnings",
+      scalacOptions += "-Werror:false",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
@@ -1351,7 +1353,7 @@ object Build {
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
       bspEnabled := false,
-      scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
+      scalacOptions --= Seq("-Werror", "-deprecation"),
 
       // Required to run Scala.js tests.
       Test / fork := false,

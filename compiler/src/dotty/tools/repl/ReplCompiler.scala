@@ -11,16 +11,16 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.reporting.Diagnostic
-import dotty.tools.dotc.transform.PostTyper
+import dotty.tools.dotc.transform.{CheckUnused, CheckShadowing, PostTyper}
 import dotty.tools.dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotty.tools.dotc.typer.TyperPhase
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.{ParsedComment, Property, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results.*
+import dotty.tools.dotc.util.chaining.*
 
 import scala.collection.mutable
-import scala.util.chaining.given
 
 /** This subclass of `Compiler` is adapted for use in the REPL.
  *
@@ -36,6 +36,7 @@ class ReplCompiler extends Compiler:
     List(Parser()),
     List(ReplPhase()),
     List(TyperPhase(addRootImports = false)),
+    List(CheckUnused.PostTyper(), CheckShadowing()),
     List(CollectTopLevelImports()),
     List(PostTyper()),
   )
