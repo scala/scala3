@@ -39,7 +39,7 @@ object Conversion:
    *  in all covariant positions of the types of parameter symbols.
    */
   @experimental
-  opaque type into[T] >: T = T
+  opaque type into[+T] >: T = T
 
   /** Unwrap an `into` */
   extension [T](x: into[T])
