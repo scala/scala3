@@ -66,14 +66,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   // import x.y; y may be rewritten x.y, also import x.z as y
   override def transformSelect(tree: Select)(using Context): tree.type =
     val name = tree.removeAttachment(OriginalName).getOrElse(nme.NO_NAME)
-    if tree.span.isSynthetic && tree.symbol == defn.TypeTest_unapply then
+    if tree.srcPos.isSynthetic && tree.symbol == defn.TypeTest_unapply then
       tree.qualifier.tpe.underlying.finalResultType match
       case AppliedType(_, args) => // tycon.typeSymbol == defn.TypeTestClass
         val res = args(1) // T in TypeTest[-S, T]
         val target = res.dealias.typeSymbol
         resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
       case _ =>
-    else if tree.qualifier.span.isSynthetic || name.exists(_ != tree.symbol.name) then
+    else if tree.qualifier.srcPos.isSynthetic || name.exists(_ != tree.symbol.name) then
       if !ignoreTree(tree) then
         resolveUsage(tree.symbol, name, tree.qualifier.tpe)
     else
@@ -592,12 +592,12 @@ object CheckUnused:
         warnAt(pos)(UnusedSymbol.localDefs)
 
     def checkPatvars() =
-      // convert the one non-synthetic span so all are comparable
+      // convert the one non-synthetic span so all are comparable; filter NoSpan below
       def uniformPos(sym: Symbol, pos: SrcPos): SrcPos =
         if pos.span.isSynthetic then pos else pos.sourcePos.withSpan(pos.span.toSynthetic)
       // patvars in for comprehensions share the pos of where the name was introduced
       val byPos = infos.pats.groupMap(uniformPos(_, _))((sym, pos) => sym)
-      for (pos, syms) <- byPos if !syms.exists(_.hasAnnotation(defn.UnusedAnnot)) do
+      for (pos, syms) <- byPos if pos.span.exists && !syms.exists(_.hasAnnotation(defn.UnusedAnnot)) do
         if !syms.exists(infos.refs(_)) then
           if !syms.exists(v => !v.isLocal && !v.is(Private)) then
             warnAt(pos)(UnusedSymbol.patVars)
@@ -658,7 +658,10 @@ object CheckUnused:
           val selector = textAt(sel.srcPos)  // keep original
           s"$qual.$selector"                 // don't succumb to vagaries of show
         // begin actionable
-        val sortedImps = infos.imps.keySet.nn.asScala.toArray.sortBy(_.srcPos.span.point) // sorted by pos
+        val sortedImps = infos.imps.keySet.nn.asScala
+                         .filter(_.srcPos.span.exists) // extra caution
+                         .toArray
+                         .sortBy(_.srcPos.span.point) // sorted by pos, not sort in place
         var index = 0
         while index < sortedImps.length do
           val nextImport = sortedImps.indexSatisfying(from = index + 1)(_.isPrimaryClause) // next import statement
@@ -757,7 +760,11 @@ object CheckUnused:
     if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
       checkImports()
 
-    warnings.result().sortBy(_._2.span.point)
+    def sortOrder(msgInfo: MessageInfo): Int =
+      val srcPos = msgInfo._2
+      if srcPos.span.exists then srcPos.span.point else 0
+
+    warnings.result().sortBy(sortOrder)
   end warnings
 
   // Specific exclusions
@@ -881,8 +888,7 @@ object CheckUnused:
   extension (imp: Import)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
     def isPrimaryClause(using Context): Boolean =
-      val span = imp.srcPos.span
-      span.start != span.point // primary clause starts at `import` keyword
+      imp.srcPos.span.pointDelta > 0 // primary clause starts at `import` keyword with point at clause proper
 
     /** Generated import of cases from enum companion. */
     def isGeneratedByEnum(using Context): Boolean =
@@ -905,6 +911,7 @@ object CheckUnused:
 
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
+    def isSynthetic: Boolean = pos.span.isSynthetic && pos.span.exists
 
   extension [A <: AnyRef](arr: Array[A])
     // returns `until` if not satisfied
