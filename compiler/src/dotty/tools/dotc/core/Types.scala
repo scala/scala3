@@ -453,6 +453,25 @@ object Types extends TypeUtils {
       case AppliedType(tycon: TypeRef, arg :: Nil) => defn.isInto(tycon.symbol)
       case _ => false
 
+    /** Is this type a legal target type for an implicit conversion, so that
+     *  no `implicitConversions` language import is necessary?
+     */
+    def isConversionTargetType(using Context): Boolean =
+      dealias(KeepTypeVars | KeepOpaques).match
+        case _: AppliedType =>
+          isInto
+        case tp: AndOrType =>
+          tp.tp1.isConversionTargetType && tp.tp2.isConversionTargetType
+        case tp: TypeVar =>
+          false
+        case tp: MatchType =>
+          val tp1 = tp.reduced
+          (tp1 ne tp) && tp1.isConversionTargetType
+        case tp: RefinedType =>
+          tp.parent.isConversionTargetType
+        case _ =>
+          false
+
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */

@@ -18,7 +18,7 @@ import scala.language.implicitConversions
 in any code that uses them as implicit conversions (code that calls conversions explicitly is not affected). If the import is missing, a feature warning is currently issued, and this will become an error in future versions of Scala 3. The motivation for this restriction is two-fold:
 
  - Code with hidden implicit conversions is hard to understand and might have correctness or performance issues that go undetected.
- - If we require explicit user-opt in for implicit conversions, we can significantly improve type inference by propagating expected type information more widely in those parts of the program where there is no opt-in.
+ - If we require explicit user opt-in for implicit conversions, we can significantly improve type inference by propagating expected type information more widely in those parts of the program where there is no opt-in.
 
 There is one broad use case, however, where implicit conversions are very hard to replace. This is the case where an implicit conversion is used to adapt a method argument to its formal parameter type. An example from the standard library:
 ```scala
@@ -132,5 +132,52 @@ type Modifier = into[ModifierClass]
 ```
 The into-erasure for function parameters also works in aliased types. So a function defining parameters of `Modifier` type can use them internally as if they were from the underlying `ModifierClass`.
 
-## Alternatives
+## Details: Conversion target types
 
+The description so far said that conversions are allowed if the target type
+
+A conversion target type is one of the following:
+
+ - a type of the form `into[T]`,
+ - a reference `p.C` to a class or trait `C` that is declared with an `into` modifier,
+   which can also be followed by type arguments,
+ - a type alias of a conversion target type,
+ - a match type that reduces to a conversion target type,
+ - an annotated type `T @ann` where `T` is a conversion target type,
+ - a refined type `T {...}` where `T` is a conversion target type,
+ - a union `T | U` if two conversion target types `T` and `U`,
+ - an intersection `T & U` if two conversion target types `T` and `U`,
+ - an instance of a type parameter that is explicitly instantiated to a conversion target type.
+
+
+Inferred type parameters do not count as conversion target types. For instance, consider:
+
+```scala
+  trait Token
+  class Keyword(str: String)
+  given Conversion[String, Keyword] = KeyWord(_)
+
+  List[into[Keyword]]("if", "then", "else")
+```
+This type-checks since the target type of the list elements is the type parameter of the `List.apply` method which is explicitly instantiated to `into[Keyword]`. On the other hand, if we continue the example as follows we get an error:
+```scala
+  val ifKW: into[Keyword] = "if"
+  List(ifKW, "then", "else")         // error
+```
+Here, the type variable of `List.apply` is not explicitly instantiated, but is inferred to have type `into[Keyword]`. This is not enough to allow
+implicit conversions on the second and third arguments.
+
+Subclasses of `into` classes or traits do not count as conversion target types. For instance, consider:
+
+```scala
+into trait T
+class C(x: Int) extends T
+given Conversion[Int, C] = C(_)
+
+def f(x: T) = ()
+def g(x: C) = ()
+f("abc")      // ok
+g("abc")      // error
+```
+The call `f("abc")` type-checks since `f`'s parameter type `T` is `into`.
+But the call `g("abc")` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
