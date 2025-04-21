@@ -229,6 +229,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OPEN                                                             -- an open class
                   INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
                   TRACKED                                                          -- a tracked class parameter / a dependent class
+                  INTO                                                             -- a trait or class declared with `into`
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -511,6 +512,7 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
   final val TRACKED = 47
+  final val INTO = 48
 
   // Tree Cat. 2:    tag Nat
   final val firstNatTreeTag = SHAREDterm
@@ -703,7 +705,8 @@ object TastyFormat {
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified
-       | TRACKED => true
+       | TRACKED
+       | INTO => true
     case _ => false
   }
 
@@ -763,6 +766,8 @@ object TastyFormat {
     case PARAMsetter => "PARAMsetter"
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
+    case INTO => "INTO"
+    case TRACKED => "TRACKED"
     case INVISIBLE => "INVISIBLE"
     case PARAMalias => "PARAMalias"
     case EMPTYCLAUSE => "EMPTYCLAUSE"

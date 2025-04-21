@@ -905,6 +905,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       if (flags.is(Contravariant)) writeModTag(CONTRAVARIANT)
       if (flags.is(Opaque)) writeModTag(OPAQUE)
       if (flags.is(Open)) writeModTag(OPEN)
+      if (flags.is(Into)) writeModTag(INTO)
     }
   }
 

@@ -132,6 +132,28 @@ type Modifier = into[ModifierClass]
 ```
 The into-erasure for function parameters also works in aliased types. So a function defining parameters of `Modifier` type can use them internally as if they were from the underlying `ModifierClass`.
 
+## Alternative: `into` as a Modifier
+
+The `into` scheme discussed so far strikes a nice balance between explicitness and convenience. But migrating to it from Scala 2 implicits does require major changes since possibly a large number of function signatures has to be changed to allow conversions on the arguments. This might ultimately hold back migration to Scala 3 implicits.
+
+To facilitate migration, we also introduce an alternative way to specify target types of implicit conversions. We allow `into` as a soft modifier on
+classes and traits. If a class or trait is declared with `into`, then implicit conversions into that class or trait don't need a language import.
+
+Example:
+```scala
+into class Keyword
+given stringToKeyword: Conversion[String, Keyword] = Keyword(_)
+
+val dclKeywords = List("def", "val")
+val xs: List[Keyword] = dclkeywords ++ List("if", "then", "else")
+```
+Here, the strings `"if"`, `"then"`, and `"else"` are converted to `Keyword` using the given conversion `stringToKeyword`. No feature warning or error is issued since `Keyword` is declared as `into`.
+
+The `into`-as-a-modifier scheme is handy in codebases that have a small set of specific types that are intended to be the targets of implicit conversions defined in the same codebase. But it can be easily abused.
+One should restrict the number of `into`-declared types to the absolute minimum. In particular, never make a type `into` to just cater for the
+possibility that someone might want to add an implicit conversion to it.
+
+
 ## Details: Conversion target types
 
 The description so far said that conversions are allowed if the target type
@@ -176,8 +198,8 @@ given Conversion[Int, C] = C(_)
 
 def f(x: T) = ()
 def g(x: C) = ()
-f("abc")      // ok
-g("abc")      // error
+f(1)      // ok
+g(1)      // error
 ```
 The call `f("abc")` type-checks since `f`'s parameter type `T` is `into`.
 But the call `g("abc")` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.

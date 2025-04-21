@@ -635,6 +635,8 @@ object Checking {
       mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
     if mods.is(Open) then
       report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
+    if mods.is(Into) then
+      report.error(ModifierNotAllowedForDefinition(Into), flagSourcePos(Open))
     if mods.is(Abstract) then
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
