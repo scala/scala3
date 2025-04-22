@@ -50,3 +50,5 @@ named-tuples-strawman-2.scala
 typeCheckErrors.scala
 i18150.scala
 
+# issue caused by -Xprint-types
+decorators
