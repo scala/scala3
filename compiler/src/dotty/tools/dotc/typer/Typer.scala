@@ -953,6 +953,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ =>
             notAMemberErrorType(tree, qual, pt))
 
+    println(i"typedSelectWithAdapt $tree, $pt, $qual")
     tryType(tree, qual, rawType)
       .orElse(trySimplifyApply())
       .orElse(tryInstantiateTypeVar())

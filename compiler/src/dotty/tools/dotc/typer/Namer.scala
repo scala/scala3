@@ -2035,64 +2035,23 @@ class Namer { typer: Typer =>
    *  abstract type member
    */
   def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
-    lazy val abstractContextBound = isContextBoundWitnessWithAbstractMembers(psym, param, owningSym)
-    lazy val isRefInSignatures =
-      psym.maybeOwner.isPrimaryConstructor
-      && isReferencedInPublicSignatures(psym)
     lazy val needsTrackedSimp = needsTrackedSimple(psym, param, owningSym)
     !psym.is(Tracked)
-    && psym.isTerm
-    && needsTrackedSimp
-
-  /** Under x.modularity, we add `tracked` to context bound witnesses and
-   *  explicit evidence parameters that have abstract type members
-   */
-  private def isContextBoundWitnessWithAbstractMembers(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
-    val accessorSyms = maybeParamAccessors(owningSym, psym)
-    (owningSym.isClass || owningSym.isAllOf(Given | Method))
-    && (param.hasAttachment(ContextBoundParam) || (psym.isOneOf(GivenOrImplicit) && !accessorSyms.forall(_.isOneOf(PrivateLocal))))
-    && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
+      && psym.isTerm
+      && needsTrackedSimp
 
   private def needsTrackedSimple(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
     val accessorSyms = maybeParamAccessors(owningSym, psym)
     (owningSym.isClass || owningSym.isAllOf(Given | Method))
-    && !accessorSyms.exists(_.is(Mutable))
-    && (param.hasAttachment(ContextBoundParam) || !accessorSyms.forall(_.isOneOf(PrivateLocal)))
-    && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
+      && !accessorSyms.exists(_.is(Mutable))
+      && (param.hasAttachment(ContextBoundParam) || accessorSyms.exists(!_.isOneOf(PrivateLocal)))
+      && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
 
   extension (sym: Symbol)
     private def infoWithForceNonInferingCompleter(using Context): Type = sym.infoOrCompleter match
       case tpe: LazyType if tpe.isExplicit => sym.info
       case tpe if sym.isType => sym.info
       case info => info
-
-  /** Under x.modularity, we add `tracked` to term parameters whose types are
-   *  referenced in public signatures of the defining class
-   */
-  private def isReferencedInPublicSignatures(sym: Symbol)(using Context): Boolean =
-    val owner = sym.maybeOwner.maybeOwner
-    val accessorSyms = maybeParamAccessors(owner, sym)
-    def checkOwnerMemberSignatures(owner: Symbol): Boolean =
-      owner.infoOrCompleter match
-        case info: ClassInfo =>
-          info.decls.filter(_.isPublic)
-            .filter(_ != sym.maybeOwner)
-            .exists { decl =>
-              tpeContainsSymbolRef(decl.infoWithForceNonInferingCompleter, accessorSyms)
-            }
-        case _ => false
-    checkOwnerMemberSignatures(owner)
-
-  /** Check if any of syms are referenced in tpe */
-  private def tpeContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean =
-    val acc = new ExistsAccumulator(
-      { tpe => tpe.termSymbol.exists && syms.contains(tpe.termSymbol) },
-      StopAt.Static,
-      forceLazy = false
-    ) {
-      override def apply(acc: Boolean, tpe: Type): Boolean = super.apply(acc, tpe.safeDealias)
-    }
-    acc(false, tpe)
 
   private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] = owner.infoOrCompleter match
     case info: ClassInfo =>
