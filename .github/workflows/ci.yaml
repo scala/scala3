@@ -87,6 +87,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
+        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/.sbt/1.0/.develocity/build-cache:ro
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
