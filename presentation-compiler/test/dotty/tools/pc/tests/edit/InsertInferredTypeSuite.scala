@@ -883,6 +883,93 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
         |""".stripMargin
     )
 
+  @Test def `operator-val` =
+    checkEdit(
+      """|object A {
+         |  val <<!>> = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  val ! : Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-def` =
+    checkEdit(
+      """|object A {
+         |  def <<!>> = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def ! : Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-def-param` =
+    checkEdit(
+      """|object A {
+         |  def <<!>>[T] = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def ![T]: Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-def-type-param` =
+    checkEdit(
+      """|object A {
+         |  def <<!>>(x: Int) = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def !(x: Int): Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-for` =
+    checkEdit(
+      """|object A {
+         |  def foo = for(<<!>> <- List(1)) yield !
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def foo = for(! : Int <- List(1)) yield !
+         |}
+         |""".stripMargin
+    )
+  @Test def `operator-lambda` =
+    checkEdit(
+      """|object A {
+         |  val foo: Int => Int = (<<!>>) => ! + 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  val foo: Int => Int = (! : Int) => ! + 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-ident` =
+    checkEdit(
+      """|object A {
+         |  def foo =
+         |    val ! = 1
+         |    <<!>>
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def foo =
+         |    val ! = 1
+         |    ! : Int
+         |}
+         |""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String
