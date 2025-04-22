@@ -53,7 +53,35 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
+  build-non-bootstrapped:
+    name: Build Non-Bootstrapped Compiler
+    runs-on: [self-hosted, Linux]
+    if: github.event_name == 'pull_request'
+    container:
+      image: lampepfl/dotty:2024-10-18
+      options: --cpu-shares 4096
+      volumes:
+        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/.sbt/1.0/.develocity/build-cache
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Checkout cleanup script
+        uses: actions/checkout@v4
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+      - name: Compile Non-Bootstrapped Dotty
+        run: ./project/scripts/sbt "; compile"
+
+
   test_non_bootstrapped:
+    needs: build-non-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
