@@ -106,6 +106,7 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
       - name: Compile Bootstrapped Dotty
         run: ./project/scripts/sbt "; scala3-bootstrapped/compile"
+      - run: ls -alF /root/.sbt/1.0/.develocity/build-cache/
       - name: Populate the Remote Build Cache
         run: cp -r /root/.sbt/1.0/.develocity/build-cache/. /root/build-cache-source/
 
