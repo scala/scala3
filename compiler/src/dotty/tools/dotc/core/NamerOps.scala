@@ -113,8 +113,11 @@ object NamerOps:
       var flags = ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags)
       if cls.is(Protected) && !modcls.is(Protected) then flags |= Protected
       newSymbol(
-        modcls, nme.apply, flags,
-        ApplyProxyCompleter(constr), coord = constr.coord)
+        modcls, nme.apply,
+        flags,
+        ApplyProxyCompleter(constr),
+        cls.privateWithin,
+        constr.coord)
     for dcl <- cls.info.decls do
       if dcl.isConstructor then scope.enter(proxy(dcl))
     scope

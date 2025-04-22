@@ -14,4 +14,4 @@ package companioned:
 
 package p:
 
-  def f = internal.P(42)
+  def f = new internal.P(42)
