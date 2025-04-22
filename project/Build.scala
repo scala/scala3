@@ -1692,7 +1692,6 @@ object Build {
             "compliantNullPointers" -> (sems.nullPointers == CheckedBehavior.Compliant),
             "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
-            "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
