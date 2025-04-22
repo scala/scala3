@@ -93,7 +93,9 @@ jobs:
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     steps:
       - name: Populate the Local Build Cache
-        run: cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
+        run: |
+          mkdir -p /root/.sbt/1.0/.develocity/build-cache
+          cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
       - name: Set JDK 17 as default
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Checkout cleanup script
@@ -135,7 +137,9 @@ jobs:
          )"
     steps:
       - name: Populate the Build Cache
-        run: cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
+        run:  |
+          mkdir -p /root/.sbt/1.0/.develocity/build-cache
+          cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
       - name: Set JDK 17 as default
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
