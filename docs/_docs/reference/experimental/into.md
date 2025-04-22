@@ -121,7 +121,8 @@ as they are seen in a method body. Here is an example:
 ```
 Inside the `++` method, the `elems` parameter is of type `IterableOnce[A]`, not `into[IterableOne[A]]`. Hence, we can simply write `elems.iterator` to get at the `iterator` method of the `IterableOnce` class.
 
-Specifically (meaning in spec-language): We erase all `into` wrappers in the local types of parameter types, on the top-level of these types as well as in all _top-level covariant_ subparts. Here, a part `S` of a type `T` is top-level covariant it is not enclosed in some type that appears in contra-variant or invariant position in `T`.
+Specifically, we erase all `into` wrappers in the local types of parameter types that appear in covariant or invariant position. Contravariant `into` wrappers are kept since these typically are on the parameters of function arguments.
+
 
 ## Into in Aliases
 
