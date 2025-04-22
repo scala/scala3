@@ -2772,11 +2772,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *
    *  1. Single inheritance of classes
    *  2. Final classes cannot be extended
-   *  3. ConstantTypes with distinct values are non intersecting
-   *  4. TermRefs with distinct values are non intersecting
+   *  3. ConstantTypes with distinct values are non-intersecting
+   *  4. TermRefs with distinct values are non-intersecting
    *  5. There is no value of type Nothing
    *
-   *  Note on soundness: the correctness of match types relies on on the
+   *  Note on soundness: the correctness of match types relies on the
    *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
    */
