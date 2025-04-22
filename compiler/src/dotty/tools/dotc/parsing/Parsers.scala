@@ -33,6 +33,7 @@ import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
 import config.SourceVersion.*
 import config.SourceVersion
+import dotty.tools.dotc.util.chaining.*
 
 object Parsers {
 
@@ -1020,10 +1021,11 @@ object Parsers {
      */
     def followingIsLambdaAfterColon(): Boolean =
       val lookahead = in.LookaheadScanner(allowIndent = true)
+                      .tap(_.currentRegion.knownWidth = in.currentRegion.indentWidth)
       def isArrowIndent() =
         lookahead.isArrow
         && {
-          lookahead.nextToken()
+          lookahead.observeArrowIndented()
           lookahead.token == INDENT || lookahead.token == EOF
         }
       lookahead.nextToken()

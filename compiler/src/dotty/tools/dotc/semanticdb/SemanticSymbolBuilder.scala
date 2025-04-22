@@ -108,10 +108,12 @@ class SemanticSymbolBuilder:
       else if (sym.isScala2PackageObject) then
         b.append(Symbols.PackageObjectDescriptor)
       else
+        def isScalaMethodOrVar = sym.isOneOf(Method | Mutable) && !sym.is(JavaDefined)
+        def isJavaMethod = sym.is(Method) && sym.is(JavaDefined)
         addName(b, sym.name)
         if sym.is(Package) then b.append('/')
         else if sym.isType || sym.isAllOf(JavaModule) then b.append('#')
-        else if sym.is(Method) || (sym.is(Mutable) && !sym.is(JavaDefined))
+        else if (isScalaMethodOrVar || isJavaMethod)
         && (!sym.is(StableRealizable) || sym.isConstructor) then
           b.append('('); addOverloadIdx(sym); b.append(").")
         else b.append('.')
