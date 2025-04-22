@@ -61,7 +61,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/.sbt/1.0/.develocity/build-cache
+        - /nfs-cache/.develocity/build-cache-2/${{ github.event.pull_request.number }}:/root/.sbt/1.0/.develocity/build-cache
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -87,7 +87,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/build-cache-source
+        - /nfs-cache/.develocity/build-cache-2/${{ github.event.pull_request.number }}:/root/build-cache-source
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -107,7 +107,7 @@ jobs:
       - name: Compile Bootstrapped Dotty
         run: ./project/scripts/sbt "; scala3-bootstrapped/compile"
       - name: Populate the Remote Build Cache
-        run: cp -r /root/.sbt/1.0/.develocity/build-cache/. /root/build-cache-source
+        run: cp -r /root/.sbt/1.0/.develocity/build-cache/. /root/build-cache-source/
 
 
   test_non_bootstrapped:
@@ -117,7 +117,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/build-cache-source:ro
+        - /nfs-cache/.develocity/build-cache-2/${{ github.event.pull_request.number }}:/root/build-cache-source:ro
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
