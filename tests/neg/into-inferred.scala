@@ -29,6 +29,7 @@ object Test:
   val s4 = s3.map(_.underlying)
   val _: Set[Keyword | String] = s4
 
+
   val l = List(ifKW)
   val l1: List[into[Keyword]] = l :+ "then" :+ "else"  // error
   val l2: List[into[Keyword]] = l ++ List("then", "else")  // warn // warn

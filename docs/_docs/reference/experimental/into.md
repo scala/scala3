@@ -156,23 +156,21 @@ possibility that someone might want to add an implicit conversion to it.
 
 ## Details: Conversion target types
 
-The description so far said that conversions are allowed if the target type
-
-A conversion target type is one of the following:
+To make the preceding descriptions more precise: An implicit conversion is permitted without an `implicitConversions` language import if the target type is a valid conversion target type. A valid conversion target type is one of the following:
 
  - a type of the form `into[T]`,
  - a reference `p.C` to a class or trait `C` that is declared with an `into` modifier,
    which can also be followed by type arguments,
- - a type alias of a conversion target type,
- - a match type that reduces to a conversion target type,
- - an annotated type `T @ann` where `T` is a conversion target type,
- - a refined type `T {...}` where `T` is a conversion target type,
- - a union `T | U` if two conversion target types `T` and `U`,
- - an intersection `T & U` if two conversion target types `T` and `U`,
- - an instance of a type parameter that is explicitly instantiated to a conversion target type.
+ - a type alias of a valid conversion target type,
+ - a match type that reduces to a valid conversion target type,
+ - an annotated type `T @ann` where `T` is a valid conversion target type,
+ - a refined type `T {...}` where `T` is a valid conversion target type,
+ - a union `T | U` of two valid conversion target types `T` and `U`,
+ - an intersection `T & U` of two valid conversion target types `T` and `U`,
+ - an instance of a type parameter that is explicitly instantiated to a valid conversion target type.
 
 
-Inferred type parameters do not count as conversion target types. For instance, consider:
+Type parameters that are not fully instantiated do not count as valid conversion target types. For instance, consider:
 
 ```scala
   trait Token
@@ -184,12 +182,13 @@ Inferred type parameters do not count as conversion target types. For instance, 
 This type-checks since the target type of the list elements is the type parameter of the `List.apply` method which is explicitly instantiated to `into[Keyword]`. On the other hand, if we continue the example as follows we get an error:
 ```scala
   val ifKW: into[Keyword] = "if"
-  List(ifKW, "then", "else")         // error
+  val ys: List[into[Keyword]] = List(ifKW, "then", "else")
 ```
-Here, the type variable of `List.apply` is not explicitly instantiated, but is inferred to have type `into[Keyword]`. This is not enough to allow
+Here, the type variable of `List.apply` is not explicitly instantiated
+when we check the `List(...)` arguments (it is just upper-bounded by the target type `into[Keyword]`). This is not enough to allow
 implicit conversions on the second and third arguments.
 
-Subclasses of `into` classes or traits do not count as conversion target types. For instance, consider:
+Subclasses of `into` classes or traits do not count as valid conversion target types. For instance, consider:
 
 ```scala
 into trait T
@@ -203,3 +202,4 @@ g(1)      // error
 ```
 The call `f("abc")` type-checks since `f`'s parameter type `T` is `into`.
 But the call `g("abc")` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
+
