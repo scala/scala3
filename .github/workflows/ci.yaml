@@ -87,7 +87,7 @@ jobs:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/.sbt/1.0/.develocity/build-cache:ro
+        - /nfs-cache/.develocity/build-cache/${{ github.event.pull_request.number }}:/root/build-cache-source:ro
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
@@ -103,6 +103,8 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
+      - name: Populate the Build Cache
+        run: cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
       - name: Set JDK 17 as default
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
