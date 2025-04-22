@@ -476,9 +476,18 @@ class Inliner(val call: tpd.Tree)(using Context):
           fixRefinedTypes(parent)
         case _ =>
     fixRefinedTypes(binding.symbol.info)
+    val prev = binding.symbol.info
     binding.symbol.info = mapOpaques.typeMap(binding.symbol.info)
-    mapOpaques.transform(binding).asInstanceOf[ValDef]
+    val mapped = mapOpaques.transform(binding).asInstanceOf[ValDef]
       .showing(i"transformed this binding exposing opaque aliases: $result", inlining)
+    // val res =
+    //   if binding.symbol.info != prev then
+    //     binding.symbol.info = AndType(prev, binding.symbol.info)
+    //     ValDef(binding.symbol.asTerm, mapped.rhs.cast(binding.symbol.info)) // TODO merge
+    //   else
+    //     mapped
+    // res
+    mapped
   end addProxiesForRecurrentOpaques
 
   /** If `binding` contains TermRefs that refer to objects with opaque

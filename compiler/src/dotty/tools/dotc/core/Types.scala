@@ -2968,7 +2968,10 @@ object Types extends TypeUtils {
       if myCanDropAliasPeriod != ctx.period then
         myCanDropAlias =
           !symbol.canMatchInheritedSymbols
-          || !prefix.baseClasses.exists(_.info.decls.lookup(name).is(Deferred))
+          || !prefix.baseClasses.exists{cls =>
+            val decl = cls.info.decls.lookup(name)
+            decl.is(Deferred) && !decl.is(Opaque)
+          }
         myCanDropAliasPeriod = ctx.period
       myCanDropAlias
 
