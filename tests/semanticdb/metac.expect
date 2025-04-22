@@ -2249,6 +2249,33 @@ Synthetics:
 [8:2..8:10):(x1, x1) => *(Tuple2(Int, Int))
 [8:10..8:10): => *(Int, Int)
 
+expect/JavaStaticVar.scala
+--------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => JavaStaticVar.scala
+Text => empty
+Language => Scala
+Symbols => 3 entries
+Occurrences => 9 entries
+
+Symbols:
+example/ScalaFoo# => class ScalaFoo extends Object { self: ScalaFoo => +2 decls }
+example/ScalaFoo#`<init>`(). => primary ctor <init> (): ScalaFoo
+example/ScalaFoo#javaStaticVarFoo. => val method javaStaticVarFoo Int
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:10): com -> com/
+[2:11..2:17): javacp -> com/javacp/
+[2:18..2:31): JavaStaticVar -> com/javacp/JavaStaticVar#
+[4:6..4:14): ScalaFoo <- example/ScalaFoo#
+[5:2..5:2): <- example/ScalaFoo#`<init>`().
+[5:6..5:22): javaStaticVarFoo <- example/ScalaFoo#javaStaticVarFoo.
+[5:25..5:38): JavaStaticVar -> com/javacp/JavaStaticVar#
+[5:39..5:42): foo -> com/javacp/JavaStaticVar#foo.
+
 expect/Local.scala
 ------------------
 
