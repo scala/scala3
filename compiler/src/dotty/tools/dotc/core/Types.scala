@@ -457,10 +457,10 @@ object Types extends TypeUtils {
      *  no `implicitConversions` language import is necessary?
      */
     def isConversionTargetType(using Context): Boolean =
-      dealias(KeepTypeVars | KeepOpaques).match
+      dealias(KeepOpaques).match
         case tp: TypeRef =>
           tp.symbol.isClass && tp.symbol.is(Into)
-        case tp @ AppliedType(tycon: TypeRef, _) =>
+        case tp @ AppliedType(tycon, _) =>
           isInto || tycon.isConversionTargetType
         case tp: AndOrType =>
           tp.tp1.isConversionTargetType && tp.tp2.isConversionTargetType
@@ -1505,7 +1505,7 @@ object Types extends TypeUtils {
         val tycon1 = tycon.dealias(keeps)
         if tycon1 ne tycon then app.superType.dealias(keeps)
         else this
-      case tp: TypeVar if (keeps & KeepTypeVars) == 0 =>
+      case tp: TypeVar =>
         val tp1 = tp.instanceOpt
         if tp1.exists then tp1.dealias(keeps) else tp
       case tp: AnnotatedType =>
@@ -7129,7 +7129,6 @@ object Types extends TypeUtils {
   private val KeepAnnots = 1
   private val KeepRefiningAnnots = 2
   private val KeepOpaques = 4
-  private val KeepTypeVars = 8
 
   // ----- Debug ---------------------------------------------------------
 

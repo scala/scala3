@@ -13,3 +13,9 @@ object Test:
   def g(x: C) = ()
   f(1)      // ok
   g(1)      // warn
+
+  into class Keyword(str: String)
+  given stringToKeyword: Conversion[String, Keyword] = Keyword(_)
+
+  val dclKeywords = Set[Keyword]("def", "val") // ok
+  val keywords = dclKeywords + "if" + "then" + "else" // ok
