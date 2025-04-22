@@ -4250,10 +4250,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
-            val newctx = ctx.fresh.setNewTyperState()
+            val newctx = ctx.fresh.setExploreTyperState()
             val pt1 = pt.deepenProtoTrans(using newctx)
-            val arg = if ((pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)(using newctx)) {
-              inferImplicitArg(formal, tree.span.endPos)(using newctx)
+            val arg = if ((formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)(using newctx)) {
+              inferImplicitArg(formal.simplified(using newctx), tree.span.endPos)
             } else {
               inferImplicitArg(formal, tree.span.endPos)
             }
