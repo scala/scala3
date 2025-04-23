@@ -61,7 +61,8 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (into, "Allow into modifier on parameter types"),
-    (modularity, "Enable experimental modularity features")
+    (modularity, "Enable experimental modularity features"),
+    (packageObjectValues, "Enable experimental package objects as values"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
