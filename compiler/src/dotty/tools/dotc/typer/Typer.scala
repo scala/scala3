@@ -2779,7 +2779,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
 
       // check value class constraints
-      checkDerivedValueClass(cls, body1)
+      checkDerivedValueClass(cdef, cls, body1)
 
       // check PolyFunction constraints (no erased functions!)
       if parents1.exists(_.tpe.classSymbol eq defn.PolyFunctionClass) then
