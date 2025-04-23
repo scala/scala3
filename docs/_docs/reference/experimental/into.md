@@ -145,10 +145,10 @@ Example:
 into class Keyword
 given stringToKeyword: Conversion[String, Keyword] = Keyword(_)
 
-val dclKeywords = List("def", "val")
-val xs: List[Keyword] = dclkeywords ++ List("if", "then", "else")
+val dclKeywords = Set[Keyword]("def", "val") // ok
+val keywords = dclKeywords + "if" + "then" + "else" // ok
 ```
-Here, the strings `"if"`, `"then"`, and `"else"` are converted to `Keyword` using the given conversion `stringToKeyword`. No feature warning or error is issued since `Keyword` is declared as `into`.
+Here, all string literals are converted to `Keyword` using the given conversion `stringToKeyword`. No feature warning or error is issued since `Keyword` is declared as `into`.
 
 The `into`-as-a-modifier scheme is handy in codebases that have a small set of specific types that are intended to be the targets of implicit conversions defined in the same codebase. But it can be easily abused.
 One should restrict the number of `into`-declared types to the absolute minimum. In particular, never make a type `into` to just cater for the
