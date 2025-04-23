@@ -756,19 +756,18 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
+    inline def checkParentIsNotAnyValAlias(): Unit =
+      cdef.rhs match {
+        case impl: Template =>
+          val parent = impl.parents.head
+          if parent.symbol.isAliasType && parent.typeOpt.dealias =:= defn.AnyValType then
+            report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parent.symbol), cdef.srcPos)
+        case _ => ()
+      }
     // We don't check synthesised enum anonymous classes that are generated from
     // enum extending a value class type (AnyVal or an alias of it)
     // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
     if (clazz.isDerivedValueClass && !clazz.isEnumAnonymClass) {
-      val parentOpt = cdef.rhs match {
-        case impl: Template =>
-          impl.parents.headOption
-        case _ => None
-      }
-      val isExtendingAliasOfAnyVal = parentOpt.exists { parent =>
-        parent.symbol.isAliasType && parent.tpe.nn.dealias =:= defn.AnyValType
-      }
-
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
@@ -779,8 +778,9 @@ object Checking {
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
-      if (isExtendingAliasOfAnyVal)
-        report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parentOpt.get.symbol), clazz.srcPos)
+
+      checkParentIsNotAnyValAlias()
+
       if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
         report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
