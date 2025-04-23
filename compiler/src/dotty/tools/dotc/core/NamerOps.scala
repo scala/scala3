@@ -141,6 +141,7 @@ object NamerOps:
         cls.owner, cls.name.toTermName,
         flags, flags,
         constructorCompanionCompleter(cls),
+        cls.privateWithin,
         coord = cls.coord,
         assocFile = cls.assocFile)
     companion.moduleClass.registerCompanion(cls)
