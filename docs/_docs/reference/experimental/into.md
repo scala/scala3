@@ -1,8 +1,8 @@
 ---
 layout: doc-page
-title: "The `into` Type"
-redirectFrom: /docs/reference/other-new-features/into-modifier.html
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/into-modifier.html
+title: The `into` Type and Modifier
+redirectFrom: /docs/reference/other-new-features/into.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/into.html
 ---
 
 This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
@@ -10,6 +10,21 @@ This feature is not yet part of the Scala 3 language definition. It can be made 
 ```scala
 import scala.language.experimental.into
 ```
+
+
+## Summary
+
+Scala 3 offers two alternative schemes to allow implicit conversions using Scala-3's `Conversion`
+class without requiring a language import.
+
+The first scheme is
+to have a special type `into[T]` which serves as a marker that conversions into that type are allowed. These types are typically used in parameters of methods that are designed to work with implicit conversions of their arguments. This allows fine-grained control over where implicit conversions should be allowed. We call this scheme "_into as a type constructor_".
+
+The second scheme allows `into` as a soft modifier on traits and classes. If a trait or class is declared with this modifier, conversions to that type are allowed. The second scheme requires that one has control over the conversion target types so that an `into` can be added to their declaration. It is appropriate where there are a few designated types that are meant to be conversion targets. If that's the case, migration from Scala 2 to Scala 3
+becomes easier since no function signatures need to be rewritten. We call this scheme "_into as a modifier_".
+
+
+## Motivation
 
 Scala 3's implicit conversions of the `scala.Conversion` class require a language import
 ```
@@ -29,7 +44,9 @@ val res0: List[Int] = List(0, 1, 2, 3)
 ```
 The input line `xs ++ ys` makes use of an implicit conversion from `Array[Int]` to `IterableOnce[Int]`. This conversion is defined in the standard library as an `implicit def`. Once the standard library is rewritten with Scala 3 conversions, this will require a language import at the use site, which is clearly unacceptable. It is possible to avoid the need for implicit conversions using method overloading or type classes, but this often leads to longer and more complicated code, and neither of these alternatives work for vararg parameters.
 
-This is where the `into` type alias comes in. Here is a signature of a `++` method on `List[A]` that uses it:
+## First Scheme: `into` as a Type Constructor
+
+This is where the `into` type constructor comes in. Here is a signature of a `++` method on `List[A]` that uses it:
 
 ```scala
   def ++ (elems: into[IterableOnce[A]]): List[A]
@@ -44,7 +61,7 @@ Types of the form `into[T]` are treated specially during type checking. If the e
 
 Note: Unlike other types, `into` starts with a lower-case letter. This emphasizes the fact that `into` is treated specially by the compiler, by making `into` look more like a keyword than a regular type.
 
-**Example:**
+### Example 1
 
 ```scala
 given Conversion[Array[Int], IterableOnce[Int]] = wrapIntArray
@@ -54,7 +71,30 @@ xs ++ ys
 ```
 This inserts the given conversion on the `ys` argument in `xs ++ ys`. It typechecks without a feature warning since the formal parameter of `++` is of type `into[IterableOnce]`, which is also the expected type of `ys`.
 
-## `into` in Function Results
+### Example 2
+
+Consider a simple expression AST type:
+```scala
+enum Expr:
+  case Neg(e: Expr)
+  case Add(e1: Expr, e2: Expr)
+  case Const(n: Int)
+import Expr.*
+```
+Say we'd like to build `Expr` trees without explicit `Const` wrapping, as in `Add(1, Neg(2))`. The usual way to achieve this is with an implicit conversion from `Int` to `Const`:
+```scala
+given Conversion[Int, Const] = Const(_)
+```
+Normally, that would require a language import in all source modules that construct `Expr` trees. We can avoid this requirement on user code by declaring `Neg` and `Add` with `into` parameters:
+```scala
+enum Expr:
+  case Neg(e: into[Expr])
+  case Add(e1: into[Expr], e2: into[Expr])
+  case Const(n: Int)
+```
+This would allow conversions from `Int` to `Const` when constructing trees but not elsewhere.
+
+### `into` in Function Results
 
 `into` allows conversions everywhere it appears as expected type, including in the results of function arguments. For instance, consider the new proposed signature of the `flatMap` method on `List[A]`:
 
@@ -70,7 +110,7 @@ val res2: List[Char] = List(1, 2, 2, 3, 3, 3)
 ```
 Here, the conversion from `String` to `Iterable[Char]` is applied on the results of `flatMap`'s function argument when it is applied to the elements of `xs`.
 
-## Vararg arguments
+### Vararg arguments
 
 When applied to a vararg parameter, `into` allows a conversion on each argument value individually. For example, consider a method `concatAll` that concatenates a variable
 number of `IterableOnce[Char]` arguments, and also allows implicit conversions into `IterableOnce[Char]`:
@@ -86,7 +126,7 @@ concatAll(List('a'), "bc", Array('d', 'e'))
 would apply two _different_ implicit conversions: the conversion from `String` to `Iterable[Char]` gets applied to the second argument and the conversion from `Array[Char]` to `Iterable[Char]` gets applied to the third argument.
 
 
-## Unwrapping `into`
+### Unwrapping `into`
 
 Since `into[T]` is an opaque type, its run-time representation is just `T`.
 At compile time, the type `into[T]` is a known supertype of the type `T`. So if `t: T`, then
@@ -107,7 +147,7 @@ However, the next section shows that unwrapping with `.underlying` is not needed
 
 
 
-## Dropping `into` for Parameters in Method Bodies
+### Dropping `into` for Parameters in Method Bodies
 
 The typical use cases for `into` wrappers are for parameters. Here, they specify that the
 corresponding arguments can be converted to the formal parameter types. On the other hand, inside a method, a parameter type can be assumed to be of the underlying type since the conversion already took place when the enclosing method was called. This is reflected in the type system which erases `into` wrappers in the local types of parameters
@@ -123,36 +163,42 @@ Inside the `++` method, the `elems` parameter is of type `IterableOnce[A]`, not 
 
 Specifically, we erase all `into` wrappers in the local types of parameter types that appear in covariant or invariant position. Contravariant `into` wrappers are kept since these typically are on the parameters of function arguments.
 
+### Into Constructors in Type Aliases
 
-## Into in Aliases
-
-Since `into` is a regular type constructor, it can be used anywhere, including in type aliases and type parameters. This gives a lot of flexibility to enable implicit conversions for user-visible types. For instance, the Laminar framework
-defines a type `Modifier` that is commonly used as a parameter type of user-defined methods and that should support implicit conversions into it. Patterns like this can be supported by defining a type alias such as
+Since `into` is a regular type constructor, it can be used anywhere, including in type aliases and type parameters. For instance, in the Scala standard library we could define
 ```scala
-type Modifier = into[ModifierClass]
+type ToIterator[T] = into[IterableOnce[T]]
 ```
-The into-erasure for function parameters also works in aliased types. So a function defining parameters of `Modifier` type can use them internally as if they were from the underlying `ModifierClass`.
+and then `++`, `flatMap` and other functions could use this alias in their parameter types. The effect would be the same as when `into` is written out explicitly.
 
-## Alternative: `into` as a Modifier
+## Second Scheme: `into` as a Modifier
 
 The `into` scheme discussed so far strikes a nice balance between explicitness and convenience. But migrating to it from Scala 2 implicits does require major changes since possibly a large number of function signatures has to be changed to allow conversions on the arguments. This might ultimately hold back migration to Scala 3 implicits.
 
 To facilitate migration, we also introduce an alternative way to specify target types of implicit conversions. We allow `into` as a soft modifier on
 classes and traits. If a class or trait is declared with `into`, then implicit conversions into that class or trait don't need a language import.
 
-Example:
+For instance, the Laminar framework
+defines a trait `Modifier` that is commonly used as a parameter type of user-defined methods and that should support implicit conversions into it.
+`Modifier` is commonly used as a parameter type in both Laminar framework functions and in application-level functions that use Laminar.
+
+We can support implicit conversions to `Modifier`s simply by making `Modifier` an `into` trait:
 ```scala
-into class Keyword
-given stringToKeyword: Conversion[String, Keyword] = Keyword(_)
-
-val dclKeywords = Set[Keyword]("def", "val") // ok
-val keywords = dclKeywords + "if" + "then" + "else" // ok
+into trait Modifier ...
 ```
-Here, all string literals are converted to `Keyword` using the given conversion `stringToKeyword`. No feature warning or error is issued since `Keyword` is declared as `into`.
+This means implicit `Conversion` instances with `Modifier` results can be inserted without requiring a language import.
 
-The `into`-as-a-modifier scheme is handy in codebases that have a small set of specific types that are intended to be the targets of implicit conversions defined in the same codebase. But it can be easily abused.
-One should restrict the number of `into`-declared types to the absolute minimum. In particular, never make a type `into` to just cater for the
-possibility that someone might want to add an implicit conversion to it.
+Here is a simplified example:
+```scala
+trait Modifier
+given Conversion[Option[Node], Modifier] = ...
+given Conversion[Seq[Node], Modifier] = ...
+
+def f(x: Source, m: Modifier) = ...
+f(source, Some(node)) // inserts conversion
+```
+
+The `into`-as-a-modifier scheme is handy in codebases that have a small set of specific types that are intended as the targets of implicit conversions defined in the same codebase. Laminar's `Modifier` is a typical example. But the scheme can be easily abused by making the number of `into` types too large. One should restrict the number of `into`-declared types to the absolute minimum. In particular, never make a type `into` to just cater for the possibility that someone might want to later add an implicit conversion to it.
 
 
 ## Details: Conversion target types
@@ -203,4 +249,39 @@ g(1)      // error
 ```
 The call `f("abc")` type-checks since `f`'s parameter type `T` is `into`.
 But the call `g("abc")` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
+
+
+## Why Two Different Schemes?
+
+Can we make do with just one scheme instead of two? In practice this would be difficult.
+
+Let's first take a look the `Expr` example, which uses into-as-a-constructor. Could it be rewritten to use into-as-a-modifier?
+This would mean we have to add `into` to the whole `Expr` enum. Adding it to just `Const` is not enough, since `Add` and `Neg` take `Expr` arguments, not `Const` arguments.
+
+But we might not always have permission to change the `Expr` enum. For instance, `Expr` could be defined in a lower level library without implicit conversions, but later we want to make `Expr` construction convenient by eliding `Const` wrappers in some higher-level library or application. With `into` constructors, this is easy: Define the implicit conversion and facade methods that construct `Expr` trees while taking `into[Expr]` parameters.
+With `into` modifiers there is no way to achieve the same.
+
+A possibly more important objection is that even if we could add the `into` modifier to `Expr`, it would be bad style to do so! We want to allow for implicit conversion in the very specific case where we build an `Expr` tree using the `Add` and `Neg` constructors. Our applications could have lots of other methods that take `Expr` trees, for instance to analyze them or evaluate them.
+We probably do not want to allow implicit conversions for the arguments of all these other methods. The `into` modifier is too unspecific to distinguish the good use case from the problematic ones.
+
+On the other hand, there are also situations where into-as-a-modifier is the practical choice. To see this, consider again the `Modifier` use case in Laminar.
+We could avoid the `into` modifier by wrapping all `Modifier` parameters
+with the `into` constructor. This would be a lot more work than adding just the single `into` modifier. Worse, functions taking `Modifier` parameters are found both in the Laminar framework code and in many applications using it. The framework and the applications would have to be upgraded in lockstep. When Laminar upgrades to Scala 3 implicits, all applications would have to be rewritten, which would make such a migration very cumbersome.
+
+One can try to mitigate the effort by playing with type aliases. For instance, a hypothetical future Laminar using Scala 3 conversions could rename the
+trait `Modifier` to `ModifierTrait` and define an alias
+```scala
+type Modifier = into[ModifierTrait]
+```
+Then the source code of applications would not have to change (unless these applications define classes directly extending `Modifier`). But that future Laminar would not be binary compatible with the current one, since the name
+of the original `Modifier` trait has changed. In summary, upgrading Laminar to use Scala 3 conversions could keep either source compatibility or binary compatibility but not both at the same time.
+
+
+## Syntax Changes
+
+```
+LocalModifier     ::=  ...  |  ‘into’
+```
+
+`into` is a soft modifier. It is only allowed on traits and classes.
 
