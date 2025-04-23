@@ -2421,12 +2421,14 @@ class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends 
 }
 
 class NotAnExtractor(tree: untpd.Tree)(using Context) extends PatternMatchMsg(NotAnExtractorID) {
-  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
+  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an ${hl("unapply")} or ${hl("unapplySeq")} method with the appropriate signature"
   def explain(using Context) =
-    i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
+    i"""|An ${hl("unapply")} method should be in an ${hl("object")}, take a single explicit term parameter, and:
         |  - If it is just a test, return a ${hl("Boolean")}. For example ${hl("case even()")}
         |  - If it returns a single sub-value of type T, return an ${hl("Option[T]")}
         |  - If it returns several sub-values T1,...,Tn, group them in an optional tuple ${hl("Option[(T1,...,Tn)]")}
+        |
+        |Additionaly, ${hl("unapply")} or ${hl("unapplySeq")} methods cannot take type parameters after their explicit term parameter.
         |
         |Sometimes, the number of sub-values isn't fixed and we would like to return a sequence.
         |For this reason, you can also define patterns through ${hl("unapplySeq")} which returns ${hl("Option[Seq[T]]")}.
