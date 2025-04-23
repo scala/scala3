@@ -1,7 +1,6 @@
 //> using options -Werror -Wunused:imports
 
 import scala.reflect.{Typeable, TypeTest}
-import compiletime.*
 
 trait A {
   type B
@@ -22,7 +21,7 @@ def f(a: A, b: a.B): Boolean = {
 
 trait T:
   type X
-  given Typeable[X] = deferred
+  given tpe: Typeable[X]
 
 def g(t: T, x: Any) =
   import t.X
