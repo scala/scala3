@@ -57,10 +57,10 @@ package givens:
   trait Y:
     def doY: String
 
-  given X:
+  given X with
     def doX = 7
 
-  given X => Y: // warn protected param to given class
+  given (using X): Y with // warn protected param to given class
     def doY = "7"
   /* desugared. It is protected so that its type can be used in member defs without leaking.
    * possibly it should be protected only for named parameters.
@@ -72,6 +72,6 @@ package givens:
         new givens.given_Y(using x$1)()
   */
 
-  given namely: (x: X) => Y: // warn protected param to given class
+  given namely (using x: X): Y with // warn protected param to given class
     def doY = "8"
 end givens
