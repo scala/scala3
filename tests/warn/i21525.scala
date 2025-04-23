@@ -1,7 +1,6 @@
 //> using options -Werror -Wunused:imports
 
 import scala.reflect.{Typeable, TypeTest}
-import compiletime.*
 
 trait A {
   type B
