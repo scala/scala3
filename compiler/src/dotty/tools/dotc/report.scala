@@ -21,7 +21,7 @@ object report:
     ctx.reporter.report(warning)
 
   def deprecationWarning(msg: Message, pos: SrcPos, origin: String = "")(using Context): Unit =
-    issueWarning(new DeprecationWarning(msg, pos.sourcePos, origin))
+    issueWarning(DeprecationWarning(msg, addInlineds(pos), origin))
 
   def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
@@ -126,7 +126,9 @@ object report:
 
   private def addInlineds(pos: SrcPos)(using Context): SourcePosition =
     def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match
-      case inlined :: inlineds1 => pos.withOuter(recur(inlined.sourcePos, inlineds1))
+      case inlined :: inlineds =>
+        val outer = recur(inlined.sourcePos, inlineds)
+        pos.withOuter(outer)
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
 
