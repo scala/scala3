@@ -3511,7 +3511,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Typecheck tree without adapting it, returning a typed tree.
    *  @param initTree    the untyped tree
-   *  @param pt          the expected result typ
+   *  @param pt          the expected result type
    *  @param locked      the set of type variables of the current typer state that cannot be interpolated
    *                     at the present time
    */
@@ -3551,9 +3551,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
-            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt)
-            else if (Feature.enabled(modularity) && ctx.mode.is(Mode.Type) && !ctx.isAfterTyper) typedAppliedConstructorType(tree)
-            else typedApply(tree, pt)
+            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Number => typedNumber(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)

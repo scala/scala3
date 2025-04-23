@@ -224,6 +224,16 @@ SimpleType        ::=  SimpleLiteral
 
 A `SimpleType` can now optionally be followed by `ParArgumentExprs`.
 
+The arguments are used to typecheck the whole type, as if it was a normal
+constructor application. For classes with `tracked` parameters this will mean
+that the resulting type will have a refinement for each `tracked` parameter.
+
+For example, given the following class definition:
+```scala
+class Person(tracked val name: String, tracked val age: Int)
+```
+**Type** `Person("Kasia", 27)` will be translated to `Person { val name: "Kasia"; val age: 27 }`.
+
 ## Allow Class Parents to be Refined Types
 
 Since `tracked` parameters create refinements in constructor types,

@@ -3487,8 +3487,6 @@ class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotParti
        |
        |Efficient operations will use `applyOrElse` to avoid computing the match twice,
        |but the `apply` body would be executed "per element" in the example."""
-  def msg(using Context) = errorText
-  def explain(using Context) = ""
 
 final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
   override protected def msg(using Context): String =
@@ -3507,6 +3505,6 @@ final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tr
 final class OnlyFullyDependentAppliedConstructorType()(using Context)
   extends TypeMsg(OnlyFullyDependentAppliedConstructorTypeID):
   override protected def msg(using Context): String =
-    i"Applied constructor type can only be used with classes that only have tracked parameters"
+    i"Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked"
 
   override protected def explain(using Context): String = ""

@@ -2041,7 +2041,7 @@ object Parsers {
     /**  SimpleType      ::=  SimpleLiteral
      *                     |  ‘?’ TypeBounds
      *                     |  SimpleType1
-     *                     |  SimpleType ‘(’ Singletons ‘)’  -- under language.experimental.modularity, checked in Typer
+     *                     |  SimpleType ‘(’ Singletons ‘)’
      *   Singletons      ::=  Singleton {‘,’ Singleton}
      */
     def simpleType(): Tree =
