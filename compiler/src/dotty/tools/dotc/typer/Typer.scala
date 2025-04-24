@@ -4250,16 +4250,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
-            val newctx = ctx.fresh.setExploreTyperState()
-            val pt1 = pt.deepenProtoTrans(using newctx)
-            val arg = if ((formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)(using newctx)) {
-              inferImplicitArg(formal.simplified(using newctx), tree.span.endPos)
-            } else {
-              inferImplicitArg(formal, tree.span.endPos)
+            val ownedVars = ctx.typerState.ownedVars
+            val pt1 = pt.deepenProtoTrans
+            if ((formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty) {
+              val qualifying = (ownedVars -- locked).toList
+              if (qualifying.nonEmpty) {
+                val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
+                if (!resultAlreadyConstrained) {
+                  if ctx.typerState.isCommittable then
+                    NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
+                  else constrainResult(tree.symbol, wtp, pt1)
+                }
+              }
             }
+            val arg = inferImplicitArg(formal, tree.span.endPos)
             arg.tpe match
               case failed: AmbiguousImplicits =>
-                arg :: implicitArgs(formals1, argIndex + 1, pt1)
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
+                then implicitArgs(formals, argIndex, pt)
+                else arg :: implicitArgs(formals1, argIndex + 1, pt)
               case failed: SearchFailureType =>
                 lazy val defaultArg = findDefaultArgument(argIndex)
                   .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
