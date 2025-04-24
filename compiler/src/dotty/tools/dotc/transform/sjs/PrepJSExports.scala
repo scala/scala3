@@ -21,7 +21,7 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 import JSExportUtils.*
 import JSSymUtils.*
 
-import dotty.tools.sjs.ir.Names.DefaultModuleID
+import dotty.tools.sjs.ir.WellKnownNames.DefaultModuleID
 import dotty.tools.sjs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 
 object PrepJSExports {

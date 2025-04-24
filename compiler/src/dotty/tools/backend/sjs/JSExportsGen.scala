@@ -22,8 +22,7 @@ import TypeErasure.ErasedValueType
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 import dotty.tools.dotc.report
 
-import dotty.tools.sjs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe}
-import dotty.tools.sjs.ir.Names.DefaultModuleID
+import dotty.tools.sjs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe, WellKnownNames => jswkn}
 import dotty.tools.sjs.ir.OriginalName.NoOriginalName
 import dotty.tools.sjs.ir.Position.NoPosition
 import dotty.tools.sjs.ir.Trees.OptimizerHints
@@ -87,7 +86,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       symForAnnot.annotations.collect {
         case annot if annot.symbol == jsdefn.JSExportTopLevelAnnot =>
           val jsName = annot.argumentConstantString(0).get
-          val moduleID = annot.argumentConstantString(1).getOrElse(DefaultModuleID)
+          val moduleID = annot.argumentConstantString(1).getOrElse(jswkn.DefaultModuleID)
           TopLevelExportInfo(moduleID, jsName)(annot.tree.sourcePos)
       }
     }
@@ -947,8 +946,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Names.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(Names.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(jswkn.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(jswkn.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
           case jstpe.ClassType(_, _)                      => InstanceOfTypeTest(tpe)
 
           case jstpe.ArrayType(_, _) => InstanceOfTypeTest(tpe)
