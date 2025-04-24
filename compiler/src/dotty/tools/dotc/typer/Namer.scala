@@ -150,13 +150,14 @@ class Namer { typer: Typer =>
       if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
           && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
           && (!preExisting.lastKnownDenotation.isPackageObject
-              || preExisting.associatedFile != ctx.source.file)
+              || preExisting.associatedFile != ctx.source.file && preExisting.associatedFile != null)
               // isDefinedInCurrentRun does not work correctly for package objects, because
               // package objects are updated to the new run earlier than normal classes, everytime
               // some member of the enclosing package is accessed. Therefore, we use another
               // test: conflict if package objects have the same name but come from different
               // sources. See i9252.
-      then conflict(preExisting)
+      then 
+        conflict(preExisting)
 
     def pkgObjs(pkg: Symbol) =
       pkg.denot.asInstanceOf[PackageClassDenotation].packageObjs.map(_.symbol)
