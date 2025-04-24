@@ -104,10 +104,12 @@ extension (tp: Type)
   final def isTrackableRef(using Context): Boolean = tp match
     case _: (ThisType | TermParamRef) => true
     case tp: TermRef =>
-      ((tp.prefix eq NoPrefix)
-      || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
-      || tp.isCap
-      ) && !tp.symbol.isOneOf(UnstableValueFlags)
+      !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
+      ||
+        ((tp.prefix eq NoPrefix)
+        || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
+        || tp.isCap
+        ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
