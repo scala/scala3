@@ -222,6 +222,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           selector.bound match
           case untpd.TypedSplice(bound) => transformAllDeep(bound)
           case _ =>
+    case exp: Export =>
+      transformAllDeep(exp.expr)
     case AppliedTypeTree(tpt, args) =>
       transformAllDeep(tpt)
       args.foreach(transformAllDeep)
