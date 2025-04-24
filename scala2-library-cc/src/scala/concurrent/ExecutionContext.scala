@@ -17,6 +17,7 @@ import scala.annotation.implicitNotFound
 
 import language.experimental.captureChecking
 import caps.Capability
+import caps.consume
 
 /**
  * An `ExecutionContext` can execute program logic asynchronously,
@@ -255,7 +256,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService, reporter: Throwable => Unit): ExecutionContextExecutorService^{reporter} =
+  def fromExecutorService(e: ExecutorService, @consume reporter: Throwable => Unit): ExecutionContextExecutorService^{reporter} =
     impl.ExecutionContextImpl.fromExecutorService(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `ExecutorService` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -279,7 +280,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor, reporter: Throwable => Unit): ExecutionContextExecutor^{reporter} =
+  def fromExecutor(e: Executor, @consume reporter: Throwable => Unit): ExecutionContextExecutor^ =
     impl.ExecutionContextImpl.fromExecutor(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `Executor` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].

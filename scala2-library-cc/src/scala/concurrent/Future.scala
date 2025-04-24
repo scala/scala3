@@ -25,6 +25,7 @@ import scala.reflect.ClassTag
 import scala.concurrent.ExecutionContext.parasitic
 
 import language.experimental.captureChecking
+import caps.consume
 
 /** A `Future` represents a value which may or may not be currently available,
  *  but will be available at some point, or an exception if that value could not be made available.
@@ -424,7 +425,7 @@ trait Future[+T] extends Awaitable[T] {
    * @return        a `Future` with the result of the application of `f` to the results of `this` and `that`
    * @group Transformations
    */
-  def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
+  def zipWith[U, R](that: Future[U])(@consume f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
     // This is typically overriden by the implementation in DefaultPromise, which provides
     // symmetric fail-fast behavior regardless of which future fails first.
     //
@@ -573,7 +574,7 @@ object Future {
   private[concurrent] final val recoverWithFailed = (t: Throwable) => recoverWithFailedMarker
 
   private[this] final val _zipWithTuple2: (Any, Any) => (Any, Any) = Tuple2.apply _
-  private[concurrent] final def zipWithTuple2Fun[T,U] = _zipWithTuple2.asInstanceOf[(T,U) => (T,U)]
+  private[concurrent] final def zipWithTuple2Fun[T,U] = _zipWithTuple2.asInstanceOf //[(T,U) => (T,U)]
 
   private[this] final val _addToBuilderFun: (Builder[Any, Nothing], Any) => Builder[Any, Nothing] = (b: Builder[Any, Nothing], e: Any) => b += e
   private[concurrent] final def addToBuilderFun[A, M] =  _addToBuilderFun.asInstanceOf[Function2[Builder[A, M], A, Builder[A, M]]]
@@ -633,7 +634,7 @@ object Future {
     override final def recover[U >: Nothing](pf: PartialFunction[Throwable, U])(implicit executor: ExecutionContext): Future[U] = this
     override final def recoverWith[U >: Nothing](pf: PartialFunction[Throwable, Future[U]])(implicit executor: ExecutionContext): Future[U] = this
     override final def zip[U](that: Future[U]): Future[(Nothing, U)] = this
-    override final def zipWith[U, R](that: Future[U])(f: (Nothing, U) => R)(implicit executor: ExecutionContext): Future[R] = this
+    override final def zipWith[U, R](that: Future[U])(@consume f: (Nothing, U) => R)(implicit executor: ExecutionContext): Future[R] = this
     override final def fallbackTo[U >: Nothing](that: Future[U]): Future[U] = this
     override final def mapTo[S](implicit tag: ClassTag[S]): Future[S] = this
     override final def andThen[U](pf: PartialFunction[Try[Nothing], U])(implicit executor: ExecutionContext): Future[Nothing] = this
@@ -877,4 +878,3 @@ object Future {
 trait OnCompleteRunnable extends Batchable {
   self: Runnable =>
 }
-

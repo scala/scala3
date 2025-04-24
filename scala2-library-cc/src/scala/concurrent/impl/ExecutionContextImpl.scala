@@ -17,6 +17,7 @@ import java.util.Collection
 import scala.concurrent.{ BlockContext, ExecutionContext, CanAwait, ExecutionContextExecutor, ExecutionContextExecutorService }
 
 import language.experimental.captureChecking
+import caps.consume
 
 private[scala] class ExecutionContextImpl private[impl] (final val executor: Executor, final val reporter: Throwable => Unit) extends ExecutionContextExecutor {
   require(executor ne null, "Executor must not be null")
@@ -82,7 +83,7 @@ private[concurrent] object ExecutionContextImpl {
       })
   }
 
-  def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService^ = {
+  def createDefaultExecutorService(@consume reporter: Throwable => Unit): ExecutionContextExecutorService^ = {
     def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
       case e: SecurityException => default
     }) match {
@@ -112,13 +113,13 @@ private[concurrent] object ExecutionContextImpl {
     }
   }
 
-  def fromExecutor(e: Executor, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor^ =
+  def fromExecutor(e: Executor, @consume reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor^ =
     e match {
       case null => createDefaultExecutorService(reporter)
       case some => new ExecutionContextImpl(some, reporter)
     }
 
-  def fromExecutorService(es: ExecutorService, reporter: Throwable => Unit = ExecutionContext.defaultReporter):
+  def fromExecutorService(es: ExecutorService, @consume reporter: Throwable => Unit = ExecutionContext.defaultReporter):
     ExecutionContextExecutorService^ = es match {
       case null => createDefaultExecutorService(reporter)
       case some =>

@@ -24,6 +24,9 @@ import java.util.Objects.requireNonNull
 import java.io.{IOException, NotSerializableException, ObjectInputStream, ObjectOutputStream}
 
 import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
+import caps.cap
+import caps.consume
 import caps.unsafe.*
 
 /**
@@ -66,7 +69,7 @@ private[concurrent] object Promise {
     /**
      * Compresses this chain and returns the currently known root of this chain of Links.
      **/
-    final def promise(owner: DefaultPromise[T]^): DefaultPromise[T]^{this, to, owner} = {
+    final def promise(owner: DefaultPromise[T]^): DefaultPromise[T]^{cap.rd, this, to, owner} = {
       val c = get()
       compressed(current = c, target = c, owner = owner)
     }
@@ -74,7 +77,7 @@ private[concurrent] object Promise {
     /**
      * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
      **/
-    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T]^, target: DefaultPromise[T]^, owner: DefaultPromise[T]^): DefaultPromise[T]^{this, current, target, owner} = {
+    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T]^{cap.rd, this}, target: DefaultPromise[T]^, owner: DefaultPromise[T]^): DefaultPromise[T]^{this, current, target, owner} = {
       val value = target.get()
       if (value.isInstanceOf[Callbacks[_]]) {
         if (compareAndSet(current, target)) target // Link
@@ -127,6 +130,7 @@ private[concurrent] object Promise {
     /**
      * Returns the associated `Future` with this `Promise`
      */
+    @consume
     override final def future: Future[T]^ = (this : Future[T]^)
 
     override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
@@ -135,7 +139,7 @@ private[concurrent] object Promise {
     override final def transformWith[S](f: Try[T] => Future[S])(implicit executor: ExecutionContext): Future[S] =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transformWith, f, executor))
 
-    override final def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
+    override final def zipWith[U, R](that: Future[U])(@consume f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
       val state = get()
       if (state.isInstanceOf[Try[_]]) {
         if (state.asInstanceOf[Try[T]].isFailure) this.asInstanceOf[Future[R]]
@@ -414,11 +418,14 @@ private[concurrent] object Promise {
    * function's type parameters are erased, and the _xform tag will be used to reify them.
    **/
   final class Transformation[-F, T] private[this] (
-    private[this] final val _fun: Any => Any,
-    private[this] final val _ec: ExecutionContext,
+    __fun: Any => Any,
+    __ec: ExecutionContext,
     private[this] final var _arg: Try[F],
     private[this] final val _xform: Int
   ) extends DefaultPromise[T]() with Callbacks[F] with Runnable with Batchable {
+    @uncheckedCaptures private[this] final var _fun: Any => Any = __fun
+    @uncheckedCaptures private[this] final var _ec: ExecutionContext = __ec
+    
     final def this(xform: Int, f: _ => _, ec: ExecutionContext) =
       this(f.asInstanceOf[Any => Any], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
 
@@ -434,9 +441,9 @@ private[concurrent] object Promise {
       try e.execute(this.unsafeAssumePure) /* Safe publication of _arg, _fun, _ec */
       catch {
         case t: Throwable =>
-          // _fun = null // allow to GC
+          _fun = null // allow to GC
           _arg = null // see above
-          // _ec  = null // see above again
+          _ec  = null // see above again
           handleFailure(t, e)
       }
 
@@ -460,9 +467,9 @@ private[concurrent] object Promise {
       val v   = _arg
       val fun = _fun
       val ec  = _ec
-      // _fun = null // allow to GC
+      _fun = null // allow to GC
       _arg = null // see above
-      // _ec  = null // see above
+      _ec  = null // see above
       try {
         val resolvedResult: Try[_] =
           (_xform: @switch) match {
