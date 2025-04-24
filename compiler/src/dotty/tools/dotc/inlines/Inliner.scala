@@ -570,7 +570,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           // LambdaTypeTree parameters also have the inlineMethod as owner. C.f. i13460.scala.
         && !paramProxy.contains(tpe) =>
       paramBinding.get(tpe.name) match
-        case Some(bound) => paramProxy(tpe) = bound
+        case Some(bound) => paramProxy(tpe) = mapOpaques.typeMap(bound)
         case _ =>  // can happen for params bound by type-lambda trees.
 
       // The widened type may contain param types too (see tests/pos/i12379a.scala)
