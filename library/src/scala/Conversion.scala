@@ -29,3 +29,20 @@ abstract class Conversion[-T, +U] extends Function1[T, U]:
   extension (x: T)
     /** `x.convert` converts a value `x` of type `T` to type `U` */
     def convert = this(x)
+
+object Conversion:
+  import annotation.experimental
+
+  /** An opaque type alias to declare "into" parameter types that allow implicit conversions
+   *  on corresponding arguments. If the expected type of an expression t is into[T], implicit
+   *  conversions are tried from the type of `t` to `T`. `into[T]` types are erased to `T`
+   *  in all covariant positions of the types of parameter symbols.
+   */
+  @experimental
+  opaque type into[+T] >: T = T
+
+  /** Unwrap an `into` */
+  extension [T](x: into[T])
+    @experimental def underlying: T = x
+
+end Conversion

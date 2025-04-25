@@ -1148,7 +1148,7 @@ object Scanners {
       val lookahead = LookaheadScanner()
       while
         lookahead.nextToken()
-        lookahead.isNewLine || lookahead.isSoftModifier
+        lookahead.token == NEWLINE || lookahead.isSoftModifier
       do ()
       modifierFollowers.contains(lookahead.token)
     }

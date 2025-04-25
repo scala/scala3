@@ -9,6 +9,7 @@ import Annotations.Annotation
 import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
+import util.SrcPos
 
 import Decorators.*
 import Constants.Constant
@@ -522,6 +523,10 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
+
+  /** The position of the modifier associated with given flag in this definition. */
+  def flagSourcePos(mdef: DefTree, flag: FlagSet): SrcPos =
+    mdef.mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
