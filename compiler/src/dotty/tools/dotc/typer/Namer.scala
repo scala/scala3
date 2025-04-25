@@ -149,7 +149,7 @@ class Namer { typer: Typer =>
       val preExisting = owner.unforcedDecls.lookup(name)
       if (preExisting.isDefinedInCurrentRun || preExisting.lastKnownDenotation.is(Package))
           && (!preExisting.lastKnownDenotation.is(Private) || preExisting.owner.is(Package))
-          && (!preExisting.lastKnownDenotation.isPackageObject
+          && (!preExisting.lastKnownDenotation.is(Package)
               || preExisting.associatedFile != ctx.source.file && preExisting.associatedFile != null)
               // isDefinedInCurrentRun does not work correctly for package objects, because
               // package objects are updated to the new run earlier than normal classes, everytime
