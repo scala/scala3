@@ -921,7 +921,11 @@ class Inliner(val call: tpd.Tree)(using Context):
           sym.info = rhs.tpe
           untpd.cpy.ValDef(vdef)(vdef.name, untpd.TypeTree(rhs.tpe), untpd.TypedSplice(rhs))
         else vdef
-      super.typedValDef(vdef1, sym)
+      if vdef.name.toString.contains("$proxy") then // TODO look for a better solution
+        // AndType(t1, t2) might not equal &(t1, t2),
+        // but when constructing proxies we have to use AndType without simplyfying the types
+        vdef.asInstanceOf[Tree]
+      else super.typedValDef(vdef1, sym)
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
