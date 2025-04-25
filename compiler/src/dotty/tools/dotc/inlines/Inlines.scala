@@ -395,6 +395,11 @@ object Inlines:
         case ConstantType(Constant(code: String)) =>
           val unitName = "tasty-reflect"
           val source2 = SourceFile.virtual(unitName, code)
+          def compilationUnits(untpdTree: untpd.Tree, tpdTree: Tree): List[CompilationUnit] =
+            val compilationUnit = CompilationUnit(unitName, code)
+            compilationUnit.tpdTree = tpdTree
+            compilationUnit.untpdTree = untpdTree
+            List(compilationUnit)
           // We need a dummy owner, as the actual one does not have a computed denotation yet,
           // but might be inspected in a transform phase, leading to cyclic errors
           val dummyOwner = newSymbol(ctx.owner, "$dummySymbol$".toTermName, Private, defn.AnyType, NoSymbol)
@@ -407,31 +412,30 @@ object Inlines:
             .withOwner(dummyOwner)
 
           inContext(newContext) {
-            val tree2 = new Parser(source2).block()
-            if ctx.reporter.allErrors.nonEmpty then
+            def noErrors = ctx.reporter.allErrors.isEmpty
+            val untpdTree = new Parser(source2).block()
+            if !noErrors then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
             else
-              val tree3 = ctx.typer.typed(tree2)
+              val tpdTree1 = ctx.typer.typed(untpdTree)
               ctx.base.postTyperPhase match
-                case postTyper: PostTyper if ctx.reporter.allErrors.isEmpty =>
-                  val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
+                case postTyper: PostTyper if noErrors =>
+                  val tpdTree2 =
+                    atPhase(postTyper) { postTyper.runOn(compilationUnits(untpdTree, tpdTree1)).head.tpdTree }
                   ctx.base.setRootTreePhase match
-                    case setRootTree =>
-                      val tree5 =
-                        val compilationUnit = CompilationUnit(unitName, code)
-                        compilationUnit.tpdTree = tree4
-                        compilationUnit.untpdTree = tree2
-                        var units = List(compilationUnit)
-                        atPhase(setRootTree)(setRootTree.runOn(units).head.tpdTree)
+                    case setRootTree if noErrors => // might be noPhase, if -Yretain-trees is not used
+                      val tpdTree3 =
+                        atPhase(setRootTree)(setRootTree.runOn(compilationUnits(untpdTree, tpdTree2)).head.tpdTree)
                       ctx.base.inliningPhase match
-                        case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
-                          val tree6 = atPhase(inlining) { inlining.newTransformer.transform(tree5) }
-                          if ctx.reporter.allErrors.isEmpty && reconstructedTransformPhases.nonEmpty then
-                            var transformTree = tree6
+                        case inlining: Inlining if noErrors =>
+                          val tpdTree4 = atPhase(inlining) { inlining.newTransformer.transform(tpdTree3) }
+                          if noErrors && reconstructedTransformPhases.nonEmpty then
+                            var transformTree = tpdTree4
                             for phase <- reconstructedTransformPhases do
-                              if ctx.reporter.allErrors.isEmpty then
+                              if noErrors then
                                 transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
                         case _ =>
+                    case _ =>
                 case _ =>
               ctx.reporter.allErrors.map((ErrorKind.Typer, _))
           }
