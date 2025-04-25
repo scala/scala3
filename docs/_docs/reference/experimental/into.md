@@ -20,7 +20,7 @@ class without requiring a language import.
 The first scheme is
 to have a special type `into[T]` which serves as a marker that conversions into that type are allowed. These types are typically used in parameters of methods that are designed to work with implicit conversions of their arguments. This allows fine-grained control over where implicit conversions should be allowed. We call this scheme "_into as a type constructor_".
 
-The second scheme allows `into` as a soft modifier on traits and classes. If a trait or class is declared with this modifier, conversions to that type are allowed. The second scheme requires that one has control over the conversion target types so that an `into` can be added to their declaration. It is appropriate where there are a few designated types that are meant to be conversion targets. If that's the case, migration from Scala 2 to Scala 3
+The second scheme allows `into` as a soft modifier on traits, classes, and opaque type aliases. If a type definition is declared with this modifier, conversions to that type are allowed. The second scheme requires that one has control over the conversion target types so that an `into` can be added to their declaration. It is appropriate where there are a few designated types that are meant to be conversion targets. If that's the case, migration from Scala 2 to Scala 3
 becomes easier since no function signatures need to be rewritten. We call this scheme "_into as a modifier_".
 
 
@@ -117,7 +117,7 @@ number of `IterableOnce[Char]` arguments, and also allows implicit conversions i
 
 ```scala
 def concatAll(xss: into[IterableOnce[Char]]*): List[Char] =
-  xss.foldLeft(List[Char]())(_ ++ _)
+  xss.foldRight(Nil)(_ ++: _)
 ```
 Here, the call
 ```scala
@@ -176,7 +176,7 @@ and then `++`, `flatMap` and other functions could use this alias in their param
 The `into` scheme discussed so far strikes a nice balance between explicitness and convenience. But migrating to it from Scala 2 implicits does require major changes since possibly a large number of function signatures has to be changed to allow conversions on the arguments. This might ultimately hold back migration to Scala 3 implicits.
 
 To facilitate migration, we also introduce an alternative way to specify target types of implicit conversions. We allow `into` as a soft modifier on
-classes and traits. If a class or trait is declared with `into`, then implicit conversions into that class or trait don't need a language import.
+classes, traits, and opaque type aliases. If a type definition is declared with `into`, then implicit conversions into that type don't need a language import.
 
 For instance, the Laminar framework
 defines a trait `Modifier` that is commonly used as a parameter type of user-defined methods and that should support implicit conversions into it.
@@ -205,17 +205,15 @@ The `into`-as-a-modifier scheme is handy in codebases that have a small set of s
 
 To make the preceding descriptions more precise: An implicit conversion is permitted without an `implicitConversions` language import if the target type is a valid conversion target type. A valid conversion target type is one of the following:
 
- - a type of the form `into[T]`,
- - a reference `p.C` to a class or trait `C` that is declared with an `into` modifier,
-   which can also be followed by type arguments,
- - a type alias of a valid conversion target type,
- - a match type that reduces to a valid conversion target type,
- - an annotated type `T @ann` where `T` is a valid conversion target type,
- - a refined type `T {...}` where `T` is a valid conversion target type,
- - a union `T | U` of two valid conversion target types `T` and `U`,
- - an intersection `T & U` of two valid conversion target types `T` and `U`,
- - an instance of a type parameter that is explicitly instantiated to a valid conversion target type.
-
+ - A type of the form `into[T]`.
+ - A reference `p.C` to a class, trait, or opaque type alias `C` that is declared with an `into` modifier. The reference can be followed by type arguments.
+ - A type alias of a valid conversion target type.
+ - A match type that reduces to a valid conversion target type.
+ - An annotated type `T @ann` where `T` is a valid conversion target type.
+ - A refined type `T {...}` where `T` is a valid conversion target type.
+ - A union `T | U` of two valid conversion target types `T` and `U`.
+ - An intersection `T & U` of two valid conversion target types `T` and `U`.
+ - An instance of a type parameter that is explicitly instantiated to a valid conversion target type.
 
 Type parameters that are not fully instantiated do not count as valid conversion target types. For instance, consider:
 
@@ -283,5 +281,5 @@ of the original `Modifier` trait has changed. In summary, upgrading Laminar to u
 LocalModifier     ::=  ...  |  ‘into’
 ```
 
-`into` is a soft modifier. It is only allowed on traits and classes.
+`into` is a soft modifier. It is only allowed classes, traits, and opaque type aliases.
 

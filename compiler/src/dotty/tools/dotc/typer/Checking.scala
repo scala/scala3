@@ -631,8 +631,7 @@ object Checking {
    */
   def checkWellFormedModule(mdef: untpd.ModuleDef)(using Context) =
     val mods = mdef.mods
-    def flagSourcePos(flag: FlagSet) =
-      mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    def flagSourcePos(flag: Flag) = untpd.flagSourcePos(mdef, flag)
     if mods.is(Open) then
       report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
     if mods.is(Into) then

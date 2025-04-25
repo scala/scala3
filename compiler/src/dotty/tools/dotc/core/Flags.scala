@@ -547,7 +547,7 @@ object Flags {
   val RetainedExportTypeFlags = Infix
 
   /** Flags that apply only to classes */
-  val ClassOnlyFlags = Sealed | Open | Into | Abstract.toTypeFlags
+  val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
 
 // ------- Other flag sets -------------------------------------
 

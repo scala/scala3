@@ -6,11 +6,11 @@
 7 |into object M   // error
   |^^^^^^^^^^^^^
   |Modifier into is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/into-mods.scala:12:2 -----------------------------------------------------------------
+12 |  into type T = Int // error
+   |  ^^^^
+   |  Modifier into is not allowed for this definition
 -- Error: tests/neg/into-mods.scala:11:11 ------------------------------------------------------------------------------
 11 |  into val x = 33   // error
    |  ^^^^^^^^^^^^^^^
    |  modifier(s) `into` incompatible with value definition
--- Error: tests/neg/into-mods.scala:12:12 ------------------------------------------------------------------------------
-12 |  into type T = Int // error
-   |            ^
-   |            only classes can be into
