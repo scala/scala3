@@ -34,7 +34,7 @@ sealed trait IndexedContext:
       case Some(symbols) if symbols.exists(isTermAliasOf(_, sym)) => Result.InScope
       case Some(symbols) if symbols.map(_.dealiasType).exists(isRelated) => Result.InScope
       case Some(symbols) if symbols.nonEmpty && symbols.forall(_.isStale) => Result.Missing
-      case Some(symbols) if symbols.exists(rename(_).isEmpty) && rename(sym).isEmpty => Result.Conflict
+      case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
       case Some(symbols) => Result.InScope
       case _ => Result.Missing
   end lookupSym
@@ -58,9 +58,15 @@ sealed trait IndexedContext:
   @tailrec
   final def toplevelClashes(sym: Symbol, inImportScope: Boolean): Boolean =
     if sym == NoSymbol || sym.owner == NoSymbol || sym.owner.isRoot then
-      // we need to fix the import only if the toplevel package conflicts with the imported one
-      findSymbolInLocalScope(sym.name.show) match
-        case Some(symbols) if !symbols.contains(sym) && (symbols.exists(_.owner.is(Package)) || !inImportScope) => true
+      val possibleConflictingSymbols = findSymbolInLocalScope(sym.name.show)
+      // if it's import scope we only care about toplevel conflicts, not any clashes inside objects etc.
+      val symbolClashes = if inImportScope then
+        // It's toplevel if it's parent is a package
+        possibleConflictingSymbols.filter(_.exists(_.owner.is(Package)))
+      else
+        possibleConflictingSymbols
+      symbolClashes match
+        case Some(symbols) if !symbols.contains(sym) => true
         case _ => false
     else toplevelClashes(sym.owner, inImportScope)
 
@@ -87,24 +93,21 @@ object IndexedContext:
       case (name, denotations) =>
         val denots = denotations.flatMap(_._2)
         val nonRoot = denots.filter(!_.symbol.owner.isRoot)
-        def hasImportedByDefault = denots.exists(denot => Interactive.isImportedByDefault(denot.symbol))
-        def hasConflictingValue = denots.exists(denot => !Interactive.isImportedByDefault(denot.symbol))
-        if hasImportedByDefault && hasConflictingValue then
-          name.trim -> nonRoot.filter(denot => !Interactive.isImportedByDefault(denot.symbol))
+        val (importedByDefault, conflictingValue) = denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
+        if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
+          name.trim -> conflictingValue
         else
           name.trim -> nonRoot
     }
     val renames = completionContext.renames
 
     def defaultScopes(name: Name): Option[List[Symbol]] =
-      val fromPredef = defn.ScalaPredefModuleClass.membersNamed(name)
-      val fromScala = defn.ScalaPackageClass.membersNamed(name)
-      val fromJava = defn.JavaLangPackageClass.membersNamed(name)
-      val predefList = if fromPredef.exists then List(fromPredef.first.symbol) else Nil
-      val scalaList = if fromScala.exists then List(fromScala.first.symbol) else Nil
-      val javaList = if fromJava.exists then List(fromJava.first.symbol) else Nil
-      val combined = predefList ++ scalaList ++ javaList
-      if combined.nonEmpty then Some(combined) else None
+      List(defn.ScalaPredefModuleClass, defn.ScalaPackageClass, defn.JavaLangPackageClass)
+        .map(_.membersNamed(name))
+        .collect { case denot if denot.exists => denot.first.symbol }
+        .toList match
+        case Nil => None
+        case list => Some(list)
 
     override def findSymbolInLocalScope(name: String): Option[List[Symbol]] =
       names.get(name).map(_.map(_.symbol).toList).filter(_.nonEmpty)

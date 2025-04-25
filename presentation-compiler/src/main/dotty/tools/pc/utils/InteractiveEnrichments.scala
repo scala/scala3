@@ -166,7 +166,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       @tailrec
       def loop(acc: List[String], sym: Symbol): List[String] =
         if sym == NoSymbol || sym.isRoot || sym.isEmptyPackage then acc
-        else if sym.isPackageObject then loop(acc, sym.owner)
+        else if sym.isPackageObject || sym.isConstructor then loop(acc, sym.owner)
         else
           val v = this.nameBackticked(sym)(exclusions)
           loop(v :: acc, sym.owner)

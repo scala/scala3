@@ -139,7 +139,7 @@ object NamedArgCompletions:
 
     // fallback for when multiple overloaded methods match the supplied args
     def fallbackFindMatchingMethods() =
-      def maybeNameAndIndexedContext(
+      def matchingMethodsSymbols(
           method: Tree
       ): List[Symbol] =
         method match
@@ -155,11 +155,11 @@ object NamedArgCompletions:
               case single: SingleDenotation => List(single.symbol)
               case multi: MultiDenotation => multi.allSymbols
             }.getOrElse(Nil)
-          case Apply(fun, _) => maybeNameAndIndexedContext(fun)
+          case Apply(fun, _) => matchingMethodsSymbols(fun)
           case _ => Nil
       val matchingMethods =
         for
-          potentialMatch <- maybeNameAndIndexedContext(method)
+          potentialMatch <- matchingMethodsSymbols(method)
           if potentialMatch.is(Flags.Method) &&
                 potentialMatch.vparamss.length >= argss.length &&
                 Try(potentialMatch.isAccessibleFrom(apply.symbol.info)).toOption
