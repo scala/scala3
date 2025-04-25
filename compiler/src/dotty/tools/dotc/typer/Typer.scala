@@ -4252,7 +4252,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             val ownedVars = ctx.typerState.ownedVars
             val pt1 = pt.deepenProtoTrans
-            if ((formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty) {
+            if ((!formal.isGround) && (formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty) {
               val qualifying = (ownedVars -- locked).toList
               if (qualifying.nonEmpty) {
                 val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
