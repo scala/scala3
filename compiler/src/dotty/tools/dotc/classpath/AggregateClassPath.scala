@@ -51,7 +51,6 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
       case (_, s) => s
     }
   }
-
   override def asURLs: Seq[URL] = aggregates.flatMap(_.asURLs)
 
   override def asClassPathStrings: Seq[String] = aggregates.map(_.asClassPathString).distinct
