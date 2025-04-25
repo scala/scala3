@@ -652,6 +652,8 @@ object desugar {
         tdef, evidenceBuf,
         (tdef.mods.flags.toTermFlags & AccessFlags) | Lazy | DeferredGivenFlags,
         inventGivenName, Nil)
+    if tdef.mods.flags.is(Into, butNot = Opaque) then
+      report.error(ModifierNotAllowedForDefinition(Into), flagSourcePos(tdef, Into))
     if evidenceBuf.isEmpty then result else Thicket(result :: evidenceBuf.toList)
 
   /** The expansion of a class definition. See inline comments for what is involved */

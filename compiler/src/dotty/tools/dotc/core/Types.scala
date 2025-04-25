@@ -459,7 +459,7 @@ object Types extends TypeUtils {
     def isConversionTargetType(using Context): Boolean =
       dealias(KeepOpaques).match
         case tp: TypeRef =>
-          tp.symbol.isClass && tp.symbol.is(Into)
+          (tp.symbol.isClass || tp.symbol.isOpaqueAlias) && tp.symbol.is(Into)
         case tp @ AppliedType(tycon, _) =>
           isInto || tycon.isConversionTargetType
         case tp: AndOrType =>
