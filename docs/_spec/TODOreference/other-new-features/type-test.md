@@ -63,7 +63,7 @@ We could create a type test at call site where the type test can be performed wi
 val tt: TypeTest[Any, String] =
   new TypeTest[Any, String]:
     def unapply(s: Any): Option[s.type & String] = s match
-      case s: String => Some(s)
+      case q: (s.type & String) => Some(q)
       case _ => None
 
 f[AnyRef, String]("acb")(using tt)
