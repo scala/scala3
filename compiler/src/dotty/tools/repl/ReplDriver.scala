@@ -547,7 +547,7 @@ class ReplDriver(settings: Array[String],
         try {
           val entries = flatten(jarFile)
 
-          val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
+          val existingClass = entries.filter(_.extension == "class").find(tryClassLoad(_).isDefined)
           if (existingClass.nonEmpty)
             out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
           else inContext(state.context):
