@@ -149,7 +149,7 @@ class PcDefinitionProvider(
         case srcTree if srcTree.namePos.exists =>
           new Location(params.uri().toString(), srcTree.namePos.toLsp)
       .toList
-    else search.definition(semanticdbSymbol, uri).asScala.toList
+    else search.definition(semanticdbSymbol, uri).nn.asScala.toList
 
   def semanticSymbolsSorted(
       syms: List[Symbol]
