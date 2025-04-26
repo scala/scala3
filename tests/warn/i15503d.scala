@@ -22,7 +22,7 @@ case class K(i: Int, j: Int)
 
 class C(c0: Option[Int], k0: K):
   private val Some(c) = c0: @unchecked  // warn valdef from pattern
-  private val K(i, j) = k0              // warn // warn valdefs from pattern (RHS patvars are NoWarn)
+  private val K(i, j) = k0              // nowarn (name of case class element is nowarn)
   val K(v, w) = k0                      // nowarn nonprivate
   private val K(r, s) = k0              // warn // warn valdefs from pattern
   def f(x: Option[Int]) = x match

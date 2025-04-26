@@ -441,6 +441,7 @@ object CheckUnused:
     val refs = mutable.Set.empty[Symbol]              // references
     val asss = mutable.Set.empty[Symbol]              // targets of assignment
     val skip = mutable.Set.empty[Symbol]              // methods to skip (don't warn about their params)
+    val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
     def register(tree: Tree)(using Context): Unit = if inlined.isEmpty then
@@ -453,7 +454,9 @@ object CheckUnused:
         then
           imps.put(imp, ())
       case tree: Bind =>
-        if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) && !tree.hasAttachment(NoWarn) then
+        if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) then
+          if tree.hasAttachment(NoWarn) then
+            nowarn.addOne(tree.symbol)
           pats.addOne((tree.symbol, tree.namePos))
       case tree: NamedDefTree =>
         if tree.hasAttachment(PatternVar) then
@@ -461,9 +464,10 @@ object CheckUnused:
             pats.addOne((tree.symbol, tree.namePos))
         else if (tree.symbol ne NoSymbol)
           && !tree.name.isWildcard
-          && !tree.hasAttachment(NoWarn)
           && !tree.symbol.is(ModuleVal) // track only the ModuleClass using the object symbol, with correct namePos
         then
+          if tree.hasAttachment(NoWarn) then
+            nowarn.addOne(tree.symbol)
           defs.addOne((tree.symbol.userSymbol, tree.namePos))
       case _ =>
         if tree.symbol ne NoSymbol then
@@ -531,6 +535,7 @@ object CheckUnused:
         && !sym.name.is(BodyRetainerName)
         && !sym.isSerializationSupport
         && !(sym.is(Mutable) && sym.isSetter && sym.owner.is(Trait)) // tracks sym.underlyingSymbol sibling getter
+        && !infos.nowarn(sym)
       then
         warnAt(pos)(UnusedSymbol.privateMembers)
 
@@ -627,7 +632,7 @@ object CheckUnused:
       val byPos = infos.pats.groupMap(uniformPos(_, _))((sym, pos) => sym)
       for (pos, syms) <- byPos if pos.span.exists && !syms.exists(_.hasAnnotation(defn.UnusedAnnot)) do
         if !syms.exists(infos.refs(_)) then
-          if !syms.exists(v => !v.isLocal && !v.is(Private)) then
+          if !syms.exists(v => !v.isLocal && !v.is(Private) || infos.nowarn(v)) then
             warnAt(pos)(UnusedSymbol.patVars)
         else if syms.exists(_.is(Mutable)) then // check unassigned var
           val sym = // recover the original
