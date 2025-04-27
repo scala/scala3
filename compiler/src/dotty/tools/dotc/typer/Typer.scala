@@ -4255,11 +4255,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if ((!formal.isGround) && (formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty) {
               val qualifying = (ownedVars -- locked).toList
               if (qualifying.nonEmpty) {
+                val approxRes = wildApprox(pt1.resultType)
+                val tm = new TypeMap:
+                  def apply(t: Type) = t match
+                    case fp@FunProto(args, resType) =>
+                      fp.derivedFunProto(args.map(a => dummyArg(a.typeOpt).withSpan(a.span)), mapOver(resType))
+                    case _ =>
+                      mapOver(t)
                 val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
                 if (!resultAlreadyConstrained) {
                   if ctx.typerState.isCommittable then
-                    NoViewsAllowed.constrainResult(tree.symbol, wtp, pt1)
-                  else constrainResult(tree.symbol, wtp, pt1)
+                    NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, tm(approxRes))
+                  else constrainResult(tree.symbol, wtp.resultType, tm(approxRes))
                 }
               }
             }
