@@ -131,7 +131,7 @@ class Namer { typer: Typer =>
    *  The logic here is very subtle and fragile due to the fact that
    *  we are not allowed to force anything.
    */
-  def checkNoConflict(name: Name, isPrivate: Boolean, span: Span)(using Context): Name =
+  def checkNoConflict(name: Name, span: Span)(using Context): Name =
     val owner = ctx.owner
     var conflictsDetected = false
 
@@ -166,7 +166,7 @@ class Namer { typer: Typer =>
       def preExisting = ctx.effectiveScope.lookup(name)
       if (!owner.isClass || name.isTypeName) && preExisting.exists then
         conflict(preExisting)
-      else if owner.isPackageObject && !isPrivate && name != nme.CONSTRUCTOR then
+      else if owner.isPackageObject && name != nme.CONSTRUCTOR then
         checkNoConflictIn(owner.owner)
         for pkgObj <- pkgObjs(owner.owner) if pkgObj != owner do
           checkNoConflictIn(pkgObj)
@@ -242,7 +242,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val flags = checkFlags(tree.mods.flags)
-        val name = checkNoConflict(tree.name, flags.is(Private), tree.span).asTypeName
+        val name = checkNoConflict(tree.name, tree.span).asTypeName
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -251,7 +251,7 @@ class Namer { typer: Typer =>
         cls
       case tree: MemberDef =>
         var flags = checkFlags(tree.mods.flags)
-        val name = checkNoConflict(tree.name, flags.is(Private), tree.span)
+        val name = checkNoConflict(tree.name, tree.span)
         tree match
           case tree: ValOrDefDef =>
             if tree.isInstanceOf[ValDef] && !flags.is(Param) && name.endsWith("_=") then
@@ -1217,7 +1217,7 @@ class Namer { typer: Typer =>
           val hasDefaults = sym.hasDefaultParams // compute here to ensure HasDefaultParams and NoDefaultParams flags are set
           val forwarder =
             if mbr.isType then
-              val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
+              val forwarderName = checkNoConflict(alias.toTypeName, span)
               var target = pathType.select(sym)
               if target.typeParams.nonEmpty then
                 target = target.EtaExpand(target.typeParams)
@@ -1271,7 +1271,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
               if pathMethod.exists then mbrFlags |= ExtensionMethod
-              val forwarderName = checkNoConflict(alias, isPrivate = false, span)
+              val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
           forwarder.info = avoidPrivateLeaks(forwarder)
