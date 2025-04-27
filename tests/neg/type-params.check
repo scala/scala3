@@ -10,6 +10,10 @@
    |             s does not take type parameters
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/type-params.scala:17:35 ----------------------------------------------------------------------------
+17 |  class WellKindedWrongSyntax[s <: List] // error
+   |                                   ^^^^
+   |                                   type List takes type parameters
 -- Error: tests/neg/type-params.scala:21:26 ----------------------------------------------------------------------------
 21 |  object mp extends Monad[Tuple2] // error
    |                          ^^^^^^
