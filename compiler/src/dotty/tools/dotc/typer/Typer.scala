@@ -4259,7 +4259,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 val tm = new TypeMap:
                   def apply(t: Type) = t match
                     case fp@FunProto(args, resType) =>
-                      fp.derivedFunProto(args.map(a => dummyArg(a.typeOpt).withSpan(a.span)), mapOver(resType))
+                      fp.derivedFunProto(
+                        args.map(arg =>
+                          if(arg.isInstanceOf[untpd.TypedSplice]) arg
+                          else dummyArg(arg.typeOpt).withSpan(arg.span)
+                        ),
+                        mapOver(resType)
+                      )
                     case _ =>
                       mapOver(t)
                 val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
