@@ -1128,3 +1128,16 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """x: Int
         |x = : Any""".stripMargin,
     )
+
+  @Test def `autofill-arguments-case-class` =
+    check(
+      """
+        |case class A(x: Int, y: Int)
+        |
+        |def main() =
+        |  A(x@@)
+        |""".stripMargin,
+      """x = : Int
+        |x = ???, y = ???""".stripMargin,
+      // this looks strange due to the Autofill message belonging to the description
+    )
