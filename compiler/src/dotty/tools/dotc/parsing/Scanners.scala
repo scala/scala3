@@ -601,6 +601,20 @@ object Scanners {
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
+      // can emit OUTDENT if line is not non-empty blank line at EOF
+      inline def isTrailingBlankLine: Boolean =
+        token == EOF && {
+          val end = buf.length - 1 // take terminal NL as empty last line
+          val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
+          prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
+        }
+
+      inline def canDedent: Boolean =
+           lastToken != INDENT
+        && !isLeadingInfixOperator(nextWidth)
+        && !statCtdTokens.contains(lastToken)
+        && !isTrailingBlankLine
+
       if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
@@ -613,9 +627,8 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
+          else if canDedent then
             currentRegion match
-              case _ if token == EOF => // no OUTDENT at EOF
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
