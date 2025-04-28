@@ -570,7 +570,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           // LambdaTypeTree parameters also have the inlineMethod as owner. C.f. i13460.scala.
         && !paramProxy.contains(tpe) =>
       paramBinding.get(tpe.name) match
-        case Some(bound) => paramProxy(tpe) = mapOpaques.typeMap(bound)
+        case Some(bound) => paramProxy(tpe) = bound
         case _ =>  // can happen for params bound by type-lambda trees.
 
       // The widened type may contain param types too (see tests/pos/i12379a.scala)
@@ -666,7 +666,9 @@ class Inliner(val call: tpd.Tree)(using Context):
             if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
-            case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+            case t: TypeRef =>
+              if (t.isMatch) paramProxy.getOrElse(t, mapOver(t)) // Do not map matchTypes
+              else paramProxy.get(t).map(mapOpaques.typeMap(_)).getOrElse(mapOver(t))
             case t: SingletonType =>
               if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
               else paramProxy.getOrElse(t, mapOver(t))
