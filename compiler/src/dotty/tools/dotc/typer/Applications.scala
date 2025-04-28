@@ -479,7 +479,7 @@ trait Applications extends Compatibility {
         case tp => args.size
       }
 
-      !isAnnotConstr(methRef.symbol) &&
+      !isJavaAnnotConstr(methRef.symbol) &&
       args.size < requiredArgNum(funType)
     }
 
@@ -610,11 +610,6 @@ trait Applications extends Compatibility {
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
-
-
-    /** Is `sym` a constructor of an annotation? */
-    def isAnnotConstr(sym: Symbol): Boolean =
-      sym.isConstructor && sym.owner.isAnnotation
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
@@ -905,8 +900,6 @@ trait Applications extends Compatibility {
       val app1 =
         if !success then app0.withType(UnspecifiedErrorType)
         else {
-          if isAnnotConstr(methRef.symbol) && !isJavaAnnotConstr(methRef.symbol) then
-            typedArgs
           if !sameSeq(args, orderedArgs)
              && !isJavaAnnotConstr(methRef.symbol)
              && !typedArgs.forall(isSafeArg)
