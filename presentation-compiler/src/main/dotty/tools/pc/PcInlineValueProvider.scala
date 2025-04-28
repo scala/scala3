@@ -128,12 +128,12 @@ final class PcInlineValueProvider(
     end for
   end defAndRefs
 
-  private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String): String =
+  private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String, hasNextLineAfterEqualsSign: Boolean): String =
     val rhsLines = rhs.split("\n").toList
     rhsLines match
       case h :: Nil => rhs
       case h :: t =>
-        val header = if h.startsWith("{") then h else "\n" ++ refIndent ++ "  " ++ h
+        val header = if !hasNextLineAfterEqualsSign then h else "\n" ++ refIndent ++ "  " ++ h
         header ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
       case Nil => rhs
 
@@ -255,6 +255,8 @@ final class PcInlineValueProvider(
             case _ => false
         }
         .map(_.fullNameBackticked)
+      val hasNextLineAfterEqualsSign =
+        definition.tree.sourcePos.startLine != definition.tree.rhs.sourcePos.startLine
       if conflictingSymbols.isEmpty then
         Right(
           Reference(
@@ -262,7 +264,8 @@ final class PcInlineValueProvider(
             stripIndentPrefix(
               extendWithSurroundingParens(definition.tree.rhs.sourcePos),
               occurrence.tree.startPos.startColumnIndentPadding,
-              definition.tree.startPos.startColumnIndentPadding
+              definition.tree.startPos.startColumnIndentPadding,
+              hasNextLineAfterEqualsSign
             ),
             occurrence.parent.map(p =>
               RangeOffset(p.sourcePos.start, p.sourcePos.end)

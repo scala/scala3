@@ -473,6 +473,31 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
             |""".stripMargin
       )
 
+  @Test def `no-new-line` =
+    checkEdit(
+      """|object O {
+         |  val i: Option[Int] = ???
+         |  def foo = {
+         |    val newValue = i match
+         |      case Some(x) => x
+         |      case None => 0
+         |    def bar =
+         |      val xx = new<<V>>alue
+         |  }
+         |}
+         |""".stripMargin,
+      """|object O {
+         |  val i: Option[Int] = ???
+         |  def foo = {
+         |    def bar =
+         |      val xx = i match
+         |        case Some(x) => x
+         |        case None => 0
+         |  }
+         |}
+         |""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String,
