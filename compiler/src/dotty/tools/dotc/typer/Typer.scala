@@ -4268,11 +4268,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                       )
                     case _ =>
                       mapOver(t)
+                val stripedApproxRes = tm(approxRes)
                 val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
-                if (!resultAlreadyConstrained) {
+                if (!resultAlreadyConstrained && !stripedApproxRes.containsWildcardTypes) {
                   if ctx.typerState.isCommittable then
-                    NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, tm(approxRes))
-                  else constrainResult(tree.symbol, wtp.resultType, tm(approxRes))
+                    NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
+                  else constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
                 }
               }
             }
