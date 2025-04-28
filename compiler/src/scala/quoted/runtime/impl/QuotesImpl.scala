@@ -2529,7 +2529,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end StringConstantTypeTest
 
     object StringConstant extends StringConstantModule:
-      def apply(x: String): StringConstant = dotc.core.Constants.Constant(x)
+      def apply(x: String): StringConstant = dotc.core.Constants.Constant(x: Any)
       def unapply(constant: StringConstant): Some[String] = Some(constant.stringValue)
     end StringConstant
 
