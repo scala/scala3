@@ -2,7 +2,11 @@
 3 |  type A[X: TC]                     // error
   |          ^
   |          ']' expected, but ':' found
--- Error: tests/neg/i22552.scala:4:15 ----------------------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i22552.scala:4:13 --------------------------------------------------------------------
 4 |  type C = [X: TC] =>> List[X]      // error
-  |               ^^
-  |               context bounds are not allowed in type lambdas
+  |             ^
+  |             ']' expected, but ':' found
+-- [E040] Syntax Error: tests/neg/i22552.scala:5:13 --------------------------------------------------------------------
+5 |  type D = [X: TC] => () => List[X] // error
+  |             ^
+  |             ']' expected, but ':' found
