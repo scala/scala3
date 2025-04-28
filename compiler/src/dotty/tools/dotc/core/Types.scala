@@ -3858,8 +3858,12 @@ object Types extends TypeUtils {
 
       override final def derivedSelect(tp: NamedType, pre: Type): Type =
         if tp.prefix eq pre then tp
-        else if tp.symbol.exists then NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
-        else NamedType(pre, tp.name)
+        else
+          pre match
+            case ref: ParamRef if (ref.binder eq self) && tp.symbol.exists =>
+              NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
+            case _ =>
+              tp.derivedSelect(pre)
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
