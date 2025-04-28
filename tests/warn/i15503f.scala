@@ -75,3 +75,18 @@ package givens:
   given namely (using x: X): Y with // warn protected param to given class
     def doY = "8"
 end givens
+
+object i22895:
+  trait Test[F[_], Ev] {
+    def apply[A, B](fa: F[A])(f: A => B)(using ev: Ev): F[B]
+  }
+  given testId: Test[[a] =>> a, Unit] =
+    new Test[[a] =>> a, Unit] {
+      def apply[A, B](fa: A)(f: A => B)(using ev: Unit): B = f(fa) // nowarn override
+    }
+  class C:
+    def f(using s: String) = s.toInt
+  class D(i: Int) extends C:
+    override def f(using String) = compute(i) // nowarn override
+    def g(using sss: String) = compute(i) // warn
+    def compute(i: Int) = i * 42 // returning a class param is deemed trivial, make it non-trivial
