@@ -72,16 +72,16 @@ final class PcInlineValueProvider(
         text
       )(startOffset, endOffset)
     val startPos = new l.Position(
-      range.getStart.getLine,
-      range.getStart.getCharacter - (startOffset - startWithSpace)
+      range.getStart.nn.getLine,
+      range.getStart.nn.getCharacter - (startOffset - startWithSpace)
     )
     val endPos =
       if (endWithSpace - 1 >= 0 && text(endWithSpace - 1) == '\n')
-        new l.Position(range.getEnd.getLine + 1, 0)
+        new l.Position(range.getEnd.nn.getLine + 1, 0)
       else
         new l.Position(
-          range.getEnd.getLine,
-          range.getEnd.getCharacter + endWithSpace - endOffset
+          range.getEnd.nn.getLine,
+          range.getEnd.nn.getCharacter + endWithSpace - endOffset
         )
 
     new l.Range(startPos, endPos)
@@ -129,15 +129,15 @@ final class PcInlineValueProvider(
   end defAndRefs
 
   private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String): String =
-    val rhsLines = rhs.split("\n").toList
+    val rhsLines = rhs.split("\n").nn.toList
     rhsLines match
       case h :: Nil => rhs
       case h :: t =>
-        val noPrefixH = h.stripPrefix(refIndent)
+        val noPrefixH = h.nn.stripPrefix(refIndent)
         if noPrefixH.startsWith("{") then
-          noPrefixH ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n","\n", "")
+          noPrefixH ++ t.map(refIndent ++ _.nn.stripPrefix(defIndent)).mkString("\n","\n", "")
         else
-          (("  " ++ h) :: t).map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
+          (("  " ++ h.nn) :: t).map(refIndent ++ _.nn.stripPrefix(defIndent)).mkString("\n", "\n", "")
       case Nil => rhs
 
   private def definitionRequiresBrackets(tree: Tree)(using Context): Boolean =

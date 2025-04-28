@@ -173,6 +173,7 @@ private sealed trait WarningSettings:
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
   private val WenumCommentDiscard = BooleanSetting("-Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
+  private val WtoStringInterpolated = BooleanSetting("-Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",
@@ -288,6 +289,7 @@ private sealed trait WarningSettings:
     def valueDiscard(using Context): Boolean = allOr(WvalueDiscard)
     def nonUnitStatement(using Context): Boolean = allOr(WNonUnitStatement)
     def enumCommentDiscard(using Context): Boolean = allOr(WenumCommentDiscard)
+    def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
     def checkInit(using Context): Boolean = allOr(YcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
