@@ -7,6 +7,7 @@ import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 
 import scala.collection.mutable
+import dotty.tools.dotc.config.Feature
 
 
 /** This phase synthesizes specialized methods for FunctionN, this is done
@@ -25,7 +26,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def description: String = SpecializeApplyMethods.description
 
   override def isEnabled(using Context): Boolean =
-    !ctx.settings.scalajs.value && !ctx.settings.YcompileScala2Library.value
+    !ctx.settings.scalajs.value && !Feature.sourceVersion.isScala2
 
   private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
     val name = nme.apply.specializedFunction(ret, args)

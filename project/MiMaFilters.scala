@@ -13,6 +13,9 @@ object MiMaFilters {
         // Scala.js-only class
         ProblemFilters.exclude[FinalClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
+
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.2"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$2$"),
       ),
 
       // Additions since last LTS
