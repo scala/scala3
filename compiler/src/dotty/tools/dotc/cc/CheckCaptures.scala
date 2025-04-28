@@ -949,7 +949,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         // TODO follow up on this
       try
         matchParams(mdef.paramss, pt)
-        recheckDef(mdef, mdef.symbol)
+        capt.println(i"recheck closure block $mdef: ${mdef.symbol.infoOrCompleter}")
+        if !mdef.symbol.isCompleted then
+          mdef.symbol.ensureCompleted() // this will recheck def
+        else
+          recheckDef(mdef, mdef.symbol)
+
         recheckClosure(expr, pt, forceDependent = true)
       finally
         openClosures = openClosures.tail
