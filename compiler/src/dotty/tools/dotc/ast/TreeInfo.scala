@@ -865,7 +865,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
-      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+      case Block((meth: DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
       case Block(Nil, expr) =>
         unapply(expr)

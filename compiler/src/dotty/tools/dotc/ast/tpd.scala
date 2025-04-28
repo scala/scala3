@@ -375,7 +375,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *      new parents { termForwarders; typeAliases }
    *
    *  @param parents        a non-empty list of class types
-   *  @param termForwarders a non-empty list of forwarding definitions specified by their name and the definition they forward to.
+   *  @param termForwarders a non-empty list of forwarding definitions specified by their name
+   *                        and the definition they forward to.
    *  @param typeMembers    a possibly-empty list of type members specified by their name and their right hand side.
    *  @param adaptVarargs   if true, allow matching a vararg superclass constructor
    *                        with a missing argument in superArgs, and synthesize an
