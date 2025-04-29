@@ -4250,34 +4250,38 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
+            // try to constrain type before implicit search. See #18763
             def tryConstrainType(pt1: Type): Boolean = {
+              // subst dummyArg into FunProto so that we don't have to search for nested implicit
+              val tm = new TypeMap:
+                def apply(t: Type): Type = t match
+                  case fp@FunProto(args, resType) =>
+                    fp.derivedFunProto(
+                      args.map(arg =>
+                        if (arg.isInstanceOf[untpd.TypedSplice]) arg
+                        else dummyArg(arg.typeOpt).withSpan(arg.span)
+                      ),
+                      mapOver(resType)
+                    )
+                  case _ =>
+                    mapOver(t)
               val ownedVars = ctx.typerState.ownedVars
-              val qualifying = (ownedVars -- locked).toList
-              if (!formal.isGround && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty && qualifying.nonEmpty) {
+              def qualifying = (ownedVars -- locked).toList
+              val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
+              if !formal.isGround
+                && (pt1 `ne` pt)
+                && (pt1 ne sharpenedPt)
+                && (ownedVars ne locked)
+                && !ownedVars.isEmpty
+                && qualifying.nonEmpty
+                && !resultAlreadyConstrained then
                 val approxRes = wildApprox(pt1.resultType)
-                val tm = new TypeMap:
-                  def apply(t: Type) = t match
-                    case fp@FunProto(args, resType) =>
-                      fp.derivedFunProto(
-                        args.map(arg =>
-                          if (arg.isInstanceOf[untpd.TypedSplice]) arg
-                          else dummyArg(arg.typeOpt).withSpan(arg.span)
-                        ),
-                        mapOver(resType)
-                      )
-                    case _ =>
-                      mapOver(t)
                 val stripedApproxRes = tm(approxRes)
-                if (!stripedApproxRes.containsWildcardTypes) {
+                if !stripedApproxRes.containsWildcardTypes then
                   if ctx.typerState.isCommittable then
-                    NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
-                  else constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
-                } else {
-                  false
-                }
-              } else {
-                false
-              }
+                    return NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
+                  else return constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
+              false
             }
 
             val pt1 = pt.deepenProtoTrans
