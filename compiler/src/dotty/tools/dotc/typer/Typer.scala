@@ -4286,11 +4286,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             }
 
             val pt1 = pt.deepenProtoTrans
-            tryConstrainType(pt1)
+            val isConstrained = tryConstrainType(pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
             arg.tpe match
               case failed: AmbiguousImplicits =>
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
+                if !isConstrained && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
                 then implicitArgs(formals, argIndex, pt)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt)
               case failed: SearchFailureType =>
