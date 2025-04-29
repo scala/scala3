@@ -949,7 +949,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         // TODO follow up on this
       try
         matchParams(mdef.paramss, pt)
-        recheckDef(mdef, mdef.symbol)
+        capt.println(i"recheck closure block $mdef: ${mdef.symbol.infoOrCompleter}")
+        if !mdef.symbol.isCompleted then
+          mdef.symbol.ensureCompleted() // this will recheck def
+        else
+          recheckDef(mdef, mdef.symbol)
+
         recheckClosure(expr, pt, forceDependent = true)
       finally
         openClosures = openClosures.tail
@@ -1112,6 +1117,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       finally
         curEnv = saved
 
+    override def recheckTypeDef(tree: TypeDef, sym: Symbol)(using Context): Type =
+      try super.recheckTypeDef(tree, sym)
+      finally completed += sym
+
     /** Recheck classDef by enforcing the following class-specific capture set relations:
      *   1. The capture set of a class includes the capture sets of its parents.
      *   2. The capture set of the self type of a class includes the capture set of the class.
@@ -1156,6 +1165,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         ccState.inNestedLevelUnless(cls.is(Module)):
           super.recheckClassDef(tree, impl, cls)
       finally
+        completed += cls
         curEnv = saved
 
     /** If type is of the form `T @requiresCapability(x)`,
