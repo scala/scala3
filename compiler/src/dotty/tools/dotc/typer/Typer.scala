@@ -4253,7 +4253,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             def tryConstrainType(pt1: Type): Boolean = {
               val ownedVars = ctx.typerState.ownedVars
               val qualifying = (ownedVars -- locked).toList
-              if ((pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty && qualifying.nonEmpty) {
+              if (!formal.isGround && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty && qualifying.nonEmpty) {
                 val approxRes = wildApprox(pt1.resultType)
                 val tm = new TypeMap:
                   def apply(t: Type) = t match
