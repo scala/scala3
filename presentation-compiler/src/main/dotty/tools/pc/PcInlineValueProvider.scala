@@ -128,16 +128,13 @@ final class PcInlineValueProvider(
     end for
   end defAndRefs
 
-  private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String): String =
+  private def stripIndentPrefix(rhs: String, refIndent: String, defIndent: String, hasNextLineAfterEqualsSign: Boolean): String =
     val rhsLines = rhs.split("\n").nn.toList
     rhsLines match
       case h :: Nil => rhs
       case h :: t =>
-        val noPrefixH = h.nn.stripPrefix(refIndent)
-        if noPrefixH.startsWith("{") then
-          noPrefixH ++ t.map(refIndent ++ _.nn.stripPrefix(defIndent)).mkString("\n","\n", "")
-        else
-          (("  " ++ h.nn) :: t).map(refIndent ++ _.nn.stripPrefix(defIndent)).mkString("\n", "\n", "")
+        val header = if !hasNextLineAfterEqualsSign then h else s"\n$refIndent  $h"
+        header.nn ++ t.map(refIndent ++ _.nn.stripPrefix(defIndent)).mkString("\n", "\n", "")
       case Nil => rhs
 
   private def definitionRequiresBrackets(tree: Tree)(using Context): Boolean =
@@ -236,7 +233,7 @@ final class PcInlineValueProvider(
       var idx = source.startOfLine(offset)
       val pad = new StringBuilder
       while (idx != offset && idx < source.content().length && source.content()(idx).isWhitespace) {
-        pad.append(if (idx < source.content().length && source.content()(idx) == '\t') '\t' else ' ')
+        pad.append(source.content()(idx))
         idx += 1
       }
       pad.result()
@@ -262,6 +259,8 @@ final class PcInlineValueProvider(
             case _ => false
         }
         .map(_.fullNameBackticked)
+      val hasNextLineAfterEqualsSign =
+        definition.tree.sourcePos.startLine != definition.tree.rhs.sourcePos.startLine
       if conflictingSymbols.isEmpty then
         Right(
           Reference(
@@ -269,7 +268,8 @@ final class PcInlineValueProvider(
             stripIndentPrefix(
               extendWithSurroundingParens(definition.tree.rhs.sourcePos),
               occurrence.tree.startPos.startColumnIndentPadding,
-              definition.tree.startPos.startColumnIndentPadding
+              definition.tree.startPos.startColumnIndentPadding,
+              hasNextLineAfterEqualsSign
             ),
             occurrence.parent.map(p =>
               RangeOffset(p.sourcePos.start, p.sourcePos.end)
