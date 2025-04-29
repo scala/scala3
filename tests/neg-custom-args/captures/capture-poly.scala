@@ -3,7 +3,7 @@ import caps.*
 trait Foo extends Capability
 
 trait CaptureSet:
-  type C >: CapSet <: CapSet^
+  type C^
 
 def capturePoly[C^](a: Foo^{C}): Foo^{C} = a
 def capturePoly2(c: CaptureSet)(a: Foo^{c.C}): Foo^{c.C} = a
@@ -13,7 +13,7 @@ def test =
   val y: Foo^ = ???
 
   object X extends CaptureSet:
-    type C = CapSet^{x}
+    type C = {x}
 
   val z1: Foo^{X.C} = x
   val z2: Foo^{X.C} = y // error

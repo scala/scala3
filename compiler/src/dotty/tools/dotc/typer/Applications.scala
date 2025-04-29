@@ -37,6 +37,7 @@ import annotation.threadUnsafe
 import scala.util.control.NonFatal
 import dotty.tools.dotc.inlines.Inlines
 import scala.annotation.tailrec
+import dotty.tools.dotc.cc.isRetains
 
 object Applications {
   import tpd.*

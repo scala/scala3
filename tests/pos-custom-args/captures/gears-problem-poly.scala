@@ -26,4 +26,4 @@ extension [T](@use fs: Seq[Future[T]^])
   def awaitAll = fs.awaitAllPoly
 
 def awaitExplicit[T](@use fs: Seq[Future[T]^]): Unit =
-  awaitAllPoly[T, CapSet^{fs*}](fs)
+  awaitAllPoly[T, {fs*}](fs)

@@ -13,7 +13,7 @@ import caps.{CapSet, Capability}
 
   def test(c1: C, c2: C) =
     val d: D^{c1, c2} = D()
-    val x = f[CapSet^{c1, c2}](d)
+    val x = f[{c1, c2}](d)
     val _: D^{c1, c2} = x
     val d1: D^{c1} = D()
     val d2: D^{c2} = D()

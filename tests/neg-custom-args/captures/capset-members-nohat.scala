@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 import caps.*
 
 trait Abstract[X^]:
-  type C^ >: {X}
+  type C >: {X}
   // Don't test the return type using Unit, because it is a pure type.
   def boom(): AnyRef^{C}
 

@@ -9,14 +9,14 @@ trait BoundsTest:
   val b: Bar^ = ???
 
   def testTransMixed[A^,
-                    B >: CapSet <: A,
-                    C >: CapSet <: CapSet^{B},
-                    D >: CapSet <: C,
-                    E >: CapSet <: CapSet^{D},
-                    F >: CapSet <: CapSet^{A,b},
-                    X >: CapSet <: CapSet^{F,D},
-                    Y >: CapSet^{F} <: CapSet^{F,A,b},
-                    Z >: CapSet^{b} <: CapSet^{b,Y}] =
+                    B^ <: {A},
+                    C^ <: {B},
+                    D^ <: C,
+                    E^ <: {D},
+                    F^ <: {A,b},
+                    X^ <: {F,D},
+                    Y^ >: {F} <: {F,A,b},
+                    Z^ >: {b} <: {b,Y}, T <: List[Bar^{Z}]] =
     val e: E = ???
     val e2: CapSet^{E} = e
     val ed: D = e
@@ -39,6 +39,6 @@ trait BoundsTest:
 
   def callTransMixed =
     val x, y, z: Bar^ = ???
-    testTransMixed[CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{x,y,z}, CapSet^{b,x,y,z}]
-    testTransMixed[CapSet^{x,y,z}, CapSet^{x,y}, CapSet^{x,y}, CapSet^{x}, CapSet^{}, CapSet^{b,x}, CapSet^{b}, CapSet^{b,x}, CapSet^{b}]
-    testTransMixed[CapSet^{x,y,z}, CapSet^{x,y}, CapSet^{x,y}, CapSet^{x}, CapSet^{}, CapSet^{b,x}, CapSet^{b}, CapSet^{b,x}, CapSet^{b,x,y,z}] // error
+    testTransMixed[{x,y,z}, {x,y,z}, {x,y,z}, {x,y,z}, {x,y,z}, {x,y,z}, {x,y,z}, {x,y,z}, {b,x,y,z}, List[Bar^{b}]]
+    testTransMixed[{x,y,z}, {x,y}, {x,y}, {x}, {}, {b,x}, {b}, {b,x}, {b}, List[Bar^{b}]]
+    testTransMixed[{x,y,z}, {x,y}, {x,y}, {x}, {}, {b,x}, {b}, {b,x}, {b,x,y,z}, List[Bar^{}]] // error

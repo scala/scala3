@@ -68,6 +68,7 @@
 ./enums/enums.html
 ./enums/index.html
 ./experimental/canthrow.html
+./experimental/cc-advanced.html
 ./experimental/cc.html
 ./experimental/erased-defs-spec.html
 ./experimental/erased-defs.html

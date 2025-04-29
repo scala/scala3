@@ -451,7 +451,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => "cap"
       case tp: SingletonType => toTextRef(tp)
-      case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
+      case tp: (TypeRef | TypeParamRef) => toText(tp)
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
