@@ -4250,18 +4250,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
-            val ownedVars = ctx.typerState.ownedVars
-            val pt1 = pt.deepenProtoTrans
-            if ((!formal.isGround) && (formal.simplified `ne` formal) && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty) {
+            def tryConstrainType(pt1: Type): Boolean = {
+              val ownedVars = ctx.typerState.ownedVars
               val qualifying = (ownedVars -- locked).toList
-              if (qualifying.nonEmpty) {
+              if ((pt1 `ne` pt) && (pt1 ne sharpenedPt) && (ownedVars ne locked) && !ownedVars.isEmpty && qualifying.nonEmpty) {
                 val approxRes = wildApprox(pt1.resultType)
                 val tm = new TypeMap:
                   def apply(t: Type) = t match
                     case fp@FunProto(args, resType) =>
                       fp.derivedFunProto(
                         args.map(arg =>
-                          if(arg.isInstanceOf[untpd.TypedSplice]) arg
+                          if (arg.isInstanceOf[untpd.TypedSplice]) arg
                           else dummyArg(arg.typeOpt).withSpan(arg.span)
                         ),
                         mapOver(resType)
@@ -4269,14 +4268,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     case _ =>
                       mapOver(t)
                 val stripedApproxRes = tm(approxRes)
-                val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
-                if (!resultAlreadyConstrained && !stripedApproxRes.containsWildcardTypes) {
+                if (!stripedApproxRes.containsWildcardTypes) {
                   if ctx.typerState.isCommittable then
                     NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
                   else constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
+                } else {
+                  false
                 }
+              } else {
+                false
               }
             }
+
+            val pt1 = pt.deepenProtoTrans
+            tryConstrainType(pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
             arg.tpe match
               case failed: AmbiguousImplicits =>
