@@ -1486,5 +1486,45 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |""".stripMargin
     )
 
+  @Test def i7256 =
+    check(
+      """|package a
+         |object Test:
+         |  def <<methodA>>: Unit = ???
+         |export Test.<<me@@thodA>>
+         |val i = <<methodA>>
+         |""".stripMargin
+    )
+
+  @Test def `i7256-2` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{<<me@@thodA>>, methodB}
+         |val i = <<methodA>>
+         |""".stripMargin
+    )
+
+
+  @Test def `i7256-3` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.<<methodA>>
+         |val i = <<met@@hodA>>
+         |val j = <<methodA>>
+         |""".stripMargin
+    )
+
+  @Test def `i7256-4` =
+    check(
+      """|object Test:
+         |  class <<Foo>>
+         |  object <<Foo>>
+         |export Test.<<F@@oo>>
+         |""".stripMargin
+    )
 
 end DocumentHighlightSuite
