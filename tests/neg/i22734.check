@@ -1,0 +1,8 @@
+-- Error: tests/neg/i22734.scala:3:7 -----------------------------------------------------------------------------------
+3 |object X extends T // error status quo
+  |       ^
+  |       object creation impossible, since def item: String in trait T is not defined
+-- Error: tests/neg/i22734.scala:6:7 -----------------------------------------------------------------------------------
+6 |  case Empty // error
+  |       ^
+  |       object creation impossible, since def item: String in class Foo is not defined
