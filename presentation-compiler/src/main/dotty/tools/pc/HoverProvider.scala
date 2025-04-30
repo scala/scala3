@@ -47,7 +47,7 @@ object HoverProvider:
     val path = unit
       .map(unit => Interactive.pathTo(unit.tpdTree, pos.span))
       .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos))
-    val indexedContext = IndexedContext(ctx)
+    val indexedContext = IndexedContext(pos)(using ctx)
 
     def typeFromPath(path: List[Tree]) =
       if path.isEmpty then NoType else path.head.typeOpt
@@ -94,7 +94,7 @@ object HoverProvider:
 
       val printerCtx = Interactive.contextOfPath(path)
       val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(
-        using IndexedContext(printerCtx)
+        using IndexedContext(pos)(using printerCtx)
       )
       MetalsInteractive.enclosingSymbolsWithExpressionType(
         enclosing,
@@ -131,7 +131,12 @@ object HoverProvider:
             .flatMap(symTpe => search.symbolDocumentation(symTpe._1, contentType))
             .map(_.docstring())
             .mkString("\n")
-          printer.expressionType(exprTpw) match
+
+          val expresionTypeOpt =
+            if symbol.name == nme.??? then
+              InferExpectedType(search, driver, params).infer()
+            else printer.expressionType(exprTpw)
+          expresionTypeOpt match
             case Some(expressionType) =>
               val forceExpressionType =
                 !pos.span.isZeroExtent || (

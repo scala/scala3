@@ -166,7 +166,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       @tailrec
       def loop(acc: List[String], sym: Symbol): List[String] =
         if sym == NoSymbol || sym.isRoot || sym.isEmptyPackage then acc
-        else if sym.isPackageObject then loop(acc, sym.owner)
+        else if sym.isPackageObject || sym.isConstructor then loop(acc, sym.owner)
         else
           val v = this.nameBackticked(sym)(exclusions)
           loop(v :: acc, sym.owner)
@@ -176,6 +176,9 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
 
     def companion: Symbol =
       if sym.is(Module) then sym.companionClass else sym.companionModule
+
+    def dealiasType: Symbol =
+      if sym.isType then sym.info.deepDealias.typeSymbol else sym
 
     def nameBackticked: String = nameBackticked(Set.empty[String])
 

@@ -110,8 +110,8 @@ final class PcInlineValueProvider(
         }
         .toRight(Errors.didNotFindDefinition)
       path = Interactive.pathTo(unit.tpdTree, definition.tree.rhs.span)(using newctx)
-      indexedContext = IndexedContext(Interactive.contextOfPath(path)(using newctx))
-      symbols = symbolsUsedInDefn(definition.tree.rhs).filter(indexedContext.lookupSym(_) == Result.InScope)
+      indexedContext = IndexedContext(definition.tree.namePos)(using Interactive.contextOfPath(path)(using newctx))
+      symbols = symbolsUsedInDefn(definition.tree.rhs, indexedContext)
       references <- getReferencesToInline(definition, allOccurences, symbols)
     yield
       val (deleteDefinition, refsEdits) = references
@@ -184,15 +184,19 @@ final class PcInlineValueProvider(
     val adjustedEnd = extend(pos.end - 1, ')', 1) + 1
     text.slice(adjustedStart, adjustedEnd).mkString
 
-  private def symbolsUsedInDefn(rhs: Tree): Set[Symbol] =
+  private def symbolsUsedInDefn(rhs: Tree, indexedContext: IndexedContext): Set[Symbol] =
     def collectNames(
         symbols: Set[Symbol],
         tree: Tree
     ): Set[Symbol] =
       tree match
-        case id: (Ident | Select)
+        case id: Ident
             if !id.symbol.is(Synthetic) && !id.symbol.is(Implicit) =>
           symbols + tree.symbol
+        case sel: Select =>
+          indexedContext.lookupSym(sel.symbol) match
+            case IndexedContext.Result.InScope => symbols + sel.symbol
+            case _ => symbols
         case _ => symbols
 
     val traverser = new DeepFolder[Set[Symbol]](collectNames)
@@ -247,8 +251,8 @@ final class PcInlineValueProvider(
     def buildRef(occurrence: Occurence): Either[String, Reference] =
       val path =
         Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx)
-      val indexedContext = IndexedContext(
-        Interactive.contextOfPath(path)(using newctx)
+      val indexedContext = IndexedContext(pos)(
+        using Interactive.contextOfPath(path)(using newctx)
       )
       import indexedContext.ctx
       val conflictingSymbols = symbols
