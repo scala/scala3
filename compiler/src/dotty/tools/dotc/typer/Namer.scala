@@ -1344,7 +1344,7 @@ class Namer { typer: Typer =>
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
               val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
-              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
+              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm).withSpan(span.focus)
               val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
                 .etaExpandCFT(using forwarderCtx)
               if forwarder.isInlineMethod then
