@@ -780,7 +780,9 @@ object RefChecks {
           def showDclAndLocation(sym: Symbol) =
             s"${sym.mapInfo(replaceSyntheticParamNames).showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
+            val notdefined = s"${showDclAndLocation(member)} is not defined"
+            val text = if !msg.isEmpty then s"$notdefined $msg" else notdefined
+            abstractClassError(mustBeMixin = false, text)
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -946,8 +948,22 @@ object RefChecks {
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
-      if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazzNamePos)
+      if abstractErrors.nonEmpty then
+        val isEnumAnonCls = // courtesy of Checking.checkEnum
+          clazz.isAnonymousClass
+          && clazz.owner.isTerm
+          && {
+               clazz.owner.isAllOf(EnumCase)
+            || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
+          }
+        if !isEnumAnonCls then
+          report.error(abstractErrorMessage, clazzNamePos)
+        else if clazz.owner.isAllOf(EnumCase) then
+          report.error(abstractErrorMessage, clazz.owner.srcPos)
+        else
+          val e = clazz.parentSyms.head
+          for child <- e.children if child.info.typeSymbol == e do // report all simple cases
+            report.error(abstractErrorMessage, child.srcPos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()

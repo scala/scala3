@@ -1,4 +1,4 @@
 -- Error: tests/neg/i25531b.scala:1:6 ----------------------------------------------------------------------------------
 1 |class Rble extends Readable // error
   |      ^^^^
-  |class Rble needs to be abstract, since def read(x0: java.nio.CharBuffer): Int in trait Readable in package java.lang is not defined 
+  |class Rble needs to be abstract, since def read(x0: java.nio.CharBuffer): Int in trait Readable in package java.lang is not defined
