@@ -1543,7 +1543,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * @param selectorPredicate A test to find the selector to use.
    * @return The symbols imported.
    */
-  def importedSymbols(imp: Import,
+  def importedSymbols(imp: ImportOrExport,
                       selectorPredicate: untpd.ImportSelector => Boolean = util.common.alwaysTrue)
                      (using Context): List[Symbol] =
     imp.selectors.find(selectorPredicate) match
