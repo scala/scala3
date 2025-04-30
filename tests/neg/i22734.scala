@@ -1,9 +1,9 @@
 trait T:
   def item: String
-object X extends T // error status quo
+object X extends T // refchecks error status quo
 
-enum Foo {
-  case Empty // error
+enum Foo { // error
+  case Empty // refchecks error
   case NonEmpty(item: String)
   case Decoy // hopefully not here
 
