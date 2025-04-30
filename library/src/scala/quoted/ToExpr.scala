@@ -77,7 +77,13 @@ object ToExpr {
   given StringToExpr[T <: String]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect.*
-      Literal(StringConstant(x)).asExpr.asInstanceOf[Expr[T]]
+      val literal =
+        if (x: Any) == null then
+          // Can happen if called from code without `-Yexplicit-nulls`.
+          Literal(NullConstant())
+        else
+          Literal(StringConstant(x))
+      literal.asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Class[T]]` */
