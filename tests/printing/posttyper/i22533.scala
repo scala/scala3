@@ -1,4 +1,6 @@
-//> using options -Ycompile-scala2-library
+package scala
+
+import scala.language.`2`
 
 trait A extends Any:
     override def equals(x: Any): Boolean = ???
