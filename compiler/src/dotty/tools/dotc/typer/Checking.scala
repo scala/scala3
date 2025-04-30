@@ -720,7 +720,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -733,6 +733,14 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
+    inline def checkParentIsNotAnyValAlias(): Unit =
+      cdef.rhs match {
+        case impl: Template =>
+          val parent = impl.parents.head
+          if parent.symbol.isAliasType && parent.typeOpt.dealias =:= defn.AnyValType then
+            report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parent.symbol), cdef.srcPos)
+        case _ => ()
+      }
     // We don't check synthesised enum anonymous classes that are generated from
     // enum extending a value class type (AnyVal or an alias of it)
     // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
@@ -747,6 +755,9 @@ object Checking {
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
+
+      checkParentIsNotAnyValAlias()
+
       if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
         report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
@@ -1228,8 +1239,8 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
-    Checking.checkDerivedValueClass(clazz, stats)
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit =
+    Checking.checkDerivedValueClass(cdef, clazz, stats)
 
   /** Check that case classes are not inherited by case classes.
    */
@@ -1600,7 +1611,7 @@ trait NoChecking extends ReChecking {
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
