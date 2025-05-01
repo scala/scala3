@@ -1331,16 +1331,6 @@ object Parsers {
     */
     def qualId(): Tree = dotSelectors(termIdent())
 
-    /** Singleton    ::=  SimpleRef
-     *                 |  SimpleLiteral
-     *                 |  Singleton ‘.’ id
-     * -- not yet      |  Singleton ‘(’ Singletons ‘)’
-     * -- not yet      |  Singleton ‘[’ Types ‘]’
-     */
-    def singleton(): Tree =
-      if isSimpleLiteral then simpleLiteral()
-      else dotSelectors(simpleRef())
-
     /** SimpleLiteral     ::=  [‘-’] integerLiteral
      *                      |  [‘-’] floatingPointLiteral
      *                      |  booleanLiteral
@@ -2051,7 +2041,7 @@ object Parsers {
     /**  SimpleType      ::=  SimpleLiteral
      *                     |  ‘?’ TypeBounds
      *                     |  SimpleType1
-     *                     |  SimpleType ‘(’ Singletons ‘)’  -- under language.experimental.dependent, checked in Typer
+     *                     |  SimpleType ‘(’ Singletons ‘)’
      *   Singletons      ::=  Singleton {‘,’ Singleton}
      */
     def simpleType(): Tree =
@@ -2083,11 +2073,11 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       else
-        def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && in.featureEnabled(Feature.dependent)
-          then singletonArgs(AppliedTypeTree(t, inParensWithCommas(commaSeparated(singleton))))
-          else t
-        singletonArgs(simpleType1())
+        val tpt = simpleType1()
+        if in.featureEnabled(Feature.modularity)  && in.token == LPAREN then
+          parArgumentExprss(wrapNew(tpt))
+        else
+          tpt
 
     /** SimpleType1      ::=  id
      *                     |  Singleton `.' id

@@ -53,6 +53,11 @@ class TypeUtils:
       case ps => ps.reduceLeft(AndType(_, _))
     }
 
+    def widenSkolems(using Context): Type =
+      val widenSkolemsMap = new TypeMap:
+        def apply(tp: Type) = mapOver(tp.widenSkolem)
+      widenSkolemsMap(self)
+
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
      */
     def tupleElementTypes(using Context): Option[List[Type]] =
@@ -134,7 +139,7 @@ class TypeUtils:
           case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
         val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
         names.zip(values)
-        
+
       (if normalize then self.normalized else self).dealias match
         // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
         case defn.NamedTupleDirect(nmes, vals) => extractNamesTypes(nmes, vals)

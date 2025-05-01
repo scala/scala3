@@ -2557,17 +2557,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
-    tree.args match
-      case arg :: _ if arg.isTerm =>
-        if Feature.dependentEnabled then
-          return errorTree(tree, em"Not yet implemented: T(...)")
-        else
-          return errorTree(tree, dependentMsg)
-      case _ =>
-
-    val tpt1 = withoutMode(Mode.Pattern) {
+    val tpt1 = withoutMode(Mode.Pattern):
       typed(tree.tpt, AnyTypeConstructorProto)
-    }
+
     val tparams = tpt1.tpe.typeParams
      if tpt1.tpe.isError then
        val args1 = tree.args.mapconserve(typedType(_))
@@ -2691,7 +2683,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     typeIndexedLambdaTypeTree(tree, tparams, body)
 
   def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
-    if Feature.dependentEnabled then
+    if Feature.enabled(Feature.modularity) then
       errorTree(tree, em"Not yet implemented: (...) =>> ...")
     else
       errorTree(tree, dependentMsg)

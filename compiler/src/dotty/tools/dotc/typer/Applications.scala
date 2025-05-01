@@ -1282,6 +1282,10 @@ trait Applications extends Compatibility {
         }
       else {
         val app = tree.fun match
+          case _ if ctx.mode.is(Mode.Type) && Feature.enabled(Feature.modularity) && !ctx.isAfterTyper =>
+            untpd.methPart(tree.fun) match
+              case Select(nw @ New(_), _) => typedAppliedConstructorType(nw, tree.args, tree)
+              case _ => realApply
           case untpd.TypeApply(_: untpd.SplicePattern, _) if Feature.quotedPatternsWithPolymorphicFunctionsEnabled =>
             typedAppliedSpliceWithTypes(tree, pt)
           case _: untpd.SplicePattern => typedAppliedSplice(tree, pt)
@@ -1714,6 +1718,28 @@ trait Applications extends Compatibility {
    */
   def typedUnApply(tree: untpd.UnApply, selType: Type)(using Context): UnApply =
     throw new UnsupportedOperationException("cannot type check an UnApply node")
+
+  /** Typecheck an applied constructor type – An Apply node in Type mode.
+   *  This expands to the type this term would have if it were typed as an expression.
+   *
+   * e.g.
+   * ```scala
+   * // class C(tracked val v: Any)
+   * val c: C(42) = ???
+   * ```
+   */
+  def typedAppliedConstructorType(nw: untpd.New, args: List[untpd.Tree], tree: untpd.Apply)(using Context) =
+    val tree1 = typedExpr(tree)
+    val preciseTp = tree1.tpe.widenSkolems
+    val classTp = typedType(nw.tpt).tpe
+    def classSymbolHasOnlyTrackedParameters =
+      !classTp.classSymbol.primaryConstructor.paramSymss.nestedExists: param =>
+        param.isTerm && !param.is(Tracked)
+    if !preciseTp.isError && !classSymbolHasOnlyTrackedParameters then
+      report.warning(OnlyFullyDependentAppliedConstructorType(), tree.srcPos)
+    if !preciseTp.isError && (preciseTp frozen_=:= classTp) then
+      report.warning(PointlessAppliedConstructorType(nw.tpt, args, classTp), tree.srcPos)
+    TypeTree(preciseTp)
 
   /** Is given method reference applicable to argument trees `args`?
    *  @param  resultType   The expected result type of the application
