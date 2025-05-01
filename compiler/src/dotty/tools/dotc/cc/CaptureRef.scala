@@ -267,7 +267,7 @@ trait CaptureRef extends TypeProxy, ValueType:
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap
             && !yIsExistential
-            && !y.isInstanceOf[TermParamRef]
+            && !y.isInstanceOf[ParamRef]
             && canAddHidden
             && vs.addHidden(hidden, y)
       case x @ root.Result(binder) =>
