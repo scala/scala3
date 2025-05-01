@@ -586,9 +586,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(elems)
           tpt.setNuType(box(transformInferredType(tpt.tpe)))
 
-        case tree: Block =>
-          ccState.inNestedLevel(traverseChildren(tree))
-
         case _ =>
           traverseChildren(tree)
       postProcess(tree)

@@ -887,9 +887,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             report.error(em"$refArg is not a tracked capability", refArg.srcPos)
       case _ =>
 
-    override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
-      ccState.inNestedLevel(super.recheckBlock(tree, pt))
-
     /** Recheck Closure node: add the captured vars of the anonymoys function
      *  to the result type. See also `recheckClosureBlock` which rechecks the
      *  block containing the anonymous function and the Closure node.
