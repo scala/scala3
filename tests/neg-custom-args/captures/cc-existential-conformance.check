@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:8:24 --------------------
 8 |  val y: A -> Fun[B^] = x // error
   |                        ^
-  |                        Found:    (x : A -> (x²: A) -> B^{localcap})
-  |                        Required: A -> A -> B^{fresh}
+  |                        Found:    (x : A -> (x²: A) -> B^)
+  |                        Required: A -> A -> B^
   |
   |                        where:    x  is a value in method test
   |                                  x² is a reference to a value parameter
@@ -21,8 +21,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
 13 |  val y: Fun[B^] = x // error
    |                   ^
-   |                   Found:    (x : (x²: A) -> B^{localcap})
-   |                   Required: A -> B^{fresh}
+   |                   Found:    (x : (x²: A) -> B^)
+   |                   Required: A -> B^
    |
    |                   where:    x  is a value in method test2
    |                             x² is a reference to a value parameter

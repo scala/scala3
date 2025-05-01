@@ -14,7 +14,7 @@
 22 |  val bad: bar.T = foo(bar) // error
    |                   ^^^^^^^^
    |                   Found:    bar.T
-   |                   Required: () => Logger^
+   |                   Required: () ->{fresh} Logger^{fresh}
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------

@@ -1081,9 +1081,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt match
         case tpt: InferredTypeTree if !canUseInferred =>
           val expected = tpt.tpe.dropAllRetains
-          todoAtPostCheck += (() => checkConformsExpr(tp, expected, tree.rhs, addenda(expected)))
-            // The check that inferred <: expected is done after recheck so that it
-            // does not interfere with normal rechecking by constraining capture set variables.
+          todoAtPostCheck += { () =>
+            withCapAsRoot:
+              checkConformsExpr(tp, expected, tree.rhs, addenda(expected))
+              // The check that inferred <: expected is done after recheck so that it
+              // does not interfere with normal rechecking by constraining capture set variables.
+          }
         case _ =>
       tp
     end checkInferredResult

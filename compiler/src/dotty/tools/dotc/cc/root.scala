@@ -340,6 +340,7 @@ object root:
         x || t.dealiasKeepAnnots.match
           case Fresh(_) => false
           case t: TermRef => t.isCap || this(x, t.widen)
+          case CapturingType(t1, refs) => refs.containsCap || this(x, t1)
           case x: ThisType => false
           case _ => foldOver(x, t)
 
@@ -349,7 +350,9 @@ object root:
       case refs: CaptureSet =>
         refs.elems.exists(_.stripReadOnly.isCap)
 
-    if refs.exists(containsCap) then ctx.withProperty(PrintFresh, Some(()))
-    else ctx
+    if refs.exists(containsCap) then
+      ctx.withProperty(PrintFresh, Some(()))
+    else
+      ctx
   end printContext
 end root
