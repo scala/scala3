@@ -825,7 +825,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         var allCaptures: CaptureSet =
           if core.derivesFromMutable then initCs ++ CaptureSet.fresh()
-          else if core.derivesFromCapability then initCs ++ root.Fresh.withOwner(core.classSymbol).readOnly.singletonCaptureSet
+          else if core.derivesFromCapability then initCs ++ root.Fresh().readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
