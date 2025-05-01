@@ -125,9 +125,9 @@ object root:
   /** The type of fresh references */
   type Fresh = AnnotatedType
 
+  /** Constructor and extractor methods for "fresh" capabilities */
   object Fresh:
-    /** Constructor and extractor methods for "fresh" capabilities */
-    private def make(owner: Symbol)(using Context): CaptureRef =
+    def apply(using Context)(owner: Symbol = ctx.owner): CaptureRef =
       if ccConfig.useSepChecks then
         val hiddenSet = CaptureSet.HiddenSet(owner)
         val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)))
@@ -136,9 +136,6 @@ object root:
         res
       else
         cap
-
-    def withOwner(owner: Symbol)(using Context): CaptureRef = make(owner)
-    def apply()(using Context): CaptureRef = make(NoSymbol)
 
     def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
       case Annot(Kind.Fresh(hidden)) => Some(hidden)
@@ -168,14 +165,14 @@ object root:
   /** Map each occurrence of cap to a different Fresh instance
    *  Exception: CapSet^ stays as it is.
    */
-  class CapToFresh(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
+  class CapToFresh()(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Fresh.withOwner(owner)
+          Fresh()
         case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
           t
         case t @ CapturingType(_, _) =>
@@ -213,12 +210,12 @@ object root:
   end CapToFresh
 
   /** Maps cap to fresh */
-  def capToFresh(tp: Type, owner: Symbol = NoSymbol)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh(owner)(tp) else tp
+  def capToFresh(tp: Type)(using Context): Type =
+    if ccConfig.useSepChecks then CapToFresh()(tp) else tp
 
   /** Maps fresh to cap */
   def freshToCap(tp: Type)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh(NoSymbol).inverse(tp) else tp
+    if ccConfig.useSepChecks then CapToFresh().inverse(tp) else tp
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type)(using Context): Type =

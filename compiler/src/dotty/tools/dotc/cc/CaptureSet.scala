@@ -423,8 +423,8 @@ object CaptureSet:
   def universalImpliedByCapability(using Context) =
     defn.universalCSImpliedByCapability
 
-  def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
-    root.Fresh.withOwner(owner).singletonCaptureSet
+  def fresh()(using Context): CaptureSet =
+    root.Fresh().singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
@@ -689,7 +689,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
         val approx = upperApprox(empty)
-          .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
+          .map(root.CapToFresh().inverse)    // Fresh --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1392,7 +1392,7 @@ object CaptureSet:
       def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
         this(acc, parent) ++ refs
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if includeTypevars && upperBound.isExactlyAny then CaptureSet.fresh(t.symbol)
+        if includeTypevars && upperBound.isExactlyAny then CaptureSet.fresh()
         else this(acc, upperBound)
     collect(CaptureSet.empty, tp)
 
