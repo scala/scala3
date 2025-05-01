@@ -1,1 +1,7 @@
-TODO
+-- [E208] Type Warning: tests/warn/applied_constructor_types.scala:6:10 ------------------------------------------------
+6 |  val v1: UnspecificBox(4) = UnspecificBox(4) // warn
+  |          ^^^^^^^^^^^^^^^^
+  |          Applied constructor type UnspecificBox(4) has no effect.
+  |          The resulting type of UnspecificBox(4) is the same as its base type, namely: UnspecificBox
+  |
+  | longer explanation available when compiling with `-explain`

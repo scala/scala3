@@ -1722,8 +1722,8 @@ trait Applications extends Compatibility {
       def apply(tp: Type) = mapOver(tp.widenSkolem)
     val preciseTp = widenSkolemsMap(tree1.tpe)
     val classTp = typedType(tpt).tpe
-    if preciseTp frozen_=:= classTp then
-      report.warning(em"Blop blop")
+    if !preciseTp.isError && (preciseTp frozen_=:= classTp) then
+      report.warning(PointlessAppliedConstructorType(tpt, tree.args, classTp), tree.srcPos)
     TypeTree(preciseTp)
 
   /** Is given method reference applicable to argument trees `args`?

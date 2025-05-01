@@ -225,6 +225,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case FormatInterpolationErrorID // errorNumber: 209
   case ValueClassCannotExtendAliasOfAnyValID // errorNumber: 210
   case MatchIsNotPartialFunctionID // errorNumber: 211
+  case PointlessAppliedConstructorTypeID // errorNumber: 212
 
   def errorNumber = ordinal - 1
 
