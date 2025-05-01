@@ -156,7 +156,7 @@ class ConvertToNamedLambdaParametersSuite extends BaseCodeActionSuite:
     val edits = convertToNamedLambdaParameters(original)
     val (code, _, _) = params(original)
     val obtained = TextEdits.applyEdits(code, edits)
-    assertNoDiff(obtained, obtained)
+    assertNoDiff(expected, obtained)
 
   def convertToNamedLambdaParameters(
       original: String,
