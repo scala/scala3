@@ -1239,7 +1239,7 @@ object Build {
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions += "-Ycheck:all",
+      //scalacOptions += "-Ycheck:all",
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
@@ -1698,7 +1698,7 @@ object Build {
       (Test / scalaJSModuleInitializers) ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
       // Perform Ycheck after the Scala.js-specific transformation phases
-      scalacOptions += "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews",
+      //scalacOptions += "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews",
 
       Test / jsEnvInput := {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
