@@ -14,7 +14,7 @@ import dotty.tools.pc.utils.TextEdits
 import dotty.tools.pc.PcConvertToNamedLambdaParameters
 
 import org.eclipse.lsp4j as l
-import org.junit.Test
+import org.junit.{Test, Ignore}
 
 class ConvertToNamedLambdaParametersSuite extends BaseCodeActionSuite:
 
@@ -147,6 +147,19 @@ class ConvertToNamedLambdaParametersSuite extends BaseCodeActionSuite:
       |  })
       |}""".stripMargin
   )
+
+  @Ignore
+  @Test def `Int => Int eta-expansion in map` =
+    checkEdit(
+      """|object A{
+        |  def f(x: Int): Int = x + 1
+        |  val a = List(1, 2).map(<<f>>)
+        |}""".stripMargin,
+      """|object A{
+        |  def f(x: Int): Int = x + 1
+        |  val a = List(1, 2).map(i => f(i))
+        |}""".stripMargin
+    )
 
   def checkEdit(
       original: String,
