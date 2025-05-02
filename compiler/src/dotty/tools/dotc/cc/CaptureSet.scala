@@ -623,11 +623,7 @@ object CaptureSet:
                  |elem binder = ${elem.binder}""")
             false
           }
-        case ReachCapability(elem1) =>
-          levelOK(elem1)
-        case ReadOnlyCapability(elem1) =>
-          levelOK(elem1)
-        case MaybeCapability(elem1) =>
+        case QualifiedCapability(elem1) =>
           levelOK(elem1)
         case _ =>
           true
@@ -930,7 +926,7 @@ object CaptureSet:
 
     override def owner = givenOwner
 
-    // assert(id != 34, i"$initialHidden")
+    //assert(id != 4)
 
     private def aliasRef: AnnotatedType | Null =
       if myElems.size == 1 then
