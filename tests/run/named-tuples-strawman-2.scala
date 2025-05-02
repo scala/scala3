@@ -119,9 +119,11 @@ object TupleOps:
     for i <- toInclude.indices do
       arr(i) = xs.productElement(toInclude(i).asInstanceOf[Int]).asInstanceOf[Object]
     Tuple.fromArray(arr).asInstanceOf[Filter[X, P]]
+end TupleOps
 
 object NamedTupleDecomposition:
   import NamedTupleOps.*
+  import TupleOps.ConcatDistinct
 
   /** The names of the named tuple type `NT` */
   type Names[NT <: AnyNamedTuple] <: Tuple = NT match
@@ -131,6 +133,22 @@ object NamedTupleDecomposition:
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
     case NamedTuple[_, x] => x
 
+  extension [N1 <: Tuple, V1 <: Tuple](nt1: NamedTuple[N1, V1])
+    inline def updateWith[N2 <: Tuple, V2 <: Tuple](nt2: NamedTuple[N2, V2])
+      : UpdateWith[NamedTuple[N1, V1], NamedTuple[N2, V2]] =
+      val names = constValueTuple[ConcatDistinct[N1, N2]].toArray
+      val names2 = constValueTuple[N2].toArray
+      val values1 = NamedTupleOps.toTuple(nt1)
+      val values2 = nt2.toTuple
+      val values = new Array[Object](names.length)
+      values1.toArray.copyToArray(values)
+      for i <- 0 until values2.size do
+        val idx = names.indexOf(names2(i))
+        values(idx) = values2.productElement(i).asInstanceOf[Object]
+      Tuple.fromArray(values).asInstanceOf[UpdateWith[NamedTuple[N1, V1], NamedTuple[N2, V2]]]
+
+end NamedTupleDecomposition
+
 object NamedTupleOps:
   import TupleOps.*
 
@@ -138,14 +156,15 @@ object NamedTupleOps:
 
   opaque type NamedTuple[N <: Tuple, +X <: Tuple] >: X <: AnyNamedTuple = X
 
-  export NamedTupleDecomposition.*
+  export NamedTupleDecomposition.{Names, DropNames}
 
   object NamedTuple:
     def apply[N <: Tuple, X <: Tuple](x: X): NamedTuple[N, X] = x
 
-  extension [NT <: AnyNamedTuple](x: NT)
-    inline def toTuple: DropNames[NT] = x.asInstanceOf
-    inline def names: Names[NT] = constValueTuple[Names[NT]]
+  extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
+    inline def toTuple: V = x.asInstanceOf
+
+    inline def names: N = constValueTuple[N]
 
   /** Internal use only: Merge names and value components of two named tuple to
    *  impement `UpdateWith`.
@@ -169,18 +188,8 @@ object NamedTupleOps:
   type UpdateWith[NT1 <: AnyNamedTuple, NT2 <: AnyNamedTuple] =
     Merge[ConcatDistinct[Names[NT1], Names[NT2]], DropNames[NT1], Names[NT2], DropNames[NT2]]
 
-  extension [NT1 <: AnyNamedTuple](nt1: NT1)
-    inline def updateWith[NT2 <: AnyNamedTuple](nt2: NT2): UpdateWith[NT1, NT2] =
-      val names = constValueTuple[ConcatDistinct[Names[NT1], Names[NT2]]].toArray
-      val names2 = constValueTuple[Names[NT2]].toArray
-      val values1 = nt1.toTuple
-      val values2 = nt2.toTuple
-      val values = new Array[Object](names.length)
-      values1.toArray.copyToArray(values)
-      for i <- 0 until values2.size do
-        val idx = names.indexOf(names2(i))
-        values(idx) = values2.productElement(i).asInstanceOf[Object]
-      Tuple.fromArray(values).asInstanceOf[UpdateWith[NT1, NT2]]
+  export NamedTupleDecomposition.updateWith
+end NamedTupleOps
 
 @main def Test =
   import TupleOps.*
