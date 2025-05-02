@@ -225,7 +225,7 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
-    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text): Text =
+    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet): Text =
       info match
         case info: LambdaType =>
           seen.openLambda(info)
