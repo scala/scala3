@@ -114,7 +114,7 @@ trait CommonScalaSettings:
   val explainTypes: Setting[Boolean] = BooleanSetting(RootSetting, "explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types", "-explaintypes"))
   val explainCyclic: Setting[Boolean] = BooleanSetting(RootSetting, "explain-cyclic", "Explain cyclic reference errors in more detail.", aliases = List("--explain-cyclic"))
   val unchecked: Setting[Boolean] = BooleanSetting(RootSetting, "unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
-  val language: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, legacyChoices = ScalaSettingsProperties.legacyLanguageFeatures, default = Nil, aliases = List("--language"))
+  val language: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, legacyChoices = ScalaSettingsProperties.legacyLanguageFeatures, aliases = List("--language"))
   val experimental: Setting[Boolean] = BooleanSetting(RootSetting, "experimental", "Annotate all top-level definitions with @experimental. This enables the use of experimental features anywhere in the project.")
   val preview: Setting[Boolean] = BooleanSetting(RootSetting, "preview", "Enable the use of preview features anywhere in the project.")
 
@@ -145,8 +145,8 @@ private sealed trait PluginSettings:
 private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
-  val Xprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = List("-Xprint"))
-  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = List("-Xshow-phases"))
+  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", default = "typer", aliases = List("-Xprint"))
+  val Vphases: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vphases", "List compiler phases.", default = "none", aliases = List("-Xshow-phases"))
 
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
@@ -192,7 +192,6 @@ private sealed trait WarningSettings:
       ),
       ChoiceWithHelp("unsafe-warn-patvars", "Deprecated alias for `patvars`"),
     ),
-    default = Nil
   )
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
@@ -226,7 +225,6 @@ private sealed trait WarningSettings:
     WarningSetting,
     "Wconf",
     "patterns",
-    default = List(),
     descr =
     raw"""Configure compiler warnings.
          |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
@@ -288,7 +286,6 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
       ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
     ),
-    default = Nil
   )
 
   object WshadowHas:
