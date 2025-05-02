@@ -1908,7 +1908,7 @@ object Trees {
               case MethodTpe(_, _, x: MethodType) => !x.isImplicitMethod
               case _ => true
             }}
-          val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
+          val alternatives = ctx.typer.resolveOverloaded(allAlts, proto, receiver.srcPos)
           assert(alternatives.size == 1,
             i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
               i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, %; expectedType: $expectedType." +
