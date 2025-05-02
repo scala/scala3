@@ -694,6 +694,12 @@ abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   protected def unwrappable(using Context): Set[Symbol]
 end AnnotatedCapability
 
+object QualifiedCapability:
+  def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
+    case AnnotatedType(parent: CaptureRef, ann)
+    if defn.capabilityQualifierAnnots.contains(ann.symbol) => Some(parent)
+    case _ => None
+
 /** An extractor for `ref @maybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.
  */

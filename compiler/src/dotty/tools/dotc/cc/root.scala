@@ -84,6 +84,8 @@ object root:
       ccs.rootId += 1
       ccs.rootId
 
+    //assert(id != 4)
+
     override def symbol(using Context) = defn.RootCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
