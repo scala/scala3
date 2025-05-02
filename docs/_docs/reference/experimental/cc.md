@@ -766,7 +766,7 @@ Here, `src` is created as a `Source` on which listeners can be registered that r
 
 The following options are relevant for capture checking.
 
- - **-Xprint:cc** Prints the program with capturing types as inferred by capture checking.
+ - **-Vprint:cc** Prints the program with capturing types as inferred by capture checking.
  - **-Ycc-debug** Gives more detailed, implementation-oriented information about capture checking, as described in the next section.
 
  The implementation supporting capture checking with these options is currently in branch `cc-experiment` on dotty.epfl.ch.

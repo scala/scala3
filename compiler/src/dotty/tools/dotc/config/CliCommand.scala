@@ -33,8 +33,8 @@ trait CliCommand:
     |<phases> means one or a comma-separated list of:
     |  - (partial) phase names with an optional "+" suffix to include the next phase
     |  - the string "all"
-    |  example: -Xprint:all prints all phases.
-    |  example: -Xprint:typer,mixin prints the typer and mixin phases.
+    |  example: -Vprint:all prints all phases.
+    |  example: -Vprint:typer,mixin prints the typer and mixin phases.
     |  example: -Ylog:erasure+ logs the erasure phase and the phase after the erasure phase.
     |           This is useful because during the tree transform of phase X, we often
     |           already are in phase X + 1.
