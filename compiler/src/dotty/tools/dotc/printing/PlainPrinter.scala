@@ -15,6 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
+import ast.tpd
 import cc.*
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -182,14 +183,41 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
     "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
 
+  type GeneralCaptureSet = CaptureSet | List[tpd.Tree]
+
+  protected def isUniversalCaptureSet(refs: GeneralCaptureSet): Boolean = refs match
+    case refs: CaptureSet =>
+      // The set if universal if it consists only of caps.cap or
+      // only of an existential Fresh that is bound to the immediately enclosing method.
+      val isUniversal =
+        refs.elems.size == 1
+        && (refs.isUniversal
+            || !printDebug && !printFresh && !showUniqueIds && refs.elems.nth(0).match
+                  case root.Result(binder) =>
+                    CCState.openExistentialScopes match
+                      case b :: _ => binder eq b
+                      case _ => false
+                  case _ =>
+                    false
+        )
+      isUniversal
+      || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh
+    case (ref: tpd.Tree) :: Nil => ref.symbol == defn.captureRoot
+    case _ => false
+
+  protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
+    case refs: CaptureSet => toTextCaptureSet(refs)
+    case refs: List[tpd.Tree] => toTextRetainedElems(refs)
+
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
    */
-  protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
+  protected def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text): Text =
     changePrec(InfixPrec):
-      boxText ~ toTextLocal(parent) ~ "^" ~ (refsText provided refsText != rootSetText)
-
-  final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
+      boxText
+      ~ toTextLocal(parent)
+      ~ "^"
+      ~ toTextGeneralCaptureSet(refs).provided(!isUniversalCaptureSet(refs))
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -256,33 +284,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         then
           toText(parent)
         else
-          // The set if universal if it consists only of caps.cap or
-          // only of an existential Fresh that is bound to the immediately enclosing method.
-          def isUniversal =
-            refs.elems.size == 1
-            && (refs.isUniversal
-                || !printDebug && !printFresh && !showUniqueIds && refs.elems.nth(0).match
-                      case root.Result(binder) =>
-                        CCState.openExistentialScopes match
-                          case b :: _ => binder eq b
-                          case _ => false
-                      case _ =>
-                        false
-            )
-          val refsText =
-            if isUniversal then
-              rootSetText
-            else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh then
-              rootSetText
-            else
-              toTextCaptureSet(refs)
-          toTextCapturing(parent, refsText, boxText)
+          toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
-          val refsText = refs match
-            case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
-            case _ => toTextRetainedElems(refs)
-          toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
+          toTextCapturing(parent, refs, "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
