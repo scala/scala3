@@ -89,6 +89,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.RenameSelectorModule.apply",
   "scala.quoted.Quotes.reflectModule.SimpleSelectorModule.apply",
 
+  // New feature: named tuples
+  // Need namedTuples enabled.
+  "scala.quoted.Quotes.reflectModule.defnModule.NamedTupleModule",
+
   // New feature: fromNullable for explicit nulls
   "scala.Predef$.fromNullable",
 
