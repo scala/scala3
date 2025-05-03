@@ -142,7 +142,8 @@ object Build {
    *      - in stable release is always non-experimetnal
    */
   val expectedTastyVersion = "28.7-experimental-1"
-  checkReleasedTastyVersion()
+  // TODO: Restore test when upgrading reference compiler to 3.7.0 stable
+  // checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
