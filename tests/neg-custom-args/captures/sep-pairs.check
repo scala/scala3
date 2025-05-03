@@ -4,7 +4,7 @@
    |       Found:    box Ref^
    |       Required: box Ref^?
    |
-   |       where:    ^ refers to a fresh root capability created in method twoRefsBad
+   |       where:    ^ refers to a fresh root capability created in method twoRefsBad when constructing mutable Ref
    |
    |
    |       Note that the universal capability `cap`
@@ -14,14 +14,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-pairs.scala:32:17 ------------------------------------
 32 |  Pair(Ref(), Ref()) // error // error: universal capability cannot be included in capture set
    |              ^^^^^
-   |              Found:    box Ref^
-   |              Required: box Ref^?
+   |        Found:    box Ref^
+   |        Required: box Ref^?
    |
-   |              where:    ^ refers to a fresh root capability created in method twoRefsBad
+   |        where:    ^ refers to a fresh root capability created in method twoRefsBad when constructing mutable Ref
    |
    |
-   |              Note that the universal capability `cap`
-   |              cannot be included in capture set ?
+   |        Note that the universal capability `cap`
+   |        cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:15:10 ---------------------------------------------------------
@@ -32,8 +32,8 @@
    |          Another part,  box Ref^²,  captures capabilities  {r0}.
    |          The two sets overlap at  {r0}.
    |
-   |          where:    ^  refers to a fresh root capability created in value r1
-   |                    ^² refers to a fresh root capability created in value r1
+   |          where:    ^  refers to a fresh root capability in the type of value r1
+   |                    ^² refers to a fresh root capability in the type of value r1
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:13:9 ----------------------------------------------------------
 13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
    |         ^^^^^^^^^^^^^^^^
@@ -42,10 +42,10 @@
    |         Another part,  box Ref^²,  captures capabilities  {cap, cap², r1*, r0}.
    |         The two sets overlap at  {r1*, r0}.
    |
-   |         where:    ^    refers to a fresh root capability created in method bad
-   |                   ^²   refers to a fresh root capability created in method bad
-   |                   cap  is a fresh root capability created in value r1
-   |                   cap² is a fresh root capability created in value r1
+   |         where:    ^    refers to a fresh root capability in the result type of method bad
+   |                   ^²   refers to a fresh root capability in the result type of method bad
+   |                   cap  is a fresh root capability in the type of value r1
+   |                   cap² is a fresh root capability in the type of value r1
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:44:18 ---------------------------------------------------------
 44 |  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
    |                  ^^^^^^^^^^^^^^^^
@@ -54,5 +54,5 @@
    |                  Another part,  box Ref^²,  captures capabilities  {sndSame}.
    |                  The two sets overlap at  cap of value same.
    |
-   |                  where:    ^  refers to a fresh root capability created in value sameToPair
-   |                            ^² refers to a fresh root capability created in value sameToPair
+   |                  where:    ^  refers to a fresh root capability in the type of value sameToPair
+   |                            ^² refers to a fresh root capability in the type of value sameToPair

@@ -22,7 +22,7 @@
    |                    Required: C^ -> C
    |
    |                    where:    ^  refers to the universal root capability
-   |                              ^² refers to a fresh root capability created in value x2
+   |                              ^² refers to a fresh root capability in the type of value x2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:15:30 --------------------------
@@ -42,7 +42,7 @@
    |                         Required: A^ -> C^ -> C
    |
    |                         where:    ^  refers to the universal root capability
-   |                                   ^² refers to a fresh root capability created in value x4
+   |                                   ^² refers to a fresh root capability in the type of value x4
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:21:30 --------------------------
@@ -61,8 +61,8 @@
    |                       Found:    (x6 : A^ -> (x: C^) => C^²)
    |                       Required: A^ -> (x: C^) =>² C
    |
-   |                       where:    =>  refers to a fresh root capability created in value x6
-   |                                 =>² refers to a fresh root capability created in method Test
+   |                       where:    =>  refers to a fresh root capability in the type of value x6
+   |                                 =>² refers to a fresh root capability in the type of value _$6
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
@@ -73,8 +73,8 @@
    |                       Found:    (y1 : (x: C^) => C^²)
    |                       Required: (x: C^) =>² C
    |
-   |                       where:    =>  refers to a fresh root capability created in value y1
-   |                                 =>² refers to a fresh root capability created in method Test
+   |                       where:    =>  refers to a fresh root capability in the type of value y1
+   |                                 =>² refers to a fresh root capability in the type of value _$7
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
@@ -85,10 +85,10 @@
    |                    Found:    (y2 : C^ => C^²)
    |                    Required: C^ =>² C
    |
-   |                    where:    =>  refers to a fresh root capability created in value y2
-   |                              =>² refers to a fresh root capability created in method Test
+   |                    where:    =>  refers to a fresh root capability in the type of value y2
+   |                              =>² refers to a fresh root capability in the type of value _$8
    |                              ^   refers to the universal root capability
-   |                              ^²  refers to a fresh root capability created in value y2
+   |                              ^²  refers to a fresh root capability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:33:30 --------------------------
@@ -97,10 +97,10 @@
    |                       Found:    (y3 : A^ => (x: C^) =>² C^²)
    |                       Required: A^ =>³ (x: C^) =>⁴ C
    |
-   |                       where:    =>  refers to a fresh root capability created in value y3
-   |                                 =>² refers to a fresh root capability created in value y3
-   |                                 =>³ refers to a fresh root capability created in method Test
-   |                                 =>⁴ refers to a fresh root capability created in method Test
+   |                       where:    =>  refers to a fresh root capability in the type of value y3
+   |                                 =>² refers to a fresh root capability in the type of value y3
+   |                                 =>³ refers to a fresh root capability in the type of value _$9
+   |                                 =>⁴ refers to a fresh root capability in the type of value _$9
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
@@ -111,12 +111,12 @@
    |                         Found:    (y4 : A^ => C^ =>² C^²)
    |                         Required: A^ =>³ C^ =>⁴ C
    |
-   |                         where:    =>  refers to a fresh root capability created in value y4
-   |                                   =>² refers to a fresh root capability created in value y4
-   |                                   =>³ refers to a fresh root capability created in method Test
-   |                                   =>⁴ refers to a fresh root capability created in method Test
+   |                         where:    =>  refers to a fresh root capability in the type of value y4
+   |                                   =>² refers to a fresh root capability in the type of value y4
+   |                                   =>³ refers to a fresh root capability in the type of value _$10
+   |                                   =>⁴ refers to a fresh root capability in the type of value _$10
    |                                   ^   refers to the universal root capability
-   |                                   ^²  refers to a fresh root capability created in value y4
+   |                                   ^²  refers to a fresh root capability in the type of value y4
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:39:30 --------------------------
@@ -125,8 +125,8 @@
    |                       Found:    (y5 : A^ => (x: C^) -> C^²)
    |                       Required: A^ =>² (x: C^) -> C
    |
-   |                       where:    =>  refers to a fresh root capability created in value y5
-   |                                 =>² refers to a fresh root capability created in method Test
+   |                       where:    =>  refers to a fresh root capability in the type of value y5
+   |                                 =>² refers to a fresh root capability in the type of value _$11
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
@@ -137,10 +137,10 @@
    |                       Found:    (y6 : A^ => (x: C^) =>² C^²)
    |                       Required: A^ =>³ (x: C^) =>⁴ C
    |
-   |                       where:    =>  refers to a fresh root capability created in value y6
-   |                                 =>² refers to a fresh root capability created in value y6
-   |                                 =>³ refers to a fresh root capability created in method Test
-   |                                 =>⁴ refers to a fresh root capability created in method Test
+   |                       where:    =>  refers to a fresh root capability in the type of value y6
+   |                                 =>² refers to a fresh root capability in the type of value y6
+   |                                 =>³ refers to a fresh root capability in the type of value _$12
+   |                                 =>⁴ refers to a fresh root capability in the type of value _$12
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |

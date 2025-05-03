@@ -8,12 +8,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                                                 ^
-   |                                               Found:    (x: CT[Exception]^) ->? box CT[Exception]^{x}
-   |                                               Required: (x: CT[Exception]^) => box CT[Exception]^²
+   |Found:    (x: CT[Exception]^) ->? box CT[Exception]^{x}
+   |Required: (x: CT[Exception]^) => box CT[Exception]^²
    |
-   |                                               where:    => refers to a fresh root capability created in value a
-   |                                                         ^  refers to the universal root capability
-   |                                                         ^² refers to a fresh root capability created in value a
+   |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
+   |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method handle
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |
@@ -21,11 +21,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
 29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^
-   |                                           Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
-   |                                           Required: (x: CT[Exception]^) => () -> Nothing
+   |Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
+   |Required: (x: CT[Exception]^) => () -> Nothing
    |
-   |                                           where:    => refers to a fresh root capability created in value b
-   |                                                     ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -33,15 +33,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:35:18 ------------------------------------------
 35 |  val xx = handle {  // error
    |                  ^
-   |                  Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |                  Required: (x: CT[Exception]^) => box () ->? Int
+   |Found:    (x: CT[Exception]^) ->? box () ->{x} Int
+   |Required: (x: CT[Exception]^) => box () ->? Int
    |
-   |                  where:    => refers to a fresh root capability created in value xx
-   |                            ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
    |
    |
-   |                  Note that reference x.type
-   |                  cannot be included in outer capture set ?
+   |Note that reference x.type
+   |cannot be included in outer capture set ?
 36 |    (x: CanThrow[Exception]) =>
 37 |      () =>
 38 |        raise(new Exception)(using x)
@@ -52,15 +52,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:47:31 ------------------------------------------
 47 |val global: () -> Int = handle { // error
    |                               ^
-   |                               Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |                               Required: (x: CT[Exception]^) => box () ->? Int
+   |Found:    (x: CT[Exception]^) ->? box () ->{x} Int
+   |Required: (x: CT[Exception]^) => box () ->? Int
    |
-   |                               where:    => refers to a fresh root capability created in value global
-   |                                         ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
+   |          ^  refers to the universal root capability
    |
    |
-   |                               Note that reference x.type
-   |                               cannot be included in outer capture set ?
+   |Note that reference x.type
+   |cannot be included in outer capture set ?
 48 |  (x: CanThrow[Exception]) =>
 49 |    () =>
 50 |      raise(new Exception)(using x)

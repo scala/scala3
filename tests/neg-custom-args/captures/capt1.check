@@ -47,10 +47,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                        ^^^^^^^
-   |                        Found:    () ->{x} box C^{x}
-   |                        Required: () -> box C^
+   |Found:    () ->{x} box C^{x}
+   |Required: () -> box C^
    |
-   |                        where:    ^ refers to a fresh root capability created in value z2
+   |where:    ^ refers to a fresh root capability created in value z2 when checking argument to parameter a of method h
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
@@ -67,8 +67,8 @@
    |       of value z1 with type () => C^.
    |       This type hides capabilities  {x}
    |
-   |       where:    => refers to a fresh root capability created in value z1
-   |                 ^  refers to a fresh root capability created in value z1
+   |       where:    => refers to a fresh root capability in the type of value z1
+   |                 ^  refers to a fresh root capability in the type of value z1
 -- Error: tests/neg-custom-args/captures/capt1.scala:44:12 -------------------------------------------------------------
 44 |      () => x  // error: separation
    |            ^
@@ -76,8 +76,8 @@
    |            of value z1 with type () => C^.
    |            This type hides capabilities  {x}
    |
-   |            where:    => refers to a fresh root capability created in value z1
-   |                      ^  refers to a fresh root capability created in value z1
+   |            where:    => refers to a fresh root capability in the type of value z1
+   |                      ^  refers to a fresh root capability in the type of value z1
 -- Error: tests/neg-custom-args/captures/capt1.scala:47:2 --------------------------------------------------------------
 47 |  x // error: separation
    |  ^
@@ -85,5 +85,5 @@
    |  of value z1 with type () => C^.
    |  This type hides capabilities  {x}
    |
-   |  where:    => refers to a fresh root capability created in value z1
-   |            ^  refers to a fresh root capability created in value z1
+   |  where:    => refers to a fresh root capability in the type of value z1
+   |            ^  refers to a fresh root capability in the type of value z1

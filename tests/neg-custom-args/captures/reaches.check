@@ -1,22 +1,22 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:13 --------------------------------------
 22 |  usingFile: f => // error
    |             ^
-   |             Found:    (f: File^?) ->? Unit
-   |             Required: (f: File^) => Unit
+   |Found:    (f: File^?) ->? Unit
+   |Required: (f: File^) => Unit
    |
-   |             where:    => refers to a fresh root capability created in method runAll0
-   |                       ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
 23 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:32:13 --------------------------------------
 32 |  usingFile: f => // error
    |             ^
-   |             Found:    (f: File^?) ->? Unit
-   |             Required: (f: File^) => Unit
+   |Found:    (f: File^?) ->? Unit
+   |Required: (f: File^) => Unit
    |
-   |             where:    => refers to a fresh root capability created in method runAll1
-   |                       ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
 33 |    cur.set:
 34 |      (() => f.write()) :: Nil
    |
@@ -27,7 +27,7 @@
    |      Mutable variable cur cannot have type List[box () => Unit] since
    |      the part box () => Unit of that type captures the root capability `cap`.
    |
-   |      where:    => refers to a fresh root capability created in variable cur
+   |      where:    => refers to a fresh root capability in the type of variable cur
 -- Error: tests/neg-custom-args/captures/reaches.scala:44:16 -----------------------------------------------------------
 44 |  val cur = Ref[List[Proc]](xs) // error
    |                ^^^^^^^^^^
@@ -42,7 +42,7 @@
    |                           Required: () =>² Unit
    |
    |                           where:    =>  refers to the universal root capability
-   |                                     =>² refers to a fresh root capability created in value next
+   |                                     =>² refers to a fresh root capability in the type of value next
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:48:20 --------------------------------------
@@ -69,17 +69,17 @@
    |                           Required: (x: File^) -> File^²
    |
    |                           where:    ^  refers to the universal root capability
-   |                                     ^² refers to a fresh root capability created in value id
+   |                                     ^² refers to a fresh root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:38 --------------------------------------
 62 |  val leaked = usingFile[File^{id*}]: f => // error // error
    |                                      ^
-   |                                      Found:    (f: File^?) ->? box File^?
-   |                                      Required: (f: File^) => box File^{id*}
+   |Found:    (f: File^?) ->? box File^?
+   |Required: (f: File^) => box File^{id*}
    |
-   |                                      where:    => refers to a fresh root capability created in value leaked
-   |                                                ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
 63 |    val f1: File^{id*} = id(f)
 64 |    f1
    |
@@ -101,11 +101,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
 70 |  val leaked = usingFile[File^{id*}]: f => // error // error
    |                                      ^
-   |                                      Found:    (f: File^?) ->? box File^?
-   |                                      Required: (f: File^) => box File^{id*}
+   |Found:    (f: File^?) ->? box File^?
+   |Required: (f: File^) => box File^{id*}
    |
-   |                                      where:    => refers to a fresh root capability created in value leaked
-   |                                                ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
 71 |    val f1: File^{id*} = id(f)
 72 |    f1
    |
@@ -118,11 +118,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:91:10 --------------------------------------
 91 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |          Found:    (x$1: (box A^ ->? A^?, box A^ ->? A^?)^?) ->? box A^? ->? A^?
-   |          Required: (x$1: (box A ->{ps*} A, box A ->{ps*} A)) => box A^? ->? A^?
+   |Found:    (x$1: (box A^ ->? A^?, box A^ ->? A^?)^?) ->? box A^? ->? A^?
+   |Required: (x$1: (box A ->{ps*} A, box A ->{ps*} A)) => box A^? ->? A^?
    |
-   |          where:    => refers to a fresh root capability created in method mapCompose2
-   |                    ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
+   |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:62:31 -----------------------------------------------------------

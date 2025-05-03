@@ -1,15 +1,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:23 -------------------------------
 10 |  val test1 = localCap { c => // error
    |                       ^
-   |                       Found:    (c: Capp^) ->? box () ->{c} Unit
-   |                       Required: (c: Capp^) => box () ->? Unit
+   |Found:    (c: Capp^) ->? box () ->{c} Unit
+   |Required: (c: Capp^) => box () ->? Unit
    |
-   |                       where:    => refers to a fresh root capability created in value test1
-   |                                 ^  refers to the universal root capability
+   |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
+   |          ^  refers to the universal root capability
    |
    |
-   |                       Note that reference c.type
-   |                       cannot be included in outer capture set ?
+   |Note that reference c.type
+   |cannot be included in outer capture set ?
 11 |    () => { c.use() }
 12 |  }
    |

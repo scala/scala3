@@ -18,6 +18,6 @@
    |                               Found:    Bar^?
    |                               Required: Foo[box File^]
    |
-   |                               where:    ^ refers to a fresh root capability created in value backdoor
+   |                               where:    ^ refers to a fresh root capability in the type of value backdoor
    |
    | longer explanation available when compiling with `-explain`

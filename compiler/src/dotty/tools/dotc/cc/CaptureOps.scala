@@ -462,7 +462,9 @@ extension (tp: Type)
             if args.forall(_.isAlwaysPure) then
               // Also map existentials in results to reach capabilities if all
               // preceding arguments are known to be always pure
-              t.derivedFunctionOrMethod(args, apply(root.resultToFresh(res)))
+              t.derivedFunctionOrMethod(
+                args,
+                apply(root.resultToFresh(res, i"when instantiating $t")))
             else
               t
           case _ =>
@@ -795,7 +797,8 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
       case AnnotatedType(parent, _) =>
         this(acc, parent)
       case t @ FunctionOrMethod(args, res) =>
-        if args.forall(_.isAlwaysPure) then this(acc, root.resultToFresh(res))
+        if args.forall(_.isAlwaysPure) then
+          this(acc, root.resultToFresh(res, i" when instantiating $t"))
         else acc
       case _ =>
         foldOver(acc, t)

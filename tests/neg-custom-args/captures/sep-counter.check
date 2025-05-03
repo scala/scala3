@@ -6,6 +6,6 @@
    |                   Another part,  box Ref^²,  captures capabilities  {cap}.
    |                   The two sets overlap at  cap of value c.
    |
-   |                   where:    ^   refers to a fresh root capability created in method mkCounter
-   |                             ^²  refers to a fresh root capability created in method mkCounter
-   |                             cap is a fresh root capability created in value c
+   |                   where:    ^   refers to a fresh root capability in the result type of method mkCounter
+   |                             ^²  refers to a fresh root capability in the result type of method mkCounter
+   |                             cap is a fresh root capability created in value c when constructing mutable Ref

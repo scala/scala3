@@ -22,7 +22,7 @@
    |                                  Found:    box C^
    |                                  Required: box C{val arg: C^?}^?
    |
-   |                                  where:    ^ refers to a fresh root capability created in method c
+   |                                  where:    ^ refers to a fresh root capability in the result type of method c
    |
    |
    |                                  Note that the universal capability `cap`

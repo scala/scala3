@@ -304,7 +304,7 @@ abstract class Recheck extends Phase, SymTransformer:
     /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
-    protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+    protected def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
       recheck(arg, formal)
 
     /** A hook to check all the parts of an application:
@@ -336,7 +336,7 @@ abstract class Recheck extends Phase, SymTransformer:
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>
-              val argType = recheckArg(arg, normalizeByName(formals.head))
+              val argType = recheckArg(arg, normalizeByName(formals.head), prefs.head, tree)
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))

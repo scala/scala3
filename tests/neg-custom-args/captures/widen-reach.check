@@ -12,7 +12,7 @@
   |                        Required: (x: IO^) -> IO^²
   |
   |                        where:    ^  refers to the universal root capability
-  |                                  ^² refers to a fresh root capability created in value foo
+  |                                  ^² refers to a fresh root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 -------------------------------------------------------

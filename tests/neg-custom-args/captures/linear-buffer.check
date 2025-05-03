@@ -20,7 +20,7 @@
    |                 @consume parameter or was used as a prefix to a @consume method on line 17
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability created in method Test
+   |                 where:    ^ refers to a fresh root capability in the type of parameter buf
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:26:17 -----------------------------------------------------
 26 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
@@ -28,7 +28,7 @@
    |                 @consume parameter or was used as a prefix to a @consume method on line 24
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability created in value buf1
+   |                 where:    ^ refers to a fresh root capability in the type of value buf1
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:34:17 -----------------------------------------------------
 34 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
@@ -36,7 +36,7 @@
    |                 @consume parameter or was used as a prefix to a @consume method on line 31
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability created in value buf1
+   |                 where:    ^ refers to a fresh root capability in the type of value buf1
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:44:17 -----------------------------------------------------
 44 |  val buf3 = app(buf1, 4) // error
    |                 ^^^^
@@ -44,11 +44,11 @@
    |                 @consume parameter or was used as a prefix to a @consume method on line 39
    |                 and therefore is no longer available.
    |
-   |                 where:    ^ refers to a fresh root capability created in value buf1
+   |                 where:    ^ refers to a fresh root capability in the type of value buf1
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:48:8 ------------------------------------------------------
 48 |    app(buf, 1)  // error
    |        ^^^
    |        Separation failure: (buf : Buffer[Int]^) appears in a loop, therefore it cannot
    |        be passed to a @consume parameter or be used as a prefix of a @consume method call.
    |
-   |        where:    ^ refers to a fresh root capability created in method Test5
+   |        where:    ^ refers to a fresh root capability in the type of parameter buf
