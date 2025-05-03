@@ -14,7 +14,10 @@
 22 |  val bad: bar.T = foo(bar) // error
    |                   ^^^^^^^^
    |                   Found:    bar.T
-   |                   Required: () ->{fresh} Logger^{fresh}
+   |                   Required: () => Logger^
+   |
+   |                   where:    => refers to a fresh root capability created in value bad
+   |                             ^  refers to a fresh root capability created in value bad
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------

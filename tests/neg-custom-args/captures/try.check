@@ -3,11 +3,17 @@
    |                            ^^^^^^^^^^^^^^^^^^^
    |                            Type variable R of method handle cannot be instantiated to box CT[Exception]^ since
    |                            that type captures the root capability `cap`.
+   |
+   |                            where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                                                 ^
    |                                               Found:    (x: CT[Exception]^) ->? box CT[Exception]^{x}
-   |                                               Required: (x: CT[Exception]^) ->{fresh} box CT[Exception]^{fresh}
+   |                                               Required: (x: CT[Exception]^) => box CT[Exception]^²
+   |
+   |                                               where:    => refers to a fresh root capability created in value a
+   |                                                         ^  refers to the universal root capability
+   |                                                         ^² refers to a fresh root capability created in value a
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |
@@ -16,7 +22,10 @@
 29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^
    |                                           Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
-   |                                           Required: (x: CT[Exception]^) ->{fresh} () -> Nothing
+   |                                           Required: (x: CT[Exception]^) => () -> Nothing
+   |
+   |                                           where:    => refers to a fresh root capability created in value b
+   |                                                     ^  refers to the universal root capability
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -25,7 +34,11 @@
 35 |  val xx = handle {  // error
    |                  ^
    |                  Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |                  Required: (x: CT[Exception]^) ->{fresh} box () ->? Int
+   |                  Required: (x: CT[Exception]^) => box () ->? Int
+   |
+   |                  where:    => refers to a fresh root capability created in value xx
+   |                            ^  refers to the universal root capability
+   |
    |
    |                  Note that reference x.type
    |                  cannot be included in outer capture set ?
@@ -40,7 +53,11 @@
 47 |val global: () -> Int = handle { // error
    |                               ^
    |                               Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |                               Required: (x: CT[Exception]^) ->{fresh} box () ->? Int
+   |                               Required: (x: CT[Exception]^) => box () ->? Int
+   |
+   |                               where:    => refers to a fresh root capability created in value global
+   |                                         ^  refers to the universal root capability
+   |
    |
    |                               Note that reference x.type
    |                               cannot be included in outer capture set ?

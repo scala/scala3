@@ -2,7 +2,11 @@
 56 |  usingLogFile: log => // error
    |                ^
    |                Found:    (log: java.io.FileOutputStream^) ->? box cctest.Iterator[Int]^{log}
-   |                Required: (log: java.io.FileOutputStream^) ->{fresh} box cctest.Iterator[Int]^?
+   |                Required: (log: java.io.FileOutputStream^) => box cctest.Iterator[Int]^?
+   |
+   |                where:    => refers to a fresh root capability created in method test
+   |                          ^  refers to the universal root capability
+   |
    |
    |                Note that reference log.type
    |                cannot be included in outer capture set ?

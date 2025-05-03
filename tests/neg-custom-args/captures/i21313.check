@@ -8,4 +8,6 @@
    |            Found:    (src2 : Source[Int, scala.caps.CapSet^{ac2}]^{})
    |            Required: Source[Int, scala.caps.CapSet^{ac1}]^
    |
+   |            where:    ^ refers to a fresh root capability created in method test
+   |
    | longer explanation available when compiling with `-explain`

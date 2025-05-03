@@ -156,7 +156,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else simpleNameString(tsym)
     }
 
-  private def arrow(isGiven: Boolean, isPure: Boolean): String =
+  protected def arrow(isGiven: Boolean, isPure: Boolean): String =
     (if isGiven then "?" else "") + (if isPure then "->" else "=>")
 
   private def toTextFunction(tp: AppliedType, refs: GeneralCaptureSet | Null): Text =
@@ -197,7 +197,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if cc.isCaptureCheckingOrSetup
             && tp.allParamNamesSynthetic
             && !tp.looksResultDependent && !tp.looksParamDependent
-            && !showUniqueIds && !printDebug && !printFresh
+            && !showUniqueIds && !printDebug && !ccVerbose
         then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
           toTextFunction(tp.paramInfos, tp.resType, tp, refs, isContextual, isPure)

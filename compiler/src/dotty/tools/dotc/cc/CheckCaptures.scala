@@ -373,8 +373,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case added: CaptureRef => target.elems += added
                 case added: CaptureSet => target.elems ++= added.elems
             case _ =>
-              inContext(root.printContext(added, res.blocking)):
-                report.error(msg(provisional = false), pos)
+              report.error(msg(provisional = false), pos)
         case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
@@ -1325,9 +1324,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           actualBoxed
         case fail: CompareFailure =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          inContext(root.printContext(actualBoxed, expected1)):
-            err.typeMismatch(tree.withType(actualBoxed), expected1,
-                addApproxAddenda(
+          err.typeMismatch(tree.withType(actualBoxed), expected1,
+              addApproxAddenda(
                   addenda ++ errorNotes(fail.errorNotes),
                   expected1))
           actual

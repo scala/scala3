@@ -8,6 +8,7 @@ import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
 import printing.Texts.Text
 import printing.Formatting.hl
 import config.SourceVersion
+import cc.{CaptureRef, CaptureSet, root}
 
 import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
@@ -40,7 +41,7 @@ object Message:
       i"\n$what can be rewritten automatically under -rewrite $optionStr."
     else ""
 
-  private type Recorded = Symbol | ParamRef | SkolemType
+  private type Recorded = Symbol | ParamRef | SkolemType | CaptureRef
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -132,7 +133,7 @@ object Message:
     end record
 
     /** Create explanation for single `Recorded` type or symbol */
-    private def explanation(entry: AnyRef)(using Context): String =
+    private def explanation(entry: AnyRef, key: String)(using Context): String =
       def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
         if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -152,7 +153,7 @@ object Message:
           ""
       }
 
-      entry match {
+      entry match
         case param: TypeParamRef =>
           s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
         case param: TermParamRef =>
@@ -166,7 +167,25 @@ object Message:
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-      }
+        case ref: CaptureRef =>
+          val relation =
+            if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
+            else "is"
+          def ownerStr(owner: Symbol): String =
+            if owner.isConstructor then
+              i"constructor of ${ownerStr(owner.owner)}"
+            else if owner.isAnonymousFunction then
+              i"anonymous fucntion of type ${owner.info}"
+            else if owner.name.toString.contains('$') then
+              ownerStr(owner.owner)
+            else
+              owner.show
+          val descr =
+            if ref.isCap then "the universal root capability"
+            else ref match
+              case root.Fresh(hidden) => i"a fresh root capability created in ${ownerStr(hidden.owner)}"
+              case root.Result(binder) => i"a root capability associated with the result type of $binder"
+          s"$relation $descr"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -177,6 +196,7 @@ object Message:
         case param: ParamRef     => false
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
+        case ref: CaptureRef     => ref.isRootCapability
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -201,7 +221,7 @@ object Message:
         }
       }
 
-      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
+      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry, str)) }
       val explainLines = columnar(explainParts)
       if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
     end explanations
@@ -224,6 +244,25 @@ object Message:
     override def toTextRef(tp: SingletonType): Text = tp match
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
+
+    override def toTextCaptureRef(tp: Type): Text = tp match
+      case tp: CaptureRef if tp.isRootCapability && !tp.isReadOnly =>
+        seen.record("cap", isType = false, tp)
+      case _ => super.toTextCaptureRef(tp)
+
+    override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
+      case refs: CaptureSet
+      if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug =>
+        boxText ~ toTextLocal(parent) ~ seen.record("^", isType = true, refs.elems.nth(0))
+      case _ =>
+        super.toTextCapturing(parent, refs, boxText)
+
+    override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
+      refs match
+        case refs: CaptureSet if isUniversalCaptureSet(refs) =>
+          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0))
+        case _ =>
+          super.funMiddleText(isContextual, isPure, refs)
 
     override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet): Text =
       info match

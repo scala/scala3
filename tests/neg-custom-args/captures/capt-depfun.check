@@ -4,6 +4,8 @@
    |                                         Found:    Str^{} ->{ac, y, z} Str^{y, z}
    |                                         Required: Str^{y, z} => Str^{y, z}
    |
+   |                                         where:    => refers to a fresh root capability created in value dc
+   |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt-depfun.scala:11:24 -------------------------------------------------------
 11 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error // error: separatioon

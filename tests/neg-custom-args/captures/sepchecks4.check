@@ -22,3 +22,5 @@
    |        Capture set of second argument        : {io}
    |        Footprint set of second argument      : {io}
    |        The two sets overlap at               : {io}
+   |
+   |      where:    => refers to a fresh root capability created in method test

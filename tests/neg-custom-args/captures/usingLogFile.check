@@ -2,7 +2,11 @@
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
    |                           Found:    (f: java.io.FileOutputStream^) ->? box () ->{f} Unit
-   |                           Required: (f: java.io.FileOutputStream^) ->{fresh} box () ->? Unit
+   |                           Required: (f: java.io.FileOutputStream^) => box () ->? Unit
+   |
+   |                           where:    => refers to a fresh root capability created in value later
+   |                                     ^  refers to the universal root capability
+   |
    |
    |                           Note that reference f.type
    |                           cannot be included in outer capture set ?
@@ -11,18 +15,26 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:36 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                            Found:    (f: java.io.FileOutputStream^) ->? box Test2.Cell[box () ->{f} Unit]^?
-   |                            Required: (f: java.io.FileOutputStream^) ->{fresh} box Test2.Cell[box () ->? Unit]^?
+   |                                Found:    (f: java.io.FileOutputStream^) ->? box Test2.Cell[box () ->{f} Unit]^?
+   |                                Required: (f: java.io.FileOutputStream^) => box Test2.Cell[box () ->? Unit]^?
    |
-   |                            Note that reference f.type
-   |                            cannot be included in outer capture set ?
+   |                                where:    => refers to a fresh root capability created in value later2
+   |                                          ^  refers to the universal root capability
+   |
+   |
+   |                                Note that reference f.type
+   |                                cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
 43 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                                 Found:    (f: java.io.OutputStream^) ->? box Int ->{f} Unit
-   |                                 Required: (f: java.io.OutputStream^) ->{fresh} box Int ->? Unit
+   |                                 Required: (f: java.io.OutputStream^) => box Int ->? Unit
+   |
+   |                                 where:    => refers to a fresh root capability created in value later
+   |                                           ^  refers to the universal root capability
+   |
    |
    |                                 Note that reference f.type
    |                                 cannot be included in outer capture set ?
@@ -32,7 +44,11 @@
 52 |      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |      Found:    (_$1: java.io.OutputStream^) ->? box () ->{_$1} Unit
-   |      Required: (_$1: java.io.OutputStream^) ->{fresh} box () ->? Unit
+   |      Required: (_$1: java.io.OutputStream^) => box () ->? Unit
+   |
+   |      where:    => refers to a fresh root capability created in value later
+   |                ^  refers to the universal root capability
+   |
    |
    |      Note that reference _$1.type
    |      cannot be included in outer capture set ?

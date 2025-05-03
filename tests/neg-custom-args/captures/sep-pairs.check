@@ -4,6 +4,9 @@
    |       Found:    box Ref^
    |       Required: box Ref^?
    |
+   |       where:    ^ refers to a fresh root capability created in method twoRefsBad
+   |
+   |
    |       Note that the universal capability `cap`
    |       cannot be included in capture set ?
    |
@@ -14,6 +17,9 @@
    |              Found:    box Ref^
    |              Required: box Ref^?
    |
+   |              where:    ^ refers to a fresh root capability created in method twoRefsBad
+   |
+   |
    |              Note that the universal capability `cap`
    |              cannot be included in capture set ?
    |
@@ -21,21 +27,32 @@
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:15:10 ---------------------------------------------------------
 15 |  val r1: Pair[Ref^, Ref^] = mkPair(r0) // error: overlap at r0
    |          ^^^^^^^^^^^^^^^^
-   |          Separation failure in value r1's type Pair[box Ref^, box Ref^].
+   |          Separation failure in value r1's type Pair[box Ref^, box Ref^²].
    |          One part,  box Ref^, hides capabilities  {r0}.
-   |          Another part,  box Ref^,  captures capabilities  {r0}.
+   |          Another part,  box Ref^²,  captures capabilities  {r0}.
    |          The two sets overlap at  {r0}.
+   |
+   |          where:    ^  refers to a fresh root capability created in value r1
+   |                    ^² refers to a fresh root capability created in value r1
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:13:9 ----------------------------------------------------------
 13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
    |         ^^^^^^^^^^^^^^^^
-   |         Separation failure in method bad's result type Pair[box Ref^, box Ref^].
-   |         One part,  box Ref^, hides capabilities  {cap, cap, r1*, r0}.
-   |         Another part,  box Ref^,  captures capabilities  {cap, cap, r1*, r0}.
+   |         Separation failure in method bad's result type Pair[box Ref^, box Ref^²].
+   |         One part,  box Ref^, hides capabilities  {cap, cap², r1*, r0}.
+   |         Another part,  box Ref^²,  captures capabilities  {cap, cap², r1*, r0}.
    |         The two sets overlap at  {r1*, r0}.
+   |
+   |         where:    ^    refers to a fresh root capability created in method bad
+   |                   ^²   refers to a fresh root capability created in method bad
+   |                   cap  is a fresh root capability created in value r1
+   |                   cap² is a fresh root capability created in value r1
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:44:18 ---------------------------------------------------------
 44 |  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
    |                  ^^^^^^^^^^^^^^^^
-   |                  Separation failure in value sameToPair's type Pair[box Ref^, box Ref^].
+   |                  Separation failure in value sameToPair's type Pair[box Ref^, box Ref^²].
    |                  One part,  box Ref^, hides capabilities  {fstSame}.
-   |                  Another part,  box Ref^,  captures capabilities  {sndSame}.
+   |                  Another part,  box Ref^²,  captures capabilities  {sndSame}.
    |                  The two sets overlap at  cap of value same.
+   |
+   |                  where:    ^  refers to a fresh root capability created in value sameToPair
+   |                            ^² refers to a fresh root capability created in value sameToPair

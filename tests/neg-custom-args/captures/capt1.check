@@ -42,11 +42,15 @@
    |             ^^^^^^^^^
    |             Type variable X of method h cannot be instantiated to () -> box C^ since
    |             the part box C^ of that type captures the root capability `cap`.
+   |
+   |             where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                        ^^^^^^^
    |                        Found:    () ->{x} box C^{x}
    |                        Required: () -> box C^
+   |
+   |                        where:    ^ refers to a fresh root capability created in value z2
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
@@ -54,21 +58,32 @@
    |             ^^^^^^^^^^^^^^^^^^^^^^^
    |             Type variable X of method h cannot be instantiated to box () ->{x} C^ since
    |             the part C^ of that type captures the root capability `cap`.
+   |
+   |             where:    ^ refers to the universal root capability
 -- Error: tests/neg-custom-args/captures/capt1.scala:43:7 --------------------------------------------------------------
 43 |    if x == null then  // error: separation
    |       ^
    |       Separation failure: Illegal access to {x} which is hidden by the previous definition
    |       of value z1 with type () => C^.
    |       This type hides capabilities  {x}
+   |
+   |       where:    => refers to a fresh root capability created in value z1
+   |                 ^  refers to a fresh root capability created in value z1
 -- Error: tests/neg-custom-args/captures/capt1.scala:44:12 -------------------------------------------------------------
 44 |      () => x  // error: separation
    |            ^
    |            Separation failure: Illegal access to {x} which is hidden by the previous definition
    |            of value z1 with type () => C^.
    |            This type hides capabilities  {x}
+   |
+   |            where:    => refers to a fresh root capability created in value z1
+   |                      ^  refers to a fresh root capability created in value z1
 -- Error: tests/neg-custom-args/captures/capt1.scala:47:2 --------------------------------------------------------------
 47 |  x // error: separation
    |  ^
    |  Separation failure: Illegal access to {x} which is hidden by the previous definition
    |  of value z1 with type () => C^.
    |  This type hides capabilities  {x}
+   |
+   |  where:    => refers to a fresh root capability created in value z1
+   |            ^  refers to a fresh root capability created in value z1

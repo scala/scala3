@@ -15,9 +15,6 @@ import CaptureSet.VarState
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
 
-/** Context property to print root.Fresh(...) as "fresh" instead of "cap" */
-val PrintFresh: Key[Unit] = Key()
-
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhase.id

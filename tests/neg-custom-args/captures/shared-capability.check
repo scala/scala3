@@ -2,3 +2,5 @@
 9 |def test2(a: Async^): Object^ = a // error
   |             ^^^^^^
   |             Async^ extends SharedCapability, so it cannot capture `cap`
+  |
+  |             where:    ^ refers to the universal root capability

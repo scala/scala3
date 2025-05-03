@@ -10,6 +10,8 @@
    |    Found:    () ?->{cap1} Int ->{cap1} Int
    |    Required: () ?=> Int ->{cap2} Int
    |
+   |    where:    ?=> refers to a fresh root capability created in method test
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:19:5 ----------------------------------------
 19 |  h(g()) // error

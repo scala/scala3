@@ -31,9 +31,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Print Fresh instances as <cap hiding ...> */
   protected def ccVerbose = ctx.settings.YccVerbose.value
 
-  /** Print Fresh instances as "fresh" */
-  protected def printFresh = ccVerbose || ctx.property(PrintFresh).isDefined
-
   private var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions: Int = 100
@@ -192,7 +189,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       val isUniversal =
         refs.elems.size == 1
         && (refs.isUniversal
-            || !printDebug && !printFresh && !showUniqueIds && refs.elems.nth(0).match
+            || !printDebug && !ccVerbose && !showUniqueIds && refs.elems.nth(0).match
                   case root.Result(binder) =>
                     CCState.openExistentialScopes match
                       case b :: _ => binder eq b
@@ -201,7 +198,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
                     false
         )
       isUniversal
-      || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh
+      || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !ccVerbose
     case (ref: tpd.Tree) :: Nil => ref.symbol == defn.captureRoot
     case _ => false
 
@@ -466,12 +463,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val vbleText: Text = CCState.openExistentialScopes.indexOf(binder) match
           case -1 =>
             "<cap of " ~ toText(binder) ~ ">"
-          case n => "outer_" * n ++ (if printFresh then "localcap" else "cap")
+          case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
         vbleText ~ hashStr(binder) ~ Str(idStr).provided(showUniqueIds)
       case tp @ root.Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
         if ccVerbose then s"<fresh$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
-        else if printFresh then "fresh"
+        else if ccVerbose then "fresh"
         else "cap"
       case tp => toText(tp)
 
