@@ -8,7 +8,7 @@ import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
 import printing.Texts.Text
 import printing.Formatting.hl
 import config.SourceVersion
-import cc.{CaptureRef, CaptureSet, root}
+import cc.{CaptureRef, CaptureSet, root, rootAnnot}
 
 import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
@@ -175,7 +175,7 @@ object Message:
             if owner.isConstructor then
               i"constructor of ${ownerStr(owner.owner)}"
             else if owner.isAnonymousFunction then
-              i"anonymous fucntion of type ${owner.info}"
+              i"anonymous function of type ${owner.info}"
             else if owner.name.toString.contains('$') then
               ownerStr(owner.owner)
             else
@@ -183,7 +183,13 @@ object Message:
           val descr =
             if ref.isCap then "the universal root capability"
             else ref match
-              case root.Fresh(hidden) => i"a fresh root capability created in ${ownerStr(hidden.owner)}"
+              case ref @ root.Fresh(hidden) =>
+                val (kind: root.Kind.Fresh) = ref.rootAnnot.kind: @unchecked
+                val purpose = kind.purpose()
+                val descr =
+                  if purpose.startsWith(" in the ") then purpose
+                  else i" created in ${ownerStr(hidden.owner)}$purpose"
+                i"a fresh root capability$descr"
               case root.Result(binder) => i"a root capability associated with the result type of $binder"
           s"$relation $descr"
     end explanation

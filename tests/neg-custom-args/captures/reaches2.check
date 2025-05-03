@@ -23,4 +23,4 @@
    |  Footprint set of second argument      : {y, ps*}
    |  The two sets overlap at               : {ps*}
    |
-   |where:    => refers to a fresh root capability created in anonymous fucntion of type (x$1: (box A^? ->{ps*} A^?, box A^? ->{ps*} A^?)^?): A^? ->{ps*} A^?
+   |where:    => refers to a fresh root capability created in anonymous function of type (x$1: (box A^? ->{ps*} A^?, box A^? ->{ps*} A^?)^?): A^? ->{ps*} A^? when checking argument to parameter f of method compose1

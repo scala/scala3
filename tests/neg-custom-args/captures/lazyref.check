@@ -33,7 +33,7 @@
   |              of value get with type () => T.
   |              This type hides capabilities  {LazyRef.this.elem}
   |
-  |              where:    => refers to a fresh root capability created in value get
+  |              where:    => refers to a fresh root capability in the type of value get
 -- Error: tests/neg-custom-args/captures/lazyref.scala:23:13 -----------------------------------------------------------
 23 |  val ref3 = ref1.map(g) // error: separation failure
    |             ^^^^
@@ -41,7 +41,7 @@
    |             of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
    |             This type hides capabilities  {cap1}
    |
-   |             where:    => refers to a fresh root capability created in class LazyRef
+   |             where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:26:9 ------------------------------------------------------------
 26 |      if cap1 == cap2   // error: separation failure // error: separation failure
    |         ^^^^
@@ -49,7 +49,7 @@
    |         of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
    |         This type hides capabilities  {ref2*, cap1}
    |
-   |         where:    => refers to a fresh root capability created in class LazyRef
+   |         where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:26:17 -----------------------------------------------------------
 26 |      if cap1 == cap2   // error: separation failure // error: separation failure
    |                 ^^^^
@@ -57,7 +57,7 @@
    |                 of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
    |                 This type hides capabilities  {ref2*, cap1}
    |
-   |                 where:    => refers to a fresh root capability created in class LazyRef
+   |                 where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:27:11 -----------------------------------------------------------
 27 |      then ref1 // error: separation failure
    |           ^^^^
@@ -65,7 +65,7 @@
    |           of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
    |           This type hides capabilities  {ref2*, cap1}
    |
-   |           where:    => refers to a fresh root capability created in class LazyRef
+   |           where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:28:11 -----------------------------------------------------------
 28 |      else ref2) // error: separation failure
    |           ^^^^
@@ -73,7 +73,7 @@
    |           of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
    |           This type hides capabilities  {ref2*, cap1}
    |
-   |           where:    => refers to a fresh root capability created in class LazyRef
+   |           where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
 29 |    .map(g) // error: separation failure
    |         ^
@@ -81,4 +81,4 @@
    |         of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
    |         This type hides capabilities  {ref2*, cap1}
    |
-   |         where:    => refers to a fresh root capability created in class LazyRef
+   |         where:    => refers to a fresh root capability in the type of value elem

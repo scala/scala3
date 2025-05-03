@@ -5,7 +5,7 @@
   |                        Required: A -> A -> B^²
   |
   |                        where:    ^  refers to a root capability associated with the result type of (x²: A): B^
-  |                                  ^² refers to a fresh root capability created in value y
+  |                                  ^² refers to a fresh root capability in the type of value y
   |                                  x  is a value in method test
   |                                  x² is a reference to a value parameter
   |
@@ -16,7 +16,7 @@
   |                           Found:    (y : A -> A -> B^)
   |                           Required: A -> (x: A) -> B^²
   |
-  |                           where:    ^  refers to a fresh root capability created in value y
+  |                           where:    ^  refers to a fresh root capability in the type of value y
   |                                     ^² refers to a root capability associated with the result type of (x: A): B^²
   |
   |
@@ -31,7 +31,7 @@
    |                   Required: A -> B^²
    |
    |                   where:    ^  refers to a root capability associated with the result type of (x²: A): B^
-   |                             ^² refers to a fresh root capability created in value y
+   |                             ^² refers to a fresh root capability in the type of value y
    |                             x  is a value in method test2
    |                             x² is a reference to a value parameter
    |
@@ -42,7 +42,7 @@
    |                        Found:    (y : A -> B^)
    |                        Required: (x: A) -> B^²
    |
-   |                        where:    ^  refers to a fresh root capability created in value y
+   |                        where:    ^  refers to a fresh root capability in the type of value y
    |                                  ^² refers to a root capability associated with the result type of (x: A): B^²
    |
    |

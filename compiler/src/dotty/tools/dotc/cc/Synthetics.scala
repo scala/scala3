@@ -116,7 +116,8 @@ object Synthetics:
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
-        val newParamInfo = CapturingType(paramInfo, CaptureSet.fresh())
+        val newParamInfo = CapturingType(paramInfo,
+          CaptureSet.fresh(i" when instantiating argument of unapply with type $info"))
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>

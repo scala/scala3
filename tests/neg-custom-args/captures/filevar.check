@@ -4,7 +4,7 @@
   |      Mutable variable file cannot have type File^ since
   |      that type captures the root capability `cap`.
   |
-  |      where:    ^ refers to a fresh root capability created in variable file
+  |      where:    ^ refers to a fresh root capability in the type of variable file
 -- Warning: tests/neg-custom-args/captures/filevar.scala:11:55 ---------------------------------------------------------
 11 |def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =
    |                                                       ^

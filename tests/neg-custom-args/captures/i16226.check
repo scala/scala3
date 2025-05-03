@@ -6,8 +6,8 @@
    |
    |where:    =>  refers to the universal root capability
    |          =>² refers to a root capability associated with the result type of (ref1: LazyRef[box A^?]{val elem: () => A^?}^{io}, f1: A^? => B^?): LazyRef[box B^?]{val elem: () =>² B^?}^{f1, ref1}
-   |          =>³ refers to a fresh root capability created in method mapc
-   |          ^   refers to a fresh root capability created in method mapc
+   |          =>³ refers to a fresh root capability in the result type of method mapc
+   |          ^   refers to a fresh root capability in the result type of method mapc
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:4 ----------------------------------------
@@ -18,7 +18,7 @@
    |
    |where:    =>  refers to the universal root capability
    |          =>² refers to a root capability associated with the result type of (ref1: LazyRef[box A^?]{val elem: () => A^?}^{io}, f1: A^? => B^?): LazyRef[box B^?]{val elem: () =>² B^?}^{f1, ref1}
-   |          =>³ refers to a fresh root capability created in method mapd
+   |          =>³ refers to a fresh root capability in the result type of method mapd
    |          ^   refers to a root capability associated with the result type of (ref: LazyRef[A]^{io}, f: A => B): LazyRef[B]^
    |
    |

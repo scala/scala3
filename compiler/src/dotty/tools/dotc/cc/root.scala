@@ -61,7 +61,7 @@ object root:
 
   enum Kind:
     case Result(binder: MethodType)
-    case Fresh(hidden: CaptureSet.HiddenSet)
+    case Fresh(hidden: CaptureSet.HiddenSet)(val purpose: () => String)
     case Global
 
     override def equals(other: Any): Boolean =
@@ -129,10 +129,10 @@ object root:
 
   /** Constructor and extractor methods for "fresh" capabilities */
   object Fresh:
-    def apply(using Context)(owner: Symbol = ctx.owner): CaptureRef =
+    def apply(using Context)(purpose: => String, owner: Symbol = ctx.owner): CaptureRef =
       if ccConfig.useSepChecks then
         val hiddenSet = CaptureSet.HiddenSet(owner)
-        val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)))
+        val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)(() => purpose)))
         hiddenSet.owningCap = res
         //assert(hiddenSet.id != 3)
         res
@@ -167,14 +167,14 @@ object root:
   /** Map each occurrence of cap to a different Fresh instance
    *  Exception: CapSet^ stays as it is.
    */
-  class CapToFresh()(using Context) extends BiTypeMap, FollowAliasesMap:
+  class CapToFresh(purpose: => String)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Fresh()
+          Fresh(purpose)
         case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
           t
         case t @ CapturingType(_, _) =>
@@ -212,15 +212,15 @@ object root:
   end CapToFresh
 
   /** Maps cap to fresh */
-  def capToFresh(tp: Type)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh()(tp) else tp
+  def capToFresh(tp: Type, purpose: => String)(using Context): Type =
+    if ccConfig.useSepChecks then CapToFresh(purpose)(tp) else tp
 
   /** Maps fresh to cap */
   def freshToCap(tp: Type)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh().inverse(tp) else tp
+    if ccConfig.useSepChecks then CapToFresh("").inverse(tp) else tp
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
-  def resultToFresh(tp: Type)(using Context): Type =
+  def resultToFresh(tp: Type, purpose: => String)(using Context): Type =
     val subst = new TypeMap:
       val seen = EqHashMap[Annotation, CaptureRef]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
@@ -228,7 +228,7 @@ object root:
       def apply(t: Type): Type = t match
         case t @ Result(binder) =>
           if localBinders.contains(binder) then t // keep bound references
-          else seen.getOrElseUpdate(t.annot, Fresh()) // map free references to Fresh()
+          else seen.getOrElseUpdate(t.annot, Fresh(purpose)) // map free references to Fresh()
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
@@ -294,7 +294,7 @@ object root:
               val (k, v) = it.next
               if v.annot eq t.annot then ref = k
             if ref == null then
-              ref = Fresh()
+              ref = Fresh("")
               seen(ref) = t
             ref
           case _ => mapOver(t)
