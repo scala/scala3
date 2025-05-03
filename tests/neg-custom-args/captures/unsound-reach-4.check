@@ -3,11 +3,15 @@
    |                  ^^^^^^^^^^
    |                  Type variable X of trait Foo cannot be instantiated to File^ since
    |                  that type captures the root capability `cap`.
+   |
+   |                  where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach-4.scala:20:29 ------------------------------
 20 |  val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).
    |                             ^^^^^^^
    |                             Found:    Bar^?
    |                             Required: Foo[box File^]
+   |
+   |                             where:    ^ refers to a fresh root capability created in value backdoor
    |
    | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------

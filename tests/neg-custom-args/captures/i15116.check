@@ -4,7 +4,8 @@
   |          Found:    Foo{val m: (Bar.this.m² : String^)}^{Bar.this.m²}
   |          Required: Foo
   |
-  |          where:    m  is a value in class Foo
+  |          where:    ^  refers to a fresh root capability created in class Bar
+  |                    m  is a value in class Foo
   |                    m² is a value in class Bar
   |
   |
@@ -21,7 +22,8 @@
   |          Found:    Foo{val m: (Baz.this.m² : String^)}^{Baz.this.m²}
   |          Required: Foo
   |
-  |          where:    m  is a value in class Foo
+  |          where:    ^  refers to a fresh root capability created in trait Baz
+  |                    m  is a value in class Foo
   |                    m² is a value in trait Baz
   |
   |
@@ -38,7 +40,8 @@
   |          Found:    Foo{val m: (Bar1.this.m² : String^)}^{Bar1.this.m²}
   |          Required: Foo
   |
-  |          where:    m  is a value in class Foo
+  |          where:    ^  refers to a fresh root capability created in class Bar1
+  |                    m  is a value in class Foo
   |                    m² is a value in class Bar1
   |
   |
@@ -55,7 +58,8 @@
   |          Found:    Foo{val m: (Baz2.this.m² : String^)}^{Baz2.this.m²}
   |          Required: Foo
   |
-  |          where:    m  is a value in class Foo
+  |          where:    ^  refers to a fresh root capability created in trait Baz2
+  |                    m  is a value in class Foo
   |                    m² is a value in trait Baz2
   |
   |

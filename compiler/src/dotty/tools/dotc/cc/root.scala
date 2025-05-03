@@ -328,30 +328,4 @@ object root:
           throw ex
   end toResultInResults
 
-  /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
-   *  with an added property PrintFresh. This addition causes all occurrences of
-   *  `Fresh` to be printed as `fresh` instead of `cap`, so that one avoids
-   *  confusion in error messages.
-   */
-  def printContext(refs: (Type | CaptureSet)*)(using Context): Context =
-    def hasCap = new TypeAccumulator[Boolean]:
-      def apply(x: Boolean, t: Type) =
-        x || t.dealiasKeepAnnots.match
-          case Fresh(_) => false
-          case t: TermRef => t.isCap || this(x, t.widen)
-          case CapturingType(t1, refs) => refs.containsCap || this(x, t1)
-          case x: ThisType => false
-          case _ => foldOver(x, t)
-
-    def containsCap(x: Type | CaptureSet): Boolean = x match
-      case tp: Type =>
-        hasCap(false, tp)
-      case refs: CaptureSet =>
-        refs.elems.exists(_.stripReadOnly.isCap)
-
-    if refs.exists(containsCap) then
-      ctx.withProperty(PrintFresh, Some(()))
-    else
-      ctx
-  end printContext
 end root

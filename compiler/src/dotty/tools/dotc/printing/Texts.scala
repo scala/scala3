@@ -137,7 +137,7 @@ object Texts {
       case _ => relems.foldLeft(-1)((acc, relem) => acc max relem.maxLine)
     }
 
-    def mkString(width: Int, withLineNumbers: Boolean): String = {
+    def mkString(width: Int = Int.MaxValue, withLineNumbers: Boolean = false): String = {
       val sb = new StringBuilder
       val numberWidth = if (withLineNumbers) (2 * maxLine.toString.length) + 2 else 0
       layout(width - numberWidth).print(sb, numberWidth)

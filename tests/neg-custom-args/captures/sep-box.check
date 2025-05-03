@@ -12,3 +12,5 @@
    |        Capture set of second argument        : {h2.value*}
    |        Footprint set of second argument      : {h2.value*, xs*}
    |        The two sets overlap at               : {xs*}
+   |
+   |      where:    ^ refers to a fresh root capability created in method test

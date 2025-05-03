@@ -2,7 +2,11 @@
 8 |  usingLogFile { f => () => f.write(2) } // error
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
   |               Found:    (f: java.io.FileOutputStream^) ->? box () ->{f} Unit
-  |               Required: (f: java.io.FileOutputStream^) ->{fresh} box () ->? Unit
+  |               Required: (f: java.io.FileOutputStream^) => box () ->? Unit
+  |
+  |               where:    => refers to a fresh root capability created in method test
+  |                         ^  refers to the universal root capability
+  |
   |
   |               Note that reference f.type
   |               cannot be included in outer capture set ?

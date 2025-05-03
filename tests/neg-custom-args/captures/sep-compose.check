@@ -12,6 +12,8 @@
    |         Capture set of second argument        : {f}
    |         Footprint set of second argument      : {f, a, io}
    |         The two sets overlap at               : {f, a, io}
+   |
+   |       where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:33:10 -------------------------------------------------------
 33 |  seq4(f)(f) // error
    |          ^
@@ -26,6 +28,8 @@
    |            Capture set of first argument         : {f}
    |            Footprint set of first argument       : {f, a, io}
    |            The two sets overlap at               : {f, a, io}
+   |
+   |          where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:34:7 --------------------------------------------------------
 34 |  seq5(f)(f) // error
    |       ^
@@ -40,6 +44,8 @@
    |         Capture set of second argument        : {f}
    |         Footprint set of second argument      : {f, a, io}
    |         The two sets overlap at               : {f, a, io}
+   |
+   |       where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:35:7 --------------------------------------------------------
 35 |  seq6(f, f) // error
    |       ^
@@ -54,6 +60,8 @@
    |         Capture set of second argument        : {f}
    |         Footprint set of second argument      : {f, a, io}
    |         The two sets overlap at               : {f, a, io}
+   |
+   |       where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:36:10 -------------------------------------------------------
 36 |  seq7(f, f) // error
    |          ^
@@ -68,6 +76,8 @@
    |            Capture set of first argument         : {f}
    |            Footprint set of first argument       : {f, a, io}
    |            The two sets overlap at               : {f, a, io}
+   |
+   |          where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:37:7 --------------------------------------------------------
 37 |  seq8(f)(f) // error
    |       ^
@@ -82,6 +92,8 @@
    |         Capture set of second argument        : {f}
    |         Footprint set of second argument      : {f, a, io}
    |         The two sets overlap at               : {f, a, io}
+   |
+   |       where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:40:5 --------------------------------------------------------
 40 |  p1(f) // error
    |     ^
@@ -96,17 +108,21 @@
    |       Capture set of function prefix        : {p1}
    |       Footprint set of function prefix      : {p1, f, a, io}
    |       The two sets overlap at               : {f, a, io}
+   |
+   |     where:    => refers to a fresh root capability created in method test
 -- Error: tests/neg-custom-args/captures/sep-compose.scala:41:38 -------------------------------------------------------
 41 |  val p8 = (x: () ->{a} Unit) => seq8(f)(x) // error
    |                                      ^
-   |                  Separation failure: argument of type  (f : () ->{a} Unit)
-   |                  to method seq8: (x: () => Unit)(y: () ->{a} Unit): Unit
-   |                  corresponds to capture-polymorphic formal parameter x of type  () => Unit
-   |                  and hides capabilities  {f}.
-   |                  Some of these overlap with the captures of the second argument with type  (x : () ->{a} Unit).
+   |  Separation failure: argument of type  (f : () ->{a} Unit)
+   |  to method seq8: (x: () => Unit)(y: () ->{a} Unit): Unit
+   |  corresponds to capture-polymorphic formal parameter x of type  () => Unit
+   |  and hides capabilities  {f}.
+   |  Some of these overlap with the captures of the second argument with type  (x : () ->{a} Unit).
    |
-   |                    Hidden set of current argument        : {f}
-   |                    Hidden footprint of current argument  : {f, a, io}
-   |                    Capture set of second argument        : {x}
-   |                    Footprint set of second argument      : {x, a, io}
-   |                    The two sets overlap at               : {a, io}
+   |    Hidden set of current argument        : {f}
+   |    Hidden footprint of current argument  : {f, a, io}
+   |    Capture set of second argument        : {x}
+   |    Footprint set of second argument      : {x, a, io}
+   |    The two sets overlap at               : {a, io}
+   |
+   |  where:    => refers to a fresh root capability created in anonymous fucntion of type (x²: () ->{a} Unit): Unit

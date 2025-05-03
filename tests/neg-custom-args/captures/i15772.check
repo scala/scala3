@@ -3,16 +3,27 @@
    |                                          ^^^^^^^
    |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
    |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
+   |
+   |where:    =>  refers to the universal root capability
+   |          ^   refers to the universal root capability
+   |          cap is the universal root capability
 -- Error: tests/neg-custom-args/captures/i15772.scala:29:35 ------------------------------------------------------------
 29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
    |C^ => Unit cannot be box-converted to box C{val arg: C^}^{c} ->{cap, c} Unit
    |since the additional capture set {c} resulting from box conversion is not allowed in box C{val arg: C^}^{c} => Unit
+   |
+   |where:    =>  refers to the universal root capability
+   |          ^   refers to the universal root capability
+   |          cap is the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:34 ---------------------------------------
 35 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                                  ^
    |                                  Found:    box C^
    |                                  Required: box C{val arg: C^?}^?
+   |
+   |                                  where:    ^ refers to a fresh root capability created in method c
+   |
    |
    |                                  Note that the universal capability `cap`
    |                                  cannot be included in capture set ?
