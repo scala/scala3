@@ -714,7 +714,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.stripCapturing.capturing(root.Fresh(i" when instantiating argument of unsafeAssumePure")))
+        val argType0 = recheck(arg, pt.stripCapturing.capturing(root.Fresh(root.Origin.UnsafeAssumePure)))
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing
@@ -730,11 +730,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  charge the deep capture set of the actual argument to the environment.
      */
     protected override def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
-      val fn = app.symbol
-      def purpose =
-        if fn.exists then i" when checking argument to parameter ${pref.paramName} of $fn"
-        else ""
-      val freshenedFormal = root.capToFresh(formal, purpose)
+      val freshenedFormal = root.capToFresh(formal, root.Origin.Formal(pref, app))
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal = $result", capt)
       if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
@@ -768,11 +764,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
-      val fn = tree.symbol
-      def methDescr = if fn.exists then i"$fn's type " else ""
       val appType = root.resultToFresh(
         super.recheckApplication(tree, qualType, funType, argTypes),
-        i" when instantiating $methDescr$funType")
+        root.Origin.ResultInstance(funType, tree.symbol))
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
@@ -832,9 +826,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         var allCaptures: CaptureSet =
           if core.derivesFromMutable then
-            initCs ++ CaptureSet.fresh(i" when constructing mutable $core")
+            initCs ++ root.Fresh(root.Origin.NewMutable(core)).singletonCaptureSet
           else if core.derivesFromCapability then
-            initCs ++ root.Fresh(i" when constructing Capability instance $core").readOnly.singletonCaptureSet
+            initCs ++ root.Fresh(root.Origin.NewCapability(core)).readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
@@ -877,7 +871,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def methDescr = if meth.exists then i"$meth's type " else ""
       disallowCapInTypeArgs(tree.fun, meth, tree.args)
       val funType = super.recheckTypeApply(tree, pt)
-      val res = root.resultToFresh(funType, i" when instantiating $methDescr$funType")
+      val res = root.resultToFresh(funType, root.Origin.ResultInstance(funType, meth))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
@@ -943,10 +937,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   rinfo.instantiate(paramTypes)
                 case _ =>
                   resType
-              val respt = root.resultToFresh(respt0,
-                i" when instantiating expected result type $respt0 of lambda")
-              val res = root.resultToFresh(mdef.tpt.nuType,
-                i" when instantiating result type ${mdef.tpt.nuType} of lambda")
+              val respt = root.resultToFresh(respt0, root.Origin.LambdaExpected(respt0))
+              val res = root.resultToFresh(mdef.tpt.nuType, root.Origin.LambdaActual(mdef.tpt.nuType))
               // We need to open existentials here in order not to get vars mixed up in them
               // We do the proper check with existentials when we are finished with the closure block.
               capt.println(i"pre-check closure $expr of type $res against $respt")
@@ -1647,8 +1639,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                           otherTp.derivedTypeBounds(
                             otherTp.lo,
                             hi.derivedCapturingType(parent,
-                              root.Fresh(i" when instantiating upper bound of member overridden by $member")
-                                .singletonCaptureSet))))
+                                CaptureSet.fresh(root.Origin.OverriddenType(member))))))
                       case _ => None
                   case _ => None
               case _ => None

@@ -473,11 +473,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
     if freshen then
-      root.capToFresh(tp3,
-        if sym.is(Method) then i" in the result type of $sym"
-        else if sym.exists then i" in the type of $sym"
-        else "")
-      .tap(addOwnerAsHidden(_, sym))
+      root.capToFresh(tp3, root.Origin.InDecl(sym)).tap(addOwnerAsHidden(_, sym))
     else tp3
   end transformExplicitType
 
@@ -574,7 +570,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for case arg: TypeTree <- args do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
-                root.capToFresh(arg.tpe, i" of type argument ${arg.tpe}"))
+                root.capToFresh(arg.tpe, root.Origin.TypeArg(arg.tpe)))
             else
               transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 

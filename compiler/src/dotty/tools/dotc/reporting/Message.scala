@@ -185,10 +185,11 @@ object Message:
             else ref match
               case ref @ root.Fresh(hidden) =>
                 val (kind: root.Kind.Fresh) = ref.rootAnnot.kind: @unchecked
-                val purpose = kind.purpose()
-                val descr =
-                  if purpose.startsWith(" in the ") then purpose
-                  else i" created in ${ownerStr(hidden.owner)}$purpose"
+                val descr = kind.origin match
+                  case origin @ root.Origin.InDecl(sym) if sym.exists =>
+                    origin.explanation
+                  case origin =>
+                    i" created in ${ownerStr(hidden.owner)}${origin.explanation}"
                 i"a fresh root capability$descr"
               case root.Result(binder) => i"a root capability associated with the result type of $binder"
           s"$relation $descr"

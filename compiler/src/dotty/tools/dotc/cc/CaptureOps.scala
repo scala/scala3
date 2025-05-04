@@ -464,7 +464,7 @@ extension (tp: Type)
               // preceding arguments are known to be always pure
               t.derivedFunctionOrMethod(
                 args,
-                apply(root.resultToFresh(res, i"when instantiating $t")))
+                apply(root.resultToFresh(res, root.Origin.ResultInstance(t, NoSymbol))))
             else
               t
           case _ =>
@@ -798,7 +798,7 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
         this(acc, parent)
       case t @ FunctionOrMethod(args, res) =>
         if args.forall(_.isAlwaysPure) then
-          this(acc, root.resultToFresh(res, i" when instantiating $t"))
+          this(acc, root.resultToFresh(res, root.Origin.ResultInstance(t, NoSymbol)))
         else acc
       case _ =>
         foldOver(acc, t)
