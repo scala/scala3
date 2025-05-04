@@ -467,7 +467,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         vbleText ~ hashStr(binder) ~ Str(idStr).provided(showUniqueIds)
       case tp @ root.Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
-        if ccVerbose then s"<fresh$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
+        if ccVerbose then s"<fresh$idStr in ${tp.ccOwner} hiding " ~ toTextCaptureSet(hidden) ~ ">"
         else if ccVerbose then "fresh"
         else "cap"
       case tp => toText(tp)
