@@ -122,6 +122,30 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def isExclusive(using Context): Boolean =
     !isReadOnly && (isRootCapability || captureSetOfInfo.isExclusive)
 
+  final def ccOwner(using Context): Symbol = this match
+    case root.Fresh(hidden) =>
+      hidden.owner
+    case ref: TermRef =>
+      if ref.isCap then NoSymbol
+      else ref.prefix match
+        case prefix: CaptureRef => prefix.ccOwner
+        case _ => ref.symbol
+    case ref: ThisType =>
+      ref.cls
+    case QualifiedCapability(ref1) =>
+      ref1.ccOwner
+    case _ =>
+      NoSymbol
+
+  final def adjustedOwner(using Context): Symbol =
+    def adjust(owner: Symbol): Symbol =
+      if !owner.exists
+        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
+        || owner.is(Flags.Method, butNot = Flags.Accessor) && !owner.isConstructor
+      then owner
+      else adjust(owner.owner)
+    adjust(ccOwner)
+
   // With the support of paths, we don't need to normalize the `TermRef`s anymore.
   // /** Normalize reference so that it can be compared with `eq` for equality */
   // final def normalizedRef(using Context): CaptureRef = this match
