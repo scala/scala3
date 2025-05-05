@@ -14,6 +14,8 @@ package scala
 package collection
 package generic
 
+import scala.language.`2`
+
 /** This trait represents collection-like objects that can be reduced
   *  using a '+' operator. It defines variants of `-` and `--`
   *  as convenience methods in terms of single-element removal `-`.

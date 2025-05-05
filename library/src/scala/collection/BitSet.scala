@@ -13,6 +13,7 @@
 package scala
 package collection
 
+import scala.language.`2`
 import java.io.{ObjectInputStream, ObjectOutputStream}
 
 import scala.annotation.nowarn

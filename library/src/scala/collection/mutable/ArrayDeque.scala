@@ -14,6 +14,7 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2`
 import scala.annotation.nowarn
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.{CommonErrors, DefaultSerializable}

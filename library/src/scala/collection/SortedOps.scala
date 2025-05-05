@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2`
 
 /** Base trait for sorted collections */
 transparent trait SortedOps[A, +C] {

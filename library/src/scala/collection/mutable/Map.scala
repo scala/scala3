@@ -14,6 +14,8 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2`
+
 /** Base type of mutable Maps */
 trait Map[K, V]
   extends Iterable[(K, V)]

@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2`
 import scala.annotation.{nowarn, tailrec}
 
 /** This class implements immutable maps using a vector/map-based data structure, which preserves insertion order.

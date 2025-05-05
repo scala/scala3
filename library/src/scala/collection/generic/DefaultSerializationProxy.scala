@@ -14,6 +14,7 @@ package scala.collection.generic
 
 import java.io.{ObjectInputStream, ObjectOutputStream}
 
+import scala.language.`2`
 import scala.collection.{Factory, Iterable}
 import scala.collection.mutable.Builder
 

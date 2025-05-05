@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2`
 
 /** Buffered iterators are iterators which provide a method `head`
  *  that inspects the next element without discarding it.

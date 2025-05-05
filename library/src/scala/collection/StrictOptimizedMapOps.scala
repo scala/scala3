@@ -12,6 +12,8 @@
 
 package scala.collection
 
+import scala.language.`2`
+
 /**
   * Trait that overrides map operations to take advantage of strict builders.
   *

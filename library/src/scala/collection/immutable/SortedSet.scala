@@ -14,6 +14,8 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2`
+
 /** Base trait for sorted sets */
 trait SortedSet[A]
   extends Set[A]

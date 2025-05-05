@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2`
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.Builder
 
