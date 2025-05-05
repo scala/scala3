@@ -172,7 +172,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
       """|object Main extends App {
          |  def x = 12 * (34 + 5@@6)
          |}""".stripMargin,
-      List[String](
+      List(
         """|object Main extends App {
            |  def x = 12 * (34 + >>region>>56<<region<<)
            |}""".stripMargin,
@@ -185,5 +185,70 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         """|object Main extends App {
            |  def x = >>region>>12 * (34 + 56)<<region<<
            |}""".stripMargin
+      )
+    )
+
+  @Test def `function` =
+    check(
+      "val hello = (aaa: Int, bb@@b: Int, ccc: Int) => ???",
+      List(
+        "val hello = (aaa: Int, >>region>>bbb: Int<<region<<, ccc: Int) => ???",
+        "val hello = (>>region>>aaa: Int, bbb: Int, ccc: Int<<region<<) => ???",
+        "val hello = >>region>>(aaa: Int, bbb: Int, ccc: Int) => ???<<region<<",
+        ">>region>>val hello = (aaa: Int, bbb: Int, ccc: Int) => ???<<region<<",
+      )
+    )
+
+  @Test def `defdef` =
+    check(
+      "def hello(aaa: Int, bb@@b: Int, ccc: Int) = ???",
+      List(
+        "def hello(aaa: Int, >>region>>bbb: Int<<region<<, ccc: Int) = ???",
+        "def hello(>>region>>aaa: Int, bbb: Int, ccc: Int<<region<<) = ???",
+        ">>region>>def hello(aaa: Int, bbb: Int, ccc: Int) = ???<<region<<",
+      )
+    )
+
+  @Test def `apply` =
+    check(
+      "def hello = List(111, 2@@22, 333)",
+      List(
+        "def hello = List(111, >>region>>222<<region<<, 333)",
+        "def hello = List(>>region>>111, 222, 333<<region<<)",
+        "def hello = >>region>>List(111, 222, 333)<<region<<",
+        ">>region>>def hello = List(111, 222, 333)<<region<<",
+      )
+    )
+
+  @Test def `type-apply` =
+    check(
+      "def hello = Map[String, I@@nt]()",
+      List(
+        "def hello = Map[String, >>region>>Int<<region<<]()",
+        "def hello = Map[>>region>>String, Int<<region<<]()",
+        "def hello = >>region>>Map[String, Int]<<region<<()",
+        "def hello = >>region>>Map[String, Int]()<<region<<",
+        ">>region>>def hello = Map[String, Int]()<<region<<",
+      )
+    )
+
+  @Test def `unapply` =
+    check(
+      "val List(aaa, b@@bb, ccc) = List(111, 222, 333)",
+      List(
+        "val List(aaa, >>region>>bbb<<region<<, ccc) = List(111, 222, 333)",
+        "val List(>>region>>aaa, bbb, ccc<<region<<) = List(111, 222, 333)",
+        "val >>region>>List(aaa, bbb, ccc)<<region<< = List(111, 222, 333)",
+        ">>region>>val List(aaa, bbb, ccc) = List(111, 222, 333)<<region<<",
+      )
+    )
+
+  @Test def `single` =
+    check(
+      "def hello = List(2@@22)",
+      List(
+        "def hello = List(>>region>>222<<region<<)",
+        "def hello = >>region>>List(222)<<region<<",
+        ">>region>>def hello = List(222)<<region<<",
       )
     )

@@ -24,10 +24,7 @@ import org.eclipse.lsp4j.SelectionRange
  * @param compiler Metals Global presentation compiler wrapper.
  * @param params offset params converted from the selectionRange params.
  */
-class SelectionRangeProvider(
-    driver: InteractiveDriver,
-    params: ju.List[OffsetParams]
-):
+class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetParams]):
 
   /**
    * Get the seletion ranges for the provider params
@@ -88,33 +85,25 @@ class SelectionRangeProvider(
       selectionRange.setRange(srcPos.toLsp)
       selectionRange
 
-    val treeSelectionRange = toSelectionRange(tree.sourcePos)
+    val treeSelectionRange = Seq(toSelectionRange(tree.sourcePos))
 
-    def getArgsSpan(args: List[Tree]): Option[SourcePosition] =
+    def allArgsSelectionRange(args: List[Tree]): Option[SelectionRange] =
       args match
-        case Seq(param) => Some(param.sourcePos)
-        case params @ Seq(head, tail*) =>
-          val srcPos = head.sourcePos
-          val lastSpan = tail.last.span
-          Some(SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer))
-        case Seq() => None
+        case Nil => None
+        case list =>
+          val srcPos = list.head.sourcePos
+          val lastSpan = list.last.span
+          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer)
+          if allArgsSrcPos.contains(pos) then Some(toSelectionRange(allArgsSrcPos))
+          else None
 
     tree match
-      case DefDef(_, paramss, _, _) =>
-        // If source position is within a parameter list, add a selection range covering that whole list.
-        val selectedParams = paramss
-          .flatMap(getArgsSpan) // parameter list to a sourcePosition covering the whole list
-          .find(_.contains(pos))
-          .map(toSelectionRange)
-        selectedParams ++ Seq(treeSelectionRange)
-
-      case Function(args, body) =>
-        val allArgs = getArgsSpan(args)
-          .find(_.contains(pos))
-          .map(toSelectionRange)
-
-        allArgs ++ Seq(treeSelectionRange)
-      case _ => Seq(treeSelectionRange)
+      case DefDef(_, paramss, _, _) => paramss.flatMap(allArgsSelectionRange) ++ treeSelectionRange
+      case Apply(_, args) => allArgsSelectionRange(args) ++ treeSelectionRange
+      case TypeApply(_, args) => allArgsSelectionRange(args) ++ treeSelectionRange
+      case UnApply(_, _, pattern) => allArgsSelectionRange(pattern) ++ treeSelectionRange
+      case Function(args, body) => allArgsSelectionRange(args) ++ treeSelectionRange
+      case _ => treeSelectionRange
 
   private def setParent(
       child: SelectionRange,
