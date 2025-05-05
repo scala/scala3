@@ -323,7 +323,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     try
       val tp1 = mapInferred(refine = true)(tp)
-      val tp2 = root.toResultInResults(_ => assert(false))(tp1)
+      val tp2 = root.toResultInResults(NoSymbol, _ => assert(false))(tp1)
       if tp2 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
     catch case ex: AssertionError =>
@@ -458,7 +458,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def transform(tp: Type): Type =
       val tp1 = toCapturing(tp)
-      val tp2 = root.toResultInResults(fail, toCapturing.keepFunAliases)(tp1)
+      val tp2 = root.toResultInResults(sym, fail, toCapturing.keepFunAliases)(tp1)
       val snd = if toCapturing.keepFunAliases then "" else " 2nd time"
       if tp2 ne tp then capt.println(i"expanded explicit$snd in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
@@ -648,7 +648,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
             val paramSymss = sym.paramSymss
             def newInfo(using Context) = // will be run in this or next phase
-              root.toResultInResults(report.error(_, tree.srcPos)):
+              root.toResultInResults(sym, report.error(_, tree.srcPos)):
                 if sym.is(Method) then
                   paramsToCap(methodType(paramSymss, localReturnType))
                 else tree.tpt.nuType

@@ -3721,7 +3721,8 @@ object Types extends TypeUtils {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  trait MethodicType extends TermType
+  trait MethodicType extends TermType:
+    def resType: Type
 
   /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
   abstract case class ExprType(resType: Type)
@@ -4279,7 +4280,7 @@ object Types extends TypeUtils {
                       ps.get(elemName) match
                         case Some(elemRef) => assert(elemRef eq elem, i"bad $mt")
                         case _ =>
-                    case root.Result(binder) if binder ne mt =>
+                    case root.Result(binder: MethodType) if binder ne mt =>
                       assert(binder.paramNames.toList != mt.paramNames.toList, i"bad $mt")
                     case _ =>
               checkRefs(refs)

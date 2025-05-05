@@ -110,7 +110,7 @@ object root:
         ""
 
   enum Kind:
-    case Result(binder: MethodType)
+    case Result(binder: MethodicType)
     case Fresh(hidden: CaptureSet.HiddenSet)(val origin: Origin)
     case Global
 
@@ -134,14 +134,14 @@ object root:
       ccs.rootId += 1
       ccs.rootId
 
-    //assert(id != 4)
+    //assert(id != 4, kind)
 
     override def symbol(using Context) = defn.RootCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
 
     private var myOriginalKind = kind
-    def originalBinder: MethodType = myOriginalKind.asInstanceOf[Kind.Result].binder
+    def originalBinder: MethodicType = myOriginalKind.asInstanceOf[Kind.Result].binder
 
     def derivedAnnotation(binder: MethodType)(using Context): Annotation = kind match
       case Kind.Result(b) if b ne binder =>
@@ -198,13 +198,13 @@ object root:
   type Result = AnnotatedType
 
   object Result:
-    def apply(binder: MethodType)(using Context): Result =
+    def apply(binder: MethodicType)(using Context): Result =
       val hiddenSet = CaptureSet.HiddenSet(NoSymbol)
       val res = AnnotatedType(cap, Annot(Kind.Result(binder)))
       hiddenSet.owningCap = res
       res
 
-    def unapply(tp: Result)(using Context): Option[MethodType] = tp.annot match
+    def unapply(tp: Result)(using Context): Option[MethodicType] = tp.annot match
       case Annot(Kind.Result(binder)) => Some(binder)
       case _ => None
   end Result
@@ -298,7 +298,7 @@ object root:
    *  variable bound by `mt`.
    *  Stop at function or method types since these have been mapped before.
    */
-  def toResult(tp: Type, mt: MethodType, fail: Message => Unit)(using Context): Type =
+  def toResult(tp: Type, mt: MethodicType, fail: Message => Unit)(using Context): Type =
 
     abstract class CapMap extends BiTypeMap:
       override def mapOver(t: Type): Type = t match
@@ -356,7 +356,7 @@ object root:
   end toResult
 
   /** Map global roots in function results to result roots */
-  def toResultInResults(fail: Message => Unit, keepAliases: Boolean = false)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
+  def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
     def apply(t: Type): Type = t match
       case defn.RefinedFunctionOf(mt) =>
         val mt1 = apply(mt)
@@ -369,6 +369,8 @@ object root:
         t.derivedCapturingType(this(parent), refs)
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
+      case t: ExprType if sym.is(Method, butNot = Accessor) =>
+        t.derivedExprType(toResult(t.resType, t, fail))
       case _ =>
         try
           if keepAliases then mapOver(t)

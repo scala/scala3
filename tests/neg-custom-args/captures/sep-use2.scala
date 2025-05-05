@@ -15,7 +15,7 @@ def test1(@consume c: Object^, f: (x: Object^) => Object^) =
 def test2(@consume c: Object^, f: (x: Object^) ->{c} Object^) =
   def cc: Object^ = c // error
   val x1 =
-    { f(cc) } // error // error
+    { f(cc) } // error
   val x4: Object^ = // ^ hides just c, since the Object^ in the result of `f` is existential
     { f(c) } // error // error
 

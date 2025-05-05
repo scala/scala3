@@ -20,31 +20,13 @@
    |          ^^^^^^^
    |          Separation failure: method cc's result type Object^ hides non-local parameter c
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:18:6 -----------------------------------------------------------
-18 |    { f(cc) } // error // error
+18 |    { f(cc) } // error
    |      ^
    |      Separation failure: Illegal access to {c} which is hidden by the previous definition
    |      of method cc with result type Object^.
    |      This type hides capabilities  {c}
    |
    |      where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:18:8 -----------------------------------------------------------
-18 |    { f(cc) } // error // error
-   |        ^^
-   |Separation failure: argument of type  (cc : -> Object^)
-   |to a function of type (x: Object^) ->{c} Object^
-   |corresponds to capture-polymorphic formal parameter x of type  Object^²
-   |and hides capabilities  {cap, c}.
-   |Some of these overlap with the captures of the function prefix.
-   |
-   |  Hidden set of current argument        : {cap, c}
-   |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {f}
-   |  Footprint set of function prefix      : {f, c}
-   |  The two sets overlap at               : {c}
-   |
-   |where:    ^   refers to a fresh root capability in the result type of method cc
-   |          ^²  refers to a fresh root capability created in value x1 when checking argument to parameter x of method apply
-   |          cap is a fresh root capability in the result type of method cc
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:20:6 -----------------------------------------------------------
 20 |    { f(c) } // error // error
    |      ^

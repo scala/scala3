@@ -25,7 +25,7 @@ import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
 import caps.cap
-import caps.unsafe.{unsafeAssumeSeparate, untrackedCaptures}
+import caps.unsafe.{unsafeAssumeSeparate, unsafeAssumePure, untrackedCaptures}
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -989,7 +989,12 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private sealed trait State[+A] extends Serializable {
     def head: A
-    def tail: LazyListIterable[A]^
+    def tail: LazyListIterable[A]/*^*/
+      // should be ^ but this fails checking. The problem is that
+      // the ^ in LazyListIterable[A]^ is treated as a result reference.
+      // But then it cannot be subsumed by
+      //   val tail: LazyListIterable[A]^
+      // in class State.Cons.
   }
 
   private object State {
@@ -1000,14 +1005,15 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     }
 
     @SerialVersionUID(3L)
-    final class Cons[A](val head: A, val tail: LazyListIterable[A]^) extends State[A]
+    final class Cons[A](val head: A, val tail: LazyListIterable[A]/*^*/) extends State[A]
   }
 
   /** Creates a new LazyListIterable. */
   @inline private def newLL[A](state: => State[A]^): LazyListIterable[A]^{state} = new LazyListIterable[A](() => state)
 
   /** Creates a new State.Cons. */
-  @inline private def sCons[A](hd: A, tl: LazyListIterable[A]^): State[A]^{tl} = new State.Cons[A](hd, tl)
+  @inline private def sCons[A](hd: A, tl: LazyListIterable[A]^): State[A]^{tl} =
+    new State.Cons[A](hd, tl.unsafeAssumePure)
 
   private val anyToMarker: Any => Any = _ => Statics.pfMarker
 

@@ -1162,7 +1162,8 @@ object CaptureSet:
     def unify(root1: root.Result, root2: root.Result)(using Context): Boolean =
       (root1, root2) match
         case (root1 @ root.Result(binder1), root2 @ root.Result(binder2))
-        if (binder1 eq binder2)
+        if ((binder1 eq binder2)
+            || binder1.isInstanceOf[ExprType] && binder2.isInstanceOf[ExprType])
           && (root1.rootAnnot.originalBinder ne root2.rootAnnot.originalBinder)
           && eqResultMap(root1) == null
           && eqResultMap(root2) == null
