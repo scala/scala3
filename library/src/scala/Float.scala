@@ -16,7 +16,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** `Float`, a 32-bit IEEE-754 floating point number (equivalent to Java's `float` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Float` are not

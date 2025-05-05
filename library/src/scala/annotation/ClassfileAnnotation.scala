@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A base class for classfile annotations. These are stored as
  *  [[https://docs.oracle.com/javase/8/docs/technotes/guides/language/annotations.html Java annotations]]

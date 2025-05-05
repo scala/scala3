@@ -12,7 +12,7 @@
 
 package scala.annotation.meta
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * Consult the documentation in package [[scala.annotation.meta]].

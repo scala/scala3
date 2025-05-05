@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 final class RichShort(val self: Short) extends AnyVal with ScalaWholeNumberProxy[Short] {
   protected def num: scala.math.Numeric.ShortIsIntegral.type = scala.math.Numeric.ShortIsIntegral

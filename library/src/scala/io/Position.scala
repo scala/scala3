@@ -13,7 +13,7 @@
 package scala
 package io
 
-import scala.language.`2`
+import scala.language.`2.13`
 import annotation.nowarn
 
 /** The object Position provides convenience methods to encode

@@ -12,7 +12,7 @@
 
 package scala.annotation.meta
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * An annotation giving particulars for a language feature in object `scala.language`.

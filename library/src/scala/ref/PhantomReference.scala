@@ -12,7 +12,7 @@
 
 package scala.ref
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 class PhantomReference[+T <: AnyRef](value: T, queue: ReferenceQueue[T]) extends ReferenceWrapper[T] {
   val underlying: java.lang.ref.PhantomReference[_ <: T] =

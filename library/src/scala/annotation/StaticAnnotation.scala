@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * A base class for static annotations. These are available to the Scala type checker or Scala

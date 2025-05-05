@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 //import scala.collection.generic._
 import scala.collection.{Factory, immutable, mutable}

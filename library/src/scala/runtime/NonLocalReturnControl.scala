@@ -12,7 +12,7 @@
 
 package scala.runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.util.control.ControlThrowable
 
 // remove Unit specialization when binary compatibility permits

@@ -12,7 +12,7 @@
 
 package scala.runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.runtime.ClassValueCompat._
 
 private[scala] abstract class ClassValueCompat[T] extends ClassValueInterface[T] { self =>

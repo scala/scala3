@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** An annotation to designate that the annotated entity
  *  should not be considered for additional compiler checks.

@@ -12,7 +12,7 @@
 
 package scala.concurrent
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * A context to be notified by [[scala.concurrent.blocking]] when

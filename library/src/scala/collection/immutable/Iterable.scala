@@ -12,7 +12,7 @@
 
 package scala.collection.immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.{IterableFactory, IterableFactoryDefaults}
 
 /** A trait for collections that are guaranteed immutable.

@@ -12,7 +12,7 @@
 
 package scala.collection.immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.AbstractIterator
 import java.lang.Integer.bitCount
 import java.lang.Math.ceil

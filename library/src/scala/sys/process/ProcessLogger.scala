@@ -14,7 +14,7 @@ package scala
 package sys
 package process
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.io._
 
 /** Encapsulates the output and error streams of a running process. This is used

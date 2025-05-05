@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** Base trait for all products, which in the standard library include at
  *  least [[scala.Product1]] through [[scala.Product22]] and therefore also

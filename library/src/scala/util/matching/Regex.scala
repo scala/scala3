@@ -26,7 +26,7 @@
  */
 package scala.util.matching
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.AbstractIterator
 import java.util.regex.{ Pattern, Matcher }
 

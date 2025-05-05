@@ -15,7 +15,7 @@
 
 package scala.jdk
 
-import scala.language.`2`
+import scala.language.`2.13`
 import language.implicitConversions
 
 trait Priority3FunctionExtensions {

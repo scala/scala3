@@ -12,7 +12,7 @@
 
 package scala.runtime.java8
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 @FunctionalInterface trait JFunction0$mcS$sp extends Function0[Any] with Serializable {
   def apply$mcS$sp(): Short

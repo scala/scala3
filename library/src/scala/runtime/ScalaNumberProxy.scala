@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.immutable
 import scala.math.ScalaNumericAnyConversions
 import immutable.NumericRange

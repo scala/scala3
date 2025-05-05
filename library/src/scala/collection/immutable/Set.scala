@@ -14,7 +14,7 @@ package scala
 package collection
 package immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.immutable.Set.Set4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 

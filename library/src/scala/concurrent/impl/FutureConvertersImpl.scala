@@ -12,7 +12,7 @@
 
 package scala.concurrent.impl
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.concurrent.{CompletableFuture, CompletionStage, TimeUnit}
 import java.util.function.{BiConsumer, BiFunction, Consumer, Function => JFunction}
 

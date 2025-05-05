@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** The jdk package contains utilities to interact with JDK classes.
  * 

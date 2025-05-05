@@ -12,7 +12,7 @@
 
 package scala.util.control
 
-import scala.language.`2`
+import scala.language.`2.13`
 import annotation.tailrec
 
 /** Methods exported by this object implement tail calls via trampolining.

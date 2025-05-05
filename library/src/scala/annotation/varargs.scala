@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A method annotation which instructs the compiler to generate a
  *  Java varargs-style forwarder method for interop. This annotation can

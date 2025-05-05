@@ -14,7 +14,7 @@ package scala.collection
 
 import java.{lang => jl}
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.Stepper.EfficientSplit
 
 /** An implicit StepperShape instance is used in the [[IterableOnce.stepper]] to return a possibly

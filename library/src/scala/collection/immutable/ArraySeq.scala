@@ -13,7 +13,7 @@
 package scala.collection
 package immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.Arrays
 
 import scala.annotation.unchecked.uncheckedVariance

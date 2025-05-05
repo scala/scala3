@@ -17,7 +17,7 @@ import scala.collection.{AbstractIterator, BufferedIterator}
 import java.io.{Closeable, FileInputStream, FileNotFoundException, InputStream, PrintStream, File => JFile}
 import java.net.{URI, URL}
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.nowarn
 
 /** This object provides convenience methods to create an iterable

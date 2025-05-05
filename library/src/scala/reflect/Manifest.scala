@@ -13,7 +13,7 @@
 package scala
 package reflect
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.collection.mutable.{ArrayBuilder, ArraySeq}
 

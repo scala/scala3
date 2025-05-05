@@ -12,7 +12,7 @@
 
 package scala.runtime.java8
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 @FunctionalInterface trait JFunction2$mcIDJ$sp extends Function2[Any, Any, Any] with Serializable {
   def apply$mcIDJ$sp(v1: Double, v2: Long): Int

@@ -13,7 +13,7 @@
 package scala
 package collection.mutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.tailrec
 import collection.{AbstractIterator, Iterator}
 import java.lang.String

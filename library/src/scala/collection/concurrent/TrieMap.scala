@@ -14,7 +14,7 @@ package scala
 package collection
 package concurrent
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.concurrent.atomic._
 import scala.{unchecked => uc}
 import scala.annotation.tailrec

@@ -13,7 +13,7 @@
 package scala
 package reflect
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.lang.{Class => jClass}
 import java.lang.ref.{WeakReference => jWeakReference}
 import scala.annotation.{implicitNotFound, nowarn}

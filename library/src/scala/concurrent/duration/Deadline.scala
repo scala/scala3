@@ -12,7 +12,7 @@
 
 package scala.concurrent.duration
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * This class stores a deadline, as obtained via `Deadline.now` or the

@@ -13,7 +13,7 @@
 package scala
 package reflect
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** Provides functions to encode and decode Scala symbolic names.
  *  Also provides some constants.

@@ -12,7 +12,7 @@
 
 package scala.concurrent
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.concurrent.Executor
 import java.util.Objects
 import scala.util.control.NonFatal

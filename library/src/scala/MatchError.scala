@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** This class implements errors which are thrown whenever an
  *  object doesn't match any pattern of a pattern matching

@@ -12,7 +12,7 @@
 
 package scala.jdk.javaapi
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import scala.concurrent.impl.FutureConvertersImpl.{CF, P}
 import scala.concurrent.{ExecutionContext, Future}
