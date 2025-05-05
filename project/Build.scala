@@ -177,9 +177,8 @@ object Build {
    *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
-   *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
-  val mimaPreviousDottyVersion = "3.7.0-RC1"
+  val mimaPreviousDottyVersion = "3.7.0"
 
   /** LTS version against which we check binary compatibility.
    *
