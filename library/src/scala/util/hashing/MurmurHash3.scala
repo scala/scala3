@@ -13,6 +13,7 @@
 package scala
 package util.hashing
 
+import scala.language.`2`
 import java.lang.Integer.{ rotateLeft => rotl }
 
 private[hashing] class MurmurHash3 {

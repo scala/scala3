@@ -13,10 +13,7 @@
 package scala
 package util.hashing
 
-
-
-
-
+import scala.language.`2`
 
 /** A fast multiplicative hash by Phil Bagwell.
  */
