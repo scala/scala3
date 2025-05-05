@@ -140,7 +140,7 @@ class PcInlayHintsProvider(
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
       if isInScope(tpe) then tpe
-      else tpe.deepDealias(using indexedCtx.ctx)
+      else tpe.deepDealiasAndSimplify(using indexedCtx.ctx)
 
     val dealiased = optDealias(tpe)
     val tpeStr = printer.tpe(dealiased)

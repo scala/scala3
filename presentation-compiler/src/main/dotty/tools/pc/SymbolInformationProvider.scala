@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.pc.utils.InteractiveEnrichments.deepDealias
+import dotty.tools.pc.utils.InteractiveEnrichments.deepDealiasAndSimplify
 import dotty.tools.pc.SemanticdbSymbols
 import dotty.tools.pc.utils.InteractiveEnrichments.allSymbols
 import dotty.tools.pc.utils.InteractiveEnrichments.stripBackticks
@@ -51,7 +51,7 @@ class SymbolInformationProvider(using Context):
           collect(classSym)
           visited.toList.map(SemanticdbSymbols.symbolName)
         val dealisedSymbol =
-          if sym.isAliasType then sym.info.deepDealias.typeSymbol else sym
+          if sym.isAliasType then sym.info.deepDealiasAndSimplify.typeSymbol else sym
         val classOwner =
           sym.ownersIterator.drop(1).find(s => s.isClass || s.is(Flags.Module))
         val overridden = sym.denot.allOverriddenSymbols.toList

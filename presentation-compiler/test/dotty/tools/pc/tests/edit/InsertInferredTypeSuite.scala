@@ -970,6 +970,26 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `named-tuples` =
+    checkEdit(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def <<test>> =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test: (path : String, num : Int, line : Int) =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String

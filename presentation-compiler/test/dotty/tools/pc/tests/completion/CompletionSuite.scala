@@ -2041,6 +2041,21 @@ class CompletionSuite extends BaseCompletionSuite:
       filter = _.contains("name")
     )
 
+  @Test def `namedTuple-completions-2` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |def hello = (path = ".", num = 5)++ (line = 1)
+         |val hello2 = (path = ".", num = 5)++ (line = 1)
+         |
+         |@main def bla =
+         |   hello@@
+         |""".stripMargin,
+      """|hello2: (path : String, num : Int, line : Int)
+         |hello: (path : String, num : Int, line : Int)
+      """.stripMargin,
+    )
+
   @Test def `Selectable with namedTuple Fields member` =
     check(
       """|import scala.NamedTuple.*
