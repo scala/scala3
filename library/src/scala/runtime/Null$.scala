@@ -13,6 +13,8 @@
 package scala
 package runtime
 
+import scala.language.`2`
+
 /**
  * Dummy class which exist only to satisfy the JVM. It corresponds to
  * `scala.Null`. If such type appears in method signatures, it is erased

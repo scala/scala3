@@ -12,6 +12,8 @@
 
 package scala.runtime
 
+import scala.language.`2`
+
 /** Classes used as holders for lazy vals defined in methods. */
 
 @SerialVersionUID(1L)

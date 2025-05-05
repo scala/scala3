@@ -12,6 +12,8 @@
 
 package scala.runtime.java8
 
+import scala.language.`2`
+
 @FunctionalInterface trait JFunction0$mcZ$sp extends Function0[Any] with Serializable {
   def apply$mcZ$sp(): Boolean
   override def apply(): Any = scala.runtime.BoxesRunTime.boxToBoolean(apply$mcZ$sp())

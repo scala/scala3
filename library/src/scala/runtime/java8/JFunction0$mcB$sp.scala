@@ -12,6 +12,8 @@
 
 package scala.runtime.java8
 
+import scala.language.`2`
+
 @FunctionalInterface trait JFunction0$mcB$sp extends Function0[Any] with Serializable {
   def apply$mcB$sp(): Byte
   override def apply(): Any = scala.runtime.BoxesRunTime.boxToByte(apply$mcB$sp())

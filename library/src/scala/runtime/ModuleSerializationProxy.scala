@@ -12,6 +12,7 @@
 
 package scala.runtime
 
+import scala.language.`2`
 import java.io.Serializable
 import java.security.PrivilegedActionException
 import java.security.PrivilegedExceptionAction
