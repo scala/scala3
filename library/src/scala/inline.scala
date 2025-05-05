@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /**
  * An annotation for methods that the optimizer should inline.
  *

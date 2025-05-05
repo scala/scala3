@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** This class represents uninitialized variable/value errors.
  */
 // TODO: remove

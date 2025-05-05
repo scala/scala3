@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /**
  *  The `scala.language` object controls the language features available to the programmer, as proposed in the
  *  [[https://docs.google.com/document/d/1nlkvpoIRkx7at1qJEZafJwthZ3GeIklTFhqmXMvTX9Q/edit '''SIP-18 document''']].
