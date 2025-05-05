@@ -13,6 +13,8 @@
 package scala
 package runtime
 
+import scala.language.`2`
+
 final class RichLong(val self: Long) extends AnyVal with IntegralProxy[Long] {
   protected def num: scala.math.Numeric.LongIsIntegral.type = scala.math.Numeric.LongIsIntegral
   protected def ord: scala.math.Ordering.Long.type = scala.math.Ordering.Long

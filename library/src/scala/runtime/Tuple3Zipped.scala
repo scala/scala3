@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-
+import scala.language.`2`
 import scala.collection.{BuildFrom, IterableOps}
 import scala.language.implicitConversions
 

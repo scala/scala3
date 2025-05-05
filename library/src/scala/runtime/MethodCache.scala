@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-
+import scala.language.`2`
 import java.lang.reflect.{ Method => JMethod }
 import java.lang.{ Class => JClass }
 
