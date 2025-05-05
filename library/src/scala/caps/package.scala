@@ -22,7 +22,6 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
  * But even without capture checking, extending this trait can be useful for documenting the intended purpose
  * of a class.
  */
-@experimental
 trait Capability extends Any
 
 /** The universal capture reference. */
