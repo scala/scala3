@@ -556,6 +556,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.exists && curEnv.isOpen then
           markFree(capturedVars(sym).filter(isRetained), tree)
 
+    /** If `tp` (possibly after widening singletons) is an ExprType
+     *  of a parameterless method, map Result instances in it to Fresh instances
+     */
+    def mapResultRoots(tp: Type, sym: Symbol)(using Context): Type =
+      tp.widenSingleton match
+        case tp: ExprType if sym.is(Method) =>
+          root.resultToFresh(tp, root.Origin.ResultInstance(tp, sym))
+        case _ =>
+          tp
+
     /** Under the sealed policy, disallow the root capability in type arguments.
      *  Type arguments come either from a TypeApply node or from an AppliedType
      *  which represents a trait parent in a template.
@@ -618,7 +628,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if pathRef.derivesFrom(defn.Caps_Mutable) && pt.isValueType && !pt.isMutableType then
           pathRef = pathRef.readOnly
         markFree(sym, pathRef, tree)
-      super.recheckIdent(tree, pt)
+      mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
@@ -665,7 +675,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 |since its capture set ${qualType.captureSet} is read-only""",
             tree.srcPos)
 
-      val selType = recheckSelection(tree, qualType, name, disambiguate)
+      val selType = mapResultRoots(recheckSelection(tree, qualType, name, disambiguate), tree.symbol)
       val selWiden = selType.widen
 
       // Don't apply the rule
