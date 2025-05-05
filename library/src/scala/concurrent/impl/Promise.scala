@@ -11,6 +11,8 @@
  */
 
 package scala.concurrent.impl
+
+import scala.language.`2`
 import scala.concurrent.{Batchable, CanAwait, ExecutionContext, ExecutionException, Future, TimeoutException}
 import scala.concurrent.duration.Duration
 import scala.annotation.{nowarn, switch, tailrec}

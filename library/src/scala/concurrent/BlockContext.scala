@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import scala.language.`2`
+
 /**
  * A context to be notified by [[scala.concurrent.blocking]] when
  * a thread is about to block. In effect this trait provides
