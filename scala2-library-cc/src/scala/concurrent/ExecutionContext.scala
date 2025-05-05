@@ -294,5 +294,5 @@ object ExecutionContext {
    *
    *  @return the function for error reporting
    */
-  final val defaultReporter: Throwable => Unit = _.printStackTrace()
+  final val defaultReporter: Throwable -> Unit = _.printStackTrace()
 }

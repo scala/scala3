@@ -69,7 +69,7 @@ private[concurrent] object Promise {
     /**
      * Compresses this chain and returns the currently known root of this chain of Links.
      **/
-    final def promise(owner: DefaultPromise[T]^): DefaultPromise[T]^{cap.rd, this, to, owner} = {
+    final def promise(owner: DefaultPromise[T]^): DefaultPromise[T]^{to, owner} = {
       val c = get()
       compressed(current = c, target = c, owner = owner)
     }
@@ -77,7 +77,7 @@ private[concurrent] object Promise {
     /**
      * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
      **/
-    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T]^{cap.rd, this}, target: DefaultPromise[T]^, owner: DefaultPromise[T]^): DefaultPromise[T]^{this, current, target, owner} = {
+    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T]^{this, to}, target: DefaultPromise[T]^{cap, this, current}, owner: DefaultPromise[T]^): DefaultPromise[T]^{to, target, owner} = {
       val value = target.get()
       if (value.isInstanceOf[Callbacks[_]]) {
         if (compareAndSet(current, target)) target // Link
@@ -151,7 +151,7 @@ private[concurrent] object Promise {
         val buffer = new AtomicReference[Success[Any]]()
         val zipped = new DefaultPromise[R]()
 
-        val thisF: Try[T] => Unit = {
+        val thisF: Try[T] ->{f} Unit = {
           case left: Success[_] =>
             val right = buffer.getAndSet(left).asInstanceOf[Success[U]]
             if (right ne null)
@@ -160,7 +160,7 @@ private[concurrent] object Promise {
             zipped.tryComplete(f.asInstanceOf[Failure[R]])
         }
 
-        val thatF: Try[U] => Unit = {
+        val thatF: Try[U] ->{f} Unit = {
           case right: Success[_] =>
             val left = buffer.getAndSet(right).asInstanceOf[Success[T]]
             if (left ne null)
@@ -349,7 +349,7 @@ private[concurrent] object Promise {
 
     /** Link this promise to the root of another promise.
      */
-    @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T]^, link: Link[T]^): Unit =
+    @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T]^, link: Link[T]^{cap, target}): Unit =
       if (this ne target) {
         val state = get()
         if (state.isInstanceOf[Try[_]]) {
