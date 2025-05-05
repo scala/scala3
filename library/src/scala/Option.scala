@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 object Option {
 
   import scala.language.implicitConversions

@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** A marker trait that enables dynamic invocations. Instances `x` of this
  *  trait allow method invocations `x.meth(args)` for arbitrary method
  *  names `meth` and argument lists `args` as well as field accesses

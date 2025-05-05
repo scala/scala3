@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** A module defining utility methods for higher-order functional programming.
  */
 object Function {
