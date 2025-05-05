@@ -29,6 +29,9 @@
 9 |  val foo: IO^ -> IO^ = x => x // error // error
   |      ^
   |      error overriding value foo in trait Foo of type IO^ -> box IO^;
-  |        value foo of type IO^ -> IO^ has incompatible type
+  |        value foo of type IO^ -> IO^² has incompatible type
+  |
+  |      where:    ^  refers to the universal root capability
+  |                ^² refers to a fresh root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`

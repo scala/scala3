@@ -18,6 +18,9 @@
 17 |  def use(@consume x: F): File^ = x // error @consume override
    |      ^
    |      error overriding method use in trait Foo of type (x: File^): box File^;
-   |        method use of type (x: File^): File^ has incompatible type
+   |        method use of type (x: File^): File^² has incompatible type
+   |
+   |      where:    ^  refers to the universal root capability
+   |                ^² refers to a root capability associated with the result type of (x: File^): File^²
    |
    | longer explanation available when compiling with `-explain`

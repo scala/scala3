@@ -41,6 +41,17 @@ object Message:
       i"\n$what can be rewritten automatically under -rewrite $optionStr."
     else ""
 
+  enum Disambiguation:
+    case All
+    case AllExcept(strs: List[String])
+    case None
+
+    def recordOK(str: String): Boolean = this match
+      case All => true
+      case AllExcept(strs) => !strs.contains(str)
+      case None => false
+  end Disambiguation
+
   private type Recorded = Symbol | ParamRef | SkolemType | CaptureRef
 
   private case class SeenKey(str: String, isType: Boolean)
@@ -49,7 +60,7 @@ object Message:
    *  adds superscripts for disambiguations, and can explain recorded symbols
    *  in ` where` clause
    */
-  private class Seen(disambiguate: Boolean):
+  private class Seen(disambiguate: Disambiguation):
 
     /** The set of lambdas that were opened at some point during printing. */
     private val openedLambdas = new collection.mutable.HashSet[LambdaType]
@@ -63,12 +74,12 @@ object Message:
     var nonSensical = false
 
     /** If false, stop all recordings */
-    private var recordOK = disambiguate
+    private var disambi = disambiguate
 
     /** Clear all entries and stop further entries to be added */
     def disable() =
       seen.clear()
-      recordOK = false
+      disambi = Disambiguation.None
 
     /** Record an entry `entry` with given String representation `str` and a
      *  type/term namespace identified by `isType`.
@@ -77,59 +88,61 @@ object Message:
      *  and following recordings get consecutive superscripts starting with 2.
      *  @return  The possibly superscripted version of `str`.
      */
-    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String = if !recordOK then str else
-      //println(s"recording $str, $isType, $entry")
+    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String =
+      if disambi.recordOK(str) then
+        //println(s"recording $str, $isType, $entry")
 
-      /** If `e1` is an alias of another class of the same name, return the other
-       *  class symbol instead. This normalization avoids recording e.g. scala.List
-       *  and scala.collection.immutable.List as two different types
-       */
-      def followAlias(e1: Recorded): Recorded = e1 match {
-        case e1: Symbol if e1.isAliasType =>
-          val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
-          if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
-        case _ => e1
-      }
-      val key = SeenKey(str, isType)
-      val existing = seen(key)
-      lazy val dealiased = followAlias(entry)
+        /** If `e1` is an alias of another class of the same name, return the other
+         *  class symbol instead. This normalization avoids recording e.g. scala.List
+         *  and scala.collection.immutable.List as two different types
+         */
+        def followAlias(e1: Recorded): Recorded = e1 match {
+          case e1: Symbol if e1.isAliasType =>
+            val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
+            if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
+          case _ => e1
+        }
+        val key = SeenKey(str, isType)
+        val existing = seen(key)
+        lazy val dealiased = followAlias(entry)
 
-      /** All lambda parameters with the same name are given the same superscript as
-       *  long as their corresponding binder has been printed.
-       *  See tests/neg/lambda-rename.scala for test cases.
-       */
-      def sameSuperscript(cur: Recorded, existing: Recorded) =
-        (cur eq existing) ||
-        (cur, existing).match
-          case (cur: ParamRef, existing: ParamRef) =>
-            (cur.paramName eq existing.paramName) &&
-            openedLambdas.contains(cur.binder) &&
-            openedLambdas.contains(existing.binder)
-          case _ =>
-            false
+        /** All lambda parameters with the same name are given the same superscript as
+         *  long as their corresponding binder has been printed.
+         *  See tests/neg/lambda-rename.scala for test cases.
+         */
+        def sameSuperscript(cur: Recorded, existing: Recorded) =
+          (cur eq existing) ||
+          (cur, existing).match
+            case (cur: ParamRef, existing: ParamRef) =>
+              (cur.paramName eq existing.paramName) &&
+              openedLambdas.contains(cur.binder) &&
+              openedLambdas.contains(existing.binder)
+            case _ =>
+              false
 
-      // The length of alts corresponds to the number of superscripts we need to print.
-      var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
-      if alts.isEmpty then
-        alts = entry :: existing
-        seen(key) = alts
+        // The length of alts corresponds to the number of superscripts we need to print.
+        var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
+        if alts.isEmpty then
+          alts = entry :: existing
+          seen(key) = alts
 
-      val suffix = alts.length match {
-        case 1 => ""
-        case n => n.toString.toCharArray.map {
-          case '0' => '⁰'
-          case '1' => '¹'
-          case '2' => '²'
-          case '3' => '³'
-          case '4' => '⁴'
-          case '5' => '⁵'
-          case '6' => '⁶'
-          case '7' => '⁷'
-          case '8' => '⁸'
-          case '9' => '⁹'
-        }.mkString
-      }
-      str + suffix
+        val suffix = alts.length match {
+          case 1 => ""
+          case n => n.toString.toCharArray.map {
+            case '0' => '⁰'
+            case '1' => '¹'
+            case '2' => '²'
+            case '3' => '³'
+            case '4' => '⁴'
+            case '5' => '⁵'
+            case '6' => '⁶'
+            case '7' => '⁷'
+            case '8' => '⁸'
+            case '9' => '⁹'
+          }.mkString
+        }
+        str + suffix
+      else str
     end record
 
     /** Create explanation for single `Recorded` type or symbol */
@@ -394,13 +407,15 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
    */
   def isNonSensical: Boolean = { message; myIsNonSensical }
 
-  private var disambiguate: Boolean = true
+  private var disambiguate: Disambiguation = Disambiguation.All
 
-  def withoutDisambiguation(): this.type =
-    disambiguate = false
+  def withDisambiguation(disambi: Disambiguation): this.type =
+    disambiguate = disambi
     this
 
-  private def inMessageContext(disambiguate: Boolean)(op: Context ?=> String): String =
+  def withoutDisambiguation(): this.type = withDisambiguation(Disambiguation.None)
+
+  private def inMessageContext(disambiguate: Disambiguation)(op: Context ?=> String): String =
     if ctx eq NoContext then op
     else
       val msgContext = ctx.printer match
@@ -419,7 +434,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
 
   /** The explanation to report. <nonsensical> tags are filtered out */
   @threadUnsafe lazy val explanation: String =
-    inMessageContext(disambiguate = false)(explain)
+    inMessageContext(disambiguate = Disambiguation.None)(explain)
 
   /** The implicit `Context` in messages is a large thing that we don't want
     * persisted. This method gets around that by duplicating the message,
