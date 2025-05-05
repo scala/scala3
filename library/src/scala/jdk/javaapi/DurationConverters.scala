@@ -12,6 +12,7 @@
 
 package scala.jdk.javaapi
 
+import scala.language.`2`
 import java.time.temporal.ChronoUnit
 import java.time.{Duration => JDuration}
 import java.util.concurrent.TimeUnit

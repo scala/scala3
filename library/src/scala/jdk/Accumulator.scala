@@ -14,6 +14,7 @@ package scala.jdk
 
 import java.{lang => jl}
 
+import scala.language.`2`
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{Stepper, StepperShape, mutable}
 import scala.language.implicitConversions
