@@ -118,6 +118,8 @@ class CCState:
 
   private var capIsRoot: Boolean = false
 
+  private var treatFreshAsEqual: Boolean = false
+
 object CCState:
 
   opaque type Level = Int
@@ -161,5 +163,21 @@ object CCState:
 
   /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
   def capIsRoot(using Context): Boolean = ccState.capIsRoot
+
+  /** Run `op` under the assumption that all root.Fresh instances are equal.
+   *  Needed to make override checking of types containing fresh work.
+   *  Asserted in override checking, tested in maxSubsumes.
+   *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
+   */
+  inline def withTreatFreshAsEqual[T](op: => T)(using Context): T =
+    if isCaptureCheckingOrSetup then
+      val ccs = ccState
+      val saved = ccs.treatFreshAsEqual
+      ccs.treatFreshAsEqual = true
+      try op finally ccs.treatFreshAsEqual = saved
+    else op
+
+  /** Should all root.Fresh instances be treated equal? */
+  def treatFreshAsEqual(using Context): Boolean = ccState.treatFreshAsEqual
 
 end CCState

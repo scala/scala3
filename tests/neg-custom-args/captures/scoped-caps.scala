@@ -25,4 +25,4 @@ def test(io: Object^): Unit =
   val g2: A^ => B^ = ???
   val _: A^ => B^ = x => g2(x)  // error: g2(x): B^{g2, x}, and the `x` cannot be subsumed by fresh
   val g3: A^ => B^ = ???
-  val _: A^{io} => B^ = x => g3(x)  // ok, now g3(x): B^{g3, x}, which is widened to B^{g3, io}
+  val _: A^{io} => B^ = x => g3(x)  // error, fails level checking of fresh instances

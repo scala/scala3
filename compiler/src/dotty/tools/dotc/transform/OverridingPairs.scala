@@ -225,6 +225,8 @@ object OverridingPairs:
       )
     else
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-      || memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
+      ||
+      CCState.withTreatFreshAsEqual:
+        memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
 
 end OverridingPairs
