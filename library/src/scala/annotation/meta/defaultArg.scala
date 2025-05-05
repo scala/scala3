@@ -13,6 +13,8 @@
 package scala.annotation
 package meta
 
+import scala.language.`2`
+
 /**
  * This internal meta annotation is used by the compiler to support default annotation arguments.
  *

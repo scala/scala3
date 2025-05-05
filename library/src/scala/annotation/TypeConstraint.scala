@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2`
+
 /** A marker for annotations that, when applied to a type, should be treated
  *  as a constraint on the annotated type.
  *

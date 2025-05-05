@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2`
+
 /**
  * A base class for static annotations. These are available to the Scala type checker or Scala
  * reflection, even across different compilation units.
