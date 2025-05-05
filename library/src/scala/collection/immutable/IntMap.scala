@@ -13,6 +13,7 @@
 package scala.collection
 package immutable
 
+import scala.language.`2`
 import scala.collection.generic.{BitOperations, DefaultSerializationProxy}
 import scala.collection.mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec

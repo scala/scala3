@@ -13,6 +13,7 @@
 package scala
 package collection.mutable
 
+import scala.language.`2`
 
 /** The canonical builder for collections that are growable, i.e. that support an
   * efficient `+=` method which adds an element to the collection.

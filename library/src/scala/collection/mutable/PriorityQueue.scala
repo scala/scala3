@@ -13,6 +13,7 @@
 package scala.collection
 package mutable
 
+import scala.language.`2`
 import scala.collection.generic.DefaultSerializationProxy
 import scala.math.Ordering
 

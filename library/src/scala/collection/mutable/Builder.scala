@@ -12,6 +12,8 @@
 
 package scala.collection.mutable
 
+import scala.language.`2`
+
 /** Base trait for collection builders.
   *
   * After calling `result()` the behavior of a Builder (which is not also a [[scala.collection.mutable.ReusableBuilder]])

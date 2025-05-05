@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2`
 import scala.annotation.tailrec
 
 /** This class implements an immutable map that preserves order using

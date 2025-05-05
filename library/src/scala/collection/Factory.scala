@@ -13,6 +13,7 @@
 package scala
 package collection
 
+import scala.language.`2`
 import scala.collection.immutable.NumericRange
 import scala.language.implicitConversions
 import scala.collection.mutable.Builder

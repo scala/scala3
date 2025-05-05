@@ -13,6 +13,7 @@
 package scala.collection
 package immutable
 
+import scala.language.`2`
 import scala.Predef.{wrapString => _, assert}
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl.CharStringStepper

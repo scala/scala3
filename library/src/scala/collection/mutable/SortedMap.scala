@@ -13,6 +13,7 @@
 package scala
 package collection.mutable
 
+import scala.language.`2`
 import scala.collection.{SortedMapFactory, SortedMapFactoryDefaults}
 
 /**

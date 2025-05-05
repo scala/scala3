@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2`
 
 package object immutable {
   type StringOps = scala.collection.StringOps

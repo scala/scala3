@@ -14,6 +14,7 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2`
 import java.util.Arrays
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
