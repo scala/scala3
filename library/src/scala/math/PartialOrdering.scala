@@ -13,6 +13,8 @@
 package scala
 package math
 
+import scala.language.`2`
+
 /** A trait for representing partial orderings.  It is important to
  *  distinguish between a type that has a partial order and a representation
  *  of partial ordering on some type.  This trait is for representing the

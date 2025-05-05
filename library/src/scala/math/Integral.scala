@@ -13,6 +13,7 @@
 package scala
 package math
 
+import scala.language.`2`
 import scala.language.implicitConversions
 
 trait Integral[T] extends Numeric[T] {

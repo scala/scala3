@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** The package object `scala.math` contains methods for performing basic
   * numeric operations such as elementary exponential, logarithmic, root and
   * trigonometric functions.

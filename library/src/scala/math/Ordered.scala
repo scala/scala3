@@ -13,6 +13,7 @@
 package scala
 package math
 
+import scala.language.`2`
 import scala.language.implicitConversions
 
 /** A trait for data that have a single, natural ordering.  See
