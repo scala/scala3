@@ -2109,10 +2109,9 @@ class Definitions {
    */
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
-    Caps_Capability, // TODO: Remove when Capability is stabilized
     RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass, UseAnnot,
-    Caps_Mutable, Caps_Sharable, Caps_Control, Caps_Classifier, ConsumeAnnot,
+    Caps_Mutable/* , Caps_Sharable, Caps_Control, Caps_Classifier -- already stable*/, ConsumeAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
