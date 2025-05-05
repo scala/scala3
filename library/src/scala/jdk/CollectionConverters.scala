@@ -12,6 +12,7 @@
 
 package scala.jdk
 
+import scala.language.`2`
 import scala.collection.convert.{AsJavaExtensions, AsScalaExtensions}
 
 /** This object provides extension methods that convert between Scala and Java collections.
