@@ -1248,7 +1248,7 @@ object Build {
         Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions ++= Seq("-source", "2"),
+      scalacOptions ++= Seq("-source", "2.13"),
       scalacOptions += "-Yscala2-unpickler:never",
       scalacOptions += "-Werror:false",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,

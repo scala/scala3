@@ -1,6 +1,6 @@
 [[syntax trees at end of                 posttyper]] // tests/printing/posttyper/i22533.scala
 package scala {
-  import scala.language.2
+  import scala.language.2.13
   @SourceFile("tests/printing/posttyper/i22533.scala") trait A() extends Any {
     override def equals(x: Any): Boolean = ???
     override def hashCode(): Int = ???

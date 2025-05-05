@@ -17,7 +17,7 @@ enum SourceVersion:
   case `3.7-migration`, `3.7`
   case `3.8-migration`, `3.8`
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
-  case `2`
+  case `2.13`
   case `future-migration`, `future`
 
   case `never`    // needed for MigrationVersion.errorFrom if we never want to issue an error
@@ -40,7 +40,7 @@ enum SourceVersion:
   def enablesNamedTuples = isAtLeast(`3.7`)
   def enablesBetterFors(using Context) = isAtLeast(`3.7`) && isPreviewEnabled
 
-  def isScala2 = this == `2`
+  def isScala2 = this == `2.13`
 
 object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.7`
