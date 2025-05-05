@@ -13,6 +13,8 @@
 package scala
 package math
 
+import scala.language.`2`
+
 /** A slightly more specific conversion trait for classes which
  *  extend ScalaNumber (which excludes value classes.)
  */
