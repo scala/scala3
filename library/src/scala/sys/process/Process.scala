@@ -14,6 +14,7 @@ package scala
 package sys
 package process
 
+import scala.language.`2`
 import processInternal._
 import ProcessBuilder._
 import scala.language.implicitConversions
