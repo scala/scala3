@@ -16,6 +16,9 @@
 //
 package scala.sys
 package process
+
+import scala.language.`2`
+
   /** This package handles the execution of external processes.  The contents of
     * this package can be divided in three groups, according to their
     * responsibilities:

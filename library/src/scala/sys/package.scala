@@ -12,6 +12,7 @@
 
 package scala
 
+import scala.language.`2`
 import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
 
