@@ -14,7 +14,9 @@ import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.VarState
 import Annotations.Annotation
+import Flags.*
 import config.Printers.capt
+import CCState.{Level, undefinedLevel}
 
 object CaptureRef:
   opaque type Validity = Int
@@ -104,6 +106,10 @@ trait CaptureRef extends TypeProxy, ValueType:
   /** Is this reference a Fresh instance? */
   final def isFresh(using Context): Boolean = this match
     case root.Fresh(_) => true
+    case _ => false
+
+  final def isResultRoot(using Context): Boolean = this match
+    case root.Result(_) => true
     case _ => false
 
   /** Is this reference the generic root capability `cap` or a Fresh instance? */
@@ -287,13 +293,21 @@ trait CaptureRef extends TypeProxy, ValueType:
       case _ => false
     (this eq y)
     || this.match
-      case root.Fresh(hidden) =>
-        vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
-        || !y.stripReadOnly.isCap
+      case x @ root.Fresh(hidden) =>
+        def levelOK =
+          if ccConfig.useFreshLevels then
+            val yOwner = y.adjustedOwner
+            yOwner.isStatic || x.ccOwner.isContainedIn(yOwner)
+          else
+            !y.stripReadOnly.isCap
             && !yIsExistential
             && !y.isInstanceOf[ParamRef]
+
+        vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
+        || levelOK
             && canAddHidden
             && vs.addHidden(hidden, y)
+        || ccConfig.useFreshLevels && CCState.treatFreshAsEqual && y.stripReadOnly.isFresh
       case x @ root.Result(binder) =>
         val result = y match
           case y @ root.Result(_) => vs.unify(x, y)

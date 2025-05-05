@@ -1158,12 +1158,19 @@ object CaptureSet:
      *  substBinder when comparing two method types. In that case we can unify
      *  the two roots1, provided none of the two roots have already been unified
      *  themselves. So unification must be 1-1.
+     *
+     *  Note, see (**) below: We also allow unifications of results that have different ExprType
+     *  binders. This is necessary because ExprTypes don't get updated with SubstBindingMaps.
+     *  It's sound since ExprTypes always appear alone and at the top-level, so there is
+     *  no problem with confusing results at different levels.
+     *  See pos-customargs/captures/overrides.scala for a test case.
      */
     def unify(root1: root.Result, root2: root.Result)(using Context): Boolean =
       (root1, root2) match
         case (root1 @ root.Result(binder1), root2 @ root.Result(binder2))
         if ((binder1 eq binder2)
-            || binder1.isInstanceOf[ExprType] && binder2.isInstanceOf[ExprType])
+            || binder1.isInstanceOf[ExprType] && binder2.isInstanceOf[ExprType] // (**)
+            )
           && (root1.rootAnnot.originalBinder ne root2.rootAnnot.originalBinder)
           && eqResultMap(root1) == null
           && eqResultMap(root2) == null
