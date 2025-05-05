@@ -103,7 +103,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.0-RC4"
+  val referenceVersion = "3.7.1-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -141,9 +141,8 @@ object Build {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimetnal
    */
-  val expectedTastyVersion = "28.7-experimental-1"
-  // TODO: Restore test when upgrading reference compiler to 3.7.0 stable
-  // checkReleasedTastyVersion()
+  val expectedTastyVersion = "28.8-experimental-1"
+  checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
@@ -177,9 +176,8 @@ object Build {
    *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
-   *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
-  val mimaPreviousDottyVersion = "3.7.0-RC1"
+  val mimaPreviousDottyVersion = "3.7.0"
 
   /** LTS version against which we check binary compatibility.
    *
