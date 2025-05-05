@@ -15,6 +15,8 @@ package scala
 import java.lang.reflect.{AccessibleObject => jAccessibleObject}
 import scala.annotation.nowarn
 
+import scala.language.`2`
+
 package object reflect {
 
   // in the new scheme of things ClassManifests are aliased to ClassTags

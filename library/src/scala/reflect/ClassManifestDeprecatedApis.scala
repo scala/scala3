@@ -13,6 +13,7 @@
 package scala
 package reflect
 
+import scala.language.`2`
 import scala.collection.mutable.{ArrayBuilder, ArraySeq}
 import java.lang.{Class => jClass}
 
