@@ -30,11 +30,11 @@ final class PcConvertToNamedLambdaParameters(
   import PcConvertToNamedLambdaParameters._
 
   def convertToNamedLambdaParameters: ju.List[l.TextEdit] = {
-    val uri = params.uri
+    val uri = params.uri.nn
     val filePath = Paths.get(uri)
     driver.run(
       uri,
-      SourceFile.virtual(filePath.toString, params.text),
+      SourceFile.virtual(filePath.toString, params.text.nn),
     )
     given newctx: Context = driver.localContext(params)
     val pos = driver.sourcePosition(params)
