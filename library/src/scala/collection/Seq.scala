@@ -74,7 +74,7 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
   * @define coll sequence
   * @define Coll `Seq`
   */
-trait SeqOps[+A, +CC[_], +C] extends Any
+transparent trait SeqOps[+A, +CC[_], +C] extends Any
   with IterableOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)

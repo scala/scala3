@@ -24,7 +24,7 @@ trait IndexedSeq[T] extends Seq[T]
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](ArrayBuffer)
 
-trait IndexedSeqOps[A, +CC[_], +C <: AnyRef]
+transparent trait IndexedSeqOps[A, +CC[_], +C <: AnyRef]
   extends scala.collection.IndexedSeqOps[A, CC, C]
     with SeqOps[A, CC, C] {
 
