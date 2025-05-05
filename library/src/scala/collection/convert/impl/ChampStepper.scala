@@ -13,6 +13,7 @@
 package scala.collection.convert
 package impl
 
+import scala.language.`2`
 import scala.collection.Stepper.EfficientSplit
 import scala.collection._
 import scala.collection.immutable.Node

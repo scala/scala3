@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2`
 import java.util.{concurrent => juc}
 import java.{lang => jl, util => ju}
 

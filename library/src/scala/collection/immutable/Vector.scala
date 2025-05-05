@@ -13,6 +13,7 @@
 package scala.collection
 package immutable
 
+import scala.language.`2`
 import java.lang.Math.{abs, max => mmax, min => mmin}
 import java.util.Arrays.{copyOf, copyOfRange}
 import java.util.{Arrays, Spliterator}

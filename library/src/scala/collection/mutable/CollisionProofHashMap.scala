@@ -13,6 +13,7 @@
 package scala.collection
 package mutable
 
+import scala.language.`2`
 import scala.{unchecked => uc}
 import scala.annotation.{implicitNotFound, tailrec, unused}
 import scala.annotation.unchecked.uncheckedVariance

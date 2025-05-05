@@ -12,6 +12,8 @@
 
 package scala.collection
 package mutable
+
+import scala.language.`2`
 import java.util.Arrays
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl._

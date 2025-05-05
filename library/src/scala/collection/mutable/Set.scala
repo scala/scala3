@@ -12,6 +12,7 @@
 
 package scala.collection.mutable
 
+import scala.language.`2`
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOps}
 
 /** Base trait for mutable sets */

@@ -12,6 +12,7 @@
 
 package scala.collection.mutable
 
+import scala.language.`2`
 
 /** A trait for mutable maps with multiple values assigned to a key.
   *

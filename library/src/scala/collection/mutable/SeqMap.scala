@@ -14,6 +14,8 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2`
+
 /**
   * A generic trait for ordered mutable maps. Concrete classes have to provide
   * functionality for the abstract methods in `SeqMap`.

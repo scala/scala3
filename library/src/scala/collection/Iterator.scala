@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2`
 import scala.collection.mutable.{ArrayBuffer, ArrayBuilder, Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
