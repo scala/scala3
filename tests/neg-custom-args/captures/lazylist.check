@@ -39,4 +39,6 @@
    |      error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];
    |        method tail of type -> lazylists.LazyList[Nothing]^ has incompatible type
    |
+   |      where:    ^ refers to a fresh root capability in the result type of method tail
+   |
    | longer explanation available when compiling with `-explain`

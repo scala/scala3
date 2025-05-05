@@ -23,7 +23,7 @@ import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
-import printing.Formatting.hl
+import Formatting.{hl, delay}
 import ast.Trees.*
 import ast.untpd
 import ast.tpd
@@ -37,6 +37,7 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
+import Message.Disambiguation
 
 /**  Messages
   *  ========
@@ -1172,6 +1173,7 @@ class OverrideError(
     member: Symbol, other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
+  withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
       (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
@@ -1181,8 +1183,8 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
             |(Note that ${err.infoStringWithLocation(other, base)} is abstract,
             |and is therefore overridden by concrete ${err.infoStringWithLocation(member, base)})"""
         else ""
-    i"""error overriding ${err.infoStringWithLocation(other, base)};
-        |  ${err.infoString(member, base, showLocation = member.owner != base.typeSymbol)} $core$addendum"""
+    i"""error overriding ${delay(err.infoStringWithLocation(other, base))};
+        |  ${delay(err.infoString(member, base, showLocation = member.owner != base.typeSymbol))} $core$addendum"""
   override def canExplain =
     memberTp.exists && otherTp.exists
   def explain(using Context) =
