@@ -320,7 +320,7 @@ object IterableOnce {
   * @define exactlyOnce
   *              Each element appears exactly once in the computation.
   */
-trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
+transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
 
   /** Produces a $coll containing cumulative results of applying the

@@ -19,7 +19,7 @@ package scala.collection
   * @tparam CC Collection type constructor
   * @tparam C  Collection type
   */
-trait StrictOptimizedSetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
+transparent trait StrictOptimizedSetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   extends SetOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 

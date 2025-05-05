@@ -30,7 +30,7 @@ trait Set[A] extends Iterable[A]
   * @define coll immutable set
   * @define Coll `immutable.Set`
   */
-trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
+transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends collection.SetOps[A, CC, C] {
 
   /** Creates a new set with an additional element, unless the element is
@@ -71,7 +71,7 @@ trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   override final def -- (that: IterableOnce[A]): C = removedAll(that)
 }
 
-trait StrictOptimizedSetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
+transparent trait StrictOptimizedSetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends SetOps[A, CC, C]
     with collection.StrictOptimizedSetOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {

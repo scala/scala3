@@ -109,7 +109,7 @@ package generic
  * (Note that in practice the `IsIterable[Range]` instance is already provided by
  * the standard library, and it is defined as an `IsSeq[Range]` instance)
  */
-trait IsIterable[Repr] extends IsIterableOnce[Repr] {
+transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
 
   /** The type returned by transformation operations that preserve the same elements
     * type (e.g. `filter`, `take`).
@@ -149,7 +149,7 @@ object IsIterable extends IsIterableLowPriority {
 
 }
 
-trait IsIterableLowPriority {
+transparent trait IsIterableLowPriority {
 
   // Makes `IsSeq` instances visible in `IsIterable` companion
   implicit def isSeqLikeIsIterable[Repr](implicit

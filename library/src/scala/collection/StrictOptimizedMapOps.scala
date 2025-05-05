@@ -20,7 +20,7 @@ package scala.collection
   * @tparam CC Collection type constructor
   * @tparam C  Collection type
   */
-trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
+transparent trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   extends MapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {
 

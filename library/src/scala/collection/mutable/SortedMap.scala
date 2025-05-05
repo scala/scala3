@@ -51,7 +51,7 @@ trait SortedMap[K, V]
   override def withDefaultValue(d: V): SortedMap[K, V] = new SortedMap.WithDefault[K, V](this, _ => d)
 }
 
-trait SortedMapOps[K, V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
+transparent trait SortedMapOps[K, V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
   extends collection.SortedMapOps[K, V, CC, C]
     with MapOps[K, V, Map, C] {
 
