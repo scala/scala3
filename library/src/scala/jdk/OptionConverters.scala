@@ -12,7 +12,7 @@
 
 package scala.jdk
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.{Optional, OptionalDouble, OptionalInt, OptionalLong}
 
 /** This object provides extension methods that convert between Scala `Option` and Java `Optional`

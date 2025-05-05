@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** This class represents uninitialized variable/value errors.
  */

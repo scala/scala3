@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A type for which there is always an implicit value. */
 final class DummyImplicit private ()

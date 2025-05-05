@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A method annotation which verifies that the method will be compiled
  *  with tail call optimization.

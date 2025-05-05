@@ -14,7 +14,7 @@ package scala
 package collection
 package immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 trait Seq[+A] extends Iterable[A]
                  with collection.Seq[A]

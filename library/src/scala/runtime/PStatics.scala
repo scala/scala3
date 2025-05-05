@@ -12,7 +12,7 @@
 
 package scala.runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 // things that should be in `Statics`, but can't be yet for bincompat reasons
 // TODO 3.T: move to `Statics`

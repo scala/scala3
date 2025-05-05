@@ -12,7 +12,7 @@
 
 package scala.ref
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * @see `java.lang.ref.Reference`

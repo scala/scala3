@@ -13,7 +13,7 @@
 package scala
 package collection
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.tailrec
 
 /** A module containing the implementations of parsers from strings to numeric types, and boolean

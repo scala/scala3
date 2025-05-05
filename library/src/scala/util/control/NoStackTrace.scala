@@ -13,7 +13,7 @@
 package scala
 package util.control
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A trait for exceptions which, for efficiency reasons, do not
  *  fill in the stack trace.  Stack trace suppression can be disabled

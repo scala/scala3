@@ -16,7 +16,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** `Short`, a 16-bit signed integer (equivalent to Java's `short` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Short` are not

@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.{AbstractIterator, AnyConstr, SortedOps, StrictOptimizedIterableOps, StringOps, StringView, View}
 import scala.collection.generic.IsIterable
 import scala.collection.immutable.{ArraySeq, NumericRange}

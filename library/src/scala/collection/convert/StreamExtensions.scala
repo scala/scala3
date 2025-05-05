@@ -12,7 +12,7 @@
 
 package scala.collection.convert
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.Spliterator
 import java.util.stream._
 import java.{lang => jl}

@@ -13,7 +13,7 @@
 package scala
 package sys
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.language.implicitConversions
 
 /** A few additional conveniences for Boolean properties.

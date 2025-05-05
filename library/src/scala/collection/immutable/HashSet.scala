@@ -14,7 +14,7 @@ package scala
 package collection
 package immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.lang.Integer.{bitCount, numberOfTrailingZeros}
 import java.lang.System.arraycopy
 

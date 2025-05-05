@@ -12,7 +12,7 @@
 
 package scala.concurrent
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A `DelayedLazyVal` is a wrapper for lengthy computations which have a
  *  valid partially computed result.

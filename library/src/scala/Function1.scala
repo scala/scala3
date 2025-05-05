@@ -14,7 +14,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 object Function1 {
 

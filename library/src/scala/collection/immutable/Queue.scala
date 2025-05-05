@@ -13,7 +13,7 @@
 package scala.collection
 package immutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{Builder, ListBuffer}
 

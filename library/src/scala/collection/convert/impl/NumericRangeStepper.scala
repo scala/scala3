@@ -13,7 +13,7 @@
 package scala.collection.convert
 package impl
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.{AnyStepper, IntStepper, LongStepper, Stepper}
 import scala.collection.immutable.NumericRange
 

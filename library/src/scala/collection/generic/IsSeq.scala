@@ -13,7 +13,7 @@
 package scala.collection
 package generic
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.reflect.ClassTag
 
 /** Type class witnessing that a collection representation type `Repr` has

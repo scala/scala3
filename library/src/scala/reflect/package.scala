@@ -15,7 +15,7 @@ package scala
 import java.lang.reflect.{AccessibleObject => jAccessibleObject}
 import scala.annotation.nowarn
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 package object reflect {
 

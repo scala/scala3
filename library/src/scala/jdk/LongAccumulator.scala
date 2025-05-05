@@ -22,7 +22,7 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AnyStepper, Factory, LongStepper, SeqFactory, Stepper, StepperShape, mutable}
 import scala.language.implicitConversions
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A specialized Accumulator that holds `Long`s without boxing, see [[Accumulator]]. */
 final class LongAccumulator

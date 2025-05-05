@@ -12,7 +12,7 @@
 
 package scala.annotation.meta
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * When defining an implicit class, the Scala compiler creates an implicit

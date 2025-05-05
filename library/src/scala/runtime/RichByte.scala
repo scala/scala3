@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 final class RichByte(val self: Byte) extends AnyVal with ScalaWholeNumberProxy[Byte] {
   protected def num: scala.math.Numeric.ByteIsIntegral.type = scala.math.Numeric.ByteIsIntegral

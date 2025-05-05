@@ -13,7 +13,7 @@
 package scala
 package collection
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.{implicitNotFound, nowarn}
 
 /** A Map whose keys are sorted according to a [[scala.math.Ordering]]*/

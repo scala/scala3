@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  *  The `scala.language` object controls the language features available to the programmer, as proposed in the

@@ -16,7 +16,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** `Boolean` (equivalent to Java's `boolean` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Boolean` are not

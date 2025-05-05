@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * Annotation classes extending this trait only accept constant values as arguments.

@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 final class RichChar(val self: Char) extends AnyVal with IntegralProxy[Char] {
   protected def num: scala.math.Numeric.CharIsIntegral.type = scala.math.Numeric.CharIsIntegral

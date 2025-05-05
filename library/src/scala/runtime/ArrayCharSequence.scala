@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 // Still need this one since the implicit class ArrayCharSequence only converts
 // a single argument.

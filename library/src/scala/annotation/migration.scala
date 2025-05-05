@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * An annotation that marks a member as having changed semantics

@@ -12,7 +12,7 @@
 
 package scala.util
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.util.control.{ControlThrowable, NonFatal}
 
 /** A utility for performing automatic resource management. It can be used to perform an

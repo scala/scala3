@@ -13,7 +13,7 @@
 package scala.collection
 package mutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.mutable.ArrayBuffer.resizeUp
 import scala.reflect.ClassTag
 

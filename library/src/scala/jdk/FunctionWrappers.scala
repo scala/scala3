@@ -15,7 +15,7 @@
 
 package scala.jdk
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 object FunctionWrappers {
   case class FromJavaBiConsumer[T, U](jf: java.util.function.BiConsumer[T, U]) extends scala.Function2[T, U, Unit] {

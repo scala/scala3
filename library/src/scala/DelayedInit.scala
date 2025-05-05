@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** Classes and objects (but note, not traits) inheriting the `DelayedInit`
  *  marker trait will have their initialization code rewritten as follows:

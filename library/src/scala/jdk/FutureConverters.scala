@@ -12,7 +12,7 @@
 
 package scala.jdk
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.concurrent.CompletionStage
 
 import scala.concurrent.Future

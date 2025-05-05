@@ -13,7 +13,7 @@
 package scala
 package runtime
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** `AbstractPartialFunction` reformulates all operations of its supertrait `PartialFunction`
  *  in terms of `isDefinedAt` and `applyOrElse`.

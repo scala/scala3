@@ -13,7 +13,7 @@
 package scala
 package sys
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.{mutable, Iterator}
 import scala.jdk.CollectionConverters._
 import java.security.AccessControlException

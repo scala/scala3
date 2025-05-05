@@ -12,7 +12,7 @@
 
 package scala.collection.mutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.{migration, nowarn}
 import scala.collection.generic.DefaultSerializable
 import scala.collection.{IterableFactoryDefaults, IterableOnce, SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}

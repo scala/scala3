@@ -12,7 +12,7 @@
 
 package scala.collection
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.collection.immutable.Range
 import scala.util.hashing.MurmurHash3
 import Searching.{Found, InsertionPoint, SearchResult}

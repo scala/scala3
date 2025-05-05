@@ -13,7 +13,7 @@
 package scala
 package sys
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A lightweight interface wrapping a property contained in some
  *  unspecified map.  Generally it'll be the system properties but this

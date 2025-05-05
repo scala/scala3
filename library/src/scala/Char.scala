@@ -16,7 +16,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** `Char`, a 16-bit unsigned integer (equivalent to Java's `char` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Char` are not
