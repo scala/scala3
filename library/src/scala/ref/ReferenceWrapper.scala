@@ -12,6 +12,7 @@
 
 package scala.ref
 
+import scala.language.`2`
 import scala.annotation.nowarn
 
 @nowarn("cat=deprecation")

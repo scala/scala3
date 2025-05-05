@@ -12,6 +12,8 @@
 
 package scala.ref
 
+import scala.language.`2`
+
 class ReferenceQueue[+T <: AnyRef] {
 
   private[ref] val underlying: java.lang.ref.ReferenceQueue[_ <: T] = new java.lang.ref.ReferenceQueue[T]

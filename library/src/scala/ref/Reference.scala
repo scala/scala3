@@ -12,6 +12,8 @@
 
 package scala.ref
 
+import scala.language.`2`
+
 /**
  * @see `java.lang.ref.Reference`
  */
