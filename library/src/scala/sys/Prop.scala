@@ -13,6 +13,8 @@
 package scala
 package sys
 
+import scala.language.`2`
+
 /** A lightweight interface wrapping a property contained in some
  *  unspecified map.  Generally it'll be the system properties but this
  *  is not a requirement.

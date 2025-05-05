@@ -13,6 +13,8 @@
 package scala
 package sys
 
+import scala.language.`2`
+
 /** A minimal Thread wrapper to enhance shutdown hooks.  It knows
  *  how to unregister itself.
  */
