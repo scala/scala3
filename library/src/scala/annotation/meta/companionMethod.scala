@@ -12,6 +12,8 @@
 
 package scala.annotation.meta
 
+import scala.language.`2`
+
 /**
  * When defining an implicit class, the Scala compiler creates an implicit
  * conversion method for it. Annotations `@companionClass` and `@companionMethod`

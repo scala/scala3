@@ -12,6 +12,8 @@
 
 package scala.annotation.meta
 
+import scala.language.`2`
+
 /**
  * Consult the documentation in package [[scala.annotation.meta]].
  */
