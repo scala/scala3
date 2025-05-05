@@ -13,10 +13,7 @@
 package scala
 package util
 
-
-
-
-
+import scala.language.`2`
 
 package object hashing {
 

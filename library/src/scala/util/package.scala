@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 package object util {
   /**
    * Adds chaining methods `tap` and `pipe` to every type. See [[ChainingOps]].

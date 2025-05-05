@@ -13,6 +13,7 @@
 package scala
 package util
 
+import scala.language.`2`
 import scala.language.implicitConversions
 
 trait ChainingSyntax {

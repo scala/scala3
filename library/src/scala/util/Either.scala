@@ -13,6 +13,8 @@
 package scala
 package util
 
+import scala.language.`2`
+
 /** Represents a value of one of two possible types (a disjoint union).
  *  An instance of `Either` is an instance of either [[scala.util.Left]] or [[scala.util.Right]].
  *

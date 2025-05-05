@@ -13,6 +13,7 @@
 package scala
 package util.hashing
 
+import scala.language.`2`
 import scala.annotation.implicitNotFound
 
 /** `Hashing` is a trait whose instances each represent a strategy for hashing

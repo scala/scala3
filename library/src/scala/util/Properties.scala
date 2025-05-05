@@ -13,6 +13,7 @@
 package scala
 package util
 
+import scala.language.`2`
 import java.io.{IOException, PrintWriter}
 import java.util.jar.Attributes.{Name => AttributeName}
 import scala.annotation.tailrec
