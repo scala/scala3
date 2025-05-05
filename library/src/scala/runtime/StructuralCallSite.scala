@@ -12,6 +12,7 @@
 
 package scala.runtime
 
+import scala.language.`2`
 import java.lang.invoke._
 import java.lang.ref.SoftReference
 import java.lang.reflect.Method

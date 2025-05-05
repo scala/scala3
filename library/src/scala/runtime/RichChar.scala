@@ -13,6 +13,8 @@
 package scala
 package runtime
 
+import scala.language.`2`
+
 final class RichChar(val self: Char) extends AnyVal with IntegralProxy[Char] {
   protected def num: scala.math.Numeric.CharIsIntegral.type = scala.math.Numeric.CharIsIntegral
   protected def ord: scala.math.Ordering.Char.type = scala.math.Ordering.Char

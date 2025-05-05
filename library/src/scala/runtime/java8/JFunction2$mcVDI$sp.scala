@@ -12,6 +12,8 @@
 
 package scala.runtime.java8
 
+import scala.language.`2`
+
 @FunctionalInterface trait JFunction2$mcVDI$sp extends Function2[Any, Any, Any] with Serializable {
   def apply$mcVDI$sp(v1: Double, v2: Int): Unit
   override def apply(v1: Any, v2: Any): Any = {
