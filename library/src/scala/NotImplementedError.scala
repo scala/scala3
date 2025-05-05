@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** Throwing this exception can be a temporary replacement for a method
  *  body that remains to be implemented. For instance, the exception is thrown by

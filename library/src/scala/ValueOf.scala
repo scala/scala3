@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * `ValueOf[T]` provides the unique value of the type `T` where `T` is a type which has a

@@ -13,7 +13,7 @@
 package scala
 package collection
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.lang.{StringBuilder => JStringBuilder}
 
 import scala.collection.Stepper.EfficientSplit

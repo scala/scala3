@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * When defining a field, the Scala compiler creates up to four accessors

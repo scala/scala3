@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.meta._
 
 /** An annotation that designates that inheriting from a class is deprecated.

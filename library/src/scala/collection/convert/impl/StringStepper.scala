@@ -13,7 +13,7 @@
 package scala.collection.convert
 package impl
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.lang.Character.{charCount, isLowSurrogate}
 import java.util.Spliterator
 

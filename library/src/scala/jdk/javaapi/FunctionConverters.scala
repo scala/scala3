@@ -15,7 +15,7 @@
 
 package scala.jdk.javaapi
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** This object contains methods that convert between Scala and Java function types.
   *

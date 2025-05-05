@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
   * To customize the error message that's emitted when an implicit search finds

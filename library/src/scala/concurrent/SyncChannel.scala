@@ -12,7 +12,7 @@
 
 package scala.concurrent
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A `SyncChannel` allows one to exchange data synchronously between
  *  a reader and a writer thread. The writer thread is blocked until the

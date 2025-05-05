@@ -14,7 +14,7 @@ package scala
 package collection
 package mutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** Base type of mutable Maps */
 trait Map[K, V]

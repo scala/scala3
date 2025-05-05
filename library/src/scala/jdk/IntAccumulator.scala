@@ -22,7 +22,7 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AnyStepper, Factory, IntStepper, SeqFactory, Stepper, StepperShape, mutable}
 import scala.language.implicitConversions
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A specialized Accumulator that holds `Int`s without boxing, see [[Accumulator]]. */
 final class IntAccumulator

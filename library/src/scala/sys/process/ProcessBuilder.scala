@@ -14,7 +14,7 @@ package scala
 package sys
 package process
 
-import scala.language.`2`
+import scala.language.`2.13`
 import processInternal._
 import ProcessBuilder.{Sink, Source}
 

@@ -13,7 +13,7 @@
 package scala
 package util.control
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /**
  * Extractor of non-fatal Throwables. Will not match fatal errors like `VirtualMachineError`

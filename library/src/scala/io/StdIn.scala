@@ -13,7 +13,7 @@
 package scala
 package io
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.text.MessageFormat
 
 /** private[scala] because this is not functionality we should be providing

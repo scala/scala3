@@ -12,7 +12,7 @@
 
 package scala.beans
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 import scala.annotation.meta.{beanGetter, beanSetter, field}
 

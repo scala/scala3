@@ -12,7 +12,7 @@
 
 package scala.annotation
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** An annotation to be applied to a match expression.  If present,
  *  the compiler will verify that the match has been compiled to a

@@ -12,7 +12,7 @@
 
 package scala.annotation.unchecked
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** An annotation for type arguments for which one wants to suppress variance checking.
  */

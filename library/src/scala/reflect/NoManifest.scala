@@ -13,7 +13,7 @@
 package scala
 package reflect
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** One of the branches of an [[scala.reflect.OptManifest]].
   */

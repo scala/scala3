@@ -12,7 +12,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.concurrent.duration.Duration
 import scala.annotation.implicitNotFound
 

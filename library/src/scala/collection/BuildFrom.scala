@@ -12,7 +12,7 @@
 
 package scala.collection
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.implicitNotFound
 import scala.collection.mutable.Builder
 import scala.collection.immutable.WrappedString

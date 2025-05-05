@@ -12,7 +12,7 @@
 
 package scala.collection
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.function.{Consumer, DoubleConsumer, IntConsumer, LongConsumer}
 import java.util.{PrimitiveIterator, Spliterator, Iterator => JIterator}
 import java.{lang => jl}

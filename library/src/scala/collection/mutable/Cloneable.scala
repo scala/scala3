@@ -12,7 +12,7 @@
 
 package scala.collection.mutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** A trait for cloneable collections.
   *

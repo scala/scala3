@@ -14,7 +14,7 @@
 
 package scala
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 object Product5 {
   def unapply[T1, T2, T3, T4, T5](x: Product5[T1, T2, T3, T4, T5]): Option[Product5[T1, T2, T3, T4, T5]] =

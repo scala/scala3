@@ -12,7 +12,7 @@
 
 package scala.ref
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 class ReferenceQueue[+T <: AnyRef] {
 

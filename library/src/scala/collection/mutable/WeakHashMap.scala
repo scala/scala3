@@ -14,7 +14,7 @@ package scala
 package collection
 package mutable
 
-import scala.language.`2`
+import scala.language.`2.13`
 import scala.annotation.nowarn
 import scala.collection.convert.JavaCollectionWrappers.{JMapWrapper, JMapWrapperLike}
 

@@ -13,7 +13,7 @@
 package scala.collection
 package generic
 
-import scala.language.`2`
+import scala.language.`2.13`
 
 /** Some bit operations.
   *

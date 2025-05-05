@@ -14,7 +14,7 @@ package scala
 package collection
 package convert
 
-import scala.language.`2`
+import scala.language.`2.13`
 import java.util.{concurrent => juc}
 import java.util.{NavigableMap}
 import java.{lang => jl, util => ju}
