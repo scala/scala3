@@ -13,6 +13,7 @@
 package scala
 package collection
 
+import scala.language.`2.13`
 import scala.annotation.{nowarn, tailrec}
 
 /** Base trait for linearly accessed sequences that have efficient `head` and

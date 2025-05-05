@@ -13,6 +13,7 @@
 package scala.collection
 package mutable
 
+import scala.language.`2.13`
 import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
 import scala.collection.immutable.List

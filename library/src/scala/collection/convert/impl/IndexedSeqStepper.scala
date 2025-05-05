@@ -13,6 +13,7 @@
 package scala.collection.convert
 package impl
 
+import scala.language.`2.13`
 import scala.collection._
 
 private[collection] class AnyIndexedSeqStepper[A](underlying: collection.IndexedSeqOps[A, AnyConstr, _], _i0: Int, _iN: Int)

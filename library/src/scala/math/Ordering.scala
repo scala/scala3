@@ -13,6 +13,7 @@
 package scala
 package math
 
+import scala.language.`2.13`
 import java.util.Comparator
 
 import scala.language.implicitConversions

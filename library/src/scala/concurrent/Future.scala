@@ -12,6 +12,7 @@
 
 package scala.concurrent
 
+import scala.language.`2.13`
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.LockSupport
 import scala.util.control.{NoStackTrace, NonFatal}

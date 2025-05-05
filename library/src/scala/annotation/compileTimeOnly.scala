@@ -12,6 +12,7 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
 import scala.annotation.meta._
 
 /**

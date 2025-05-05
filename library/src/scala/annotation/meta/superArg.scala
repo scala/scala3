@@ -13,6 +13,8 @@
 package scala.annotation
 package meta
 
+import scala.language.`2.13`
+
 /**
  * This internal annotation encodes arguments passed to annotation superclasses. Example:
  *

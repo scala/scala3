@@ -13,6 +13,8 @@
 package scala
 package runtime
 
+import scala.language.`2.13`
+
 final class RichDouble(val self: Double) extends AnyVal with FractionalProxy[Double] {
   protected def num: Fractional[Double] = scala.math.Numeric.DoubleIsFractional
   protected def ord: Ordering[Double]   = scala.math.Ordering.Double.TotalOrdering

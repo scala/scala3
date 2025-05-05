@@ -14,6 +14,8 @@
 
 package scala.runtime
 
+import scala.language.`2.13`
+
 abstract class AbstractFunction7[-T1, -T2, -T3, -T4, -T5, -T6, -T7, +R] extends Function7[T1, T2, T3, T4, T5, T6, T7, R] {
 
 }

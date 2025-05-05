@@ -14,6 +14,8 @@
 
 package scala.runtime
 
+import scala.language.`2.13`
+
 abstract class AbstractFunction0[@specialized(Specializable.Primitives) +R] extends Function0[R] {
 
 }

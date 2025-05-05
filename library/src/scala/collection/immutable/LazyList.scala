@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2.13`
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import java.lang.{StringBuilder => JStringBuilder}
 

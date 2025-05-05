@@ -14,6 +14,7 @@ package scala
 package util
 package control
 
+import scala.language.`2.13`
 import scala.annotation.tailrec
 import scala.reflect.{ClassTag, classTag}
 import scala.language.implicitConversions

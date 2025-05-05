@@ -14,6 +14,8 @@
 
 package scala.runtime
 
+import scala.language.`2.13`
+
 abstract class AbstractFunction1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends Function1[T1, R] {
 
 }

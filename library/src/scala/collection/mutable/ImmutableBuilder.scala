@@ -14,6 +14,7 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2.13`
 
 /**
   * Reusable builder for immutable collections

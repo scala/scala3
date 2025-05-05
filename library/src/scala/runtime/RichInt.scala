@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import scala.language.`2.13`
 import scala.collection.immutable.Range
 
 // Note that this does not implement IntegralProxy[Int] so that it can return

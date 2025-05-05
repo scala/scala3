@@ -14,6 +14,7 @@
 
 package scala
 
+import scala.language.`2.13`
 
 /** A tuple of 1 elements; the canonical representation of a [[scala.Product1]].
  *

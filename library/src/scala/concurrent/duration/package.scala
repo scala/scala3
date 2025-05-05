@@ -12,6 +12,7 @@
 
 package scala.concurrent
 
+import scala.language.`2.13`
 import scala.language.implicitConversions
 
 package object duration {

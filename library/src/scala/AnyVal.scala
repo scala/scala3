@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 /** `AnyVal` is the root class of all ''value types'', which describe values
  *  not implemented as objects in the underlying host system. Value classes
  *  are specified in Scala Language Specification, section 12.2.

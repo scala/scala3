@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 /**
   * Annotation for specifying the `serialVersionUID` field of a (serializable) class.
   *

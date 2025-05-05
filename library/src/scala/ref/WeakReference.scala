@@ -12,6 +12,8 @@
 
 package scala.ref
 
+import scala.language.`2.13`
+
 /**
  *  A wrapper class for java.lang.ref.WeakReference
  *  The new functionality is (1) results are Option values, instead of using null.

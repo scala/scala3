@@ -13,6 +13,7 @@
 package scala.collection.convert
 package impl
 
+import scala.language.`2.13`
 import java.util.Spliterator
 
 import scala.collection.Stepper.EfficientSplit

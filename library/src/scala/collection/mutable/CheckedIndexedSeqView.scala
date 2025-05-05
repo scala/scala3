@@ -14,6 +14,8 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2.13`
+
 private[mutable] trait CheckedIndexedSeqView[+A] extends IndexedSeqView[A] {
   protected val mutationCount: () => Int
 

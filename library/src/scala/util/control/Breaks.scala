@@ -12,6 +12,8 @@
 
 package scala.util.control
 
+import scala.language.`2.13`
+
 /** Provides the `break` control abstraction.
  *
  *  The `break` method uses a `ControlThrowable` to transfer

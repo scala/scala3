@@ -13,6 +13,7 @@
 package scala
 package collection
 
+import scala.language.`2.13`
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.StringBuilder

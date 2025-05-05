@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /** A method annotation which suppresses the creation of
  *  additional specialized forms based on enclosing specialized
  *  type parameters.

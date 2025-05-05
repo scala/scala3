@@ -12,6 +12,8 @@
 
 package scala.collection
 
+import scala.language.`2.13`
+
 /**
   * Trait that overrides operations on sequences in order
   * to take advantage of strict builders.

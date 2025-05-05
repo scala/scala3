@@ -12,6 +12,7 @@
 
 package scala.collection.mutable
 
+import scala.language.`2.13`
 import scala.collection.{IterableFactoryDefaults, SeqFactory}
 
 trait Seq[A]

@@ -14,6 +14,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 object Product2 {
   def unapply[T1, T2](x: Product2[T1, T2]): Option[Product2[T1, T2]] =
     Some(x)

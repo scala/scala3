@@ -13,6 +13,8 @@
 package scala
 package reflect
 
+import scala.language.`2.13`
+
 /** One of the branches of an [[scala.reflect.OptManifest]].
   */
 // TODO undeprecated until Scala reflection becomes non-experimental

@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2.13`
 import scala.collection.mutable.{Builder, ReusableBuilder}
 
 /** A base trait for ordered, immutable maps.

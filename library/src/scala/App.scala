@@ -14,6 +14,8 @@ package scala
 
 import java.lang.System.{currentTimeMillis => currentTime}
 
+import scala.language.`2.13`
+
 import scala.annotation.nowarn
 import scala.collection.mutable.ListBuffer
 

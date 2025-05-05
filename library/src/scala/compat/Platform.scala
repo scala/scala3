@@ -13,6 +13,8 @@
 package scala
 package compat
 
+import scala.language.`2.13`
+
 @deprecated("Will be removed in the future.", since = "2.13.0")
 object Platform {
 

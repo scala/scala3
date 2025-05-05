@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 /** Base trait for all products, which in the standard library include at
  *  least [[scala.Product1]] through [[scala.Product22]] and therefore also
  *  their subclasses [[scala.Tuple1]] through [[scala.Tuple22]].  In addition,

@@ -12,6 +12,8 @@
 
 package scala.util.control
 
+import scala.language.`2.13`
+
 /** A parent class for throwable objects intended for flow control.
  *
  *  Instances of `ControlThrowable` should not normally be caught.

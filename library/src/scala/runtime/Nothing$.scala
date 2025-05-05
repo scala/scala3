@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import scala.language.`2.13`
 
 /**
  * Dummy class which exist only to satisfy the JVM. It corresponds

@@ -13,6 +13,7 @@
 package scala
 package math
 
+import scala.language.`2.13`
 import scala.collection.StringParsers
 import scala.language.implicitConversions
 import scala.util.Try

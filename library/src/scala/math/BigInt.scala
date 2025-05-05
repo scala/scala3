@@ -15,6 +15,7 @@ package math
 
 import java.math.BigInteger
 
+import scala.language.`2.13`
 import scala.annotation.nowarn
 import scala.language.implicitConversions
 import scala.collection.immutable.NumericRange

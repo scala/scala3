@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /**
  * This annotation configures how Scala prints two-parameter generic types.
   *

@@ -13,6 +13,7 @@
 package scala
 package collection.mutable
 
+import scala.language.`2.13`
 import scala.annotation.tailrec
 
 /** This trait forms part of collections that can be reduced

@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /**
  * An annotation that marks a member as having changed semantics
  * between versions.  This is intended for methods which for one

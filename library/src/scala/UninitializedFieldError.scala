@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 /** This class implements errors which are thrown whenever a
  *  field is used before it has been initialized.
  *
