@@ -12,6 +12,7 @@
 
 package scala
 
+import scala.language.`2`
 import scala.annotation.implicitNotFound
 
 /** An instance of `A <:< B` witnesses that `A` is a subtype of `B`.

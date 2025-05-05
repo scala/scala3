@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 import Specializable._
 
 /** Annotate type parameters on which code should be automatically

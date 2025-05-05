@@ -15,6 +15,7 @@
 
 package scala
 
+import scala.language.`2`
 
 /** A function of 0 parameters.
  *  

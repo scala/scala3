@@ -16,6 +16,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** `Int`, a 32-bit signed integer (equivalent to Java's `int` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Int` are not
  *  represented by an object in the underlying runtime system.

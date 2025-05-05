@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** This class implements a simple proxy that forwards all calls to
  *  the public, non-final methods defined in class `Any` to another
  *  object self.  Those methods are:

@@ -16,6 +16,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** `Long`, a 64-bit signed integer (equivalent to Java's `long` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Long` are not
  *  represented by an object in the underlying runtime system.

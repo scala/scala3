@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** Marker for native methods.
   *
   * {{{

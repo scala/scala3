@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** An annotation to designate that the annotated entity
  *  should not be considered for additional compiler checks.
  *  Specific applications include annotating the subject of

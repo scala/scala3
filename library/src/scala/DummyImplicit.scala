@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** A type for which there is always an implicit value. */
 final class DummyImplicit private ()
 

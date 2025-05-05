@@ -14,6 +14,7 @@
 
 package scala
 
+import scala.language.`2`
 
 object Function1 {
 

@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 import scala.collection.{SpecificIterableFactory, StrictOptimizedIterableOps, View, immutable, mutable}
 import java.lang.reflect.{Field => JField, Method => JMethod}
 

@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2`
+
 /** A common supertype for companion classes of primitive types.
  *
  *  A common trait for /companion/ objects of primitive types comes handy
