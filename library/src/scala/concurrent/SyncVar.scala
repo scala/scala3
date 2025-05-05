@@ -12,6 +12,7 @@
 
 package scala.concurrent
 
+import scala.language.`2`
 import java.util.concurrent.TimeUnit
 
 /** A class to provide safe concurrent access to a mutable cell.

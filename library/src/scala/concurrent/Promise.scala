@@ -12,6 +12,7 @@
 
 package scala.concurrent
 
+import scala.language.`2`
 import scala.util.{ Try, Success, Failure }
 
 /** Promise is an object which can be completed with a value or failed

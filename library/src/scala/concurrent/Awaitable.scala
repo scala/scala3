@@ -13,7 +13,7 @@
 package scala.concurrent
 
 
-
+import scala.language.`2`
 import scala.concurrent.duration.Duration
 
 
