@@ -12,6 +12,7 @@
 
 package scala.io
 
+import scala.language.`2`
 import java.io.{ InputStream, BufferedReader, InputStreamReader, PushbackReader }
 import Source.DefaultBufSize
 import scala.collection.{ Iterator, AbstractIterator }
