@@ -1941,7 +1941,7 @@ class Namer { typer: Typer =>
     if completedTypeParams.forall(_.isType) then
       completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
     completeTrailingParamss(ddef, sym, indexingCtor = false)
-    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
+    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor, Some(ddef.nameSpan.startPos))
     sym.setParamss(paramSymss)
 
     def wrapMethType(restpe: Type): Type =

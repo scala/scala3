@@ -2284,6 +2284,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.companion match
             case Types.ContextualMethodType => MethodTypeKind.Contextual
             case Types.ImplicitMethodType => MethodTypeKind.Implicit
+            case Types.ImplicitRewrittenToContextualMethodType => MethodTypeKind.Implicit
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
