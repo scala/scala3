@@ -339,7 +339,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     end enclosedChildren
   end extension
 
-  extension (imp: Import)
+  extension (imp: ImportOrExport)
     def selector(span: Span)(using Context): Option[Symbol] =
       for sel <- imp.selectors.find(_.span.contains(span))
       yield imp.expr.symbol.info.member(sel.name).symbol

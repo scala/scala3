@@ -135,7 +135,7 @@ object MetalsInteractive:
           (sym, sym.info, None)
         )
 
-      case (imp: Import) :: _ =>
+      case (imp: ImportOrExport) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
           (sym, sym.info, None)
         )
