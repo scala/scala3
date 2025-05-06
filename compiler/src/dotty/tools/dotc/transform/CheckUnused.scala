@@ -670,6 +670,7 @@ object CheckUnused:
       else
         // If the rest of the line is blank, include it in the final edit position. (Delete trailing whitespace.)
         // If for deletion, and the prefix of the line is also blank, then include that, too. (Del blank line.)
+        // If deleting a blank line and surrounded by blank lines, remove an adjoining blank line.
         def editPosAt(srcPos: SrcPos, forDeletion: Boolean): SrcPos =
           val start = srcPos.span.start
           val end = srcPos.span.end
@@ -682,7 +683,21 @@ object CheckUnused:
           val bump = if (deleteLine) 1 else 0 // todo improve to include offset of next line, endline + 1
           val p0 = srcPos.span
           val p1 = if (next >= 0 && emptyRight) p0.withEnd(next + bump) else p0
-          val p2 = if (deleteLine) p1.withStart(prev + 1) else p1
+          val p2 =
+            if deleteLine then
+              var newStart = prev + 1
+              if srcPos.line > 1 then
+                val source = srcPos.sourcePos.source
+                import source.{lineToOffset, lineToOffsetOpt, offsetToLine}
+                val startLine = offsetToLine(start)
+                val endLine = offsetToLine(end)
+                val preceding = lineToOffset(startLine - 1)
+                lineToOffsetOpt(endLine + 2) match
+                case Some(succeeding) if lineToOffset(startLine) - preceding == 1 && succeeding - end == 2 =>
+                  newStart = preceding
+                case _ =>
+              p1.withStart(newStart)
+            else p1
           srcPos.sourcePos.withSpan(p2)
         def actionsOf(actions: (SrcPos, String)*): List[CodeAction] =
           val patches = actions.map((srcPos, replacement) => ActionPatch(srcPos.sourcePos, replacement)).toList
