@@ -404,10 +404,6 @@ object Symbols extends SymUtils {
     def paramVariance(using Context): Variance = denot.variance
     def paramRef(using Context): TypeRef = denot.typeRef
 
-     /** Was it an implicit, currently rewritten into a given with `-Yimplicit-to-given` */
-    def isImplicitRewrittenToGiven(using Context): Boolean =
-      ctx.settings.YimplicitToGiven.value && denot.flags.is(Implicit) && this.isDefinedInSource
-
     /** Copy a symbol, overriding selective fields.
      *  Note that `coord` and `compilationUnitInfo` will be set from the fields in `owner`, not
      *  the fields in `sym`. */

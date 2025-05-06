@@ -478,9 +478,6 @@ object Types extends TypeUtils {
     /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
 
-    /** Is this method parameter list implicit, currently rewritten into a given with `-Yimplicit-to-given`? */
-    def isImplicitMethodRewrittenToContextual: Boolean = false
-
     /** Is this a Method or PolyType which has contextual parameters as first value parameter list? */
     def isContextualMethod: Boolean = false
 
@@ -4157,15 +4154,12 @@ object Types extends TypeUtils {
     def companion: MethodTypeCompanion
 
     final override def isImplicitMethod: Boolean =
-      companion.eq(ImplicitMethodType) || companion.eq(ImplicitRewrittenToContextualMethodType) || isContextualMethod
+      companion.eq(ImplicitMethodType) || isContextualMethod
     final override def hasErasedParams(using Context): Boolean =
       paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
-
-    final override def isImplicitMethodRewrittenToContextual: Boolean =
-      companion.eq(ImplicitRewrittenToContextualMethodType)
 
     def erasedParams(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
@@ -4298,16 +4292,14 @@ object Types extends TypeUtils {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, implicitToGiven: Boolean = false): MethodTypeCompanion =
-      if (implicitToGiven) ImplicitRewrittenToContextualMethodType
-      else if (isContextual) ContextualMethodType
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false): MethodTypeCompanion =
+      if (isContextual) ContextualMethodType
       else if (isImplicit) ImplicitMethodType
       else MethodType
   }
 
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
   object ImplicitMethodType extends MethodTypeCompanion("ImplicitMethodType")
-  object ImplicitRewrittenToContextualMethodType extends MethodTypeCompanion("ImplicitRewrittenToContextualMethodType")
 
   /** A ternary extractor for MethodType */
   object MethodTpe {

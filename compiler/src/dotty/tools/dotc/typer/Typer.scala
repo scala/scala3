@@ -2885,18 +2885,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     postProcessInfo(vdef1, sym)
     vdef1.setDefTree
 
-    if ctx.isTyper && vdef1.symbol.isImplicitRewrittenToGiven && !vdef1.symbol.isParamOrAccessor then
-      val implicitSpan =
-        vdef1.mods.mods.collectFirst {
-          case mod: Mod.Implicit => mod.span
-        }.get
-      patch(
-        Span(implicitSpan.start, implicitSpan.end + 1),
-        ""
-      )
-      patch(
-        Span(vdef1.mods.mods.last.span.end + 1, vdef1.namePos.span.start), "given "
-      )
+    migrate(ImplicitToGiven.valDef(vdef1))
 
     val nnInfo = rhs1.notNullInfo
     vdef1.withNotNullInfo(if sym.is(Lazy) then nnInfo.retractedInfo else nnInfo)
@@ -3010,27 +2999,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
-    if
-      ctx.isTyper
-      && ddef2.symbol.isImplicitRewrittenToGiven
-      && !ddef2.symbol.isParamOrAccessor
-      && !ddef2.symbol.isOldStyleImplicitConversion()
-    then
-      val implicitSpan =
-        ddef2.mods.mods.collectFirst {
-          case mod: Mod.Implicit => mod.span
-        }.get
-      patch(
-        Span(implicitSpan.start, implicitSpan.end + 1), ""
-      )
-      patch(
-        Span(ddef2.mods.mods.last.span.end + 1, ddef2.namePos.span.start), "given "
-      )
-      ddef.tpt match
-        case refinedType: untpd.RefinedTypeTree =>
-          patch(refinedType.span.startPos, "(")
-          patch(refinedType.span.endPos, ")")
-        case _ =>
+    migrate(ImplicitToGiven.defDef(ddef2))
 
     postProcessInfo(ddef2, sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
@@ -4229,10 +4198,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
         if matchingApply(wtp, pt) then
-          val isUsingApply = pt.applyKind == ApplyKind.Using
-          val notSynthetic = tree.span.exists && tree.span.start != tree.span.end
-          if ctx.isTyper && wtp.isImplicitMethodRewrittenToContextual && notSynthetic && !isUsingApply then
-            patch(Span(tree.span.end, tree.span.end + 1), "(using ")
+          migrate(ImplicitToGiven.implicitParams(tree, wtp, pt))
           migrate(contextBoundParams(tree, wtp, pt))
           migrate(implicitParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)

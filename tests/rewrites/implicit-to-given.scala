@@ -18,3 +18,6 @@ object Def:
   val implicitArg: Int => Unit = (implicit a => applicationTest) // should not change
 
   implicit def refined(): A {type B = Int} = ???
+
+  class EmptyParamListClass(implicit a: Int)
+  def emptyParamListTest() = new EmptyParamListClass()(0)
