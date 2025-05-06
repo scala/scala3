@@ -183,7 +183,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def accountsFor(x: CaptureRef)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
 
-    def debugInfo(using Context) = i"$this accountsFor $x, which has capture set ${x.captureSetOfInfo}"
+    def debugInfo(using Context) = i"$this accountsFor $x"
 
     def test(using Context) = reporting.trace(debugInfo):
       elems.exists(_.subsumes(x))
@@ -353,7 +353,14 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-    if containsRootCapability then handler()
+    val hasRoot =
+      if ccConfig.newScheme then
+        elems.exists: elem =>
+          val elem1 = elem.stripReadOnly
+          elem1.isCap || elem1.isResultRoot
+      else
+        containsRootCapability
+    if hasRoot then handler()
     this
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
@@ -499,7 +506,7 @@ object CaptureSet:
       ccs.varId += 1
       ccs.varId
 
-    //assert(id != 40)
+    //assert(id != 8, this)
 
     /** A variable is solved if it is aproximated to a from-then-on constant set.
      *  Interpretation:
@@ -529,7 +536,7 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
-    private[CaptureSet] var noUniversal = false
+    private[CaptureSet] var universalOK = true
 
     /** A handler to be invoked when new elems are added to this set */
     var newElemAddedHandler: CaptureRef => Context ?=> Unit = _ => ()
@@ -600,33 +607,38 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    // TODO: Also track allowable TermParamRefs and root.Results in capture sets
-    private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isRootCapability then
-        !noUniversal
-      else elem match
-        case elem @ root.Result(mt) =>
-          !noUniversal && isPartOf(mt.resType)
-        case elem: TermRef if level.isDefined =>
-          elem.prefix match
-            case prefix: CaptureRef =>
-              levelOK(prefix)
-            case _ =>
-              ccState.symLevel(elem.symbol) <= level
-        case elem: ThisType if level.isDefined =>
-          ccState.symLevel(elem.cls).nextInner <= level
-        case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
-          isPartOf(elem.binder.resType)
-          || {
-            capt.println(
-              i"""LEVEL ERROR $elem for $this
-                 |elem binder = ${elem.binder}""")
+    private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
+      case elem @ root.Fresh(_) =>
+        if ccConfig.newScheme then
+          if !level.isDefined || ccState.symLevel(elem.ccOwner) <= level then true
+          else
+            println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
             false
-          }
-        case QualifiedCapability(elem1) =>
-          levelOK(elem1)
-        case _ =>
-          true
+        else universalOK
+      case elem @ root.Result(mt) =>
+        universalOK && (this.isInstanceOf[BiMapped] || isPartOf(mt.resType))
+      case elem: TermRef if elem.isCap =>
+        universalOK
+      case elem: TermRef if level.isDefined =>
+        elem.prefix match
+          case prefix: CaptureRef =>
+            levelOK(prefix)
+          case _ =>
+            ccState.symLevel(elem.symbol) <= level
+      case elem: ThisType if level.isDefined =>
+        ccState.symLevel(elem.cls).nextInner <= level
+      case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
+        isPartOf(elem.binder.resType)
+        || {
+          capt.println(
+            i"""LEVEL ERROR $elem for $this
+                |elem binder = ${elem.binder}""")
+          false
+        }
+      case QualifiedCapability(elem1) =>
+        levelOK(elem1)
+      case _ =>
+        true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -638,7 +650,7 @@ object CaptureSet:
         CompareResult.Fail(this :: Nil)
 
     override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-      noUniversal = true
+      universalOK = false
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
 

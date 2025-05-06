@@ -122,6 +122,14 @@ object internal:
    */
   final class rootCapability extends annotation.StaticAnnotation
 
+  /** An annotation used internally to mark a function type that was
+   *  converted to a dependent function type during setup of inferred types.
+   *  Such function types should not map roots to result variables.
+   */
+  final class inferredDepFun extends annotation.StaticAnnotation
+
+end internal
+
 @experimental
 object unsafe:
   /**
