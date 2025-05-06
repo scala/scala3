@@ -78,7 +78,8 @@ class CrossVersionChecks extends MiniPhase:
     do
       val msg = annot.argumentConstantString(0).map(msg => s": $msg").getOrElse("")
       val since = annot.argumentConstantString(1).map(version => s" (since: $version)").getOrElse("")
-      report.deprecationWarning(em"inheritance from $psym is deprecated$since$msg", parent.srcPos, origin=psym.showFullName)
+      val composed = em"inheritance from $psym is deprecated$since$msg"
+      report.deprecationWarning(composed, parent.srcPos, origin = psym.showFullName)
   }
 
   override def transformValDef(tree: ValDef)(using Context): ValDef =
@@ -166,16 +167,19 @@ object CrossVersionChecks:
    *  Also check for deprecation of the companion class for synthetic methods in the companion module.
    */
   private[CrossVersionChecks] def checkDeprecatedRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    def maybeWarn(annotee: Symbol, annot: Annotation) = if !skipWarning(sym) then
+    def warn(annotee: Symbol, annot: Annotation) =
       val message = annot.argumentConstantString(0).filter(!_.isEmpty).map(": " + _).getOrElse("")
       val since = annot.argumentConstantString(1).filter(!_.isEmpty).map(" since " + _).getOrElse("")
-      report.deprecationWarning(em"${annotee.showLocated} is deprecated${since}${message}", pos, origin=annotee.showFullName)
+      val composed = em"${annotee.showLocated} is deprecated${since}${message}"
+      report.deprecationWarning(composed, pos, origin = annotee.showFullName)
     sym.getAnnotation(defn.DeprecatedAnnot) match
-      case Some(annot) => maybeWarn(sym, annot)
+      case Some(annot) => if !skipWarning(sym) then warn(sym, annot)
       case _ =>
         if sym.isAllOf(SyntheticMethod) then
           val companion = sym.owner.companionClass
-          if companion.is(CaseClass) then companion.getAnnotation(defn.DeprecatedAnnot).foreach(maybeWarn(companion, _))
+          if companion.is(CaseClass) then
+            for annot <- companion.getAnnotation(defn.DeprecatedAnnot) if !skipWarning(sym) do
+              warn(companion, annot)
 
   /** Decide whether the deprecation of `sym` should be ignored in this context.
    *
