@@ -76,6 +76,8 @@ object Message:
     /** If false, stop all recordings */
     private var disambi = disambiguate
 
+    def isActive = disambi != Disambiguation.None
+
     /** Clear all entries and stop further entries to be added */
     def disable() =
       seen.clear()
@@ -266,20 +268,20 @@ object Message:
       case _ => super.toTextRef(tp)
 
     override def toTextCaptureRef(tp: Type): Text = tp match
-      case tp: CaptureRef if tp.isRootCapability && !tp.isReadOnly =>
+      case tp: CaptureRef if tp.isRootCapability && !tp.isReadOnly && seen.isActive =>
         seen.record("cap", isType = false, tp)
       case _ => super.toTextCaptureRef(tp)
 
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet
-      if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug =>
+      if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
         boxText ~ toTextLocal(parent) ~ seen.record("^", isType = true, refs.elems.nth(0))
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 
     override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       refs match
-        case refs: CaptureSet if isUniversalCaptureSet(refs) =>
+        case refs: CaptureSet if isUniversalCaptureSet(refs) && seen.isActive =>
           seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0))
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
