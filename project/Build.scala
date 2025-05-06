@@ -1512,6 +1512,10 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
+      publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
+        `scala3-compiler-bootstrapped` / publishLocal,
+        `scala3-library-bootstrapped` / publishLocal,
+      ).value,
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       Compile / sourceGenerators += Def.task {
         val s = streams.value
