@@ -231,6 +231,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             withNoErrors(success(Literal(Constant(()))))
           case n: TermRef =>
             withNoErrors(success(ref(n)))
+          case ts: ThisType =>
+            withNoErrors(success(This(ts.cls)))
           case tp =>
             EmptyTreeNoError
       case _ =>
