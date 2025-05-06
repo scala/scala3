@@ -13,7 +13,6 @@ import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction
 import reporting.Message
 import util.{SimpleIdentitySet, EqHashMap}
-import util.Spans.NoSpan
 import ast.tpd
 import annotation.constructorOnly
 
@@ -355,29 +354,38 @@ object root:
     toVar(tp)
   end toResult
 
-  /** Map global roots in function results to result roots */
-  def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
-    def apply(t: Type): Type = t match
-      case defn.RefinedFunctionOf(mt) =>
-        val mt1 = apply(mt)
-        if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
-        else t
-      case t: MethodType if variance > 0 && t.marksExistentialScope =>
-        val t1 = mapOver(t).asInstanceOf[MethodType]
-        t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))
-      case CapturingType(parent, refs) =>
-        t.derivedCapturingType(this(parent), refs)
-      case t: (LazyRef | TypeVar) =>
-        mapConserveSuper(t)
-      case t: ExprType if sym.is(Method, butNot = Accessor) =>
-        t.derivedExprType(toResult(t.resType, t, fail))
-      case _ =>
-        try
-          if keepAliases then mapOver(t)
-          else mapFollowingAliases(t)
-        catch case ex: AssertionError =>
-          println(i"error while mapping $t")
-          throw ex
+  /** Map global roots in function results to result roots. Also,
+   *  map roots in the types of parameterless def methods.
+   */
+  def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(tp: Type)(using Context): Type =
+    val m = new TypeMap with FollowAliasesMap:
+      def apply(t: Type): Type = t match
+        case AnnotatedType(parent @ defn.RefinedFunctionOf(mt), ann) if ann.symbol == defn.InferredDepFunAnnot =>
+          val mt1 = mapOver(mt).asInstanceOf[MethodType]
+          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
+          else parent
+        case defn.RefinedFunctionOf(mt) =>
+          val mt1 = apply(mt)
+          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
+          else t
+        case t: MethodType if variance > 0 && t.marksExistentialScope =>
+          val t1 = mapOver(t).asInstanceOf[MethodType]
+          t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))
+        case CapturingType(parent, refs) =>
+          t.derivedCapturingType(this(parent), refs)
+        case t: (LazyRef | TypeVar) =>
+          mapConserveSuper(t)
+        case _ =>
+          try
+            if keepAliases then mapOver(t)
+            else mapFollowingAliases(t)
+          catch case ex: AssertionError =>
+            println(i"error while mapping $t")
+            throw ex
+    m(tp) match
+      case tp1: ExprType if sym.is(Method, butNot = Accessor) =>
+        tp1.derivedExprType(toResult(tp1.resType, tp1, fail))
+      case tp1 => tp1
   end toResultInResults
 
 end root
