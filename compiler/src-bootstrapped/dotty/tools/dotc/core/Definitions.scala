@@ -280,7 +280,7 @@ class Definitions {
    */
   @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
+  @tu lazy val MatchableClass: ClassSymbol = requiredClass("scala.Matchable")
   def MatchableType: TypeRef = MatchableClass.typeRef
   @tu lazy val AnyValClass: ClassSymbol =
     val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyType, MatchableType)))
@@ -2232,7 +2232,7 @@ class Definitions {
   @tu lazy val syntheticScalaClasses: List[TypeSymbol] =
     List(
       AnyClass,
-      MatchableClass,
+      //MatchableClass,
       AnyRefAlias,
       AnyKindClass,
       andType,
