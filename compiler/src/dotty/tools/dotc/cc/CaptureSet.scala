@@ -209,8 +209,9 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      CCState.withCapAsRoot: // OK here since we opportunistically choose an alternative which gets checked later
-        elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
+      CCState.withCapAsRoot:
+        CCState.ignoringFreshLevels: // OK here since we opportunistically choose an alternative which gets checked later
+          elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems

@@ -155,7 +155,7 @@ object root:
       case Annot(kind) => this.kind eq kind
       case _ => false
 
-    /** Special treatment of `SubstBindingMaps` which can change the binder of a
+    /** Special treatment of `SubstBindingMaps` which can change the binder of
      *  Result instances
      */
     override def mapWith(tm: TypeMap)(using Context) = kind match

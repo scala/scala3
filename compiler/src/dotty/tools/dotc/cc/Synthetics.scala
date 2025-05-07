@@ -77,12 +77,11 @@ object Synthetics:
           case tp: MethodOrPoly =>
             tp.derivedLambdaType(resType = augmentResult(tp.resType))
           case _ =>
-            val refined = trackedParams.foldLeft(tp) { (parent, pref) =>
-              RefinedType(parent, pref.paramName,
+            val refined = trackedParams.foldLeft(tp): (parent, pref) =>
+              parent.refinedOverride(pref.paramName,
                 CapturingType(
                   atPhase(ctx.phase.next)(pref.underlying.stripCapturing),
                   CaptureSet(pref)))
-            }
             CapturingType(refined, CaptureSet(trackedParams*))
         if trackedParams.isEmpty then info
         else augmentResult(info).showing(i"augment apply/copy type $info to $result", capt)
@@ -116,8 +115,7 @@ object Synthetics:
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
-        val newParamInfo = CapturingType(paramInfo,
-          CaptureSet.fresh(root.Origin.UnapplyInstance(info)))
+        val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>

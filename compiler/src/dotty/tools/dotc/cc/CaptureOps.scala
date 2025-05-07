@@ -4,12 +4,13 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
-import Names.TermName
+import Names.{Name, TermName}
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
+import Annotations.Annotation
 import CaptureSet.VarState
 
 /** Attachment key for capturing type trees */
@@ -503,6 +504,10 @@ extension (tp: Type)
     case tp: TermRef => ccState.symLevel(tp.symbol)
     case tp: ThisType => ccState.symLevel(tp.cls).nextInner
     case _ => CCState.undefinedLevel
+
+  def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
+    RefinedType(tp, name,
+      AnnotatedType(rinfo, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan)))
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
