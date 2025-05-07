@@ -228,6 +228,9 @@ object Decorators {
       else
         xs.reduceLeft(op)
 
+  extension [T](xss: List[List[T]])
+    def headOrNil: List[T] = if xss.isEmpty then Nil else xss.head
+
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
       case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
