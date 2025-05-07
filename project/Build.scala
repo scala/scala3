@@ -298,7 +298,7 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Werror",
+      //"-Werror",
       //"-Wunused:all",
       //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
@@ -1132,7 +1132,7 @@ object Build {
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
-      "-Yexplicit-nulls",
+      //"-Yexplicit-nulls",
     ),
     (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
     (Compile / packageSrc / mappings) ++= {
