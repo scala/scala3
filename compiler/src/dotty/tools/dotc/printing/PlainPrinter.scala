@@ -31,6 +31,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Print Fresh instances as <cap hiding ...> */
   protected def ccVerbose = ctx.settings.YccVerbose.value
 
+  /** Elide redundant ^ and ^{cap.rd} when printing instances of Capability
+   *  classes. Gets set when singletons are printed as `(x: T)` to reduce verbosity.
+   */
+  private var elideCapabilityCaps = false
+
   private var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions: Int = 100
@@ -276,12 +281,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        if parent.derivesFrom(defn.Caps_Capability)
-              && refs.containsRootCapability && refs.isReadOnly && !printDebug
-        then
-          toText(parent)
-        else
-          toTextCapturing(parent, refs, boxText)
+        if elideCapabilityCaps
+            && parent.derivesFrom(defn.Caps_Capability)
+            && refs.containsRootCapability
+            && refs.isReadOnly
+        then toText(parent)
+        else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
           toTextCapturing(parent, refs, "") ~ Str("R").provided(printDebug)
@@ -367,7 +372,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }.close
 
   def toTextSingleton(tp: SingletonType): Text =
-    "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    val saved = elideCapabilityCaps
+    elideCapabilityCaps = !ccVerbose && !ctx.settings.explain.value
+      // don't elide capability capture sets under -Ycc-verbose or -explain
+    try "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    finally elideCapabilityCaps = saved
 
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
@@ -468,7 +477,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ root.Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
         if ccVerbose then s"<fresh$idStr in ${tp.ccOwner} hiding " ~ toTextCaptureSet(hidden) ~ ">"
-        else if ccVerbose then "fresh"
         else "cap"
       case tp => toText(tp)
 
