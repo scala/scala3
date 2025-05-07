@@ -6,7 +6,7 @@ type Return[X] = X match
 
 object Return:
   def apply[A](a:A):Return[A] = a match
-    case a: List[t] => a
+    case a: List[?] => a
     case a: Any => List(a)
 
 object Test1:
@@ -18,7 +18,7 @@ type Boxed[X] = X match
    case Any => Box[X]
 
 def box[X](x: X): Boxed[X] = x match
-   case b: Box[t] => b
+   case b: Box[?] => b
    case x: Any => Box(x)
 
 case class Box[A](a:A):

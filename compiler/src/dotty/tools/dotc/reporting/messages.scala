@@ -2317,7 +2317,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2513,6 +2513,17 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
        |it should not be defined as an extension.
        |
        |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
+
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -3290,22 +3301,24 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |companion value with the (term-)name `A`. However, these context bound companions
        |are not values themselves, they can only be referred to in selections."""
 
-class UnusedSymbol(errorText: String)(using Context)
+class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
 extends Message(UnusedSymbolID) {
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
+  override def actions(using Context) = this.actions
 }
 
-object UnusedSymbol {
-    def imports(using Context): UnusedSymbol = new UnusedSymbol(i"unused import")
-    def localDefs(using Context): UnusedSymbol = new UnusedSymbol(i"unused local definition")
-    def explicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused explicit parameter")
-    def implicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused implicit parameter")
-    def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
-    def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
-}
+object UnusedSymbol:
+  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
+  def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
+  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
+  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
@@ -3338,10 +3351,10 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
     i"Reference to $tpe within quotes requires a given ${witness} in scope"
 
   override protected def explain(using Context): String =
-    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope.
         |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
-        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
-        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code.
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression.
         |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
         |"""
 
@@ -3349,7 +3362,7 @@ end QuotedTypeMissing
 
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
-    i"""Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+    i"""Deprecated syntax: since 3.7 this is interpreted as a named tuple with one element,
       |not as an assignment.
       |
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
@@ -3359,9 +3372,9 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
 
 class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
   def msg(using Context) =
-    i"""Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
        |To avoid this warning, either remove the argument names or use dotted selection."""
-        + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+        + Message.rewriteNotice("This", version = SourceVersion.`3.7-migration`)
 
   def explain(using Context) = ""
 
@@ -3408,3 +3421,26 @@ final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxM
 
     def explain(using Context) = ""
 end EnumMayNotBeValueClasses
+
+class IllegalUnrollPlacement(origin: Option[Symbol])(using Context)
+extends DeclarationMsg(IllegalUnrollPlacementID):
+  def msg(using Context) = origin match
+    case None => "@unroll is only allowed on a method parameter"
+    case Some(method) =>
+      val isCtor = method.isConstructor
+      def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
+      val prefix = s"Cannot unroll parameters of $what"
+      if method.is(Deferred) then
+        i"$prefix: it must not be abstract"
+      else if isCtor && method.owner.is(Trait) then
+        i"implementation restriction: $prefix"
+      else if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
+        i"$prefix: it is not final"
+      else if method.owner.companionClass.is(CaseClass) then
+        i"$prefix of a case class companion object: please annotate the class constructor instead"
+      else
+        assert(method.owner.is(CaseClass))
+        i"$prefix of a case class: please annotate the class constructor instead"
+
+  def explain(using Context) = ""
+end IllegalUnrollPlacement

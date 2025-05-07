@@ -694,9 +694,11 @@ trait Applications extends Compatibility {
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
 
 
-    /** Is `sym` a constructor of an annotation? */
-    def isAnnotConstr(sym: Symbol): Boolean =
-      sym.isConstructor && sym.owner.isAnnotation
+    /** Is `sym` a constructor of an annotation class, and are we in an
+     *  annotation? If so, we don't lift arguments. See [[Mode.InAnnotation]].
+     */
+    protected final def isAnnotConstr(sym: Symbol): Boolean =
+      ctx.mode.is(Mode.InAnnotation) && sym.isConstructor && sym.owner.isAnnotation
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
@@ -755,13 +757,14 @@ trait Applications extends Compatibility {
               }
               else defaultArgument(normalizedFun, n, testOnly)
 
-            def implicitArg = implicitArgTree(formal, appPos.span)
-
             if !defaultArg.isEmpty then
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
-            else if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+            else if (methodType.isContextualMethod || applyKind == ApplyKind.Using && methodType.isImplicitMethod)
+              && ctx.mode.is(Mode.ImplicitsEnabled)
+            then
+              val implicitArg = implicitArgTree(formal, appPos.span)
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
@@ -994,9 +997,7 @@ trait Applications extends Compatibility {
                 case (arg: NamedArg, _) => arg
                 case (arg, name)        => NamedArg(name, arg)
               }
-          else if isAnnotConstr(methRef.symbol) then
-            typedArgs
-          else if !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
+          else if !isAnnotConstr(methRef.symbol) && !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             // (never do this for Java annotation constructors, hence the 'else if')
@@ -1198,9 +1199,8 @@ trait Applications extends Compatibility {
             //
             //    summonFrom {
             //      case given A[t] =>
-            //        summonFrom
+            //        summonFrom:
             //          case given `t` => ...
-            //        }
             //    }
             //
             // the second `summonFrom` should expand only once the first `summonFrom` is

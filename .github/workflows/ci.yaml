@@ -80,7 +80,7 @@ jobs:
       ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/scala/scala3/pull/19720)
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -133,7 +133,7 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -190,7 +190,7 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -229,7 +229,7 @@ jobs:
       - name: Reset existing repo
         shell: cmd
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
@@ -273,7 +273,7 @@ jobs:
       - name: Reset existing repo
         shell: cmd
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
@@ -319,7 +319,7 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -374,7 +374,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -391,7 +391,7 @@ jobs:
 
       - name: Test
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
@@ -431,7 +431,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -448,7 +448,7 @@ jobs:
 
       - name: Test
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
@@ -488,7 +488,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -505,7 +505,7 @@ jobs:
 
       - name: Test
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
@@ -541,7 +541,7 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -593,7 +593,7 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -630,7 +630,10 @@ jobs:
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     strategy:
       matrix:
-        branch: [main, lts-3.3]
+        series: [
+          {repository: scala/scala3, branch: main}, # Scala Next nightly
+          {repository: scala/scala3-lts, branch: lts-3.3} # Scala LTS nightly
+        ]
     needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
     env:
@@ -648,7 +651,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -660,7 +663,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.branch }}
+          repository: ${{ matrix.series.repository }}
+          ref: ${{ matrix.series.branch }}
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -706,7 +710,7 @@ jobs:
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -723,7 +727,7 @@ jobs:
 
       - name: Generate Website
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           ./project/scripts/genDocs -doc-snapshot
 
       - name: Deploy Website to https://dotty.epfl.ch
@@ -764,7 +768,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
@@ -832,9 +836,10 @@ jobs:
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
 
       - name: Install GH CLI
-        uses: dev-hanz-ops/install-gh-cli-action@v0.2.0
+        uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
         with:
           gh-cli-version: 2.59.0
+
       # Create the GitHub release
       - name: Create GitHub Release
         env:
@@ -843,7 +848,7 @@ jobs:
         run: |
           # We need to config safe.directory in every step that might reference git
           # It is not persisted between steps
-          git config --global --add safe.directory /__w/scala3/scala3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
           gh release create \
           --draft \
           --title "${{ env.RELEASE_TAG }}" \

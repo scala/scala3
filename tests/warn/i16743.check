@@ -1,3 +1,10 @@
+-- [E194] Potential Issue Warning: tests/warn/i16743.scala:90:8 --------------------------------------------------------
+90 |    def length() = 42 // warn This extension method will be shadowed by .length() on String.
+   |        ^
+   |        Extension method length will never be selected from type String
+   |        because String already has a member with the same name and compatible parameter types.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E194] Potential Issue Warning: tests/warn/i16743.scala:30:6 --------------------------------------------------------
 30 |  def t = 27 // warn
    |      ^

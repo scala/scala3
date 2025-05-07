@@ -111,6 +111,15 @@ object TypeEval:
               nestedPairs(fieldLabels) :: nestedPairs(fieldTypes) :: Nil
         else arg.widenDealias match
           case arg @ defn.NamedTuple(_, _) => Some(arg)
+          case arg if arg.derivesFrom(defn.TupleClass) =>
+            val fieldTypesOpt = tupleElementTypes(arg)
+            fieldTypesOpt match
+              case Some(fieldTypes) =>
+                val fieldLabels = (for i <- 1 to fieldTypes.length yield ConstantType(Constant(s"_$i"))).toList
+                Some:
+                  defn.NamedTupleTypeRef.appliedTo:
+                    nestedPairs(fieldLabels) :: nestedPairs(fieldTypes) :: Nil
+              case _ => None
           case _ => None
 
       def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =

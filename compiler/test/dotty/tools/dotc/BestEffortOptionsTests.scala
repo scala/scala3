@@ -28,8 +28,8 @@ class BestEffortOptionsTests {
 
     implicit val testGroup: TestGroup = TestGroup("negTestFromBestEffortTasty")
     compileBestEffortTastyInDir(s"tests${JFile.separator}neg", bestEffortBaselineOptions,
-      picklingFilter = FileFilter.exclude(TestSources.negBestEffortPicklingBlacklisted),
-      unpicklingFilter = FileFilter.exclude(TestSources.negBestEffortUnpicklingBlacklisted)
+      picklingFilter = FileFilter.exclude(TestSources.negBestEffortPicklingExcludelisted),
+      unpicklingFilter = FileFilter.exclude(TestSources.negBestEffortUnpicklingExcludelisted)
     ).checkNoCrash()
   }
 

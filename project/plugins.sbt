@@ -6,7 +6,7 @@
 libraryDependencySchemes +=
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.16.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.19.0")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.21")
 
@@ -22,4 +22,7 @@ addSbtPlugin("ch.epfl.scala" % "sbt-tasty-mima" % "1.0.0")
 
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.0")
 
-addSbtPlugin("com.gradle" % "sbt-develocity" % "1.1.1")
+resolvers += "Develocity Artifactory" at "https://repo.grdev.net/artifactory/public/"
+addSbtPlugin("com.gradle" % "sbt-develocity" % "1.2-rc-2")
+
+addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")

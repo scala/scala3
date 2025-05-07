@@ -1,10 +1,14 @@
 package dotty.tools.pc.tests.tokens
 
 import dotty.tools.pc.base.BaseSemanticTokensSuite
+import java.nio.file.Path
 
 import org.junit.Test
 
 class SemanticTokensSuite extends BaseSemanticTokensSuite:
+  // -preview required for `for-comprehension` test
+  override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
+    super.scalacOptions(classpath) ++ Seq("-preview")
 
   @Test def `class, object, var, val(readonly), method, type, parameter, String(single-line)` =
     check(
@@ -350,9 +354,9 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |
          |object <<B>>/*class*/ {
          |  val <<a>>/*variable,definition,readonly*/ = for {
-         |    <<foo>>/*variable,definition,readonly*/ <- <<List>>/*class*/("a", "b", "c")
+         |    <<foo>>/*parameter,declaration,readonly*/ <- <<List>>/*class*/("a", "b", "c")
          |    <<_>>/*class,abstract*/ = <<println>>/*method*/("print!")
-         |  } yield <<foo>>/*variable,readonly*/
+         |  } yield <<foo>>/*parameter,readonly*/
          |}
          |""".stripMargin
     )

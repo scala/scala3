@@ -97,6 +97,7 @@ object language:
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
+    @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
     object namedTuples
 
     /** Experimental support for new features for better modularity, including
@@ -139,7 +140,13 @@ object language:
      * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
+    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stablised and can be enabled using `-preview` flag", since = "3.7")
     object betterFors
+
+    /** Experimental support for package object values
+     */
+    @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
+    object packageObjectValues
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -329,6 +336,20 @@ object language:
     */
   @compileTimeOnly("`3.7` can only be used at compile time in import statements")
   object `3.7`
+
+    /** Set source version to 3.8-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.8-migration` can only be used at compile time in import statements")
+  object `3.8-migration`
+
+  /** Set source version to 3.8
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.8` can only be used at compile time in import statements")
+  object `3.8`
 
 
   // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!

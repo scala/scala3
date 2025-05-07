@@ -1,5 +1,4 @@
 //> using options -source future
-import language.experimental.namedTuples
 import scala.compiletime.asMatchable
 
 type City = (name: String, zip: Int, pop: Int)

@@ -59,6 +59,9 @@ object Spans {
       if (poff == SyntheticPointDelta) start else start + poff
     }
 
+    def pointMayBeIncorrect =
+      pointDelta == 0 && end - start >= SyntheticPointDelta
+
     /** The difference between point and start in this span */
     def pointDelta: Int =
       (coords >>> (StartEndBits * 2)).toInt

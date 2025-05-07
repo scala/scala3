@@ -20,10 +20,13 @@ import ValueClasses.*
  *  Make private accessor in value class not-private. This is necessary to unbox
  *  the value class when accessing it from separate compilation units
  *
- *  Also, make non-private any private parameter forwarders that forward to an inherited
+ *  Make non-private any private parameter forwarders that forward to an inherited
  *  public or protected parameter accessor with the same name as the forwarder.
  *  This is necessary since private methods are not allowed to have the same name
  *  as inherited public ones.
+ *
+ * Also, make non-private any private constructor that is annotated with `@publicInBinary`.
+ * (See SIP-52)
  *
  *  See discussion in https://github.com/scala/scala3/pull/784
  *  and https://github.com/scala/scala3/issues/783
@@ -102,6 +105,8 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     val sym = tree.symbol
     tree.rhs match {
+      case _ if sym.isConstructor && sym.hasPublicInBinary =>
+        sym.ensureNotPrivate.installAfter(thisPhase)
       case Apply(sel @ Select(_: Super, _), _)
       if sym.isAllOf(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
         sym.ensureNotPrivate.installAfter(thisPhase)

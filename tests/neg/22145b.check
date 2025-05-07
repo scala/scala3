@@ -1,0 +1,36 @@
+-- [E008] Not Found Error: tests/neg/22145b.scala:15:19 ----------------------------------------------------------------
+15 |      require(base.isWithin(p, start, end), "position is out of bounds") // error
+   |              ^^^^^^^^^^^^^
+   |              value isWithin is not a member of Collection.this.Self
+-- [E008] Not Found Error: tests/neg/22145b.scala:28:59 ----------------------------------------------------------------
+28 |      def positionAfter(p: Position): Position = self.base.positionAfter(p) // error
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |value positionAfter is not a member of Collection.this.Self.
+   |An extension method was tried, but could not be fully constructed:
+   |
+   |    this.positionAfter(self.base)
+   |
+   |    failed with:
+   |
+   |        Found:    (self.base : Collection.this.Self)
+   |        Required: foo.Collection.given_is_Slice_Collection.Self²
+   |        
+   |        where:    Self  is a type in trait Collection
+   |                  Self² is a type in object given_is_Slice_Collection which is an alias of Collection.this.Slice
+   |        
+-- [E008] Not Found Error: tests/neg/22145b.scala:29:50 ----------------------------------------------------------------
+29 |      def apply(p: Position): Element = self.base.apply(p) // error
+   |                                        ^^^^^^^^^^^^^^^
+   |value apply is not a member of Collection.this.Self.
+   |An extension method was tried, but could not be fully constructed:
+   |
+   |    this.apply(self.base)
+   |
+   |    failed with:
+   |
+   |        Found:    (self.base : Collection.this.Self)
+   |        Required: foo.Collection.given_is_Slice_Collection.Self²
+   |        
+   |        where:    Self  is a type in trait Collection
+   |                  Self² is a type in object given_is_Slice_Collection which is an alias of Collection.this.Slice
+   |        

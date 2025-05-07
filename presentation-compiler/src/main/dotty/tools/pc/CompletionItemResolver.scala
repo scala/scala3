@@ -75,7 +75,7 @@ object CompletionItemResolver extends ItemResolver:
       else gsymDoc
     else
       val companionDoc = docs(companion)
-      if companionDoc.isEmpty() then gsymDoc
+      if companionDoc.isEmpty() || companionDoc == gsymDoc then gsymDoc
       else if gsymDoc.isEmpty() then companionDoc
       else
         List(

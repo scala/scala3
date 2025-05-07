@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 type City = (name: String)
 
 def getCityInfo(city: Option[City]) = city match

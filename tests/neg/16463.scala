@@ -1,4 +1,4 @@
-//> using scala "3.2.1"
+//!> using scala "3.2.1"
 
 import scala.compiletime.ops.int._
 

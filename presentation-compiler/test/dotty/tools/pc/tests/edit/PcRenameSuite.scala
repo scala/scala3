@@ -508,3 +508,29 @@ class PcRenameSuite extends BasePcRenameSuite:
         |    ???
         |  end bar""".stripMargin
     )
+
+  @Test def `apply-rename` =
+    check(
+     """|object B {
+        |  def locally = {
+        |    object A{ def app@@ly(a: Int) = ??? }
+        |    A(123)
+        |    A.apply(123)
+        |  }
+        |}
+        |""".stripMargin,
+     wrap = false
+   )
+
+  @Test def `constructor-rename` =
+   check(
+     """|object B {
+        |  def locally = {
+        |    class A(a : String){ def th@@is(a: Int) = this(a.toString) }
+        |    A(123)
+        |    A.apply(123)
+        |  }
+        |}
+        |""".stripMargin,
+     wrap = false
+   )

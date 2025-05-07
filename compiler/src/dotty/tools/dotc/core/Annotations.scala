@@ -65,7 +65,7 @@ object Annotations {
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if !tp1.exists || (tp1 frozen_=:= tree.tpe) then x else tp1, tree)
+              foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
         else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -303,5 +303,16 @@ object Annotations {
         case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
       }
   }
-
+  
+  object PreviewAnnotation {
+    /** Matches and extracts the message from an instance of `@preview(msg)`
+     *  Returns `Some("")` for `@preview` with no message.
+     */
+    def unapply(a: Annotation)(using Context): Option[String] =
+      if a.symbol ne defn.PreviewAnnot then
+        None
+      else a.argumentConstant(0) match
+        case Some(Constant(msg: String)) => Some(msg)
+        case _ => Some("")
+  }
 }

@@ -1,0 +1,18 @@
+break B$C 10 // B$C.<init>
+break Test$ 18
+eval A.A1.a
+result 1
+eval A.A2.a
+result 2
+
+break B 13
+eval C.C1.m
+result bb
+eval C.C2("bb").m
+result bbb
+
+break B$C 10
+eval C1.m
+result bb
+eval C2("bb").m
+result bbb

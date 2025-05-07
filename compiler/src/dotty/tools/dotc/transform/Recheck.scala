@@ -255,7 +255,10 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       val resType = recheck(tree.tpt)
-      if tree.rhs.isEmpty then resType
+      def isUninitWildcard = tree.rhs match
+        case Ident(nme.WILDCARD) => tree.symbol.is(Mutable)
+        case _ => false
+      if tree.rhs.isEmpty || isUninitWildcard then resType
       else recheck(tree.rhs, resType)
 
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =

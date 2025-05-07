@@ -1,7 +1,10 @@
 import scala.annotation.implicitNotFound
 
 @implicitNotFound("Can you see me?!")
-trait Compare[A, B]
+trait Compare[-A, -B]
+
+object Compare:
+  val any: Compare[Any, Any] = new Compare {}
 
 object example extends App:
 
@@ -11,3 +14,13 @@ object example extends App:
 
   assertEquals(true, 1, "values are not the same") // error
   assertEquals(true, 1) // error
+
+object updated:
+  def f[A, B](a: A, b: B)(using Compare[A, B]) = ()
+  f(true, 1) // error
+
+  def g[A, B](a: A, b: B, clue: => Any)(implicit comp: Compare[A, B]) = ()
+  g(true, 1, "values are not the same") // error
+
+  def h[A, B](a: A, b: B)(using c: Compare[A, B] = Compare.any, s: String) = ()
+  h(true, 1) // error

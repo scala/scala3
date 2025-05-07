@@ -17,20 +17,20 @@ import Phases.{unfusedPhases, Phase}
 import sbt.interfaces.ProgressCallback
 
 import util.*
-import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
-import reporting.Diagnostic
-import reporting.Diagnostic.Warning
+import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, NoProfile, WConf}
+import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
+import Spans.Span
 
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 
-import scala.collection.mutable
+import scala.collection.mutable, mutable.ListBuffer
 import scala.util.control.NonFatal
 import scala.io.Codec
 
@@ -38,6 +38,8 @@ import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
+import dotty.tools.dotc.util.chaining.*
+import java.util.{Timer, TimerTask}
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -69,7 +71,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myFiles: Set[AbstractFile] = uninitialized
 
   // `@nowarn` annotations by source file, populated during typer
-  private val mySuppressions: mutable.LinkedHashMap[SourceFile, mutable.ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
+  private val mySuppressions: mutable.LinkedHashMap[SourceFile, ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
   // source files whose `@nowarn` annotations are processed
   private val mySuppressionsComplete: mutable.Set[SourceFile] = mutable.Set.empty
   // warnings issued before a source file's `@nowarn` annotations are processed, suspended so that `@nowarn` can filter them
@@ -98,9 +100,30 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
           Action.Warning
       }
 
+    def registerNowarn(annotPos: SourcePosition, range: Span)(conf: String, pos: SrcPos)(using Context): Unit =
+      var verbose = false
+      val filters = conf match
+        case "" =>
+          List(MessageFilter.Any)
+        case "none" =>
+          List(MessageFilter.None)
+        case "verbose" | "v" =>
+          verbose = true
+          List(MessageFilter.Any)
+        case conf =>
+          WConf.parseFilters(conf).left.map: parseErrors =>
+            report.warning(s"Invalid message filter\n${parseErrors.mkString("\n")}", pos)
+            List(MessageFilter.None)
+          .merge
+      addSuppression:
+        Suppression(annotPos, filters, range.start, range.end, verbose)
+          .tap: sup =>
+            if filters == List(MessageFilter.None) then sup.markUsed() // invalid suppressions, don't report as unused
+
     def addSuppression(sup: Suppression): Unit =
-      val source = sup.annotPos.source
-      mySuppressions.getOrElseUpdate(source, mutable.ListBuffer.empty) += sup
+      val suppressions = mySuppressions.getOrElseUpdate(sup.annotPos.source, ListBuffer.empty)
+      if sup.start != sup.end && suppressions.forall(x => x.start != sup.start || x.end != sup.end) then
+        suppressions += sup
 
     def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
       // sort suppressions. they are not added in any particular order because of lazy type completion
@@ -115,11 +138,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
       // report unused nowarns only if all all phases are done
       if !hasErrors && ctx.settings.WunusedHas.nowarn then
-        for {
+        for
           source <- mySuppressions.keysIterator.toList
           sups   <- mySuppressions.remove(source)
           sup    <- sups.reverse
-        } if (!sup.used)
+          if !sup.used
+        do
           report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
 
   /** The compilation units currently being compiled, this may return different
@@ -130,7 +154,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private def units_=(us: List[CompilationUnit]): Unit =
     myUnits = us
 
-  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+  var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
   var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap()
 
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
@@ -172,7 +196,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = mutable.ListBuffer[() => Unit]()
+  private var finalizeActions = ListBuffer.empty[() => Unit]
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
@@ -380,7 +404,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         initializeAsyncTasty()
       else () => {}
 
-    runPhases(allPhases = fusedPhases)(using runCtx)
+    showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
 
     ctx.reporter.finalizeReporting()
@@ -430,6 +454,26 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
       process()(using unitCtx)
     }
+
+  /** If set to true, prints every 10 seconds the files currently being compiled.
+   *  Turn this flag on if you want to find out which test among many takes more time
+   *  to compile than the others or causes an infinite loop in the compiler.
+   */
+  private inline val debugPrintProgress = false
+
+  /** Period between progress reports, in ms */
+  private inline val printProgressPeriod = 10000
+
+  /** Shows progress if debugPrintProgress is true */
+  private def showProgress(proc: => Unit)(using Context): Unit =
+    if !debugPrintProgress then proc
+    else
+      val watchdog = new TimerTask:
+        def run() = println(i"[compiling $units]")
+      try
+        new Timer().schedule(watchdog, printProgressPeriod, printProgressPeriod)
+        proc
+      finally watchdog.cancel()
 
   private sealed trait PrintedTree
   private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree

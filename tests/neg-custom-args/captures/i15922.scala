@@ -1,8 +1,8 @@
 
 
 trait Cap { def use(): Int }
-type Id[X] = [T] -> (op: X => T) -> T
-def mkId[X](x: X): Id[X] = [T] => (op: X => T) => op(x)
+class Id[+X](val value: [T] -> (op: X => T) -> T)
+def mkId[X](x: X): Id[X] = Id([T] => (op: X => T) => op(x))
 
 def withCap[X](op: (Cap^) => X): X = {
   val cap: Cap^ = new Cap { def use() = { println("cap is used"); 0 } }

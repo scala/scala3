@@ -5,8 +5,7 @@ import scala.collection.{Seq => _, _}
 // import representations._
 
 /** A body of text. A comment has a single body, which is composed of
-  * at least one block. Inside every body is exactly one summary (see
-  * [[scala.tools.nsc.doc.model.comment.Summary]]). */
+  * at least one block. Inside every body is exactly one summary. */
 final case class Body(blocks: Seq[Block]) {
 
   /** The summary text of the comment body. */

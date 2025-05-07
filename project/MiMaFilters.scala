@@ -13,6 +13,13 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.quotedPatternsWithPolymorphicFunctions"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$quotedPatternsWithPolymorphicFunctions$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.Patterns.higherOrderHoleWithTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.packageObjectValues"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$packageObjectValues$"),
+
+        // Scala.js-only class
+        ProblemFilters.exclude[FinalClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
       ),
 
       // Additions since last LTS
@@ -86,6 +93,13 @@ object MiMaFilters {
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> // Seq.empty, // We should never break backwards compatibility
         Seq(
+          // Scala.js-only class, which is subject to IR deserializatiation hacks to preserve bincompat.
+          // It's OK. Scala.js did the same:
+          // https://github.com/scala-js/scala-js/blob/v1.19.0/project/BinaryIncompatibilities.scala#L66-L71
+          ProblemFilters.exclude[AbstractClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.apply"),
+
           // `ReversedMissingMethodProblem`s are acceptable. See comment in `Breaking changes since last LTS`.
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleType"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeTypeTest"),
@@ -95,6 +109,7 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),

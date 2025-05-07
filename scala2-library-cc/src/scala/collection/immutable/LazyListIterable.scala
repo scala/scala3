@@ -24,7 +24,7 @@ import scala.language.implicitConversions
 import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
-import caps.untrackedCaptures
+import caps.unsafe.untrackedCaptures
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.

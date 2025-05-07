@@ -8,6 +8,6 @@ object test {
 
   val foo: C[Tree^] = ??? // error
   type T = C[Tree^] // error
-  val bar: T -> T = ???
+  //val bar: T -> T = ???  // --> boundschecks3.scala for what happens if we uncomment
   val baz: C[Tree^] -> Unit = ??? // error
 }

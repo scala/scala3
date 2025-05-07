@@ -42,7 +42,7 @@ trait BasicSupport:
     def getAnnotations(): List[Annotation] =
       // Custom annotations should be documented only if annotated by @java.lang.annotation.Documented
       // We allow also some special cases
-      val fqNameWhitelist = Set(
+      val fqNameAllowlist = Set(
         "scala.specialized",
         "scala.throws",
         "scala.transient",
@@ -56,7 +56,7 @@ trait BasicSupport:
       )
       val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
       val annotations = sym.annotations.filter { a =>
-        a.tpe.typeSymbol.hasAnnotation(documentedSymbol) || fqNameWhitelist.contains(a.symbol.fullName)
+        a.tpe.typeSymbol.hasAnnotation(documentedSymbol) || fqNameAllowlist.contains(a.symbol.fullName)
       }
       annotations.map(parseAnnotation).reverse
 
