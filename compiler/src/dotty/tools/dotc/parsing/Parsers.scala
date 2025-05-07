@@ -3188,7 +3188,7 @@ object Parsers {
                 |  * variable pattern, e.g. `case x: String =>`
                 |  * number literal pattern, e.g. `case 10.5: Double =>`
                 |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
-            in.sourcePos(),
+            p.sourcePos,
             MigrationVersion.AscriptionAfterPattern)
         in.nextToken()
         ascription(p, location)
