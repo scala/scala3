@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 class SelectableNT[A <: NamedTuple.AnyNamedTuple](val nt: A) extends Selectable:
   type Fields = A
   def selectDynamic(x: String) = ???

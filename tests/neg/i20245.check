@@ -15,3 +15,17 @@
    |               Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
    |
    | longer explanation available when compiling with `-explain`
+-- [E046] Cyclic Error: tests/neg/i20245/Typer_2.scala:10:7 ------------------------------------------------------------
+10 |import effekt.source.{ resolve } // error
+   |       ^
+   |       Cyclic reference involving class Context
+   |
+   |       The error occurred while trying to compute the base classes of class Context
+   |         which required to compute the base classes of trait TyperOps
+   |         which required to compute the signature of trait TyperOps
+   |         which required to elaborate the export clause export unification.requireSubtype
+   |         which required to compute the base classes of class Context
+   |
+   |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+   |
+   | longer explanation available when compiling with `-explain`

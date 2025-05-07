@@ -16,7 +16,7 @@ DOTTY_NONBOOTSTRAPPED_VERSION=$(eval $DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND | ta
 DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyVersion)\""
 DOTTY_BOOTSTRAPPED_VERSION=$(eval $DOTTY_BOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
-SOURCE_LINKS_REPOSITORY="scala/scala3"
+SOURCE_LINKS_REPOSITORY="${GITHUB_REPOSITORY:-scala/scala3}"
 SOURCE_LINKS_VERSION="${GITHUB_SHA:-$DOTTY_BOOTSTRAPPED_VERSION}"
 
 "$SBT" "scaladoc/generateTestcasesDocumentation" > "$tmp" 2>&1 || echo "generated testcases project with sbt"

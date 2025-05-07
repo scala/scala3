@@ -1071,7 +1071,7 @@ The following properties hold about ´⌈X⌉´ (we have paper proofs for those)
 The "lower-bound rule" states that ´S <: T´ if ´T = q.X´ and ´q.X´ is a non-class type designator and ´S <: L´ where ´L´ is the lower bound of the underlying type definition of ´q.X´".
 That rule is known to break transitivy of subtyping in Scala already.
 
-Second, we define the relation ´⋔´ on *classes* (including traits and hidden classes of objects) as:
+Second, we define the relation ´⋔´ on *classes* (including traits, hidden classes of objects, and enum terms) as:
 
 - ´C ⋔ D´ if `´C ∉´ baseClasses´(D)´` and ´D´ is `final`
 - ´C ⋔ D´ if `´D ∉´ baseClasses´(C)´` and ´C´ is `final`

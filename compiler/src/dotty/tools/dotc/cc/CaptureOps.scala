@@ -46,8 +46,8 @@ object ccConfig:
    */
   def useSealed(using Context) =
     Feature.sourceVersion.stable != SourceVersion.`3.5`
-end ccConfig
 
+end ccConfig
 
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
@@ -628,6 +628,19 @@ class CleanupRetains(using Context) extends TypeMap:
       case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
         RetainingType(tp, Nil, byName = annot.symbol == defn.RetainsByNameAnnot)
       case _ => mapOver(tp)
+
+/** A typemap that follows aliases and keeps their transformed results if
+ *  there is a change.
+ */
+trait FollowAliasesMap(using Context) extends TypeMap:
+  var follow = true    // Used for debugging so that we can compare results with and w/o following.
+  def mapFollowingAliases(t: Type): Type =
+    val t1 = t.dealiasKeepAnnots
+    if follow && (t1 ne t) then
+      val t2 = apply(t1)
+      if t2 ne t1 then t2
+      else t
+    else mapOver(t)
 
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
  *  capability as a tree in a @retains annotation.

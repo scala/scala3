@@ -16,5 +16,4 @@ package scala.annotation
  *  Adding this annotation to a non-public definition can also cause binary incompatibilities
  *  if the definition is accessed in an inline definition (these can be checked using `-WunstableInlineAccessors`).
  */
-@experimental
 final class publicInBinary extends scala.annotation.StaticAnnotation

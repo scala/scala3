@@ -10,7 +10,6 @@ import interfaces.IncrementalCallback
 import dotty.tools.io.FileWriters.BufferingReporter
 import dotty.tools.dotc.core.Decorators.em
 
-import scala.util.chaining.given
 import scala.util.control.NonFatal
 
 inline val TermNameHash = 1987 // 300th prime

@@ -43,7 +43,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
 
     val compiledExpr =
       try
-        new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder)
+        new QuoteCompiler().newRun(using ctx).compileExpr(exprBuilder)
       catch case ex: dotty.tools.FatalError =>
         val enrichedMessage =
           s"""An unhandled exception was thrown in the staging compiler.

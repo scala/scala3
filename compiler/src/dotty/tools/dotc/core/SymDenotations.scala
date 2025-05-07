@@ -617,7 +617,7 @@ object SymDenotations {
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
         (myInfo `eq` NoType)
-        || is(Invisible) && ctx.isTyper
+        || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
@@ -1230,6 +1230,15 @@ object SymDenotations {
       if (this.is(Method)) symbol
       else if (this.isClass) primaryConstructor
       else if (this.exists) owner.enclosingMethod
+      else NoSymbol
+
+    /** The closest enclosing method or static symbol containing this definition.
+     *  A local dummy owner is mapped to the primary constructor of the class.
+     */
+    final def enclosingMethodOrStatic(using Context): Symbol =
+      if this.is(Method) || this.hasAnnotation(defn.ScalaStaticAnnot) then symbol
+      else if this.isClass then primaryConstructor
+      else if this.exists then owner.enclosingMethodOrStatic
       else NoSymbol
 
     /** The closest enclosing extension method containing this definition,
@@ -1950,7 +1959,6 @@ object SymDenotations {
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
-     *  - for a module class `m`: A term ref to m's source module.
      *  - for all other classes `c` with owner `o`: ThisType(TypeRef(o.thisType, c))
      */
     override def thisType(using Context): Type = {
@@ -2753,6 +2761,9 @@ object SymDenotations {
 
     /** Sets all missing fields of given denotation */
     def complete(denot: SymDenotation)(using Context): Unit
+
+    /** Is this a completer for an explicit type tree */
+    def isExplicit: Boolean = false
 
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this

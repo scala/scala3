@@ -105,7 +105,7 @@ object Mode {
 
   /** Use previous Scheme for implicit resolution. Currently significant
    *  in 3.0-migration where we use Scala-2's scheme instead and in 3.5 and 3.6-migration
-   *  where we use the previous scheme up to 3.4 for comparison with the new scheme. 
+   *  where we use the previous scheme up to 3.4 for comparison with the new scheme.
    */
   val OldImplicitResolution: Mode = newMode(15, "OldImplicitResolution")
 
@@ -124,6 +124,9 @@ object Mode {
 
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
+
+  /** We are resolving a SELECT name from TASTy */
+  val ResolveFromTASTy: Mode = newMode(18, "ResolveFromTASTy")
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
@@ -163,10 +166,35 @@ object Mode {
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
 
-  /** This mode is enabled when we check Java overriding in explicit nulls.
-   *  Type `Null` becomes a subtype of non-primitive value types in TypeComparer.
+  /** Are we typing the argument of an annotation?
+   *
+   *  This mode is used through [[Applications.isAnnotConstr]] to avoid lifting
+   *  arguments of annotation constructors. This mode is disabled in nested
+   *  applications (from [[ProtoTypes.typedArg]]) and in "explicit" annotation
+   *  constructors applications (annotation classes constructed with `new`).
+   *
+   *  In the following example:
+   *
+   *  ```scala
+   *  @annot(y = new annot(y = Array("World"), x = 1), x = 2)
+   *  ```
+   *
+   *  the mode will be set when typing `@annot(...)` but not when typing
+   *  `new annot(...)`, such that the arguments of the former are not lifted but
+   *  the arguments of the later can be:
+   *
+   *  ```scala
+   *  @annot(x = 2, y = {
+   *    val y$3: Array[String] =
+   *      Array.apply[String](["World" : String]*)(
+   *        scala.reflect.ClassTag.apply[String](classOf[String]))
+   *    new annot(x = 1, y = y$3)
+   *  })
+   *  ```
+   *
+   *  See #22035, #22526, #22553 and `dependent-annot-default-args.scala`.
    */
-  val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
+  val InAnnotation: Mode = newMode(30, "InAnnotation")
 
   /** Skip inlining of methods. */
   val NoInline: Mode = newMode(31, "NoInline")

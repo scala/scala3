@@ -7,7 +7,7 @@ import Settings.*
 import core.Contexts.*
 import printing.Highlighting
 
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
 
 trait CliCommand:

@@ -1,0 +1,32 @@
+
+-- Error: tests/neg-macros/newClassParamsMissingArgument/Test_2.scala:4:2 ----------------------------------------------
+4 |  makeClass("foo") // error // error
+  |  ^^^^^^^^^^^^^^^^
+  |wrong number of arguments at inlining (while expanding macro) for (idx: Int): foo: (foo#<init> : (idx: Int): foo), expected: 1, found: 0
+-- Error: tests/neg-macros/newClassParamsMissingArgument/Test_2.scala:4:11 ---------------------------------------------
+4 |  makeClass("foo") // error // error
+  |  ^^^^^^^^^^^^^^^^
+  |Malformed tree was found while expanding macro with -Xcheck-macros.
+  |The tree does not conform to the compiler's tree invariants.
+  |
+  |Macro was:
+  |scala.quoted.runtime.Expr.splice[java.lang.Object](((contextual$1: scala.quoted.Quotes) ?=> Macro_1$package.inline$makeClassExpr(scala.quoted.runtime.Expr.quote[scala.Predef.String]("foo").apply(using contextual$1))(contextual$1)))
+  |
+  |The macro returned:
+  |{
+  |  class foo(val idx: scala.Int) extends java.lang.Object
+  |
+  |  (new foo(): java.lang.Object)
+  |}
+  |
+  |Error:
+  |missing argument for parameter idx of constructor foo in class foo: (idx: Int): foo
+  |
+  |stacktrace available when compiling with `-Ydebug`
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:5
+5 |inline def makeClass(inline name: String): Object = ${ makeClassExpr('name) }
+  |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

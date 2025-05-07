@@ -1,0 +1,55 @@
+
+//> using options -Wunused:all
+
+package p1:
+  import java.lang.Runnable
+  class C extends Runnable { def run() = () }
+
+package p2:
+  import java.lang.Runnable
+  class C extends Runnable { def run() = () }
+
+package p3:
+  import java.lang.Runnable
+  class C extends Runnable { def run() = () }
+
+package p4:
+  import java.lang.{Runnable, System}, System.out
+  class C extends Runnable { def run() = out.println() }
+
+package p5:
+  import java.lang.{Runnable, System}, System.out
+  class C extends Runnable { def run() = out.println() }
+
+package p6:
+  import java.lang.{Runnable, System}, System.out
+  class C extends Runnable { def run() = out.println() }
+
+package p7:
+  import java.lang.{Runnable,
+                    System}, System.out
+  class C extends Runnable { def run() = out.println() }
+
+package p8:
+  import java.lang.{Runnable as R, System}, System.out
+  class C extends R { def run() = out.println() }
+
+package p9:
+  import java.lang.{Runnable as R, System,
+                    Thread}
+  class C extends R { def run() = Thread(() => System.out.println()).start() }
+
+package p10:
+  object X:
+    def x = 42
+  class C:
+    import X.* // preserve text, don't rewrite to p10.X.*
+    def c = x
+
+package p11:
+  import collection.mutable, mutable.ListBuffer // warn // warn // not checked :(
+  def buf = ListBuffer.empty[String]
+
+package p12:
+  import java.lang.System, java.lang.Runnable
+  class C extends Runnable { def run() = System.out.println() }

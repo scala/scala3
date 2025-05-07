@@ -9,13 +9,13 @@ import core.Annotations.Annotation
 import core.Flags
 import core.Names.Name
 import core.StdNames.tpnme
-import scala.util.chaining.scalaUtilChainingOps
 
 import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
 import dotty.tools.dotc.core.Names.Designator
+import dotty.tools.dotc.util.chaining.*
 
 class TypeOps:
   import SymbolScopeOps.*

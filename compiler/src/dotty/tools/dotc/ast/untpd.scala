@@ -518,6 +518,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
 
+  def capsInternalDot(name: Name)(using SourceFile): Select =
+    Select(Select(scalaDot(nme.caps), nme.internal), name)
+
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
@@ -525,7 +528,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
 
   def makeCapsOf(tp: RefTree)(using Context): Tree =
-    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
+    TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
 
   // Capture set variable `[C^]` becomes: `[C >: CapSet <: CapSet^{cap}]`
   def makeCapsBound()(using Context): TypeBoundsTree =

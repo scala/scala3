@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/boundschecks3.scala:11:13 -----------------------------------------------------
+11 |  val bar: T -> T = ??? // error, since `T` is expanded here. But the msg is not very good.
+   |           ^^^^^^
+   |           test.C[box test.Tree^] captures the root capability `cap` in invariant position

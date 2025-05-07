@@ -66,7 +66,7 @@ trait DungeonDweller:
 trait SadDungeonDweller:
   def f[A](x: Dungeon.IArray[A]) = 27 // x.length // just to confirm, length is not a member
 
-trait Quote:
+trait Quote: // see tests/warn/ext-override.scala
   type Tree <: AnyRef
   given TreeMethods: TreeMethods
   trait TreeMethods:
@@ -87,7 +87,7 @@ class Depends:
 object Depending:
   extension (using depends: Depends)(x: depends.Thing)
     def y = 42
-    def length() = 42 // nowarn see Quote above
+    def length() = 42 // warn This extension method will be shadowed by .length() on String.
   def f(using d: Depends) = d.thing.y
   def g(using d: Depends) = d.thing.length()
 

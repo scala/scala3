@@ -438,7 +438,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
-            if (tp1 eq NothingType) || isBottom(tp1) then return true
+            if isCaptureVarComparison then
+              return subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK
+            if (tp1 eq NothingType) || isBottom(tp1) then
+              return true
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -585,6 +588,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => false
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
+
+        if isCaptureVarComparison then
+          return subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
@@ -857,7 +863,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareTypeBounds
       case CapturingType(parent2, refs2) =>
-        def compareCapturing =
+        def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
@@ -966,17 +972,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || compareGADT
             || tryLiftedToThis1
           case _ =>
-            // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
-            // in explicit nulls, and `Null` becomes a bottom type, which allows
-            // `T | Null` being a subtype of `T`.
-            // A type variable `T` from Java is translated to `T >: Nothing <: Any`.
-            // However, `null` can always be a value of `T` for Java side.
-            // So the best solution here is to let `Null` be a subtype of non-primitive
-            // value types temporarily.
             def isNullable(tp: Type): Boolean = tp.dealias match
               case tp: TypeRef =>
                 val tpSym = tp.symbol
-                ctx.mode.is(Mode.RelaxedOverriding) && !tpSym.isPrimitiveValueClass ||
                 tpSym.isNullableClass
               case tp: TermRef =>
                 // https://scala-lang.org/files/archive/spec/2.13/03-types.html#singleton-types
@@ -1578,6 +1576,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tp2a = liftToThis(tp2)
       (tp2a ne tp2) && recur(tp1, tp2a) && { opaquesUsed = true; true }
     }
+
+    def isCaptureVarComparison: Boolean =
+      isCaptureCheckingOrSetup
+      && tp1.derivesFrom(defn.Caps_CapSet)
+      && tp2.derivesFrom(defn.Caps_CapSet)
 
     // begin recur
     if tp2 eq NoType then false
@@ -2845,6 +2848,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
     Existential.isExistentialVar(tp1) && canInstantiateWith(assocExistentials)
 
+  def isOpenedExistential(ref: CaptureRef)(using Context): Boolean =
+    openedExistentials.contains(ref)
+
   /** bi-map taking existentials to the left of a comparison to matching
    *  existentials on the right. This is not a bijection. However
    *  we have `forwards(backwards(bv)) == bv` for an existentially bound `bv`.
@@ -2976,11 +2982,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *
    *  1. Single inheritance of classes
    *  2. Final classes cannot be extended
-   *  3. ConstantTypes with distinct values are non intersecting
-   *  4. TermRefs with distinct values are non intersecting
+   *  3. ConstantTypes with distinct values are non-intersecting
+   *  4. TermRefs with distinct values are non-intersecting
    *  5. There is no value of type Nothing
    *
-   *  Note on soundness: the correctness of match types relies on on the
+   *  Note on soundness: the correctness of match types relies on the
    *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
    *
@@ -3062,6 +3068,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp: WildcardType =>
         disjointnessBoundary(tp.effectiveBounds.hi)
       case tp: ErrorType =>
+        defn.AnyType
+      case tp: NoType.type =>
         defn.AnyType
     end disjointnessBoundary
 
@@ -3197,22 +3205,38 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     end match
   }
 
+  /** Are `cls1` and `cls1` provablyDisjoint classes, i.e., is `cls1 ⋔ cls2` true?
+   *
+   *  Note that "class" where includes traits, module classes, and (in the recursive case)
+   *  enum value term symbols.
+   */
   private def provablyDisjointClasses(cls1: Symbol, cls2: Symbol)(using Context): Boolean =
     def isDecomposable(cls: Symbol): Boolean =
       cls.is(Sealed) && !cls.hasAnonymousChild
 
     def decompose(cls: Symbol): List[Symbol] =
-      cls.children.flatMap { child =>
+      cls.children.map: child =>
         if child.isTerm then
-          child.info.classSymbols // allow enum vals to be decomposed to their enum class (then filtered out) and any mixins
-        else child :: Nil
-      }.filter(child => child.exists && child != cls)
+          // Enum vals with mixins, such as in i21860 or i22266,
+          // don't have a single class symbol.
+          // So instead of decomposing to NoSymbol
+          // (which leads to erroneously considering an enum type
+          // as disjoint from one of the mixin, eg. i21860.scala),
+          // or instead of decomposing to all the class symbols of
+          // the enum value (which leads to other mixins being decomposed,
+          // and infinite recursion, eg. i22266),
+          // we decompose to the enum value term symbol, and handle
+          // that within the rest of provablyDisjointClasses.
+          child.info.classSymbol.orElse(child)
+        else child
+      .filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
       cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)
 
     def smallestNonTraitBase(cls: Symbol): Symbol =
-      cls.asClass.baseClasses.find(!_.is(Trait)).get
+      val classes = if cls.isClass then cls.asClass.baseClasses else cls.info.classSymbols
+      classes.find(!_.is(Trait)).get
 
     if (eitherDerivesFromOther(cls1, cls2))
       false
@@ -3476,6 +3500,9 @@ object TypeComparer {
 
   def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
     comparing(_.subsumesExistentially(tp1, tp2))
+
+  def isOpenedExistential(ref: CaptureRef)(using Context) =
+    comparing(_.isOpenedExistential(ref))
 }
 
 object MatchReducer:

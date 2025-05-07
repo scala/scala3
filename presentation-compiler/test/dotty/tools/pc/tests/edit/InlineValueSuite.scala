@@ -301,6 +301,47 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |}""".stripMargin
     )
 
+
+  @Test def `i6924` =
+    checkEdit(
+      """|object O {
+         |  def test(n: Int) = {
+         |    val isOne = n == 1
+         |    <<i>>sOne
+         |  }
+         |}
+         |""".stripMargin,
+      """|object O {
+         |  def test(n: Int) = {
+         |    n == 1
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `i6924-2` =
+    checkEdit(
+      """|object O {
+         |  def ==(o: O) = false
+         |}
+         |object P {
+         |  def test() = {
+         |    val isOne = O == O
+         |    <<i>>sOne
+         |  }
+         |}
+         |""".stripMargin,
+      """|object O {
+         |  def ==(o: O) = false
+         |}
+         |object P {
+         |  def test() = {
+         |    O == O
+         |  }
+         |}
+         |""".stripMargin
+    )
+
   @Test def `scoping-packages` =
     checkError(
       """|package a
@@ -344,6 +385,26 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |  }
          |}""".stripMargin,
       InlineErrors.variablesAreShadowed("A.k")
+    )
+
+  @Test def `bad-scoping-3` =
+    checkError(
+      """|class T {
+         |    val a = 1
+         |}
+         |
+         |class O {
+         |  val t = new T()
+         |  import t._
+         |  val bb = a + a
+         |
+         |  class Inner {
+         |    val a = 123
+         |    val cc = <<b>>b
+         |  }
+         |}
+         |""".stripMargin,
+      InlineErrors.variablesAreShadowed("T.a")
     )
 
   def checkEdit(

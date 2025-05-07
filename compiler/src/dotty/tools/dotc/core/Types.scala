@@ -1164,17 +1164,14 @@ object Types extends TypeUtils {
      *
      *  @param isSubType      a function used for checking subtype relationships.
      */
-    final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
+    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true,
                         isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean = {
-      val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
-      inContext(overrideCtx) {
-        !checkClassInfo && this.isInstanceOf[ClassInfo]
-        || isSubType(this.widenExpr, that.widenExpr)
-        || matchLoosely && {
-            val this1 = this.widenNullaryMethod
-            val that1 = that.widenNullaryMethod
-            ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, relaxedCheck, false, checkClassInfo)
-          }
+      !checkClassInfo && this.isInstanceOf[ClassInfo]
+      || isSubType(this.widenExpr, that.widenExpr)
+      || matchLoosely && {
+        val this1 = this.widenNullaryMethod
+        val that1 = that.widenNullaryMethod
+        ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, false, checkClassInfo)
       }
     }
 
@@ -1200,8 +1197,8 @@ object Types extends TypeUtils {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      val overrideCtx = if ctx.explicitNulls then ctx.relaxedOverrideContext else ctx
-      TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)(using overrideCtx)
+      withoutMode(Mode.SafeNulls)(
+        TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes))
     }
 
     /** This is the same as `matches` except that it also matches => T with T and
@@ -1407,9 +1404,9 @@ object Types extends TypeUtils {
       case tp =>
         tp
 
-    /** Widen all top-level singletons reachable by dealiasing
-     *  and going to the operands of & and |.
-     *  Overridden and cached in OrType.
+    /** Widen all top-level singletons reachable by dealiasing and going to the
+     *  operands of intersections and soft unions (only when `skipSoftUnions` is
+     *  `false`). Overridden and cached in [[OrType]].
      */
     def widenSingletons(skipSoftUnions: Boolean = false)(using Context): Type = dealias match {
       case tp: SingletonType =>
@@ -2480,7 +2477,7 @@ object Types extends TypeUtils {
           else lastd match {
             case lastd: SymDenotation =>
               if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
-              else finish(memberDenot(lastd.initial.name, allowPrivate = false))
+              else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
             case _ =>
               fromDesignator
           }
@@ -3634,7 +3631,7 @@ object Types extends TypeUtils {
       myAtoms
 
     override def widenSingletons(skipSoftUnions: Boolean)(using Context): Type =
-      if isSoft && skipSoftUnions then this
+      if !isSoft || skipSoftUnions then this
       else
         if widenedRunId != ctx.runId then
           myWidened = computeWidenSingletons()
@@ -6079,6 +6076,9 @@ object Types extends TypeUtils {
     def forward(ref: CaptureRef): CaptureRef =
       val result = this(ref)
       def ensureTrackable(tp: Type): CaptureRef = tp match
+        /* Issue #22437: handle case when info is not yet available during postProcess in CC setup */
+        case tp: (TypeParamRef | TermRef) if tp.underlying == NoType =>
+          tp
         case tp: CaptureRef =>
           if tp.isTrackableRef then tp
           else ensureTrackable(tp.underlying)
@@ -6090,6 +6090,9 @@ object Types extends TypeUtils {
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
+      /* Ensure bijection for issue #22437 fix in method forward above:  */
+      case result: (TypeParamRef | TermRef) if result.underlying == NoType =>
+        result
       case result: CaptureRef if result.isTrackableRef => result
   end BiTypeMap
 
@@ -6325,6 +6328,8 @@ object Types extends TypeUtils {
       override def stopAt = thisMap.stopAt
       def apply(tp: Type) = f(thisMap(tp))
     }
+
+    override def toString = s"${getClass.getSimpleName}@$hashCode" // otherwise would print as <function1>
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */

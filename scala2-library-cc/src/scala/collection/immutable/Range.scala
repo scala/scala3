@@ -643,6 +643,7 @@ private class RangeIterator(
   lastElement: Int,
   initiallyEmpty: Boolean
 ) extends AbstractIterator[Int] with Serializable {
+  this: RangeIterator^ =>
   private[this] var _hasNext: Boolean = !initiallyEmpty
   private[this] var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0
@@ -656,7 +657,7 @@ private class RangeIterator(
     value
   }
 
-  override def drop(n: Int): Iterator[Int] = {
+  override def drop(n: Int): Iterator[Int]^{this} = {
     if (n > 0) {
       val longPos = _next.toLong + step * n
       if (step > 0) {

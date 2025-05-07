@@ -179,8 +179,6 @@ final class JSDefinitions()(using Context) {
     def Runtime_createLocalJSClass(using Context) = Runtime_createLocalJSClassR.symbol
     @threadUnsafe lazy val Runtime_withContextualJSClassValueR = RuntimePackageClass.requiredMethodRef("withContextualJSClassValue")
     def Runtime_withContextualJSClassValue(using Context) = Runtime_withContextualJSClassValueR.symbol
-    @threadUnsafe lazy val Runtime_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
-    def Runtime_linkingInfo(using Context) = Runtime_linkingInfoR.symbol
     @threadUnsafe lazy val Runtime_dynamicImportR = RuntimePackageClass.requiredMethodRef("dynamicImport")
     def Runtime_dynamicImport(using Context) = Runtime_dynamicImportR.symbol
 

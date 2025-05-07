@@ -32,15 +32,23 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.retainsCap",
   "scala.annotation.retainsArg",
   "scala.Pure",
-  "scala.caps",
-  "scala.caps$",
+  "scala.caps.CapSet",
+  "scala.caps.Capability",
+  "scala.caps.Contains",
+  "scala.caps.Contains$",
+  "scala.caps.Contains$.containsImpl",
+  "scala.caps.Exists",
+  "scala.caps.internal",
+  "scala.caps.internal$",
+  "scala.caps.cap",
+  "scala.caps.cap$",
+  "scala.caps.unsafe",
+  "scala.caps.unsafe$",
+  "scala.caps.use",
 
   //// New feature: into
   "scala.annotation.into",
   "scala.annotation.internal.$into",
-
-  //// New feature: @publicInBinary
-  "scala.annotation.publicInBinary",
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
@@ -73,15 +81,13 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.GivenSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.OmitSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.RenameSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.SimpleSelectorModule.apply",
 
   // New feature: fromNullable for explicit nulls
   "scala.Predef$.fromNullable",
-
-  // New feature: named tuples
-  "scala.NamedTuple",
-  "scala.NamedTuple$",
-  "scala.NamedTupleDecomposition",
-  "scala.NamedTupleDecomposition$",
 
   // New feature: modularity
   "scala.Precise",
@@ -93,7 +99,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
 
   // New feature: SIP 57 - runtimeChecked replacement of @unchecked
-  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked"
+  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
+
+  // New feature: SIP 61 - @unroll annotation
+  "scala.annotation.unroll"
 )
 
 

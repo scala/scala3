@@ -1,5 +1,18 @@
 trait X { self =>
   type R <: Z
-  type Z >: X { type R = self.R; type Z = self.R } // error // error // error
+  type Z >:
+    X { // error
+      type R = // was-error
+        self.R
+      type Z = // was-error
+        self.R
+    }
 }
-class Foo extends X { type R = Foo; type Z = Foo }
+
+class Foo // error
+    extends X {
+  type R =
+    Foo
+  type Z =
+    Foo
+}

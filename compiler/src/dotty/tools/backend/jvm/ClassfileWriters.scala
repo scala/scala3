@@ -12,10 +12,10 @@ import java.util.zip.{CRC32, Deflater, ZipEntry, ZipOutputStream}
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.util.chaining.*
 import dotty.tools.io.{AbstractFile, PlainFile, VirtualFile}
 import dotty.tools.io.PlainFile.toPlainFile
 import BTypes.InternalName
-import scala.util.chaining.*
 import dotty.tools.io.JarArchive
 
 import scala.language.unsafeNulls

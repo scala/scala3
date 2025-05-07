@@ -1,0 +1,8 @@
+# compile library A
+> a/compile
+# compile library B, from source, against A
+> b/compile
+# add a new parameter in method to library A', using @unroll to generate a forwarder
+> a-changes/compile
+# compile B, from tasty, against A', it should still compile: the generated forwarder is resolved.
+> c/compile

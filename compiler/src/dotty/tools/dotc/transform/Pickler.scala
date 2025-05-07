@@ -25,10 +25,10 @@ import scala.annotation.constructorOnly
 import scala.concurrent.Promise
 import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
 
-import scala.util.chaining.given
 import dotty.tools.io.FileWriters.{EagerReporter, BufferingReporter}
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
+import dotty.tools.dotc.util.chaining.*
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import java.util.concurrent.atomic.AtomicBoolean

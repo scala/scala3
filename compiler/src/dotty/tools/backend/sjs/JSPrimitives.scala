@@ -34,8 +34,7 @@ object JSPrimitives {
   inline val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
   inline val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   inline val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  inline val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
-  inline val DYNAMIC_IMPORT = LINKING_INFO + 1                          // runtime.dynamicImport
+  inline val DYNAMIC_IMPORT = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1        // runtime.dynamicImport
 
   inline val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
   inline val IN = STRICT_EQ + 1                            // js.special.in
@@ -48,9 +47,10 @@ object JSPrimitives {
   inline val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
   inline val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
-  inline val THROW = DEBUGGER + 1
+  inline val THROW = DEBUGGER + 1  // <special-ops>.throw
+  inline val NEW_ARRAY = THROW + 1 // scala.runtime.Arrays.newArray
 
-  inline val UNION_FROM = THROW + 1                       // js.|.from
+  inline val UNION_FROM = NEW_ARRAY + 1                   // js.|.from
   inline val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
 
   inline val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
@@ -122,7 +122,6 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
     addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
-    addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
     addPrimitive(jsdefn.Runtime_dynamicImport, DYNAMIC_IMPORT)
 
     addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)
@@ -137,6 +136,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
     addPrimitive(defn.throwMethod, THROW)
+    addPrimitive(defn.newArrayMethod, NEW_ARRAY)
 
     addPrimitive(jsdefn.PseudoUnion_from, UNION_FROM)
     addPrimitive(jsdefn.PseudoUnion_fromTypeConstructor, UNION_FROM_TYPE_CONSTRUCTOR)

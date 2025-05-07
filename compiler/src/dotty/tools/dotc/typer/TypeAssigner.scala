@@ -12,6 +12,7 @@ import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
+import transform.Splicer
 
 trait TypeAssigner {
   import tpd.*
@@ -125,8 +126,8 @@ trait TypeAssigner {
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
-    val qualType0 = qual1.tpe.widenIfUnstable
     val qualType =
+      val qualType0 = qual1.tpe.widenIfUnstable
       if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
         // constructors are selected on type constructor, type arguments are passed afterwards
         errorType(em"$qualType0 takes type parameters", qual1.srcPos)
@@ -163,7 +164,7 @@ trait TypeAssigner {
           else
             qualType.findMember(name, pre)
 
-        if reallyExists(mbr) then qualType.select(name, mbr)
+        if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
   end selectionType
@@ -199,7 +200,7 @@ trait TypeAssigner {
 
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
-   *   - typed child trees it needs to access to cpmpute that type,
+   *   - typed child trees it needs to access to compute that type,
    *   - any further information it needs to access to compute that type.
    */
   def assignType(tree: untpd.Ident, tp: Type)(using Context): Ident =
@@ -301,7 +302,10 @@ trait TypeAssigner {
           if fntpe.isResultDependent then safeSubstMethodParams(fntpe, args.tpes)
           else fntpe.resultType // fast path optimization
         else
-          errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+          val erroringPhase =
+            if Splicer.inMacroExpansion then i"${ctx.phase} (while expanding macro)"
+            else ctx.phase.prev.toString
+          errorType(em"wrong number of arguments at $erroringPhase for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case err: ErrorType =>
         err
       case t =>

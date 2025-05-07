@@ -1071,6 +1071,7 @@ object TrieMap extends MapFactory[TrieMap] {
 
 // non-final as an extension point for parallel collections
 private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: TrieMap[K, V], mustInit: Boolean = true) extends AbstractIterator[(K, V)] {
+  this:TrieMapIterator[K, V]^ =>
   private val stack = new Array[Array[BasicNode]](7)
   private val stackpos = new Array[Int](7)
   private var depth = -1
@@ -1161,7 +1162,7 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
   /** Returns a sequence of iterators over subsets of this iterator.
     *  It's used to ease the implementation of splitters for a parallel version of the TrieMap.
     */
-  protected def subdivide(): Seq[Iterator[(K, V)]] = if (subiter ne null) {
+  protected def subdivide(): Seq[Iterator[(K, V)]^{this}] = if (subiter ne null) {
     // the case where an LNode is being iterated
     val it = newIterator(level + 1, ct, _mustInit = false)
     it.depth = -1

@@ -50,7 +50,7 @@ object Chars:
   }
 
   /** Is character a whitespace character (but not a new line)? */
-  def isWhitespace(c: Char): Boolean =
+  inline def isWhitespace(c: Char): Boolean =
     c == ' ' || c == '\t' || c == CR
 
   /** Can character form part of a doc comment variable $xxx? */
