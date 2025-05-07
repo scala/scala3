@@ -131,7 +131,7 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def ccOwner(using Context): Symbol = this match
     case root.Fresh(hidden) =>
       hidden.owner
-    case ref: TermRef =>
+    case ref: NamedType =>
       if ref.isCap then NoSymbol
       else ref.prefix match
         case prefix: CaptureRef => prefix.ccOwner
@@ -295,9 +295,9 @@ trait CaptureRef extends TypeProxy, ValueType:
     || this.match
       case x @ root.Fresh(hidden) =>
         def levelOK =
-          if ccConfig.useFreshLevels then
+          if ccConfig.useFreshLevels && !CCState.ignoreFreshLevels then
             val yOwner = y.adjustedOwner
-            yOwner.isStatic || x.ccOwner.isContainedIn(yOwner)
+            yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
           else
             !y.stripReadOnly.isCap
             && !yIsExistential
@@ -307,7 +307,6 @@ trait CaptureRef extends TypeProxy, ValueType:
         || levelOK
             && canAddHidden
             && vs.addHidden(hidden, y)
-        || ccConfig.useFreshLevels && CCState.treatFreshAsEqual && y.stripReadOnly.isFresh
       case x @ root.Result(binder) =>
         val result = y match
           case y @ root.Result(_) => vs.unify(x, y)

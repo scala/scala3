@@ -843,8 +843,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
-            refined = RefinedType(refined, getterName,
-              AnnotatedType(argType.unboxed, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan))) // Yichen you might want to check this
+            refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
             allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
@@ -1507,9 +1506,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val cs = actual.captureSet
           if covariant then cs ++ leaked
           else
-            if // CCState.withCapAsRoot: // Not sure withCapAsRoot is OK here, actually
-              !leaked.subCaptures(cs).isOK
-            then
+            if !leaked.subCaptures(cs).isOK then
               report.error(
                 em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
                     |since the additional capture set $leaked resulting from box conversion is not allowed in $actual""", tree.srcPos)
@@ -1708,7 +1705,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       def traverse(t: Tree)(using Context) =
         t match
           case t: Template =>
-            checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
+            ignoringFreshLevels:
+              checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
           case _ =>
         traverseChildren(t)
     end checkOverrides
@@ -1912,7 +1910,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
                 CCState.withCapAsRoot: // OK? We need this since bounds use `cap` instead of `fresh`
-                  checkBounds(normArgs, tl)
+                  CCState.ignoringFreshLevels:
+                    checkBounds(normArgs, tl)
                 if ccConfig.postCheckCapturesets then
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
@@ -1932,7 +1931,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             case tree: New =>
             case tree: TypeTree =>
               CCState.withCapAsRoot:
-                checkAppliedTypesIn(tree.withType(tree.nuType))
+                CCState.ignoringFreshLevels:
+                  checkAppliedTypesIn(tree.withType(tree.nuType))
             case _ => traverseChildren(t)
         checkApplied.traverse(unit)
     end postCheck

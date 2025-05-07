@@ -118,7 +118,7 @@ class CCState:
 
   private var capIsRoot: Boolean = false
 
-  private var treatFreshAsEqual: Boolean = false
+  private var ignoreFreshLevels: Boolean = false
 
 object CCState:
 
@@ -169,15 +169,15 @@ object CCState:
    *  Asserted in override checking, tested in maxSubsumes.
    *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
    */
-  inline def withTreatFreshAsEqual[T](op: => T)(using Context): T =
+  inline def ignoringFreshLevels[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.treatFreshAsEqual
-      ccs.treatFreshAsEqual = true
-      try op finally ccs.treatFreshAsEqual = saved
+      val saved = ccs.ignoreFreshLevels
+      ccs.ignoreFreshLevels = true
+      try op finally ccs.ignoreFreshLevels = saved
     else op
 
   /** Should all root.Fresh instances be treated equal? */
-  def treatFreshAsEqual(using Context): Boolean = ccState.treatFreshAsEqual
+  def ignoreFreshLevels(using Context): Boolean = ccState.ignoreFreshLevels
 
 end CCState

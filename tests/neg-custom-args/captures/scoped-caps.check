@@ -98,23 +98,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:26:20 ----------------------------------
 26 |  val _: A^ => B^ = x => g2(x)  // error: g2(x): B^{g2, x}, and the `x` cannot be subsumed by fresh
    |                    ^^^^^^^^^^
-   |                    Found:    (x: A^) ->{g2} B^²
-   |                    Required: (x: A^) => B^³
+   |                    Found:    (x: A^) ->{g2} B^{g2, x}
+   |                    Required: (x: A^) => B^²
    |
    |                    where:    => refers to a fresh root capability in the type of value _$13
    |                              ^  refers to the universal root capability
-   |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
-   |                              ^³ refers to a fresh root capability in the type of value _$13
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:24 ----------------------------------
-28 |  val _: A^{io} => B^ = x => g3(x)  // error, fails level checking of fresh instances
-   |                        ^^^^^^^^^^
-   |                     Found:    (x: A^{io}) ->{g3} B^
-   |                     Required: (x: A^{io}) => B^²
-   |
-   |                     where:    => refers to a fresh root capability in the type of value _$14
-   |                               ^  refers to a root capability associated with the result type of (x: A^{io}): B^
-   |                               ^² refers to a fresh root capability in the type of value _$14
+   |                              ^² refers to a fresh root capability in the type of value _$13
    |
    | longer explanation available when compiling with `-explain`
