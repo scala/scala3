@@ -460,3 +460,11 @@ package ancient:
     }
   }
 end ancient
+
+object `i22970 assign lhs was ignored`:
+  object X:
+    var global = 0
+  object Main:
+    import X.global // no warn
+    def main(args: Array[String]): Unit =
+      global = 1
