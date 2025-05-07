@@ -2246,7 +2246,7 @@ class Definitions {
   @tu lazy val syntheticScalaClasses: List[TypeSymbol] =
     List(
       AnyClass,
-      MatchableClass,
+      //MatchableClass,
       AnyRefAlias,
       AnyKindClass,
       andType,
