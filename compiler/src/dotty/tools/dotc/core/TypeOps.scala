@@ -278,7 +278,15 @@ object TypeOps:
           }
         case AndType(tp11, tp12) =>
           mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
-        case tp1: TypeParamRef if tp1 == tp2 => tp1
+        case tp1: TypeParamRef =>
+          tp2.stripTypeVar match
+            case tp2: TypeParamRef if tp1 == tp2 => tp1
+            case _ => fail
+        case tp1: TypeVar =>
+          tp2 match
+            case tp2: TypeVar if tp1 == tp2 => tp1
+            case tp2: TypeParamRef if tp1.stripTypeVar == tp2 => tp2
+            case _ => fail
         case _ => fail
       }
     }
