@@ -141,8 +141,11 @@ abstract class AccessProxies {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameOf(accessed.name, accessorClass)
+        val mappedInfo = accessed.info match
+          case tref @ TypeRef(prefix, _) if tref.symbol.is(Module) => TermRef(prefix, tref.symbol.companionModule)
+          case other => other
         val accessorInfo =
-          accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
+          mappedInfo.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
         rewire(reference, accessor)
       }
