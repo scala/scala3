@@ -123,7 +123,7 @@ object CheckCaptures:
    *  root capability in its capture set or if it refers to a type parameter that
    *  could possibly be instantiated with cap in a way that's visible at the type.
    */
-  private def disallowRootCapabilitiesIn(tp: Type, carrier: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
+  private def disallowRootCapabilitiesIn(tp: Type, upto: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
 
       private val seen = new EqHashSet[TypeRef]
@@ -150,7 +150,7 @@ object CheckCaptures:
           case CapturingType(parent, refs) =>
             if variance >= 0 then
               val openScopes = openExistentialScopes
-              refs.disallowRootCapability: () =>
+              refs.disallowRootCapability(upto): () =>
                 def part =
                   if t eq tp then ""
                   else
@@ -488,7 +488,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ =>
               CaptureSet.ofType(c.widen, followResult = false)
             capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-          underlying.disallowRootCapability: () =>
+          underlying.disallowRootCapability(NoSymbol): () =>
             report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", tree.srcPos)
           recur(underlying, env, lastEnv)
 
@@ -517,7 +517,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // fresh capabilities. We don't need to also follow the hidden set since separation
                 // checking makes ure that locally hidden references need to go to @consume parameters.
             else
-              underlying.disallowRootCapability: () =>
+              underlying.disallowRootCapability(ctx.owner): () =>
                 report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", tree.srcPos)
               recur(underlying, env, null)
         case c: TypeRef if c.isParamPath =>
@@ -590,7 +590,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           def where = if sym.exists then i" in an argument of $sym" else ""
           val (addendum, errTree) =
             if arg.isInferred
-            then ("\nThis is often caused by a local capability$where\nleaking as part of its result.", fn)
+            then (i"\nThis is often caused by a local capability$where\nleaking as part of its result.", fn)
             else if arg.span.exists then ("", arg)
             else ("", fn)
           disallowRootCapabilitiesIn(arg.nuType, NoSymbol,
@@ -988,7 +988,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
         else
           if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
-            val (carrier, addendum) = capturedBy.get(sym) match
+            val addendum = capturedBy.get(sym) match
               case Some(encl) =>
                 val enclStr =
                   if encl.isAnonymousFunction then
@@ -997,11 +997,11 @@ class CheckCaptures extends Recheck, SymTransformer:
                       case _ => ""
                     s"an anonymous function$location"
                   else encl.show
-                (NoSymbol, i"\n\nNote that $sym does not count as local since it is captured by $enclStr")
+                i"\n\nNote that $sym does not count as local since it is captured by $enclStr"
               case _ =>
-                (sym, "")
+                ""
             disallowRootCapabilitiesIn(
-              tree.tpt.nuType, carrier, i"Mutable $sym", "have type", addendum, sym.srcPos)
+              tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
@@ -1200,7 +1200,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  result type of a try
      */
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
-      val tp = super.recheckTry(tree, pt)
+      val tryOwner = Setup.firstCanThrowEvidence(tree.expr) match
+        case Some(vd) => vd.symbol.owner
+        case None => ctx.owner
+      val bodyType = inContext(ctx.withOwner(tryOwner)):
+        recheck(tree.expr, pt)
+      val tp = recheckTryRest(bodyType, tree.cases, tree.finalizer, pt)
       if Feature.enabled(Feature.saferExceptions) then
         disallowRootCapabilitiesIn(tp, ctx.owner,
           "The result of `try`", "have type",
@@ -1272,8 +1277,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val msg = note match
             case CompareResult.LevelError(cs, ref) =>
               if ref.stripReadOnly.isCapOrFresh then
-                def capStr = if ref.isReadOnly then "cap.rd" else "cap"
-                i"""the universal capability `$capStr`
+                i"""the universa capability $ref
                    |cannot be included in capture set $cs"""
               else
                 val levelStr = ref match

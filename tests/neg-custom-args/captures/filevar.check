@@ -1,10 +1,3 @@
--- Error: tests/neg-custom-args/captures/filevar.scala:8:6 -------------------------------------------------------------
-8 |  var file: File^ = uninitialized  // error, under sealed
-  |      ^
-  |      Mutable variable file cannot have type File^ since
-  |      that type captures the root capability `cap`.
-  |
-  |      where:    ^ refers to a fresh root capability in the type of variable file
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/filevar.scala:15:12 --------------------------------------
 15 |  withFile: f =>       // error with level checking, was OK under both schemes before
    |            ^

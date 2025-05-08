@@ -5,7 +5,7 @@ class File:
   def write(x: String): Unit = ???
 
 class Service:
-  var file: File^ = uninitialized  // error, under sealed
+  var file: File^ = uninitialized  //OK, was  error under sealed
   def log = file.write("log") // OK, was error under unsealed
 
 def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =

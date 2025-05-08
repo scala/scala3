@@ -260,9 +260,17 @@ object root:
 
   end CapToFresh
 
-  /** Maps cap to fresh */
+  /** Maps cap to fresh. CapToFresh is a BiTypeMap since we don't want to
+   *  freeze a set when it is mapped. On the other hand, we do not want Fresh
+   *  values to flow back to cap since that would fail disallowRootCapability
+   *  tests elsewhere. We therefore use `withoutMappedFutureElems` to prevent
+   *  the map being installed for future use.
+   */
   def capToFresh(tp: Type, origin: Origin)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh(origin)(tp) else tp
+    if ccConfig.useSepChecks then
+      ccState.withoutMappedFutureElems:
+        CapToFresh(origin)(tp)
+    else tp
 
   /** Maps fresh to cap */
   def freshToCap(tp: Type)(using Context): Type =
