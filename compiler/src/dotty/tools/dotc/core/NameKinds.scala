@@ -312,6 +312,7 @@ object NameKinds {
 
   /** Other unique names */
   val CanThrowEvidenceName: UniqueNameKind   = new UniqueNameKind("canThrow$")
+  val TryOwnerName: UniqueNameKind           = new UniqueNameKind("try$")
   val TempResultName: UniqueNameKind         = new UniqueNameKind("ev$")
   val DepParamName: UniqueNameKind           = new UniqueNameKind("(param)")
   val LazyImplicitName: UniqueNameKind       = new UniqueNameKind("$_lazy_implicit_$")

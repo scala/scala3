@@ -6158,6 +6158,12 @@ object Types extends TypeUtils {
   trait BiTypeMap extends TypeMap:
     thisMap =>
 
+    /** Hook to control behavior on capture set variables.
+     *  If true, install the map on capture set variables so that future elements are also mapped.
+     *  If false, just map the elements currently present in the capture set variable.
+     */
+    def mapFutureElements: Boolean = true
+
     /** The inverse of the type map */
     def inverse: BiTypeMap
 

@@ -449,9 +449,11 @@ abstract class Recheck extends Phase, SymTransformer:
       defn.UnitType
 
     def recheckTry(tree: Try, pt: Type)(using Context): Type =
-      val bodyType = recheck(tree.expr, pt)
-      val casesTypes = tree.cases.map(recheckCase(_, defn.ThrowableType, pt))
-      val finalizerType = recheck(tree.finalizer, defn.UnitType)
+      recheckTryRest(recheck(tree.expr, pt), tree.cases, tree.finalizer, pt)
+
+    protected def recheckTryRest(bodyType: Type, cases: List[CaseDef], finalizer: Tree, pt: Type)(using Context): Type =
+      val casesTypes = cases.map(recheckCase(_, defn.ThrowableType, pt))
+      val finalizerType = recheck(finalizer, defn.UnitType)
       TypeComparer.lub(bodyType :: casesTypes)
 
     def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =

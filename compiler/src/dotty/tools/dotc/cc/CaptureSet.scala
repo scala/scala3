@@ -352,16 +352,27 @@ sealed abstract class CaptureSet extends Showable:
 
   def readOnly(using Context): CaptureSet = map(ReadOnlyMap())
 
-  /** Invoke handler if this set has (or later aquires) the root capability `cap` */
-  def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-    val hasRoot =
-      if ccConfig.newScheme then
-        elems.exists: elem =>
-          val elem1 = elem.stripReadOnly
-          elem1.isCap || elem1.isResultRoot
-      else
-        containsRootCapability
-    if hasRoot then handler()
+  /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
+   *  on the value of `rootLimit`.
+   *  If the limit is null, all capture roots are good.
+   *  If the limit is NoSymbol, all Fresh roots are good, but cap and Result roots are bad.
+   *  If the limit is some other symbol, cap and Result roots are bad, as well as
+   *  all Fresh roots that are contained (via ccOwner) in `rootLimit`.
+   */
+  protected def isBadRoot(rootLimit: Symbol | Null, elem: CaptureRef)(using Context): Boolean =
+    if rootLimit == null then false
+    else
+      val elem1 = elem.stripReadOnly
+      elem1.isCap
+      || elem1.isResultRoot
+      || elem1.isFresh && elem1.ccOwner.isContainedIn(rootLimit)
+
+  /** Invoke `handler` if this set has (or later aquires) a root capability.
+   *  Excluded are Fresh instances unless their ccOwner is contained in `upto`.
+   *  If `upto` is NoSymbol, all Fresh instances are admitted.
+   */
+  def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    if elems.exists(isBadRoot(upto, _)) then handler()
     this
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
@@ -537,7 +548,10 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
-    private[CaptureSet] var universalOK = true
+    /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
+     *  @see isBadRoot for details.
+     */
+    private[CaptureSet] var rootLimit: Symbol | Null = null
 
     /** A handler to be invoked when new elems are added to this set */
     var newElemAddedHandler: CaptureRef => Context ?=> Unit = _ => ()
@@ -588,7 +602,7 @@ object CaptureSet:
         assert(elem.isTrackableRef, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
         elems += elem
-        if elem.isRootCapability then
+        if isBadRoot(rootLimit, elem) then
           rootAddedHandler()
         newElemAddedHandler(elem)
         val normElem = if isMaybeSet then elem else elem.stripMaybe
@@ -610,16 +624,16 @@ object CaptureSet:
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
       case elem @ root.Fresh(_) =>
-        if ccConfig.newScheme then
-          if !level.isDefined || ccState.symLevel(elem.ccOwner) <= level then true
-          else
-            println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
-            false
-        else universalOK
+        !level.isDefined
+        || ccState.symLevel(elem.ccOwner) <= level
+        || {
+          capt.println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
+          false
+        }
       case elem @ root.Result(mt) =>
-        universalOK && (this.isInstanceOf[BiMapped] || isPartOf(mt.resType))
+        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(mt.resType))
       case elem: TermRef if elem.isCap =>
-        universalOK
+        rootLimit == null
       case elem: TermRef if level.isDefined =>
         elem.prefix match
           case prefix: CaptureRef =>
@@ -650,10 +664,10 @@ object CaptureSet:
       else
         CompareResult.Fail(this :: Nil)
 
-    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-      universalOK = false
+    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+      rootLimit = upto
       rootAddedHandler = handler
-      super.disallowRootCapability(handler)
+      super.disallowRootCapability(upto)(handler)
 
     override def ensureWellformed(handler: CaptureRef => (Context) ?=> Unit)(using Context): this.type =
       newElemAddedHandler = handler
@@ -756,7 +770,7 @@ object CaptureSet:
    *  Test case: Without that tweak, logger.scala would not compile.
    */
   class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context) = this
+    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -814,7 +828,7 @@ object CaptureSet:
             .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
             .andAlso(addNewElem(elem))
         catch case ex: AssertionError =>
-          println(i"fail while tryInclude $elem of ${elem.getClass} in $this / ${this.summarize}")
+          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} in $this / ${this.summarize}")
           throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain

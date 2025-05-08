@@ -21,13 +21,14 @@
 34 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:37:6 ------------------------------------------------------------
-37 |  var cur: List[Proc] = xs   // error
-   |      ^
-   |      Mutable variable cur cannot have type List[box () => Unit] since
-   |      the part box () => Unit of that type captures the root capability `cap`.
+-- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------
+39 |    val next: () => Unit = cur.head   // error
+   |                           ^^^^^^^^
+   |                           reference cap is not included in the allowed capture set ?
+   |                           of the enclosing method runAll2
    |
-   |      where:    => refers to a fresh root capability in the type of variable cur
+   |                           Note that the universa capability cap
+   |                           cannot be included in capture set ?
 -- Error: tests/neg-custom-args/captures/reaches.scala:44:16 -----------------------------------------------------------
 44 |  val cur = Ref[List[Proc]](xs) // error
    |                ^^^^^^^^^^

@@ -21,6 +21,7 @@ import CCState.*
 import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
 import NamerOps.methodType
+import NameKinds.{CanThrowEvidenceName, TryOwnerName}
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -51,6 +52,15 @@ object Setup:
         Some((res, exc))
       case _ =>
         None
+
+  def firstCanThrowEvidence(body: Tree)(using Context): Option[Tree] = body match
+    case Block(stats, expr) =>
+      if stats.isEmpty then firstCanThrowEvidence(expr)
+      else stats.find:
+        case vd: ValDef => vd.symbol.name.is(CanThrowEvidenceName)
+        case _ => false
+    case _ => None
+
 end Setup
 import Setup.*
 
@@ -480,9 +490,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   end transformExplicitType
 
   /** Update info of `sym` for CheckCaptures phase only */
-  private def updateInfo(sym: Symbol, info: Type)(using Context) =
+  private def updateInfo(sym: Symbol, info: Type, owner: Symbol)(using Context) =
     toBeUpdated += sym
-    sym.updateInfo(thisPhase, info, newFlagsFor(sym))
+    sym.updateInfo(thisPhase, info, newFlagsFor(sym), owner)
     toBeUpdated -= sym
 
   /** The info of `sym` at the CheckCaptures phase */
@@ -590,6 +600,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(elems)
           tpt.setNuType(box(transformInferredType(tpt.tpe)))
 
+        case tree @ Try(body, catches, finalizer) =>
+          val tryOwner = firstCanThrowEvidence(body) match
+            case Some(vd) =>
+              newSymbol(ctx.owner, TryOwnerName.fresh(),
+                Method | Synthetic, ExprType(defn.NothingType), coord = tree.span)
+            case _ =>
+              ctx.owner
+          inContext(ctx.withOwner(tryOwner)):
+            traverse(body)
+          catches.foreach(traverse)
+          traverse(finalizer)
         case _ =>
           traverseChildren(tree)
       postProcess(tree)
@@ -634,6 +655,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // have a new type installed here (meaning hasRememberedType is true)
         def signatureChanges =
           tree.tpt.hasNuType || paramSignatureChanges
+        def ownerChanges =
+          ctx.owner.name.is(TryOwnerName)
 
         def paramsToCap(mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
@@ -644,38 +667,40 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             mt.derivedLambdaType(resType = paramsToCap(mt.resType))
           case _ => mt
 
-        // If there's a change in the signature, update the info of `sym`
-        if sym.exists && signatureChanges then
+        // If there's a change in the signature or owner, update the info of `sym`
+        if sym.exists && (signatureChanges || ownerChanges) then
           val updatedInfo =
-
-            val paramSymss = sym.paramSymss
-            def newInfo(using Context) = // will be run in this or next phase
-              root.toResultInResults(sym, report.error(_, tree.srcPos)):
-                if sym.is(Method) then
-                  paramsToCap(methodType(paramSymss, localReturnType))
-                else tree.tpt.nuType
-            if tree.tpt.isInstanceOf[InferredTypeTree]
-                && !sym.is(Param) && !sym.is(ParamAccessor)
-            then
-              val prevInfo = sym.info
-              new LazyType:
-                def complete(denot: SymDenotation)(using Context) =
-                  assert(ctx.phase == thisPhase.next, i"$sym")
-                  sym.info = prevInfo // set info provisionally so we can analyze the symbol in recheck
-                  completeDef(tree, sym, this)
-                  sym.info = newInfo
-                    .showing(i"new info of $sym = $result", capt)
-            else if sym.is(Method) then
-              new LazyType:
-                def complete(denot: SymDenotation)(using Context) =
-                  sym.info = newInfo
-                    .showing(i"new info of $sym = $result", capt)
-            else newInfo
-          updateInfo(sym, updatedInfo)
+            if signatureChanges then
+              val paramSymss = sym.paramSymss
+              def newInfo(using Context) = // will be run in this or next phase
+                root.toResultInResults(sym, report.error(_, tree.srcPos)):
+                  if sym.is(Method) then
+                    paramsToCap(methodType(paramSymss, localReturnType))
+                  else tree.tpt.nuType
+              if tree.tpt.isInstanceOf[InferredTypeTree]
+                  && !sym.is(Param) && !sym.is(ParamAccessor)
+              then
+                val prevInfo = sym.info
+                new LazyType:
+                  def complete(denot: SymDenotation)(using Context) =
+                    assert(ctx.phase == thisPhase.next, i"$sym")
+                    sym.info = prevInfo // set info provisionally so we can analyze the symbol in recheck
+                    completeDef(tree, sym, this)
+                    sym.info = newInfo
+                      .showing(i"new info of $sym = $result", capt)
+              else if sym.is(Method) then
+                new LazyType:
+                  def complete(denot: SymDenotation)(using Context) =
+                    sym.info = newInfo
+                      .showing(i"new info of $sym = $result", capt)
+              else newInfo
+            else sym.info
+          val updatedOwner = if ownerChanges then ctx.owner else sym.owner
+          updateInfo(sym, updatedInfo, updatedOwner)
 
       case tree: Bind =>
         val sym = tree.symbol
-        updateInfo(sym, transformInferredType(sym.info))
+        updateInfo(sym, transformInferredType(sym.info), sym.owner)
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
@@ -708,7 +733,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // Install new types and if it is a module class also update module object
               if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
                 val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
-                updateInfo(cls, newInfo)
+                updateInfo(cls, newInfo, cls.owner)
                 capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
                 cls.thisType.asInstanceOf[ThisType].invalidateCaches()
                 if cls.is(ModuleClass) then
@@ -721,7 +746,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // This would potentially give stackoverflows when setup is run repeatedly.
                   // One test case is pos-custom-args/captures/checkbounds.scala under
                   // ccConfig.alwaysRepeatRun = true.
-                  updateInfo(modul, CapturingType(modul.info, selfCaptures))
+                  updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
                   modul.termRef.invalidateCaches()
           case _ =>
       case _ =>
