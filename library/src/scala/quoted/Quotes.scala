@@ -3556,7 +3556,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val StringConstant` */
     trait StringConstantModule { this: StringConstant.type =>
-      /** Create a constant String value */
+      /** Create a constant String value
+       *
+       *  @throw `IllegalArgumentException` if the argument is `null`
+       */
       def apply(x: String): StringConstant
       /** Match String value constant and extract its value */
       def unapply(constant: StringConstant): Some[String]
