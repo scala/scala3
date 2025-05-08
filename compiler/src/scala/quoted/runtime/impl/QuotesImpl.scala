@@ -2530,7 +2530,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object StringConstant extends StringConstantModule:
       def apply(x: String): StringConstant =
-        require(x != null, "StringConstant cannot be null")
+        require(x != null, "value of StringConstant cannot be `null`")
         // A `null` constant must be represented as a `NullConstant`, c.f. a
         // constant with `tag == NullTag`, which is not a `StringConstant`.
         // See issue 23008.
