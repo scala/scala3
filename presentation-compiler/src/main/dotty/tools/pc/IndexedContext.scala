@@ -23,13 +23,13 @@ sealed trait IndexedContext:
   given ctx: Context
   def scopeSymbols: List[Symbol]
   def rename(sym: Symbol): Option[String]
-  def findSymbol(name: Name): Option[List[Symbol]]
+  def findSymbol(name: Name, fromPrefix: Option[Type] = None): Option[List[Symbol]]
   def findSymbolInLocalScope(name: String): Option[List[Symbol]]
 
-  final def lookupSym(sym: Symbol): Result =
+  final def lookupSym(sym: Symbol, fromPrefix: Option[Type] = None): Result =
     def all(symbol: Symbol): Set[Symbol] = Set(symbol, symbol.companionModule, symbol.companionClass, symbol.companion).filter(_ != NoSymbol)
     val isRelated = all(sym) ++ all(sym.dealiasType)
-    findSymbol(sym.name) match
+    findSymbol(sym.name, fromPrefix) match
       case Some(symbols) if symbols.exists(isRelated) => Result.InScope
       case Some(symbols) if symbols.exists(isTermAliasOf(_, sym)) => Result.InScope
       case Some(symbols) if symbols.map(_.dealiasType).exists(isRelated) => Result.InScope
@@ -81,7 +81,7 @@ object IndexedContext:
 
   case object Empty extends IndexedContext:
     given ctx: Context = NoContext
-    def findSymbol(name: Name): Option[List[Symbol]] = None
+    def findSymbol(name: Name, fromPrefix: Option[Type]): Option[List[Symbol]] = None
     def findSymbolInLocalScope(name: String): Option[List[Symbol]] = None
     def scopeSymbols: List[Symbol] = List.empty
     def rename(sym: Symbol): Option[String] = None
@@ -111,11 +111,31 @@ object IndexedContext:
 
     override def findSymbolInLocalScope(name: String): Option[List[Symbol]] =
       names.get(name).map(_.map(_.symbol).toList).filter(_.nonEmpty)
-    def findSymbol(name: Name): Option[List[Symbol]] =
+    def findSymbol(name: Name, fromPrefix: Option[Type]): Option[List[Symbol]] =
       names
         .get(name.show)
-        .map(_.map(_.symbol).toList)
-        .orElse(defaultScopes(name))
+        .map { denots =>
+          def skipThisType(tp: Type): Type = tp match
+            case ThisType(prefix) => skipThisType(prefix)
+            case _ => tp
+
+          val filteredDenots = fromPrefix match
+            case Some(prefix) =>
+              val target = skipThisType(prefix)
+              denots.filter { denot =>
+                denot.prefix == NoPrefix ||
+                (denot.prefix match
+                  case tref: TermRef =>
+                    tref.termSymbol.info <:< target
+                  case otherPrefix =>
+                    otherPrefix <:< target
+                )
+              }
+            case None => denots
+
+          filteredDenots.map(_.symbol).toList
+        }
+        .orElse(defaultScopes(name)).filter(_.nonEmpty)
 
     def scopeSymbols: List[Symbol] =
       names.values.flatten.map(_.symbol).toList

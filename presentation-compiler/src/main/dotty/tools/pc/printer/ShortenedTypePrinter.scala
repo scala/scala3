@@ -174,14 +174,13 @@ class ShortenedTypePrinter(
         res.toPrefixText
     }
 
-
   override def toTextPrefixOf(tp: NamedType): Text = controlled {
     val maybeRenamedPrefix: Option[Text] = findRename(tp)
     def trimmedPrefix: Text =
       if !tp.designator.isInstanceOf[Symbol] && tp.typeSymbol == NoSymbol then
         super.toTextPrefixOf(tp)
       else
-        indexedCtx.lookupSym(tp.symbol) match
+        indexedCtx.lookupSym(tp.symbol, Some(tp.prefix)) match
           case _ if indexedCtx.rename(tp.symbol).isDefined => Text()
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
