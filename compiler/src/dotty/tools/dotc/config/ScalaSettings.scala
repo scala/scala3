@@ -465,6 +465,7 @@ private sealed trait YSettings:
 
   val Yinstrument: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
+  val YimplicitToGiven: Setting[Boolean] = BooleanSetting(ForkSetting, "Yimplicit-to-given", "Allows to rewrite the implicit keywords to their scala-3 given counterparts. Does not adjust imports. Use in conjunction with --rewrite.")
 
   // Deprecated: lifted from -Y to -X
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
