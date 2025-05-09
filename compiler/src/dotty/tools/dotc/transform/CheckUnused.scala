@@ -557,6 +557,8 @@ object CheckUnused:
     val warnings = ArrayBuilder.make[MessageInfo]
     def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
     val infos = refInfos
+    //println(infos.defs.mkString("DEFS\n", "\n", "\n---"))
+    //println(infos.refs.mkString("REFS\n", "\n", "\n---"))
 
     def checkUnassigned(sym: Symbol, pos: SrcPos) =
       if sym.isLocalToBlock then
@@ -597,7 +599,7 @@ object CheckUnused:
             if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor) && !infos.refs(alias.symbol) then
               if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits then
-                  warnAt(pos)(UnusedSymbol.explicitParams)
+                  warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
               else
                 if ctx.settings.WunusedHas.privates then
                   warnAt(pos)(UnusedSymbol.privateMembers)
@@ -611,7 +613,7 @@ object CheckUnused:
           && !sym.name.isInstanceOf[DerivedName]
           && !ctx.platform.isMainMethod(m)
         then
-          warnAt(pos)(UnusedSymbol.explicitParams)
+          warnAt(pos)(UnusedSymbol.explicitParams(sym))
       end checkExplicit
       // begin
       if !infos.skip(m)
@@ -651,9 +653,9 @@ object CheckUnused:
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
             if checking && !infos.refs(alias.symbol) then
-              warnAt(pos)(UnusedSymbol.implicitParams)
+              warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
         else
-          warnAt(pos)(UnusedSymbol.implicitParams)
+          warnAt(pos)(UnusedSymbol.implicitParams(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       if ctx.settings.WunusedHas.locals
