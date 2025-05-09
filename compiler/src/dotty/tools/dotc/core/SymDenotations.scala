@@ -1220,7 +1220,9 @@ object SymDenotations {
       || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
 
     final def isTransparentClass(using Context): Boolean =
-      is(TransparentType) || defn.isAssumedTransparent(symbol)
+      is(TransparentType)
+      || defn.isAssumedTransparent(symbol)
+      || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(using Context): Symbol = {

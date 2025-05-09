@@ -59,7 +59,7 @@ will have type `Int | String` instead of the widened type `Any`.
 
 ## Which Traits and Classes Are Transparent?
 
-Traits and classes are declared transparent by adding the modifier `transparent`.
+Traits and classes are declared transparent by adding the modifier `transparent`. Scala 2 traits and classes can also be declared transparent by adding a [`@transparentTrait`](https://scala-lang.org/api/3.x/scala/annotation/transparentTrait.html) annotation. This annotation is defined in [`scala.annotation`](https://scala-lang.org/api/3.x/scala/annotation.html). It will be deprecated and phased out once Scala 2/3 interoperability is no longer needed.
 
 The following classes and traits are automatically treated as transparent:
 ```scala
