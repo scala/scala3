@@ -5,5 +5,4 @@ package scala.annotation
  *  are not inferred when combined with other types in an intersection.
  *  See reference/other-new-features/transparent-traits.html for details.
  */
-@deprecated(message = "Transparent traits/classes via annotations is no longer supported. Use instead the `transparent` modifier", since = "3.8.0")
 final class transparentTrait extends StaticAnnotation
