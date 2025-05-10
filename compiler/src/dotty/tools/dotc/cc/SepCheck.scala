@@ -14,6 +14,7 @@ import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
 import reporting.trace
+import Capabilities.*
 
 /** The separation checker is  a tree traverser that is run after capture checking.
  *  It checks tree nodes for various separation conditions, explained in the
@@ -169,7 +170,7 @@ object SepCheck:
      *   3. if `f in F` then the footprint of `f`'s info is also in `F`.
      */
     private def footprint(includeMax: Boolean = false)(using Context): Refs =
-      def retain(ref: CaptureRef) = includeMax || !ref.isRootCapability
+      def retain(ref: CaptureRef) = includeMax || !ref.isTerminalCapability
       def recur(elems: Refs, newElems: List[CaptureRef]): Refs = newElems match
         case newElem :: newElems1 =>
           val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
@@ -186,15 +187,15 @@ object SepCheck:
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
           else newElem.stripReadOnly match
-            case root.Fresh(hidden) =>
-              if hidden.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
+            case elem: FreshCap =>
+              if elem.hiddenSet.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
                 val superCaps =
-                  if newElem.isReadOnly then hidden.superCaps.map(_.readOnly)
-                  else hidden.superCaps
+                  if newElem.isReadOnly then elem.hiddenSet.superCaps.map(_.readOnly)
+                  else elem.hiddenSet.superCaps
                 recur(seen + newElem, acc, superCaps ++ newElems)
             case _ =>
-              if newElem.isRootCapability
+              if newElem.isTerminalCapability
                 //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
               then recur(seen + newElem, acc, newElems1)
               else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
@@ -235,11 +236,11 @@ object SepCheck:
         ++
         refs1
           .filter:
-            case ReadOnlyCapability(ref @ TermRef(prefix: CaptureRef, _)) =>
+            case ReadOnly(ref @ TermRef(prefix: CoreCapability, _)) =>
               // We can get away testing only references with at least one field selection
               // here since stripped readOnly references that equal a reference in refs2
               // are added by the first clause of the symmetric call to common.
-              !ref.isCap && refs2.exists(_.covers(prefix))
+              refs2.exists(_.covers(prefix))
             case _ =>
               false
           .map(_.stripReadOnly)
@@ -255,8 +256,8 @@ object SepCheck:
       val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
 
       def hiddenByElem(elem: CaptureRef): Refs = elem match
-        case root.Fresh(hcs) => hcs.elems ++ recur(hcs.elems)
-        case ReadOnlyCapability(ref1) => hiddenByElem(ref1).map(_.readOnly)
+        case elem: FreshCap => elem.hiddenSet.elems ++ recur(elem.hiddenSet.elems)
+        case ReadOnly(elem1) => hiddenByElem(elem1).map(_.readOnly)
         case _ => emptyRefs
 
       def recur(refs: Refs): Refs =
@@ -319,8 +320,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def sharedPeaksStr(shared: Refs)(using Context): String =
     shared.nth(0) match
-      case fresh @ root.Fresh(hidden) =>
-        if hidden.owner.exists then i"$fresh of ${hidden.owner}" else i"$fresh"
+      case fresh: FreshCap =>
+        if fresh.hiddenSet.owner.exists then i"$fresh of ${fresh.hiddenSet.owner}" else i"$fresh"
       case other =>
         i"$other"
 
@@ -756,7 +757,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               c.add(c1)
             case t @ CapturingType(parent, cs) =>
               val c1 = this(c, parent)
-              if cs.elems.exists(_.stripReadOnly.isFresh) then c1.add(Captures.Hidden)
+              if cs.elems.exists(_.core.isInstanceOf[FreshCap]) then c1.add(Captures.Hidden)
               else if !cs.elems.isEmpty then c1.add(Captures.Explicit)
               else c1
             case t: TypeRef if t.symbol.isAbstractOrParamType =>
