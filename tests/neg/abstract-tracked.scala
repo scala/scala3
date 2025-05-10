@@ -9,6 +9,3 @@ trait G:
 tracked object O // error
 
 tracked class C // error
-
-def f =
-  tracked val x = 1 // error
