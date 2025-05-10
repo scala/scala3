@@ -1,6 +1,7 @@
 package scala.quoted
 package runtime.impl.printers
 
+import scala.collection.mutable
 import scala.quoted.*
 
 object Extractors {
@@ -67,6 +68,12 @@ object Extractors {
     import quotes.reflect.*
 
     private val sb: StringBuilder = new StringBuilder
+    private var recTypeCounter = 0
+    private val recTypeIds = mutable.Map.empty[RecursiveType, Int]
+
+    private def nextRecTypeId(): Int =
+      recTypeCounter += 1
+      recTypeCounter
 
     def result(): String = sb.result()
 
@@ -226,9 +233,14 @@ object Extractors {
       case SuperType(thistpe, supertpe) =>
         this += "SuperType(" += thistpe += ", " += supertpe += ")"
       case RecursiveThis(binder) =>
-        this += "RecursiveThis(" += binder += ")"
-      case RecursiveType(underlying) =>
-        this += "RecursiveType(" += underlying += ")"
+        val id = recTypeIds.getOrElse(binder, -1)
+        if (id == -1)
+          this += "RecursiveThis(" += binder += ")"
+        else
+          this += "RecursiveThis(<rec" += id += ">)"
+      case rt @ RecursiveType(underlying) =>
+        val id = recTypeIds.getOrElseUpdate(rt, nextRecTypeId())
+        this += "RecursiveType(rec" += id += " => " += underlying += ")"
       case MethodType(argNames, argTypes, resType) =>
         this += "MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
       case PolyType(argNames, argBounds, resType) =>
