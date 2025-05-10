@@ -54,6 +54,19 @@ class CodeActionTest extends DottyTest:
          |""".stripMargin
       )
 
+  @Test def addUsingClause =
+    checkCodeAction(
+      """|object Test:
+         |  def foo(implicit a: Int) = a
+         |  foo(123)
+         |""".stripMargin,
+      "Add `using` clause",
+      """|object Test:
+         |  def foo(implicit a: Int) = a
+         |  foo(using 123)
+         |""".stripMargin
+      )
+
   @Test def insertMissingCases =
     checkCodeAction(
       code =
