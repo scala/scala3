@@ -1373,9 +1373,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
     tree.lhs match {
-      case lhs @ Apply(fn, args) =>
-        typed(untpd.Apply(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
-      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
+      case Apply(fn, args) =>
+        val appliedUpdate =
+          untpd.Apply(untpd.Select(fn, nme.update), args :+ tree.rhs)
+        typed(appliedUpdate, pt)
+      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, nme.apply), targs), args)) =>
         val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
         val wrappedUpdate =
           if (targs.isEmpty) rawUpdate
@@ -1389,7 +1391,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def lhs1 = adapt(lhsCore, LhsProto, locked)
 
         def reassignmentToVal =
-          report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
+          val name = lhs match { case nt: NameTree => nt.name case _ => nme.NO_NAME }
+          report.error(ReassignmentToVal(lhs1.symbol, name), tree.srcPos)
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
@@ -1478,8 +1481,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               typedDynamicAssign(tree, pt)
             case tpe =>
               reassignmentToVal
-        }
+          }
     }
+  end typedAssign
 
   def typedBlockStats(stats: List[untpd.Tree])(using Context): (List[tpd.Tree], Context) =
     index(stats)
