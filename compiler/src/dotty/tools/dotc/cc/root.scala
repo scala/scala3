@@ -15,6 +15,7 @@ import reporting.Message
 import util.{SimpleIdentitySet, EqHashMap}
 import ast.tpd
 import annotation.constructorOnly
+import Capabilities.*
 
 /** A module defining three kinds of root capabilities
  *   - `cap` of kind `Global`: This is the global root capability. Among others it is
@@ -107,96 +108,7 @@ object root:
         i" when computing deep capture set of $ref"
       case Unknown =>
         ""
-
-  enum Kind:
-    case Result(binder: MethodicType)
-    case Fresh(hidden: CaptureSet.HiddenSet)(val origin: Origin)
-    case Global
-
-    override def equals(other: Any): Boolean =
-      (this eq other.asInstanceOf[AnyRef]) || this.match
-      case Kind.Result(b1) => other match
-        case Kind.Result(b2) => b1 eq b2
-        case _ => false
-      case Kind.Fresh(h1) => other match
-        case Kind.Fresh(h2) => h1 eq h2
-        case _ => false
-      case Kind.Global => false
-  end Kind
-
-  /** The annotation of a root instance */
-  case class Annot(kind: Kind)(using @constructorOnly ictx: Context) extends Annotation:
-
-    /** id printed under -uniqid, for debugging */
-    val id =
-      val ccs = ccState
-      ccs.rootId += 1
-      ccs.rootId
-
-    //assert(id != 4, kind)
-
-    override def symbol(using Context) = defn.RootCapabilityAnnot
-    override def tree(using Context) = New(symbol.typeRef, Nil)
-    override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
-
-    private var myOriginalKind = kind
-    def originalBinder: MethodicType = myOriginalKind.asInstanceOf[Kind.Result].binder
-
-    def derivedAnnotation(binder: MethodType)(using Context): Annotation = kind match
-      case Kind.Result(b) if b ne binder =>
-        val ann = Annot(Kind.Result(binder))
-        ann.myOriginalKind = myOriginalKind
-        ann
-      case _ =>
-        this
-
-    override def hash: Int = kind.hashCode
-    override def eql(that: Annotation) = that match
-      case Annot(kind) => this.kind eq kind
-      case _ => false
-  end Annot
-
-  def cap(using Context): TermRef = defn.captureRoot.termRef
-
-  /** The type of fresh references */
-  type Fresh = AnnotatedType
-
-  /** Constructor and extractor methods for "fresh" capabilities */
-  object Fresh:
-    def apply(using Context)(origin: Origin, owner: Symbol = ctx.owner): CaptureRef =
-      if ccConfig.useSepChecks then
-        val hiddenSet = CaptureSet.HiddenSet(owner)
-        val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)(origin)))
-        hiddenSet.owningCap = res
-        //assert(hiddenSet.id != 3)
-        res
-      else
-        cap
-
-    def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
-      case Annot(Kind.Fresh(hidden)) => Some(hidden)
-      case _ => None
-  end Fresh
-
-  /** The type of existentially bound references */
-  type Result = AnnotatedType
-
-  object Result:
-    def apply(binder: MethodicType)(using Context): Result =
-      val hiddenSet = CaptureSet.HiddenSet(NoSymbol)
-      val res = AnnotatedType(cap, Annot(Kind.Result(binder)))
-      hiddenSet.owningCap = res
-      res
-
-    def unapply(tp: Result)(using Context): Option[MethodicType] = tp.annot match
-      case Annot(Kind.Result(binder)) => Some(binder)
-      case _ => None
-  end Result
-
-  def unapply(root: CaptureRef)(using Context): Option[Kind] = root match
-    case root @ AnnotatedType(_, ann: Annot) => Some(ann.kind)
-    case _ if root.isCap => Some(Kind.Global)
-    case _ => None
+  end Origin
 
   /** Map each occurrence of cap to a different Fresh instance
    *  Exception: CapSet^ stays as it is.
@@ -207,7 +119,6 @@ object root:
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
-        case root(_) => assert(false)
         case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
           t
         case t @ CapturingType(_, _) =>
@@ -222,8 +133,7 @@ object root:
           mapFollowingAliases(t)
 
     override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
-      case c: CaptureRef if c.isCap => Fresh(origin)
-      case root(_) => c
+      case GlobalCap => FreshCap(origin)
       case _ => super.mapCapability(c, deep)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
@@ -234,13 +144,11 @@ object root:
 
     class Inverse extends BiTypeMap, FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case root(_) => assert(false)
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
       override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
-        case c @ Fresh(_) => cap
-        case root(_) => c
+        case _: FreshCap => GlobalCap
         case _ => super.mapCapability(c, deep)
 
       def inverse = thisMap
@@ -269,11 +177,10 @@ object root:
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type, origin: Origin)(using Context): Type =
     val subst = new TypeMap:
-      val seen = EqHashMap[Annotation, CaptureRef]()
+      val seen = EqHashMap[ResultCap, FreshCap | GlobalCap.type]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
 
       def apply(t: Type): Type = t match
-        case root(_) => assert(false)
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
@@ -287,10 +194,9 @@ object root:
           mapOver(t)
 
       override def mapCapability(c: CaptureRef, deep: Boolean) = c match
-        case t @ Result(binder) =>
-          if localBinders.contains(binder) then t // keep bound references
-          else seen.getOrElseUpdate(t.annot, Fresh(origin)) // map free references to Fresh()
-        case root(_) => c
+        case c @ ResultCap(binder) =>
+          if localBinders.contains(binder) then c // keep bound references
+          else seen.getOrElseUpdate(c, FreshCap(origin)) // map free references to FreshCap
         case _ => super.mapCapability(c, deep)
     end subst
 
@@ -313,30 +219,28 @@ object root:
           super.mapOver(t)
 
     object toVar extends CapMap:
-      private val seen = EqHashMap[CaptureRef, Result]()
+      private val seen = EqHashMap[RootCapability, ResultCap]()
 
       def apply(t: Type) = t match
-        case root(_) => assert(false)
         case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
           if variance > 0 then
             super.mapOver:
               defn.FunctionNOf(args, res, contextual)
-                .capturing(Result(mt).singletonCaptureSet)
+                .capturing(ResultCap(mt).singletonCaptureSet)
           else mapOver(t)
         case _ =>
           mapOver(t)
 
       override def mapCapability(c: CaptureRef, deep: Boolean) = c match
-        case c: CaptureRef if c.isCapOrFresh =>
+        case c: (FreshCap | GlobalCap.type) =>
           if variance > 0 then
-            seen.getOrElseUpdate(c, Result(mt))
+            seen.getOrElseUpdate(c, ResultCap(mt))
           else
             if variance == 0 then
               fail(em"""$tp captures the root capability `cap` in invariant position.
                        |This capability cannot be converted to an existential in the result type of a function.""")
             // we accept variance < 0, and leave the cap as it is
             c
-        case root(_) => c
         case _ =>
           super.mapCapability(c, deep)
 
@@ -344,28 +248,26 @@ object root:
       override def toString = "toVar"
 
       object inverse extends BiTypeMap:
-        def apply(t: Type) = t match
-          case root(_) => assert(false)
-          case _ => mapOver(t)
-        def inverse = toVar.this
-        override def toString = "toVar.inverse"
+        def apply(t: Type) = mapOver(t)
 
         override def mapCapability(c: CaptureRef, deep: Boolean) = c match
-          case c @ Result(`mt`) =>
+          case c @ ResultCap(`mt`) =>
             // do a reverse getOrElseUpdate on `seen` to produce the
             // `Fresh` assosicated with `t`
             val it = seen.iterator
-            var ref: CaptureRef | Null = null
+            var ref: RootCapability | Null = null
             while it.hasNext && ref == null do
               val (k, v) = it.next
               if v eq c then ref = k
             if ref == null then
-              ref = Fresh(Origin.Unknown)
+              ref = FreshCap(Origin.Unknown)
               seen(ref) = c
             ref
-          case root(_) => c
           case _ =>
             super.mapCapability(c, deep)
+
+        def inverse = toVar.this
+        override def toString = "toVar.inverse"
       end inverse
     end toVar
 

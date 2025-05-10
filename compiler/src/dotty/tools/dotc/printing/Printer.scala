@@ -11,6 +11,7 @@ import typer.Implicits.*
 import util.SourcePosition
 import typer.ImportInfo
 import cc.CaptureSet
+import cc.Capabilities.Capability
 
 import scala.annotation.internal.sharable
 
@@ -108,7 +109,7 @@ abstract class Printer {
   def toTextRefinement(rt: RefinedType): Text
 
   /** Textual representation of a reference in a capture set */
-  def toTextCaptureRef(tp: Type): Text
+  def toTextCaptureRef(ref: Capability): Text
 
   /** Textual representation of a reference in a capture set */
   def toTextCaptureSet(cs: CaptureSet): Text

@@ -10,6 +10,7 @@ import Decorators.*
 import config.Printers.capt
 import printing.Printer
 import printing.Texts.Text
+import cc.Capabilities.{Capability, RootCapability}
 
 /** An annotation representing a capture set and whether it is boxed.
  *  It simulates a normal @retains annotation except that it is more efficient,
@@ -39,10 +40,10 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
     val elems = refs.elems.toList.map {
-      case cr: TermRef => ref(cr)
-      case cr: TermParamRef => untpd.Ident(cr.paramName).withType(cr)
-      case cr: ThisType => This(cr.cls)
-      case root(_) => ref(root.cap)
+      case c: TermRef => ref(c)
+      case c: TermParamRef => untpd.Ident(c.paramName).withType(c)
+      case c: ThisType => This(c.cls)
+      case c: RootCapability => ref(defn.captureRoot)
       // TODO: Will crash if the type is an annotated type, for example `cap.rd`
     }
     val arg = repeated(elems, TypeTree(defn.AnyType))
@@ -66,9 +67,9 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     val elems1 = elems.mapConserve(tm.mapCapability(_))
     if elems1 eq elems then this
     else if elems1.forall:
-      case elem1: CaptureRef => elem1.isTrackableRef
+      case elem1: Capability => elem1.isWellformed
       case _ => false
-    then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), boxed)
+    then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[Capability]]*), boxed)
     else EmptyAnnotation
 
   override def refersToParamOf(tl: TermLambda)(using Context): Boolean =

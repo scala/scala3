@@ -8,7 +8,8 @@ import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
 import printing.Texts.Text
 import printing.Formatting.hl
 import config.SourceVersion
-import cc.{CaptureRef, CaptureSet, root, rootAnnot}
+import cc.{CaptureSet, CaptureRef, root}
+import cc.Capabilities.*
 
 import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
@@ -196,17 +197,16 @@ object Message:
             else
               owner.show
           val descr =
-            if ref.isCap then "the universal root capability"
-            else ref match
-              case ref @ root.Fresh(hidden) =>
-                val (kind: root.Kind.Fresh) = ref.rootAnnot.kind: @unchecked
-                val descr = kind.origin match
+            ref match
+              case GlobalCap => "the universal root capability"
+              case ref: FreshCap =>
+                val descr = ref.origin match
                   case origin @ root.Origin.InDecl(sym) if sym.exists =>
                     origin.explanation
                   case origin =>
-                    i" created in ${ownerStr(hidden.owner)}${origin.explanation}"
+                    i" created in ${ownerStr(ref.hiddenSet.owner)}${origin.explanation}"
                 i"a fresh root capability$descr"
-              case root.Result(binder) => i"a root capability associated with the result type of $binder"
+              case ResultCap(binder) => i"a root capability associated with the result type of $binder"
           s"$relation $descr"
     end explanation
 
@@ -218,7 +218,7 @@ object Message:
         case param: ParamRef     => false
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-        case ref: CaptureRef     => ref.isRootCapability
+        case ref: CaptureRef     => ref.isTerminalCapability
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -267,10 +267,9 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
-    override def toTextCaptureRef(tp: Type): Text = tp match
-      case tp: CaptureRef if tp.isRootCapability && !tp.isReadOnly && seen.isActive =>
-        seen.record("cap", isType = false, tp)
-      case _ => super.toTextCaptureRef(tp)
+    override def toTextCaptureRef(c: Capability): Text = c match
+      case c: RootCapability if seen.isActive => seen.record("cap", isType = false, c)
+      case _ => super.toTextCaptureRef(c)
 
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet
