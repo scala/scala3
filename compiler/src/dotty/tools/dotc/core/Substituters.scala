@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types.*, Symbols.*, Contexts.*
-import cc.{root, rootAnnot, CaptureRef}
+import cc.Capabilities.{Capability, ResultCap}
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -165,9 +165,9 @@ object Substituters:
 
   final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
-    override def mapCapability(c: CaptureRef, deep: Boolean = false) = c match
-      case c @ root.Result(binder: MethodType) if binder eq from =>
-        c.derivedAnnotatedType(c.parent, c.rootAnnot.derivedAnnotation(to.asInstanceOf[MethodType]))
+    override def mapCapability(c: Capability, deep: Boolean = false) = c match
+      case c @ ResultCap(binder: MethodType) if binder eq from =>
+        c.derivedResult(to.asInstanceOf[MethodType])
       case _ =>
         super.mapCapability(c, deep)
 
@@ -189,13 +189,11 @@ object Substituters:
       case _ =>
         mapOver(tp)
 
-    override def mapCapability(c: CaptureRef, deep: Boolean = false) = c match
-      case c @ root.Result(binder: MethodType) =>
+    override def mapCapability(c: Capability, deep: Boolean = false) = c match
+      case c @ ResultCap(binder: MethodType) =>
         var i = 0
         while i < from.length && (from(i) ne binder) do i += 1
-        if i < from.length
-        then c.derivedAnnotatedType(c.parent, c.rootAnnot.derivedAnnotation(to(i).asInstanceOf[MethodType]))
-        else c
+        if i < from.length then c.derivedResult(to(i).asInstanceOf[MethodType]) else c
       case _ =>
         super.mapCapability(c, deep)
 

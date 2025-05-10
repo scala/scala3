@@ -22,6 +22,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
 import NamerOps.methodType
 import NameKinds.{CanThrowEvidenceName, TryOwnerName}
+import Capabilities.*
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -366,7 +367,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
       case tp @ CapturingType(parent, refs)
-      if (refs eq CaptureSet.universalImpliedByCapability) && !tp.isBoxedCapturing =>
+      if (refs eq CaptureSet.csImpliedByCapability) && !tp.isBoxedCapturing =>
         parent
       case tp: AliasingBounds =>
         tp.derivedAlias(stripImpliedCaptureSet(tp.alias))
@@ -429,7 +430,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           && !t.isSingleton
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
-        then CapturingType(t, CaptureSet.universalImpliedByCapability, boxed = false)
+        then CapturingType(t, CaptureSet.csImpliedByCapability, boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
@@ -512,9 +513,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           reach |= t.isBoxed
           try
             traverse(parent)
-            for case root.Fresh(hidden) <- refs.elems.iterator do
-              if reach then hidden.elems += ref.reach
-              else if ref.isTracked then hidden.elems += ref
+            for case fresh: FreshCap <- refs.elems.iterator do // TODO: what about fresh.rd elems?
+              if reach then fresh.hiddenSet.elems += ref.reach
+              else if ref.isTracked then fresh.hiddenSet.elems += ref
           finally reach = saved
         case _ =>
           traverseChildren(t)
@@ -847,7 +848,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case RetainingType(parent, refs) =>
         needsVariable(parent)
         && !refs.tpes.exists:
-            case ref: TermRef => ref.isCap
+            case ref: TermRef => ref.isCapRef
             case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
@@ -915,7 +916,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def apply(t: Type) = t match
       case t @ CapturingType(parent, refs) =>
         val parent1 = this(parent)
-        if refs.containsRootCapability then t.derivedCapturingType(parent1, CaptureSet.Fluid)
+        if refs.containsTerminalCapability then t.derivedCapturingType(parent1, CaptureSet.Fluid)
         else t
       case _ => mapFollowingAliases(t)
 
@@ -961,8 +962,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
         if ref.captureSetOfInfo.elems.isEmpty
-            && !ref.derivesFrom(defn.Caps_Capability)
-            && !ref.derivesFrom(defn.Caps_CapSet) then
+            && !ref.coreType.derivesFrom(defn.Caps_Capability)
+            && !ref.coreType.derivesFrom(defn.Caps_CapSet) then
           val deepStr = if ref.isReach then " deep" else ""
           report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
         check(parent.captureSet, parent)
@@ -971,7 +972,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for
             j <- 0 until retained.length if j != i
             r <- retained(j).toCaptureRefs
-            if !r.isRootCapability
+            if !r.isTerminalCapability
           yield r
         val remaining = CaptureSet(others*)
         check(remaining, remaining)

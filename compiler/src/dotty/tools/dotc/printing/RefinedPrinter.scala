@@ -351,8 +351,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
       case tp @ PolyProto(targs, resType) =>
         "[applied to [" ~ toTextGlobal(targs, ", ") ~ "] returning " ~ toText(resType)
-      case tp: AnnotatedType if tp.isTrackableRef =>
-        toTextCaptureRef(tp)
       case _ =>
         super.toText(tp)
     }
