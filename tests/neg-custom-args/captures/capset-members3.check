@@ -1,0 +1,6 @@
+-- [E095] Syntax Error: tests/neg-custom-args/captures/capset-members3.scala:5:10 --------------------------------------
+5 |  type C^ _ // error
+  |          ^
+  |          =, >:, or <: expected, but '_' found
+  |
+  | longer explanation available when compiling with `-explain`

@@ -642,7 +642,7 @@ object desugar {
       .withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked) | Param)
   }
 
-  /** Desugar type def (not param): Under x.moduliity this can expand
+  /** Desugar type def (not param): Under x.modularity this can expand
    *  context bounds, which are expanded to evidence ValDefs. These will
    *  ultimately map to deferred givens.
    */
