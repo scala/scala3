@@ -4,4 +4,6 @@
    |                                                Found:    (f : (Ref[Int]^, Ref[Int]^) -> Unit)
    |                                                Required: (Ref[Int]^{a}, Ref[Int]^{a}) -> Unit
    |
+   |                                                where:    ^ refers to the universal root capability
+   |
    | longer explanation available when compiling with `-explain`

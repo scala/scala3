@@ -13,7 +13,7 @@ import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction
 import reporting.Message
 import util.{SimpleIdentitySet, EqHashMap}
-import util.Spans.NoSpan
+import ast.tpd
 import annotation.constructorOnly
 
 /** A module defining three kinds of root capabilities
@@ -59,9 +59,58 @@ import annotation.constructorOnly
  */
 object root:
 
+  enum Origin:
+    case InDecl(sym: Symbol)
+    case TypeArg(tp: Type)
+    case UnsafeAssumePure
+    case Formal(pref: ParamRef, app: tpd.Apply)
+    case ResultInstance(methType: Type, meth: Symbol)
+    case UnapplyInstance(info: MethodType)
+    case NewMutable(tp: Type)
+    case NewCapability(tp: Type)
+    case LambdaExpected(respt: Type)
+    case LambdaActual(restp: Type)
+    case OverriddenType(member: Symbol)
+    case DeepCS(ref: TypeRef)
+    case Unknown
+
+    def explanation(using Context): String = this match
+      case InDecl(sym: Symbol) =>
+        if sym.is(Method) then i" in the result type of $sym"
+        else if sym.exists then i" in the type of $sym"
+        else ""
+      case TypeArg(tp: Type) =>
+        i" of type argument $tp"
+      case UnsafeAssumePure =>
+        " when instantiating argument of unsafeAssumePure"
+      case Formal(pref, app) =>
+        val meth = app.symbol
+        if meth.exists
+        then i" when checking argument to parameter ${pref.paramName} of $meth"
+        else ""
+      case ResultInstance(mt, meth) =>
+        val methDescr = if meth.exists then i"$meth's type " else ""
+        i" when instantiating $methDescr$mt"
+      case UnapplyInstance(info) =>
+        i" when instantiating argument of unapply with type $info"
+      case NewMutable(tp) =>
+        i" when constructing mutable $tp"
+      case NewCapability(tp) =>
+        i" when constructing Capability instance $tp"
+      case LambdaExpected(respt) =>
+        i" when instantiating expected result type $respt of lambda"
+      case LambdaActual(restp: Type) =>
+        i" when instantiating result type $restp of lambda"
+      case OverriddenType(member: Symbol) =>
+        i" when instantiating upper bound of member overridden by $member"
+      case DeepCS(ref: TypeRef) =>
+        i" when computing deep capture set of $ref"
+      case Unknown =>
+        ""
+
   enum Kind:
-    case Result(binder: MethodType)
-    case Fresh(hidden: CaptureSet.HiddenSet)
+    case Result(binder: MethodicType)
+    case Fresh(hidden: CaptureSet.HiddenSet)(val origin: Origin)
     case Global
 
     override def equals(other: Any): Boolean =
@@ -84,12 +133,14 @@ object root:
       ccs.rootId += 1
       ccs.rootId
 
+    //assert(id != 4, kind)
+
     override def symbol(using Context) = defn.RootCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
     override def derivedAnnotation(tree: Tree)(using Context): Annotation = this
 
     private var myOriginalKind = kind
-    def originalBinder: MethodType = myOriginalKind.asInstanceOf[Kind.Result].binder
+    def originalBinder: MethodicType = myOriginalKind.asInstanceOf[Kind.Result].binder
 
     def derivedAnnotation(binder: MethodType)(using Context): Annotation = kind match
       case Kind.Result(b) if b ne binder =>
@@ -104,7 +155,7 @@ object root:
       case Annot(kind) => this.kind eq kind
       case _ => false
 
-    /** Special treatment of `SubstBindingMaps` which can change the binder of a
+    /** Special treatment of `SubstBindingMaps` which can change the binder of
      *  Result instances
      */
     override def mapWith(tm: TypeMap)(using Context) = kind match
@@ -125,20 +176,17 @@ object root:
   /** The type of fresh references */
   type Fresh = AnnotatedType
 
+  /** Constructor and extractor methods for "fresh" capabilities */
   object Fresh:
-    /** Constructor and extractor methods for "fresh" capabilities */
-    private def make(owner: Symbol)(using Context): CaptureRef =
+    def apply(using Context)(origin: Origin, owner: Symbol = ctx.owner): CaptureRef =
       if ccConfig.useSepChecks then
         val hiddenSet = CaptureSet.HiddenSet(owner)
-        val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)))
+        val res = AnnotatedType(cap, Annot(Kind.Fresh(hiddenSet)(origin)))
         hiddenSet.owningCap = res
         //assert(hiddenSet.id != 3)
         res
       else
         cap
-
-    def withOwner(owner: Symbol)(using Context): CaptureRef = make(owner)
-    def apply()(using Context): CaptureRef = make(NoSymbol)
 
     def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
       case Annot(Kind.Fresh(hidden)) => Some(hidden)
@@ -149,13 +197,13 @@ object root:
   type Result = AnnotatedType
 
   object Result:
-    def apply(binder: MethodType)(using Context): Result =
+    def apply(binder: MethodicType)(using Context): Result =
       val hiddenSet = CaptureSet.HiddenSet(NoSymbol)
       val res = AnnotatedType(cap, Annot(Kind.Result(binder)))
       hiddenSet.owningCap = res
       res
 
-    def unapply(tp: Result)(using Context): Option[MethodType] = tp.annot match
+    def unapply(tp: Result)(using Context): Option[MethodicType] = tp.annot match
       case Annot(Kind.Result(binder)) => Some(binder)
       case _ => None
   end Result
@@ -168,14 +216,14 @@ object root:
   /** Map each occurrence of cap to a different Fresh instance
    *  Exception: CapSet^ stays as it is.
    */
-  class CapToFresh(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
+  class CapToFresh(origin: Origin)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Fresh.withOwner(owner)
+          Fresh(origin)
         case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
           t
         case t @ CapturingType(_, _) =>
@@ -212,16 +260,24 @@ object root:
 
   end CapToFresh
 
-  /** Maps cap to fresh */
-  def capToFresh(tp: Type, owner: Symbol = NoSymbol)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh(owner)(tp) else tp
+  /** Maps cap to fresh. CapToFresh is a BiTypeMap since we don't want to
+   *  freeze a set when it is mapped. On the other hand, we do not want Fresh
+   *  values to flow back to cap since that would fail disallowRootCapability
+   *  tests elsewhere. We therefore use `withoutMappedFutureElems` to prevent
+   *  the map being installed for future use.
+   */
+  def capToFresh(tp: Type, origin: Origin)(using Context): Type =
+    if ccConfig.useSepChecks then
+      ccState.withoutMappedFutureElems:
+        CapToFresh(origin)(tp)
+    else tp
 
   /** Maps fresh to cap */
   def freshToCap(tp: Type)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh(NoSymbol).inverse(tp) else tp
+    if ccConfig.useSepChecks then CapToFresh(Origin.Unknown).inverse(tp) else tp
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
-  def resultToFresh(tp: Type)(using Context): Type =
+  def resultToFresh(tp: Type, origin: Origin)(using Context): Type =
     val subst = new TypeMap:
       val seen = EqHashMap[Annotation, CaptureRef]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
@@ -229,7 +285,7 @@ object root:
       def apply(t: Type): Type = t match
         case t @ Result(binder) =>
           if localBinders.contains(binder) then t // keep bound references
-          else seen.getOrElseUpdate(t.annot, Fresh()) // map free references to Fresh()
+          else seen.getOrElseUpdate(t.annot, Fresh(origin)) // map free references to Fresh()
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
@@ -249,7 +305,7 @@ object root:
    *  variable bound by `mt`.
    *  Stop at function or method types since these have been mapped before.
    */
-  def toResult(tp: Type, mt: MethodType, fail: Message => Unit)(using Context): Type =
+  def toResult(tp: Type, mt: MethodicType, fail: Message => Unit)(using Context): Type =
 
     abstract class CapMap extends BiTypeMap:
       override def mapOver(t: Type): Type = t match
@@ -295,7 +351,7 @@ object root:
               val (k, v) = it.next
               if v.annot eq t.annot then ref = k
             if ref == null then
-              ref = Fresh()
+              ref = Fresh(Origin.Unknown)
               seen(ref) = t
             ref
           case _ => mapOver(t)
@@ -306,53 +362,38 @@ object root:
     toVar(tp)
   end toResult
 
-  /** Map global roots in function results to result roots */
-  def toResultInResults(fail: Message => Unit, keepAliases: Boolean = false)(using Context): TypeMap = new TypeMap with FollowAliasesMap:
-    def apply(t: Type): Type = t match
-      case defn.RefinedFunctionOf(mt) =>
-        val mt1 = apply(mt)
-        if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
-        else t
-      case t: MethodType if variance > 0 && t.marksExistentialScope =>
-        val t1 = mapOver(t).asInstanceOf[MethodType]
-        t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))
-      case CapturingType(parent, refs) =>
-        t.derivedCapturingType(this(parent), refs)
-      case t: (LazyRef | TypeVar) =>
-        mapConserveSuper(t)
-      case _ =>
-        try
-          if keepAliases then mapOver(t)
-          else mapFollowingAliases(t)
-        catch case ex: AssertionError =>
-          println(i"error while mapping $t")
-          throw ex
+  /** Map global roots in function results to result roots. Also,
+   *  map roots in the types of parameterless def methods.
+   */
+  def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(tp: Type)(using Context): Type =
+    val m = new TypeMap with FollowAliasesMap:
+      def apply(t: Type): Type = t match
+        case AnnotatedType(parent @ defn.RefinedFunctionOf(mt), ann) if ann.symbol == defn.InferredDepFunAnnot =>
+          val mt1 = mapOver(mt).asInstanceOf[MethodType]
+          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
+          else parent
+        case defn.RefinedFunctionOf(mt) =>
+          val mt1 = apply(mt)
+          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
+          else t
+        case t: MethodType if variance > 0 && t.marksExistentialScope =>
+          val t1 = mapOver(t).asInstanceOf[MethodType]
+          t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))
+        case CapturingType(parent, refs) =>
+          t.derivedCapturingType(this(parent), refs)
+        case t: (LazyRef | TypeVar) =>
+          mapConserveSuper(t)
+        case _ =>
+          try
+            if keepAliases then mapOver(t)
+            else mapFollowingAliases(t)
+          catch case ex: AssertionError =>
+            println(i"error while mapping $t")
+            throw ex
+    m(tp) match
+      case tp1: ExprType if sym.is(Method, butNot = Accessor) =>
+        tp1.derivedExprType(toResult(tp1.resType, tp1, fail))
+      case tp1 => tp1
   end toResultInResults
 
-  /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
-   *  with an added property PrintFresh. This addition causes all occurrences of
-   *  `Fresh` to be printed as `fresh` instead of `cap`, so that one avoids
-   *  confusion in error messages.
-   */
-  def printContext(refs: (Type | CaptureSet)*)(using Context): Context =
-    def hasCap = new TypeAccumulator[Boolean]:
-      def apply(x: Boolean, t: Type) =
-        x || t.dealiasKeepAnnots.match
-          case Fresh(_) => false
-          case t: TermRef => t.isCap || this(x, t.widen)
-          case CapturingType(t1, refs) => refs.containsCap || this(x, t1)
-          case x: ThisType => false
-          case _ => foldOver(x, t)
-
-    def containsCap(x: Type | CaptureSet): Boolean = x match
-      case tp: Type =>
-        hasCap(false, tp)
-      case refs: CaptureSet =>
-        refs.elems.exists(_.stripReadOnly.isCap)
-
-    if refs.exists(containsCap) then
-      ctx.withProperty(PrintFresh, Some(()))
-    else
-      ctx
-  end printContext
 end root

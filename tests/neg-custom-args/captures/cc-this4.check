@@ -4,4 +4,6 @@
   |             Found:    (C.this : C^)
   |             Required: C
   |
+  |             where:    ^ refers to the universal root capability
+  |
   | longer explanation available when compiling with `-explain`

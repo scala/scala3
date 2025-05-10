@@ -15,6 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
+import ast.tpd
 import cc.*
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -30,8 +31,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Print Fresh instances as <cap hiding ...> */
   protected def ccVerbose = ctx.settings.YccVerbose.value
 
-  /** Print Fresh instances as "fresh" */
-  protected def printFresh = ccVerbose || ctx.property(PrintFresh).isDefined
+  /** Elide redundant ^ and ^{cap.rd} when printing instances of Capability
+   *  classes. Gets set when singletons are printed as `(x: T)` to reduce verbosity.
+   */
+  private var elideCapabilityCaps = false
 
   private var openRecs: List[RecType] = Nil
 
@@ -182,14 +185,41 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
     "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
 
+  type GeneralCaptureSet = CaptureSet | List[tpd.Tree]
+
+  protected def isUniversalCaptureSet(refs: GeneralCaptureSet): Boolean = refs match
+    case refs: CaptureSet =>
+      // The set if universal if it consists only of caps.cap or
+      // only of an existential Fresh that is bound to the immediately enclosing method.
+      val isUniversal =
+        refs.elems.size == 1
+        && (refs.isUniversal
+            || !printDebug && !ccVerbose && !showUniqueIds && refs.elems.nth(0).match
+                  case root.Result(binder) =>
+                    CCState.openExistentialScopes match
+                      case b :: _ => binder eq b
+                      case _ => false
+                  case _ =>
+                    false
+        )
+      isUniversal
+      || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !ccVerbose
+    case (ref: tpd.Tree) :: Nil => ref.symbol == defn.captureRoot
+    case _ => false
+
+  protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
+    case refs: CaptureSet => toTextCaptureSet(refs)
+    case refs: List[tpd.Tree] => toTextRetainedElems(refs)
+
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
    */
-  protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
+  protected def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text): Text =
     changePrec(InfixPrec):
-      boxText ~ toTextLocal(parent) ~ "^" ~ (refsText provided refsText != rootSetText)
-
-  final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
+      boxText
+      ~ toTextLocal(parent)
+      ~ "^"
+      ~ toTextGeneralCaptureSet(refs).provided(!isUniversalCaptureSet(refs))
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -251,38 +281,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        if parent.derivesFrom(defn.Caps_Capability)
-              && refs.containsRootCapability && refs.isReadOnly && !printDebug
-        then
-          toText(parent)
-        else
-          // The set if universal if it consists only of caps.cap or
-          // only of an existential Fresh that is bound to the immediately enclosing method.
-          def isUniversal =
-            refs.elems.size == 1
-            && (refs.isUniversal
-                || !printDebug && !printFresh && !showUniqueIds && refs.elems.nth(0).match
-                      case root.Result(binder) =>
-                        CCState.openExistentialScopes match
-                          case b :: _ => binder eq b
-                          case _ => false
-                      case _ =>
-                        false
-            )
-          val refsText =
-            if isUniversal then
-              rootSetText
-            else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh then
-              rootSetText
-            else
-              toTextCaptureSet(refs)
-          toTextCapturing(parent, refsText, boxText)
+        if elideCapabilityCaps
+            && parent.derivesFrom(defn.Caps_Capability)
+            && refs.containsRootCapability
+            && refs.isReadOnly
+        then toText(parent)
+        else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
-          val refsText = refs match
-            case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
-            case _ => toTextRetainedElems(refs)
-          toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
+          toTextCapturing(parent, refs, "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
@@ -365,7 +372,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }.close
 
   def toTextSingleton(tp: SingletonType): Text =
-    "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    val saved = elideCapabilityCaps
+    elideCapabilityCaps = !ccVerbose && !ctx.settings.explain.value
+      // don't elide capability capture sets under -Ycc-verbose or -explain
+    try "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    finally elideCapabilityCaps = saved
 
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
@@ -461,12 +472,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val vbleText: Text = CCState.openExistentialScopes.indexOf(binder) match
           case -1 =>
             "<cap of " ~ toText(binder) ~ ">"
-          case n => "outer_" * n ++ (if printFresh then "localcap" else "cap")
+          case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
         vbleText ~ hashStr(binder) ~ Str(idStr).provided(showUniqueIds)
       case tp @ root.Fresh(hidden) =>
         val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
-        if ccVerbose then s"<fresh$idStr hiding " ~ toTextCaptureSet(hidden) ~ ">"
-        else if printFresh then "fresh"
+        if ccVerbose then s"<fresh$idStr in ${tp.ccOwner} hiding " ~ toTextCaptureSet(hidden) ~ ">"
         else "cap"
       case tp => toText(tp)
 

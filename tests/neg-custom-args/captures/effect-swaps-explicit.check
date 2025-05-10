@@ -19,7 +19,11 @@
    |          ^
    |Found:    (contextual$9: boundary.Label[box Result[box Future[box T^?]^?, box E^?]^?]^) ?->{fr, async}
    |  box Future[box T^?]^{fr, contextual$9}
-   |Required: (contextual$9: boundary.Label[Result[box Future[box T^?]^?, box E^?]]^) ?->{fresh} box Future[box T^?]^?
+   |Required: (contextual$9: boundary.Label[Result[box Future[box T^?]^?, box E^?]]^) ?=> box Future[box T^?]^?
+   |
+   |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
+   |          ^   refers to the universal root capability
+   |
    |
    |Note that reference contextual$9.type
    |cannot be included in outer capture set ?
@@ -30,7 +34,10 @@
 73 |        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
    |                                   ^
    |Found:    (lbl: boundary.Label[box Result[box Future[box T^?]^?, box E^?]^?]^) ?->{fr, async} Future[box T^?]^{fr, lbl}
-   |Required: (lbl: boundary.Label[Result[Future[T], E]]^) ?->{fresh} Future[T]
+   |Required: (lbl: boundary.Label[Result[Future[T], E]]^) ?=> Future[T]
+   |
+   |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
+   |          ^   refers to the universal root capability
 74 |          Future: fut ?=>
 75 |            fr.await.ok
    |

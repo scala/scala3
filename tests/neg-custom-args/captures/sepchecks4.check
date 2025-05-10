@@ -11,14 +11,16 @@
 -- Error: tests/neg-custom-args/captures/sepchecks4.scala:12:6 ---------------------------------------------------------
 12 |  par(() => println(io))(() => println(io)) // error // (1)
    |      ^^^^^^^^^^^^^^^^^
-   |      Separation failure: argument of type  () ->{io} Unit
-   |      to method par: (op1: () => Unit)(op2: () => Unit): Unit
-   |      corresponds to capture-polymorphic formal parameter op1 of type  () => Unit
-   |      and hides capabilities  {io}.
-   |      Some of these overlap with the captures of the second argument with type  () ->{io} Unit.
+   |Separation failure: argument of type  () ->{io} Unit
+   |to method par: (op1: () => Unit)(op2: () => Unit): Unit
+   |corresponds to capture-polymorphic formal parameter op1 of type  () => Unit
+   |and hides capabilities  {io}.
+   |Some of these overlap with the captures of the second argument with type  () ->{io} Unit.
    |
-   |        Hidden set of current argument        : {io}
-   |        Hidden footprint of current argument  : {io}
-   |        Capture set of second argument        : {io}
-   |        Footprint set of second argument      : {io}
-   |        The two sets overlap at               : {io}
+   |  Hidden set of current argument        : {io}
+   |  Hidden footprint of current argument  : {io}
+   |  Capture set of second argument        : {io}
+   |  Footprint set of second argument      : {io}
+   |  The two sets overlap at               : {io}
+   |
+   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op1 of method par

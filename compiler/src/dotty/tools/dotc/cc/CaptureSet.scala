@@ -183,7 +183,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def accountsFor(x: CaptureRef)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
 
-    def debugInfo(using Context) = i"$this accountsFor $x, which has capture set ${x.captureSetOfInfo}"
+    def debugInfo(using Context) = i"$this accountsFor $x"
 
     def test(using Context) = reporting.trace(debugInfo):
       elems.exists(_.subsumes(x))
@@ -209,8 +209,9 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      CCState.withCapAsRoot: // OK here since we opportunistically choose an alternative which gets checked later
-        elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
+      CCState.withCapAsRoot:
+        CCState.ignoringFreshLevels: // OK here since we opportunistically choose an alternative which gets checked later
+          elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems
@@ -351,9 +352,27 @@ sealed abstract class CaptureSet extends Showable:
 
   def readOnly(using Context): CaptureSet = map(ReadOnlyMap())
 
-  /** Invoke handler if this set has (or later aquires) the root capability `cap` */
-  def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-    if containsRootCapability then handler()
+  /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
+   *  on the value of `rootLimit`.
+   *  If the limit is null, all capture roots are good.
+   *  If the limit is NoSymbol, all Fresh roots are good, but cap and Result roots are bad.
+   *  If the limit is some other symbol, cap and Result roots are bad, as well as
+   *  all Fresh roots that are contained (via ccOwner) in `rootLimit`.
+   */
+  protected def isBadRoot(rootLimit: Symbol | Null, elem: CaptureRef)(using Context): Boolean =
+    if rootLimit == null then false
+    else
+      val elem1 = elem.stripReadOnly
+      elem1.isCap
+      || elem1.isResultRoot
+      || elem1.isFresh && elem1.ccOwner.isContainedIn(rootLimit)
+
+  /** Invoke `handler` if this set has (or later aquires) a root capability.
+   *  Excluded are Fresh instances unless their ccOwner is contained in `upto`.
+   *  If `upto` is NoSymbol, all Fresh instances are admitted.
+   */
+  def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    if elems.exists(isBadRoot(upto, _)) then handler()
     this
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
@@ -423,8 +442,8 @@ object CaptureSet:
   def universalImpliedByCapability(using Context) =
     defn.universalCSImpliedByCapability
 
-  def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
-    root.Fresh.withOwner(owner).singletonCaptureSet
+  def fresh(origin: root.Origin)(using Context): CaptureSet =
+    root.Fresh(origin).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
@@ -499,7 +518,7 @@ object CaptureSet:
       ccs.varId += 1
       ccs.varId
 
-    //assert(id != 40)
+    //assert(id != 8, this)
 
     /** A variable is solved if it is aproximated to a from-then-on constant set.
      *  Interpretation:
@@ -529,7 +548,10 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
-    private[CaptureSet] var noUniversal = false
+    /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
+     *  @see isBadRoot for details.
+     */
+    private[CaptureSet] var rootLimit: Symbol | Null = null
 
     /** A handler to be invoked when new elems are added to this set */
     var newElemAddedHandler: CaptureRef => Context ?=> Unit = _ => ()
@@ -580,7 +602,7 @@ object CaptureSet:
         assert(elem.isTrackableRef, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
         elems += elem
-        if elem.isRootCapability then
+        if isBadRoot(rootLimit, elem) then
           rootAddedHandler()
         newElemAddedHandler(elem)
         val normElem = if isMaybeSet then elem else elem.stripMaybe
@@ -600,37 +622,38 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    // TODO: Also track allowable TermParamRefs and root.Results in capture sets
-    private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isRootCapability then
-        !noUniversal
-      else elem match
-        case elem @ root.Result(mt) =>
-          !noUniversal && isPartOf(mt.resType)
-        case elem: TermRef if level.isDefined =>
-          elem.prefix match
-            case prefix: CaptureRef =>
-              levelOK(prefix)
-            case _ =>
-              ccState.symLevel(elem.symbol) <= level
-        case elem: ThisType if level.isDefined =>
-          ccState.symLevel(elem.cls).nextInner <= level
-        case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
-          isPartOf(elem.binder.resType)
-          || {
-            capt.println(
-              i"""LEVEL ERROR $elem for $this
-                 |elem binder = ${elem.binder}""")
-            false
-          }
-        case ReachCapability(elem1) =>
-          levelOK(elem1)
-        case ReadOnlyCapability(elem1) =>
-          levelOK(elem1)
-        case MaybeCapability(elem1) =>
-          levelOK(elem1)
-        case _ =>
-          true
+    private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
+      case elem @ root.Fresh(_) =>
+        !level.isDefined
+        || ccState.symLevel(elem.ccOwner) <= level
+        || {
+          capt.println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
+          false
+        }
+      case elem @ root.Result(mt) =>
+        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(mt.resType))
+      case elem: TermRef if elem.isCap =>
+        rootLimit == null
+      case elem: TermRef if level.isDefined =>
+        elem.prefix match
+          case prefix: CaptureRef =>
+            levelOK(prefix)
+          case _ =>
+            ccState.symLevel(elem.symbol) <= level
+      case elem: ThisType if level.isDefined =>
+        ccState.symLevel(elem.cls).nextInner <= level
+      case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
+        isPartOf(elem.binder.resType)
+        || {
+          capt.println(
+            i"""LEVEL ERROR $elem for $this
+                |elem binder = ${elem.binder}""")
+          false
+        }
+      case QualifiedCapability(elem1) =>
+        levelOK(elem1)
+      case _ =>
+        true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -641,10 +664,10 @@ object CaptureSet:
       else
         CompareResult.Fail(this :: Nil)
 
-    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-      noUniversal = true
+    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+      rootLimit = upto
       rootAddedHandler = handler
-      super.disallowRootCapability(handler)
+      super.disallowRootCapability(upto)(handler)
 
     override def ensureWellformed(handler: CaptureRef => (Context) ?=> Unit)(using Context): this.type =
       newElemAddedHandler = handler
@@ -689,7 +712,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
         val approx = upperApprox(empty)
-          .map(root.CapToFresh(NoSymbol).inverse)    // Fresh --> cap
+          .map(root.CapToFresh(root.Origin.Unknown).inverse)    // Fresh --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -747,7 +770,7 @@ object CaptureSet:
    *  Test case: Without that tweak, logger.scala would not compile.
    */
   class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context) = this
+    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -805,7 +828,7 @@ object CaptureSet:
             .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
             .andAlso(addNewElem(elem))
         catch case ex: AssertionError =>
-          println(i"fail while tryInclude $elem of ${elem.getClass} in $this / ${this.summarize}")
+          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} in $this / ${this.summarize}")
           throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
@@ -930,7 +953,7 @@ object CaptureSet:
 
     override def owner = givenOwner
 
-    // assert(id != 34, i"$initialHidden")
+    //assert(id != 4)
 
     private def aliasRef: AnnotatedType | Null =
       if myElems.size == 1 then
@@ -1162,11 +1185,19 @@ object CaptureSet:
      *  substBinder when comparing two method types. In that case we can unify
      *  the two roots1, provided none of the two roots have already been unified
      *  themselves. So unification must be 1-1.
+     *
+     *  Note, see (**) below: We also allow unifications of results that have different ExprType
+     *  binders. This is necessary because ExprTypes don't get updated with SubstBindingMaps.
+     *  It's sound since ExprTypes always appear alone and at the top-level, so there is
+     *  no problem with confusing results at different levels.
+     *  See pos-customargs/captures/overrides.scala for a test case.
      */
     def unify(root1: root.Result, root2: root.Result)(using Context): Boolean =
       (root1, root2) match
         case (root1 @ root.Result(binder1), root2 @ root.Result(binder2))
-        if (binder1 eq binder2)
+        if ((binder1 eq binder2)
+            || binder1.isInstanceOf[ExprType] && binder2.isInstanceOf[ExprType] // (**)
+            )
           && (root1.rootAnnot.originalBinder ne root2.rootAnnot.originalBinder)
           && eqResultMap(root1) == null
           && eqResultMap(root2) == null
@@ -1392,7 +1423,7 @@ object CaptureSet:
       def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
         this(acc, parent) ++ refs
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if includeTypevars && upperBound.isExactlyAny then CaptureSet.fresh(t.symbol)
+        if includeTypevars && upperBound.isExactlyAny then fresh(root.Origin.DeepCS(t))
         else this(acc, upperBound)
     collect(CaptureSet.empty, tp)
 

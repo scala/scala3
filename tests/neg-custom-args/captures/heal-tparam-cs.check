@@ -1,11 +1,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:23 -------------------------------
 10 |  val test1 = localCap { c => // error
    |                       ^
-   |                       Found:    (c: Capp^) ->? box () ->{c} Unit
-   |                       Required: (c: Capp^) ->{fresh} box () ->? Unit
+   |Found:    (c: Capp^) ->? box () ->{c} Unit
+   |Required: (c: Capp^) => box () ->? Unit
    |
-   |                       Note that reference c.type
-   |                       cannot be included in outer capture set ?
+   |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
+   |          ^  refers to the universal root capability
+   |
+   |
+   |Note that reference c.type
+   |cannot be included in outer capture set ?
 11 |    () => { c.use() }
 12 |  }
    |
@@ -14,7 +18,11 @@
 15 |    localCap { c =>  // error
    |    ^
    |    Found:    (x$0: Capp^) ->? () ->{x$0} Unit
-   |    Required: (c: Capp^) -> () ->{localcap} Unit
+   |    Required: (c: Capp^) -> () => Unit
+   |
+   |    where:    => refers to a root capability associated with the result type of (c: Capp^): () => Unit
+   |              ^  refers to the universal root capability
+   |
    |
    |    Note that the existential capture root in () => Unit
    |    cannot subsume the capability x$0.type since that capability is not a SharedCapability
@@ -37,11 +45,15 @@
    |    Found:    (io: Capp^) ->? () ->{io} Unit
    |    Required: (io: Capp^) -> () -> Unit
    |
+   |    where:    ^ refers to the universal root capability
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:4 --------------------------------
 44 |    io => () => io.use()  // error
    |    ^^^^^^^^^^^^^^^^^^^^
    |    Found:    (io: Capp^) ->? () ->{io} Unit
    |    Required: (io: Capp^) -> () -> Unit
+   |
+   |    where:    ^ refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
