@@ -970,6 +970,72 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `enums` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val <<d>> =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val d: EnumerationValue.Day.Value =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin
+    )
+
+  @Test def `enums2` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val <<b>> =
+         |    if (true) True
+         |    else False
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val b: Value =
+         |    if (true) True
+         |    else False
+         |""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String
