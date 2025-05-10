@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType, readOnly}
+import cc.{CaptureSet, RetainingType}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -1012,9 +1012,6 @@ class Definitions {
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
-
-  /** The same as CaptureSet.universal but generated implicitly for references of Capability subtypes */
-  @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef.readOnly)
 
   @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 

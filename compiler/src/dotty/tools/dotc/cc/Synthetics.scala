@@ -8,6 +8,7 @@ import StdNames.nme
 import Names.Name
 import NameKinds.DefaultGetterName
 import config.Printers.capt
+import Capabilities.*
 
 /** Classification and transformation methods for function methods and
  *  synthetic case class methods that need to be treated specially.
@@ -131,7 +132,7 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      val paramCaptures = CaptureSet(enclThis, root.cap)
+      val paramCaptures = CaptureSet(enclThis, GlobalCap)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
         mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
@@ -149,7 +150,7 @@ object Synthetics:
     def transformCompareCaptures =
       val (enclThis: ThisType) = symd.owner.thisType: @unchecked
       MethodType(
-        defn.ObjectType.capturing(CaptureSet(root.cap, enclThis)) :: Nil,
+        defn.ObjectType.capturing(CaptureSet(GlobalCap, enclThis)) :: Nil,
         defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match

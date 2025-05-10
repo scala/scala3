@@ -19,6 +19,7 @@ import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
+import Capabilities.*
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -92,14 +93,14 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
-    elems.exists(_.isCap)
+    elems.contains(GlobalCap)
 
   /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
-  final def containsRootCapability(using Context) =
-    elems.exists(_.isRootCapability)
+  final def containsTerminalCapability(using Context) =
+    elems.exists(_.isTerminalCapability)
 
   final def containsCap(using Context) =
-    elems.exists(_.stripReadOnly.isCap)
+    elems.exists(_.core eq GlobalCap)
 
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
@@ -145,7 +146,7 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set.
    */
   protected final def addNewElem(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
-    if elem.isRootCapability || !vs.isOpen then
+    if elem.isTerminalCapability || !vs.isOpen then
       addThisElem(elem)
     else
       addThisElem(elem).orElse:
@@ -189,9 +190,9 @@ sealed abstract class CaptureSet extends Showable:
       elems.exists(_.subsumes(x))
       || // Even though subsumes already follows captureSetOfInfo, this is not enough.
          // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
-        !x.isRootCapability
-        && !x.derivesFrom(defn.Caps_CapSet)
-        && !(vs.isSeparating && x.captureSetOfInfo.containsRootCapability)
+        !x.isTerminalCapability
+        && !x.coreType.derivesFrom(defn.Caps_CapSet)
+        && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
            // in VarState.Separate, don't try to widen to cap since that might succeed with {cap} <: {cap}
         && x.captureSetOfInfo.subCaptures(this, VarState.Separate).isOK
 
@@ -212,7 +213,7 @@ sealed abstract class CaptureSet extends Showable:
       CCState.withCapAsRoot:
         CCState.ignoringFreshLevels: // OK here since we opportunistically choose an alternative which gets checked later
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
-      || !x.isRootCapability
+      || !x.isTerminalCapability
         && {
           val elems = x.captureSetOfInfo.elems
           !elems.isEmpty && elems.forall(mightAccountFor)
@@ -361,11 +362,10 @@ sealed abstract class CaptureSet extends Showable:
    */
   protected def isBadRoot(rootLimit: Symbol | Null, elem: CaptureRef)(using Context): Boolean =
     if rootLimit == null then false
-    else
-      val elem1 = elem.stripReadOnly
-      elem1.isCap
-      || elem1.isResultRoot
-      || elem1.isFresh && elem1.ccOwner.isContainedIn(rootLimit)
+    else elem.core match
+      case GlobalCap | _: ResultCap => true
+      case elem: FreshCap => elem.ccOwner.isContainedIn(rootLimit)
+      case _ => false
 
   /** Invoke `handler` if this set has (or later aquires) a root capability.
    *  Excluded are Fresh instances unless their ccOwner is contained in `upto`.
@@ -433,33 +433,32 @@ object CaptureSet:
   val empty: CaptureSet.Const = Const(emptyRefs)
 
   /** The universal capture set `{cap}` */
-  def universal(using Context): CaptureSet =
-    root.cap.singletonCaptureSet
+  def universal(using Context): Const =
+    Const(SimpleIdentitySet(GlobalCap))
 
-  /** The same as CaptureSet.universal but generated implicitly for
+  /** The same as {cap.rd} but generated implicitly for
    * references of Capability subtypes
    */
-  def universalImpliedByCapability(using Context) =
-    defn.universalCSImpliedByCapability
+  val csImpliedByCapability = Const(SimpleIdentitySet(GlobalCap.readOnly))
 
-  def fresh(origin: root.Origin)(using Context): CaptureSet =
-    root.Fresh(origin).singletonCaptureSet
+  def fresh(origin: root.Origin)(using Context): Const =
+    FreshCap(origin).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
-  def shared(using Context): CaptureSet =
-    root.cap.readOnly.singletonCaptureSet
+  def shared(using Context): Const =
+    GlobalCap.readOnly.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
 
-  def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
+  def apply(elems: Capability*)(using Context): Const =
     if elems.isEmpty then empty
     else
       for elem <- elems do
-        assert(elem.isTrackableRef, i"not a trackable ref: $elem")
+        assert(elem.isWellformed, i"not a trackable ref: $elem")
       Const(SimpleIdentitySet(elems*))
 
-  def apply(elems: Refs)(using Context): CaptureSet.Const =
+  def apply(elems: Refs)(using Context): Const =
     if elems.isEmpty then empty else Const(elems)
 
   /** The subclass of constant capture sets with given elements `elems` */
@@ -598,7 +597,7 @@ object CaptureSet:
         CompareResult.LevelError(this, elem)    // or `elem` is not visible at the level of the set.
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")
-        assert(elem.isTrackableRef, elem)
+        assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
         elems += elem
         if isBadRoot(rootLimit, elem) then
@@ -621,17 +620,17 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
-      case elem @ root.Fresh(_) =>
+    private def levelOK(elem: Capability)(using Context): Boolean = elem match
+      case _: FreshCap =>
         !level.isDefined
         || ccState.symLevel(elem.ccOwner) <= level
         || {
           capt.println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
           false
         }
-      case elem @ root.Result(mt) =>
-        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(mt.resType))
-      case elem: TermRef if elem.isCap =>
+      case elem @ ResultCap(binder) =>
+        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
+      case GlobalCap =>
         rootLimit == null
       case elem: TermRef if level.isDefined =>
         elem.prefix match
@@ -649,8 +648,8 @@ object CaptureSet:
                 |elem binder = ${elem.binder}""")
           false
         }
-      case QualifiedCapability(elem1) =>
-        levelOK(elem1)
+      case elem: DerivedCapability =>
+        levelOK(elem.underlying)
       case _ =>
         true
 
@@ -689,10 +688,7 @@ object CaptureSet:
         computingApprox = true
         try
           val approx = computeApprox(origin).ensuring(_.isConst)
-          if approx.elems.exists:
-            case root.Result(_) => true
-            case _ => false
-          then
+          if approx.elems.exists(_.isInstanceOf[ResultCap]) then
             ccState.approxWarnings +=
                 em"""Capture set variable $this gets upper-approximated
                   |to existential variable from $approx, using {cap} instead."""
@@ -702,7 +698,7 @@ object CaptureSet:
 
     /** The intersection of all upper approximations of dependent sets */
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      (universal /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
+      ((universal: CaptureSet) /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
 
     /** Widen the variable's elements to its upper approximation and
      *  mark it as constant from now on. This is used for contra-variant type variables
@@ -947,28 +943,28 @@ object CaptureSet:
    */
   class HiddenSet(initialOwner: Symbol)(using @constructorOnly ictx: Context)
   extends Var(initialOwner):
-    var owningCap: AnnotatedType = uninitialized
+    var owningCap: FreshCap = uninitialized // initialized when owning FreshCap is created
     var givenOwner: Symbol = initialOwner
 
     override def owner = givenOwner
 
     //assert(id != 4)
 
-    private def aliasRef: AnnotatedType | Null =
+    private def aliasRef: FreshCap | Null =
       if myElems.size == 1 then
         myElems.nth(0) match
-          case al @ root.Fresh(hidden) if deps.contains(hidden) => al
+          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias
           case _ => null
       else null
 
     private def aliasSet: HiddenSet =
       if myElems.size == 1 then
         myElems.nth(0) match
-          case root.Fresh(hidden) if deps.contains(hidden) => hidden
+          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias.hiddenSet
           case _ => this
       else this
 
-    def superCaps: List[AnnotatedType] =
+    def superCaps: List[FreshCap] =
       deps.toList.map(_.asInstanceOf[HiddenSet].owningCap)
 
     override def elems: Refs =
@@ -995,18 +991,18 @@ object CaptureSet:
             assert(dep != this)
             vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
         elem match
-          case root.Fresh(hidden) =>
-            if this ne hidden then
-              val alias = hidden.aliasRef
+          case elem: FreshCap =>
+            if this ne elem.hiddenSet then
+              val alias = elem.hiddenSet.aliasRef
               if alias != null then
                 add(alias)
-              else if deps.contains(hidden) then // make this an alias of elem
-                capt.println(i"Alias $this to $hidden")
+              else if deps.contains(elem.hiddenSet) then // make this an alias of elem
+                capt.println(i"Alias $this to ${elem.hiddenSet}")
                 elems = SimpleIdentitySet(elem)
-                deps = SimpleIdentitySet(hidden)
+                deps = SimpleIdentitySet(elem.hiddenSet)
               else
                 addToElems()
-                hidden.deps += this
+                elem.hiddenSet.deps += this
           case _ =>
             addToElems()
 
@@ -1029,9 +1025,10 @@ object CaptureSet:
    *        - if the variance is contravariant, return {}
    *        - Otherwise assertion failure
    */
-  def extrapolateCaptureRef(r: CaptureRef, tm: TypeMap, variance: Int)(using Context): CaptureSet =
+  final def extrapolateCaptureRef(r: CaptureRef, tm: TypeMap, variance: Int)(using Context): CaptureSet =
     tm.mapCapability(r) match
-      case c: CaptureRef => c.captureSet
+      case c: CoreCapability => c.captureSet
+      case c: Capability => c.singletonCaptureSet
       case (cs: CaptureSet, exact) =>
         if cs.isAlwaysEmpty || exact || variance > 0 then cs
         else if variance < 0 then CaptureSet.EmptyWithProvenance(r, cs)
@@ -1066,7 +1063,7 @@ object CaptureSet:
    *  when a subsumes check decides that an existential variable `ex` cannot be
    *  instantiated to the other capability `other`.
    */
-  case class ExistentialSubsumesFailure(val ex: root.Result, val other: CaptureRef) extends ErrorNote
+  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: CaptureRef) extends ErrorNote
 
   trait CompareFailure:
     private var myErrorNotes: List[ErrorNote] = Nil
@@ -1132,10 +1129,10 @@ object CaptureSet:
     /** A map from root.Result values to other such values. If two result values
      *  `a` and `b` are unified, then `eqResultMap(a) = b` and `eqResultMap(b) = a`.
      */
-    private var eqResultMap: util.SimpleIdentityMap[root.Result, root.Result] = util.SimpleIdentityMap.empty
+    private var eqResultMap: util.SimpleIdentityMap[ResultCap, ResultCap] = util.SimpleIdentityMap.empty
 
     /** A snapshot of the `eqResultMap` value at the start of a VarState transaction */
-    private var eqResultSnapshot: util.SimpleIdentityMap[root.Result, root.Result] | Null = null
+    private var eqResultSnapshot: util.SimpleIdentityMap[ResultCap, ResultCap] | Null = null
 
     /** The recorded elements of `v` (it's required that a recording was made) */
     def elems(v: Var): Refs = elemsMap(v)
@@ -1188,21 +1185,18 @@ object CaptureSet:
      *  no problem with confusing results at different levels.
      *  See pos-customargs/captures/overrides.scala for a test case.
      */
-    def unify(root1: root.Result, root2: root.Result)(using Context): Boolean =
-      (root1, root2) match
-        case (root1 @ root.Result(binder1), root2 @ root.Result(binder2))
-        if ((binder1 eq binder2)
-            || binder1.isInstanceOf[ExprType] && binder2.isInstanceOf[ExprType] // (**)
-            )
-          && (root1.rootAnnot.originalBinder ne root2.rootAnnot.originalBinder)
-          && eqResultMap(root1) == null
-          && eqResultMap(root2) == null
-        =>
-          if eqResultSnapshot == null then eqResultSnapshot = eqResultMap
-          eqResultMap = eqResultMap.updated(root1, root2).updated(root2, root1)
-          true
-        case _ =>
-          false
+    def unify(c1: ResultCap, c2: ResultCap)(using Context): Boolean =
+      ((c1.binder eq c2.binder)
+        || c1.binder.isInstanceOf[ExprType] && c2.binder.isInstanceOf[ExprType] // (**)
+      )
+      && (c1.originalBinder ne c2.originalBinder)
+      && eqResultMap(c1) == null
+      && eqResultMap(c2) == null
+      && {
+        if eqResultSnapshot == null then eqResultSnapshot = eqResultMap
+        eqResultMap = eqResultMap.updated(c1, c2).updated(c2, c1)
+        true
+      }
 
     /** Roll back global state to what was recorded in this VarState */
     def rollBack(): Unit =
@@ -1283,13 +1277,7 @@ object CaptureSet:
   /** A template for maps on capabilities where f(c) <: c and f(f(c)) = c */
   private abstract class NarrowingCapabilityMap(using Context) extends BiTypeMap:
 
-    def mapRef(ref: CaptureRef): CaptureRef
-
     def apply(t: Type) = mapOver(t)
-
-    override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
-      case c: CaptureRef if c.isTrackableRef => mapRef(c)
-      case _ => super.mapCapability(c, deep)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: Inverse if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
@@ -1298,6 +1286,7 @@ object CaptureSet:
 
     class Inverse extends BiTypeMap:
       def apply(t: Type) = t // since f(c) <: c, this is the best inverse
+      override def mapCapability(c: Capability, deep: Boolean): Capability = c
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
       override def fuse(next: BiTypeMap)(using Context) = next match
@@ -1310,12 +1299,12 @@ object CaptureSet:
 
   /** Maps `x` to `x?` */
   private class MaybeMap(using Context) extends NarrowingCapabilityMap:
-    def mapRef(ref: CaptureRef): CaptureRef = ref.maybe
+    override def mapCapability(c: Capability, deep: Boolean) = c.maybe
     override def toString = "Maybe"
 
   /** Maps `x` to `x.rd` */
   private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
-    def mapRef(ref: CaptureRef): CaptureRef = ref.readOnly
+    override def mapCapability(c: Capability, deep: Boolean) = c.readOnly
     override def toString = "ReadOnly"
 
   /* Not needed:
@@ -1341,19 +1330,22 @@ object CaptureSet:
   */
 
   /** The capture set of the type underlying CaptureRef */
-  def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
-    case ReachCapability(ref1) =>
-      ref1.widen.deepCaptureSet(includeTypevars = true)
-        .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
-    case ReadOnlyCapability(ref1) =>
-      ref1.captureSetOfInfo.map(ReadOnlyMap())
-    case ref: ParamRef if !ref.underlying.exists =>
+  def ofInfo(c: Capability)(using Context): CaptureSet = c match
+    case Reach(c1) =>
+      c1.widen.deepCaptureSet(includeTypevars = true)
+        .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
+    case ReadOnly(c1) =>
+      c1.captureSetOfInfo.readOnly
+    case Maybe(c1) =>
+      c1.captureSetOfInfo.maybe
+    case c: RootCapability =>
+      c.singletonCaptureSet
+    case c: ParamRef if !c.underlying.exists =>
       // might happen during construction of lambdas, assume `{cap}` in this case so that
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
-    case _ =>
-      if ref.isRootCapability then ref.singletonCaptureSet
-      else ofType(ref.underlying, followResult = false)
+    case c: CoreCapability =>
+      ofType(c.underlying, followResult = false)
 
   /** Capture set of a type
    *  @param followResult  If true, also include capture sets of function results.
@@ -1372,25 +1364,14 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
           else empty
-        case tp @ root.Result(_) =>
-          tp.captureSet
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
-        case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>
-          // Note: we don't use the `ReachCapability(parent)` extractor here since that
-          // only works if `parent` is a CaptureRef, but in illegal programs it might not be.
-          // And then we do not want to fall back to empty.
-          parent match
-            case parent: SingletonCaptureRef if parent.isTrackableRef =>
-              tp.singletonCaptureSet
-            case _ =>
-              CaptureSet.ofTypeDeeply(parent.widen)
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
-          ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
+          ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType)                             // add capture set of result
               .filter:
                 case TermParamRef(binder, _) => binder ne rinfo
-                case root.Result(binder) => binder ne rinfo
+                case ResultCap(binder) => binder ne rinfo
                 case _ => true
         case tpd @ AppliedType(tycon, args) =>
           if followResult && defn.isNonRefinedFunction(tpd) then
