@@ -105,7 +105,21 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
 
   // New feature: SIP 61 - @unroll annotation
-  "scala.annotation.unroll"
+  "scala.annotation.unroll",
+
+  // New experimental method - copyFrom in NamedTuple.scala (and supporting definitions)
+  "scala.NamedTuple$.copyFrom", "scala.NamedTuple$.Copy",
+  "scala.NamedTuple$.Decompose",
+  "scala.NamedTupleDecomposition$.Copy0",
+  "scala.NamedTupleDecomposition$.Decompose",
+  "scala.NamedTupleDecomposition$.LookupName",
+  "scala.NamedTupleDecomposition$.copyFrom",
+  "scala.Tuple$.ContainsAll",
+  "scala.Tuple$.IndexOfOption",
+  "scala.Tuple$.IndexOfOptionOnto",
+  "scala.Tuple$.Indices",
+  "scala.Tuple$.IndicesOnto",
+  "scala.runtime.Tuples$.copy",
 )
 
 

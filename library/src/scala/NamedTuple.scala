@@ -1,5 +1,8 @@
 package scala
 import compiletime.ops.boolean.*
+import compiletime.ops.int.*
+import scala.annotation.experimental
+import scala.annotation.implicitNotFound
 
 object NamedTuple:
 
@@ -25,10 +28,10 @@ object NamedTuple:
   extension [V <: Tuple](x: V)
     inline def withNames[N <: Tuple]: NamedTuple[N, V] = x
 
-  import NamedTupleDecomposition.{Names, DropNames}
+  import NamedTupleDecomposition.{Names, DropNames, Decompose}
   export NamedTupleDecomposition.{
-    Names, DropNames,
-    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray
+    Names, DropNames, Decompose,
+    apply, size, init, head, last, tail, take, drop, splitAt, ++, copyFrom, map, reverse, zip, toList, toArray, toIArray
   }
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
@@ -116,6 +119,14 @@ object NamedTuple:
       case Names[Y] =>
         NamedTuple[Names[X], Tuple.Zip[DropNames[X], DropNames[Y]]]
 
+  @experimental
+  type Copy[X <: AnyNamedTuple, Y <: AnyNamedTuple] = (Decompose[X], Decompose[Y]) match
+    case ((nx, vx), (ny, vy)) =>
+      NamedTuple[
+        nx,
+        NamedTupleDecomposition.Copy0[nx, vx, ny, vy, EmptyTuple]
+      ]
+
   /** A type specially treated by the compiler to represent all fields of a
    *  class argument `T` as a named tuple. Or, if `T` is already a named tuple,
    *  `From[T]` is the same as `T`.
@@ -174,6 +185,18 @@ object NamedTupleDecomposition:
       : Concat[NamedTuple[N, V], NamedTuple[N2, V2]]
       = x.toTuple ++ that.toTuple
 
+    /** The named tuple consisting of all elements of this tuple, with fields replaced by those from `that`.
+     *  The field names of the update tuple of updates must all be present in this tuple, but not all fields are required.
+     */
+    @experimental
+    inline def copyFrom[N2 <: Tuple, V2 <: Tuple](that: NamedTuple[N2, V2])(using Tuple.ContainsAll[N2, N] =:= true)
+      : Copy[NamedTuple[N, V], NamedTuple[N2, V2]]
+      = scala.runtime.Tuples.copy(
+          self = x.toTuple,
+          that = that.toTuple,
+          indices = compiletime.constValueTuple[Tuple.Indices[N, N2]]
+        ).asInstanceOf[Copy[NamedTuple[N, V], NamedTuple[N2, V2]]]
+
     /** The named tuple consisting of all element values of this tuple mapped by
      *  the polymorphic mapping function `f`. The names of elements are preserved.
      *  If `x = (n1 = v1, ..., ni = vi)` then `x.map(f) = `(n1 = f(v1), ..., ni = f(vi))`.
@@ -205,6 +228,21 @@ object NamedTupleDecomposition:
 
   end extension
 
+  @experimental
+  type LookupName[X, N <: Tuple, V <: Tuple] <: Option[Any] =
+    (N, V) match
+      case (X *: _, v *: _) => Some[v]
+      case (_ *: ns, _ *: vs) => LookupName[X, ns, vs]
+      case (EmptyTuple, EmptyTuple) => None.type
+
+  @experimental
+  type Copy0[Nx <: Tuple, Vx <: Tuple, Ny <: Tuple, Vy <: Tuple, Acc <: Tuple] <: Tuple =
+    (Nx, Vx) match
+      case (nx *: nxs, vx *: vxs) => LookupName[nx, Ny, Vy] match
+        case Some[vy] => Copy0[nxs, vxs, Ny, Vy, vy *: Acc]
+        case _ => Copy0[nxs, vxs, Ny, Vy, vx *: Acc]
+      case (EmptyTuple, EmptyTuple) => Tuple.Reverse[Acc]
+
   /** The names of a named tuple, represented as a tuple of literal string values. */
   type Names[X <: AnyNamedTuple] <: Tuple = X match
     case NamedTuple[n, _] => n
@@ -212,3 +250,7 @@ object NamedTupleDecomposition:
   /** The value types of a named tuple represented as a regular tuple. */
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
     case NamedTuple[_, x] => x
+
+  @experimental
+  type Decompose[NT <: AnyNamedTuple] <: Tuple = NT match
+    case NamedTuple[n, x] => (n, x)
