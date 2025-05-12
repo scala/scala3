@@ -139,9 +139,10 @@ trait CaptureRef extends TypeProxy, ValueType:
       hidden.owner
     case ref: NamedType =>
       if ref.isCap then NoSymbol
-      else ref.prefix match
-        case prefix: CaptureRef => prefix.ccOwner
-        case _ => ref.symbol
+      else ref.pathRoot match
+        case ref: ThisType => ref.cls
+        case ref: NamedType => ref.symbol
+        case _ => NoSymbol
     case ref: ThisType =>
       ref.cls
     case QualifiedCapability(ref1) =>
@@ -222,7 +223,7 @@ trait CaptureRef extends TypeProxy, ValueType:
     def viaInfo(info: Type)(test: Type => Boolean): Boolean = info.dealias match
       case info: SingletonCaptureRef => test(info)
       case CapturingType(parent, _) =>
-        if this.derivesFrom(defn.Caps_CapSet) then test(info)
+        if this.derivesFrom(defn.Caps_CapSet) && false then test(info)
           /*
             If `this` is a capture set variable `C^`, then it is possible that it can be
             reached from term variables in a reachability chain through the context.
@@ -235,7 +236,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
       case _ => false
 
-    (this eq y)
+    try (this eq y)
     || maxSubsumes(y, canAddHidden = !vs.isOpen)
     || y.match
         case y: TermRef if !y.isCap =>
@@ -262,9 +263,13 @@ trait CaptureRef extends TypeProxy, ValueType:
           // They can be other capture set variables, which are bounded by `CapSet`,
           // like `def test[X^, Y^, Z >: X <: Y]`.
           y.info match
-            case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
+            case TypeBounds(_, hi @ CapturingType(parent, refs)) if parent.derivesFrom(defn.Caps_CapSet) =>
+              refs.elems.forall(this.subsumes)
+            case TypeBounds(_, hi: CaptureRef) =>
+              this.subsumes(hi)
             case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
         case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) || this.derivesFrom(defn.Caps_CapSet) =>
+          assert(false, this)
           /* The second condition in the guard is for `this` being a `CapSet^{a,b...}` and etablishing a
              potential reachability chain through `y`'s capture to a binding with
              `this`'s capture set (cf. `CapturingType` case in `def viaInfo` above for more context).
@@ -277,13 +282,18 @@ trait CaptureRef extends TypeProxy, ValueType:
         case x: TypeRef if assumedContainsOf(x).contains(y) => true
         case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
           x.info match
+            case TypeBounds(lo @ CapturingType(parent, refs), _) if parent.derivesFrom(defn.Caps_CapSet) =>
+              refs.elems.exists(_.subsumes(y))
             case TypeBounds(lo: CaptureRef, _) =>
               lo.subsumes(y)
             case _ =>
               x.captureSetOfInfo.elems.exists(_.subsumes(y))
         case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
-          refs.elems.exists(_.subsumes(y))
+          assert(false, this)
         case _ => false
+    catch case ex: AssertionError =>
+      println(i"error while subsumes $this >> $y")
+      throw ex
   end subsumes
 
   /** This is a maximal capability that subsumes `y` in given context and VarState.
@@ -312,7 +322,7 @@ trait CaptureRef extends TypeProxy, ValueType:
           else
             !y.stripReadOnly.isCap
             && !yIsExistential
-            && !y.isInstanceOf[ParamRef]
+            && !y.stripReadOnly.isInstanceOf[ParamRef]
 
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || levelOK
@@ -325,21 +335,15 @@ trait CaptureRef extends TypeProxy, ValueType:
         if !result then
           ccState.addNote(CaptureSet.ExistentialSubsumesFailure(x, y))
         result
+      case _ if this.isCap =>
+        if y.isCap then true
+        else if yIsExistential then false
+        else y.derivesFromSharedCapability
+              || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
       case _ =>
         y match
           case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
-          case _ if this.isCap =>
-            y.isCap
-            || y.derivesFromSharedCapability
-            || !yIsExistential
-                && canAddHidden
-                && vs != VarState.HardSeparate
-                && (CCState.capIsRoot
-                    // || { println(i"no longer $this maxSubsumes $y, ${y.isCap}"); false } // debug
-                   )
-            || false
-          case _ =>
-            false
+          case _ => false
 
   /** `x covers y` if we should retain `y` when computing the overlap of
    *  two footprints which have `x` respectively `y` as elements.
