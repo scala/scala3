@@ -128,6 +128,12 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def isExclusive(using Context): Boolean =
     !isReadOnly && (isRootCapability || captureSetOfInfo.isExclusive)
 
+  /** The owning symbol associated with a capability this is
+   *   - for Fresh capabilities: the owner of the hidden set
+   *   - for TermRefs and TypeRefs: the symbol it refers to
+   *   - for derived and path capabilities: the owner of the underlying capability
+   *   - otherwise NoSymbol
+   */
   final def ccOwner(using Context): Symbol = this match
     case root.Fresh(hidden) =>
       hidden.owner
@@ -143,7 +149,12 @@ trait CaptureRef extends TypeProxy, ValueType:
     case _ =>
       NoSymbol
 
-  final def adjustedOwner(using Context): Symbol =
+  /** The symbol that represents the level closest-enclosing ccOwner.
+   *  Symbols representing levels are
+   *   - class symbols, but not inner (non-static) module classes
+   *   - method symbols, but not accessors or constructors
+   */
+  final def levelOwner(using Context): Symbol =
     def adjust(owner: Symbol): Symbol =
       if !owner.exists
         || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
@@ -296,7 +307,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case x @ root.Fresh(hidden) =>
         def levelOK =
           if ccConfig.useFreshLevels && !CCState.ignoreFreshLevels then
-            val yOwner = y.adjustedOwner
+            val yOwner = y.levelOwner
             yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
           else
             !y.stripReadOnly.isCap

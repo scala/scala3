@@ -868,19 +868,11 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = try
-              CCState.ignoringFreshLevels:
+            val joint = CCState.ignoringFreshLevels:
                 pdenot.meet(
                   new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
                   pre,
                   safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-              pdenot.meet(
-                new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-                pre,
-                safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-            catch case ex: AssertionError =>
-              println(i"error while do refined $tp . $name, ${pdenot.info} / $rinfo")
-              throw ex
             joint match
               case joint: SingleDenotation
               if isRefinedMethod

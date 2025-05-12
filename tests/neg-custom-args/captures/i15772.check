@@ -24,7 +24,7 @@
    |                             reference cap is not included in the allowed capture set ?
    |                             of the enclosing method main3
    |
-   |                             Note that the universa capability cap
+   |                             Note that the universal capability cap
    |                             cannot be included in capture set ?
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------
 46 |  x: (() -> Unit) // error

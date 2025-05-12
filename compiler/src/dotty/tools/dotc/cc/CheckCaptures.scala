@@ -744,7 +744,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal = $result", capt)
       if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
-        // The @use and/or @consume annotation is added to `formal` by `prep areFunction`
+        // The @use and/or @consume annotation is added to `formal` by `prepareFunction`
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
       if formal.containsCap then
@@ -1277,7 +1277,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val msg = note match
             case CompareResult.LevelError(cs, ref) =>
               if ref.stripReadOnly.isCapOrFresh then
-                i"""the universa capability $ref
+                i"""the universal capability $ref
                    |cannot be included in capture set $cs"""
               else
                 val levelStr = ref match
