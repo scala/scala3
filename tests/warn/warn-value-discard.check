@@ -6,7 +6,7 @@
 39 |    mutable.Set.empty[String].subtractOne("") // warn
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |    discarded non-Unit value of type scala.collection.mutable.Set[String]. Add `: Unit` to discard silently.
--- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:59:4 --------------------------------------------
+-- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:59:30 -------------------------------------------
 59 |    mutable.Set.empty[String] += "" // warn
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |    discarded non-Unit value of type scala.collection.mutable.Set[String]. Add `: Unit` to discard silently.
