@@ -715,6 +715,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         && ctx.owner.owner.unforcedDecls.lookup(tree.name).exists
     then // we are in the arguments of a this(...) constructor call
       errorTree(tree, em"$tree is not accessible from constructor arguments")
+    else if name.isTermName && ctx.mode.is(Mode.InCaptureSet) then
+      // If we are in a capture set and the identifier is not a term name,
+      // try to type it with the same name but as a type
+      typed(untpd.makeCapsOf(untpd.cpy.Ident(tree)(name.toTypeName)), pt)
     else
       errorTree(tree, MissingIdent(tree, kind, name, pt))
   end typedIdent
@@ -920,6 +924,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedCBSelect(tree0, pt, qual)
       else EmptyTree
 
+    // Otherwise, if we are in a capture set, try to type it as a capture variable
+    // reference (as selecting a type name).
+    def trySelectTypeInCaptureSet() =
+      if tree0.name.isTermName && ctx.mode.is(Mode.InCaptureSet) then
+        typedSelectWithAdapt(untpd.cpy.Select(tree0)(qual, tree0.name.toTypeName), pt, qual)
+      else EmptyTree
+
     // Otherwise, report an error
     def reportAnError() =
       assignType(tree,
@@ -941,6 +952,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       .orElse(tryDynamic())
       .orElse(trySelectable())
       .orElse(tryCBCompanion())
+      .orElse(trySelectTypeInCaptureSet())
       .orElse(reportAnError())
   end typedSelectWithAdapt
 
@@ -2512,6 +2524,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tycon = typedType(tree.tycon)
     def spliced(tree: Tree) = untpd.TypedSplice(tree)
     val tparam = untpd.Ident(tree.paramName).withSpan(tree.span.withEnd(tree.span.point))
+    if Feature.ccEnabled && typed(tparam).tpe.derivesFrom(defn.Caps_CapSet) then
+      report.error(em"Capture variable `${tree.paramName}` cannot have a context bound.", tycon.srcPos)
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
       typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))
@@ -2722,13 +2736,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assignType(cpy.ByNameTypeTree(tree)(result1), result1)
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(using Context): Tree =
+    lazy val CapSetBot = untpd.TypeTree(defn.Caps_CapSet.typeRef)
+    lazy val CapSetTop = untpd.makeRetaining(untpd.TypeTree(defn.Caps_CapSet.typeRef), Nil, tpnme.retainsCap).withSpan(tree.span)
+
     val TypeBoundsTree(lo, hi, alias) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
     val alias1 = typed(alias)
-    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
-    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
+    val isCap = tree.hasAttachment(CaptureVar)
+    val lo2 =
+      if lo1.isEmpty then
+        if Feature.ccEnabled && (isCap || hi1.tpe.derivesFrom(defn.Caps_CapSet)) then
+          typed(CapSetBot)
+        else typed(untpd.TypeTree(defn.NothingType))
+      else lo1
+    val hi2 =
+      if hi1.isEmpty then
+        if Feature.ccEnabled && (isCap || lo1.tpe.derivesFrom(defn.Caps_CapSet)) then
+          typed(CapSetTop)
+        else typed(untpd.TypeTree(defn.AnyType))
+      else hi1
     assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
+  end typedTypeBoundsTree
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
@@ -3024,6 +3053,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.isOpaqueAlias then
       checkFullyAppliedType(rhs1, "Opaque type alias must be fully applied, but ")
       checkNoContextFunctionType(rhs1)
+    if Feature.ccEnabled then
+      val isCap = tdef.hasAttachment(CaptureVar)
+      rhs1 match
+        case TypeBoundsTree(lo, hi, _) =>
+          if !isCap && (lo.tpe.derivesFrom(defn.Caps_CapSet) ^ hi.tpe.derivesFrom(defn.Caps_CapSet)) then
+            report.error(em"Illegal type bounds: >: $lo <: $hi. Capture-set bounds cannot be mixed with type bounds of other kinds", rhs.srcPos)
+          if isCap && !(lo.tpe.derivesFrom(defn.Caps_CapSet) && hi.tpe.derivesFrom(defn.Caps_CapSet)) then
+            report.error(em"Illegal type bounds: >: $lo <: $hi. $name^ can only have capture sets as bounds", rhs.srcPos)
+        case LambdaTypeTree(_, _) if isCap =>
+          report.error(em"`$name` cannot have type parameters, because it ranges over capture sets", rhs.srcPos)
+        case _ =>
     assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
   }
 
