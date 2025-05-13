@@ -2960,7 +2960,11 @@ object Parsers {
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
       if in.isColon then
-        val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
+        val isVariable = unsplice(p) match {
+          case x: Ident => x.name.isVarPattern
+          case _ => false
+        }
+        val isVariableOrNumber = isVariable || p.isInstanceOf[Number]
         if !isVariableOrNumber then
           report.gradualErrorOrMigrationWarning(
             em"""Type ascriptions after patterns other than:
