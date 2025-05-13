@@ -456,7 +456,7 @@ object CheckUnused:
         if inliners == 0
           && languageImport(imp.expr).isEmpty
           && !imp.isGeneratedByEnum
-          && !ctx.outer.owner.name.isReplWrapperName
+          && !ctx.owner.name.isReplWrapperName
         then
           imps.put(imp, ())
       case tree: Bind =>
