@@ -75,7 +75,7 @@ object Recheck:
    *  as by-name arguments of applied types. See note in doc comment for
    *  ElimByName phase. Test case is bynamefun.scala.
    */
-  private def mapExprType(tp: Type)(using Context): Type = tp match
+  def mapExprType(tp: Type)(using Context): Type = tp match
     case ExprType(rt) => defn.ByNameFunction(rt)
     case _ => tp
 
