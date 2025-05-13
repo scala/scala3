@@ -2971,7 +2971,7 @@ object Parsers {
                 |  * variable pattern, e.g. `case x: String =>`
                 |  * number literal pattern, e.g. `case 10.5: Double =>`
                 |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
-            in.sourcePos(),
+            p.sourcePos,
             warnFrom = `3.3`,
             errorFrom = future
           )
