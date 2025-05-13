@@ -338,15 +338,15 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     var cachePoint: Context = NoContext // last context with Resolved cache
     var importer: ImportSelector | Null = null // non-null for import context
     var precedence = NoPrecedence // of current resolution
+    var enclosed = false // true if sym is owner of an enclosing context
     var done = false
     var cached = false
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
-      if cur.owner eq sym then
-        addCached(cachePoint, Definition)
-        return // found enclosing definition
-      else if isLocal then
+      if cur.owner.userSymbol == sym && !sym.is(Package) then
+        enclosed = true // found enclosing definition, don't register the reference
+      if isLocal then
         if cur.owner eq sym.owner then
           done = true // for local def, just checking that it is not enclosing
       else
@@ -387,7 +387,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
                 candidate = cur
                 importer = sel
         else if checkMember(cur.owner) then
-          if sym.srcPos.sourcePos.source == ctx.source then
+          if sym.is(Package) || sym.srcPos.sourcePos.source == ctx.source then
             precedence = Definition
             candidate = cur
             importer = null // ignore import in same scope; we can't check nesting level
@@ -397,7 +397,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             candidate = cur
     end while
     // record usage and possibly an import
-    refInfos.refs.addOne(sym)
+    if !enclosed then
+      refInfos.refs.addOne(sym)
     if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
     // possibly record that we have performed this look-up
