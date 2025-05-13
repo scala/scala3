@@ -2419,7 +2419,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end StringConstantTypeTest
 
     object StringConstant extends StringConstantModule:
-      def apply(x: String): StringConstant = dotc.core.Constants.Constant(x)
+      def apply(x: String): StringConstant =
+        require(x != null, "value of StringConstant cannot be `null`")
+        // A `null` constant must be represented as a `NullConstant`, c.f. a
+        // constant with `tag == NullTag`, which is not a `StringConstant`.
+        // See issue 23008.
+        dotc.core.Constants.Constant(x)
       def unapply(constant: StringConstant): Some[String] = Some(constant.stringValue)
     end StringConstant
 
