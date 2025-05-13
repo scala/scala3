@@ -319,7 +319,7 @@ sealed abstract class CaptureSet extends Showable:
   def map(tm: TypeMap)(using Context): CaptureSet =
     tm match
       case tm: BiTypeMap =>
-        val mappedElems = elems.map(tm.forward)
+        val mappedElems = elems.map(tm.mapCapability(_))
         if isConst then
           if mappedElems == elems then this
           else Const(mappedElems)
@@ -487,7 +487,7 @@ object CaptureSet:
     override def toString = elems.toString
   end Const
 
-  case class EmptyWithProvenance(ref: CaptureRef, mapped: Type) extends Const(SimpleIdentitySet.empty):
+  case class EmptyWithProvenance(ref: CaptureRef, mapped: CaptureSet) extends Const(SimpleIdentitySet.empty):
     override def optionalInfo(using Context): String =
       if ctx.settings.YccDebug.value
       then i" under-approximating the result of mapping $ref to $mapped"
@@ -587,8 +587,7 @@ object CaptureSet:
      */
     private def checkSkippedMaps(elem: CaptureRef)(using Context): Unit =
       for tm <- skippedMaps do
-        val elem1 = tm(elem)
-        for elem1 <- tm(elem).captureSet.elems do
+        for elem1 <- extrapolateCaptureRef(elem, tm, variance = 1).elems do
           assert(elem.subsumes(elem1),
             i"Skipped map ${tm.getClass} maps newly added $elem to $elem1 in $this")
 
@@ -817,14 +816,14 @@ object CaptureSet:
 
     override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if origin eq source then
-        val mappedElem = bimap.forward(elem)
+        val mappedElem = bimap.mapCapability(elem)
         if accountsFor(mappedElem) then CompareResult.OK
         else addNewElem(mappedElem)
       else if accountsFor(elem) then
         CompareResult.OK
       else
         try
-          source.tryInclude(bimap.backward(elem), this)
+          source.tryInclude(bimap.inverse.mapCapability(elem), this)
             .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
             .andAlso(addNewElem(elem))
         catch case ex: AssertionError =>
@@ -1031,15 +1030,12 @@ object CaptureSet:
    *        - Otherwise assertion failure
    */
   def extrapolateCaptureRef(r: CaptureRef, tm: TypeMap, variance: Int)(using Context): CaptureSet =
-    val r1 = tm(r)
-    val upper = r1.captureSet
-    def isExact =
-      upper.isAlwaysEmpty
-      || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
-      || r.derivesFrom(defn.Caps_CapSet)
-    if variance > 0 || isExact then upper
-    else if variance < 0 then CaptureSet.EmptyWithProvenance(r, r1)
-    else upper.maybe
+    tm.mapCapability(r) match
+      case c: CaptureRef => c.captureSet
+      case (cs: CaptureSet, exact) =>
+        if cs.isAlwaysEmpty || exact || variance > 0 then cs
+        else if variance < 0 then CaptureSet.EmptyWithProvenance(r, cs)
+        else cs.maybe
 
   /** Apply `f` to each element in `xs`, and join result sets with `++` */
   def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
@@ -1289,9 +1285,11 @@ object CaptureSet:
 
     def mapRef(ref: CaptureRef): CaptureRef
 
-    def apply(t: Type) = t match
-      case t: CaptureRef if t.isTrackableRef => mapRef(t)
-      case _ => mapOver(t)
+    def apply(t: Type) = mapOver(t)
+
+    override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
+      case c: CaptureRef if c.isTrackableRef => mapRef(c)
+      case _ => super.mapCapability(c, deep)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: Inverse if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
