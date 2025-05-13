@@ -868,10 +868,11 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = pdenot.meet(
-              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-              pre,
-              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+            val joint = CCState.ignoringFreshLevels:
+                pdenot.meet(
+                  new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+                  pre,
+                  safeIntersection = ctx.base.pendingMemberSearches.contains(name))
             joint match
               case joint: SingleDenotation
               if isRefinedMethod
@@ -3721,7 +3722,8 @@ object Types extends TypeUtils {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  trait MethodicType extends TermType
+  trait MethodicType extends TermType:
+    def resType: Type
 
   /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
   abstract case class ExprType(resType: Type)
@@ -4279,7 +4281,7 @@ object Types extends TypeUtils {
                       ps.get(elemName) match
                         case Some(elemRef) => assert(elemRef eq elem, i"bad $mt")
                         case _ =>
-                    case root.Result(binder) if binder ne mt =>
+                    case root.Result(binder: MethodType) if binder ne mt =>
                       assert(binder.paramNames.toList != mt.paramNames.toList, i"bad $mt")
                     case _ =>
               checkRefs(refs)
@@ -6147,6 +6149,12 @@ object Types extends TypeUtils {
    */
   trait BiTypeMap extends TypeMap:
     thisMap =>
+
+    /** Hook to control behavior on capture set variables.
+     *  If true, install the map on capture set variables so that future elements are also mapped.
+     *  If false, just map the elements currently present in the capture set variable.
+     */
+    def mapFutureElements: Boolean = true
 
     /** The inverse of the type map */
     def inverse: BiTypeMap

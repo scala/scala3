@@ -34,9 +34,9 @@ def runAll1(@use xs: List[Proc]): Unit =
       (() => f.write()) :: Nil
 
 def runAll2(@consume xs: List[Proc]): Unit =
-  var cur: List[Proc] = xs   // error
+  var cur: List[Proc] = xs
   while cur.nonEmpty do
-    val next: () => Unit = cur.head
+    val next: () => Unit = cur.head   // error
     next()
     cur = cur.tail
 

@@ -4,27 +4,34 @@
    |          Separation failure: Illegal access to {c} which is hidden by the previous definition
    |          of value xs with type List[box () => Unit].
    |          This type hides capabilities  {c}
+   |
+   |          where:    => refers to a fresh root capability in the type of value xs
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:13:7 ---------------------------------------------------------
 13 |  foo((() => println(c)) :: Nil, c) // error
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
-   |       Separation failure: argument of type  List[box () ->{c} Unit]
-   |       to method foo: (xs: List[box () => Unit], y: Object^): Nothing
-   |       corresponds to capture-polymorphic formal parameter xs of type  List[box () => Unit]
-   |       and hides capabilities  {c}.
-   |       Some of these overlap with the captures of the second argument with type  (c : Object^).
+   |Separation failure: argument of type  List[box () ->{c} Unit]
+   |to method foo: (xs: List[box () => Unit], y: Object^): Nothing
+   |corresponds to capture-polymorphic formal parameter xs of type  List[box () => Unit]
+   |and hides capabilities  {c}.
+   |Some of these overlap with the captures of the second argument with type  (c : Object^).
    |
-   |         Hidden set of current argument        : {c}
-   |         Hidden footprint of current argument  : {c}
-   |         Capture set of second argument        : {c}
-   |         Footprint set of second argument      : {c}
-   |         The two sets overlap at               : {c}
+   |  Hidden set of current argument        : {c}
+   |  Hidden footprint of current argument  : {c}
+   |  Capture set of second argument        : {c}
+   |  Footprint set of second argument      : {c}
+   |  The two sets overlap at               : {c}
+   |
+   |where:    => refers to a fresh root capability created in method Test2 when checking argument to parameter xs of method foo
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:14:10 --------------------------------------------------------
 14 |  val x1: (Object^, Object^) = (c, c) // error
    |          ^^^^^^^^^^^^^^^^^^
-   |          Separation failure in value x1's type (box Object^, box Object^).
+   |          Separation failure in value x1's type (box Object^, box Object^²).
    |          One part,  box Object^, hides capabilities  {c}.
-   |          Another part,  box Object^,  captures capabilities  {c}.
+   |          Another part,  box Object^²,  captures capabilities  {c}.
    |          The two sets overlap at  {c}.
+   |
+   |          where:    ^  refers to a fresh root capability in the type of value x1
+   |                    ^² refers to a fresh root capability in the type of value x1
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:15:10 --------------------------------------------------------
 15 |  val x2: (Object^, Object^{d}) = (d, d) // error
    |          ^^^^^^^^^^^^^^^^^^^^^
@@ -32,13 +39,18 @@
    |          One part,  box Object^, hides capabilities  {d}.
    |          Another part,  box Object^{d},  captures capabilities  {d}.
    |          The two sets overlap at  {d}.
+   |
+   |          where:    ^ refers to a fresh root capability in the type of value x2
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:27:6 ---------------------------------------------------------
 27 |  bar((c, c)) // error
    |      ^^^^^^
-   |      Separation failure in the argument's adapted type (box Object^, box Object^).
-   |      One part,  box Object^, hides capabilities  {c}.
-   |      Another part,  box Object^,  captures capabilities  {c}.
-   |      The two sets overlap at  {c}.
+   |Separation failure in the argument's adapted type (box Object^, box Object^²).
+   |One part,  box Object^, hides capabilities  {c}.
+   |Another part,  box Object^²,  captures capabilities  {c}.
+   |The two sets overlap at  {c}.
+   |
+   |where:    ^  refers to a fresh root capability created in method Test6 when checking argument to parameter x of method bar
+   |          ^² refers to a fresh root capability created in method Test6 when checking argument to parameter x of method bar
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:30:9 ---------------------------------------------------------
 30 |  val x: (Object^, Object^{c}) = (d, c) // error
    |         ^^^^^^^^^^^^^^^^^^^^^

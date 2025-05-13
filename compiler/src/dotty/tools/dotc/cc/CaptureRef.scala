@@ -14,7 +14,9 @@ import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.VarState
 import Annotations.Annotation
+import Flags.*
 import config.Printers.capt
+import CCState.{Level, undefinedLevel}
 
 object CaptureRef:
   opaque type Validity = Int
@@ -106,6 +108,10 @@ trait CaptureRef extends TypeProxy, ValueType:
     case root.Fresh(_) => true
     case _ => false
 
+  final def isResultRoot(using Context): Boolean = this match
+    case root.Result(_) => true
+    case _ => false
+
   /** Is this reference the generic root capability `cap` or a Fresh instance? */
   final def isCapOrFresh(using Context): Boolean = isCap || isFresh
 
@@ -121,6 +127,41 @@ trait CaptureRef extends TypeProxy, ValueType:
    */
   final def isExclusive(using Context): Boolean =
     !isReadOnly && (isRootCapability || captureSetOfInfo.isExclusive)
+
+  /** The owning symbol associated with a capability this is
+   *   - for Fresh capabilities: the owner of the hidden set
+   *   - for TermRefs and TypeRefs: the symbol it refers to
+   *   - for derived and path capabilities: the owner of the underlying capability
+   *   - otherwise NoSymbol
+   */
+  final def ccOwner(using Context): Symbol = this match
+    case root.Fresh(hidden) =>
+      hidden.owner
+    case ref: NamedType =>
+      if ref.isCap then NoSymbol
+      else ref.prefix match
+        case prefix: CaptureRef => prefix.ccOwner
+        case _ => ref.symbol
+    case ref: ThisType =>
+      ref.cls
+    case QualifiedCapability(ref1) =>
+      ref1.ccOwner
+    case _ =>
+      NoSymbol
+
+  /** The symbol that represents the level closest-enclosing ccOwner.
+   *  Symbols representing levels are
+   *   - class symbols, but not inner (non-static) module classes
+   *   - method symbols, but not accessors or constructors
+   */
+  final def levelOwner(using Context): Symbol =
+    def adjust(owner: Symbol): Symbol =
+      if !owner.exists
+        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
+        || owner.is(Flags.Method, butNot = Flags.Accessor) && !owner.isConstructor
+      then owner
+      else adjust(owner.owner)
+    adjust(ccOwner)
 
   // With the support of paths, we don't need to normalize the `TermRef`s anymore.
   // /** Normalize reference so that it can be compared with `eq` for equality */
@@ -263,11 +304,18 @@ trait CaptureRef extends TypeProxy, ValueType:
       case _ => false
     (this eq y)
     || this.match
-      case root.Fresh(hidden) =>
-        vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
-        || !y.stripReadOnly.isCap
+      case x @ root.Fresh(hidden) =>
+        def levelOK =
+          if ccConfig.useFreshLevels && !CCState.ignoreFreshLevels then
+            val yOwner = y.levelOwner
+            yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
+          else
+            !y.stripReadOnly.isCap
             && !yIsExistential
-            && !y.isInstanceOf[TermParamRef]
+            && !y.isInstanceOf[ParamRef]
+
+        vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
+        || levelOK
             && canAddHidden
             && vs.addHidden(hidden, y)
       case x @ root.Result(binder) =>

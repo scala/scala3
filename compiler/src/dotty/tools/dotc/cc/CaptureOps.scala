@@ -4,19 +4,17 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
-import Names.TermName
+import Names.{Name, TermName}
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
+import Annotations.Annotation
 import CaptureSet.VarState
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
-
-/** Context property to print root.Fresh(...) as "fresh" instead of "cap" */
-val PrintFresh: Key[Unit] = Key()
 
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
@@ -465,7 +463,9 @@ extension (tp: Type)
             if args.forall(_.isAlwaysPure) then
               // Also map existentials in results to reach capabilities if all
               // preceding arguments are known to be always pure
-              t.derivedFunctionOrMethod(args, apply(root.resultToFresh(res)))
+              t.derivedFunctionOrMethod(
+                args,
+                apply(root.resultToFresh(res, root.Origin.ResultInstance(t, NoSymbol))))
             else
               t
           case _ =>
@@ -504,6 +504,10 @@ extension (tp: Type)
     case tp: TermRef => ccState.symLevel(tp.symbol)
     case tp: ThisType => ccState.symLevel(tp.cls).nextInner
     case _ => CCState.undefinedLevel
+
+  def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
+    RefinedType(tp, name,
+      AnnotatedType(rinfo, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan)))
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
@@ -694,6 +698,12 @@ abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   protected def unwrappable(using Context): Set[Symbol]
 end AnnotatedCapability
 
+object QualifiedCapability:
+  def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
+    case AnnotatedType(parent: CaptureRef, ann)
+    if defn.capabilityQualifierAnnots.contains(ann.symbol) => Some(parent)
+    case _ => None
+
 /** An extractor for `ref @maybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.
  */
@@ -792,7 +802,8 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
       case AnnotatedType(parent, _) =>
         this(acc, parent)
       case t @ FunctionOrMethod(args, res) =>
-        if args.forall(_.isAlwaysPure) then this(acc, root.resultToFresh(res))
+        if args.forall(_.isAlwaysPure) then
+          this(acc, root.resultToFresh(res, root.Origin.ResultInstance(t, NoSymbol)))
         else acc
       case _ =>
         foldOver(acc, t)

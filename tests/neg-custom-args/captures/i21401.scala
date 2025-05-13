@@ -14,6 +14,6 @@ def mkRes(x: IO^): Res =
 def test2() =
   val a = usingIO[IO^](x => x) // error // error
   val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error
-  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error
+  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
   val y: IO^{x*} = x.unbox // was error
   y.println("boom")

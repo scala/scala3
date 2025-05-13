@@ -915,7 +915,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseChildren(tree)
           checkValOrDefDef(tree)
         case tree: DefDef =>
-          inSection:
+          if tree.symbol.isInlineMethod then
+            // We currently skip inline method since these seem to generate
+            // spurious recheck completions. Test case is i20237.scala
+            capt.println(i"skipping sep check of inline def ${tree.symbol}")
+          else inSection:
             consumed.segment:
               for params <- tree.paramss; case param: ValDef <- params do
                 pushDef(param, emptyRefs)
