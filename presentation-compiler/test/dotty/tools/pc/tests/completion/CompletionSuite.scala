@@ -94,18 +94,18 @@ class CompletionSuite extends BaseCompletionSuite:
          |newBuilder[A]: Builder[A, List[A]]
          |apply[A](elems: A*): List[A]
          |concat[A](xss: Iterable[A]*): List[A]
-         |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): List[List[List[A]] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): List[List[List[List[A]]] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): List[List[List[List[List[A]]]] @uncheckedVariance]
+         |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A]]
+         |fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): List[List[List[A]]]
+         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): List[List[List[List[A]]]]
+         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): List[List[List[List[List[A]]]]]
          |fill[A](n: Int)(elem: => A): List[A]
          |iterate[A](start: A, len: Int)(f: A => A): List[A]
          |range[A: Integral](start: A, end: A): List[A]
          |range[A: Integral](start: A, end: A, step: A): List[A]
-         |tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): List[List[A] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): List[List[List[A]] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]] @uncheckedVariance]
+         |tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): List[List[A]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): List[List[List[A]]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]]]
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
@@ -116,7 +116,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |ensuring(cond: List.type => Boolean, msg: => Any): List.type
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
-         |nn: List.type & List.type
+         |nn: List.type
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
          |formatted(fmtstr: String): String
          |→[B](y: B): (List.type, B)
