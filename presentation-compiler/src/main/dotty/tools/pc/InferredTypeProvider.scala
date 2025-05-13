@@ -94,7 +94,8 @@ final class InferredTypeProvider(
         tpe match
           case tref: TypeRef =>
             indexedCtx.lookupSym(
-              tref.currentSymbol
+              tref.currentSymbol,
+              Some(tref.prefix)
             ) == IndexedContext.Result.InScope
           case AppliedType(tycon, args) =>
             isInScope(tycon) && args.forall(isInScope)
@@ -137,7 +138,6 @@ final class InferredTypeProvider(
             findNamePos(sourceText, vl, keywordOffset).endPos.toLsp
           adjustOpt.foreach(adjust => endPos.setEnd(adjust.adjustedEndPos))
           val spaceBefore = name.isOperatorName
-
           new TextEdit(
             endPos,
             printTypeAscription(optDealias(tpt.typeOpt), spaceBefore) + {
