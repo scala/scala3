@@ -632,7 +632,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val checkedType = checkNotShadowed(ownType)
       val tree1 = checkedType match
         case checkedType: NamedType if !prefixIsElidable(checkedType) =>
-          ref(checkedType).withSpan(tree.span)
+          ref(checkedType).withSpan(tree.span).withAttachmentsFrom(tree)
         case _ =>
           tree.withType(checkedType)
       val tree2 = toNotNullTermRef(tree1, pt)
@@ -4236,7 +4236,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
            && !ctx.isAfterTyper
            && !tree.isInstanceOf[Inlined]
            && !isThisTypeResult(tree)
-           && !tree.hasAttachment(AscribedToUnit) then
+           && !isAscribedToUnit(tree)
+        then
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
 
         return tpd.Block(tree1 :: Nil, unitLiteral)
