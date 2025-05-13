@@ -209,6 +209,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           innerApply(tp)
       finally isTopLevel = saved
 
+    override def mapArg(arg: Type, tparam: ParamInfo): Type =
+      super.mapArg(Recheck.mapExprType(arg), tparam)
+
     /** Map parametric functions with results that have a capture set somewhere
      *  to dependent functions.
      */
@@ -504,12 +507,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def add = new TypeTraverser:
       var reach = false
       def traverse(t: Type): Unit = t match
-        case root.Fresh(hidden) =>
-          if reach then hidden.elems += ref.reach
-          else if ref.isTracked then hidden.elems += ref
-        case t @ CapturingType(_, _) if t.isBoxed && !reach =>
-          reach = true
-          try traverseChildren(t) finally reach = false
+        case t @ CapturingType(parent, refs) =>
+          val saved = reach
+          reach |= t.isBoxed
+          try
+            traverse(parent)
+            for case root.Fresh(hidden) <- refs.elems.iterator do
+              if reach then hidden.elems += ref.reach
+              else if ref.isTracked then hidden.elems += ref
+          finally reach = saved
         case _ =>
           traverseChildren(t)
     if ref.isTrackableRef then add.traverse(tp)
@@ -660,9 +666,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         def paramsToCap(mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
-            mt.derivedLambdaType(
-              paramInfos = mt.paramInfos.map(root.freshToCap),
-              resType = paramsToCap(mt.resType))
+            try
+              mt.derivedLambdaType(
+                paramInfos = mt.paramInfos.map(root.freshToCap),
+                resType = paramsToCap(mt.resType))
+            catch case ex: AssertionError =>
+              println(i"error while mapping params ${mt.paramInfos} of $sym")
+              throw ex
           case mt: PolyType =>
             mt.derivedLambdaType(resType = paramsToCap(mt.resType))
           case _ => mt

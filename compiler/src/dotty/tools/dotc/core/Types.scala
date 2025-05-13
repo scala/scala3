@@ -3993,7 +3993,7 @@ object Types extends TypeUtils {
 
     override def resultType(using Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
-        val dealiasMap = new TypeMap with IdentityCaptRefMap {
+        object dealiasMap extends TypeMap with IdentityCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, _) =>
               tp.info match {
@@ -4113,7 +4113,7 @@ object Types extends TypeUtils {
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
-        val dropDependencies = new ApproximatingTypeMap {
+        object dropDependencies extends ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
@@ -4133,6 +4133,12 @@ object Types extends TypeUtils {
                 parent1
             case _ => mapOver(tp)
           }
+          override def mapCapability(c: CaptureRef, deep: Boolean = false): CaptureRef | (CaptureSet, Boolean) = c match
+            case ReachCapability(tp1) =>
+              apply(tp1) match
+                case tp1a: CaptureRef if tp1a.isTrackableRef => tp1a.reach
+                case _ => root.cap
+            case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)
       else resultType
@@ -6159,21 +6165,11 @@ object Types extends TypeUtils {
     /** The inverse of the type map */
     def inverse: BiTypeMap
 
-    /** A restriction of this map to a function on tracked CaptureRefs */
-    def forward(ref: CaptureRef): CaptureRef =
-      val result = this(ref)
-      def ensureTrackable(tp: Type): CaptureRef = tp match
-        case tp: CaptureRef =>
-          if tp.isTrackableRef then tp
-          else ensureTrackable(tp.underlying)
-        case tp: TypeAlias =>
-          ensureTrackable(tp.alias)
-        case _ =>
-          assert(false, i"not a trackable CaptureRef: $result with underlying ${result.underlyingIterator.toList}")
-      ensureTrackable(result)
-
-    /** A restriction of the inverse to a function on tracked CaptureRefs */
-    def backward(ref: CaptureRef): CaptureRef = inverse.forward(ref)
+    /** A restriction of this map to a function on tracked Capabilities */
+    override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef =
+      super.mapCapability(c, deep) match
+        case c1: CaptureRef => c1
+        case (cs, _) => assert(false, i"bimap $toString should map $c to a capability, but result = $cs")
 
     /** Fuse with another map */
     def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
@@ -6257,6 +6253,44 @@ object Types extends TypeUtils {
       variance = v
       try derivedCapturingType(tp, this(parent), refs.map(this))
       finally variance = saved
+
+    def toTrackableRef(tp: Type): CaptureRef | Null = tp match
+      case CapturingType(_) =>
+        null
+      case tp: CaptureRef =>
+        if tp.isTrackableRef then tp
+        else toTrackableRef(tp.underlying)
+      case tp: TypeAlias =>
+        toTrackableRef(tp.alias)
+      case _ =>
+        null
+
+    def mapCapability(c: CaptureRef, deep: Boolean = false): CaptureRef | (CaptureSet, Boolean) = c match
+      case root(_) => c
+      case ReachCapability(c1) =>
+        mapCapability(c1, deep = true)
+      case ReadOnlyCapability(c1) =>
+        assert(!deep)
+        mapCapability(c1) match
+          case c2: CaptureRef => c2.readOnly
+          case (cs: CaptureSet, exact) => (cs.readOnly, exact)
+      case MaybeCapability(c1) =>
+        assert(!deep)
+        mapCapability(c1) match
+          case c2: CaptureRef => c2.maybe
+          case (cs: CaptureSet, exact) => (cs.maybe, exact)
+      case ref =>
+        val tp1 = apply(c)
+        val ref1 = toTrackableRef(tp1)
+        if ref1 != null then
+          if deep then ref1.reach
+          else ref1
+        else
+          val isLiteral = tp1.typeSymbol == defn.Caps_CapSet
+          val cs =
+            if deep && !isLiteral then CaptureSet.ofTypeDeeply(tp1)
+            else CaptureSet.ofType(tp1, followResult = false)
+          (cs, isLiteral)
 
     /** Utility method. Maps the supertype of a type proxy. Returns the
      *  type proxy itself if the mapping leaves the supertype unchanged.

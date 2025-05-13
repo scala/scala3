@@ -114,6 +114,7 @@ extension (tp: Type)
       !tp.underlying.exists // might happen during construction of lambdas
       || tp.derivesFrom(defn.Caps_CapSet)
     case root.Result(_) => true
+    case root.Fresh(_) => true
     case AnnotatedType(parent, annot) =>
       defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
     case _ =>
@@ -143,9 +144,9 @@ extension (tp: Type)
     if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
       case tp @ ReachCapability(_) =>
-        tp.singletonCaptureSet
+        assert(false); tp.singletonCaptureSet
       case ReadOnlyCapability(ref) =>
-        ref.deepCaptureSet(includeTypevars).readOnly
+        assert(false); ref.deepCaptureSet(includeTypevars).readOnly
       case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
@@ -195,9 +196,12 @@ extension (tp: Type)
    *  are of the form this.C but their pathroot is still this.C, not this.
    */
   final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType
-    if tp1.symbol.maybeOwner.isClass && tp1.symbol != defn.captureRoot && !tp1.symbol.is(TypeParam) =>
-      tp1.prefix.pathRoot
+    case tp1: NamedType =>
+      if tp1.symbol.maybeOwner.isClass && tp1.symbol != defn.captureRoot && !tp1.symbol.is(TypeParam) then
+        tp1.prefix match
+          case pre: CaptureRef => pre.pathRoot
+          case _ => tp1
+      else tp1
     case tp1 => tp1
 
   /** If this part starts with `C.this`, the class `C`.
@@ -214,7 +218,8 @@ extension (tp: Type)
       tp1.prefix match
         case _: ThisType | NoPrefix =>
           tp1.symbol.is(Param) || tp1.symbol.is(ParamAccessor)
-        case prefix => prefix.isParamPath
+        case prefix: CaptureRef => prefix.isParamPath
+        case _ => false
     case _: ParamRef => true
     case _ => false
 
