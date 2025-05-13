@@ -63,9 +63,11 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
 
   override def mapWith(tm: TypeMap)(using Context) =
     val elems = refs.elems.toList
-    val elems1 = elems.mapConserve(tm)
+    val elems1 = elems.mapConserve(tm.mapCapability(_))
     if elems1 eq elems then this
-    else if elems1.forall(_.isTrackableRef)
+    else if elems1.forall:
+      case elem1: CaptureRef => elem1.isTrackableRef
+      case _ => false
     then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), boxed)
     else EmptyAnnotation
 

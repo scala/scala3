@@ -154,21 +154,6 @@ object root:
     override def eql(that: Annotation) = that match
       case Annot(kind) => this.kind eq kind
       case _ => false
-
-    /** Special treatment of `SubstBindingMaps` which can change the binder of
-     *  Result instances
-     */
-    override def mapWith(tm: TypeMap)(using Context) = kind match
-      case Kind.Result(binder) => tm match
-        case tm: Substituters.SubstBindingMap[MethodType] @unchecked if tm.from eq binder =>
-          derivedAnnotation(tm.to)
-        case tm: Substituters.SubstBindingsMap =>
-          var i = 0
-          while i < tm.from.length && (tm.from(i) ne binder) do i += 1
-          if i < tm.from.length then derivedAnnotation(tm.to(i).asInstanceOf[MethodType])
-          else this
-        case _ => this
-      case _ => this
   end Annot
 
   def cap(using Context): TermRef = defn.captureRoot.termRef
@@ -222,8 +207,7 @@ object root:
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
-        case t: CaptureRef if t.isCap =>
-          Fresh(origin)
+        case root(_) => assert(false)
         case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
           t
         case t @ CapturingType(_, _) =>
@@ -237,6 +221,11 @@ object root:
         case _ =>
           mapFollowingAliases(t)
 
+    override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
+      case c: CaptureRef if c.isCap => Fresh(origin)
+      case root(_) => c
+      case _ => super.mapCapability(c, deep)
+
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: Inverse => assert(false); Some(IdentityTypeMap)
       case _ => None
@@ -245,13 +234,14 @@ object root:
 
     class Inverse extends BiTypeMap, FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case t @ Fresh(_) => cap
+        case root(_) => assert(false)
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
-      override def fuse(next: BiTypeMap)(using Context) = next match
-        case next: CapToFresh => assert(false); Some(IdentityTypeMap)
-        case _ => None
+      override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
+        case c @ Fresh(_) => cap
+        case root(_) => c
+        case _ => super.mapCapability(c, deep)
 
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
@@ -283,9 +273,7 @@ object root:
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
 
       def apply(t: Type): Type = t match
-        case t @ Result(binder) =>
-          if localBinders.contains(binder) then t // keep bound references
-          else seen.getOrElseUpdate(t.annot, Fresh(origin)) // map free references to Fresh()
+        case root(_) => assert(false)
         case t: MethodType =>
           // skip parameters
           val saved = localBinders
@@ -297,6 +285,14 @@ object root:
           t.derivedLambdaType(resType = this(t.resType))
         case _ =>
           mapOver(t)
+
+      override def mapCapability(c: CaptureRef, deep: Boolean) = c match
+        case t @ Result(binder) =>
+          if localBinders.contains(binder) then t // keep bound references
+          else seen.getOrElseUpdate(t.annot, Fresh(origin)) // map free references to Fresh()
+        case root(_) => c
+        case _ => super.mapCapability(c, deep)
+    end subst
 
     subst(tp)
   end resultToFresh
@@ -320,15 +316,7 @@ object root:
       private val seen = EqHashMap[CaptureRef, Result]()
 
       def apply(t: Type) = t match
-        case t: CaptureRef if t.isCapOrFresh =>
-          if variance > 0 then
-            seen.getOrElseUpdate(t, Result(mt))
-          else
-            if variance == 0 then
-              fail(em"""$tp captures the root capability `cap` in invariant position.
-                       |This capability cannot be converted to an existential in the result type of a function.""")
-            // we accept variance < 0, and leave the cap as it is
-            super.mapOver(t)
+        case root(_) => assert(false)
         case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
           if variance > 0 then
             super.mapOver:
@@ -337,26 +325,48 @@ object root:
           else mapOver(t)
         case _ =>
           mapOver(t)
+
+      override def mapCapability(c: CaptureRef, deep: Boolean) = c match
+        case c: CaptureRef if c.isCapOrFresh =>
+          if variance > 0 then
+            seen.getOrElseUpdate(c, Result(mt))
+          else
+            if variance == 0 then
+              fail(em"""$tp captures the root capability `cap` in invariant position.
+                       |This capability cannot be converted to an existential in the result type of a function.""")
+            // we accept variance < 0, and leave the cap as it is
+            c
+        case root(_) => c
+        case _ =>
+          super.mapCapability(c, deep)
+
         //.showing(i"mapcap $t = $result")
       override def toString = "toVar"
 
       object inverse extends BiTypeMap:
         def apply(t: Type) = t match
-          case t @ Result(`mt`) =>
+          case root(_) => assert(false)
+          case _ => mapOver(t)
+        def inverse = toVar.this
+        override def toString = "toVar.inverse"
+
+        override def mapCapability(c: CaptureRef, deep: Boolean) = c match
+          case c @ Result(`mt`) =>
             // do a reverse getOrElseUpdate on `seen` to produce the
             // `Fresh` assosicated with `t`
             val it = seen.iterator
             var ref: CaptureRef | Null = null
             while it.hasNext && ref == null do
-              val (k, v) = it.next()
-              if v.annot eq t.annot then ref = k
+              val (k, v) = it.next
+              if v eq c then ref = k
             if ref == null then
               ref = Fresh(Origin.Unknown)
-              seen(ref) = t
+              seen(ref) = c
             ref
-          case _ => mapOver(t)
-        def inverse = toVar.this
-        override def toString = "toVar.inverse"
+          case root(_) => c
+          case _ =>
+            super.mapCapability(c, deep)
+      end inverse
     end toVar
 
     toVar(tp)
