@@ -1302,9 +1302,9 @@ object RefChecks {
       val matches = referencePattern.findAllIn(s)
       for reference <- matches do
         val referenceOffset = matches.start
-        val prefixlessReference = reference.replaceFirst("""\$\{\s*""", "").nn
+        val prefixlessReference = reference.replaceFirst("""\$\{\s*""", "")
         val variableOffset = referenceOffset + reference.length - prefixlessReference.length
-        val variableName = prefixlessReference.replaceFirst("""\s*\}""", "").nn
+        val variableName = prefixlessReference.replaceFirst("""\s*\}""", "")
         f(variableName, variableOffset)
 
   end checkImplicitNotFoundAnnotation

@@ -41,8 +41,8 @@ object StdNames {
     inline val Product                    = "Product"
 
     @sharable
-    private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
-    def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
+    private val disallowed = java.util.regex.Pattern.compile("""[<>]""")
+    def sanitize(str: String): String = disallowed.matcher(str).replaceAll("""\$""")
   }
 
   abstract class DefinedNames[N <: Name] {

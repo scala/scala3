@@ -840,7 +840,7 @@ object CheckUnused:
           val ok = fun.symbol.info match
             case PolyType(tycon, MethodTpe(_, _, AppliedType(_, tprefs))) =>
               tprefs.collect:
-                case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase.nn)
+                case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase)
             case _ => Nil
           allowVariableBindings(ok, args)
         else if fun.symbol == defn.TypeTest_unapply then

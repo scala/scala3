@@ -84,8 +84,8 @@ object report:
   def bestEffortError(ex: Throwable, msg: String)(using Context): Unit =
     val stackTrace =
       Option(ex.getStackTrace()).map { st =>
-        if st.nn.isEmpty then ""
-        else s"Stack trace: \n ${st.nn.mkString("\n ")}".stripMargin
+        if st.isEmpty then ""
+        else s"Stack trace: \n ${st.mkString("\n ")}".stripMargin
       }.getOrElse("")
     // Build tools and dotty's test framework may check precisely for
     // "Unsuccessful best-effort compilation." error text.

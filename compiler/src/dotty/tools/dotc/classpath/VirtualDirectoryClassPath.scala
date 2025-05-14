@@ -11,8 +11,8 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   type F = AbstractFile
 
   // From AbstractFileClassLoader
-  private final def lookupPath(base: AbstractFile)(pathParts: Seq[String], directory: Boolean): AbstractFile = {
-    var file: AbstractFile = base
+  private final def lookupPath(base: AbstractFile)(pathParts: Seq[String], directory: Boolean): AbstractFile | Null = {
+    var file: AbstractFile | Null = base
     val dirParts = pathParts.init.iterator
     while (dirParts.hasNext) {
       val dirPart = dirParts.next

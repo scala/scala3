@@ -67,7 +67,7 @@ class ClassPathFactory {
         for
           file <- files
           a <- ClassPath.expandManifestPath(file.absolutePath)
-          path = java.nio.file.Paths.get(a.toURI()).nn
+          path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
           newClassPath(AbstractFile.getFile(path))
@@ -82,7 +82,7 @@ class ClassPathFactory {
     if (file.isJarOrZip)
       ZipAndJarSourcePathFactory.create(file)
     else if (file.isDirectory)
-      new DirectorySourcePath(file.file)
+      new DirectorySourcePath(file.file.nn)
     else
       sys.error(s"Unsupported sourcepath element: $file")
 }
@@ -94,7 +94,7 @@ object ClassPathFactory {
       if (file.isJarOrZip)
         ZipAndJarClassPathFactory.create(file)
       else if (file.isDirectory)
-        new DirectoryClassPath(file.file)
+        new DirectoryClassPath(file.file.nn)
       else
         sys.error(s"Unsupported classpath element: $file")
   }

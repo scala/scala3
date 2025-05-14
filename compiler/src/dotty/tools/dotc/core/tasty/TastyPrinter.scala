@@ -53,7 +53,7 @@ object TastyPrinter:
       else if arg.endsWith(".tasty") || (allowBetasty && arg.endsWith(".betasty")) then
         val path = Paths.get(arg)
         if Files.exists(path) then
-          printTasty(arg, Files.readAllBytes(path).nn, arg.endsWith(".betasty"))
+          printTasty(arg, Files.readAllBytes(path), arg.endsWith(".betasty"))
         else
           println("File not found: " + arg)
           System.exit(1)

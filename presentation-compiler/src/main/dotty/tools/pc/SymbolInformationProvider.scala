@@ -111,7 +111,7 @@ object SymbolProvider:
     catch case NonFatal(e) => Nil
 
   private def normalizePackage(pkg: String): String =
-    pkg.replace("/", ".").nn.stripSuffix(".")
+    pkg.replace("/", ".").stripSuffix(".")
 
   private def toSymbols(info: SymbolInfo.SymbolParts)(using Context): List[Symbol] =
     def collectSymbols(denotation: Denotation): List[Symbol] =
