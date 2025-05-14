@@ -1,3 +1,4 @@
+import language.experimental.captureChecking
 import caps.*
 
 trait AbstractWrong:
@@ -5,9 +6,9 @@ trait AbstractWrong:
   def f(): Unit^{C} // error
 
 trait Abstract1:
-  type C >: CapSet <: CapSet^
+  type C >: CapSet <: CapSet^ // error
   def f(): Unit^{C}
 
-// class Abstract2:
-//   type C^
-//   def f(): Unit^{C^}
+trait Abstract2:
+  type C <: {cap}
+  def f(): Unit^{C}

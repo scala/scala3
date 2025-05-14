@@ -78,18 +78,22 @@ extension (tree: Tree)
 
 extension (tp: Type)
 
-  def retainedElements(using Context): List[CaptureRef] = tp match
+  def retainedElementsRaw(using Context): List[Type] = tp match
     case ReachCapability(tp1) =>
       tp1.reach :: Nil
     case ReadOnlyCapability(tp1) =>
       tp1.readOnly :: Nil
-    case tp: CaptureRef =>
+    case OrType(tp1, tp2) =>
+      tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
+    case tp =>
+      // Nothing is a special type to represent the empty set
       if tp.isNothingType then Nil
       else tp :: Nil // should be checked by wellformedness
-    case OrType(tp1, tp2) =>
-      tp1.retainedElements ++ tp2.retainedElements
-    case _ =>
-      throw IllegalCaptureRef(tp)
+
+  def retainedElements(using Context): List[CaptureRef] =
+    retainedElementsRaw.map:
+      case tp: CaptureRef => tp
+      case tp => throw IllegalCaptureRef(tp)
 
   /** Is this type a CaptureRef that can be tracked?
    *  This is true for
