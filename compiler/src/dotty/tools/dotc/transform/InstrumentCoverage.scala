@@ -122,7 +122,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         line = pos.line + 1,
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.show,
-        treeName = tree.getClass.getSimpleName.nn,
+        treeName = tree.getClass.getSimpleName,
         branch
       )
       ctx.base.coverage.nn.addStatement(statement)

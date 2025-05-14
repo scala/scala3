@@ -71,7 +71,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
         val locationAddendum =
           if pos1.source.path == pos2.source.path then ""
           else s" (defined in ${pos2.source.file.name})"
-        def nicify(name: String): String = name.replace('/', '.').nn
+        def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
           backendReporting.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)

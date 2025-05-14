@@ -445,7 +445,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   CapturingType(parent2, ann.tree.toCaptureSet)
               catch case ex: IllegalCaptureRef =>
                 if !tptToCheck.isEmpty then
-                  report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.srcPos)
+                  report.error(em"Illegal capture reference: ${ex.getMessage}", tptToCheck.srcPos)
                 parent2
             else if ann.symbol == defn.UncheckedCapturesAnnot then
               makeUnchecked(apply(parent))
@@ -938,7 +938,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val refs =
         try refTree.toCaptureRefs
         catch case ex: IllegalCaptureRef =>
-          report.error(em"Illegal capture reference: ${ex.getMessage.nn}", refTree.srcPos)
+          report.error(em"Illegal capture reference: ${ex.getMessage}", refTree.srcPos)
           Nil
       for ref <- refs do
         def pos =

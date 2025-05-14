@@ -38,8 +38,8 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => report.warning(e.getMessage.nn)
-      case e: Exception              => report.inform(e.getMessage.nn)
+      case e: MissingPluginException => report.warning(e.getMessage)
+      case e: Exception              => report.inform(e.getMessage)
     })
 
     goods map (_.get)
