@@ -3053,18 +3053,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.isOpaqueAlias then
       checkFullyAppliedType(rhs1, "Opaque type alias must be fully applied, but ")
       checkNoContextFunctionType(rhs1)
+    var attachCap = false
     if Feature.ccEnabled then
       val isCap = tdef.hasAttachment(CaptureVar)
       rhs1 match
         case TypeBoundsTree(lo, hi, _) =>
-          if !isCap && (lo.tpe.derivesFrom(defn.Caps_CapSet) ^ hi.tpe.derivesFrom(defn.Caps_CapSet)) then
+          val loIsCap = lo.tpe.derivesFrom(defn.Caps_CapSet)
+          val hiIsCap = hi.tpe.derivesFrom(defn.Caps_CapSet)
+          if !isCap && (loIsCap ^ hiIsCap) then
             report.error(em"Illegal type bounds: >: $lo <: $hi. Capture-set bounds cannot be mixed with type bounds of other kinds", rhs.srcPos)
-          if isCap && !(lo.tpe.derivesFrom(defn.Caps_CapSet) && hi.tpe.derivesFrom(defn.Caps_CapSet)) then
+          if isCap && !(loIsCap && hiIsCap) then
             report.error(em"Illegal type bounds: >: $lo <: $hi. $name^ can only have capture sets as bounds", rhs.srcPos)
+          attachCap = !isCap && loIsCap && hiIsCap
         case LambdaTypeTree(_, _) if isCap =>
           report.error(em"`$name` cannot have type parameters, because it ranges over capture sets", rhs.srcPos)
         case _ =>
-    assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    val res = assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    if Feature.ccEnabled && attachCap then
+      res.putAttachment(CaptureVar, ())
+    res
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = ctx.profiler.onTypedDef(cls) {
