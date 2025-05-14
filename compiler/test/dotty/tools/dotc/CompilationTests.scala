@@ -201,9 +201,9 @@ class CompilationTests {
   @Test def explicitNullsNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
-      compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions, FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions and "-Yno-flexible-types"),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-Yno-flexible-types"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-Yno-flexible-types", FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
     )
   }.checkExpectedErrors()
 

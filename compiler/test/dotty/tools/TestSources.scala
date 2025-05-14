@@ -48,6 +48,7 @@ object TestSources {
 
   def negScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-scala2-library-tasty.excludelist"
   def negInitGlobalScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-init-global-scala2-library-tasty.excludelist"
+  def negExplicitNullsScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-explicit-nulls-scala2-library-tasty.excludelist"
 
   def negScala2LibraryTastyExcludelisted: List[String] =
     if Properties.usingScalaLibraryTasty then loadList(negScala2LibraryTastyExcludelistFile)
@@ -55,6 +56,10 @@ object TestSources {
   def negInitGlobalScala2LibraryTastyExcludelisted: List[String] =
     if Properties.usingScalaLibraryTasty then loadList(negInitGlobalScala2LibraryTastyExcludelistFile)
     else Nil
+  def negExplicitNullsScala2LibraryTastyExcludelisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(negExplicitNullsScala2LibraryTastyExcludelistFile)
+    else Nil
+
 
   // patmat tests lists
 

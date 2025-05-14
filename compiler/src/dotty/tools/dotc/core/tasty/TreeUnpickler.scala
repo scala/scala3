@@ -914,6 +914,12 @@ class TreeUnpickler(reader: TastyReader,
 
       def ta = ctx.typeAssigner
 
+      // If explicit nulls is enabled, and the source file did not have explicit
+      // nulls enabled, nullify the member to allow for compatibility.
+      def nullify(sym: Symbol) =
+        if (ctx.explicitNulls && !explicitNulls) then
+          sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
+
       val name = readName()
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
@@ -930,10 +936,12 @@ class TreeUnpickler(reader: TastyReader,
             else
               tpt.tpe
           sym.info = methodType(paramss, resType)
+          nullify(sym)
           DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe
+          nullify(sym)
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
@@ -971,6 +979,9 @@ class TreeUnpickler(reader: TastyReader,
               sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             else
               sym.info = info
+              if (tag == TYPEPARAM) {
+                nullify(sym)
+              }
 
             sym.resetFlag(Provisional)
             TypeDef(rhs)
@@ -979,13 +990,10 @@ class TreeUnpickler(reader: TastyReader,
           val tpt = readTpt()(using localCtx)
           assert(nothingButMods(end))
           sym.info = tpt.tpe
+          nullify(sym)
           ValDef(tpt)
       }
 
-      // If explicit nulls is enabled, and the source file did not have explicit
-      // nulls enabled, nullify the member to allow for compatibility.
-      if (ctx.explicitNulls && !explicitNulls) then
-        sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
 
       goto(end)
       setSpan(start, tree)
