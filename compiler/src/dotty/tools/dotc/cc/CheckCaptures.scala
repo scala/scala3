@@ -105,7 +105,7 @@ object CheckCaptures:
           report.error(em"$elem cannot be tracked since it is not a parameter or local value", pos)
       case tpe =>
         report.error(em"$elem: $tpe is not a legal element of a capture set", pos)
-    for elem <- ann.retainedSet.retainedElements do
+    for elem <- ann.retainedSet.retainedElementsRaw do
       elem match
         case ref: TypeRef =>
           val refSym = ref.symbol
