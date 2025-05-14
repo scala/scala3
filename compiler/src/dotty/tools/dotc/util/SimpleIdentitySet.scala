@@ -54,7 +54,10 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
     else this.filter(that.contains)
 
   def == [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
-    this.size == that.size && forall(that.contains)
+    (this eq that) || this.size == that.size && forall(that.contains)
+
+  def != [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
+    !(this == that)
 
   override def toString: String = toList.mkString("{", ", ", "}")
 }
