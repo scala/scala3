@@ -70,22 +70,3 @@ jobs:
           fi
           cd ..
 
-  backport-to-main:
-    name: Create pull request with backport to main
-    permissions:
-      pull-requests: write  # for repo-sync/pull-request to create a PR
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: repo-sync/pull-request@v2
-        with:
-          destination_branch: main
-          pr_label: area:documentation
-          pr_title: Sync with the stable documentation branch
-          pr_body: |
-            This pull request is syncing the main with changes from language-reference-stable.
-
-            It was created automatically after ${{ github.event.head_commit.id }} by @${{ github.event.head_commit.author.username }}
-          pr_assignee: ${{ github.event.head_commit.author.username }}
-
