@@ -141,5 +141,6 @@
 ./overview.html
 ./preview/better-fors.html
 ./preview/index.html
+./preview/overview.html
 ./soft-modifier.html
 ./syntax.html
