@@ -93,7 +93,7 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
 
   protected def debugInfo =
     if ctx.settings.YdebugCyclic.value then
-      "\n\nStacktrace:" ++ ex.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+      "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
   protected def context: String = ex.optTrace match

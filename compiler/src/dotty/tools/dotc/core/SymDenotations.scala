@@ -2920,9 +2920,8 @@ object SymDenotations {
     private var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
-      import scala.language.unsafeNulls
       if (dependent != null) {
-        val it = dependent.keySet.iterator()
+        val it = dependent.nn.keySet.iterator()
         while (it.hasNext()) it.next().invalidate()
       }
       dependent = null

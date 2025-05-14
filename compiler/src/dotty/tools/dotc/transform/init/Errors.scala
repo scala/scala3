@@ -31,7 +31,7 @@ object Errors:
       report.warning(show, this.pos)
   end Error
 
-  override def toString() = this.getClass.getName.nn
+  override def toString() = this.getClass.getName
 
   /** Access non-initialized field */
   case class AccessNonInit(field: Symbol)(val trace: Trace) extends Error:

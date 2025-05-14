@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.core.Comments.{Comment, docCtx}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Names.TermName

@@ -858,7 +858,7 @@ object TreeChecker {
         val stack =
           if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
           else if err.getStackTrace == null then "  no stacktrace"
-          else err.getStackTrace.nn.mkString("  ", "  \n", "")
+          else err.getStackTrace.mkString("  ", "  \n", "")
         report.error(
           em"""Malformed tree was found while expanding macro with -Xcheck-macros.
               |The tree does not conform to the compiler's tree invariants.

@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package plugins
 
-import scala.language.unsafeNulls
-
 import core.*
 import Contexts.*
 import Decorators.em
@@ -47,13 +45,12 @@ trait Plugins {
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] = uninitialized
+  private var _roughPluginsList: List[Plugin] | Null = null
   protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
-      _roughPluginsList
     }
-    else _roughPluginsList
+    _roughPluginsList.nn
 
   /** Load all available plugins. Skips plugins that
    *  either have the same name as another one, or which
@@ -99,13 +96,12 @@ trait Plugins {
     plugs
   }
 
-  private var _plugins: List[Plugin] = uninitialized
+  private var _plugins: List[Plugin] | Null = null
   def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
-      _plugins
     }
-    else _plugins
+    _plugins.nn
 
   /** A description of all the plugins that are loaded */
   def pluginDescriptions(using Context): String =

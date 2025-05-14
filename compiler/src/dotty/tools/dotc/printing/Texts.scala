@@ -5,7 +5,7 @@ import scala.annotation.internal.sharable
 object Texts {
 
   @sharable
-  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m").nn
+  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m")
 
   sealed abstract class Text {
 
@@ -74,7 +74,7 @@ object Texts {
       else appendIndented(that)(width)
 
     private def lengthWithoutAnsi(str: String): Int =
-      ansi.matcher(str).nn.replaceAll("").nn.length
+      ansi.matcher(str).replaceAll("").length
 
     def layout(width: Int): Text = this match {
       case Str(s, _) =>
