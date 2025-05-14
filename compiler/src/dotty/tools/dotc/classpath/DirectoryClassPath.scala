@@ -214,7 +214,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
 final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends ClassPath with NoSourcePaths {
   import java.nio.file.Path, java.nio.file.*
 
-  private val fileSystem: FileSystem = FileSystems.newFileSystem(ctSym, null.asInstanceOf[ClassLoader])
+  private val fileSystem: FileSystem = FileSystems.newFileSystem(ctSym, null: ClassLoader | Null)
   private val root: Path = fileSystem.getRootDirectories.iterator.next
   private val roots = Files.newDirectoryStream(root).iterator.asScala.toList
 
