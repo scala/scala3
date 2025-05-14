@@ -87,7 +87,7 @@ trait ClassLikeSupport:
     def getSupertypesGraph(link: LinkToType, to: Seq[Tree]): Seq[(LinkToType, LinkToType)] =
       to.flatMap { case tree =>
         val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
-        val signature = signatureWithName(tree.asSignature(classDef))
+        val signature = signatureWithName(tree.asSignature(classDef, classDef.symbol))
         val superLink = LinkToType(signature, symbol.dri, bareClasslikeKind(symbol))
         val nextTo = unpackTreeToClassDef(tree).parents
         if symbol.isHiddenByVisibility then getSupertypesGraph(link, nextTo)
@@ -98,16 +98,17 @@ trait ClassLikeSupport:
       .filterNot((s, t) => s.isHiddenByVisibility)
       .map {
         case (symbol, tpe) =>
-          val signature = signatureWithName(tpe.asSignature(classDef))
+          val signature = signatureWithName(tpe.asSignature(classDef, classDef.symbol))
           LinkToType(signature, symbol.dri, bareClasslikeKind(symbol))
       }
     val selfType = classDef.self.map { (valdef: ValDef) =>
       val symbol = valdef.symbol
       val tpe = valdef.tpt.tpe
-      val signature = signatureWithName(tpe.asSignature(classDef))
+      val owner = if symbol.exists then symbol.owner else Symbol.noSymbol
+      val signature = signatureWithName(tpe.asSignature(classDef, owner))
       LinkToType(signature, symbol.dri, Kind.Type(false, false, Seq.empty))
     }
-    val selfSignature: DSignature = signatureWithName(typeForClass(classDef).asSignature(classDef))
+    val selfSignature: DSignature = signatureWithName(typeForClass(classDef).asSignature(classDef, classDef.symbol))
 
     val graph = HierarchyGraph.withEdges(
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
@@ -188,7 +189,7 @@ trait ClassLikeSupport:
             extSym.symbol.normalizedName,
             typeParams,
             termParams,
-            extSym.tpt.asSignature(c),
+            extSym.tpt.asSignature(c, extSym.symbol.owner),
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
           )
@@ -296,7 +297,7 @@ trait ClassLikeSupport:
 
     def getParentsAsLinkToTypes: List[LinkToType] =
       c.getParentsAsTreeSymbolTuples.map {
-        (tree, symbol) => LinkToType(tree.asSignature(c), symbol.dri, bareClasslikeKind(symbol))
+        (tree, symbol) => LinkToType(tree.asSignature(c, c.symbol, skipThisTypePrefix = true), symbol.dri, bareClasslikeKind(symbol))
       }
 
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
@@ -407,7 +408,7 @@ trait ClassLikeSupport:
             ))
           case _ =>
             Kind.Implicit(basicDefKind, None)
-      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicDefKind, Some(method.returnTpt.tpe.asSignature(c)), extractImplicitConversion(method.returnTpt.tpe))
+      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicDefKind, Some(method.returnTpt.tpe.asSignature(c, methodSymbol.owner)), extractImplicitConversion(method.returnTpt.tpe))
       else specificKind(basicDefKind)
 
     val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
@@ -423,7 +424,7 @@ trait ClassLikeSupport:
     mkMember(
       methodSymbol,
       methodKind,
-      method.returnTpt.tpe.asSignature(c),
+      method.returnTpt.tpe.asSignature(c, methodSymbol),
     )(
       modifiers = modifiers,
       origin = origin,
@@ -437,17 +438,17 @@ trait ClassLikeSupport:
     prefix: Symbol => String = _ => "",
     isExtendedSymbol: Boolean = false,
     isGrouped: Boolean = false,
-    memberInfo: Map[String, TypeRepr] = Map.empty,
   ) =
-    val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
-    val nameIfNotSynthetic = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
-    val name = argument.symbol.normalizedName
+    val symbol = argument.symbol
+    val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
+    val name = symbol.normalizedName
+    val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
     api.TermParameter(
-      argument.symbol.getAnnotations(),
-      inlinePrefix + prefix(argument.symbol),
+      symbol.getAnnotations(),
+      inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
-      argument.symbol.dri,
-      memberInfo.get(name).fold(argument.tpt.asSignature(classDef))(_.asSignature(classDef)),
+      symbol.dri,
+      argument.tpt.asSignature(classDef, symbol.owner),
       isExtendedSymbol,
       isGrouped
     )
@@ -457,30 +458,32 @@ trait ClassLikeSupport:
     classDef: ClassDef,
     contextBounds: List[TypeRepr] = Nil,
   ): TypeParameter =
+    val symbol = argument.symbol
     val variancePrefix: "+" | "-" | "" =
-      if  argument.symbol.flags.is(Flags.Covariant) then "+"
-      else if argument.symbol.flags.is(Flags.Contravariant) then "-"
+      if symbol.flags.is(Flags.Covariant) then "+"
+      else if symbol.flags.is(Flags.Contravariant) then "-"
       else ""
 
-    val name = argument.symbol.normalizedName
+    val name = symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-    val boundsSignature = argument.rhs.asSignature(classDef)
+    val boundsSignature = argument.rhs.asSignature(classDef, symbol.owner)
     val signature = boundsSignature ++ contextBounds.flatMap(tr =>
       val wrap = tr match
         case _: TypeLambda => true
         case _ => false
-      Plain(" : ") +: inParens(tr.asSignature(classDef), wrap)
+      Plain(" : ") +: inParens(tr.asSignature(classDef, symbol.owner), wrap)
     )
 
     TypeParameter(
-      argument.symbol.getAnnotations(),
+      symbol.getAnnotations(),
       variancePrefix,
       normalizedName,
-      argument.symbol.dri,
+      symbol.dri,
       signature
     )
 
   def parseTypeDef(typeDef: TypeDef, classDef: ClassDef): Member =
+    val symbol = typeDef.symbol
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
@@ -490,43 +493,44 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
 
-    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics).asInstanceOf[Kind.Type]
-    val kind = if typeDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
+    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), symbol.isOpaque, generics).asInstanceOf[Kind.Type]
+    val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
 
-    if typeDef.symbol.flags.is(Flags.Exported)
+    if symbol.flags.is(Flags.Exported)
     then {
       val origin = Some(tpeTree).flatMap {
         case TypeBoundsTree(l: TypeTree, h: TypeTree) if l.tpe == h.tpe =>
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature(classDef))(
-        deprecated = typeDef.symbol.isDeprecated(),
+      mkMember(symbol, Kind.Exported(kind), tpeTree.asSignature(classDef, symbol.owner))(
+        deprecated = symbol.isDeprecated(),
         origin = Origin.ExportedFrom(origin),
-        experimental = typeDef.symbol.isExperimental()
+        experimental = symbol.isExperimental()
       )
     }
-    else mkMember(typeDef.symbol, kind, tpeTree.asSignature(classDef))(deprecated = typeDef.symbol.isDeprecated())
+    else mkMember(symbol, kind, tpeTree.asSignature(classDef, symbol.owner))(deprecated = symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
-    def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
-    val sig = valDef.tpt.tpe.asSignature(c)
-    val kind = if valDef.symbol.flags.is(Flags.Implicit) then Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
-      else if valDef.symbol.flags.is(Flags.Given) then Kind.Given(Kind.Val, Some(sig), extractImplicitConversion(valDef.tpt.tpe))
-      else if valDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
+    val symbol = valDef.symbol
+    def defaultKind = if symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
+    val sig = valDef.tpt.tpe.asSignature(c, symbol.owner)
+    val kind = if symbol.flags.is(Flags.Implicit) then Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
+      else if symbol.flags.is(Flags.Given) then Kind.Given(Kind.Val, Some(sig), extractImplicitConversion(valDef.tpt.tpe))
+      else if symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
       else defaultKind
 
     val modifiers = kind match
-      case _: Kind.Given => valDef.symbol
+      case _: Kind.Given => symbol
         .getExtraModifiers()
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
-      case _ => valDef.symbol.getExtraModifiers()
+      case _ => symbol.getExtraModifiers()
 
-    mkMember(valDef.symbol, kind, sig)(
+    mkMember(symbol, kind, sig)(
       modifiers = modifiers,
-      deprecated = valDef.symbol.isDeprecated(),
-      experimental = valDef.symbol.isExperimental()
+      deprecated = symbol.isDeprecated(),
+      experimental = symbol.isExperimental()
     )
 
   def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
