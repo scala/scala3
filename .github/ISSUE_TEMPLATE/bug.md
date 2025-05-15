@@ -12,7 +12,7 @@ assignees: ''
 If you're not sure which version you're using, run `print scalaVersion` from sbt.
 (If you're running scalac manually, use `scalac -version` instead.)
 
-If possible, check if your issue appears in the nightly version of the compiler! For example, in scala-cli, you can use `//> using scala 3.nightly` to grab the latest one.
+If possible, check if your issue appears in the nightly version of the compiler! For example, in Scala CLI (the `scala`/`scala-cli` runner script), you can use `//> using scala 3.nightly` (or `-S 3.nightly` from the command line) to grab the latest one.
 
 ## Minimized code
 
