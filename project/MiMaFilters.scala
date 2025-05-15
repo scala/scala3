@@ -13,6 +13,9 @@ object MiMaFilters {
         // Scala.js-only class
         ProblemFilters.exclude[FinalClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
+
+        // NamedTuples copy method
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.copy")
       ),
 
       // Additions since last LTS

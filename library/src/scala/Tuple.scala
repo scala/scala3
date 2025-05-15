@@ -3,6 +3,7 @@ package scala
 import annotation.showAsInfix
 import compiletime.*
 import compiletime.ops.int.*
+import scala.annotation.experimental
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
@@ -280,6 +281,32 @@ object Tuple {
       case true => false
       case false => Disjoint[xs, Y]
     case EmptyTuple => true
+
+  @experimental
+  type ContainsAll[X <: Tuple, Y <: Tuple] <: Boolean = X match
+    case x *: xs => Contains[Y, x] match
+      case true  => ContainsAll[xs, Y]
+      case false => false
+    case EmptyTuple => true
+
+  @experimental
+  type IndexOfOptionOnto[X, N <: Tuple, Acc <: Int] <: Option[Int] = N match
+    case X *: _ => Some[Acc]
+    case _ *: ns => IndexOfOptionOnto[X, ns, S[Acc]]
+    case EmptyTuple => None.type
+
+  @experimental
+  type IndexOfOption[X, N <: Tuple] = IndexOfOptionOnto[X, N, 0]
+
+  @experimental
+  type Indices[X <: Tuple, Y <: Tuple] = IndicesOnto[X, Y, 0, EmptyTuple]
+
+  @experimental
+  type IndicesOnto[X <: Tuple, Y <: Tuple, Idx <: Int, Acc <: Tuple] <: Tuple = X match
+    case x *: xs => IndexOfOption[x, Y] match
+      case Some[i] => IndicesOnto[xs, Y, S[Idx], i *: Acc]
+      case _ => IndicesOnto[xs, Y, S[Idx], (-1 * S[Idx]) *: Acc] // no problem if Int overflow
+    case EmptyTuple => Reverse[Acc]
 
   /** Empty tuple */
   def apply(): EmptyTuple = EmptyTuple

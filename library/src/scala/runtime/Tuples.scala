@@ -1,5 +1,7 @@
 package scala.runtime
 
+import scala.annotation.experimental
+
 object Tuples {
 
   inline val MaxSpecialized = 22
@@ -282,6 +284,21 @@ object Tuples {
     case EmptyTuple => 0
     case self: Product => self.productArity
   }
+
+  @experimental
+  def copy(self: Tuple, that: Tuple, indices: Tuple): Tuple = indices match
+    case EmptyTuple => self
+    case _ =>
+      val is = indices.productIterator.asInstanceOf[Iterator[Int]]
+      val arr = IArray.from(
+        is.map: i =>
+          if i < 0 then
+            val i0 = Math.abs(i) - 1 // nice that it is correct even for min value
+            self.productElement(i0)
+          else
+            that.productElement(i)
+      )
+      Tuple.fromIArray(arr)
 
   // Tail for Tuple1 to Tuple22
   private def specialCaseTail(self: Tuple): Tuple = {
