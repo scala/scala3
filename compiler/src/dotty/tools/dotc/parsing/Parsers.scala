@@ -4786,7 +4786,7 @@ object Parsers {
     }
 
     def localDef(start: Int, implicitMods: Modifiers = EmptyModifiers): Tree = {
-      var mods = defAnnotsMods(localModifierTokens)
+      var mods = defAnnotsMods(modifierTokens)
       for (imod <- implicitMods.mods) mods = addMod(mods, imod)
       if (mods.is(Final))
         // A final modifier means the local definition is "class-like".  // FIXME: Deal with modifiers separately
@@ -4803,7 +4803,7 @@ object Parsers {
 
     /** BlockStatSeq ::= { BlockStat semi } [Expr]
      *  BlockStat    ::= Import
-     *                 | Annotations [implicit] [lazy] Def
+     *                 | Annotations [implicit] [lazy] ValOrDef
      *                 | Annotations LocalModifiers TmplDef
      *                 | Extension
      *                 | Expr1
@@ -4821,7 +4821,7 @@ object Parsers {
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
-        else if isDefIntro(localModifierTokens,
+        else if isDefIntro(modifierTokens,
             excludedSoftModifiers =
               // Allow opaque definitions at outermost level in REPL.
               if outermost && ctx.mode.is(Mode.Interactive)
