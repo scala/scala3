@@ -30,6 +30,8 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Is this the compilation unit of a Java file */
   def isJava: Boolean = source.file.ext.isJava
 
+  def isScala2 = sourceVersion.map(_.isScala2).getOrElse(false)
+
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava =
     val ext = source.file.ext

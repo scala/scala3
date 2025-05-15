@@ -289,9 +289,10 @@ class Pickler extends Phase {
         // assert that Java sources didn't reach Pickler without `-Xjava-tasty`.
         assert(ctx.settings.XjavaTasty.value, "unexpected Java source file without -Xjava-tasty")
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
+
       val attributes = Attributes(
         sourceFile = sourceRelativePath,
-        scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
+        scala2StandardLibrary = Feature.sourceVersion.isScala2,
         explicitNulls = ctx.settings.YexplicitNulls.value,
         captureChecked = Feature.ccEnabled,
         withPureFuns = Feature.pureFunsEnabled,

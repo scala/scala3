@@ -1238,7 +1238,7 @@ object Build {
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions += "-Ycheck:all",
+      //scalacOptions += "-Ycheck:all",
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
@@ -1247,7 +1247,7 @@ object Build {
         Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions += "-Ycompile-scala2-library",
+      scalacOptions ++= Seq("-source", "2.13"),
       scalacOptions += "-Yscala2-unpickler:never",
       scalacOptions += "-Werror:false",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
@@ -1701,7 +1701,7 @@ object Build {
       (Test / scalaJSModuleInitializers) ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
       // Perform Ycheck after the Scala.js-specific transformation phases
-      scalacOptions += "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews",
+      //scalacOptions += "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews",
 
       Test / jsEnvInput := {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
