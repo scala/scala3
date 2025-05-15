@@ -2250,3 +2250,10 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       ""
     )
+
+  @Test def `no-completions-on-package-selection` =
+    check(
+      """package one.@@
+        |""".stripMargin,
+      ""
+    )
