@@ -22,6 +22,9 @@ addSbtPlugin("ch.epfl.scala" % "sbt-tasty-mima" % "1.0.0")
 
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.0")
 
-addSbtPlugin("com.gradle" % "sbt-develocity" % "1.2")
+resolvers +=
+  "Develocity Artifactory" at "https://repo.grdev.net/artifactory/public/"
+
+addSbtPlugin("com.gradle" % "sbt-develocity" % "1.2.2-rc-1")
 
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
