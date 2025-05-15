@@ -2257,3 +2257,11 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       ""
     )
+
+  @Test def `no-extension-completion-on-packages` =
+    check(
+      """object M:
+        |  scala.runt@@
+        |""".stripMargin,
+      ""
+    )
