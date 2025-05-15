@@ -508,9 +508,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    * @return            The target string after replacements.
    */
   def replaceAllIn(target: CharSequence, replacer: Match => String): String = {
-    val it = new Regex.MatchIterator(target, this, groupNames).replacementData
-    it foreach (md => it replace replacer(md))
-    it.replaced
+    val rit = new Regex.MatchIterator(target, this, groupNames).replacementData
+    for (matchdata <- rit; replacement = replacer(matchdata))
+      rit.replace(replacement)
+    rit.replaced
   }
 
   /**
@@ -535,11 +536,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    * @return            The target string after replacements.
    */
   def replaceSomeIn(target: CharSequence, replacer: Match => Option[String]): String = {
-    val it = new Regex.MatchIterator(target, this, groupNames).replacementData
-    for (matchdata <- it ; replacement <- replacer(matchdata))
-      it replace replacement
-
-    it.replaced
+    val rit = new Regex.MatchIterator(target, this, groupNames).replacementData
+    for (matchdata <- rit; replacement <- replacer(matchdata))
+      rit.replace(replacement)
+    rit.replaced
   }
 
   /** Replaces the first match by a string.
@@ -874,28 +874,27 @@ object Regex {
 
     /** Convert to an iterator that yields MatchData elements instead of Strings and has replacement support. */
     private[matching] def replacementData = new AbstractIterator[Match] with Replacement {
-      def matcher = self.matcher
+      protected def matcher = self.matcher
       def hasNext = self.hasNext
-      def next() = { self.next(); new Match(source, matcher, _groupNames).force }
+      def next(): Match = { self.next(); new Match(source, matcher, _groupNames).force }
     }
   }
 
-  /**
-   * A trait able to build a string with replacements assuming it has a matcher.
-   * Meant to be mixed in with iterators.
+  /** Internal trait used by `replaceAllIn` and `replaceSomeIn`.
    */
   private[matching] trait Replacement {
     protected def matcher: Matcher
 
-    private[this] val sb = new java.lang.StringBuffer
+    private[this] val sb = new java.lang.StringBuffer // StringBuffer for JDK 8 compatibility
 
+    // Appends the remaining input and returns the result text.
     def replaced = {
-      val newsb = new java.lang.StringBuffer(sb)
-      matcher.appendTail(newsb)
-      newsb.toString
+      matcher.appendTail(sb)
+      sb.toString
     }
 
-    def replace(rs: String) = matcher.appendReplacement(sb, rs)
+    // Appends the input prefix and the replacement text.
+    def replace(replacement: String) = matcher.appendReplacement(sb, replacement)
   }
 
   /** Quotes strings to be used literally in regex patterns.
