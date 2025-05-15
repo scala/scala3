@@ -932,15 +932,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private def checkWellformed(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
     capt.println(i"checkWF post $parent ${ann.retainedSet} in $tpt")
-    var retained = ann.retainedSet.retainedElems.toArray
-    for i <- 0 until retained.length do
-      val refTree = retained(i)
-      val refs =
-        try refTree.toCaptureRefs
-        catch case ex: IllegalCaptureRef =>
-          report.error(em"Illegal capture reference: ${ex.getMessage}", refTree.srcPos)
-          Nil
-      for ref <- refs do
+    try
+      var retained = ann.retainedSet.retainedElements.toArray
+      for i <- 0 until retained.length do
+        val ref = retained(i)
         def pos =
           if ann.span.exists then ann.srcPos
           else tpt.srcPos
@@ -958,15 +953,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         val others =
           for
-            j <- 0 until retainedRefs.length if j != i
-            r = retainedRefs(j)
+            j <- 0 until retained.length if j != i
+            r = retained(j)
             if !r.isRootCapability
           yield r
         val remaining = CaptureSet(others*)
         check(remaining, remaining)
       end for
     catch case ex: IllegalCaptureRef =>
-      report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tpt.srcPos)
+      report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)
   end checkWellformed
 
   /** Check well formed at post check time. We need to wait until after
