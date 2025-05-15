@@ -21,7 +21,8 @@ This code should be self contained, compilable (with possible failures) and as s
 
 Ideally, we should be able to just copy this code to a file and run `scalac` (and maybe `scala`) to reproduce the issue.
 
-If the code has external dependencies, please provide the `scala-cli` directives that describe them.
+If the code has external dependencies, please provide the Scala CLI directives (or SBT/other build tool configuration) that describe them.
+Also note that it's easier and faster for the maintenance team to address issues minimised to reproduce bugs without external dependencies.
 
 It's most convenient to also include `using` directives for the Scala version that demonstrates the problem,
 any compiler command-line options, as well as dependencies. An example is provided.
