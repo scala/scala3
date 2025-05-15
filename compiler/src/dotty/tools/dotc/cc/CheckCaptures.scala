@@ -441,7 +441,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       markFree(sym, sym.termRef, tree)
 
     def markFree(sym: Symbol, ref: CaptureRef, tree: Tree)(using Context): Unit =
-      if sym.exists && ref.isTracked then markFree(ref.captureSet, tree)
+      if sym.exists && ref.isTracked then markFree(ref.singletonCaptureSet, tree)
 
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
