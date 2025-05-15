@@ -9,3 +9,5 @@ object Test {
 }
 object Useful:
   given [T](using @unused ec: ExecutionContext): AnyRef with {}
+
+class i23122(@unused param: AnyRef)
