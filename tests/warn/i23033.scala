@@ -11,3 +11,5 @@ object Useful:
   given [T](using @unused ec: ExecutionContext): AnyRef with {}
 object Syntax:
   given [T] => (@unused ec: ExecutionContext) => AnyRef
+
+class i23122(@unused param: AnyRef)
