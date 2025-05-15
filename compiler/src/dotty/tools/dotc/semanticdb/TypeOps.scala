@@ -96,7 +96,9 @@ class TypeOps:
             // We try to find the "actual" binder of <y>: `inner`,
             // and register them to the symbol table with `(<y>, inner) -> <y>`
             // instead of `("y", outer) -> <y>`
-            if lam.paramNames.contains(sym.name) then
+            // We must also check for parameter shadowing such as def shadowParam(x: Int) = {val x = true}
+
+            if (sym.is(Flags.Param) || !sym.owner.info.isInstanceOf[LambdaType]) &&  lam.paramNames.contains(sym.name) then
               paramRefSymtab((lam, sym.name)) = sym
             else
               enterParamRef(lam.resType)
