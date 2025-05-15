@@ -64,9 +64,15 @@ object Scala2Unpickler {
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
-  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit = {
-    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
-      val constr = newDefaultConstructor(cls)
+  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit =
+    doEnsureConstructor(cls, clsDenot, scope, fromScala2 = true)
+
+  private def doEnsureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope, fromScala2: Boolean)
+      (using Context): Unit =
+    if scope.lookup(nme.CONSTRUCTOR) == NoSymbol then
+      val constr =
+        if fromScala2 || cls.isAllOf(Trait | JavaDefined) then newDefaultConstructor(cls)
+        else newConstructor(cls, Private, paramNames = Nil, paramTypes = Nil)
       // Scala 2 traits have a constructor iff they have initialization code
       // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
       if clsDenot.flagsUNSAFE.is(Trait) then
@@ -74,8 +80,6 @@ object Scala2Unpickler {
         clsDenot.setFlag(NoInits)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
-    }
-  }
 
   def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(using Context): Unit = {
     val cls = denot.classSymbol
@@ -109,7 +113,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(cls, denot, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) doEnsureConstructor(cls, denot, decls, fromScala2)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
