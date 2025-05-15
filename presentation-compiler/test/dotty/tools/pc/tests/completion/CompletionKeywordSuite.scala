@@ -57,7 +57,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-     "",
+      "",
       includeCommitCharacter = true
     )
 

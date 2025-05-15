@@ -1360,7 +1360,7 @@ class CompletionSuite extends BaseCompletionSuite:
           | val t: TT@@
           |}
           |""".stripMargin,
-    "TTT[A <: Int] = List[A]"
+      "TTT[A <: Int] = List[A]"
     )
 
   @Test def `type-lambda` =

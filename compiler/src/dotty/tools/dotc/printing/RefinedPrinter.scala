@@ -1053,7 +1053,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             addParamssText(
               addParamssText(keywordStr("extension "), leadingParamss)
               ~~ (defKeyword ~~ valDefText(nameIdText(tree))).close,
-             trailingParamss)
+              trailingParamss)
           else
             addParamssText(defKeyword ~~ valDefText(nameIdText(tree)), tree.paramss)
 
