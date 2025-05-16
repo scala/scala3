@@ -2263,5 +2263,15 @@ class CompletionSuite extends BaseCompletionSuite:
       """object M:
         |  scala.runt@@
         |""".stripMargin,
-      ""
+      """runtime scala
+        |PartialFunction scala""".stripMargin // those are the actual members of scala
+    )
+
+  @Test def `no-extension-completions-on-package-objects` =
+    check(
+      """package object magic { def test: Int = ??? }
+        |object M:
+        |  magic.@@
+        |""".stripMargin,
+      "test: Int"
     )
