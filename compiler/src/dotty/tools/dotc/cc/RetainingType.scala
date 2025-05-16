@@ -12,16 +12,12 @@ import Decorators.i
  */
 object RetainingType:
 
-  def apply(tp: Type, refs: List[Tree], byName: Boolean = false)(using Context): Type =
+  def apply(tp: Type, typeElems: Type, byName: Boolean = false)(using Context): Type =
     val annotCls = if byName then defn.RetainsByNameAnnot else defn.RetainsAnnot
-    val annotTree =
-      New(annotCls.typeRef,
-        Typed(
-          SeqLiteral(refs, TypeTree(defn.AnyType)),
-          TypeTree(defn.RepeatedParamClass.typeRef.appliedTo(defn.AnyType))) :: Nil)
+    val annotTree = New(AppliedType(annotCls.typeRef, typeElems :: Nil), Nil)
     AnnotatedType(tp, Annotation(annotTree))
 
-  def unapply(tp: AnnotatedType)(using Context): Option[(Type, List[Tree])] =
+  def unapply(tp: AnnotatedType)(using Context): Option[(Type, Type)] =
     val sym = tp.annot.symbol
     if sym.isRetainsLike then
       tp.annot match
@@ -29,7 +25,7 @@ object RetainingType:
           assert(ctx.mode.is(Mode.IgnoreCaptures), s"bad retains $tp at ${ctx.phase}")
           None
         case ann =>
-          Some((tp.parent, ann.tree.retainedElems))
+          Some((tp.parent, ann.tree.retainedSet))
     else
       None
 end RetainingType

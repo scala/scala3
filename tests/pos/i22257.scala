@@ -24,3 +24,11 @@ type Bound5 <: FP5
 type Node6   = NodeK { type FBound <: Bound6 }
 type Bound6 <: FP6
 type FP6     = Fixed[Node6]
+
+// type X^
+// type Y^
+// type Z >: X <: Y
+// val Z
+
+
+// type C <:
