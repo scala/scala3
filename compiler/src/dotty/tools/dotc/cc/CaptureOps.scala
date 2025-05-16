@@ -652,22 +652,6 @@ trait FollowAliasesMap(using Context) extends TypeMap:
       else t
     else mapOver(t)
 
-/** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
- *  capability as a tree in a @retains annotation.
- */
-// object ReachCapabilityApply:
-//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-//     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
-//     case _ => None
-
-/** An extractor for `caps.readOnlyCapability(ref)`, which is used to express a read-only
- *  capability as a tree in a @retains annotation.
- */
-// object ReadOnlyCapabilityApply:
-//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-//     case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
-//     case _ => None
-
 abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =
     assert(tp.isTrackableRef, i"not a trackable ref: $tp")
