@@ -1132,7 +1132,7 @@ class Namer { typer: Typer =>
       ensureUpToDate(sym.typeRef, dummyInfo1)
       if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
 
-      if sym.info.derivesFrom(defn.Caps_CapSet) then
+      if original.hasAttachment(Trees.CaptureVar) then
         addDummyTermCaptureParam(sym)(using ictx)
 
       sym.info
