@@ -186,6 +186,7 @@ class ListBuffer[A]
       last0 = null
   }
 
+  // returns the `::` at `i - 1` (such that its `next` at position `i` can be mutated), or `null` if `i == 0`.
   private def locate(i: Int): Predecessor[A] =
     if (i == 0) null
     else if (i == len) last0
