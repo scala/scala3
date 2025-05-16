@@ -242,14 +242,12 @@ object Completion:
     val result = adjustedPath match
       // Ignore synthetic select from `This` because in code it was `Ident`
       // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
-      case tpd.Select(qual @ tpd.This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions.names
-      case StringContextApplication(qual) =>
-        completer.scopeCompletions.names ++ completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _               if qual.typeOpt.hasSimpleKind =>
-        completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _                                             => Map.empty
-      case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
-      case _                                                                    => completer.scopeCompletions.names
+      case tpd.Select(qual @ tpd.This(_), _) :: _
+        if qual.span.isSynthetic           => completer.scopeCompletions.names
+      case StringContextApplication(qual)  => completer.scopeCompletions.names ++ completer.selectionCompletions(qual)
+      case tpd.Select(qual, _) :: _        => completer.selectionCompletions(qual)
+      case (tree: tpd.ImportOrExport) :: _ => completer.directMemberCompletions(tree.expr)
+      case _                               => completer.scopeCompletions.names
 
     interactiv.println(i"""completion info with pos    = $pos,
                           |                     term   = ${completer.mode.is(Mode.Term)},
@@ -370,7 +368,7 @@ object Completion:
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: List[untpd.Tree], matches: Name => Boolean):
+  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: List[untpd.Tree], matches: Name => Boolean)(using Context):
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -384,7 +382,52 @@ object Completion:
      *    (even if the import follows it syntactically)
      *  - a more deeply nested import shadowing a member or a local definition causes an ambiguity
      */
-    def scopeCompletions(using context: Context): CompletionResult =
+    lazy val scopeCompletions: CompletionResult =
+
+      /** Completions introduced by imports directly in this context.
+       *  Completions from outer contexts are not included.
+       */
+      def importedCompletions(using Context): CompletionResult =
+        val imp = ctx.importInfo
+        val renames = collection.mutable.Map.empty[Symbol, Name]
+
+        if imp == null then
+          CompletionResult(Map.empty, Map.empty)
+        else
+          def fromImport(name: Name, nameInScope: Name): Seq[(Name, SingleDenotation)] =
+            imp.site.member(name).alternatives
+              .collect:
+                case denot if include(denot, nameInScope) =>
+                 if name != nameInScope then renames(denot.symbol) = nameInScope
+                 nameInScope -> denot
+
+          val givenImports = imp.importedImplicits
+            .map { ref => (ref.implicitName: Name, ref.underlyingRef.denot.asSingleDenotation) }
+            .filter((name, denot) => include(denot, name))
+            .groupByName
+
+          val wildcardMembers =
+            if imp.selectors.exists(_.imported.name == nme.WILDCARD) then
+              val denots = accessibleMembers(imp.site)
+                .filter(mbr => !mbr.symbol.is(Given) && !imp.excluded.contains(mbr.name.toTermName))
+              denots.groupByName
+            else
+              Map.empty
+
+          val explicitMembers =
+            val importNamesInScope = imp.forwardMapping.toList.map(_._2)
+            val duplicatedNames = importNamesInScope.diff(importNamesInScope.distinct)
+            val discardedNames = duplicatedNames ++ imp.excluded
+            imp.reverseMapping.toList
+              .filter { (nameInScope, _) => !discardedNames.contains(nameInScope) }
+              .flatMap: (nameInScope, original) =>
+                fromImport(original, nameInScope) ++
+                fromImport(original.toTypeName, nameInScope.toTypeName)
+              .toSeq.groupByName
+
+          val results = givenImports ++ wildcardMembers ++ explicitMembers
+          CompletionResult(results, renames.toMap)
+      end importedCompletions
 
       /** Temporary data structure representing denotations with the same name introduced in a given scope
        *  as a member of a type, by a local definition or by an import clause
@@ -399,31 +442,27 @@ object Completion:
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
 
-      ctx.outersIterator.foreach { case ctx @ given Context =>
-        if ctx.isImportContext then
-          val imported = importedCompletions
-          imported.names.foreach { (name, denots) =>
-            addMapping(name, ScopedDenotations(denots, ctx, include(_, name)))
-          }
-          imported.renames.foreach { (name, newName) =>
-            renames(name) = newName
-          }
-        else if ctx.owner.isClass then
-          accessibleMembers(ctx.owner.thisType)
-            .groupByName.foreach { (name, denots) =>
+      ctx.outersIterator.foreach:
+        case ctx @ given Context =>
+          if ctx.isImportContext then
+            val imported = importedCompletions
+            imported.names.foreach: (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx, include(_, name)))
-            }
-        else if ctx.scope ne EmptyScope then
-          ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
-            .flatMap(_.alternatives)
-            .groupByName.foreach { (name, denots) =>
-              addMapping(name, ScopedDenotations(denots, ctx, include(_, name)))
-            }
-      }
+            imported.renames.foreach: (name, newName) =>
+              renames(name) = newName
+          else if ctx.owner.isClass then
+            accessibleMembers(ctx.owner.thisType)
+              .groupByName.foreach: (name, denots) =>
+                addMapping(name, ScopedDenotations(denots, ctx, include(_, name)))
+          else if ctx.scope ne EmptyScope then
+            ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
+              .flatMap(_.alternatives)
+              .groupByName.foreach: (name, denots) =>
+                addMapping(name, ScopedDenotations(denots, ctx, include(_, name)))
 
       var resultMappings = Map.empty[Name, Seq[SingleDenotation]]
 
-      mappings.foreach { (name, denotss) =>
+      mappings.foreach: (name, denotss) =>
         val first = denotss.head
 
         // import a.c
@@ -447,7 +486,7 @@ object Completion:
         def notConflictingWithDefaults = // is imported symbol
           denotss.filterNot(_.denots.exists(denot => Interactive.isImportedByDefault(denot.symbol))).size <= 1
 
-        denotss.find(!_.ctx.isImportContext) match {
+        denotss.find(!_.ctx.isImportContext) match
           // most deeply nested member or local definition if not shadowed by an import
           case Some(local) if local.ctx.scope == first.ctx.scope =>
             resultMappings += name -> local.denots
@@ -457,15 +496,14 @@ object Completion:
             val ordered = denotss.map(_.denots).sorted
             resultMappings += name -> ordered.head
           case _ =>
-        }
-      }
+
 
       CompletionResult(resultMappings, renames.toMap)
     end scopeCompletions
 
     /** Widen only those types which are applied or are exactly nothing
      */
-    def widenQualifier(qual: tpd.Tree)(using Context): tpd.Tree =
+    def widenQualifier(qual: tpd.Tree): tpd.Tree =
       qual.typeOpt.widenDealias match
         case widenedType if widenedType.isExactlyNothing => qual.withType(widenedType)
         case appliedType: AppliedType => qual.withType(appliedType)
@@ -475,78 +513,31 @@ object Completion:
      *  Direct members take priority over members from extensions
      *  and so do members from extensions over members from implicit conversions
      */
-    def selectionCompletions(qual: tpd.Tree)(using Context): CompletionMap =
+    def selectionCompletions(qual: tpd.Tree): CompletionMap =
       val adjustedQual = widenQualifier(qual)
 
-      val implicitConversionMembers = implicitConversionMemberCompletions(adjustedQual)
-      val extensionMembers = extensionCompletions(adjustedQual)
-      val directMembers = directMemberCompletions(adjustedQual)
-      val namedTupleMembers = namedTupleCompletions(adjustedQual)
+      if qual.symbol.is(Package) then
+        directMemberCompletions(adjustedQual)
+      else if qual.typeOpt.hasSimpleKind then
+        implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual) ++
+        namedTupleCompletions(adjustedQual)
+      else
+        Map.empty
 
-      List(
-        implicitConversionMembers,
-        extensionMembers,
-        directMembers,
-        namedTupleMembers
-      ).reduce(_ ++ _)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
-    def directMemberCompletions(qual: tpd.Tree)(using Context): CompletionMap =
+    def directMemberCompletions(qual: tpd.Tree): CompletionMap =
       if qual.typeOpt.isExactlyNothing then
         Map.empty
       else
         accessibleMembers(qual.typeOpt).groupByName
 
-    /** Completions introduced by imports directly in this context.
-     *  Completions from outer contexts are not included.
-     */
-    private def importedCompletions(using Context): CompletionResult =
-      val imp = ctx.importInfo
-      val renames = collection.mutable.Map.empty[Symbol, Name]
-
-      if imp == null then
-        CompletionResult(Map.empty, Map.empty)
-      else
-        def fromImport(name: Name, nameInScope: Name): Seq[(Name, SingleDenotation)] =
-          imp.site.member(name).alternatives
-            .collect { case denot if include(denot, nameInScope) =>
-               if name != nameInScope then
-                 renames(denot.symbol) = nameInScope
-               nameInScope -> denot
-            }
-
-        val givenImports = imp.importedImplicits
-          .map { ref => (ref.implicitName: Name, ref.underlyingRef.denot.asSingleDenotation) }
-          .filter((name, denot) => include(denot, name))
-          .groupByName
-
-        val wildcardMembers =
-          if imp.selectors.exists(_.imported.name == nme.WILDCARD) then
-            val denots = accessibleMembers(imp.site)
-              .filter(mbr => !mbr.symbol.is(Given) && !imp.excluded.contains(mbr.name.toTermName))
-            denots.groupByName
-          else
-            Map.empty
-
-        val explicitMembers =
-          val importNamesInScope = imp.forwardMapping.toList.map(_._2)
-          val duplicatedNames = importNamesInScope.diff(importNamesInScope.distinct)
-          val discardedNames = duplicatedNames ++ imp.excluded
-          imp.reverseMapping.toList
-            .filter { (nameInScope, _) => !discardedNames.contains(nameInScope) }
-            .flatMap { (nameInScope, original) =>
-              fromImport(original, nameInScope) ++
-              fromImport(original.toTypeName, nameInScope.toTypeName)
-            }.toSeq.groupByName
-
-        val results = givenImports ++ wildcardMembers ++ explicitMembers
-        CompletionResult(results, renames.toMap)
-    end importedCompletions
-
     /** Completions from implicit conversions including old style extensions using implicit classes */
-    private def implicitConversionMemberCompletions(qual: tpd.Tree)(using Context): CompletionMap =
+    private def implicitConversionMemberCompletions(qual: tpd.Tree): CompletionMap =
 
       def tryToInstantiateTypeVars(conversionTarget: SearchSuccess): Type =
         try
@@ -567,16 +558,15 @@ object Completion:
           .groupByName
 
     /** Completions for named tuples */
-    private def namedTupleCompletions(qual: tpd.Tree)(using Context): CompletionMap =
+    private def namedTupleCompletions(qual: tpd.Tree): CompletionMap =
       def namedTupleCompletionsFromType(tpe: Type): CompletionMap =
         val freshCtx = ctx.fresh.setExploreTyperState()
         inContext(freshCtx):
           tpe.namedTupleElementTypes(true)
-            .map { (name, tpe) =>
+            .map: (name, tpe) =>
               val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
               val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)
               name -> denot
-            }
             .toSeq
             .filter((name, denot) => include(denot, name))
             .groupByName
@@ -591,17 +581,16 @@ object Completion:
       else Map.empty
 
     /** Completions from extension methods */
-    private def extensionCompletions(qual: tpd.Tree)(using Context): CompletionMap =
+    private def extensionCompletions(qual: tpd.Tree): CompletionMap =
       def asDefLikeType(tpe: Type): Type = tpe match
         case _: MethodOrPoly => tpe
         case _ => ExprType(tpe)
 
       def tryApplyingReceiverToExtension(termRef: TermRef): Option[SingleDenotation] =
         ctx.typer.tryApplyingExtensionMethod(termRef, qual)
-          .map { tree =>
+          .map: tree =>
             val tpe = asDefLikeType(tree.typeOpt.dealias)
             termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
-          }
 
       def extractMemberExtensionMethods(types: Seq[Type]): Seq[(TermRef, TermName)] =
         object DenotWithMatchingName:
@@ -610,17 +599,15 @@ object Completion:
               case name: TermName if include(denot, name) => Some((denot, name))
               case _ => None
 
-        types.flatMap { tp =>
+        types.flatMap: tp =>
           val tpe = tp.widenExpr
           tpe.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags)
             .collect { case DenotWithMatchingName(denot, name) => TermRef(tpe, denot.symbol) -> name }
-        }
 
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val termCompleter = new Completer(Mode.Term, pos, untpdPath, matches)
-      val extMethodsInScope = termCompleter.scopeCompletions.names.toList.flatMap:
+      val extMethodsInScope = scopeCompletions.names.toList.flatMap:
         case (name, denots) => denots.collect:
           case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
 
@@ -637,13 +624,13 @@ object Completion:
       val extMethodsFromGivensInImplicitScope = extractMemberExtensionMethods(givensInImplicitScope)
 
       val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope
-      val extMethodsWithAppliedReceiver = availableExtMethods.flatMap {
+      val extMethodsWithAppliedReceiver = availableExtMethods.flatMap:
         case (termRef, termName) =>
           if termRef.symbol.is(ExtensionMethod) && !qual.typeOpt.isBottomType then
             tryApplyingReceiverToExtension(termRef)
               .map(denot => termName -> denot)
           else None
-      }
+
       extMethodsWithAppliedReceiver.groupByName
 
     lazy val isNew: Boolean = isInNewContext(untpdPath)
@@ -683,10 +670,9 @@ object Completion:
         catch
           case ex: TypeError =>
 
-      val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
-        case mbr if include(mbr, mbr.name)
-                    && mbr.symbol.isAccessibleFrom(site) => mbr
-      }
+      val members = site.memberDenots(completionsFilter, appendMemberSyms).collect:
+        case mbr if include(mbr, mbr.name) && mbr.symbol.isAccessibleFrom(site) => mbr
+
       val refinements = extractRefinements(site).filter(mbr => include(mbr, mbr.name))
 
       members ++ refinements
@@ -699,13 +685,12 @@ object Completion:
      * @param qual The argument to which the implicit conversion should be applied.
      * @return The set of types after `qual` implicit conversion.
      */
-    private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
+    private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] =
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span, Set.empty).allImplicits
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
-    }
 
     /** Filter for names that should appear when looking for completions. */
     private object completionsFilter extends NameFilter:
