@@ -2532,7 +2532,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): Tree = {
     val ref1 = typedExpr(tree.ref, SingletonTypeProto)
     if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.is(Flags.CaptureParam) then
-      // println(s"typedSingletonTypeTree: $ref1 -> ${ref1.tpe.widen}")
       return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)
     checkStable(ref1.tpe, tree.srcPos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)

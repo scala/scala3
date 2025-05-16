@@ -59,22 +59,14 @@ extension (tree: Tree)
         tree.putAttachment(Captures, refs)
         refs
 
+  /** The type representing the capture set of retains annotation.
+    */
   def retainedSet(using Context): Type =
     tree match
       case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
       case _ =>
         if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-        then root.cap
-        else NoType
-
-  /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
-  def retainedElems(using Context): List[Tree] = tree match
-    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) =>
-      elems
-    case _ =>
-      if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-      then ref(root.cap) :: Nil
-      else Nil
+        then root.cap else NoType
 
 extension (tp: Type)
 
