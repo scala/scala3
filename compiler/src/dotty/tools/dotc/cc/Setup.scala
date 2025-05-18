@@ -339,7 +339,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     try
       val tp1 = mapInferred(refine = true)(tp)
-      val tp2 = root.toResultInResults(NoSymbol, _ => assert(false))(tp1)
+      val tp2 = toResultInResults(NoSymbol, _ => assert(false))(tp1)
       if tp2 ne tp then capt.println(i"expanded inferred in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
     catch case ex: AssertionError =>
@@ -474,7 +474,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def transform(tp: Type): Type =
       val tp1 = toCapturing(tp)
-      val tp2 = root.toResultInResults(sym, fail, toCapturing.keepFunAliases)(tp1)
+      val tp2 = toResultInResults(sym, fail, toCapturing.keepFunAliases)(tp1)
       val snd = if toCapturing.keepFunAliases then "" else " 2nd time"
       if tp2 ne tp then capt.println(i"expanded explicit$snd in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
       tp2
@@ -489,7 +489,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
     if freshen then
-      root.capToFresh(tp3, root.Origin.InDecl(sym)).tap(addOwnerAsHidden(_, sym))
+      capToFresh(tp3, Origin.InDecl(sym)).tap(addOwnerAsHidden(_, sym))
     else tp3
   end transformExplicitType
 
@@ -589,7 +589,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for case arg: TypeTree <- args do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
-                root.capToFresh(arg.tpe, root.Origin.TypeArg(arg.tpe)))
+                capToFresh(arg.tpe, Origin.TypeArg(arg.tpe)))
             else
               transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 
@@ -669,7 +669,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
-                paramInfos = mt.paramInfos.map(root.freshToCap),
+                paramInfos = mt.paramInfos.map(freshToCap),
                 resType = paramsToCap(mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")
@@ -684,7 +684,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             if signatureChanges then
               val paramSymss = sym.paramSymss
               def newInfo(using Context) = // will be run in this or next phase
-                root.toResultInResults(sym, report.error(_, tree.srcPos)):
+                toResultInResults(sym, report.error(_, tree.srcPos)):
                   if sym.is(Method) then
                     paramsToCap(methodType(paramSymss, localReturnType))
                   else tree.tpt.nuType

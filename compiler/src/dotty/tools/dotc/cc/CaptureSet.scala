@@ -441,7 +441,7 @@ object CaptureSet:
    */
   val csImpliedByCapability = Const(SimpleIdentitySet(GlobalCap.readOnly))
 
-  def fresh(origin: root.Origin)(using Context): Const =
+  def fresh(origin: Origin)(using Context): Const =
     FreshCap(origin).singletonCaptureSet
 
   /** The shared capture set `{cap.rd}` */
@@ -707,7 +707,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       CCState.withCapAsRoot: // // OK here since we infer parameter types that get checked later
         val approx = upperApprox(empty)
-          .map(root.CapToFresh(root.Origin.Unknown).inverse)    // Fresh --> cap
+          .map(CapToFresh(Origin.Unknown).inverse)    // Fresh --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1126,7 +1126,7 @@ object CaptureSet:
     /** A map from captureset variables to their dependent sets at the time of the snapshot. */
     private val depsMap: util.EqHashMap[Var, Deps] = new util.EqHashMap
 
-    /** A map from root.Result values to other such values. If two result values
+    /** A map from ResultCap values to other ResultCap values. If two result values
      *  `a` and `b` are unified, then `eqResultMap(a) = b` and `eqResultMap(b) = a`.
      */
     private var eqResultMap: util.SimpleIdentityMap[ResultCap, ResultCap] = util.SimpleIdentityMap.empty
@@ -1402,7 +1402,7 @@ object CaptureSet:
       def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
         this(acc, parent) ++ refs
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if includeTypevars && upperBound.isExactlyAny then fresh(root.Origin.DeepCS(t))
+        if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
         else this(acc, upperBound)
     collect(CaptureSet.empty, tp)
 
