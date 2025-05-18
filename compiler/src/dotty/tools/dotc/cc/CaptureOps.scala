@@ -192,25 +192,34 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** The first element of this path type. Note that class parameter references
-   *  are of the form this.C but their pathroot is still this.C, not this.
+  /** The first element of this path type, skipping selections
+   *  and qualifiers. Note that class parameter references are of
+   *  the form this.C but their pathroot is still this.C, not this.
    */
-  final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType =>
-      if tp1.symbol.maybeOwner.isClass && tp1.symbol != defn.captureRoot && !tp1.symbol.is(TypeParam) then
-        tp1.prefix match
-          case pre: CaptureRef => pre.pathRoot
-          case _ => tp1
-      else tp1
-    case tp1 => tp1
+  final def pathRoot(using Context): Type = tp match
+    case root(_) => tp
+    case QualifiedCapability(tp1) => tp1.pathRoot
+    case _ => tp.dealias match
+      case tp1: NamedType =>
+        if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) then
+          tp1.prefix match
+            case pre: CaptureRef => pre.pathRoot
+            case _ => tp1
+        else tp1
+      case tp1 => tp1
 
-  /** If this part starts with `C.this`, the class `C`.
-   *  Otherwise, if it starts with a reference `r`, `r`'s owner.
-   *  Otherwise NoSymbol.
+  /** The logical owner of the root of this class:
+   *   - If this path starts with `C.this`, the class `C`.
+   *   - If it starts with a reference `r`, `r`'s owner.
+   *   - If it starts with cap, the `scala.caps` package class.
+   *   - If it starts with a fresh instance, its owner.
+   *   - If it starts with a ParamRef or a result root, NoSymbol.
    */
   final def pathOwner(using Context): Symbol = pathRoot match
+    case tp1: TermRef if tp1.isCap => defn.CapsModule.moduleClass
     case tp1: NamedType => tp1.symbol.owner
     case tp1: ThisType => tp1.cls
+    case tp1 @ root.Fresh(_) => tp1.ccOwner
     case _ => NoSymbol
 
   final def isParamPath(using Context): Boolean = tp.dealias match
