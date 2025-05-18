@@ -170,14 +170,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.processElems(_.toList.map(toTextCaptureRef)), ", ") ~ "}"
+        else "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            //     ~ Str("?").provided(!cs.isConst)
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
     case ref: RefTree[?] =>
       ref.typeOpt match
-        case c: Capability => toTextCaptureRef(c)
+        case c: Capability => toTextCapability(c)
         case _ => toText(ref)
     case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
       toTextRetainedElem(arg)
@@ -459,10 +459,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  def toTextCaptureRef(c: Capability): Text = c match
-    case ReadOnly(c1) => toTextCaptureRef(c1) ~ ".rd"
-    case Reach(c1) => toTextCaptureRef(c1) ~ "*"
-    case Maybe(c1) => toTextCaptureRef(c1) ~ "?"
+  def toTextCapability(c: Capability): Text = c match
+    case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
+    case Reach(c1) => toTextCapability(c1) ~ "*"
+    case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalCap => "cap"
     case c: ResultCap =>
       def idStr = s"##${c.rootId}"

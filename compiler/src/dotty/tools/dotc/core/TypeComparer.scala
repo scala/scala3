@@ -23,6 +23,7 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
 import cc.*
+import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 
@@ -1003,7 +1004,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if isCaptureCheckingOrSetup then
             tp1
               .match
-                case tp1: CaptureRef if tp1.isTracked =>
+                case tp1: Capability if tp1.isTracked =>
                   CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
                 case _ =>
                   tp1w
