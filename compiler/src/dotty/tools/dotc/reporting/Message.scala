@@ -8,7 +8,7 @@ import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
 import printing.Texts.Text
 import printing.Formatting.hl
 import config.SourceVersion
-import cc.{CaptureSet, CaptureRef, root}
+import cc.{CaptureSet, root}
 import cc.Capabilities.*
 
 import scala.language.unsafeNulls
@@ -53,7 +53,7 @@ object Message:
       case None => false
   end Disambiguation
 
-  private type Recorded = Symbol | ParamRef | SkolemType | CaptureRef
+  private type Recorded = Symbol | ParamRef | SkolemType | Capability
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -183,7 +183,7 @@ object Message:
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-        case ref: CaptureRef =>
+        case ref: Capability =>
           val relation =
             if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
             else "is"
@@ -218,7 +218,7 @@ object Message:
         case param: ParamRef     => false
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-        case ref: CaptureRef     => ref.isTerminalCapability
+        case ref: Capability     => ref.isTerminalCapability
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -267,9 +267,9 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
-    override def toTextCaptureRef(c: Capability): Text = c match
+    override def toTextCapability(c: Capability): Text = c match
       case c: RootCapability if seen.isActive => seen.record("cap", isType = false, c)
-      case _ => super.toTextCaptureRef(c)
+      case _ => super.toTextCapability(c)
 
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet

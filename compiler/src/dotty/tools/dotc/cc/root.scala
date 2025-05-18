@@ -132,7 +132,7 @@ object root:
         case _ =>
           mapFollowingAliases(t)
 
-    override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
+    override def mapCapability(c: Capability, deep: Boolean): Capability = c match
       case GlobalCap => FreshCap(origin)
       case _ => super.mapCapability(c, deep)
 
@@ -147,7 +147,7 @@ object root:
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
-      override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef = c match
+      override def mapCapability(c: Capability, deep: Boolean): Capability = c match
         case _: FreshCap => GlobalCap
         case _ => super.mapCapability(c, deep)
 
@@ -193,7 +193,7 @@ object root:
         case _ =>
           mapOver(t)
 
-      override def mapCapability(c: CaptureRef, deep: Boolean) = c match
+      override def mapCapability(c: Capability, deep: Boolean) = c match
         case c @ ResultCap(binder) =>
           if localBinders.contains(binder) then c // keep bound references
           else seen.getOrElseUpdate(c, FreshCap(origin)) // map free references to FreshCap
@@ -231,7 +231,7 @@ object root:
         case _ =>
           mapOver(t)
 
-      override def mapCapability(c: CaptureRef, deep: Boolean) = c match
+      override def mapCapability(c: Capability, deep: Boolean) = c match
         case c: (FreshCap | GlobalCap.type) =>
           if variance > 0 then
             seen.getOrElseUpdate(c, ResultCap(mt))
@@ -250,7 +250,7 @@ object root:
       object inverse extends BiTypeMap:
         def apply(t: Type) = mapOver(t)
 
-        override def mapCapability(c: CaptureRef, deep: Boolean) = c match
+        override def mapCapability(c: Capability, deep: Boolean) = c match
           case c @ ResultCap(`mt`) =>
             // do a reverse getOrElseUpdate on `seen` to produce the
             // `Fresh` assosicated with `t`

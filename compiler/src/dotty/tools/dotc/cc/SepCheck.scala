@@ -73,7 +73,7 @@ object SepCheck:
    */
   abstract class ConsumedSet:
     /** The references in the set. The array should be treated as immutable in client code */
-    def refs: Array[CaptureRef]
+    def refs: Array[Capability]
 
     /** The associated source positoons. The array should be treated as immutable in client code */
     def locs: Array[SrcPos]
@@ -81,7 +81,7 @@ object SepCheck:
     /** The number of references in the set */
     def size: Int
 
-    def toMap: Map[CaptureRef, SrcPos] = refs.take(size).zip(locs).toMap
+    def toMap: Map[Capability, SrcPos] = refs.take(size).zip(locs).toMap
 
     def show(using Context) =
       s"[${toMap.map((ref, loc) => i"$ref -> $loc").toList}]"
@@ -90,12 +90,12 @@ object SepCheck:
   /** A fixed consumed set consisting of the given references `refs` and
    *  associated source positions `locs`
    */
-  class ConstConsumedSet(val refs: Array[CaptureRef], val locs: Array[SrcPos]) extends ConsumedSet:
+  class ConstConsumedSet(val refs: Array[Capability], val locs: Array[SrcPos]) extends ConsumedSet:
     def size = refs.size
 
   /** A mutable consumed set, which is initially empty */
   class MutConsumedSet extends ConsumedSet:
-    var refs: Array[CaptureRef] = new Array(4)
+    var refs: Array[Capability] = new Array(4)
     var locs: Array[SrcPos] = new Array(4)
     var size = 0
     var peaks: Refs = emptyRefs
@@ -111,12 +111,12 @@ object SepCheck:
         locs = double(locs)
 
     /** If `ref` is in the set, its associated source position, otherwise `null` */
-    def get(ref: CaptureRef): SrcPos | Null =
+    def get(ref: Capability): SrcPos | Null =
       var i = 0
       while i < size && (refs(i) ne ref) do i += 1
       if i < size then locs(i) else null
 
-    def clashing(ref: CaptureRef)(using Context): SrcPos | Null =
+    def clashing(ref: Capability)(using Context): SrcPos | Null =
       val refPeaks = ref.peaks
       if !peaks.sharedWith(refPeaks).isEmpty then
         var i = 0
@@ -127,7 +127,7 @@ object SepCheck:
       else null
 
     /** If `ref` is not yet in the set, add it with given source position */
-    def put(ref: CaptureRef, loc: SrcPos)(using Context): Unit =
+    def put(ref: Capability, loc: SrcPos)(using Context): Unit =
       if get(ref) == null then
         ensureCapacity(1)
         refs(size) = ref
@@ -170,8 +170,8 @@ object SepCheck:
      *   3. if `f in F` then the footprint of `f`'s info is also in `F`.
      */
     private def footprint(includeMax: Boolean = false)(using Context): Refs =
-      def retain(ref: CaptureRef) = includeMax || !ref.isTerminalCapability
-      def recur(elems: Refs, newElems: List[CaptureRef]): Refs = newElems match
+      def retain(ref: Capability) = includeMax || !ref.isTerminalCapability
+      def recur(elems: Refs, newElems: List[Capability]): Refs = newElems match
         case newElem :: newElems1 =>
           val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
             retain(superElem) && !elems.contains(superElem)
@@ -181,7 +181,7 @@ object SepCheck:
       recur(elems, elems.toList)
 
     private def peaks(using Context): Refs =
-      def recur(seen: Refs, acc: Refs, newElems: List[CaptureRef]): Refs = trace(i"peaks $acc, $newElems = "):
+      def recur(seen: Refs, acc: Refs, newElems: List[Capability]): Refs = trace(i"peaks $acc, $newElems = "):
         newElems match
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
@@ -253,9 +253,9 @@ object SepCheck:
      *  its hidden set is `{y, z}`.
      */
     private def hiddenSet(using Context): Refs =
-      val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
+      val seen: util.EqHashSet[Capability] = new util.EqHashSet
 
-      def hiddenByElem(elem: CaptureRef): Refs = elem match
+      def hiddenByElem(elem: Capability): Refs = elem match
         case elem: FreshCap => elem.hiddenSet.elems ++ recur(elem.hiddenSet.elems)
         case ReadOnly(elem1) => hiddenByElem(elem1).map(_.readOnly)
         case _ => emptyRefs
@@ -280,7 +280,7 @@ object SepCheck:
 
   end extension
 
-  extension (ref: CaptureRef)
+  extension (ref: Capability)
     def peaks(using Context): Refs = SimpleIdentitySet(ref).peaks
 
 class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
@@ -420,7 +420,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param loc     the position where the capability was consumed
    *  @param pos     the position where the capability was used again
    */
-  def consumeError(ref: CaptureRef, loc: SrcPos, pos: SrcPos)(using Context): Unit =
+  def consumeError(ref: Capability, loc: SrcPos, pos: SrcPos)(using Context): Unit =
     report.error(
       em"""Separation failure: Illegal access to $ref, which was passed to a
           |@consume parameter or was used as a prefix to a @consume method on line ${loc.line + 1}
@@ -431,7 +431,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param ref     the capability
    *  @param loc     the position where the capability was consumed
    */
-  def consumeInLoopError(ref: CaptureRef, pos: SrcPos)(using Context): Unit =
+  def consumeInLoopError(ref: Capability, pos: SrcPos)(using Context): Unit =
     report.error(
       em"""Separation failure: $ref appears in a loop, therefore it cannot
           |be passed to a @consume parameter or be used as a prefix of a @consume method call.""",
@@ -576,7 +576,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         if pos != null then consumeError(ref, pos, tree.srcPos)
   end checkUse
 
-  /** If `tp` denotes some version of a singleton capture ref `x.type` the set `{x, x*}`
+  /** If `tp` denotes some version of a singleton capability `x.type` the set `{x, x*}`
    *  otherwise the empty set.
    */
   def explicitRefs(tp: Type)(using Context): Refs = tp match

@@ -38,7 +38,7 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
 
-/** An exception thrown if a @retains argument is not syntactically a CaptureRef */
+/** An exception thrown if a @retains argument is not syntactically a Capability */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
 /** A base trait for data producing addenda to error messages */
@@ -50,21 +50,21 @@ def ccState(using Context): CCState =
 
 extension (tree: Tree)
 
-  /** Map tree with CaptureRef type to its type,
+  /** Map tree with a Capability type to the corresponding capability,
    *  map CapSet^{refs} to the `refs` references,
    *  throw IllegalCaptureRef otherwise
    */
-  def toCaptureRefs(using Context): List[CaptureRef] = tree match
+  def toCapabilities(using Context): List[Capability] = tree match
     case ReachCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.reach)
+      arg.toCapabilities.map(_.reach)
     case ReadOnlyCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.readOnly)
+      arg.toCapabilities.map(_.readOnly)
     case CapsOfApply(arg) =>
-      arg.toCaptureRefs
+      arg.toCapabilities
     case _ => tree.tpe.dealiasKeepAnnots match
       case ref: TermRef if ref.isCapRef =>
         GlobalCap :: Nil
-      case ref: CaptureRef if ref.isTrackableRef =>
+      case ref: Capability if ref.isTrackableRef =>
         ref :: Nil
       case AnnotatedType(parent, ann)
       if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
@@ -79,7 +79,7 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs = CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
+        val refs = CaptureSet(tree.retainedElems.flatMap(_.toCapabilities)*)
           //.showing(i"toCaptureSet $tree --> $result", capt)
         tree.putAttachment(Captures, refs)
         refs
@@ -95,7 +95,7 @@ extension (tree: Tree)
 
 extension (tp: Type)
 
-  /** Is this type a CaptureRef that can be tracked?
+  /** Is this type a Capability that can be tracked?
    *  This is true for
    *    - all ThisTypes and all TermParamRef,
    *    - stable TermRefs with NoPrefix or ThisTypes as prefixes,
@@ -120,9 +120,9 @@ extension (tp: Type)
       false
 
   /** The capture set of a type. This is:
-    *   - For trackable capture references: The singleton capture set consisting of
+    *   - For trackable capabilities: The singleton capture set consisting of
     *     just the reference, provided the underlying capture set of their info is not empty.
-    *   - For other capture references: The capture set of their info
+    *   - For other capabilities: The capture set of their info
     *   - For all other types: The result of CaptureSet.ofType
     */
   final def captureSet(using Context): CaptureSet = tp match
@@ -149,7 +149,7 @@ extension (tp: Type)
     deepCaptureSet(includeTypevars = false)
 
   /** A type capturing `ref` */
-  def capturing(ref: CaptureRef)(using Context): Type =
+  def capturing(ref: Capability)(using Context): Type =
     if tp.captureSet.accountsFor(ref) then tp
     else CapturingType(tp, ref.singletonCaptureSet)
 
@@ -200,7 +200,7 @@ extension (tp: Type)
   /** The capture set consisting of all top-level captures of `tp` that appear under a box.
    *  Unlike for `boxed` this also considers parents of capture types, unions and
    *  intersections, and type proxies other than abstract types.
-   *  Furthermore, if the original type is a capture ref `x`, it replaces boxed universal sets
+   *  Furthermore, if the original type is a capability `x`, it replaces boxed universal sets
    *  on the fly with x*.
    */
   def boxedCaptureSet(using Context): CaptureSet =
@@ -215,7 +215,7 @@ extension (tp: Type)
             pcs ++ reachRef.singletonCaptureSet
           case _ =>
             pcs ++ refs
-      case ref: CaptureRef if ref.isTracked && !pre.exists => getBoxed(ref, ref)
+      case ref: Capability if ref.isTracked && !pre.exists => getBoxed(ref, ref)
       case tp: TypeRef if tp.symbol.isAbstractOrParamType => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType, pre)
       case tp: AndType => getBoxed(tp.tp1, pre) ** getBoxed(tp.tp2, pre)
@@ -249,7 +249,7 @@ extension (tp: Type)
   def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
       val refs1 = tp match
-        case ref: CaptureRef if ref.isTracked || ref.isReach || ref.isReadOnly =>
+        case ref: Capability if ref.isTracked || ref.isReach || ref.isReadOnly =>
           ref.singletonCaptureSet
         case _ => refs
       CapturingType(parent, refs1, boxed)
@@ -347,7 +347,7 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
-  /** If `x` is a capture ref, replace all no-flip covariant occurrences of `cap`
+  /** If `x` is a capability, replace all no-flip covariant occurrences of `cap`
    *  in type `tp` with `x*`.
    */
   def withReachCaptures(ref: Type)(using Context): Type = ref match
@@ -620,9 +620,9 @@ object ContainsImpl:
 
 /** An extractor for a contains parameter */
 object ContainsParam:
-  def unapply(sym: Symbol)(using Context): Option[(TypeRef, CaptureRef)] =
+  def unapply(sym: Symbol)(using Context): Option[(TypeRef, Capability)] =
     sym.info.dealias match
-      case AppliedType(tycon, (cs: TypeRef) :: (ref: CaptureRef) :: Nil)
+      case AppliedType(tycon, (cs: TypeRef) :: (ref: Capability) :: Nil)
       if tycon.typeSymbol == defn.Caps_ContainsTrait
           && cs.typeSymbol.isAbstractOrParamType => Some((cs, ref))
       case _ => None

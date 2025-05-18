@@ -109,7 +109,7 @@ abstract class Printer {
   def toTextRefinement(rt: RefinedType): Text
 
   /** Textual representation of a reference in a capture set */
-  def toTextCaptureRef(ref: Capability): Text
+  def toTextCapability(ref: Capability): Text
 
   /** Textual representation of a reference in a capture set */
   def toTextCaptureSet(cs: CaptureSet): Text

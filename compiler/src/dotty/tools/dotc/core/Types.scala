@@ -4130,7 +4130,7 @@ object Types extends TypeUtils {
                 parent1
             case _ => mapOver(tp)
           }
-          override def mapCapability(c: CaptureRef, deep: Boolean = false): CaptureRef | (CaptureSet, Boolean) = c match
+          override def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
             case Reach(c1) =>
               apply(c1) match
                 case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
@@ -6163,9 +6163,9 @@ object Types extends TypeUtils {
     def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked Capabilities */
-    override def mapCapability(c: CaptureRef, deep: Boolean): CaptureRef =
+    override def mapCapability(c: Capability, deep: Boolean): Capability =
       super.mapCapability(c, deep) match
-        case c1: CaptureRef => c1
+        case c1: Capability => c1
         case (cs, _) => assert(false, i"bimap $toString should map $c to a capability, but result = $cs")
 
     /** Fuse with another map */
@@ -6251,7 +6251,7 @@ object Types extends TypeUtils {
       try derivedCapturingType(tp, this(parent), refs.map(this))
       finally variance = saved
 
-    def toTrackableRef(tp: Type): CaptureRef | Null = tp match
+    def toTrackableRef(tp: Type): Capability | Null = tp match
       case CapturingType(_) =>
         null
       case tp: CoreCapability =>
@@ -6262,19 +6262,19 @@ object Types extends TypeUtils {
       case _ =>
         null
 
-    def mapCapability(c: Capability, deep: Boolean = false): CaptureRef | (CaptureSet, Boolean) = c match
+    def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
       case ReadOnly(c1) =>
         assert(!deep)
         mapCapability(c1) match
-          case c2: CaptureRef => c2.readOnly
+          case c2: Capability => c2.readOnly
           case (cs: CaptureSet, exact) => (cs.readOnly, exact)
       case Maybe(c1) =>
         assert(!deep)
         mapCapability(c1) match
-          case c2: CaptureRef => c2.maybe
+          case c2: Capability => c2.maybe
           case (cs: CaptureSet, exact) => (cs.maybe, exact)
       case ref: CoreCapability =>
         val tp1 = apply(ref)
