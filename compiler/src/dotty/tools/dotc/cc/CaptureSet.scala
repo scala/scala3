@@ -313,7 +313,7 @@ sealed abstract class CaptureSet extends Showable:
    *      will also map any elements added in the future to themselves. This assumption
    *      can be tested to hold by setting the ccConfig.checkSkippedMaps setting to true.
    *    - If the map is some other map that does not map all elements to themselves,
-   *      freeze the current set (i.e. make it porvisionally solved) and return
+   *      freeze the current set (i.e. make it provisionally solved) and return
    *      the mapped elements as a constant set.
    */
   def map(tm: TypeMap)(using Context): CaptureSet =
