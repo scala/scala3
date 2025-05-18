@@ -2658,11 +2658,9 @@ object SymDenotations {
    *  This holds for all symbols except
    *   - constructors, since they can never be referred to as members of their
    *     own, fully elaborated `this`.
-   *   - parameters and parameter accessors, since their Local status is already
-   *     determined by whether they have a `val` or `var` or not.
    */
   def canBeLocal(name: Name, flags: FlagSet)(using Context) =
-    !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
+    !name.isConstructorName
 
   /** Factory method for SymDenotion creation. All creations
    *  should be done via this method.

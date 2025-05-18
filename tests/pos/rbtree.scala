@@ -439,18 +439,18 @@ object RedBlackTree {
     def black: Tree[A, B]
     def red: Tree[A, B]
   }
-  final class RedTree[A, +B](key: A,
-                             value: B,
-                             left: Tree[A, B],
-                             right: Tree[A, B]) extends Tree[A, B](key, value, left, right) {
+  final class RedTree[A, +B](_key: A,
+                             _value: B,
+                             _left: Tree[A, B],
+                             _right: Tree[A, B]) extends Tree[A, B](_key, _value, _left, _right) {
     override def black: Tree[A, B] = BlackTree(key, value, left, right)
     override def red: Tree[A, B] = this
     override def toString: String = "RedTree(" + key + ", " + value + ", " + left + ", " + right + ")"
   }
-  final class BlackTree[A, +B](key: A,
-                               value: B,
-                               left: Tree[A, B],
-                               right: Tree[A, B]) extends Tree[A, B](key, value, left, right) {
+  final class BlackTree[A, +B](_key: A,
+                               _value: B,
+                               _left: Tree[A, B],
+                               _right: Tree[A, B]) extends Tree[A, B](_key, _value, _left, _right) {
     override def black: Tree[A, B] = this
     override def red: Tree[A, B] = RedTree(key, value, left, right)
     override def toString: String = "BlackTree(" + key + ", " + value + ", " + left + ", " + right + ")"
