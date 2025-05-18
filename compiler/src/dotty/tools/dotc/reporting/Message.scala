@@ -8,7 +8,7 @@ import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
 import printing.Texts.Text
 import printing.Formatting.hl
 import config.SourceVersion
-import cc.{CaptureSet, root}
+import cc.CaptureSet
 import cc.Capabilities.*
 
 import scala.language.unsafeNulls
@@ -201,7 +201,7 @@ object Message:
               case GlobalCap => "the universal root capability"
               case ref: FreshCap =>
                 val descr = ref.origin match
-                  case origin @ root.Origin.InDecl(sym) if sym.exists =>
+                  case origin @ Origin.InDecl(sym) if sym.exists =>
                     origin.explanation
                   case origin =>
                     i" created in ${ownerStr(ref.hiddenSet.owner)}${origin.explanation}"
