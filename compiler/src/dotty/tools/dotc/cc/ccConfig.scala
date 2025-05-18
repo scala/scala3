@@ -50,7 +50,7 @@ object ccConfig:
   def useSepChecks(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
-  /** If true, do level checking for root.Fresh instances */
+  /** If true, do level checking for FreshCap instances */
   def useFreshLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 

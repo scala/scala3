@@ -120,7 +120,7 @@ extension (tp: Type)
       false
 
   /** The capture set of a type. This is:
-    *   - For trackable capabilities: The singleton capture set consisting of
+    *   - For object capabilities: The singleton capture set consisting of
     *     just the reference, provided the underlying capture set of their info is not empty.
     *   - For other capabilities: The capture set of their info
     *   - For all other types: The result of CaptureSet.ofType
@@ -370,7 +370,7 @@ extension (tp: Type)
                 // preceding arguments are known to be always pure
                 t.derivedFunctionOrMethod(
                   args,
-                  apply(root.resultToFresh(res, root.Origin.ResultInstance(t, NoSymbol))))
+                  apply(resultToFresh(res, Origin.ResultInstance(t, NoSymbol))))
               else
                 t
             case _ =>
@@ -654,7 +654,7 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
         this(acc, parent)
       case t @ FunctionOrMethod(args, res) =>
         if args.forall(_.isAlwaysPure) then
-          this(acc, root.resultToFresh(res, root.Origin.ResultInstance(t, NoSymbol)))
+          this(acc, resultToFresh(res, Origin.ResultInstance(t, NoSymbol)))
         else acc
       case _ =>
         foldOver(acc, t)
