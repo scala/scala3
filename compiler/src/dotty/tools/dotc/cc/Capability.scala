@@ -23,8 +23,6 @@ import printing.{Printer, Showable}
 import printing.Texts.Text
 import annotation.internal.sharable
 
-type CaptureRef = Capabilities.Capability
-
 /** Capability --+-- RootCapabilty -----+-- GlobalCap
  *               |                      +-- FreshCap
  *               |                      +-- ResultCap
@@ -67,7 +65,7 @@ object Capabilities:
   trait DerivedCapability extends Capability:
     def underlying: Capability
 
-  /** If `x` is a capture ref, its maybe capability `x?`. `x?` stands for a capability
+  /** If `x` is a capability, its maybe capability `x?`. `x?` stands for a capability
    *  `x` that might or might not be part of a capture set. We have `{} <: {x?} <: {x}`.
    *  Maybe capabilities cannot be propagated between sets. If `a <: b` and `a`
    *  acquires `x?` then `x` is propagated to `b` as a conservative approximation.
@@ -96,7 +94,7 @@ object Capabilities:
   extends DerivedCapability:
     assert(!underlying.isInstanceOf[Maybe])
 
-  /** If `x` is a capture ref, its reach capability `x*`. `x*` stands for all
+  /** If `x` is a capability, its reach capability `x*`. `x*` stands for all
    *  capabilities reachable through `x`.
    *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
    *  is the union of all capture sets that appear in covariant position in the
@@ -521,6 +519,6 @@ object Capabilities:
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
-    def toText(printer: Printer): Text = printer.toTextCaptureRef(this)
+    def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability
 end Capabilities

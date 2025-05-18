@@ -947,7 +947,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     for i <- 0 until retained.length do
       val refTree = retained(i)
       val refs =
-        try refTree.toCaptureRefs
+        try refTree.toCapabilities
         catch case ex: IllegalCaptureRef =>
           report.error(em"Illegal capture reference: ${ex.getMessage}", refTree.srcPos)
           Nil
@@ -971,7 +971,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val others =
           for
             j <- 0 until retained.length if j != i
-            r <- retained(j).toCaptureRefs
+            r <- retained(j).toCapabilities
             if !r.isTerminalCapability
           yield r
         val remaining = CaptureSet(others*)
@@ -982,7 +982,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Check well formed at post check time. We need to wait until after
    *  recheck because we find out only then whether capture sets are empty or
-   *  capture references are redundant.
+   *  capabilities are redundant.
    */
   private def checkWellformedLater(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
     if !tpt.span.isZeroExtent && enclosingInlineds.isEmpty then

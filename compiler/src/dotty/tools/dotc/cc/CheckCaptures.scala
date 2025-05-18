@@ -101,7 +101,7 @@ object CheckCaptures:
    */
   def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
     def check(elem: Tree, pos: SrcPos): Unit = elem.tpe match
-      case ref: CaptureRef =>
+      case ref: Capability =>
         if !ref.isTrackableRef && !ref.isCapRef then
           report.error(em"$elem cannot be tracked since it is not a parameter or local value", pos)
       case tpe =>
@@ -352,7 +352,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       assert(cs1.subCaptures(cs2).isOK, i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       res match
         case res: CompareFailure =>
           def msg(provisional: Boolean) =
@@ -371,14 +371,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                 pos)
               needAnotherRun = true
               added match
-                case added: CaptureRef => target.elems += added
+                case added: Capability => target.elems += added
                 case added: CaptureSet => target.elems ++= added.elems
             case _ =>
               report.error(msg(provisional = false), pos)
         case _ =>
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
-    def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
+    def checkElem(elem: Capability, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
           ccState.test(elem.singletonCaptureSet.subCaptures(cs)),
           i"$elem cannot be referenced here; it is not",
@@ -441,7 +441,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(sym: Symbol, tree: Tree)(using Context): Unit =
       markFree(sym, sym.termRef, tree)
 
-    def markFree(sym: Symbol, ref: CaptureRef, tree: Tree)(using Context): Unit =
+    def markFree(sym: Symbol, ref: Capability, tree: Tree)(using Context): Unit =
       if sym.exists && ref.isTracked then markFree(ref.singletonCaptureSet, tree)
 
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
@@ -459,10 +459,10 @@ class CheckCaptures extends Recheck, SymTransformer:
             !sym.isContainedIn(env.owner)
         }
 
-      /** If captureRef `c` refers to a parameter that is not @use declared, report an error.
+      /** If capability `c` refers to a parameter that is not @use declared, report an error.
        *  Exception under deferredReaches: If use comes from a nested closure, accept it.
        */
-      def checkUseDeclared(c: CaptureRef, env: Env, lastEnv: Env | Null) =
+      def checkUseDeclared(c: Capability, env: Env, lastEnv: Env | Null) =
         if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
           assert(ccConfig.deferredReaches) // access is from a nested closure under deferredReaches, so it's OK
         else c.pathRoot match
@@ -476,7 +476,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       /** Avoid locally defined capability by charging the underlying type
        *  (which may not be cap). This scheme applies only under the deferredReaches setting.
        */
-      def avoidLocalCapability(c: CaptureRef, env: Env, lastEnv: Env | Null): Unit =
+      def avoidLocalCapability(c: Capability, env: Env, lastEnv: Env | Null): Unit =
         if c.isParamPath then
           c match
             case Reach(_) | _: TypeRef =>
@@ -497,7 +497,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       /** Avoid locally defined capability if it is a reach capability or capture set
        *  parameter. This is the default.
        */
-      def avoidLocalReachCapability(c: CaptureRef, env: Env): Unit = c match
+      def avoidLocalReachCapability(c: Capability, env: Env): Unit = c match
         case Reach(c1) =>
           if c1.isParamPath then
             checkUseDeclared(c, env, null)
@@ -552,7 +552,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, resType: Type, tree: Tree)(using Context): Unit = resType match
       case _: MethodOrPoly => // wait until method is fully applied
       case _ =>
-        def isRetained(ref: CaptureRef): Boolean = ref.pathRoot match
+        def isRetained(ref: Capability): Boolean = ref.pathRoot match
           case root: ThisType => ctx.owner.isContainedIn(root.cls)
           case _ => true
         if sym.exists && curEnv.isOpen then
@@ -617,7 +617,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // modifier implied by the expected type `pt`.
         // Example: If we have `x` and the expected type says we select that with `.a.b`
         // where `b` is a read-only method, we charge `x.a.b.rd` instead of `x`.
-        def addSelects(ref: TermRef, pt: Type): CaptureRef = pt match
+        def addSelects(ref: TermRef, pt: Type): Capability = pt match
           case pt: PathSelectionProto if ref.isTracked =>
             if pt.sym.isReadOnlyMethod then
               ref.readOnly
@@ -626,7 +626,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
               addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
           case _ => ref
-        var pathRef: CaptureRef = addSelects(sym.termRef, pt)
+        var pathRef: Capability = addSelects(sym.termRef, pt)
         if pathRef.derivesFromMutable && pt.isValueType && !pt.isMutableType then
           pathRef = pathRef.readOnly
         markFree(sym, pathRef, tree)
@@ -683,7 +683,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       // Don't apply the rule
       //   - on the LHS of assignments, or
       //   - if the qualifier or selection type is boxed, or
-      //   - the selection is either a trackable capture ref or a pure type
+      //   - the selection is either a trackable capture reference or a pure type
       if noWiden(selType, pt)
           || qualType.isBoxedCapturing
           || selWiden.isBoxedCapturing
@@ -897,7 +897,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val ref = refArg.nuType
         capt.println(i"check contains $cs , $ref")
         ref match
-          case ref: CaptureRef if ref.isTracked =>
+          case ref: Capability if ref.isTracked =>
             checkElem(ref, cs, tree.srcPos)
           case _ =>
             report.error(em"$refArg is not a tracked capability", refArg.srcPos)
@@ -1299,8 +1299,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
 
     /** Addendas for error messages that show where we have under-approximated by
-     *  mapping a a capture ref in contravariant position to the empty set because
-     *  the original result type of the map was not itself a capture ref.
+     *  mapping a a capability in contravariant position to the empty set because
+     *  the original result type of the map was not itself a capability.
      */
     private def addApproxAddenda(using Context) =
       new TypeAccumulator[Addenda]:
@@ -1406,7 +1406,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       // set `arefs` that are outside some `C.this.type` reference in `erefs` for an enclosing
       // class `C`. If an added reference is not a ThisType itself, add it to the capture set
       // (i.e. use set) of the `C`. This makes sure that any outer reference implicitly subsumed
-      // by `C.this` becomes a capture reference of every instance of `C`.
+      // by `C.this` becomes a capability of every instance of `C`.
       def augment(erefs: CaptureSet, arefs: CaptureSet): CaptureSet =
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
@@ -1546,7 +1546,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       recur(actual, expected, covariant)
     end adaptBoxed
 
-    /** If actual is a tracked CaptureRef `a` and widened is a capturing type T^C,
+    /** If actual is a tracked Capability `a` and widened is a capturing type T^C,
      *  improve `T^C` to `T^{a}`, following the VAR rule of CC.
      *  TODO: We probably should do this also for other top-level occurrences of captures
      *  E.g.
@@ -1556,7 +1556,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *    foo: Foo { def a: C^{foo}; def b: C^{foo} }^{foo}
      */
     private def improveCaptures(widened: Type, prefix: Type)(using Context): Type = prefix match
-      case ref: CaptureRef if ref.isTracked =>
+      case ref: Capability if ref.isTracked =>
         widened match
           case widened @ CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
             val improvedCs =
