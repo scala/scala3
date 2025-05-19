@@ -124,7 +124,6 @@ object Scala2Unpickler {
 
     denot.info = tempInfo.finalized(normalizedParents)
     denot.ensureTypeParamsInCorrectOrder()
-    defn.patchStdLibClass(denot)
   }
 }
 
