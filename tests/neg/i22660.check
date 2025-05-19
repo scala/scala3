@@ -1,0 +1,4 @@
+-- [E214] Syntax Error: tests/neg/i22660.scala:2:21 --------------------------------------------------------------------
+2 |type Foo[T: Equatable] // error
+  |            ^^^^^^^^^
+  |            Context bounds are not allowed in this position

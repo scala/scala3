@@ -3510,3 +3510,11 @@ final class OnlyFullyDependentAppliedConstructorType()(using Context)
     i"Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked"
 
   override protected def explain(using Context): String = ""
+
+final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
+  override protected def msg(using Context): String = 
+    i"Context bounds are not allowed in this position"
+
+  override protected def explain(using Context): String = ""
+
+end IllegalContextBounds
