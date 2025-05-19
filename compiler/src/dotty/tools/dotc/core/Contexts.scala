@@ -180,7 +180,7 @@ object Contexts {
       val local = incCallback
       local != null && local.enabled || forceRun
 
-    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    /** The Zinc compile progress callback implementation if we are run from Zinc or used by presentation compiler, null otherwise */
     def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
 
     /** Run `op` if there exists a Zinc progress callback */

@@ -41,22 +41,21 @@ class PcDefinitionProvider(
     val uri = params.uri().nn
     val text = params.text().nn
     val filePath = Paths.get(uri)
-    driver.run(
-      uri,
-      SourceFile.virtual(filePath.toString, text)
-    )
+
+    val unit = driver.compilationUnits(uri)
+    val newCtx = driver.currentCtx.fresh.setCompilationUnit(unit)
 
     val pos = driver.sourcePosition(params)
-    val path =
-      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
+    val path = Interactive.pathTo(unit.tpdTree, pos.span)(using newCtx)
 
-    given ctx: Context = driver.localContext(params)
-    val indexedContext = IndexedContext(pos)(using ctx)
+    given localCtx: Context = Interactive.contextOfPath(path)(using newCtx)
+    val indexedContext = IndexedContext(pos)(using localCtx)
+
     val result =
       if findTypeDef then findTypeDefinitions(path, pos, indexedContext, uri)
       else findDefinitions(path, pos, indexedContext, uri)
 
-    if result.locations().nn.isEmpty() then fallbackToUntyped(pos, uri)(using ctx)
+    if result.locations().nn.isEmpty() then fallbackToUntyped(pos, uri)
     else result
   end definitions
 

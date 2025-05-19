@@ -23,12 +23,15 @@ import Denotations.staticRef
 import classpath.*
 import reporting.*
 import util.*
+import sbt.interfaces.ProgressCallback
 
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd.*
 
   override def sourcesRequired: Boolean = false
+
+  private var myProgressCallback: ProgressCallback | Null = null
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
@@ -141,6 +144,11 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     (fromSource ++ fromClassPath).distinct
   }
 
+  def runWithProgressCallback(uri: URI, sourceCode: String, progressCallback: ProgressCallback | Null = null) =
+    myProgressCallback = progressCallback
+    run(uri, sourceCode)
+    myProgressCallback = null
+
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
@@ -151,7 +159,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
-      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
+      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter).setProgressCallback(myProgressCallback))
       myCtx = run.runContext.withRootImports
 
       given Context = myCtx
@@ -169,8 +177,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       myCtx = myCtx.fresh.setPhase(myInitCtx.base.typerPhase)
 
       reporter.removeBufferedMessages
-    }
-    catch {
+    } catch {
       case ex: FatalError  =>
         myCtx = previousCtx
         close(uri)
