@@ -184,7 +184,9 @@ sealed abstract class CaptureSet extends Showable:
    */
   def accountsFor(x: Capability)(using ctx: Context)(using vs: VarState = VarState.Separate): Boolean =
 
-    def debugInfo(using Context) = i"$this accountsFor $x"
+    def debugInfo(using Context) =
+      val suffix = if ctx.settings.YccVerbose.value then i" with ${x.captureSetOfInfo}" else ""
+      i"$this accountsFor $x$suffix"
 
     def test(using Context) = reporting.trace(debugInfo):
       elems.exists(_.subsumes(x))
@@ -210,9 +212,8 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      CCState.withCapAsRoot:
-        CCState.ignoringFreshLevels: // OK here since we opportunistically choose an alternative which gets checked later
-          elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
+      CCState.withCollapsedFresh: // OK here since we opportunistically choose an alternative which gets checked later
+        elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
         && {
           val elems = x.captureSetOfInfo.elems
