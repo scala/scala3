@@ -144,6 +144,7 @@ object Formatting {
       given Show[Class[?]]                            = ShowAny
       given Show[Throwable]                           = ShowAny
       given Show[StringBuffer]                        = ShowAny
+      given Show[StringBuilder]                       = ShowAny
       given Show[CompilationUnit]                     = ShowAny
       given Show[Phases.Phase]                        = ShowAny
       given Show[TyperState]                          = ShowAny
