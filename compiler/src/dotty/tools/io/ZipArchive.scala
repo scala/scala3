@@ -220,7 +220,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
 }
 
 final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
-  def iterator(): Iterator[AbstractFile] = {
+  def iterator: Iterator[AbstractFile] = {
     val root     = new DirEntry("/", null)
     val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
     val stream   = input

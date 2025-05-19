@@ -958,7 +958,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       val it = mp.keysIterator
       var i = 0
       while i < keys.length do
-        keys(i) = it.next
+        keys(i) = it.next()
         i += 1
       assert(!it.hasNext)
       i = 0

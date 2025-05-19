@@ -348,7 +348,7 @@ object root:
             val it = seen.iterator
             var ref: CaptureRef | Null = null
             while it.hasNext && ref == null do
-              val (k, v) = it.next
+              val (k, v) = it.next()
               if v.annot eq t.annot then ref = k
             if ref == null then
               ref = Fresh(Origin.Unknown)
