@@ -187,7 +187,7 @@ class ListBuffer[A]
   }
 
   // returns the `::` at `i - 1` (such that its `next` at position `i` can be mutated), or `null` if `i == 0`.
-  private def locate(i: Int): Predecessor =
+  private def predecessor(i: Int): Predecessor =
     if (i == 0) null
     else if (i == len) last0
     else {
@@ -214,7 +214,7 @@ class ListBuffer[A]
       first = newElem
     } else {
       // `p` can not be `null` because the case where `idx == 0` is handled above
-      val p = locate(idx)
+      val p = predecessor(idx)
       val newElem = new :: (elem, p.tail.tail)
       if (last0 eq p.tail) {
         last0 = newElem
@@ -228,7 +228,7 @@ class ListBuffer[A]
     if (idx < 0 || idx > len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
     if (idx == len) addOne(elem)
     else {
-      val p = locate(idx)
+      val p = predecessor(idx)
       val nx = elem :: getNext(p)
       if(p eq null) first = nx else p.next = nx
       len += 1
@@ -259,7 +259,7 @@ class ListBuffer[A]
       else {
         val fresh = new ListBuffer[A].freshFrom(it)
         ensureUnaliased()
-        insertAfter(locate(idx), fresh)
+        insertAfter(predecessor(idx), fresh)
       }
     }
   }
@@ -267,7 +267,7 @@ class ListBuffer[A]
   def remove(idx: Int): A = {
     ensureUnaliased()
     if (idx < 0 || idx >= len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
-    val p = locate(idx)
+    val p = predecessor(idx)
     val nx = getNext(p)
     if(p eq null) {
       first = nx.tail
@@ -284,7 +284,7 @@ class ListBuffer[A]
     if (count > 0) {
       ensureUnaliased()
       if (idx < 0 || idx + count > len) throw new IndexOutOfBoundsException(s"$idx to ${idx + count} is out of bounds (min 0, max ${len - 1})")
-      removeAfter(locate(idx), count)
+      removeAfter(predecessor(idx), count)
     } else if (count < 0) {
       throw new IllegalArgumentException("removing negative number of elements: " + count)
     }
@@ -379,7 +379,7 @@ class ListBuffer[A]
       ensureUnaliased()
       val i = math.min(_from, _len)
       val n = math.min(_replaced, _len)
-      val p = locate(i)
+      val p = predecessor(i)
       removeAfter(p, math.min(n, _len - i))
       insertAfter(p, fresh)
     }
