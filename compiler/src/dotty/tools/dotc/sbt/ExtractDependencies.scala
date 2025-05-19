@@ -577,7 +577,7 @@ class DependencyRecorder {
     clazz
   }
 
-  private[dotc] var _responsibleForImports: Symbol | Null = uninitialized
+  private[dotc] var _responsibleForImports: Symbol | Null = null
 
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.
