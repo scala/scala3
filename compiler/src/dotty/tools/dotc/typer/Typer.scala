@@ -3205,9 +3205,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val usingParamAccessors = cls.paramAccessors.filter(_.is(Given))
           val paramScope = newScopeWith(usingParamAccessors*)
           val searchCtx = ctx.outer.fresh.setScope(paramScope)
+
+          // Before losing the reference to ctx.owner
+          // when calling implicitArgTree with searchCtx,
+          // let's store ctx.owner as the fallback "responsibleForImports"
+          // in DependencyRecorder.  That way, if we end up recording any dependencies
+          // we use ctx.owner as the "fromClass" rather than emitting a warning
+          // (because ctx.compilationUnit.tpdTree is still EmptyTree during typer).
+          // For example, to record mirror dependencies, see i23049.
+          val depRecorder = ctx.compilationUnit.depRecorder
+          val responsibleForImports = depRecorder._responsibleForImports
+          if responsibleForImports == null then
+            depRecorder._responsibleForImports = ctx.owner
+
           val rhs = implicitArgTree(target, cdef.span,
               where = i"inferring the implementation of the deferred ${dcl.showLocated}"
             )(using searchCtx)
+
+          if responsibleForImports == null then
+            depRecorder._responsibleForImports = null
 
           val impl = dcl.copy(cls,
             flags = dcl.flags &~ (HasDefault | Deferred) | Final | Override,
