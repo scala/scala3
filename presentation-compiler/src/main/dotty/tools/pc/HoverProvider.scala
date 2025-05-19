@@ -108,7 +108,7 @@ object HoverProvider:
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer, contentType)
         case symbolTpes @ ((symbol, tpe, _) :: _) =>
-          val exprTpw = tpe.widenTermRefExpr.deepDealias
+          val exprTpw = tpe.widenTermRefExpr.deepDealiasAndSimplify
           val hoverString =
             tpw match
               // https://github.com/lampepfl/dotty/issues/8891
@@ -123,7 +123,7 @@ object HoverProvider:
                   if tpe != NoType then tpe
                   else tpw
 
-                printer.hoverSymbol(sym, finalTpe.deepDealias)
+                printer.hoverSymbol(sym, finalTpe.deepDealiasAndSimplify)
             end match
           end hoverString
 
@@ -177,7 +177,7 @@ object HoverProvider:
             val resultType =
               rest match
                 case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
-                    tpe.tpe.widenTermRefExpr.deepDealias
+                    tpe.tpe.widenTermRefExpr.deepDealiasAndSimplify
                 case _ if n == nme.selectDynamic => tpe.resultType
                 case _ => tpe
 
@@ -202,9 +202,9 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.typeOpt.widen.deepDealias match
+      val refTpe = sel.typeOpt.widen.deepDealiasAndSimplify match
         case r: RefinedType => Some(r)
-        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.deepDealias)
+        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.deepDealiasAndSimplify)
         case _ => None
 
       refTpe.flatMap(findRefinement).asJava

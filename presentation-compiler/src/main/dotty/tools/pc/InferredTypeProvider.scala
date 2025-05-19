@@ -102,7 +102,7 @@ final class InferredTypeProvider(
           case _ => true
       if isInScope(tpe)
       then tpe
-      else tpe.deepDealias
+      else tpe.deepDealiasAndSimplify
 
     val printer = ShortenedTypePrinter(
       symbolSearch,

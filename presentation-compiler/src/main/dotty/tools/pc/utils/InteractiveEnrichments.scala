@@ -178,7 +178,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       if sym.is(Module) then sym.companionClass else sym.companionModule
 
     def dealiasType: Symbol =
-      if sym.isType then sym.info.deepDealias.typeSymbol else sym
+      if sym.isType then sym.info.deepDealiasAndSimplify.typeSymbol else sym
 
     def nameBackticked: String = nameBackticked(Set.empty[String])
 
@@ -402,16 +402,16 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
   end extension
 
   extension (tpe: Type)
-    def deepDealias(using Context): Type =
-      tpe.dealias match
+    def deepDealiasAndSimplify(using Context): Type =
+      val dealiased = tpe.dealias match
         case app @ AppliedType(tycon, params) =>
-          AppliedType(tycon, params.map(_.deepDealias))
+          AppliedType(tycon, params.map(_.deepDealiasAndSimplify))
         case aliasingBounds: AliasingBounds =>
           aliasingBounds.derivedAlias(aliasingBounds.alias.deepDealiasAndSimplify)
         case TypeBounds(lo, hi) =>
           TypeBounds(lo.dealias, hi.dealias)
         case RefinedType(parent, name, refinedInfo) =>
-          RefinedType(parent.dealias, name, refinedInfo.deepDealias)
+          RefinedType(parent.dealias, name, refinedInfo.deepDealiasAndSimplify)
         case dealised => dealised
       dealiased.simplified
 
