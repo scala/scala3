@@ -521,7 +521,6 @@ object Symbols extends SymUtils {
         if file != null && !file.isScalaBinary then
           mySource = ctx.getSource(file)
         else
-          mySource = defn.patchSource(this)
           if !mySource.exists then
             val compUnitInfo = compilationUnitInfo
             if compUnitInfo != null then
