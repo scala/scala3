@@ -1,6 +1,6 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
+//import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Flags.*
@@ -44,14 +44,14 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSym
 
   object DesugaredSelect extends DeconstructorCommon[tpd.Tree] {
 
-    var desugared: tpd.Select = null
+    var desugared: tpd.Select | Null = null
 
     override def isEmpty: Boolean =
       desugared eq null
 
-    def _1: Tree =  desugared.qualifier
+    def _1: Tree =  desugared.nn.qualifier
 
-    def _2: Name = desugared.name
+    def _2: Name = desugared.nn.name
 
     override def unapply(s: tpd.Tree): this.type = {
       s match {
@@ -69,17 +69,17 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSym
   }
 
   object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral] {
-    def _1: Type = field.tpe match {
+    def _1: Type = field.nn.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        report.error(em"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
+        report.error(em"JavaSeqArray with type ${field.nn.tpe} reached backend: $field", ctx.source.atSpan(field.nn.span))
         UnspecifiedErrorType
     }
-    def _2: List[Tree] = field.elems
+    def _2: List[Tree] = field.nn.elems
   }
 
-  abstract class DeconstructorCommon[T >: Null <: AnyRef] {
-    var field: T = null
+  abstract class DeconstructorCommon[T <: AnyRef] {
+    var field: T | Null = null
     def get: this.type = this
     def isEmpty: Boolean = field eq null
     def isDefined = !isEmpty

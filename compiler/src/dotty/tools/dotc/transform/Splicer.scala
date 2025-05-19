@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import scala.language.unsafeNulls
+//import scala.language.unsafeNulls
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}

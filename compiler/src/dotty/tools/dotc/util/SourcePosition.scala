@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package util
 
-import scala.language.unsafeNulls
+//import scala.language.unsafeNulls
 
 import printing.{Showable, Printer}
 import printing.Texts.*
@@ -67,7 +67,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
   def toSynthetic: SourcePosition = withSpan(span.toSynthetic)
 
   def outermost: SourcePosition =
-    if outer == null || outer == NoSourcePosition then this else outer.outermost
+    if (outer eq null) || outer == NoSourcePosition then this else outer.outermost
 
   /** Inner most position that is contained within the `outermost` position.
    *  Most precise position that comes from the call site.
@@ -86,7 +86,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
 }
 
 /** A sentinel for a non-existing source position */
-@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan, null) {
+@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan) {
   override def line: Int = -1
   override def column: Int = -1
   override def toString: String = "?"

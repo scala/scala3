@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
+import scala.language.unsafeNulls //
 
 import collection.mutable
 
@@ -219,7 +219,7 @@ object SimpleIdentitySet {
     override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
         case that: SetN[?] =>
-          var toAdd: mutable.ArrayBuffer[AnyRef] = null
+          var toAdd: mutable.ArrayBuffer[AnyRef] | Null = null
           var i = 0
           val limit = that.xs.length
           while (i < limit) {
@@ -249,7 +249,7 @@ object SimpleIdentitySet {
         case that: SetN[?] =>
           // both sets are large, optimize assuming they are similar
           // by starting from empty set and adding elements
-          var toAdd: mutable.ArrayBuffer[AnyRef] = null
+          var toAdd: mutable.ArrayBuffer[AnyRef] | Null = null
           val thisSize = this.size
           val thatSize = that.size
           val thatElems = that.xs

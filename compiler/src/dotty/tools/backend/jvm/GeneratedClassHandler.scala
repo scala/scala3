@@ -14,7 +14,7 @@ import scala.util.control.NonFatal
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Decorators.em
 
-import scala.language.unsafeNulls
+//import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 /**

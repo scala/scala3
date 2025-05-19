@@ -2,7 +2,7 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
+//import scala.language.unsafeNulls
 
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
@@ -79,7 +79,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     enclosingClass(classSym.originalOwner.originalLexicallyEnclosingClass)
   }
 
-  /*final*/ case class EnclosingMethodEntry(owner: String, name: String, methodDescriptor: String)
+  /*final*/ case class EnclosingMethodEntry(owner: String, name: String | Null, methodDescriptor: String | Null)
 
   /**
    * Data for emitting an EnclosingMethod attribute. None if `classSym` is a member class (not
