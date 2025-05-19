@@ -175,23 +175,21 @@ class Objects(using Context @constructorOnly):
       Heap.writeJoinVal(this, field, value)
     }
 
-    def initOuter(sym: Symbol, outerScope: Scope)(using Context, Heap.MutableData) = log("Initialize outer " + sym.show + " = " + outerScope + " for " + this, printer) {
-      Heap.writeJoinOuter(this, sym, ScopeSet(Set(outerScope)))
+    def initOuter(sym: Symbol, outerScope: ScopeSet)(using Context, Heap.MutableData) = log("Initialize outer " + sym.show + " = " + outerScope + " for " + this, printer) {
+      Heap.writeJoinOuter(this, sym, outerScope)
     }
-
-    def initOuterSet(sym: Symbol, outerScopeSet: ScopeSet)(using Context, Heap.MutableData) =
-      Heap.writeJoinOuter(this, sym, outerScopeSet)
 
   sealed abstract class Ref(using Trace) extends Scope with ValueElement:
     def klass: ClassSymbol
+    final override def outer(using Heap.MutableData): ScopeSet = this.outerValue(klass)
 
   /** A reference to a static object */
   case class ObjectRef(
     klass: ClassSymbol
-  )(using @constructorOnly context: Context, @constructorOnly heap: Heap.MutableData, trace: Trace) extends Ref:
+  )(using context: Context, @constructorOnly heap: Heap.MutableData, trace: Trace) extends Ref:
     initOuter(klass, Env.NoEnv)
 
-    def meth = klass
+    def meth = klass.primaryConstructor
 
     def owner = klass
 
@@ -205,21 +203,21 @@ class Objects(using Context @constructorOnly):
    * Note that the 2nd parameter block does not take part in the definition of equality.
    */
   case class OfClass private (
-    klass: ClassSymbol, owner: ClassSymbol, ctor: Symbol, level: Int)(using Regions.Data, Trace)
+    klass: ClassSymbol, owner: ClassSymbol, ctor: Symbol, level: Int, regions: Regions.Data)(using Trace)
   extends Ref:
-    def meth = ctor
+    def meth = klass.primaryConstructor
 
     def show(using Context) =
-      "OfClass(" + klass.show + ", owner = " + owner + ")"
+      "OfClass(" + klass.show + ", meth = " + meth.show + ", owner = " + owner + ")"
 
   object OfClass:
     def apply(
-      klass: ClassSymbol, outerScope: Env.Data, ctor: Symbol)(
+      klass: ClassSymbol, outerScope: ScopeSet, ctor: Symbol)(
       using Context, Heap.MutableData, State.Data, Regions.Data, Trace
     ): OfClass =
       val owner = State.currentObject
-      val instance = new OfClass(klass, owner, ctor, outerScope.level + 1)
-      instance.initOuter(ctor, outerScope)
+      val instance = new OfClass(klass, owner, ctor, outerScope.level + 1, summon[Regions.Data])
+      instance.initOuter(klass, outerScope)
       instance
 
   /**
@@ -235,21 +233,24 @@ class Objects(using Context @constructorOnly):
    * @param owner The static object whose initialization creates the array.
    */
   case class OfArray(owner: ClassSymbol, regions: Regions.Data)(using Context, Trace, Heap.MutableData) extends Ref:
-    def meth = defn.ArrayClass
+    def meth = defn.ArrayConstructor
     def klass: ClassSymbol = defn.ArrayClass
 
-    initOuter(klass, Env.NoEnv)
+    val contentSymbol = defn.ArrayConstructor
+    initVal(meth, Bottom)
 
     def level = 1
     def outerScope = Env.NoEnv
     def show(using Context) = "OfArray(owner = " + owner.show + ")"
+    def content(using Heap.MutableData) = valValue(meth)
+    def updateContent(value: Value)(using Heap.MutableData) = Heap.writeJoinVal(this, meth, value)
 
   /**
    * Represents a lambda expression
    * @param klass The enclosing class of the anonymous function's creation site
    */
-  case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
-    def show(using Context) = "Fun(" + code.show + ", " + env.show + ", " + klass.show + ")"
+  case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, scope: Scope) extends ValueElement:
+    def show(using Context) = "Fun(" + code.show + ", " + scope.show + ", " + klass.show + ")"
 
   /**
    * Represents common base values like Int, String, etc.
@@ -297,8 +298,8 @@ class Objects(using Context @constructorOnly):
     def show(using Context) = values.map(_.show).mkString("[", ",", "]")
 
   case class ScopeSet(scopes: Set[Scope]):
-    assert(!scopes.isEmpty, "Empty scope?")
     assert(scopes.forall(_.isRef) || scopes.forall(_.isEnv), "All scopes should have the same type!")
+    def level: Int = if scopes.isEmpty then 0 else scopes.head.level
     def show(using Context) = scopes.map(_.show).mkString("[", ",", "]")
 
   case class Package(packageModuleClass: ClassSymbol) extends Value:
@@ -344,7 +345,7 @@ class Objects(using Context @constructorOnly):
 
     def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last.klass
 
-    private def doCheckObject(classSym: ClassSymbol)(using ctx: Context, data: Data) =
+    private def doCheckObject(classSym: ClassSymbol)(using ctx: Context, data: Data, heap: Heap.MutableData) =
       val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       var count = 0
@@ -355,12 +356,12 @@ class Objects(using Context @constructorOnly):
         count += 1
 
         given Trace = Trace.empty.add(classSym.defTree)
-        given Env.Data = Env.emptyEnv(tpl.constr.symbol)
-        given Heap.MutableData = Heap.empty()
+        // given Heap.MutableData = Heap.empty
         given returns: Returns.Data = Returns.empty()
         given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
         val obj = ObjectRef(classSym)
+        given Scope = obj
         log("Iteration " + count) {
           data.checkingObjects += obj
           init(tpl, obj, classSym)
@@ -385,7 +386,7 @@ class Objects(using Context @constructorOnly):
       obj
     end doCheckObject
 
-    def checkObjectAccess(clazz: ClassSymbol)(using data: Data, ctx: Context, pendingTrace: Trace): ObjectRef =
+    def checkObjectAccess(clazz: ClassSymbol)(using data: Data, ctx: Context, pendingTrace: Trace, heap: Heap.MutableData): ObjectRef | Bottom.type =
       val index = data.checkingObjects.indexWhere(_.klass == clazz)
 
       if index != -1 then
@@ -396,6 +397,7 @@ class Objects(using Context @constructorOnly):
           val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
           val pos = clazz.defTree.sourcePos.focus
           report.warning("Cyclic initialization: " + cycle.map(_.klass.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
+          // Bottom
         end if
         data.checkingObjects(index)
       else
@@ -413,7 +415,7 @@ class Objects(using Context @constructorOnly):
 
   /** Environment for parameters */
   object Env:
-    abstract class Data(using Trace) extends Scope:
+    sealed abstract class Data(using Trace) extends Scope:
       def level: Int
 
     /** Local environments can be deeply nested, therefore we need `outer`.
@@ -429,11 +431,7 @@ class Objects(using Context @constructorOnly):
         "owner: " + owner.show
     end LocalEnv
 
-    object NoEnv extends Data(using Trace.empty):
-      val level = 0
-
-      def show(using Context): String = "NoEnv"
-    end NoEnv
+    val NoEnv = ScopeSet(Set.empty)
 
     /** An empty environment can be used for non-method environments, e.g., field initializers.
      *
@@ -443,58 +441,90 @@ class Objects(using Context @constructorOnly):
     def emptyEnv(meth: Symbol)(using Context, State.Data, Heap.MutableData, Trace): Data =
       _of(Map.empty, meth, NoEnv)
 
-    def valValue(x: Symbol)(using data: Data, ctx: Context, trace: Trace, heap: Heap.MutableData): Value =
-      if data.hasVal(x) then
-        data.valValue(x)
+    def valValue(x: Symbol)(using scope: Scope, ctx: Context, trace: Trace, heap: Heap.MutableData): Value =
+      if scope.hasVal(x) then
+        scope.valValue(x)
       else
-        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". " + Trace.show, Trace.position)
+        report.warning("[Internal error] Value not found " + x.show + "\nscope = " + scope.show + ". " + Trace.show, Trace.position)
         Bottom
 
-    def getVal(x: Symbol)(using data: Data, ctx: Context, heap: Heap.MutableData): Option[Value] =
-      if data.hasVal(x) then
-        Some(data.valValue(x))
+    def getVal(x: Symbol)(using scope: Scope, ctx: Context, heap: Heap.MutableData): Option[Value] =
+      if scope.hasVal(x) then
+        Some(scope.valValue(x))
       else
         None
 
-    def getVar(x: Symbol)(using data: Data, ctx: Context, heap: Heap.MutableData): Option[Value] =
-      if data.hasVar(x) then
-        Some(data.varValue(x))
+    def getVar(x: Symbol)(using scope: Scope, ctx: Context, heap: Heap.MutableData): Option[Value] =
+      if scope.hasVar(x) then
+        Some(scope.varValue(x))
       else
         None
 
-    private[Env] def _of(argMap: Map[Symbol, Value], meth: Symbol, outer: Data)
+    private[Env] def _of(argMap: Map[Symbol, Value], meth: Symbol, outerSet: ScopeSet)
                         (using State.Data, Heap.MutableData, Trace): Data =
-      val env = LocalEnv(meth, State.currentObject, outer.level + 1)
+      val env = LocalEnv(meth, State.currentObject, outerSet.level + 1)
       argMap.foreach(env.initVal(_, _))
-      env.initOuter(meth, outer)
+      env.initOuter(meth, outerSet)
       env
 
-    def ofDefDef(ddef: DefDef, args: List[Value], outer: Data)
+    private[Env] def resolveEnvRecur(
+        target: Symbol, thisV: ThisValue, scopeSet: ScopeSet, bySymbol: Boolean = true)
+        : Contextual[Option[(ThisValue, ScopeSet)]] =
+      val targetClass = target.owner.lexicallyEnclosingClass.asClass
+      if scopeSet.level == 0 then // all scopes are NoEnv
+        None
+      else
+        val head = scopeSet.scopes.head
+        val filter =
+          if bySymbol then
+            scopeSet.scopes.filter(_.hasVal(target))
+          else
+            scopeSet.scopes.filter(_.meth == target)
+
+        assert(filter.isEmpty || filter.size == scopeSet.scopes.size, "Either all scopes or no scopes contain " + target)
+        if (!filter.isEmpty) then
+          Some(thisV, ScopeSet(filter))
+        else if head.isRef then
+          val currentClass = head.asInstanceOf[Ref].klass
+          if currentClass == targetClass then
+            // We have reached the owner class of target but still couldn't find target
+            None
+          else
+            val outerClass = currentClass.owner.lexicallyEnclosingClass.asClass
+            val outerThis = resolveThis(outerClass, thisV, currentClass)
+            val outerScopes = scopeSet.scopes.map(_.outer).join
+            resolveEnvRecur(target, outerThis, outerScopes, bySymbol)
+        else
+          val outerScopes = scopeSet.scopes.map(_.outer).join
+          resolveEnvRecur(target, thisV, outerScopes, bySymbol)
+
+
+    def ofDefDef(ddef: DefDef, args: List[Value], outer: ScopeSet)
                 (using State.Data, Heap.MutableData, Trace): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
-      assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
+      // assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
       _of(params.zip(args).toMap, ddef.symbol, outer)
 
-    def ofByName(byNameParam: Symbol, outer: Data)(using State.Data, Heap.MutableData, Trace): Data =
+    def ofByName(byNameParam: Symbol, outer: Scope)(using State.Data, Heap.MutableData, Trace): Data =
       assert(byNameParam.is(Flags.Param) && byNameParam.info.isInstanceOf[ExprType]);
-      _of(Map.empty, byNameParam, outer)
+      _of(Map.empty, byNameParam, ScopeSet(Set(outer)))
 
-    def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context, heap: Heap.MutableData): Unit =
+    def setLocalVal(x: Symbol, value: Value)(using scope: Scope, ctx: Context, heap: Heap.MutableData): Unit =
       assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
-      data match
+      scope match
       case localEnv: LocalEnv =>
         localEnv.initVal(x, value)
-      case _ =>
-        throw new RuntimeException("Incorrect local environment for initializing " + x.show)
+      case ref: Ref =>
+        ref.initVal(x, value) // possible for match statement in class body. Report warning?
 
-    def setLocalVar(x: Symbol, value: Value)(using data: Data, ctx: Context, heap: Heap.MutableData): Unit =
+    def setLocalVar(x: Symbol, value: Value)(using scope: Scope, ctx: Context, heap: Heap.MutableData): Unit =
       assert(x.is(Flags.Mutable, butNot = Flags.Param), "Only local mutable variable allowed")
-      data match
+      scope match
       case localEnv: LocalEnv =>
         localEnv.initVar(x, value)
-      case _ =>
-        throw new RuntimeException("Incorrect local environment for initializing " + x.show)
+      case ref: Ref =>
+        ref.initVar(x, value) // possible for match statement in class body. Report warning?
 
     /**
      * Resolve the environment by searching for a given symbol.
@@ -508,31 +538,11 @@ class Objects(using Context @constructorOnly):
      * @param thisV  The value for `this` of the enclosing class where the local variable is referenced.
      * @param env    The local environment where the local variable is referenced.
      *
-     * @return the environment that owns the `target` and value for `this` owned by the given method.
+     * @return the environment that owns the `target` and value for `this` that owns the owner of target.
      */
-    def resolveEnvByValue(target: Symbol, thisV: ThisValue, env: Data)
-                         (using Context, Heap.MutableData): Contextual[Option[(ThisValue, ScopeSet)]] = log("Resolving env by value for " + target.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
-      def recur(thisV: ThisValue, scopeSet: ScopeSet): Option[(ThisValue, ScopeSet)] =
-        val head = scopeSet.scopes.head
-        if head.level == 0 then // all scopes are NoEnv
-          None
-        else
-          val filter = scopeSet.scopes.filter(_.hasVal(target))
-          assert(filter.isEmpty || filter.size == scopeSet.scopes.size, "Either all scopes or no scopes contain " + target)
-          if (!filter.isEmpty) then
-            Some(thisV, ScopeSet(filter))
-          else if head.isRef then
-            val currentClass = head.asInstanceOf[Ref].klass
-            val outerClass = currentClass.owner.lexicallyEnclosingClass.asClass
-            val outerThis = resolveThis(outerClass, thisV, currentClass)
-            val outerScopes = scopeSet.scopes.map(_.outer).join
-            recur(outerThis, outerScopes)
-          else
-            val outerScopes = scopeSet.scopes.map(_.outer).join
-            recur(thisV, outerScopes)
-      end recur
-
-      recur(thisV, ScopeSet(Set(env)))
+    def resolveEnvByValue(target: Symbol, thisV: ThisValue, scope: Scope)
+                         (using Context, Heap.MutableData): Contextual[Option[(ThisValue, ScopeSet)]] = log("Resolving env by value for " + target.show + ", this = " + thisV.show + ", scope = " + scope.show, printer) {
+      resolveEnvRecur(target, thisV, ScopeSet(Set(scope)))
     }
 
     /**
@@ -551,23 +561,9 @@ class Objects(using Context @constructorOnly):
      *
      * @return the environment and value for `this` owned by the given method.
      */
-    def resolveEnvByOwner(enclosing: Symbol, thisV: ThisValue, env: Data)(using Context, Heap.MutableData): Option[(ThisValue, Data)] = log("Resolving env by owner for " + enclosing.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+    def resolveEnvByMethod(enclosing: Symbol, thisV: ThisValue, scope: Scope)(using Context, Heap.MutableData): Contextual[Option[(ThisValue, ScopeSet)]] = log("Resolving env which corresponds to method " + enclosing.show + ", this = " + thisV.show + ", scope = " + scope.show, printer) {
       assert(enclosing.is(Flags.Method), "Only method symbols allows, got " + enclosing.show)
-      env match
-      case localEnv: LocalEnv =>
-        if localEnv.meth == enclosing then Some(thisV -> env)
-        else resolveEnvByOwner(enclosing, thisV, localEnv.outer)
-      case NoEnv =>
-        thisV match
-        case ref: OfClass =>
-          ref.outer match
-          case outer : ThisValue =>
-            resolveEnvByOwner(enclosing, outer, ref.env)
-          case _ =>
-            // TODO: properly handle the case where ref.outer is ValueSet
-            None
-        case _ =>
-          None
+      resolveEnvRecur(enclosing, thisV, ScopeSet(Set(scope)), bySymbol = false)
     }
 
     def withEnv[T](env: Data)(fn: Data ?=> T): T = fn(using env)
@@ -653,7 +649,7 @@ class Objects(using Context @constructorOnly):
           ))
     end MutableData
 
-    def empty(): MutableData = new MutableData(Map.empty)
+    def empty: MutableData = new MutableData(Map.empty)
 
     def contains(scope: Scope)(using mutable: MutableData): Boolean =
       mutable.heap.contains(scope)
@@ -689,7 +685,7 @@ class Objects(using Context @constructorOnly):
       mutable.writeJoinParam(scope, param, value)
 
     def writeJoinVal(scope: Scope, valSymbol: Symbol, value: Value)(using mutable: MutableData): Unit =
-      mutable.writeJoinParam(scope, valSymbol, value)
+      mutable.writeJoinVal(scope, valSymbol, value)
 
     def writeJoinOuter(scope: Scope, outer: Symbol, outerScope: ScopeSet)(using mutable: MutableData): Unit =
       mutable.writeJoinOuter(scope, outer, outerScope)
@@ -709,16 +705,16 @@ class Objects(using Context @constructorOnly):
 
   /** Cache used to terminate the check  */
   object Cache:
-    case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
+    case class Config(thisV: Value, scope: Scope, heap: Heap.Data)
     case class Res(value: Value, heap: Heap.Data)
 
     class Data extends Cache[Config, Res]:
       def get(thisV: Value, expr: Tree)(using Heap.MutableData, Env.Data): Option[Value] =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
+        val config = Config(thisV, summon[Scope], Heap.getHeapData())
         super.get(config, expr).map(_.value)
 
-      def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data): Value =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
+      def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Scope): Value =
+        val config = Config(thisV, summon[Scope], Heap.getHeapData())
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
           Res(fun(expr), Heap.getHeapData())
         }
@@ -766,7 +762,7 @@ class Objects(using Context @constructorOnly):
         case None =>
           report.warning("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
 
-  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
+  type Contextual[T] = (Context, State.Data, Scope, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -825,22 +821,28 @@ class Objects(using Context @constructorOnly):
           case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) then a else Bottom
           case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
           case ValueSet(values) => values.map(v => v.filterClass(klass)).join
-          case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
           case fun: Fun =>
             if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
 
   given Join[ScopeSet] with
     extension (a: ScopeSet)
       def join(b: ScopeSet): ScopeSet =
-        assert(!a.scopes.isEmpty && !b.scopes.isEmpty && a.scopes.head.level == b.scopes.head.level,
-               "Invalid join on scopes!")
+        assert(a.level == b.level, "Invalid join on scopes!")
         ScopeSet(a.scopes ++ b.scopes)
 
   extension (values: Iterable[Value])
-    def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
+    def join: Value =
+      if values.isEmpty then
+        Bottom
+      else
+        values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (scopes: Iterable[ScopeSet])
-    def join: ScopeSet = scopes.reduce { (s1, s2) => s1.join(s2) }
+    def join: ScopeSet =
+      if scopes.isEmpty then
+        Env.NoEnv
+      else
+        scopes.reduce { (s1, s2) => s1.join(s2) }
 
     // def widen(height: Int): Contextual[List[V]] = values.map(_.widen(height)).toList
 
@@ -869,7 +871,7 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = forcelog("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
     case Top =>
       report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
@@ -933,7 +935,7 @@ class Objects(using Context @constructorOnly):
 
       if target == defn.Array_apply || target == defn.Array_clone then
         if arr.owner == State.currentObject then
-          arr.valValue()
+          arr.content
         else
           errorReadOtherStaticObject(State.currentObject, arr)
           Bottom
@@ -942,7 +944,7 @@ class Objects(using Context @constructorOnly):
         if arr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, arr)
         else
-          Heap.writeJoin(arr.addr, args.tail.head.value)
+          arr.updateContent(args.tail.head.value)
         Bottom
       else
         // Array.length is OK
@@ -963,7 +965,7 @@ class Objects(using Context @constructorOnly):
       if target.isOneOf(Flags.Method) then
         if target.owner == defn.ArrayModuleClass && target.name == nme.apply then
           val arr = OfArray(State.currentObject, summon[Regions.Data])
-          Heap.writeJoin(arr.addr, args.map(_.value).join)
+          arr.updateContent(args.map(_.value).join)
           arr
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
@@ -972,16 +974,18 @@ class Objects(using Context @constructorOnly):
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
           val meth = ddef.symbol
-
-          val (thisV : ThisValue, outerEnv) =
-            if meth.owner.isClass then
-              (ref, Env.NoEnv)
+          val enclosingMethod = meth.owner.enclosingMethod
+          val resolveResult =
+            if enclosingMethod == cls.primaryConstructor then // meth is top-level method, outer is a ref
+              Some(ref, ScopeSet(Set(ref)))
             else
-              Env.resolveEnvByOwner(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Top -> Env.NoEnv)
+              Env.resolveEnvByMethod(enclosingMethod, ref, summon[Scope])
+          assert(!resolveResult.isEmpty, "Cannot find environment for method " + meth.show + "!" + Trace.show)
+          val (thisV : ThisValue, outerEnv) = resolveResult.get
 
           val env2 = Env.ofDefDef(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
-            given Env.Data = env2
+            given Scope = env2
             cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
               Returns.installHandler(meth)
               val res = cases(expr, thisV, cls)
@@ -1010,7 +1014,7 @@ class Objects(using Context @constructorOnly):
         code match
         case ddef: DefDef =>
           if meth.name == nme.apply then
-            given Env.Data = Env.ofDefDef(ddef, args.map(_.value), env)
+            given Scope = Env.ofDefDef(ddef, args.map(_.value), ScopeSet(Set(env)))
             extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
           else
             // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
@@ -1044,11 +1048,13 @@ class Objects(using Context @constructorOnly):
       if ctor.hasSource then
         val cls = ctor.owner.enclosingClass.asClass
         val ddef = ctor.defTree.asInstanceOf[DefDef]
-        val argValues = args.map(_.value)
 
-        given Env.Data = Env.ofDefDef(ddef, argValues, Env.NoEnv)
+        given Scope = ref
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+          val params = tpl.constr.termParamss.flatten.map(_.symbol)
+          val paramMap = params.zip(args.map(_.value))
+          paramMap.foreach(ref.initVal(_, _))
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
         else
           extendTrace(ddef) { // The return values for secondary constructors can be ignored
@@ -1060,6 +1066,9 @@ class Objects(using Context @constructorOnly):
       else
         // no source code available
         UnknownValue
+
+    case ValueSet(values) if values.size == 1 =>
+      callConstructor(values.head, ctor, args)
 
     case _ =>
       report.warning("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + value + Trace.show, Trace.position)
@@ -1081,6 +1090,10 @@ class Objects(using Context @constructorOnly):
     case UnknownValue =>
       reportWarningForUnknownValue("Using unknown value. " + Trace.show, Trace.position)
 
+    case arr: OfArray =>
+      report.warning("[Internal error] unexpected tree in selecting an array, array = " + arr.show + Trace.show, Trace.position)
+      Bottom
+
     case v @ SafeValue(_) =>
       if v.typeSymbol != defn.NullClass then
         // selection on Null is sensible on AST level; no warning for it
@@ -1100,7 +1113,7 @@ class Objects(using Context @constructorOnly):
     case ref: Ref =>
       val target = if needResolve then resolve(ref.klass, field) else field
       if target.is(Flags.Lazy) then
-        given Env.Data = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
+        given Scope = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
         if target.hasSource then
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, ref, target.owner.asClass, cacheResult = true)
@@ -1141,10 +1154,6 @@ class Objects(using Context @constructorOnly):
 
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
-      Bottom
-
-    case arr: OfArray =>
-      report.warning("[Internal error] unexpected tree in selecting an array, array = " + arr.show + Trace.show, Trace.position)
       Bottom
 
     case Bottom => Bottom
@@ -1202,7 +1211,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor        The symbol of the target constructor.
    * @param args        The arguments passsed to the constructor.
    */
-  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], typeArgs: List[Type]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer.filterClass(klass.owner) match
     case _ : Fun | _: OfArray | SafeValue(_)  =>
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
@@ -1219,30 +1228,31 @@ class Objects(using Context @constructorOnly):
             Bottom
           case _ =>
             val arr = OfArray(State.currentObject, summon[Regions.Data])
-            Heap.writeJoin(arr.addr, Bottom)
             arr
       else
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
-        val (outerWidened, envWidened) =
+        val envWidened =
           outer match
             case Package(_) => // For top-level classes
-              (outer, Env.NoEnv)
+              Env.NoEnv
             case thisV : ThisValue =>
-              if klass.owner.isClass then
-                if klass.owner.is(Flags.Package) then
-                  report.warning("[Internal error] top-level class should have `Package` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
-                  (Bottom, Env.NoEnv)
-                else
-                  (thisV, Env.NoEnv)
+              if klass.owner.is(Flags.Package) then
+                report.warning("[Internal error] top-level class should have `Package` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
+                Env.NoEnv
               else
-                // klass.enclosingMethod returns its primary constructor
-                Env.resolveEnvByOwner(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(UnknownValue -> Env.NoEnv)
+                val enclosingMethod = klass.owner.enclosingMethod
+                val outerCls = thisV.asInstanceOf[Ref].klass
+                // When `klass` is directly nested in `outerCls`, `outerCls`.enclosingMethod returns its primary constructor
+                if enclosingMethod == outerCls.primaryConstructor then
+                  ScopeSet(Set(thisV.asInstanceOf[Ref]))
+                else
+                  Env.resolveEnvByMethod(klass.owner.enclosingMethod, thisV, summon[Scope]).getOrElse(Top -> Env.NoEnv)._2
 
         val instance = OfClass(klass, envWidened, ctor)
         callConstructor(instance, ctor, args)
 
     case ValueSet(values) =>
-      values.map(ref => instantiate(ref, klass, ctor, args)).join
+      values.map(ref => instantiate(ref, klass, ctor, args, typeArgs)).join
   }
 
   /** Handle local variable definition, `val x = e` or `var x = e`.
@@ -1264,9 +1274,26 @@ class Objects(using Context @constructorOnly):
    */
   def readLocal(thisV: ThisValue, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
     def isByNameParam(sym: Symbol) = sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType]
+    def evalByNameParam(value: Value): Contextual[Value] = value match
+      case fun: Fun =>
+        given Scope = Env.ofByName(sym, fun.scope)
+        eval(fun.code, fun.thisV, fun.klass)
+      case UnknownValue =>
+        reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
+      case Top =>
+        report.warning("Calling on value lost due to widening. " + Trace.show, Trace.position)
+        Bottom
+      case Bottom => Bottom
+      case ValueSet(values) if values.size == 1 =>
+        evalByNameParam(values.head)
+      case _: ValueSet | _: Ref | _: OfArray | _: Package | SafeValue(_) =>
+        report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
+        Bottom
+    end evalByNameParam
+
     // Can't use enclosingMethod here because values defined in a by-name closure will have the wrong enclosingMethod,
     // since our phase is before elimByName.
-    Env.resolveEnvByValue(sym, thisV, summon[Env.Data]) match
+    Env.resolveEnvByValue(sym, thisV, summon[Scope]) match
     case Some(thisV -> scopeSet) =>
       if sym.is(Flags.Mutable) then
         // Assume forward reference check is doing a good job
@@ -1285,18 +1312,7 @@ class Objects(using Context @constructorOnly):
           // Assume forward reference check is doing a good job
           val value = scopeSet.scopes.map(_.varValue(sym)).join
           if isByNameParam(sym) then
-            value match
-            case fun: Fun =>
-              given Env.Data = Env.ofByName(sym, fun.env)
-              eval(fun.code, fun.thisV, fun.klass)
-            case UnknownValue =>
-              reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
-            case Top =>
-              report.warning("Calling on value lost due to widening. " + Trace.show, Trace.position)
-              Bottom
-            case _: ValueSet | _: Ref | _: OfArray | _: Package | SafeValue(_) =>
-              report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
-              Bottom
+            evalByNameParam(value)
           else
             value
 
@@ -1318,7 +1334,7 @@ class Objects(using Context @constructorOnly):
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
     // Can't use enclosingMethod here because values defined in a by-name closure will have the wrong enclosingMethod,
     // since our phase is before elimByName.
-    Env.resolveEnvByValue(sym, thisV, summon[Env.Data]) match
+    Env.resolveEnvByValue(sym, thisV, summon[Scope]) match
     case Some(thisV -> scopeSet) =>
       val scopesOwnedByOthers = scopeSet.scopes.filter(_.owner != State.currentObject)
       if !scopesOwnedByOthers.isEmpty then
@@ -1335,7 +1351,7 @@ class Objects(using Context @constructorOnly):
   // -------------------------------- algorithm --------------------------------
 
   /** Check an individual object */
-  private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace, Heap.MutableData): ObjectRef = log("accessing " + classSym.show, printer, (_: Value).show) {
+  private def accessObject(classSym: ClassSymbol)(using Context, State.Data, Trace, Heap.MutableData): ObjectRef | Bottom.type = log("accessing " + classSym.show, printer, (_: Value).show) {
     if classSym.hasSource then
       State.checkObjectAccess(classSym)
     else
@@ -1343,9 +1359,10 @@ class Objects(using Context @constructorOnly):
   }
 
 
-  def checkClasses(classes: List[ClassSymbol])(using Context, Heap.MutableData) =
+  def checkClasses(classes: List[ClassSymbol])(using Context) =
     given State.Data = new State.Data
     given Trace = Trace.empty
+    given Heap.MutableData = Heap.empty
 
     for
       classSym <- classes  if classSym.isStaticObject
@@ -1406,9 +1423,12 @@ class Objects(using Context @constructorOnly):
         val args = evalArgs(argss.flatten, thisV, klass)
 
         val cls = tref.classSymbol.asClass
+        val typeArgs = tpt.tpe match
+          case AppliedType(_, args) => args
+          case _ => Nil
         withTrace(trace2) {
           val outer = outerValue(tref, thisV, klass)
-          instantiate(outer, cls, ctor, args)
+          instantiate(outer, cls, ctor, args, typeArgs)
         }
 
       case TypeCast(elem, tpe) =>
@@ -1512,10 +1532,10 @@ class Objects(using Context @constructorOnly):
           withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
 
       case closureDef(ddef) =>
-        Fun(ddef, thisV, klass, summon[Env.Data])
+        Fun(ddef, thisV, klass, summon[Scope])
 
       case PolyFun(ddef) =>
-        Fun(ddef, thisV, klass, summon[Env.Data])
+        Fun(ddef, thisV, klass, summon[Scope])
 
       case Block(stats, expr) =>
         evalExprs(stats, thisV, klass)
@@ -1559,7 +1579,7 @@ class Objects(using Context @constructorOnly):
         val module = defn.getWrapVarargsArrayModule.moduleClass.asClass
         val args = evalArgs(elems.map(Arg.apply), thisV, klass)
         val arr = OfArray(State.currentObject, summon[Regions.Data])
-        Heap.writeJoin(arr.addr, args.map(_.value).join)
+        arr.updateContent(args.map(_.value).join)
         call(ObjectRef(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
@@ -1637,6 +1657,7 @@ class Objects(using Context @constructorOnly):
 
       case bind @ Bind(_, pat) =>
         val (tpe, value) = evalPattern(scrutinee, pat)
+
         initLocal(bind.symbol, value)
         (tpe, value)
 
@@ -1875,7 +1896,7 @@ class Objects(using Context @constructorOnly):
     args.foreach { arg =>
       val res =
         if arg.isByName then
-          Fun(arg.tree, thisV, klass, summon[Env.Data])
+          Fun(arg.tree, thisV, klass, summon[Scope])
         else
           eval(arg.tree, thisV, klass)
 
@@ -1912,9 +1933,11 @@ class Objects(using Context @constructorOnly):
       // update outer for super class
       val res = outerValue(tref, thisV, klass)
       res match {
-        case ref: Ref => thisV.initOuter(cls, ref)
+        case ref: Ref => thisV.initOuter(cls, ScopeSet(Set(ref)))
         case ValueSet(values) if values.forall(_.isInstanceOf[Ref]) =>
-          thisV.initOuterSet(cls, ScopeSet(values.map(_.asInstanceOf[Ref])))
+          thisV.initOuter(cls, ScopeSet(values.map(_.asInstanceOf[Ref])))
+        case _: Package =>
+          thisV.initOuter(cls, Env.NoEnv)
         case _ =>
           val error = "[Internal error] Invalid outer value, cls = " + cls + ", value = " + res + Trace.show
           report.warning(error, Trace.position)
@@ -2023,18 +2046,21 @@ class Objects(using Context @constructorOnly):
    * Object access elision happens when the object access is used as a prefix
    * in `new o.C` and `C` does not need an outer.
    */
-  def resolveThis(target: ClassSymbol, thisV: ThisValue, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[ThisValue] = log("resolveThis target = " + target.show + ", this = " + thisV.show, printer, (_: Value).show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[ThisValue] = log("resolveThis target = " + target.show + ", this = " + thisV.show, printer, (_: Value).show) {
     def recur(scopeSet: ScopeSet): ThisValue =
-      val head = scopeSet.scopes.head
-      if head.isInstanceOf[Ref] then
-        val klass = head.asInstanceOf[Ref].klass
-        assert(scopeSet.scopes.forall(_.asInstanceOf[Ref].klass == klass), "Multiple possible outer class?")
-        if klass == target then
-          ValueSet(scopeSet.scopes.map(_.asInstanceOf[Ref]))
+      if scopeSet == Env.NoEnv then
+        Bottom
+      else
+        val head = scopeSet.scopes.head
+        if head.isInstanceOf[Ref] then
+          val klass = head.asInstanceOf[Ref].klass
+          assert(scopeSet.scopes.forall(_.asInstanceOf[Ref].klass == klass), "Multiple possible outer class?")
+          if klass == target then
+            ValueSet(scopeSet.scopes.map(_.asInstanceOf[Ref]))
+          else
+            recur(scopeSet.scopes.map(_.outer).join)
         else
           recur(scopeSet.scopes.map(_.outer).join)
-      else
-        recur(scopeSet.scopes.map(_.outer).join)
     end recur
 
     if target.is(Flags.Package) then
@@ -2064,7 +2090,7 @@ class Objects(using Context @constructorOnly):
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `tref` is located.
    */
-  def outerValue(tref: TypeRef, thisV: ThisValue, klass: ClassSymbol): Contextual[ThisValue] =
+  def outerValue(tref: TypeRef, thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
@@ -2073,8 +2099,7 @@ class Objects(using Context @constructorOnly):
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else
         val res = evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
-        assert(res.isInstanceOf[ThisValue], "Not a ref?")
-        res.asInstanceOf[ThisValue]
+        res
 
   def printTraceWhenMultiple(trace: Trace)(using Context): String =
     if trace.toVector.size > 1 then
