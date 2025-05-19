@@ -284,7 +284,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refsType) =>
-        val refs = refsType.retainedElements
+        val refs = refsType.retainedElementsRaw
         if Feature.ccEnabledSomewhere then
           toTextCapturing(parent, refs.map(r => ast.tpd.TypeTree(r)), "") ~ Str("R").provided(printDebug)
         else toText(parent)
@@ -311,8 +311,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ExprType(restp) =>
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            ann.tree.retainedSet.retainedElements match
-              case ref :: Nil if ref.isCap => Str("=>")
+            ann.tree.retainedSet.retainedElementsRaw match
+              case (ref: CaptureRef) :: Nil if ref.isCap => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs.map(r => ast.tpd.TypeTree(r)))
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
