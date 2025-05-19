@@ -869,7 +869,7 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = CCState.ignoringFreshLevels:
+            val joint = CCState.withCollapsedFresh:
                 pdenot.meet(
                   new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
                   pre,

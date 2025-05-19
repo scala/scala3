@@ -159,7 +159,7 @@ object CheckCaptures:
                     def showInOpenedFreshBinders(mts: List[MethodType]): String = mts match
                       case Nil => i"the part $t of "
                       case mt :: mts1 =>
-                        CCState.inNewExistentialScope(mt):
+                        inNewExistentialScope(mt):
                           showInOpenedFreshBinders(mts1)
                     showInOpenedFreshBinders(openScopes.reverse)
                 report.error(
@@ -1160,8 +1160,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
-            && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
-            CCState.withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
+              && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
+            withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
               checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
         for pureBase <- cls.pureBaseClass do // (4)
           def selfTypeTree = impl.body
@@ -1711,7 +1711,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def traverse(t: Tree)(using Context) =
         t match
           case t: Template =>
-            ignoringFreshLevels:
+            withCollapsedFresh:
               checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
           case _ =>
         traverseChildren(t)
@@ -1915,9 +1915,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                 val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
-                CCState.withCapAsRoot: // OK? We need this since bounds use `cap` instead of `fresh`
-                  CCState.ignoringFreshLevels:
-                    checkBounds(normArgs, tl)
+                withCollapsedFresh: // OK? We need this since bounds use `cap` instead of `fresh`
+                  checkBounds(normArgs, tl)
                 if ccConfig.postCheckCapturesets then
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
@@ -1936,9 +1935,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             case tree: InferredTypeTree =>
             case tree: New =>
             case tree: TypeTree =>
-              CCState.withCapAsRoot:
-                CCState.ignoringFreshLevels:
-                  checkAppliedTypesIn(tree.withType(tree.nuType))
+              withCollapsedFresh:
+                checkAppliedTypesIn(tree.withType(tree.nuType))
             case _ => traverseChildren(t)
         checkApplied.traverse(unit)
     end postCheck

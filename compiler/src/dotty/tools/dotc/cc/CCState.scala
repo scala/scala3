@@ -118,7 +118,7 @@ class CCState:
 
   private var capIsRoot: Boolean = false
 
-  private var ignoreFreshLevels: Boolean = false
+  private var collapseFresh: Boolean = false
 
 object CCState:
 
@@ -164,20 +164,21 @@ object CCState:
   /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
   def capIsRoot(using Context): Boolean = ccState.capIsRoot
 
-  /** Run `op` under the assumption that all FreshCap instances are equal.
+  /** Run `op` under the assumption that all FreshCap instances are equal
+   *  to each other and to GlobalCap.
    *  Needed to make override checking of types containing fresh work.
    *  Asserted in override checking, tested in maxSubsumes.
    *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
    */
-  inline def ignoringFreshLevels[T](op: => T)(using Context): T =
+  inline def withCollapsedFresh[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.ignoreFreshLevels
-      ccs.ignoreFreshLevels = true
-      try op finally ccs.ignoreFreshLevels = saved
+      val saved = ccs.collapseFresh
+      ccs.collapseFresh = true
+      try op finally ccs.collapseFresh = saved
     else op
 
-  /** Should all FreshCap instances be treated equal? */
-  def ignoreFreshLevels(using Context): Boolean = ccState.ignoreFreshLevels
+  /** Should all FreshCap instances be treated as equal to GlobalCap? */
+  def collapseFresh(using Context): Boolean = ccState.collapseFresh
 
 end CCState

@@ -6,7 +6,7 @@
   |
   |                  where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
-9 |  val foo: IO^ -> IO^ = x => x // error // error
+9 |  val foo: IO^ -> IO^ = x => x // error
   |                        ^^^^^^
   |                        Found:    (x: IO^) ->? IO^{x}
   |                        Required: (x: IO^) -> IO^²
@@ -25,13 +25,3 @@
    |                           ^^^^^^
    |                           Local reach capability x* leaks into capture scope of method test.
    |                           To allow this, the parameter x should be declared with a @use annotation
--- [E164] Declaration Error: tests/neg-custom-args/captures/widen-reach.scala:9:6 --------------------------------------
-9 |  val foo: IO^ -> IO^ = x => x // error // error
-  |      ^
-  |      error overriding value foo in trait Foo of type IO^ -> box IO^;
-  |        value foo of type IO^ -> IO^² has incompatible type
-  |
-  |      where:    ^  refers to the universal root capability
-  |                ^² refers to a fresh root capability in the type of value foo
-  |
-  | longer explanation available when compiling with `-explain`

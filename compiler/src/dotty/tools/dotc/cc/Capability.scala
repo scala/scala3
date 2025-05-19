@@ -490,11 +490,11 @@ object Capabilities:
       || this.match
         case x: FreshCap =>
           def levelOK =
-            if ccConfig.useFreshLevels && !CCState.ignoreFreshLevels then
+            if ccConfig.useFreshLevels && !CCState.collapseFresh then
               val yOwner = y.levelOwner
               yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
             else y.core match
-              case GlobalCap | ResultCap(_) | _: ParamRef => false
+              case ResultCap(_) | _: ParamRef => false
               case _ => true
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
@@ -512,6 +512,7 @@ object Capabilities:
           y match
             case GlobalCap => true
             case _: ResultCap => false
+            case _: FreshCap if CCState.collapseFresh => true
             case _ =>
               y.derivesFromSharedCapability
               || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
@@ -619,8 +620,6 @@ object Capabilities:
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
-        case t @ CapturingType(parent: TypeRef, _) if parent.symbol == defn.Caps_CapSet =>
-          t
         case t @ CapturingType(_, _) =>
           mapOver(t)
         case t @ AnnotatedType(parent, ann) =>
