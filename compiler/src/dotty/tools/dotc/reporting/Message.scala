@@ -487,12 +487,17 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?=> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?=> String, actions: List[CodeAction] = List.empty)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind
 
+  override def actions(using Context): List[CodeAction] = actions
+
   override def toString(): String = msg
+
+  def withActions(actions: CodeAction*): NoExplanation =
+    new NoExplanation(msgFn, actions.toList)
 }
 
 /** The extractor for `NoExplanation` can be used to check whether any error

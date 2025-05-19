@@ -21,6 +21,8 @@ import NameKinds.ContextBoundParamName
 import rewrites.Rewrites.patch
 import util.Spans.Span
 import rewrites.Rewrites
+import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+import dotty.tools.dotc.util.SourcePosition
 
 /** A utility trait containing source-dependent deprecation messages
  *  and migrations.
@@ -139,14 +141,23 @@ trait Migrations:
       val rewriteMsg =
         if hasParentheses then
           Message.rewriteNotice("This code", mversion.patchFrom)
-        else
-          ""
-      report.errorOrMigrationWarning(
+        else ""
+      val message =
         em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
-            |To disable the warning, please use the following option: 
+            |To disable the warning, please use the following option:
             |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
-            |""", 
-        pt.args.head.srcPos, mversion)
+            |"""
+      val codeAction = CodeAction(
+        title = "Add `using` clause",
+        description = None,
+        patches = List(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
+      )
+      val withActions = message.withActions(codeAction)
+      report.errorOrMigrationWarning(
+        withActions,
+        pt.args.head.srcPos,
+        mversion
+      )
       if hasParentheses && mversion.needsPatch then
         patch(Span(pt.args.head.span.start), "using ")
   end implicitParams
