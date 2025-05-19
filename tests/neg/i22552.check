@@ -1,12 +1,12 @@
--- [E040] Syntax Error: tests/neg/i22552.scala:3:10 --------------------------------------------------------------------
+-- [E214] Syntax Error: tests/neg/i22552.scala:3:10 --------------------------------------------------------------------
 3 |  type A[X: TC]                     // error
-  |          ^
-  |          ']' expected, but ':' found
--- [E040] Syntax Error: tests/neg/i22552.scala:4:13 --------------------------------------------------------------------
+  |          ^^^^
+  |          Context bounds are not allowed in this position
+-- [E214] Syntax Error: tests/neg/i22552.scala:4:13 --------------------------------------------------------------------
 4 |  type C = [X: TC] =>> List[X]      // error
-  |             ^
-  |             ']' expected, but ':' found
--- [E040] Syntax Error: tests/neg/i22552.scala:5:13 --------------------------------------------------------------------
+  |             ^^^^
+  |             Context bounds are not allowed in this position
+-- [E214] Syntax Error: tests/neg/i22552.scala:5:13 --------------------------------------------------------------------
 5 |  type D = [X: TC] => () => List[X] // error
-  |             ^
-  |             ']' expected, but ':' found
+  |             ^^^^
+  |             Context bounds are not allowed in this position
