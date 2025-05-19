@@ -1142,6 +1142,7 @@ object Build {
   )
 
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
+    .settings(semanticdbEnabled := false) // TODO: Remove this once we work on 3.8.1
   lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {

@@ -1445,15 +1445,13 @@ class Definitions {
    *  objects with the same name.
    */
   @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
-  @tu private lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
   @tu private lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
 
   /** If `sym` is a patched library class, the source file of its patch class,
    *  otherwise `NoSource`
    */
   def patchSource(sym: Symbol)(using Context): SourceFile =
-    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
-    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
+    if sym == LanguageModuleClass then LanguageModuleClassPatch.source
     else NoSource
 
   /** A finalizer that patches standard library classes.
@@ -1537,9 +1535,7 @@ class Definitions {
       denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
       patch2(denot, patchCls)
 
-    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
-      patchWith(ScalaPredefModuleClassPatch)
-    else if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
+    if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
       patchWith(LanguageModuleClassPatch)
   end patchStdLibClass
 
