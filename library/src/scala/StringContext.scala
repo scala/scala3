@@ -12,6 +12,7 @@
 
 package scala
 
+import scala.language.`2.13`
 import java.lang.{ StringBuilder => JLSBuilder }
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuilder

@@ -13,6 +13,7 @@
 package scala
 package collection.immutable
 
+import scala.language.`2.13`
 import java.lang.Integer.bitCount
 import java.lang.System.arraycopy
 

@@ -14,6 +14,7 @@ package scala
 package sys
 package process
 
+import scala.language.`2.13`
 import processInternal._
 import Process._
 import BasicIO.{LazilyListed, Streamed, Uncloseable}

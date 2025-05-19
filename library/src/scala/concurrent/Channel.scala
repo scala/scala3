@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import scala.language.`2.13`
+
 /** This class provides a simple FIFO queue of data objects,
  *  which are read by one or more reader threads.
  *

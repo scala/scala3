@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /**
  * When defining a field, the Scala compiler creates up to four accessors
  * for it: a getter, a setter, and if the field is annotated with

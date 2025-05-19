@@ -12,6 +12,7 @@
 
 package scala.jdk
 
+import scala.language.`2.13`
 import java.time.{Duration => JDuration}
 
 import scala.concurrent.duration.FiniteDuration

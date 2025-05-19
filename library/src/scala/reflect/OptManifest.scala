@@ -13,6 +13,8 @@
 package scala
 package reflect
 
+import scala.language.`2.13`
+
 /** A `OptManifest[T]` is an optional [[scala.reflect.Manifest]].
  *
  *  It is either a `Manifest` or the value `NoManifest`.

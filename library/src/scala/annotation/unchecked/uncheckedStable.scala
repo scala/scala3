@@ -12,6 +12,7 @@
 
 package scala.annotation.unchecked
 
+import scala.language.`2.13`
 import scala.annotation.meta.{field, getter}
 
 /** An annotation for values that are assumed to be stable even though their

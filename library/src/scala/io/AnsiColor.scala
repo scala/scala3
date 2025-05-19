@@ -13,6 +13,8 @@
 package scala
 package io
 
+import scala.language.`2.13`
+
 /** ANSI escape codes providing control over text formatting and color on supporting text terminals.
   *
   * ==ANSI Style and Control Codes==

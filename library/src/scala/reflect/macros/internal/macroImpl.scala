@@ -13,6 +13,8 @@
 package scala.reflect.macros
 package internal
 
+import scala.language.`2.13`
+
 /** Links macro definitions with their implementation.
  *  This is necessary to preserve macro def -> macro impl links between compilation runs.
  *

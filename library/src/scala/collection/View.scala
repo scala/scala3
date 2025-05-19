@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2.13`
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.{ArrayBuffer, Builder}
 import scala.collection.immutable.LazyList

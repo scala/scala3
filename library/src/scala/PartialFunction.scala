@@ -12,6 +12,7 @@
 
 package scala
 
+import scala.language.`2.13`
 import scala.annotation.nowarn
 
 /** A partial function of type `PartialFunction[A, B]` is a unary function

@@ -15,6 +15,8 @@
 
 package scala.jdk
 
+import scala.language.`2.13`
+
 object FunctionWrappers {
   case class FromJavaBiConsumer[T, U](jf: java.util.function.BiConsumer[T, U]) extends scala.Function2[T, U, Unit] {
     def apply(x1: T, x2: U) = jf.accept(x1, x2)

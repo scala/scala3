@@ -13,6 +13,7 @@
 package scala.collection.convert
 package impl
 
+import scala.language.`2.13`
 import scala.collection.{IntStepper, Stepper}
 
 /** Implements Stepper on an integer Range.  You don't actually need the Range to do this,

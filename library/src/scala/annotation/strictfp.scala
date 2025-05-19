@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /** If this annotation is present on a method or its enclosing class,
  *  the strictfp flag will be emitted.
  */

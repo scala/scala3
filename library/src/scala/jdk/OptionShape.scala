@@ -15,6 +15,7 @@ package scala.jdk
 import java.util.{Optional, OptionalDouble, OptionalInt, OptionalLong}
 import java.{lang => jl}
 
+import scala.language.`2.13`
 import scala.annotation.implicitNotFound
 
 /** A type class implementing conversions from a generic Scala `Option` or Java `Optional` to

@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import scala.language.`2.13`
 
 final class RichBoolean(val self: Boolean) extends AnyVal with OrderedProxy[Boolean] {
   protected def ord: scala.math.Ordering.Boolean.type = scala.math.Ordering.Boolean

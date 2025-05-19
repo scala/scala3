@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2.13`
 
 package object mutable {
   @deprecated("Use ArraySeq instead of WrappedArray; it can represent both, boxed and unboxed arrays", "2.13.0")

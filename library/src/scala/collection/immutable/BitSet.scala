@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2.13`
 import BitSetOps.{LogWL, updateArray}
 import mutable.Builder
 import scala.annotation.{implicitNotFound, nowarn}

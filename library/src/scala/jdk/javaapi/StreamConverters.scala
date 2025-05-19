@@ -12,6 +12,7 @@
 
 package scala.jdk.javaapi
 
+import scala.language.`2.13`
 import java.util.stream.{DoubleStream, IntStream, LongStream, Stream, StreamSupport}
 import java.{lang => jl}
 

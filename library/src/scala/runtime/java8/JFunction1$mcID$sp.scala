@@ -12,6 +12,8 @@
 
 package scala.runtime.java8
 
+import scala.language.`2.13`
+
 @FunctionalInterface trait JFunction1$mcID$sp extends Function1[Any, Any] with Serializable {
   def apply$mcID$sp(v1: Double): Int
   override def apply(t: Any): Any = scala.runtime.BoxesRunTime.boxToInteger(apply$mcID$sp(scala.runtime.BoxesRunTime.unboxToDouble(t)))

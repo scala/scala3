@@ -13,6 +13,7 @@
 package scala
 package util
 
+import scala.language.`2.13`
 import scala.annotation.{migration, tailrec}
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.BuildFrom

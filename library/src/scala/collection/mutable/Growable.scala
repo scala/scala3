@@ -14,6 +14,8 @@ package scala
 package collection
 package mutable
 
+import scala.language.`2.13`
+
 /** This trait forms part of collections that can be augmented
   * using a `+=` operator and that can be cleared of all elements using
   * a `clear` method.

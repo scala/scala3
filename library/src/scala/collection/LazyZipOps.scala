@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2.13`
 import scala.language.implicitConversions
 
 /** Decorator representing lazily zipped pairs.

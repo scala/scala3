@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2.13`
 import scala.collection.generic.CommonErrors
 
 /** Trait that overrides operations to take advantage of strict builders.

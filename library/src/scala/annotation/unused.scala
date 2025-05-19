@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /** Mark an element unused for a given context.
  *
  *  Unused warnings are suppressed for elements known to be unused.

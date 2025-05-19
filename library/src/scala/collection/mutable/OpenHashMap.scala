@@ -13,6 +13,7 @@
 package scala.collection
 package mutable
 
+import scala.language.`2.13`
 import java.lang.Integer.numberOfLeadingZeros
 import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
