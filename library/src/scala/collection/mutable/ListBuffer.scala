@@ -51,7 +51,7 @@ class ListBuffer[A]
   private[this] var aliased = false
   private[this] var len = 0
 
-  private type Predecessor[A0] = ::[A0] /*| Null*/
+  private type Predecessor = ::[A] /*| Null*/
 
   def iterator: Iterator[A] = new MutationTracker.CheckedIterator(first.iterator, mutationCount)
 
@@ -187,7 +187,7 @@ class ListBuffer[A]
   }
 
   // returns the `::` at `i - 1` (such that its `next` at position `i` can be mutated), or `null` if `i == 0`.
-  private def locate(i: Int): Predecessor[A] =
+  private def locate(i: Int): Predecessor =
     if (i == 0) null
     else if (i == len) last0
     else {
@@ -197,10 +197,10 @@ class ListBuffer[A]
         p = p.tail
         j -= 1
       }
-      p.asInstanceOf[Predecessor[A]]
+      p.asInstanceOf[Predecessor]
     }
 
-  private def getNext(p: Predecessor[A]): List[A] =
+  private def getNext(p: Predecessor): List[A] =
     if (p == null) first else p.next
 
   def update(idx: Int, elem: A): Unit = {
@@ -241,7 +241,7 @@ class ListBuffer[A]
   }
 
   // `fresh` must be a `ListBuffer` that only we have access to
-  private def insertAfter(prev: Predecessor[A], fresh: ListBuffer[A]): Unit = {
+  private def insertAfter(prev: Predecessor, fresh: ListBuffer[A]): Unit = {
     if (!fresh.isEmpty) {
       val follow = getNext(prev)
       if (prev eq null) first = fresh.first else prev.next = fresh.first
@@ -289,7 +289,7 @@ class ListBuffer[A]
       throw new IllegalArgumentException("removing negative number of elements: " + count)
     }
 
-  private def removeAfter(prev: Predecessor[A], n: Int) = {
+  private def removeAfter(prev: Predecessor, n: Int) = {
     @tailrec def ahead(p: List[A], n: Int): List[A] =
       if (n == 0) p else ahead(p.tail, n - 1)
     val nx = ahead(getNext(prev), n)
@@ -346,7 +346,7 @@ class ListBuffer[A]
    */
   def filterInPlace(p: A => Boolean): this.type = {
     ensureUnaliased()
-    var prev: Predecessor[A] = null
+    var prev: Predecessor = null
     var cur: List[A] = first
     while (!cur.isEmpty) {
       val follow = cur.tail
@@ -355,7 +355,7 @@ class ListBuffer[A]
         else prev.next = follow
         len -= 1
       } else {
-        prev = cur.asInstanceOf[Predecessor[A]]
+        prev = cur.asInstanceOf[Predecessor]
       }
       cur = follow
     }
