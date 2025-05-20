@@ -345,9 +345,6 @@ object Build {
           buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
-            .withTag(if (isInsideCI) "CI" else "Local")
-            .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
-            .withValues(buildScan.values ++ GithubEnv.develocityValues)
             .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
         )
         .withBuildCache(
