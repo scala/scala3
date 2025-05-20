@@ -1149,6 +1149,15 @@ object Build {
       scalaVersion := "2.13.16"
     )
 
+  lazy val `scala-library-internal-tasty` = project.in(file("library-internal-tasty"))
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test")
+    .settings(
+      scalacOptions := Seq("-Werror:false", "-Ycompile-scala2-library"),
+      (Compile / sources) := (`scala-library-internal` / Compile / sources).value.filterNot(_.getPath.endsWith("AnyVal.scala")),
+      (Compile / packageBin / mappings) := (Compile / packageBin / mappings).value.filter(_._2.endsWith(".tasty"))
+    )
+
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
     case Bootstrapped => `scala3-library-bootstrapped`
@@ -1232,6 +1241,7 @@ object Build {
     settings(moduleName := "scala2-library")
     .settings(
       (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
+      (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
       mimaCurrentClassfiles := (Compile / packageBin).value,
     )
 
@@ -2618,9 +2628,11 @@ object ScaladocConfigs {
   def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
     def stdLibVersion = stdlibVersion(NonBootstrapped)
     def srcManaged(v: String, s: String) = s"out/bootstrap/scala2-library-bootstrapped/scala-$v/src_managed/main/$s-library-src"
+    def srcManaged2 = s"library-internal/src"
     SourceLinks(
       List(
         scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
+        scalaSrcLink(stdLibVersion, srcManaged2 + "="),
         dottySrcLink(refVersion, "library/src=", "#library/src"),
         dottySrcLink(refVersion),
         "docs=github://scala/scala3/main#docs"
@@ -2707,6 +2719,7 @@ object ScaladocConfigs {
   lazy val Scala3 = Def.task {
     val dottyJars: Seq[java.io.File] = Seq(
       (`scala2-library-bootstrapped`/Compile/products).value,
+      (`scala-library-internal-tasty`/Compile/products).value,
       (`scala3-library-bootstrapped`/Compile/products).value,
       (`scala3-interfaces`/Compile/products).value,
       (`tasty-core-bootstrapped`/Compile/products).value,
@@ -2773,6 +2786,7 @@ object ScaladocConfigs {
       .withTargets(
         Seq(
           s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"out/bootstrap/scala-library-internal-tasty/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"out/bootstrap/scala3-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"tmp/interfaces/target/classes",
           s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
