@@ -1334,7 +1334,38 @@ class CheckCaptures extends Recheck, SymTransformer:
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
-      ccState.testOK(isCompatible(actualBoxed, expected1)) match
+
+      def tryThisType: Boolean =
+        isCompatible(actualBoxed, expected1)
+
+      @annotation.tailrec
+      def widenNamed(tp: Type): Type = tp match
+        case stp: SingletonType => widenNamed(stp.widen)
+        case ntp: NamedType => ntp.info match
+          case info: TypeBounds => widenNamed(info.hi)
+          case _ => tp
+        case _ => tp
+
+      /** When the actual type is a named type, and the previous attempt failed, try to widen the named type
+       * and try another time.
+       *
+       * This is useful for cases like:
+       *
+       *   def id[X <: box IO^{a}](x: X): IO^{a} = x
+       *
+       * When typechecking the body, we need to show that `(x: X)` can be typed at `IO^{a}`.
+       * In the first attempt, since `X` is simply a parameter reference, we treat it as non-boxed and perform
+       * no box adptation. But its upper bound is in fact boxed, and adaptation is needed for typechecking the body.
+       * In those cases, we widen such types and try box adaptation another time.
+       */
+      def tryWidenNamed: Boolean =
+        val actual1 = widenNamed(actual)
+        (actual1 ne actual) && {
+          val actualBoxed1 = adapt(actual1, expected1, tree)
+          isCompatible(actualBoxed1, expected1)
+        }
+
+      ccState.testOK(tryThisType || tryWidenNamed) match
         case CompareResult.OK =>
           if debugSuccesses then tree match
               case Ident(_) =>
