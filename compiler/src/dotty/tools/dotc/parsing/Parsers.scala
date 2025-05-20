@@ -3412,7 +3412,10 @@ object Parsers {
       // begin termParamClause
       inParensWithCommas {
         if in.token == RPAREN && paramOwner != ParamOwner.ExtensionPrefix && !impliedMods.is(Given)
-        then Nil
+        then
+          if paramOwner.takesOnlyUsingClauses then
+            syntaxError(em"`using` expected")
+          Nil
         else
           val clause =
             if paramOwner == ParamOwner.ExtensionPrefix
@@ -4060,7 +4063,10 @@ object Parsers {
         leadParamss += extParams
         isUsingClause(extParams)
       do ()
-      leadParamss ++= termParamClauses(ParamOwner.ExtensionFollow, numLeadParams)
+      // Empty parameter clauses are filtered out. They are already reported as syntax errors and are not
+      // allowed here.
+      val extFollowParams = termParamClauses(ParamOwner.ExtensionFollow, numLeadParams).filterNot(_.isEmpty)
+      leadParamss ++= extFollowParams
       if in.isColon then
         syntaxError(em"no `:` expected here")
         in.nextToken()
