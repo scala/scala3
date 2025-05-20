@@ -262,6 +262,19 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _                            => false
   }
 
+  /** Expression was written `e: Unit` to quell warnings. Looks into adapted tree. */
+  def isAscribedToUnit(tree: Tree): Boolean =
+    import typer.Typer.AscribedToUnit
+       tree.hasAttachment(AscribedToUnit)
+    || {
+      def loop(tree: Tree): Boolean = tree match
+        case Apply(fn, _)     => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case TypeApply(fn, _) => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case Block(_, expr)   => expr.hasAttachment(AscribedToUnit) || loop(expr)
+        case _                => false
+      loop(tree)
+    }
+
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
     catchesAllOf(cdef, defn.ThrowableType)
