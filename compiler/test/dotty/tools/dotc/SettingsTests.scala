@@ -245,7 +245,7 @@ class SettingsTests {
       assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
       assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
 
-    }(Files.deleteIfExists(_), Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_), Files.deleteIfExists(_))
 
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>

@@ -838,7 +838,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         count += 1
       for file <- files if isSourceFile(file) do
         Using.resource(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
-          source.getLines.zipWithIndex.foreach: (line, lineNbr) =>
+          source.getLines().zipWithIndex.foreach: (line, lineNbr) =>
             comment.findAllMatchIn(line).foreach:
               case comment("nopos-") => bump("nopos")
               case _                 => bump(s"${file.getPath}:${lineNbr+1}")
@@ -980,7 +980,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         expectedErrors += 1
       files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
-          source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
+          source.getLines().zipWithIndex.foreach { case (line, lineNbr) =>
             comment.findAllMatchIn(line).foreach { m =>
               m.group(2) match
                 case prefix if m.group(1).isEmpty =>

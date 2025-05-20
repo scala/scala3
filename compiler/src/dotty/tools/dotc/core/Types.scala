@@ -1630,7 +1630,7 @@ object Types extends TypeUtils {
     def underlyingIterator(using Context): Iterator[Type] = new Iterator[Type] {
       var current = Type.this
       var hasNext = true
-      def next = {
+      def next() = {
         val res = current
         hasNext = current.isInstanceOf[TypeProxy]
         if (hasNext) current = current.asInstanceOf[TypeProxy].underlying
