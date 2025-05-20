@@ -45,7 +45,7 @@ object ApplyExtractor:
 
 object ApplyArgsExtractor:
   def getArgsAndParams(
-    indexedContext: IndexedContext,
+    optIndexedContext: Option[IndexedContext],
     apply: Apply,
     span: Span
   )(using Context): List[(List[Tree], List[ParamSymbol])] =
@@ -79,6 +79,7 @@ object ApplyArgsExtractor:
       // fallback for when multiple overloaded methods match the supplied args
     def fallbackFindMatchingMethods() =
       def matchingMethodsSymbols(
+        indexedContext: IndexedContext,
         method: Tree
       ): List[Symbol] =
         method match
@@ -94,11 +95,12 @@ object ApplyArgsExtractor:
               case single: SingleDenotation => List(single.symbol)
               case multi: MultiDenotation => multi.allSymbols
             }.getOrElse(Nil)
-          case Apply(fun, _) => matchingMethodsSymbols(fun)
+          case Apply(fun, _) => matchingMethodsSymbols(indexedContext, fun)
           case _ => Nil
       val matchingMethods =
         for
-          potentialMatch <- matchingMethodsSymbols(method)
+          indexedContext <- optIndexedContext.toList
+          potentialMatch <- matchingMethodsSymbols(indexedContext, method)
           if potentialMatch.is(Flags.Method) &&
                 potentialMatch.vparamss.length >= argss.length &&
                 Try(potentialMatch.isAccessibleFrom(apply.symbol.info)).toOption
