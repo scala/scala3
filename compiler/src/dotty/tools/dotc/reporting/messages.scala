@@ -60,7 +60,7 @@ trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
     super.msgPostscript ++ matchReductionAddendum(tps*)
 
-abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
   def kind = MessageKind.TypeMismatch
   def explain(using Context) = err.whyNoMatchStr(found, expected)
