@@ -1,15 +1,11 @@
 package dotty.tools.pc
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.typer.Applications.UnapplyArgs
@@ -76,7 +72,7 @@ object InterCompletionType:
       case Try(block, _, _) :: rest if block.span.contains(span) => inferType(rest, span)
       case CaseDef(_, _, body) :: Try(_, cases, _) :: rest if body.span.contains(span) && cases.exists(_.span.contains(span)) => inferType(rest, span)
       case If(cond, _, _) :: rest if !cond.span.contains(span) => inferType(rest, span)
-      case If(cond, _, _) :: rest if cond.span.contains(span) => Some(Symbols.defn.BooleanType)
+      case If(cond, _, _) :: rest if cond.span.contains(span) => Some(defn.BooleanType)
       case CaseDef(_, _, body) :: Match(_, cases) :: rest if body.span.contains(span) && cases.exists(_.span.contains(span)) =>
         inferType(rest, span)
       case NamedArg(_, arg) :: rest if arg.span.contains(span) => inferType(rest, span)
@@ -97,39 +93,38 @@ object InterCompletionType:
         if ind < 0 then None
         else Some(UnapplyArgs(fun.tpe.finalResultType, fun, pats, NoSourcePosition).argTypes(ind))
       // f(@@)
-      case (app: Apply) :: rest =>
-        val param =
-          for {
-            ind <- app.args.zipWithIndex.collectFirst {
-              case (arg, id) if arg.span.contains(span) => id
-            }
-            params <- app.symbol.paramSymss.find(!_.exists(_.isTypeParam))
-            param <- params.get(ind)
-          } yield param.info
-        param match
-          // def f[T](a: T): T = ???
-          // f[Int](@@)
-          // val _: Int = f(@@)
-          case Some(t : TypeRef) if t.symbol.is(Flags.TypeParam) =>
-            for {
-              (typeParams, args) <-
-                app match
-                  case Apply(TypeApply(fun, args), _) =>
-                    val typeParams = fun.symbol.paramSymss.headOption.filter(_.forall(_.isTypeParam))
-                    typeParams.map((_, args.map(_.tpe)))
-                  // val f: (j: "a") => Int
-                  // f(@@)
-                  case Apply(Select(v, StdNames.nme.apply), _) =>
-                      v.symbol.info match
-                        case AppliedType(des, args) =>
-                          Some((des.typeSymbol.typeParams, args))
-                        case _ => None
-                  case _ => None
-              ind = typeParams.indexOf(t.symbol)
-              tpe <- args.get(ind)
-              if !tpe.isErroneous
-            } yield tpe
-          case Some(tpe) => Some(tpe)
-          case _ => None
+      case ApplyExtractor(app) =>
+        val argsAndParams = ApplyArgsExtractor.getArgsAndParams(None, app, span).headOption
+        argsAndParams.flatMap:
+          case (args, params) =>
+            val idx = args.indexWhere(_.span.contains(span))
+            val param =
+              if idx >= 0 && params.length > idx then Some(params(idx).info)
+              else None
+            param match
+              // def f[T](a: T): T = ???
+              // f[Int](@@)
+              // val _: Int = f(@@)
+              case Some(t : TypeRef) if t.symbol.is(Flags.TypeParam) =>
+                for
+                  (typeParams, args) <-
+                    app match
+                      case Apply(TypeApply(fun, args), _) =>
+                        val typeParams = fun.symbol.paramSymss.headOption.filter(_.forall(_.isTypeParam))
+                        typeParams.map((_, args.map(_.tpe)))
+                      // val f: (j: "a") => Int
+                      // f(@@)
+                      case Apply(Select(v, StdNames.nme.apply), _) =>
+                          v.symbol.info match
+                            case AppliedType(des, args) =>
+                              Some((des.typeSymbol.typeParams, args))
+                            case _ => None
+                      case _ => None
+                  ind = typeParams.indexOf(t.symbol)
+                  tpe <- args.get(ind)
+                  if !tpe.isErroneous
+                yield tpe
+              case Some(tpe) => Some(tpe)
+              case _ => None
       case _ => None
 
