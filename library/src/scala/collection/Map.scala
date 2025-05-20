@@ -98,7 +98,7 @@ trait Map[K, +V]
   */
 // Note: the upper bound constraint on CC is useful only to
 // erase CC to IterableOps instead of Object
-trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
+transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   extends IterableOps[(K, V), Iterable, C]
     with PartialFunction[K, V] {
 

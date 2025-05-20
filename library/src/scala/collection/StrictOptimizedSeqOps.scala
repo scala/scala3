@@ -16,7 +16,7 @@ package scala.collection
   * Trait that overrides operations on sequences in order
   * to take advantage of strict builders.
   */
-trait StrictOptimizedSeqOps [+A, +CC[_], +C]
+transparent trait StrictOptimizedSeqOps [+A, +CC[_], +C]
   extends Any
     with SeqOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {

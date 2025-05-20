@@ -568,7 +568,7 @@ object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
   }
 }
 
-trait ArrayDequeOps[A, +CC[_], +C <: AnyRef] extends StrictOptimizedSeqOps[A, CC, C] {
+transparent trait ArrayDequeOps[A, +CC[_], +C <: AnyRef] extends StrictOptimizedSeqOps[A, CC, C] {
   protected def array: Array[AnyRef]
 
   final override def clone(): C = klone()

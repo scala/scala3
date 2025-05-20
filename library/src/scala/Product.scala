@@ -17,7 +17,7 @@ package scala
  *  their subclasses [[scala.Tuple1]] through [[scala.Tuple22]].  In addition,
  *  all case classes implement `Product` with synthetically generated methods.
  */
-trait Product extends Any with Equals {
+transparent trait Product extends Any with Equals {
   /** The size of this product.
     *  @return     for a product `A(x,,1,,, ..., x,,k,,)`, returns `k`
     */
