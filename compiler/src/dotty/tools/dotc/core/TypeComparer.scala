@@ -2056,7 +2056,31 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   end necessaryEither
 
   /** Finds the necessary (the weakest) GADT constraint among a list of them.
-   * It returns the one being subsumed by all others if exists, and `None` otherwise. */
+   * It returns the one being subsumed by all others if exists, and `None` otherwise.
+   *
+   * This is used when typechecking pattern alternatives, for instance:
+   *
+   *   enum Expr[+T]:
+   *     case I1(x: Int) extends Expr[Int]
+   *     case I2(x: Int) extends Expr[Int]
+   *     case B(x: Boolean) extends Expr[Boolean]
+   *   import Expr.*
+   *
+   * The following function should compile:
+   *
+   *   def foo[T](e: Expr[T]): T = e match
+   *     case I1(_) | I2(_) => 42
+   *
+   * since `T >: Int` is subsumed by both alternatives in the first match clause.
+   *
+   * However, the following should not:
+   * 
+   *   def foo[T](e: Expr[T]): T = e match
+   *     case I1(_) | B(_) => 42
+   *
+   * since the `I1(_)` case gives the constraint `T >: Int` while `B(_)` gives `T >: Boolean`.
+   * Neither of the constraints is subsumed by the other.
+   */
   def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] = boundary:
     constrs match
       case Nil => break(None)

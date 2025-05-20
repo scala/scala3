@@ -2834,6 +2834,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         gadtConstrs += ctx.gadt
         res
       .mapconserve(ensureValueTypeOrWildcard)
+    // Look for the necessary constraint that is subsumed by all alternatives.
+    // Use that constraint as the outcome if possible, otherwise fallback to not using
+    // GADT reasoning for soundness.
     TypeComparer.necessaryGadtConstraint(gadtConstrs.toList, preGadt) match
       case Some(constr) => nestedCtx.gadtState.restore(constr)
       case None => nestedCtx.gadtState.restore(preGadt)
