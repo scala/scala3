@@ -788,7 +788,10 @@ object SymDenotations {
       * So the first call to a stable member might fail and/or produce side effects.
       */
     final def isStableMember(using Context): Boolean = {
-      def isUnstableValue = isOneOf(UnstableValueFlags) || info.isInstanceOf[ExprType] || isAllOf(InlineParam)
+      def isUnstableValue =
+        isOneOf(UnstableValueFlags)
+        || !ctx.mode.is(Mode.InCaptureSet) && info.isInstanceOf[ExprType]
+        || isAllOf(InlineParam)
       isType || is(StableRealizable) || exists && !isUnstableValue
     }
 
