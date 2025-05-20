@@ -349,7 +349,9 @@ class ShortenedTypePrinter(
     val paramLabelss = label(methodParams)
     val extLabelss = label(extParams)
 
-    val returnType = tpe(gtpe.finalResultType)
+    val retType = gtpe.finalResultType
+    val simplified = if (retType.typeSymbol.isAliasType) retType else retType.deepDealiasAndSimplify
+    val returnType = tpe(simplified)
     def extensionSignatureString =
       val extensionSignature = paramssString(extLabelss, extParams)
       if extParams.nonEmpty then

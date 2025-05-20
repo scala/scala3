@@ -407,12 +407,13 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case app @ AppliedType(tycon, params) =>
           AppliedType(tycon, params.map(_.deepDealias))
         case aliasingBounds: AliasingBounds =>
-          aliasingBounds.derivedAlias(aliasingBounds.alias.dealias)
+          aliasingBounds.derivedAlias(aliasingBounds.alias.deepDealiasAndSimplify)
         case TypeBounds(lo, hi) =>
           TypeBounds(lo.dealias, hi.dealias)
         case RefinedType(parent, name, refinedInfo) =>
           RefinedType(parent.dealias, name, refinedInfo.deepDealias)
         case dealised => dealised
+      dealiased.simplified
 
   extension[T] (list: List[T])
     def get(n: Int): Option[T] = if 0 <= n && n < list.size then Some(list(n)) else None
