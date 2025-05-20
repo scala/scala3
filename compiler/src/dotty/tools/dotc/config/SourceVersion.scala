@@ -6,11 +6,12 @@ import core.Decorators.*
 import util.Property
 
 enum SourceVersion:
-  case `3.0-migration`, `3.0` 
+  case `3.0-migration`, `3.0`
   case `3.1-migration`, `3.1`
   case `3.2-migration`, `3.2`
   case `3.3-migration`, `3.3`
   case `future-migration`, `future`
+  case `never`    // needed for MigrationVersion.errorFrom if we never want to issue an error
 
   val isMigrating: Boolean = toString.endsWith("-migration")
 
@@ -32,7 +33,7 @@ object SourceVersion extends Property.Key[SourceVersion]:
   val illegalInImports  = List(`3.1-migration`, `never`)
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
-  val illegalSourceVersionNames = "3.1-migration" :: illegalInImports.map(_.toString.toTermName)
+  val illegalSourceVersionNames = illegalInImports.map(_.toString.toTermName)
 
   /** language versions that the compiler recognises. */
   val validSourceVersionNames = values.toList.map(_.toString.toTermName)

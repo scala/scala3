@@ -290,3 +290,48 @@ class InferExpectedTypeSuite extends BasePCSuite:
       """|C
          |""".stripMargin // ideally A
     )
+
+  @Test def `multiple-args-lists` =
+    check(
+      """|def m(i: Int)(s: String) = ???
+         |val x = m(@@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
+  @Test def `multiple-args-lists-2` =
+    check(
+      """|def m(i: Int)(s: String) = ???
+         |val x = m(1)(@@)
+         |""".stripMargin,
+      """|String
+        |""".stripMargin
+    )
+
+  @Test def `extension-methods` =
+    check(
+      """|extension (i: Int) {
+         |  def method(s: String): Unit = ()
+         |}
+         |
+         |def testIt =
+         |  7.method(@@)
+         |""".stripMargin,
+      """|String
+         |""".stripMargin
+    )
+
+  @Test def `implicit-methods` =
+    check(
+      """|object I
+         |implicit class Xtension(i: I.type) {
+         |  def method(s: String): Unit = ()
+         |}
+         |
+         |def testIt =
+         |  I.method(@@)
+         |""".stripMargin,
+      """|String
+         |""".stripMargin
+    )
