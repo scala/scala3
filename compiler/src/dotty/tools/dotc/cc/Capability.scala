@@ -177,15 +177,54 @@ object Capabilities:
    *  is expanded.
    */
   case class ResultCap(binder: MethodicType) extends RootCapability:
-    private var myOriginalBinder = binder
-    def originalBinder: MethodicType = myOriginalBinder
 
+    private var myOrigin: RootCapability = GlobalCap
+    private var variants: SimpleIdentitySet[ResultCap] = SimpleIdentitySet.empty
+
+    /** Every ResultCap capability has an origin. This is
+     *   - A FreshCap capability `f`, if the current capability was created as a mirror
+     *     of `f` in the ToResult map.
+     *   - Another ResultCap capability `r`, if the current capability was created
+     *     via a chain of `derivedResult` calls from an original ResultCap `r`
+     *     (which was not created using `derivedResult`).
+     *   - GlobalCap otherwise
+     */
+    def origin: RootCapability = myOrigin
+
+    /** Initialize origin of this capability to a FreshCap instance (or to GlobalCap
+     *  if separation checks are turned off).
+     *  @pre The capability's origin was not yet set.
+     */
+    def setOrigin(freshOrigin: FreshCap | GlobalCap.type): Unit =
+      assert(myOrigin eq GlobalCap)
+      myOrigin = freshOrigin
+
+    /** If the current capability was created via a chain of `derivedResult` calls
+     *  from an original ResultCap `r`, that `r`. Otherwise `this`.
+     */
+    def primaryResultCap: ResultCap = origin match
+      case origin: ResultCap => origin
+      case _ => this
+
+    def originalBinder: MethodicType = primaryResultCap.binder
+
+    /** A ResultCap with given `binder1` derived from this capability.
+     *  This is typically done as a result of a SubstBinding map.
+     *  ResultCaps so created are cached, so that for every pair
+     *  of a ResultCap `r` and a binder `b`, there exists at most one ResultCap
+     *  instance that is derived transitively from `r` and has binder `b`.
+     */
     def derivedResult(binder1: MethodicType): ResultCap =
       if binder1 eq binder then this
       else
-        val res = ResultCap(binder1)
-        res.myOriginalBinder = myOriginalBinder
-        res
+        val primary = primaryResultCap
+        primary.variants.iterator.find(_.binder eq binder1) match
+          case Some(rcap) => rcap
+          case None =>
+            val rcap = ResultCap(binder1)
+            rcap.myOrigin = primary
+            primary.variants += rcap
+            rcap
   end ResultCap
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
@@ -718,7 +757,6 @@ object Capabilities:
           super.mapOver(t)
 
     object toVar extends CapMap:
-      private val seen = EqHashMap[RootCapability, ResultCap]()
 
       def apply(t: Type) = t match
         case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
@@ -733,7 +771,11 @@ object Capabilities:
       override def mapCapability(c: Capability, deep: Boolean) = c match
         case c: (FreshCap | GlobalCap.type) =>
           if variance > 0 then
-            seen.getOrElseUpdate(c, ResultCap(mt))
+            val res = ResultCap(mt)
+            c match
+              case c: FreshCap => res.setOrigin(c)
+              case _ =>
+            res
           else
             if variance == 0 then
               fail(em"""$tp captures the root capability `cap` in invariant position.
@@ -753,15 +795,17 @@ object Capabilities:
           case c @ ResultCap(`mt`) =>
             // do a reverse getOrElseUpdate on `seen` to produce the
             // `Fresh` assosicated with `t`
-            val it = seen.iterator
-            var ref: RootCapability | Null = null
-            while it.hasNext && ref == null do
-              val (k, v) = it.next
-              if v eq c then ref = k
-            if ref == null then
-              ref = FreshCap(Origin.Unknown)
-              seen(ref) = c
-            ref
+            if !ccConfig.useSepChecks then
+              FreshCap(Origin.Unknown) // warning: this can cause cycles
+            else
+              val primary = c.primaryResultCap
+              primary.origin match
+                case GlobalCap =>
+                  val fresh = FreshCap(Origin.Unknown)
+                  primary.setOrigin(fresh)
+                  fresh
+                case origin: FreshCap =>
+                  origin
           case _ =>
             super.mapCapability(c, deep)
 

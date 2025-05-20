@@ -74,6 +74,9 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
+  /** If this is a Var, its `id`, otherwise -1 */
+  def maybeId: Int = -1
+
   /** Convert to Const. @pre: isConst */
   def asConst(using Context): Const = this match
     case c: Const => c
@@ -129,7 +132,7 @@ sealed abstract class CaptureSet extends Showable:
    *  element is not the root capability, try instead to include its underlying
    *  capture set.
    */
-  protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult =
+  protected def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): CompareResult = reporting.trace(i"try include $elem in $this # ${maybeId}"):
     if accountsFor(elem) then CompareResult.OK
     else addNewElem(elem)
 
@@ -518,6 +521,8 @@ object CaptureSet:
       ccs.varId += 1
       ccs.varId
 
+    override def maybeId = id
+
     //assert(id != 8, this)
 
     /** A variable is solved if it is aproximated to a from-then-on constant set.
@@ -607,7 +612,9 @@ object CaptureSet:
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = (CompareResult.OK /: deps): (r, dep) =>
-          r.andAlso(dep.tryInclude(normElem, this))
+          r.andAlso:
+            reporting.trace(i"forward $normElem from $this # $id to $dep # ${dep.maybeId} of class ${dep.getClass.toString}"):
+              dep.tryInclude(normElem, this)
         if ccConfig.checkSkippedMaps && res.isOK then checkSkippedMaps(elem)
         res.orElse:
           elems -= elem
@@ -819,12 +826,14 @@ object CaptureSet:
       else if accountsFor(elem) then
         CompareResult.OK
       else
+        // Propagate backwards to source. The element will be added then by another
+        // forward propagation from source that hits the first branch `if origin eq source then`.
         try
-          source.tryInclude(bimap.inverse.mapCapability(elem), this)
-            .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
-            .andAlso(addNewElem(elem))
+          reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
+            source.tryInclude(bimap.inverse.mapCapability(elem), this)
+              .showing(i"propagating new elem $elem backward from $this/$id to $source = $result", captDebug)
         catch case ex: AssertionError =>
-          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} in $this / ${this.summarize}")
+          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}")
           throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
