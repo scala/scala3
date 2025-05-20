@@ -2826,10 +2826,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
-    val savedGadt = nestedCtx.gadt
-    val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
+    val preGadt = nestedCtx.gadt
+    var gadtConstrs: mutable.ArrayBuffer[GadtConstraint] = mutable.ArrayBuffer.empty
+    val trees1 = tree.trees.mapconserve: t =>
+        nestedCtx.gadtState.restore(preGadt)
+        val res = typed(t, pt)(using nestedCtx)
+        gadtConstrs += ctx.gadt
+        res
       .mapconserve(ensureValueTypeOrWildcard)
-    nestedCtx.gadtState.restore(savedGadt)  // Disable GADT reasoning for pattern alternatives
+    TypeComparer.necessaryGadtConstraint(gadtConstrs.toList, preGadt) match
+      case Some(constr) => nestedCtx.gadtState.restore(constr)
+      case None => nestedCtx.gadtState.restore(preGadt)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 

@@ -25,6 +25,7 @@ import annotation.constructorOnly
 import cc.*
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
+import scala.util.boundary, boundary.break
 
 /** Provides methods to compare types.
  */
@@ -2054,6 +2055,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else op2
   end necessaryEither
 
+  /** Finds the necessary (the weakest) GADT constraint among a list of them.
+   * It returns the one being subsumed by all others if exists, and `None` otherwise. */
+  def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] = boundary:
+    constrs match
+      case Nil => break(None)
+      case c0 :: constrs =>
+        var weakest = c0
+        for c <- constrs do
+          if subsumes(weakest.constraint, c.constraint, preGadt.constraint) then
+            weakest = c
+          else if !subsumes(c.constraint, weakest.constraint, preGadt.constraint) then
+            // this two constraints are disjoint
+            break(None)
+        break(Some(weakest))
+
   inline def rollbackConstraintsUnless(inline op: Boolean): Boolean =
     val saved = constraint
     var result = false
@@ -3375,6 +3391,9 @@ object TypeComparer {
 
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
+
+  def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] =
+    comparing(_.necessaryGadtConstraint(constrs, preGadt))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
     comparing(_.explained(op, header, short))
