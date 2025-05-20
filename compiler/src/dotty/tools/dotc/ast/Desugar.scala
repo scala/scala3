@@ -1868,18 +1868,18 @@ object desugar {
   /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
    *
    *    (x$1: (T1, ..., Tn)) => {
-   *      def x1: T1 = x$1._1
+   *      val x1: T1 = x$1._1
    *      ...
-   *      def xn: Tn = x$1._n
+   *      val xn: Tn = x$1._n
    *      body
    *    }
    *
    *  or if `isGenericTuple`
    *
    *    (x$1: (T1, ... Tn) => {
-   *      def x1: T1 = x$1.apply(0)
+   *      val x1: T1 = x$1.apply(0)
    *      ...
-   *      def xn: Tn = x$1.apply(n-1)
+   *      val xn: Tn = x$1.apply(n-1)
    *      body
    *    }
    *
