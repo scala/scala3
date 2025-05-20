@@ -56,16 +56,9 @@ import dotty.tools.dotc.util.SrcPos
  *     This principle not only put initialization of static objects on a solid foundation, but also
  *     avoids whole-program analysis.
  *
- *  2. The design is based on the concept of "Top" --- a Top value may not be actively
- *     used during initialization, i.e., it's forbidden to call methods or access fields of a Top.
- *     Method arguments are widened to Top by default unless specified to be sensitive.
- *     Method parameters captured in lambdas or inner classes are always widened to Top.
+ *  2. It is inter-procedural and flow-sensitive.
  *
- *  3. It is inter-procedural and flow-sensitive.
- *
- *  4. It is object-sensitive by default and parameter-sensitive on-demand.
- *
- *  5. The check is modular in the sense that each object is checked separately and there is no
+ *  3. The check is modular in the sense that each object is checked separately and there is no
  *     whole-program analysis. However, the check is not modular in terms of project boundaries.
  *
  */
@@ -91,30 +84,24 @@ class Objects(using Context @constructorOnly):
   /** Syntax for the data structure abstraction used in abstract domain:
    *
    * ve ::= ObjectRef(class)                                             // global object
-   *      | OfClass(class, vs[outer], ctor, args, env)                   // instance of a class
-   *      | OfArray(object[owner], regions)
-   *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
+   *      | OfClass(class, ownerObject, ctor)                            // instance of a class
+   *      | OfArray(ownerObject, regions)                                // represents values of native array class in Array.scala
+   *      | Fun(code, env)                                               // value elements that can be contained in ValueSet
    *      | SafeValue                                                    // values on which method calls and field accesses won't cause warnings. Int, String, etc.
+   *      | UnknownValue                                                 // values whose source are unknown at compile time
+   *      | Package                                                      // represets a package
    * vs ::= ValueSet(ve)                                                 // set of abstract values
    * Bottom ::= ValueSet(Empty)
-   * val ::= ve | Top | UnknownValue | vs | Package          // all possible abstract values in domain
-   * Ref ::= ObjectRef | OfClass                                         // values that represent a reference to some (global or instance) object
-   * ThisValue ::= Ref | Top                                    // possible values for 'this'
+   * val ::= ve | vs
+   * Ref ::= ObjectRef | OfClass | OfArray                               // values that represent a reference to some (global or instance) object
+   * ThisValue ::= Ref | vs                                              // possible values for 'this'
+   * LocalEnv(meth, ownerObject)                                         // represents environments for methods or functions
+   * Scope ::= Ref | LocalEnv
+   * ScopeSet ::= Set(Scope)
    *
-   * refMap = Ref -> ( valsMap, varsMap, outersMap )                     // refMap stores field informations of an object or instance
-   * valsMap = valsym -> val                                             // maps immutable fields to their values
-   * varsMap = valsym -> addr                                            // each mutable field has an abstract address
-   * outersMap = class -> val                                            // maps outer objects to their values
-   *
-   * arrayMap = OfArray -> addr                                          // an array has one address that stores the join value of every element
-   *
-   * heap = addr -> val                                                  // heap is mutable
-   *
-   * env = (valsMap, Option[env])                                        // stores local variables in the residing method, and possibly outer environments
-   *
-   * addr ::= localVarAddr(regions, valsym, owner)
-   *        | fieldVarAddr(regions, valsym, owner)                       // independent of OfClass/ObjectRef
-   *        | arrayAddr(regions, owner)                                  // independent of array element type
+   * valsMap = sym -> val                                                // maps variables to their values
+   * outersMap = classSym -> ScopeSEt                                    // maps the possible outer scopes for a corresponding (parent) class
+   * heap.MutableData = Scope -> (valsMap, outersMap)                    // heap is mutable
    *
    * regions ::= List(sourcePosition)
    */
@@ -289,6 +276,13 @@ class Objects(using Context @constructorOnly):
       assert(typeSymbol.isDefined, "Invalid creation of SafeValue with type " + tpe)
       new SafeValue(typeSymbol.get)
 
+  /** Represents values unknown to the checker, such as values loaded without source
+   *  UnknownValue is not ValueElement since RefSet containing UnknownValue
+   *  is equivalent to UnknownValue
+   */
+  case object UnknownValue extends ValueElement:
+    def show(using Context): String = "UnknownValue"
+
   /**
    * Represents a set of values
    *
@@ -310,29 +304,10 @@ class Objects(using Context @constructorOnly):
       assert(packageSym.is(Flags.Package), "Invalid symbol to create Package!")
       Package(packageSym.moduleClass.asClass)
 
-  /** Represents values unknown to the checker, such as values loaded without source
-   *  UnknownValue is not ValueElement since RefSet containing UnknownValue
-   *  is equivalent to UnknownValue
-   */
-  case object UnknownValue extends Value:
-    def show(using Context): String = "UnknownValue"
-
-  /** Represents values lost due to widening
-   *
-   *  This is the top of the abstract domain lattice, which should not
-   *  be used during initialization.
-   *
-   *  Top is not ValueElement since RefSet containing Top
-   *  is equivalent to Top
-  */
-
-  case object Top extends Value:
-    def show(using Context): String = "Top"
-
   val Bottom = ValueSet(ListSet.empty)
 
   /** Possible types for 'this' */
-  type ThisValue = Ref | Top.type | ValueSet
+  type ThisValue = Ref | ValueSet
 
   /** Checking state  */
   object State:
@@ -572,18 +547,6 @@ class Objects(using Context @constructorOnly):
   /** Abstract heap for mutable fields
    */
   object Heap:
-    abstract class Addr:
-      /** The static object which owns the mutable slot */
-      def owner: ClassSymbol
-      def getTrace: Trace = Trace.empty
-
-    /** The address for mutable fields of objects. */
-    private case class FieldAddr(regions: Regions.Data, field: Symbol, owner: ClassSymbol)(trace: Trace) extends Addr:
-      override def getTrace: Trace = trace
-
-    /** The address for mutable local variables . */
-    private case class LocalVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol) extends Addr
-
     private case class ScopeBody(
       paramsMap: Map[Symbol, Value],
       valsMap: Map[Symbol, Value],
@@ -690,15 +653,6 @@ class Objects(using Context @constructorOnly):
     def writeJoinOuter(scope: Scope, outer: Symbol, outerScope: ScopeSet)(using mutable: MutableData): Unit =
       mutable.writeJoinOuter(scope, outer, outerScope)
 
-    def localVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
-      LocalVarAddr(regions, sym, owner)
-
-    def fieldVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol)(using Trace): Addr =
-      FieldAddr(regions, sym, owner)(summon[Trace])
-
-    def arrayAddr(regions: Regions.Data, owner: ClassSymbol)(using Trace, Context): Addr =
-      FieldAddr(regions, defn.ArrayClass, owner)(summon[Trace])
-
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
     def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
@@ -777,10 +731,6 @@ class Objects(using Context @constructorOnly):
       def join(b: Value): Value =
         assert(!a.isInstanceOf[Package] && !b.isInstanceOf[Package], "Unexpected join between " + a + " and " + b)
         (a, b) match
-        case (Top, _)                               => Top
-        case (_, Top)                               => Top
-        case (UnknownValue, _)                      => UnknownValue
-        case (_, UnknownValue)                      => UnknownValue
         case (Bottom, b)                            => b
         case (a, Bottom)                            => a
         case (ValueSet(values1), ValueSet(values2)) => ValueSet(values1 ++ values2)
@@ -813,7 +763,7 @@ class Objects(using Context @constructorOnly):
       else
         val klass = sym.asClass
         a match
-          case UnknownValue | Top => a
+          case UnknownValue => a
           case Package(packageModuleClass) =>
             // the typer might mistakenly set the receiver to be a package instead of package object.
             // See pos/packageObjectStringInterpolator.scala
@@ -844,8 +794,6 @@ class Objects(using Context @constructorOnly):
       else
         scopes.reduce { (s1, s2) => s1.join(s2) }
 
-    // def widen(height: Int): Contextual[List[V]] = values.map(_.widen(height)).toList
-
   extension [V : Join](map: Map[Symbol, V])
     def join(sym: Symbol, value: V): Map[Symbol, V] =
       if !map.contains(sym) then map.updated(sym, value)
@@ -873,9 +821,6 @@ class Objects(using Context @constructorOnly):
    */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
-    case Top =>
-      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
-      Bottom
     case UnknownValue =>
       reportWarningForUnknownValue("Using unknown value. " + Trace.show, Trace.position)
 
@@ -1084,9 +1029,6 @@ class Objects(using Context @constructorOnly):
    */
   def select(value: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value.show, printer, (_: Value).show) {
     value.filterClass(field.owner) match
-    case Top =>
-      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
-      Bottom
     case UnknownValue =>
       reportWarningForUnknownValue("Using unknown value. " + Trace.show, Trace.position)
 
@@ -1171,8 +1113,6 @@ class Objects(using Context @constructorOnly):
    */
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
     lhs.filterClass(field.owner) match
-    case Top =>
-      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
     case UnknownValue =>
       val _ = reportWarningForUnknownValue("Assigning to unknown value. " + Trace.show, Trace.position)
     case p: Package =>
@@ -1220,7 +1160,7 @@ class Objects(using Context @constructorOnly):
     case UnknownValue =>
       reportWarningForUnknownValue("Instantiating when outer is unknown. " + Trace.show, Trace.position)
 
-    case outer: (Ref | Top.type | Package) =>
+    case outer: (Ref | Package) =>
       if klass == defn.ArrayClass then
         args.head.tree.tpe match
           case ConstantType(Constants.Constant(0)) =>
@@ -1246,7 +1186,7 @@ class Objects(using Context @constructorOnly):
                 if enclosingMethod == outerCls.primaryConstructor then
                   ScopeSet(Set(thisV.asInstanceOf[Ref]))
                 else
-                  Env.resolveEnvByMethod(klass.owner.enclosingMethod, thisV, summon[Scope]).getOrElse(Top -> Env.NoEnv)._2
+                  Env.resolveEnvByMethod(klass.owner.enclosingMethod, thisV, summon[Scope]).getOrElse(UnknownValue -> Env.NoEnv)._2
 
         val instance = OfClass(klass, envWidened, ctor)
         callConstructor(instance, ctor, args)
@@ -1280,9 +1220,6 @@ class Objects(using Context @constructorOnly):
         eval(fun.code, fun.thisV, fun.klass)
       case UnknownValue =>
         reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
-      case Top =>
-        report.warning("Calling on value lost due to widening. " + Trace.show, Trace.position)
-        Bottom
       case Bottom => Bottom
       case ValueSet(values) if values.size == 1 =>
         evalByNameParam(values.head)
@@ -2073,7 +2010,6 @@ class Objects(using Context @constructorOnly):
       else accessObject(target)
     else
       thisV match
-        case Top => Top
         case Bottom => Bottom
         case ref: Ref =>
           recur(ScopeSet(Set(ref)))
