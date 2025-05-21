@@ -186,17 +186,6 @@ sealed abstract class List[+A]
     h
   }
 
-  /** @inheritdoc
-    *
-    *  @example {{{
-    *  // Given a list
-    *  val letters = List('a','b','c','d','e')
-    *
-    *  // `slice` returns all elements beginning at index `from` and afterwards,
-    *  // up until index `until` (excluding index `until`.)
-    *  letters.slice(1,3) // Returns List('b','c')
-    *  }}}
-    */
   override def slice(from: Int, until: Int): List[A] = {
     val lo = scala.math.max(from, 0)
     if (until <= lo || isEmpty) Nil

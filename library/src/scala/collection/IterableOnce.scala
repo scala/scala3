@@ -435,6 +435,8 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
    *  @return  a $coll containing the elements greater than or equal to
    *           index `from` extending up to (but not including) index `until`
    *           of this $coll.
+   *  @example
+   *    `List('a', 'b', 'c', 'd', 'e').slice(1, 3) == List('b', 'c')`
    */
   def slice(from: Int, until: Int): C
 
@@ -1241,7 +1243,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
    *  @param pf   the partial function
    *  @return     an option value containing pf applied to the first
    *              value for which it is defined, or `None` if none exists.
-   *  @example    `Seq("a", 1, 5L).collectFirst({ case x: Int => x*10 }) = Some(10)`
+   *  @example    `Seq("a", 1, 5L).collectFirst { case x: Int => x*10 } = Some(10)`
    */
   def collectFirst[B](pf: PartialFunction[A, B]): Option[B] = {
     // Presumably the fastest way to get in and out of a partial function is for a sentinel function to return itself
