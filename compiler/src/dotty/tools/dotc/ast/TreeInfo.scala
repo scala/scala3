@@ -9,6 +9,7 @@ import Annotations.Annotation
 import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
+import config.Feature
 
 import Decorators.*
 import Constants.Constant
@@ -479,7 +480,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef if ctx.settings.YcompileScala2Library.value =>
+    case tree: TypeDef if Feature.shouldBehaveAsScala2 =>
       if (tree.isClassDef) EmptyFlags else NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
     case tree: DefDef =>
@@ -492,7 +493,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
         NoInitsInterface
       else if tree.mods.is(Given) && tree.paramss.isEmpty then
         EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
-      else if ctx.settings.YcompileScala2Library.value then
+      else if Feature.shouldBehaveAsScala2 then
         EmptyFlags
       else
         NoInits

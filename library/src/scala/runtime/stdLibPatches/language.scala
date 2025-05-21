@@ -222,6 +222,12 @@ object language:
   @compileTimeOnly("`future-migration` can only be used at compile time in import statements")
   object `future-migration`
 
+  /** Set source version to 2.13. Effectively, this doesn't change the source language,
+   * but rather adapts the generated code as if it was compiled with Scala 2.13
+   */
+  @compileTimeOnly("`2.13` can only be used at compile time in import statements")
+  private[scala] object `2.13`
+
   /** Set source version to 3.0-migration.
     *
     * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]

@@ -10,6 +10,7 @@ import NameOps.*
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
+import config.Feature
 
 import util.Property
 import util.Spans.Span
@@ -79,7 +80,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol =
     val existing = sym.matchingMember(clazz.thisType)
-    if ctx.settings.YcompileScala2Library.value && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
+    if Feature.shouldBehaveAsScala2 && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
       NoSymbol
     else if existing != sym && !existing.is(Deferred) then
       existing
@@ -168,7 +169,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productPrefix if isEnumValue => nameRef
         case nme.productPrefix => ownNameLit
         case nme.productElement =>
-          if ctx.settings.YcompileScala2Library.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
+          if Feature.shouldBehaveAsScala2 then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
           else productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }
@@ -720,7 +721,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
     val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
-    if ctx.settings.YcompileScala2Library.value then impl1
+    if Feature.shouldBehaveAsScala2 then impl1
     else addMirrorSupport(impl1)
   }
 
