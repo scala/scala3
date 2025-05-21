@@ -721,7 +721,7 @@ object Parsers {
     def checkNextNotIndented(): Unit =
       if in.isNewLine then
         val nextIndentWidth = in.indentWidth(in.next.offset)
-        if in.currentRegion.indentWidth < nextIndentWidth then
+        if in.currentRegion.indentWidth < nextIndentWidth && in.currentRegion.closedBy == OUTDENT then
           warning(em"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
