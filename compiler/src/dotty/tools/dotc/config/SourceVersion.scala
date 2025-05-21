@@ -8,7 +8,8 @@ import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
-  case `3.0-migration`, `3.0`, `3.1` // Note: do not add `3.1-migration` here, 3.1 is the same language as 3.0.
+  case `3.0-migration`, `3.0` 
+  case `3.1-migration`, `3.1`
   case `3.2-migration`, `3.2`
   case `3.3-migration`, `3.3`
   case `3.4-migration`, `3.4`
@@ -45,10 +46,10 @@ object SourceVersion extends Property.Key[SourceVersion]:
   val defaultSourceVersion = `3.7`
 
   /* Illegal source versions that may not appear in the settings `-source:<...>` */
-  val illegalInSettings = List(`never`)
+  val illegalInSettings = List(`3.1-migration`, `never`)
 
   /* Illegal source versions that may not appear as an import `import scala.language.<...>` */
-  val illegalInImports  = List(`never`)
+  val illegalInImports  = List(`3.1-migration`, `never`)
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
   val illegalSourceVersionNames = illegalInImports.map(_.toString.toTermName)
