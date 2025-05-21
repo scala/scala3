@@ -59,12 +59,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     val _plus: TermName     = "&+"
     val _tmpscope: TermName = "$tmpscope"
     val _xml: TermName      = "xml"
+    val _toVector: TermName = "toVector"
   }
 
   import xmltypes.{_Comment, _Elem, _EntityRef, _Group, _MetaData, _NamespaceBinding, _NodeBuffer,
     _PrefixedAttribute, _ProcInstr, _Text, _Unparsed, _UnprefixedAttribute}
 
-  import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml}
+  import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml, _toVector}
 
   // convenience methods
   private def LL[A](x: A*): List[List[A]] = List(x.toList)
@@ -103,7 +104,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   {
     def starArgs =
       if (children.isEmpty) Nil
-      else List(Typed(makeXMLseq(span, children), wildStar))
+      else List(Typed(makeXMLseq(span, children, toVector = true), wildStar))
 
     def pat    = Apply(_scala_xml__Elem, List(pre, label, wild, wild) ::: convertToTextPat(children))
     def nonpat = New(_scala_xml_Elem, List(List(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ::: starArgs))
@@ -152,7 +153,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     ts match {
       case Nil      => TypedSplice(tpd.ref(defn.NilModule).withSpan(span))
       case t :: Nil => t
-      case _        => makeXMLseq(span, ts)
+      case _        => makeXMLseq(span, ts, toVector = true)
     }
   }
 
@@ -162,11 +163,12 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   }
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
-  def makeXMLseq(span: Span, args: collection.Seq[Tree]): Block = {
+  def makeXMLseq(span: Span, args: collection.Seq[Tree], toVector: Boolean): Block = {
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
-    atSpan(span)(new XMLBlock(buffer :: applies.toList, Ident(_buf)) )
+    val res = if (toVector) Select(Ident(_buf), _toVector) else Ident(_buf)
+    atSpan(span)(new XMLBlock(buffer :: applies.toList, res))
   }
 
   /** Returns (Some(prefix) | None, rest) based on position of ':' */
@@ -177,7 +179,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   /** Various node constructions. */
   def group(span: Span, args: collection.Seq[Tree]): Tree =
-    atSpan(span)( New(_scala_xml_Group, LL(makeXMLseq(span, args))) )
+    atSpan(span)( New(_scala_xml_Group, LL(makeXMLseq(span, args, toVector = true))) )
 
   def unparsed(span: Span, str: String): Tree =
     atSpan(span)( New(_scala_xml_Unparsed, LL(const(str))) )
