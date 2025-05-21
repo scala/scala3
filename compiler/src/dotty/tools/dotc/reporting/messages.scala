@@ -3312,23 +3312,29 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |are not values themselves, they can only be referred to in selections."""
 
 class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
-extends Message(UnusedSymbolID) {
+extends Message(UnusedSymbolID):
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
   override def actions(using Context) = this.actions
-}
 
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
-  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
-  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
+  def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
-  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
-  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  def unsetLocals(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  private def paramAddendum(sym: Symbol)(using Context): String =
+    if sym.denot.owner.is(ExtensionMethod) then i" in extension ${sym.denot.owner}"
+    else ""
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
