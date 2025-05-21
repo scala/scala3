@@ -247,7 +247,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         var flags = checkFlags(tree.mods.flags)
-        if ctx.settings.YcompileScala2Library.value then
+        if Feature.shouldBehaveAsScala2 then
           flags |= Scala2x
         val name = checkNoConflict(tree.name, tree.span).asTypeName
         val cls =

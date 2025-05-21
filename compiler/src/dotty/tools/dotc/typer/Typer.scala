@@ -3261,7 +3261,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     checkEnumParent(cls, firstParent)
 
-    if defn.ScalaValueClasses()(cls) && ctx.settings.YcompileScala2Library.value then
+    if defn.ScalaValueClasses()(cls) && Feature.shouldBehaveAsScala2 then
       constr1.symbol.resetFlag(Private)
 
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
