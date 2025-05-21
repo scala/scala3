@@ -21,10 +21,17 @@ enum SourceVersion:
   def isAtMost(v: SourceVersion) = stable.ordinal <= v.ordinal
 
 object SourceVersion extends Property.Key[SourceVersion]:
+
   def defaultSourceVersion = `3.3`
 
+  /* Illegal source versions that may not appear in the settings `-source:<...>` */
+  val illegalInSettings = List(`never`)
+
+  /* Illegal source versions that may not appear as an import `import scala.language.<...>` */
+  val illegalInImports  = List(`never`)
+
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
-  val illegalSourceVersionNames = List("3.1-migration").map(_.toTermName)
+  val illegalSourceVersionNames = "3.1-migration" :: illegalInImports.map(_.toString.toTermName)
 
   /** language versions that the compiler recognises. */
   val validSourceVersionNames = values.toList.map(_.toString.toTermName)
