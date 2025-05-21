@@ -17,6 +17,7 @@ import scala.annotation.switch
 import config.{Config, Feature}
 import ast.tpd
 import cc.*
+import Capabilities.*
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -169,13 +170,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.processElems(_.toList.map(toTextCaptureRef)), ", ") ~ "}"
+        else "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            //     ~ Str("?").provided(!cs.isConst)
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
-    case ref: RefTree[?] if ref.typeOpt.exists =>
-      toTextCaptureRef(ref.typeOpt)
+    case ref: RefTree[?] =>
+      ref.typeOpt match
+        case c: Capability => toTextCapability(c)
+        case _ => toText(ref)
     case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
       toTextRetainedElem(arg)
     case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
@@ -195,7 +198,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         refs.elems.size == 1
         && (refs.isUniversal
             || !printDebug && !ccVerbose && !showUniqueIds && refs.elems.nth(0).match
-                  case root.Result(binder) =>
+                  case ResultCap(binder) =>
                     CCState.openExistentialScopes match
                       case b :: _ => binder eq b
                       case _ => false
@@ -225,8 +228,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match {
       case tp: TypeType =>
         toTextRHS(tp)
-      case tp: TermRef if tp.isCap =>
-        toTextCaptureRef(tp)
       case tp: TermRef
       if !tp.denotationIsCurrent
           && !homogenizedView // always print underlying when testing picklers
@@ -283,7 +284,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
         if elideCapabilityCaps
             && parent.derivesFrom(defn.Caps_Capability)
-            && refs.containsRootCapability
+            && refs.containsTerminalCapability
             && refs.isReadOnly
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
@@ -458,27 +459,27 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  def toTextCaptureRef(tp: Type): Text =
-    homogenize(tp) match
-      case tp: TermRef if tp.symbol == defn.captureRoot => "cap"
-      case tp: SingletonType => toTextRef(tp)
-      case tp: (TypeRef | TypeParamRef) => toText(tp)
-      case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
-      case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
-      case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
-      case tp @ root.Result(binder) =>
-        val idStr = s"##${tp.rootAnnot.id}"
-        // TODO: Better printing? USe a mode where we print more detailed
-        val vbleText: Text = CCState.openExistentialScopes.indexOf(binder) match
-          case -1 =>
-            "<cap of " ~ toText(binder) ~ ">"
-          case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
-        vbleText ~ hashStr(binder) ~ Str(idStr).provided(showUniqueIds)
-      case tp @ root.Fresh(hidden) =>
-        val idStr = if showUniqueIds then s"#${tp.rootAnnot.id}" else ""
-        if ccVerbose then s"<fresh$idStr in ${tp.ccOwner} hiding " ~ toTextCaptureSet(hidden) ~ ">"
-        else "cap"
-      case tp => toText(tp)
+  def toTextCapability(c: Capability): Text = c match
+    case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
+    case Reach(c1) => toTextCapability(c1) ~ "*"
+    case Maybe(c1) => toTextCapability(c1) ~ "?"
+    case GlobalCap => "cap"
+    case c: ResultCap =>
+      def idStr = s"##${c.rootId}"
+      // TODO: Better printing? USe a mode where we print more detailed
+      val vbleText: Text = CCState.openExistentialScopes.indexOf(c.binder) match
+        case -1 =>
+          "<cap of " ~ toText(c.binder) ~ ">"
+        case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
+      vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
+    case c: FreshCap =>
+      val idStr = if showUniqueIds then s"#${c.rootId}" else ""
+      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ ">"
+      else "cap"
+    case tp: TypeProxy =>
+      homogenize(tp) match
+        case tp: SingletonType => toTextRef(tp)
+        case tp => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)

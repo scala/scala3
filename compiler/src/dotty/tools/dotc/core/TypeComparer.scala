@@ -23,6 +23,7 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
 import cc.*
+import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 
@@ -855,10 +856,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton
               // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
-              // the type of a closure. In that case the capture set of `f.type` is `{x}` but the
-              // capture set of the underlying type is `{}`. So without the `singletonOK` test, a singleton
-              // might not be a subtype of its underlying type. Examples where this arises is
-              // capt-capibility.scala and function-combinators.scala
+              // the type of a closure (in one of the variants we are considering). In that case the
+              // capture set of `f.type` is `{x}` but the capture set of the underlying type is `{}`.
+              // So without the `singletonOK` test, a singleton might not be a subtype of its underlying type.
+              // Eamples where this arises is capt-capibility.scala and function-combinators.scala
               val singletonOK = tp1 match
                 case tp1: SingletonType
                 if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate).isOK =>
@@ -1003,7 +1004,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if isCaptureCheckingOrSetup then
             tp1
               .match
-                case tp1: CaptureRef if tp1.isTracked =>
+                case tp1: Capability if tp1.isTracked =>
                   CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
                 case _ =>
                   tp1w
@@ -1012,6 +1013,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
+        if isCaptureCheckingOrSetup then
+          tp2.stripCapturing match
+            case defn.RefinedFunctionOf(_) => // was already handled in thirdTry
+              return false
+            case _ =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>
         isNewSubType(tp1.parent)
