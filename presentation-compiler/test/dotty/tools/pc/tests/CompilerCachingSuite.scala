@@ -8,9 +8,9 @@ import org.junit.{Before, Test}
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.metals.EmptyCancelToken
-import scala.meta.internal.metals.EmptyReportContext
 import scala.meta.internal.metals.PcQueryContext
 import scala.meta.pc.OffsetParams
+import scala.meta.pc.reports.EmptyReportContext
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.meta.pc.VirtualFileParams
@@ -42,7 +42,7 @@ class CompilerCachingSuite extends BasePCSuite:
         }(emptyQueryContext).get(timeout.length, timeout.unit)
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
-  private def emptyQueryContext = PcQueryContext(None, () => "")(using EmptyReportContext)
+  private def emptyQueryContext = PcQueryContext(None, () => "")(using EmptyReportContext())
 
   @Before
   def beforeEach: Unit =

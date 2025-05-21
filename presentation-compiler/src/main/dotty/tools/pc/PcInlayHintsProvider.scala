@@ -5,7 +5,7 @@ import java.nio.file.Paths
 
 import scala.annotation.tailrec
 
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import scala.meta.internal.pc.InlayHints
