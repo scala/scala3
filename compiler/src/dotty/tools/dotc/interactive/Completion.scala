@@ -245,9 +245,7 @@ object Completion:
       case tpd.Select(qual @ tpd.This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions.names
       case StringContextApplication(qual) =>
         completer.scopeCompletions.names ++ completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _               if qual.typeOpt.hasSimpleKind =>
-        completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _                                             => Map.empty
+      case tpd.Select(qual, _) :: _                                             => completer.selectionCompletions(qual)
       case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
       case _                                                                    => completer.scopeCompletions.names
 
@@ -478,17 +476,16 @@ object Completion:
     def selectionCompletions(qual: tpd.Tree)(using Context): CompletionMap =
       val adjustedQual = widenQualifier(qual)
 
-      val implicitConversionMembers = implicitConversionMemberCompletions(adjustedQual)
-      val extensionMembers = extensionCompletions(adjustedQual)
-      val directMembers = directMemberCompletions(adjustedQual)
-      val namedTupleMembers = namedTupleCompletions(adjustedQual)
+      if qual.symbol.is(Package) then
+        directMemberCompletions(adjustedQual)
+      else if qual.typeOpt.hasSimpleKind then
+        implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual) ++
+        namedTupleCompletions(adjustedQual)
+      else
+        Map.empty
 
-      List(
-        implicitConversionMembers,
-        extensionMembers,
-        directMembers,
-        namedTupleMembers
-      ).reduce(_ ++ _)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
