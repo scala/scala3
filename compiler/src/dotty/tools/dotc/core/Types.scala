@@ -3770,7 +3770,7 @@ object Types extends TypeUtils {
         if tp.prefix eq pre then tp
         else
           pre match
-            case ref: ParamRef if (ref.binder eq self) && tp.symbol.exists =>
+            case ref: ParamRef if (ref.binder eq self) && tp.symbol.exists && tp.symbol.is(Method) =>
               NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
             case _ =>
               tp.derivedSelect(pre)
