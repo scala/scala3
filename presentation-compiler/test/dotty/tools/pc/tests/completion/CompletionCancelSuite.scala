@@ -21,6 +21,7 @@ import scala.language.unsafeNulls
 import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.Test
+import org.junit.Assert
 
 class CompletionCancelSuite extends BaseCompletionSuite:
 
@@ -35,20 +36,30 @@ class CompletionCancelSuite extends BaseCompletionSuite:
    */
   class AlwaysCancelToken extends CancelToken:
     val cancel = new CompletableFuture[lang.Boolean]()
-    var isCancelled = new AtomicBoolean(false)
     override def onCancel(): CompletionStage[lang.Boolean] = cancel
     override def checkCanceled(): Unit =
-      if (isCancelled.compareAndSet(false, true)) {
+      cancel.complete(true)
+      throw new CancellationException("Always Cancel Token")
+
+  /**
+   * A cancel token that cancels after 5 `checkCancelled` calls.
+   */
+  class DelayedCancelToken extends CancelToken:
+    val cancel = new CompletableFuture[lang.Boolean]()
+    override def onCancel(): CompletionStage[lang.Boolean] = cancel
+    var i = 0
+    override def checkCanceled(): Unit =
+      i += 1
+      if i > 5 then
         cancel.complete(true)
-      } else
-        Thread.sleep(10)
+        throw new CancellationException("Delayed Cancel Token")
 
   def checkCancelled(
+      token: CancelToken,
       query: String,
-      expected: String
+      expected: String,
   ): Unit =
     val (code, offset) = params(query)
-    val token = new AlwaysCancelToken
     try
       presentationCompiler
         .complete(
@@ -62,8 +73,8 @@ class CompletionCancelSuite extends BaseCompletionSuite:
         .get()
       fail("Expected completion request to be interrupted")
     catch
-      case InterruptException() =>
-        assert(token.isCancelled.get())
+      case _ =>
+        assert(token.onCancel().toCompletableFuture.get())
 
     // assert that regular completion works as expected.
     val completion = presentationCompiler
@@ -83,8 +94,9 @@ class CompletionCancelSuite extends BaseCompletionSuite:
 
     assertNoDiff(expected, obtained)
 
-  @Test def `basic` =
+  @Test def `cancel-before-start` =
     checkCancelled(
+      AlwaysCancelToken(),
       """
         |object A {
         |  val x = asser@@
@@ -95,48 +107,80 @@ class CompletionCancelSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  /**
-   * A cancel token to simulate infinite compilation
-   */
-  object FreezeCancelToken extends CancelToken:
-    val cancel = new CompletableFuture[lang.Boolean]()
-    var isCancelled = new AtomicBoolean(false)
-    override def onCancel(): CompletionStage[lang.Boolean] = cancel
-    override def checkCanceled(): Unit =
-      var hello = true
-      var i = 0
-      while (hello) i += 1
-      hello = false
+  @Test def `cancel-during-compilation` =
+    checkCancelled(
+      DelayedCancelToken(),
+      """
+        |object A {
+        |  val x = asse@@
+        |}
+      """.stripMargin,
+      """|assert(inline assertion: Boolean): Unit
+         |assert(inline assertion: Boolean, inline message: => Any): Unit
+         |""".stripMargin
+    )
 
-  @Test def `break-compilation` =
-    val query = """
-                  |object A {
-                  |  val x = asser@@
-                  |}
-               """.stripMargin
-    val (code, offset) = params(query)
-    val uri = URI.create("file:///A.scala")
-    try
-      presentationCompiler
-        .complete(
-          CompilerOffsetParams(
-            uri,
-            code,
-            offset,
-            FreezeCancelToken
-          )
-        )
-        .get()
-    catch case _: CancellationException => ()
+  // With new assumptions we can't run this test without forking the JVM.
+  // We now expect to handle infinite compilations at the call site.
+  //
+  // This is very dangerous and potentially will make users unresponsive,
+  // and there is also no good way to handle infinite compilations.
+  //
+  // We will try to catch all of them, but right now the approach that
+  // ensures no leaks is the way to go.
+  //
+  // In previous implementations this test was working, because we
+  // didn't log, catch the infinite computations, we've just created new
+  // presentation compiler driver and went straight back to work, while
+  // this zombie thread was still stuck.
+  //
+  // /**
+  //  * A cancel token to simulate infinite compilation
+  //  */
+  // object FreezeCancelToken extends CancelToken:
+  //   val cancel = new CompletableFuture[lang.Boolean]()
+  //   var isCancelled = new AtomicBoolean(false)
+  //   var count = 0
+  //   override def onCancel(): CompletionStage[lang.Boolean] = cancel
+  //   override def checkCanceled(): Unit =
+  //     var hello = false
+  //     var i = 0
+  //     count += 1
+  //     if count > 2 then hello = true
+  //     while (hello) i += 1
+  //     hello = false
 
-    val res = presentationCompiler
-      .complete(
-        CompilerOffsetParams(
-          uri,
-          code,
-          offset,
-          EmptyCancelToken
-        )
-      )
-      .get()
-    assert(res.getItems().asScala.nonEmpty)
+  // @Test def `zombie-task-detection` =
+  //   val query = """
+  //                 |object A {
+  //                 |  val x = asser@@
+  //                 |}
+  //              """.stripMargin
+  //   val (code, offset) = params(query)
+  //   val uri = URI.create("file:///A.scala")
+
+  //   Assert.assertThrows(classOf[InfiniteCompilationException], () =>
+  //     try
+  //       presentationCompiler
+  //         .complete(
+  //           CompilerOffsetParams(
+  //             uri,
+  //             code,
+  //             offset,
+  //             FreezeCancelToken
+  //           )
+  //         ).get()
+  //     catch case _: CancellationException => ()
+  //   )
+
+  //   val res = presentationCompiler
+  //     .complete(
+  //       CompilerOffsetParams(
+  //         uri,
+  //         code,
+  //         offset,
+  //         EmptyCancelToken
+  //       )
+  //     )
+  //     .get()
+  //   assert(res.getItems().asScala.nonEmpty)

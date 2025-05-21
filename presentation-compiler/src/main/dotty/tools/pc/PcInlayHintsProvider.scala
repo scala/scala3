@@ -40,20 +40,18 @@ class PcInlayHintsProvider(
   val filePath = Paths.get(uri).nn
   val sourceText = params.text().nn
   val text = sourceText.toCharArray().nn
-  val source =
-    SourceFile.virtual(filePath.toString, sourceText)
-  driver.run(uri, source)
-  given InlayHintsParams = params
 
+  given InlayHintsParams = params
   given InferredType.Text = InferredType.Text(text)
   given ctx: Context = driver.currentCtx
-  val unit = driver.currentCtx.run.nn.units.head
+
+  val unit = driver.compilationUnits(uri)
   val pos = driver.sourcePosition(params)
 
   def provide(): List[InlayHint] =
     val deepFolder = DeepFolder[InlayHints](collectDecorations)
     Interactive
-      .pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
+      .pathTo(unit.tpdTree, pos.span)
       .headOption
       .getOrElse(unit.tpdTree)
       .enclosedChildren(pos.span)

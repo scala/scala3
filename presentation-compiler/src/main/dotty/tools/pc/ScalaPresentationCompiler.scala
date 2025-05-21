@@ -7,41 +7,35 @@ import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
+import java.util.Collections
 import java.util as ju
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContextExecutor
 import scala.jdk.CollectionConverters._
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.CompilerVirtualFileParams
-import scala.meta.internal.metals.EmptyCancelToken
-import scala.meta.internal.metals.EmptyReportContext
-import scala.meta.internal.metals.PcQueryContext
-import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.metals.StdReportContext
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
-import scala.meta.internal.pc.CompilerAccess
-import scala.meta.internal.pc.DefinitionResultImpl
-import scala.meta.internal.pc.EmptyCompletionList
 import scala.meta.internal.pc.EmptySymbolSearch
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.*
 import scala.meta.pc.{PcSymbolInformation as IPcSymbolInformation}
 
-import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
-import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.completions.OverrideCompletions
 import dotty.tools.pc.buildinfo.BuildInfo
-import dotty.tools.pc.SymbolInformationProvider
-import dotty.tools.dotc.interactive.InteractiveDriver
 
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
 
 
+/** Implementation of Presentation Compiler
+ *
+ *  NOTE: This class is not thread safe. Each consumer of this class should ensure that tasks are
+ *  queued in sequence to guarantee correct caching.
+ */
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
     buildTargetName: Option[String] = None,
@@ -72,10 +66,10 @@ case class ScalaPresentationCompiler(
   private val forbiddenOptions = Set("-print-lines", "-print-tasty")
   private val forbiddenDoubleOptions = Set.empty[String]
 
-  given ReportContext =
+  given reportContext: PcReportContext =
     folderPath
-      .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
-      .getOrElse(EmptyReportContext)
+      .map(path => PcReportContext(StdReportContext(path, _ => buildTargetName, reportsLevel), additionalReportData))
+      .getOrElse(PcReportContext.empty)
 
   override def codeAction[T](
     params: OffsetParams,
@@ -83,12 +77,9 @@ case class ScalaPresentationCompiler(
     codeActionPayload: Optional[T]
    ): CompletableFuture[ju.List[TextEdit]] =
      (codeActionId, codeActionPayload.asScala) match
-        case (
-              CodeActionId.ConvertToNamedArguments,
-              Some(argIndices: ju.List[_])
-            ) =>
-          val payload =
-            argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
+        case (CodeActionId.ConvertToNamedArguments, Some(argIndices: ju.List[?])) =>
+          val payload: ju.List[Integer] =
+            argIndices.asScala.collect { case i: Integer => i.asInstanceOf[Integer] }.asJava
           convertToNamedArguments(params, payload)
         case (CodeActionId.ImplementAbstractMembers, _) =>
           implementAbstractMembers(params)
@@ -103,9 +94,8 @@ case class ScalaPresentationCompiler(
             case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
           }
         case (PcConvertToNamedLambdaParameters.codeActionId, _) =>
-          compilerAccess.withNonInterruptableCompiler(List.empty[l.TextEdit].asJava, params.token) {
-            access => PcConvertToNamedLambdaParameters(access.compiler(), params).convertToNamedLambdaParameters
-          }(params.toQueryContext)
+          driverAccess.enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+            PcConvertToNamedLambdaParameters(driver, params).convertToNamedLambdaParameters
         case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
 
   private def failedFuture[T](e: Throwable): CompletableFuture[T] =
@@ -124,13 +114,6 @@ case class ScalaPresentationCompiler(
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
     copy(reportsLevel = ReportLevel.fromString(level))
 
-  val compilerAccess: CompilerAccess[StoreReporter, InteractiveDriver] =
-    Scala3CompilerAccess(
-      config,
-      sh,
-      () => new Scala3CompilerWrapper(CachingDriver(driverSettings))
-    )(using ec)
-
   val driverSettings =
     val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
     val defaultFlags = List("-color:never")
@@ -138,6 +121,8 @@ case class ScalaPresentationCompiler(
 
     filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
       .mkString(File.pathSeparator) :: Nil
+
+  lazy val driverAccess = DriverAccess(config, driverSettings, reportContext)
 
   private def removeDoubleOptions(options: List[String]): List[String] =
     options match
@@ -149,168 +134,117 @@ case class ScalaPresentationCompiler(
   override def semanticTokens(
       params: VirtualFileParams
   ): CompletableFuture[ju.List[Node]] =
-    compilerAccess.withInterruptableCompiler(
-      new ju.ArrayList[Node](),
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      new PcSemanticTokensProvider(driver, params).provide().asJava
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        new PcSemanticTokensProvider(driver, params)
+          .provide()
+          .asJava
 
   override def inlayHints(
       params: InlayHintsParams
   ): ju.concurrent.CompletableFuture[ju.List[l.InlayHint]] =
-    compilerAccess.withInterruptableCompiler(
-      new ju.ArrayList[l.InlayHint](),
-      params.token(),
-    ) { access =>
-      val driver = access.compiler()
-      new PcInlayHintsProvider(driver, params, search)
-        .provide()
-        .asJava
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        new PcInlayHintsProvider(driver, params, search)
+          .provide()
+          .asJava
 
   override def getTasty(
       targetUri: URI,
       isHttpEnabled: Boolean
   ): CompletableFuture[String] =
-    CompletableFuture.completedFuture {
+    CompletableFuture.completedFuture:
       TastyUtils.getTasty(targetUri, isHttpEnabled)
-    }
 
   def complete(params: OffsetParams): CompletableFuture[l.CompletionList] =
-    compilerAccess.withInterruptableCompiler(
-      EmptyCompletionList(),
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      new CompletionProvider(
-        search,
-        driver,
-        () => InteractiveDriver(driverSettings),
-        params,
-        config,
-        buildTargetIdentifier,
-        folderPath,
-        completionItemPriority
-      ).completions()
-    }(params.toQueryContext)
+    val (wasCursorApplied, completionText) = CompletionProvider.applyCompletionCursor(params)
+    val inputs = CompilationInputs(params.uri.nn, completionText, params.token().nn, wasCursorApplied)
+
+    driverAccess
+      .enqueueCancellable(inputs): driver =>
+        new CompletionProvider(
+          search,
+          driver,
+          driverSettings,
+          params,
+          config,
+          buildTargetIdentifier,
+          folderPath,
+          completionItemPriority,
+          wasCursorApplied
+        ).completions()
 
   def definition(params: OffsetParams): CompletableFuture[DefinitionResult] =
-    compilerAccess.withInterruptableCompiler(
-      DefinitionResultImpl.empty,
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      PcDefinitionProvider(driver, params, search).definitions()
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params.nn)): driver =>
+        PcDefinitionProvider(driver, params, search).definitions()
 
   override def typeDefinition(
       params: OffsetParams
   ): CompletableFuture[DefinitionResult] =
-    compilerAccess.withInterruptableCompiler(
-      DefinitionResultImpl.empty,
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      PcDefinitionProvider(driver, params, search).typeDefinitions()
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        PcDefinitionProvider(driver, params, search).typeDefinitions()
 
   def documentHighlight(
       params: OffsetParams
   ): CompletableFuture[ju.List[DocumentHighlight]] =
-    compilerAccess.withInterruptableCompiler(
-      List.empty[DocumentHighlight].asJava,
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      PcDocumentHighlightProvider(driver, params).highlights.asJava
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        PcDocumentHighlightProvider(driver, params).highlights.asJava
 
   override def references(
       params: ReferencesRequest
   ): CompletableFuture[ju.List[ReferencesResult]] =
-    compilerAccess.withNonInterruptableCompiler(
-      List.empty[ReferencesResult].asJava,
-      params.file().token,
-    ) { access =>
-      val driver = access.compiler()
-      PcReferencesProvider(driver, params)
-        .references()
-        .asJava
-    }(params.file().toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params.file)): driver =>
+        PcReferencesProvider(driver, params)
+          .references()
+          .asJava
 
   def inferExpectedType(params: OffsetParams): CompletableFuture[ju.Optional[String]] =
-    compilerAccess.withInterruptableCompiler(
-      Optional.empty(),
-      params.token,
-    ) { access =>
-      val driver = access.compiler()
-      new InferExpectedType(search, driver, params).infer().asJava
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        new InferExpectedType(search, driver, params).infer().asJava
 
-  def shutdown(): Unit =
-    compilerAccess.shutdown()
+  def shutdown(): Unit = driverAccess.shutdown()
 
-  def restart(): Unit =
-    compilerAccess.shutdownCurrentCompiler()
+  def restart(): Unit = driverAccess.restart()
 
-  def diagnosticsForDebuggingPurposes(): ju.List[String] =
-    List[String]().asJava
+  def diagnosticsForDebuggingPurposes(): ju.List[String] = Collections.emptyList()
 
   override def info(
       symbol: String
   ): CompletableFuture[Optional[IPcSymbolInformation]] =
-    compilerAccess.withNonInterruptableCompiler[Optional[IPcSymbolInformation]](
-      Optional.empty(),
-      EmptyCancelToken,
-    ) { access =>
-      SymbolInformationProvider(using access.compiler().currentCtx)
-        .info(symbol)
-        .map(_.asJava)
-        .asJava
-    }(emptyQueryContext)
+    driverAccess
+      .lookup: driver =>
+        SymbolInformationProvider(using driver.currentCtx)
+          .info(symbol)
+          .map(_.asJava)
+          .asJava
 
   def semanticdbTextDocument(
       filename: URI,
       code: String
   ): CompletableFuture[Array[Byte]] =
-    val virtualFile = CompilerVirtualFileParams(filename, code)
-    compilerAccess.withNonInterruptableCompiler(
-      Array.empty[Byte],
-      EmptyCancelToken
-    ) { access =>
-      val driver = access.compiler()
-      val provider = SemanticdbTextDocumentProvider(driver, folderPath)
-      provider.textDocument(filename, code)
-    }(virtualFile.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs(filename, code)): driver =>
+        SemanticdbTextDocumentProvider(driver, folderPath)
+          .textDocument(filename, code)
 
   def completionItemResolve(
       item: l.CompletionItem,
       symbol: String
   ): CompletableFuture[l.CompletionItem] =
-    compilerAccess.withNonInterruptableCompiler(
-      item,
-      EmptyCancelToken
-    ) { access =>
-      val driver = access.compiler()
-      CompletionItemResolver.resolve(item, symbol, search, config)(using
-        driver.currentCtx
-      )
-    }(emptyQueryContext)
+    driverAccess.lookup: driver =>
+      CompletionItemResolver.resolve(item, symbol, search, config)(using driver.currentCtx)
 
   def autoImports(
       name: String,
       params: scala.meta.pc.OffsetParams,
       isExtension: java.lang.Boolean
-  ): CompletableFuture[
-    ju.List[scala.meta.pc.AutoImportsResult]
-  ] =
-    compilerAccess.withNonInterruptableCompiler(
-      List.empty[scala.meta.pc.AutoImportsResult].asJava,
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
+  ): CompletableFuture[ju.List[scala.meta.pc.AutoImportsResult]] =
+    driverAccess.enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
       new AutoImportsProvider(
         search,
         driver,
@@ -321,148 +255,98 @@ case class ScalaPresentationCompiler(
       )
         .autoImports(isExtension)
         .asJava
-    }(params.toQueryContext)
 
   def implementAbstractMembers(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
-    compilerAccess.withNonInterruptableCompiler(
-      empty,
-      params.token()
-    ) { pc =>
-      val driver = pc.compiler()
-      OverrideCompletions.implementAllAt(
-        params,
-        driver,
-        search,
-        config
-      )
-    }(params.toQueryContext)
-  end implementAbstractMembers
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        OverrideCompletions.implementAllAt(
+          params,
+          driver,
+          search,
+          config
+        )
 
   override def insertInferredType(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
-    compilerAccess.withNonInterruptableCompiler(
-      empty,
-      params.token()
-    ) { pc =>
-      new InferredTypeProvider(params, pc.compiler(), config, search)
-        .inferredTypeEdits()
-        .asJava
-    }(params.toQueryContext)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        new InferredTypeProvider(params, driver, config, search)
+          .inferredTypeEdits()
+          .asJava
 
   override def inlineValue(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: Either[String, List[l.TextEdit]] = Right(List())
-    (compilerAccess
-      .withInterruptableCompiler(empty, params.token()) { pc =>
-        new PcInlineValueProvider(pc.compiler(), params)
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        new PcInlineValueProvider(driver, params)
           .getInlineTextEdits()
-      }(params.toQueryContext))
-      .thenApply {
+      .thenApply:
         case Right(edits: List[TextEdit]) => edits.asJava
         case Left(error: String) => throw new DisplayableException(error)
-      }
-  end inlineValue
 
   override def extractMethod(
       range: RangeParams,
       extractionPos: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
-    compilerAccess.withInterruptableCompiler(empty, range.token()) {
-      pc =>
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(range)): driver =>
         new ExtractMethodProvider(
           range,
           extractionPos,
-          pc.compiler(),
+          driver,
           search,
           options.contains("-no-indent"),
         )
           .extractMethod()
           .asJava
-    }(range.toQueryContext)
-  end extractMethod
 
   override def convertToNamedArguments(
       params: OffsetParams,
       argIndices: ju.List[Integer]
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    convertToNamedArguments(params, argIndices.asScala.toSet.map(_.toInt))
-
-  def convertToNamedArguments(
-      params: OffsetParams,
-      argIndices: Set[Int]
-  ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: Either[String, List[l.TextEdit]] = Right(List())
-    (compilerAccess
-      .withNonInterruptableCompiler(empty, params.token()) { pc =>
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
         new ConvertToNamedArgumentsProvider(
-          pc.compiler(),
+          driver,
           params,
-          argIndices
+          argIndices.asScala.map(_.toInt).toSet
         ).convertToNamedArguments
-      }(params.toQueryContext))
-      .thenApplyAsync {
+      .thenApply:
         case Left(error: String) => throw new DisplayableException(error)
         case Right(edits: List[l.TextEdit]) => edits.asJava
-      }
-  end convertToNamedArguments
+
   override def selectionRange(
       params: ju.List[OffsetParams]
   ): CompletableFuture[ju.List[l.SelectionRange]] =
-    CompletableFuture.completedFuture {
-      compilerAccess.withSharedCompiler(
-        List.empty[l.SelectionRange].asJava
-      ) { pc =>
-        new SelectionRangeProvider(
-          pc.compiler(),
-          params,
-        ).selectionRange().asJava
-      }(params.asScala.headOption.map(_.toQueryContext).getOrElse(emptyQueryContext))
-    }
-  end selectionRange
+    if params.isEmpty then
+      CompletableFuture.completedFuture(Collections.emptyList())
+    else
+      driverAccess.enqueueCancellable(CompilationInputs.fromParams(params.asScala.head)): driver =>
+        new SelectionRangeProvider(driver, params).selectionRange().asJava
 
   def hover(
       params: OffsetParams
   ): CompletableFuture[ju.Optional[HoverSignature]] =
-    compilerAccess.withNonInterruptableCompiler(
-      ju.Optional.empty[HoverSignature](),
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      HoverProvider.hover(params, driver, search, config.hoverContentType())
-    }(params.toQueryContext)
-  end hover
+    driverAccess
+      .enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+        HoverProvider.hover(params, driver, search, config.hoverContentType())
 
   def prepareRename(
       params: OffsetParams
   ): CompletableFuture[ju.Optional[l.Range]] =
-    compilerAccess.withNonInterruptableCompiler(
-      Optional.empty[l.Range](),
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
-      Optional.ofNullable(
-        PcRenameProvider(driver, params, None).prepareRename().orNull
-      )
-    }(params.toQueryContext)
+    driverAccess.enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
+      PcRenameProvider(driver, params, None).prepareRename().asJava
 
   def rename(
       params: OffsetParams,
       name: String
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    compilerAccess.withNonInterruptableCompiler(
-      List[l.TextEdit]().asJava,
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
+    driverAccess.enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
       PcRenameProvider(driver, params, Some(name)).rename().asJava
-    }(params.toQueryContext)
 
   def newInstance(
       buildTargetIdentifier: String,
@@ -476,13 +360,8 @@ case class ScalaPresentationCompiler(
     )
 
   def signatureHelp(params: OffsetParams): CompletableFuture[l.SignatureHelp] =
-    compilerAccess.withNonInterruptableCompiler(
-      new l.SignatureHelp(),
-      params.token()
-    ) { access =>
-      val driver = access.compiler()
+    driverAccess.enqueueCancellable(CompilationInputs.fromParams(params)): driver =>
       SignatureHelpProvider.signatureHelp(driver, params, search)
-    }(params.toQueryContext)
 
   override def didChange(
       params: VirtualFileParams
@@ -490,10 +369,7 @@ case class ScalaPresentationCompiler(
     CompletableFuture.completedFuture(Nil.asJava)
 
   override def didClose(uri: URI): Unit =
-    compilerAccess.withNonInterruptableCompiler(
-      (),
-      EmptyCancelToken
-    ) { access => access.compiler().close(uri) }(emptyQueryContext)
+    driverAccess.lookup(_.close(uri))
 
   override def withExecutorService(
       executorService: ExecutorService
@@ -516,21 +392,15 @@ case class ScalaPresentationCompiler(
   def withWorkspace(workspace: Path): PresentationCompiler =
     copy(folderPath = Some(workspace))
 
-  override def isLoaded() = compilerAccess.isLoaded()
+  override def isLoaded() = true
 
-  def additionalReportData() =
-    s"""|Scala version: $scalaVersion
-        |Classpath:
-        |${classpath
-          .map(path => s"$path [${if path.exists then "exists" else "missing"} ]")
-          .mkString(", ")}
-        |Options:
-        |${options.mkString(" ")}
-        |""".stripMargin
-
-  extension (params: VirtualFileParams)
-    def toQueryContext = PcQueryContext(Some(params), additionalReportData)
-
-  def emptyQueryContext = PcQueryContext(None, additionalReportData)
+  private def additionalReportData =
+    Map(
+      "scalaVersion" -> scalaVersion,
+      "classpath" -> classpath
+         .map(path => s"$path [ ${if path.exists then "exists" else "missing"} ]")
+         .mkString(", "),
+      "options" -> options.mkString(" ")
+    )
 
 end ScalaPresentationCompiler

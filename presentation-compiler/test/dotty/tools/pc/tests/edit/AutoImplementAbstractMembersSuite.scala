@@ -1,6 +1,7 @@
 package dotty.tools.pc.tests.edit
 
 import java.net.URI
+import java.nio.file.Paths
 
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
@@ -1314,9 +1315,10 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
       filename: String = "A.scala"
   ): List[l.TextEdit] =
     val (code, _, offset) = params(original)
+    val uri = Paths.get(filename).toUri()
     val result = presentationCompiler
       .implementAbstractMembers(
-        CompilerOffsetParams(URI.create(filename), code, offset, cancelToken)
+        CompilerOffsetParams(uri, code, offset, cancelToken)
       )
       .get()
     result.asScala.toList
