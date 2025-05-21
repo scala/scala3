@@ -24,7 +24,8 @@ object ScalaSettingsProperties:
     ScalaRelease.values.toList.map(_.show)
 
   def supportedSourceVersions: List[String] =
-    (SourceVersion.values.toList.diff(SourceVersion.illegalSourceVersionNames)).toList.map(_.toString)
+    SourceVersion.values.diff(SourceVersion.illegalInSettings)
+      .map(_.toString).toList
 
   def supportedLanguageFeatures: List[ChoiceWithHelp[String]] =
     Feature.values.map((n, d) => ChoiceWithHelp(n.toString, d))
