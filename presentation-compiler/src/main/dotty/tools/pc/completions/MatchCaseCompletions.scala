@@ -6,7 +6,7 @@ import java.net.URI
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch

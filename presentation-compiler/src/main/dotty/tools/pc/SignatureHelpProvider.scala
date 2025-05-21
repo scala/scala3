@@ -13,7 +13,7 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j as l
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
