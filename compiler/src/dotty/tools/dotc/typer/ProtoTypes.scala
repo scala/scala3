@@ -427,21 +427,28 @@ object ProtoTypes {
      *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
      *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
      */
-    def hasInnerErrors(t: Tree)(using Context): Boolean = t match
-      case Typed(expr, tpe) => hasInnerErrors(expr)
-      case closureDef(mdef) => hasInnerErrors(mdef.rhs)
+    def hasInnerErrors(t: Tree, argType: Type)(using Context): Boolean = t match
+      case Typed(expr, tpe) => hasInnerErrors(expr, argType)
+      case closureDef(mdef) => hasInnerErrors(mdef.rhs, argType)
       case _ =>
         t.existsSubTree { t1 =>
           if t1.typeOpt.isError
             && t.span.toSynthetic != t1.span.toSynthetic
             && t.typeOpt != t1.typeOpt then
             typr.println(i"error subtree $t1 of $t with ${t1.typeOpt}, spans = ${t1.span}, ${t.span}")
-            true
+            t1.typeOpt match
+              case errorType: ErrorType if errorType.msg.isInstanceOf[TypeMismatchMsg] =>
+                // if error is caused by an argument type mismatch,
+                // then return false to try to find an extension.
+                // see i20335.scala for test case.
+                val typeMismtachMsg = errorType.msg.asInstanceOf[TypeMismatchMsg]
+                argType != typeMismtachMsg.expected
+              case _ => true
           else
             false
         }
 
-    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean, argType: Type)(using Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null)
         untpd.functionWithUnknownParamType(arg) match {
@@ -459,7 +466,7 @@ object ProtoTypes {
             targ = typerFn(arg)
             // TODO: investigate why flow typing is not working on `targ`
             if ctx.reporter.hasUnreportedErrors then
-              if hasInnerErrors(targ.nn) then
+              if hasInnerErrors(targ.nn, argType) then
                 state.errorArgs += arg
             else
               state.typedArg = state.typedArg.updated(arg, targ.nn)
@@ -487,7 +494,7 @@ object ProtoTypes {
           val protoTyperState = ctx.typerState
           val oldConstraint = protoTyperState.constraint
           val args1 = args.mapWithIndexConserve((arg, idx) =>
-            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false, NoType))
           val newConstraint = protoTyperState.constraint
 
           if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
@@ -534,7 +541,8 @@ object ProtoTypes {
       val locked = ctx.typerState.ownedVars
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
-        force = true)
+        force = true,
+        wideFormal)
       val targ1 = typer.adapt(targ, wideFormal, locked)
       if wideFormal eq formal then targ1
       else checkNoWildcardCaptureForCBN(targ1)
