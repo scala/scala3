@@ -1234,11 +1234,12 @@ object Build {
    *
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
    */
-  lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
-    withCommonSettings(Bootstrapped).
-    dependsOn(`scala-library-internal` % "provided", dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(scala2LibraryBootstrappedSettings).
-    settings(moduleName := "scala2-library")
+  lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped"))
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test")
+    .dependsOn(`scala-library-internal-tasty` % "provided", `scala-library-internal` % "provided")
+    .settings(scala2LibraryBootstrappedSettings)
+    .settings(moduleName := "scala2-library")
     .settings(
       (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
       (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
@@ -1251,11 +1252,17 @@ object Build {
    *
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
    */
-  lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
-    withCommonSettings(Bootstrapped).
-    dependsOn(`scala-library-internal` % "provided", dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(scala2LibraryBootstrappedSettings).
-    settings(moduleName := "scala2-library-cc")
+  lazy val `scala2-library-cc` = project.in(file("scala2-library-cc"))
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test")
+    .dependsOn(`scala-library-internal-tasty` % "provided", `scala-library-internal` % "provided")
+    .settings(scala2LibraryBootstrappedSettings)
+    .settings(moduleName := "scala2-library-cc")
+    .settings(
+      (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
+      (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
+      mimaCurrentClassfiles := (Compile / packageBin).value,
+    )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
@@ -1264,7 +1271,7 @@ object Build {
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
-      //scalacOptions += "-Yscala2-unpickler:never",
+      scalacOptions += "-Yscala2-unpickler:never",
       scalacOptions += "-Werror:false",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
