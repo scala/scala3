@@ -1207,9 +1207,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if fromBelow then isSubType(tp2, tp1) else isSubType(tp1, tp2)
       def directionalRecur(tp1: Type, tp2: Type): Boolean =
         if fromBelow then recur(tp2, tp1) else recur(tp1, tp2)
-
-      val otherTycon = other.tycon
-      val otherArgs = other.args
+      val otherDealias = other.dealias match
+        case appliedType: AppliedType if appliedType.args.hasSameLengthAs(args) && !other.args.hasSameLengthAs(args) =>
+          appliedType
+        case _ => other
+      val otherTycon = otherDealias.tycon
+      val otherArgs = otherDealias.args
 
       val d = otherArgs.length - args.length
       d >= 0 && {
@@ -1234,7 +1237,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               otherTycon
           rollbackConstraintsUnless:
             (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
-              && directionalRecur(adaptedTycon.appliedTo(args), other)
+              && directionalRecur(adaptedTycon.appliedTo(args), otherDealias)
         }
       }
     end compareAppliedTypeParamRef
