@@ -44,7 +44,7 @@ object Function1 {
 }
 
 /** A function of 1 parameter.
- *  
+ *
  *  In the following example, the definition of `succ` is
  *  shorthand, conceptually, for the anonymous class definition
  *  `anonfun1`, although the implementation details of how the
@@ -64,7 +64,7 @@ object Function1 {
  *  is that the latter can specify inputs which it will not handle.
  */
 @annotation.implicitNotFound(msg = "No implicit view available from ${T1} => ${R}.")
-trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends AnyRef { self =>
+trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends AnyRef { // TODO: Fix me self =>
   /** Apply the body of this function to the argument.
    *  @return   the result of function application.
    */
