@@ -17,7 +17,9 @@ enum SourceVersion:
   case `3.6-migration`, `3.6`
   case `3.7-migration`, `3.7`
   case `3.8-migration`, `3.8`
+  // Add 3.x-migration and 3.x here
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
+  case `2.13`
   case `future-migration`, `future`
 
   case `never`    // needed for MigrationVersion.errorFrom if we never want to issue an error
@@ -34,6 +36,8 @@ enum SourceVersion:
 
   def isAtMost(v: SourceVersion) = stable.ordinal <= v.ordinal
 
+  def isScala2 = this == `2.13`
+
   def enablesFewerBraces = isAtLeast(`3.3`)
   def enablesClauseInterleaving = isAtLeast(`3.6`)
   def enablesNewGivens = isAtLeast(`3.6`)
@@ -46,7 +50,7 @@ object SourceVersion extends Property.Key[SourceVersion]:
   val defaultSourceVersion = `3.7`
 
   /* Illegal source versions that may not appear in the settings `-source:<...>` */
-  val illegalInSettings = List(`3.1-migration`, `never`)
+  val illegalInSettings = List(`2.13`, `3.1-migration`, `never`)
 
   /* Illegal source versions that may not appear as an import `import scala.language.<...>` */
   val illegalInImports  = List(`3.1-migration`, `never`)

@@ -5,6 +5,7 @@ import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
+import config.Feature
 
 import scala.collection.mutable
 
@@ -25,7 +26,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def description: String = SpecializeApplyMethods.description
 
   override def isEnabled(using Context): Boolean =
-    !ctx.settings.scalajs.value && !ctx.settings.YcompileScala2Library.value
+    !ctx.settings.scalajs.value && !Feature.shouldBehaveAsScala2
 
   private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
     val name = nme.apply.specializedFunction(ret, args)
