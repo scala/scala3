@@ -201,7 +201,7 @@ class ScalaSettingsTests:
 
   @Test def `illegal source versions are not accepted when parsing the settings`: Unit =
     for source <- SourceVersion.illegalInSettings do
-      val settings = ScalaSettings
+      val settings = new ScalaSettings
       val result = settings.processArguments(List("-source", source.toString()), true)
       assertEquals(0, result.warnings.length)
       assertEquals(1, result.errors.length)
