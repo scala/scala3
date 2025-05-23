@@ -6,4 +6,4 @@ import Expr.*
 def eval[T](e: Expr[T]): T = e match
   case StringVal(_) | IntVal(_) => "42"  // error
 def eval1[T](e: Expr[T]): T = e match
-  case IntValAlt(_) | IntVal(_) => 42  // error // limitation
+  case IntValAlt(_) | IntVal(_) => 42  // previously error, now ok
