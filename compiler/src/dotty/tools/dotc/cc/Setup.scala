@@ -730,7 +730,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   selfInfo
                 else if cls.derivesFrom(defn.Caps_Capability) then
                   // If cls is a capability class, we need to add a fresh capability to
-                  // ensure we cannot tread itself as pure.
+                  // ensure we cannot treat itself as pure.
                   CapturingType(cinfo.selfType,
                     CaptureSet.fresh(Origin.InDecl(cls)).readOnly
                     ++ CaptureSet.Var(cls, level = ccState.currentLevel))
