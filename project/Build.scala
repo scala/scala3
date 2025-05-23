@@ -1236,7 +1236,10 @@ object Build {
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(scala2LibraryBootstrappedSettings).
-    settings(moduleName := "scala2-library-cc")
+    settings(
+      moduleName := "scala2-library-cc",
+      scalacOptions ++= Seq("-source", "3.8"), // for separation checking
+    )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
