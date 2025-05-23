@@ -1701,7 +1701,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case mt: MethodType =>
             pt.findFunctionType match {
               case SAMType(samMeth, samParent)
-              if !defn.isFunctionNType(samParent) && mt <:< samMeth =>
+              if !ctx.erasedTypes && !defn.isFunctionNType(samParent)
+                  && mt <:< samMeth && !mt.isImplicitMethod =>
                 if defn.isContextFunctionType(mt.resultType) then
                   report.error(
                     em"""Implementation restriction: cannot convert this expression to `$samParent`
