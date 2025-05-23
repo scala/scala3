@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, CompareResult, CompareFailure, ExistentialSubsumesFailure}
+import CaptureSet.{withCaptureSetsExplained, CompareResult, ExistentialSubsumesFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -352,11 +352,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       assert(cs1.subCaptures(cs2).isOK, i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: TypeComparer.CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       res match
-        case res: CompareFailure =>
+        case TypeComparer.CompareResult.Fail(notes) =>
+          val ((res: CompareResult) :: Nil, otherNotes) = notes.partition(_.isInstanceOf[CompareResult]): @unchecked
           def msg(provisional: Boolean) =
-            def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
+            def toAdd: String = errorNotes(otherNotes).toAdd.mkString
             def descr: String =
               val d = res.blocking.description
               if d.isEmpty then provenance else ""
@@ -377,10 +378,19 @@ class CheckCaptures extends Recheck, SymTransformer:
               report.error(msg(provisional = false), pos)
         case _ =>
 
+    def convertResult(op: => CompareResult)(using Context): TypeComparer.CompareResult =
+      TypeComparer.test:
+        op match
+          case res: TypeComparer.ErrorNote =>
+            TypeComparer.addErrorNote(res)
+            false
+          case CompareResult.OK =>
+            true
+
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: Capability, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
-          ccState.test(elem.singletonCaptureSet.subCaptures(cs)),
+          convertResult(elem.singletonCaptureSet.subCaptures(cs)),
           i"$elem cannot be referenced here; it is not",
           elem, cs, pos, provenance)
 
@@ -388,7 +398,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
         provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
-          ccState.test(cs1.subCaptures(cs2)),
+          convertResult(cs1.subCaptures(cs2)),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.nth(0)}$cs1description is not"
           else i"references $cs1$cs1description are not all",
           cs1, cs2, pos, provenance)
@@ -1272,7 +1282,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
-    private def errorNotes(notes: List[ErrorNote])(using Context): Addenda =
+    private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
       if notes.isEmpty then NothingToAdd
       else new Addenda:
         override def toAdd(using Context) = notes.map: note =>
@@ -1336,20 +1346,20 @@ class CheckCaptures extends Recheck, SymTransformer:
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
-      ccState.testOK(isCompatible(actualBoxed, expected1)) match
-        case CompareResult.OK =>
+      TypeComparer.test(isCompatible(actualBoxed, expected1)) match
+        case TypeComparer.CompareResult.Fail(notes) =>
+          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
+          err.typeMismatch(tree.withType(actualBoxed), expected1,
+              addApproxAddenda(
+                  addenda ++ errorNotes(notes),
+                  expected1))
+          actual
+        case /*OK*/ _ =>
           if debugSuccesses then tree match
               case Ident(_) =>
                 println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
               case _ =>
           actualBoxed
-        case fail: CompareFailure =>
-          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          err.typeMismatch(tree.withType(actualBoxed), expected1,
-              addApproxAddenda(
-                  addenda ++ errorNotes(fail.errorNotes),
-                  expected1))
-          actual
     end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */

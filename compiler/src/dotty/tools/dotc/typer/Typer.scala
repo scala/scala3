@@ -4581,7 +4581,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree
           }
         else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-          case CompareResult.Fail =>
+          case CompareResult.Fail(_) =>
             wtp match
               case wtp: MethodType => missingArgs(wtp)
               case _ =>

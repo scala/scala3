@@ -16,6 +16,7 @@ import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.{mutable, immutable}
+import TypeComparer.ErrorNote
 import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
@@ -242,7 +243,7 @@ sealed abstract class CaptureSet extends Showable:
     if result.isOK then
       addDependent(that)
     else
-      result.levelError.foreach(ccState.addNote)
+      result.levelError.foreach(TypeComparer.addErrorNote)
       varState.rollBack()
       result
       //.showing(i"subcaptures $this <:< $that = ${result.show}", capt)
@@ -960,6 +961,8 @@ object CaptureSet:
 
     //assert(id != 4)
 
+    description = i"elements subsumed by $owningCap"
+
     private def aliasRef: FreshCap | Null =
       if myElems.size == 1 then
         myElems.nth(0) match
@@ -1075,17 +1078,10 @@ object CaptureSet:
    */
   case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote
 
-  trait CompareFailure:
-    private var myErrorNotes: List[ErrorNote] = Nil
-    def errorNotes: List[ErrorNote] = myErrorNotes
-    def withNotes(notes: List[ErrorNote]): this.type =
-      myErrorNotes = notes
-      this
-
   enum CompareResult extends Showable:
     case OK
-    case Fail(trace: List[CaptureSet]) extends CompareResult, CompareFailure
-    case LevelError(cs: CaptureSet, elem: Capability) extends CompareResult, CompareFailure, ErrorNote
+    case Fail(trace: List[CaptureSet]) extends CompareResult, ErrorNote
+    case LevelError(cs: CaptureSet, elem: Capability) extends CompareResult, ErrorNote
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):

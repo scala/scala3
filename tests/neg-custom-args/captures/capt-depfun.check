@@ -6,6 +6,10 @@
    |
    |                                         where:    => refers to a fresh root capability in the type of value dc
    |
+   |
+   |                                         Note that the existential capture root in Str^{x} => Str^{x}
+   |                                         cannot subsume the capability <cap of (x: C^): Str^{x} => Str^{x}>
+   |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt-depfun.scala:11:24 -------------------------------------------------------
 11 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error // error: separatioon

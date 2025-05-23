@@ -50,11 +50,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     opaquesUsed = false
     recCount = 0
     needsGc = false
+    maxErrorLevel = -1
+    errorNotes = Nil
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
   private var recCount = 0
   private var monitored = false
+
+  private var maxErrorLevel: Int = -1
+  private var errorNotes: List[(Int, ErrorNote)] = Nil
 
   private var needsGc = false
 
@@ -148,7 +153,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
     opaquesUsed = false
-    if !topLevelSubType(tp1, tp2) then CompareResult.Fail
+    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(Nil)
     else if GADTused then CompareResult.OKwithGADTUsed
     else if opaquesUsed then CompareResult.OKwithOpaquesUsed // we cast on GADTused, so handles if both are used
     else CompareResult.OK
@@ -1584,10 +1589,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         ctx.gadtState.restore(savedGadt)
       val savedSuccessCount = successCount
       try
-        recCount += 1
-        if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-        val result = if monitored then monitoredIsSubType else firstTry
-        recCount -= 1
+        val result = inNestedLevel:
+          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+          if monitored then monitoredIsSubType else firstTry
         if !result then restore()
         else if recCount == 0 && needsGc then
           state.gc()
@@ -1601,6 +1605,32 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         successCount = savedSuccessCount
         throw ex
   }
+
+  /** Run `op` in a recursion level (indicated by `recCount`) increased by one.
+   *  This affects when monitoring starts and how error notes are propagated.
+   *  On exit, error notes added at the current level are either
+   *   - promoted to the next outer level (in case of failure),
+   *   - cancelled (in case of success).
+   */
+  inline def inNestedLevel(inline op: Boolean): Boolean =
+    recCount += 1
+    val result = op
+    recCount -= 1
+    if maxErrorLevel > recCount then
+      if result then
+        maxErrorLevel = -1
+        errorNotes = errorNotes.filterConserve: p =>
+          val (level, note) = p
+          if level <= recCount then
+            if level > maxErrorLevel then maxErrorLevel = level
+            true
+          else false
+      else
+        errorNotes = errorNotes.mapConserve: p =>
+          val (level, note) = p
+          if level > recCount then (recCount, note) else p
+        maxErrorLevel = recCount
+    result
 
   private def nonExprBaseType(tp: Type, cls: Symbol)(using Context): Type =
     if tp.isInstanceOf[ExprType] then NoType
@@ -3219,12 +3249,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
+
+  /** Add given ErrorNote note, provided there is not yet an error note with
+   *  the same class as `note`.
+   */
+  def addErrorNote(note: ErrorNote): Unit =
+    if errorNotes.forall(_._2.getClass != note.getClass) then
+      errorNotes = (recCount, note) :: errorNotes
+      assert(maxErrorLevel <= recCount)
+      maxErrorLevel = recCount
 }
 
 object TypeComparer {
 
+  /** A base trait for data producing addenda to error messages */
+  trait ErrorNote
+
+  /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
-    case OK, Fail, OKwithGADTUsed, OKwithOpaquesUsed
+    case OK, OKwithGADTUsed, OKwithOpaquesUsed
+    case Fail(errorNotes: List[ErrorNote])
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
@@ -3393,6 +3437,22 @@ object TypeComparer {
 
   def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
     comparing(_.subCaptures(refs1, refs2, vs))
+
+  def inNestedLevel(op: => Boolean)(using Context): Boolean =
+    comparer.inNestedLevel(op)
+
+  def addErrorNote(note: ErrorNote)(using Context): Unit =
+    comparer.addErrorNote(note)
+
+  /** Run `op` on current type comparer, maping its Boolean result to
+   *  a CompareResult with possible outcomes OK and Fail(...)`. In case
+   *  of failure pass the accumulated errorNotes of this type comparer to
+   *  in the Fail value.
+   */
+  def test(op: => Boolean)(using Context): CompareResult =
+    comparing: comparer =>
+      if op then CompareResult.OK
+      else CompareResult.Fail(comparer.errorNotes.map(_._2))
 }
 
 object MatchReducer:

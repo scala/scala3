@@ -558,7 +558,7 @@ object Capabilities:
             case y: ResultCap => vs.unify(x, y)
             case _ => y.derivesFromSharedCapability
           if !result then
-            ccState.addNote(CaptureSet.ExistentialSubsumesFailure(x, y))
+            TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
           result
         case GlobalCap =>
           y match
