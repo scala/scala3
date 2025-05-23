@@ -162,7 +162,8 @@ trait TypeAssigner {
             // if this fails.
             ctx.javaFindMember(name, pre, lookInCompanion = false)
           else
-            qualType.findMember(name, pre)
+            val excluded = if ctx.mode.is(Mode.InCaptureSet) then EmptyFlags else CaptureParam
+            qualType.findMember(name, pre, excluded = excluded)
 
         if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType

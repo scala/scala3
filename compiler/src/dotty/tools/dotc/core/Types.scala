@@ -770,7 +770,8 @@ object Types extends TypeUtils {
         case tp: ClassInfo => tp.appliedRef
         case _ => widenIfUnstable
       }
-      findMember(name, pre, required, excluded)
+      val excluded1 = if ctx.mode.is(Mode.InCaptureSet) then excluded else excluded | CaptureParam
+      findMember(name, pre, required, excluded1)
     }
 
     /** The implicit members with given name. If there are none and the denotation

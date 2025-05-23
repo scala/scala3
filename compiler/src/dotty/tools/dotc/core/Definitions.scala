@@ -123,7 +123,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      ref(captureRoot.termRef) :: Nil)
+                      captureRoot.termRef)
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -548,10 +548,6 @@ class Definitions {
     enterTypeField(cls, tpnme.Self, Deferred, cls.info.decls.openForMutations)
     cls
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
-
-  @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
-    completeClass(enterCompleteClassSymbol(
-      ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
 
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
@@ -1004,9 +1000,6 @@ class Definitions {
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
-    @tu lazy val Caps_reachCapability: TermSymbol = CapsInternalModule.requiredMethod("reachCapability")
-    @tu lazy val Caps_readOnlyCapability: TermSymbol = CapsInternalModule.requiredMethod("readOnlyCapability")
-    @tu lazy val Caps_capsOf: TermSymbol = CapsInternalModule.requiredMethod("capsOf")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
@@ -1096,7 +1089,6 @@ class Definitions {
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
-  @tu lazy val RetainsArgAnnot: ClassSymbol = requiredClass("scala.annotation.retainsArg")
   @tu lazy val PublicInBinaryAnnot: ClassSymbol = requiredClass("scala.annotation.publicInBinary")
   @tu lazy val WitnessNamesAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WitnessNames")
 
@@ -1563,7 +1555,7 @@ class Definitions {
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
   @tu lazy val capabilityQualifierAnnots: Set[Symbol] =
-    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot, MaybeCapabilityAnnot)
+    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot)
   @tu lazy val capabilityWrapperAnnots: Set[Symbol] =
     capabilityQualifierAnnots + RootCapabilityAnnot
 
@@ -2242,8 +2234,7 @@ class Definitions {
       NullClass,
       NothingClass,
       SingletonClass,
-      CBCompanion,
-      MaybeCapabilityAnnot)
+      CBCompanion)
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,

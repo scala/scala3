@@ -434,13 +434,12 @@ object RefChecks {
         }
 
       def emitOverrideError(fullmsg: Message) =
-        if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
-          // suppress errors relating toi synthetic companion objects if other override
+        if !(hasErrors && member.is(Synthetic) && member.is(Module) || member.isDummyCaptureParam) then
+          // suppress errors relating to synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
           if (member.owner == clazz) report.error(fullmsg, member.srcPos)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
-        }
 
       def overrideError(msg: String, compareTypes: Boolean = false) =
         if trueMatch && noErrorType then

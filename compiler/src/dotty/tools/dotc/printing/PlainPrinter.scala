@@ -179,10 +179,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
       ref.typeOpt match
         case c: Capability => toTextCapability(c)
         case _ => toText(ref)
-    case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
-      toTextRetainedElem(arg)
-    case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
-    case ReadOnlyCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ ".rd"
     case _ => toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
@@ -288,9 +284,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
             && refs.isReadOnly
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
-      case tp @ RetainingType(parent, refs) =>
+      case tp @ RetainingType(parent, refsType) =>
+        val refs = refsType.retainedElementsRaw
         if Feature.ccEnabledSomewhere then
-          toTextCapturing(parent, refs, "") ~ Str("R").provided(printDebug)
+          toTextCapturing(parent, refs.map(r => ast.tpd.TypeTree(r)), "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
@@ -315,9 +312,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ExprType(restp) =>
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            ann.tree.retainedElems match
-              case ref :: Nil if ref.symbol == defn.captureRoot => Str("=>")
-              case refs => Str("->") ~ toTextRetainedElems(refs)
+            ann.tree.retainedSet.retainedElementsRaw match
+              case (ref: CaptureRef) :: Nil if ref.isCap => Str("=>")
+              case refs => Str("->") ~ toTextRetainedElems(refs.map(r => ast.tpd.TypeTree(r)))
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))

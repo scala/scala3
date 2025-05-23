@@ -387,7 +387,9 @@ object TreeChecker {
     }
 
     def isSymWithoutDef(sym: Symbol)(using Context): Boolean =
-      sym.is(ConstructorProxy) || sym.isContextBoundCompanion
+      sym.is(ConstructorProxy)
+      || sym.isContextBoundCompanion
+      || sym.isDummyCaptureParam
 
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
