@@ -428,8 +428,8 @@ class Definitions {
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef
 
-    @tu lazy val Object_eq: TermSymbol = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
-    @tu lazy val Object_ne: TermSymbol = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
+    @tu lazy val Object_eq: TermSymbol = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final | Infix)
+    @tu lazy val Object_ne: TermSymbol = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final | Infix)
     @tu lazy val Object_synchronized: TermSymbol = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
     @tu lazy val Object_clone: TermSymbol = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
@@ -2041,10 +2041,6 @@ class Definitions {
    */
   def hasProblematicGetClass(className: Name): Boolean =
     HasProblematicGetClass.contains(className)
-
-  /** Is synthesized symbol with alphanumeric name allowed to be used as an infix operator? */
-  def isInfix(sym: Symbol)(using Context): Boolean =
-    (sym eq Object_eq) || (sym eq Object_ne)
 
   @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
     // add these for now, until we had a chance to retrofit 2.13 stdlib
