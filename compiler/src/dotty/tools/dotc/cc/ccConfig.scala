@@ -48,7 +48,7 @@ object ccConfig:
 
   /** If true, turn on separation checking */
   def useSepChecks(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
 
   /** If true, do level checking for FreshCap instances */
   def useFreshLevels(using Context): Boolean =
