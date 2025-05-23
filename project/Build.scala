@@ -23,7 +23,6 @@ import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
-import dotty.tools.sbtplugin.ScalaLibraryPlugin
 
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
@@ -1144,6 +1143,21 @@ object Build {
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
   lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
 
+  lazy val `scala-library-internal` = project.in(file("library-internal"))
+    .settings(commonSettings)
+    .settings(
+      scalaVersion := "2.13.16"
+    )
+
+  lazy val `scala-library-internal-tasty` = project.in(file("library-internal-tasty"))
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test")
+    .settings(
+      scalacOptions := Seq("-Werror:false", "-Ycompile-scala2-library"),
+      (Compile / sources) := (`scala-library-internal` / Compile / sources).value.filterNot(_.getPath.endsWith("AnyVal.scala")),
+      (Compile / packageBin / mappings) := (Compile / packageBin / mappings).value.filter(_._2.endsWith(".tasty"))
+    )
+
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
     case Bootstrapped => `scala3-library-bootstrapped`
@@ -1220,23 +1234,25 @@ object Build {
    *
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
    */
-  lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
-    enablePlugins(ScalaLibraryPlugin).
-    withCommonSettings(Bootstrapped).
-    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(scala2LibraryBootstrappedSettings).
-    settings(moduleName := "scala2-library")
+  lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped"))
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test")
+    .dependsOn(`scala-library-internal-tasty` % "provided", `scala-library-internal` % "provided")
+    .settings(scala2LibraryBootstrappedSettings)
+    .settings(moduleName := "scala2-library")
+
     // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
 
   /** Scala 2 library compiled by dotty using the latest published sources of the library.
    *
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
    */
-  lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
-    withCommonSettings(Bootstrapped).
-    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(scala2LibraryBootstrappedSettings).
-    settings(moduleName := "scala2-library-cc")
+  lazy val `scala2-library-cc` = project.in(file("scala2-library-cc"))
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test")
+    .dependsOn(`scala-library-internal-tasty` % "provided", `scala-library-internal` % "provided")
+    .settings(scala2LibraryBootstrappedSettings)
+    .settings(moduleName := "scala2-library-cc")
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
@@ -1279,11 +1295,38 @@ object Build {
                 // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
                 val path = file.getPath.replace('\\', '/')
                 path.endsWith("scala-library-src/scala/Any.scala") ||
-                path.endsWith("scala-library-src/scala/AnyVal.scala") ||
                 path.endsWith("scala-library-src/scala/AnyRef.scala") ||
                 path.endsWith("scala-library-src/scala/Nothing.scala") ||
                 path.endsWith("scala-library-src/scala/Null.scala") ||
-                path.endsWith("scala-library-src/scala/Singleton.scala")
+                path.endsWith("scala-library-src/scala/Singleton.scala") ||
+                // Ignore sources with @specialised in `scala` and non-compilable `AnyVal`
+                path.endsWith("scala-library-src/scala/AnyVal.scala") ||
+                path.endsWith("scala-library-src/scala/Function0.scala") ||
+                path.endsWith("scala-library-src/scala/Function1.scala") ||
+                path.endsWith("scala-library-src/scala/Function2.scala") ||
+                path.endsWith("scala-library-src/scala/Product1.scala") ||
+                path.endsWith("scala-library-src/scala/Product2.scala") ||
+                path.endsWith("scala-library-src/scala/Tuple1.scala") ||
+                path.endsWith("scala-library-src/scala/Tuple2.scala") ||
+                // Ignore sources with @specialised in `scala.collection`
+                path.endsWith("scala-library-src/scala/collection/Stepper.scala") ||
+                path.endsWith("scala-library-src/scala/collection/ArrayOps.scala") ||
+                path.endsWith("scala-library-src/scala/collection/immutable/Vector.scala") ||
+                // Ignore sources with @specialised in `scala.jdk`
+                path.endsWith("scala-library-src/scala/jdk/Accumulator.scala") ||
+                path.endsWith("scala-library-src/scala/jdk/DoubleAccumulator.scala") ||
+                path.endsWith("scala-library-src/scala/jdk/IntAccumulator.scala") ||
+                path.endsWith("scala-library-src/scala/jdk/LongAccumulator.scala") ||
+                path.endsWith("scala-library-src/scala/jdk/FunctionWrappers.scala") ||
+                // Ignore sources with @specialised in `scala.util`
+                path.endsWith("scala-library-src/scala/util/Sorting.scala") ||
+                path.endsWith("scala-library-src/scala/util/hashing/MurmurHash3.scala") ||
+                // Ignore sources with @specialised in `scala.runtime`
+                path.endsWith("scala-library-src/scala/runtime/NonLocalReturnControl.scala") ||
+                path.endsWith("scala-library-src/scala/runtime/AbstractFunction0.scala") ||
+                path.endsWith("scala-library-src/scala/runtime/AbstractFunction1.scala") ||
+                path.endsWith("scala-library-src/scala/runtime/AbstractFunction2.scala") ||
+                path.endsWith("scala-library-src/scala/runtime/AbstractPartialFunction.scala")
               }
           // These sources should be never compiled, filtering them out was not working correctly sometimes
           ignoredSources.foreach(_.delete())
@@ -1300,10 +1343,13 @@ object Build {
       (Test / managedClasspath) ~= {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
+      (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
+      (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
       mimaCheckDirection := "both",
       mimaBackwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.BackwardsBreakingChanges,
       mimaForwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.ForwardsBreakingChanges,
       customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters"),
+      mimaCurrentClassfiles := (Compile / packageBin).value,
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -1314,8 +1360,8 @@ object Build {
       tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       tastyMiMaCurrentClasspath := {
         val javaBootCp = tastyMiMaJavaBootClasspath.value
-        val classDir = (Compile / classDirectory).value.toPath()
-        val cp0 = Attributed.data((Compile / fullClasspath).value).map(_.toPath())
+        val classDir = (Compile / packageBin).value.toPath()
+        val cp0 = Attributed.data((Compile / fullClasspath).value).map(_.toPath()).filterNot(_.toString().contains("library-internal"))
         val cp: Seq[Path] = classDir +: (javaBootCp ++ cp0)
         (cp, classDir)
       },
@@ -2582,9 +2628,11 @@ object ScaladocConfigs {
   def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
     def stdLibVersion = stdlibVersion(NonBootstrapped)
     def srcManaged(v: String, s: String) = s"out/bootstrap/scala2-library-bootstrapped/scala-$v/src_managed/main/$s-library-src"
+    def srcManaged2 = s"library-internal/src"
     SourceLinks(
       List(
         scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
+        scalaSrcLink(stdLibVersion, srcManaged2 + "="),
         dottySrcLink(refVersion, "library/src=", "#library/src"),
         dottySrcLink(refVersion),
         "docs=github://scala/scala3/main#docs"
@@ -2671,6 +2719,7 @@ object ScaladocConfigs {
   lazy val Scala3 = Def.task {
     val dottyJars: Seq[java.io.File] = Seq(
       (`scala2-library-bootstrapped`/Compile/products).value,
+      (`scala-library-internal-tasty`/Compile/products).value,
       (`scala3-library-bootstrapped`/Compile/products).value,
       (`scala3-interfaces`/Compile/products).value,
       (`tasty-core-bootstrapped`/Compile/products).value,
@@ -2737,6 +2786,7 @@ object ScaladocConfigs {
       .withTargets(
         Seq(
           s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"out/bootstrap/scala-library-internal-tasty/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"out/bootstrap/scala3-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"tmp/interfaces/target/classes",
           s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"

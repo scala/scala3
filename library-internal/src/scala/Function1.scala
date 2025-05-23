@@ -1,7 +1,7 @@
 /*
  * Scala (https://www.scala-lang.org)
  *
- * Copyright EPFL and Lightbend, Inc.
+ * Copyright EPFL and Lightbend, Inc. dba Akka
  *
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
@@ -64,13 +64,13 @@ object Function1 {
  *  is that the latter can specify inputs which it will not handle.
  */
 @annotation.implicitNotFound(msg = "No implicit view available from ${T1} => ${R}.")
-trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends AnyRef { // FIXME: self =>
+trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends AnyRef { // TODO: Fix me self =>
   /** Apply the body of this function to the argument.
    *  @return   the result of function application.
    */
   def apply(v1: T1): R
 
-  /** Composes two instances of Function1 in a new Function1, with this function applied last.
+  /** Composes two instances of `Function1` in a new `Function1`, with this function applied last.
    *
    *  @tparam   A   the type to which function `g` can be applied
    *  @param    g   a function A => T1
@@ -78,7 +78,7 @@ trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.
    */
   @annotation.unspecialized def compose[A](g: A => T1): A => R = { x => apply(g(x)) }
 
-  /** Composes two instances of Function1 in a new Function1, with this function applied first.
+  /** Composes two instances of `Function1` in a new `Function1`, with this function applied first.
    *
    *  @tparam   A   the result type of function `g`
    *  @param    g   a function R => A
