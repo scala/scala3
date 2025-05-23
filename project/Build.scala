@@ -1240,11 +1240,6 @@ object Build {
     .dependsOn(`scala-library-internal-tasty` % "provided", `scala-library-internal` % "provided")
     .settings(scala2LibraryBootstrappedSettings)
     .settings(moduleName := "scala2-library")
-    .settings(
-      (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
-      (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
-      mimaCurrentClassfiles := (Compile / packageBin).value,
-    )
 
     // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
 
@@ -1258,11 +1253,6 @@ object Build {
     .dependsOn(`scala-library-internal-tasty` % "provided", `scala-library-internal` % "provided")
     .settings(scala2LibraryBootstrappedSettings)
     .settings(moduleName := "scala2-library-cc")
-    .settings(
-      (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
-      (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
-      mimaCurrentClassfiles := (Compile / packageBin).value,
-    )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
@@ -1353,10 +1343,13 @@ object Build {
       (Test / managedClasspath) ~= {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
+      (Compile / packageBin / mappings) ++= (`scala-library-internal` / Compile / packageBin / mappings).value,
+      (Compile / packageBin / mappings) ++= (`scala-library-internal-tasty` / Compile / packageBin / mappings).value,
       mimaCheckDirection := "both",
       mimaBackwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.BackwardsBreakingChanges,
       mimaForwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.ForwardsBreakingChanges,
       customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters"),
+      mimaCurrentClassfiles := (Compile / packageBin).value,
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -1367,8 +1360,8 @@ object Build {
       tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       tastyMiMaCurrentClasspath := {
         val javaBootCp = tastyMiMaJavaBootClasspath.value
-        val classDir = (Compile / classDirectory).value.toPath()
-        val cp0 = Attributed.data((Compile / fullClasspath).value).map(_.toPath())
+        val classDir = (Compile / packageBin).value.toPath()
+        val cp0 = Attributed.data((Compile / fullClasspath).value).map(_.toPath()).filterNot(_.toString().contains("library-internal"))
         val cp: Seq[Path] = classDir +: (javaBootCp ++ cp0)
         (cp, classDir)
       },
