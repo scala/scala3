@@ -9,3 +9,8 @@
   |       │   ^^^^^^^^^
   |       └── (y => x = y), // warn	[ global-irrelevance4.scala:8 ]
   |            ^^^^^^^^^^
+  |       The mutable state is created through: 
+  |       ├── object A:	[ global-irrelevance4.scala:1 ]
+  |       │   ^
+  |       └── val p: Pair = foo()	[ global-irrelevance4.scala:3 ]
+  |                         ^^^^^
