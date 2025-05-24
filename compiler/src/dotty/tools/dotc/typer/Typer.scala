@@ -4265,32 +4265,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     )
                   case _ =>
                     mapOver(t)
-              val ownedVars = ctx.typerState.ownedVars
-              def qualifying = (ownedVars -- locked).toList
               val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
               if !formal.isGround
                 && (formal.simplified `ne` formal)
                 && (pt1 `ne` pt)
                 && (pt1 ne sharpenedPt)
-                && (ownedVars ne locked)
-                && !ownedVars.isEmpty
-                && qualifying.nonEmpty
                 && !resultAlreadyConstrained then
                 val approxRes = wildApprox(pt1.resultType)
                 val stripedApproxRes = tm(approxRes)
                 if !stripedApproxRes.containsWildcardTypes then
-                  if ctx.typerState.isCommittable then
-                    return NoViewsAllowed.constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
-                  else return constrainResult(tree.symbol, wtp.resultType, stripedApproxRes)
+                  return wtp.resultType <:< stripedApproxRes
               false
             }
 
             val pt1 = pt.deepenProtoTrans
-            val isConstrained = tryConstrainType(pt1)
+            tryConstrainType(pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
             arg.tpe match
               case failed: AmbiguousImplicits =>
-                if !isConstrained && (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
                 then implicitArgs(formals, argIndex, pt)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt)
               case failed: SearchFailureType =>
