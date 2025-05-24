@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, CompareFailure, LevelError, ExistentialSubsumesFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -355,18 +355,18 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkOK(res: TypeComparer.CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       res match
         case TypeComparer.CompareResult.Fail(notes) =>
-          val ((res: CompareFailure) :: Nil, otherNotes) =
-            notes.partition(_.isInstanceOf[CompareFailure]): @unchecked
+          val ((res: IncludeFailure) :: Nil, otherNotes) =
+            notes.partition(_.isInstanceOf[IncludeFailure]): @unchecked
           def msg(provisional: Boolean) =
             def toAdd: String = errorNotes(otherNotes).toAdd.mkString
             def descr: String =
-              val d = res.blocking.description
+              val d = res.cs.description
               if d.isEmpty then provenance else ""
             def kind = if provisional then "previously estimated\n" else "allowed "
-            em"$prefix included in the ${kind}capture set ${res.blocking}$descr$toAdd"
+            em"$prefix included in the ${kind}capture set ${res.cs}$descr$toAdd"
           target match
             case target: CaptureSet.Var
-            if res.blocking.isProvisionallySolved =>
+            if res.cs.isProvisionallySolved =>
               report.warning(
                 msg(provisional = true)
                   .prepend(i"Another capture checking run needs to be scheduled because\n"),
@@ -1275,12 +1275,15 @@ class CheckCaptures extends Recheck, SymTransformer:
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
     private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
-      val printableNotes = notes.filter(_.isInstanceOf[LevelError | ExistentialSubsumesFailure])
+      val printableNotes = notes.filter:
+        case IncludeFailure(_, _, true) => true
+        case _: ExistentialSubsumesFailure => true
+        case _ => false
       if printableNotes.isEmpty then NothingToAdd
       else new Addenda:
         override def toAdd(using Context) = printableNotes.map: note =>
           val msg = note match
-            case LevelError(cs, ref) =>
+            case IncludeFailure(cs, ref, _) =>
               if ref.core.isCapOrFresh then
                 i"""the universal capability $ref
                    |cannot be included in capture set $cs"""

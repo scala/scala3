@@ -175,7 +175,7 @@ sealed abstract class CaptureSet extends Showable:
 
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
     elems.exists(_.maxSubsumes(elem, canAddHidden = true))
-    || failWith(IncludeFailure(this :: Nil))
+    || failWith(IncludeFailure(this, elem))
 
   /** If this is a variable, add `cs` as a dependent set */
   protected def addDependent(cs: CaptureSet)(using Context, VarState): Boolean
@@ -604,7 +604,7 @@ object CaptureSet:
       if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
-        failWith(LevelError(this, elem))    // or `elem` is not visible at the level of the set.
+        failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
@@ -622,7 +622,7 @@ object CaptureSet:
         if !res then
           elems -= elem
           TypeComparer.updateErrorNotes:
-            case IncludeFailure(trace) => IncludeFailure(this :: trace)
+            case note: IncludeFailure => note.addToTrace(this)
         res
 
     private def isPartOf(binder: Type)(using Context): Boolean =
@@ -667,13 +667,10 @@ object CaptureSet:
         true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): Boolean =
-      if (cs eq this) || cs.isUniversal || isConst then
-        true
-      else if recordDepsState() then
-        deps += cs
-        true
-      else
-        failWith(IncludeFailure(this :: Nil))
+      (cs eq this)
+      || cs.isUniversal
+      || isConst
+      || recordDepsState() && { deps += cs; true }
 
     override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
       rootLimit = upto
@@ -871,7 +868,7 @@ object CaptureSet:
         // Filtered elements have to be back-propagated to source.
         // Elements that don't satisfy `p` are not allowed.
         if p(elem) then source.tryInclude(elem, this)
-        else failWith(IncludeFailure(this :: Nil))
+        else failWith(IncludeFailure(this, elem))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then
@@ -1079,25 +1076,24 @@ object CaptureSet:
    */
   case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote
 
-  sealed abstract class CompareFailure extends ErrorNote, Showable:
-    override def kind = classOf[CompareFailure]
+  case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends ErrorNote, Showable:
+    private var myTrace: List[CaptureSet] = cs :: Nil
+
+    def trace: List[CaptureSet] = myTrace
+    def addToTrace(cs1: CaptureSet) =
+      val res = IncludeFailure(cs, elem, levelError)
+      res.myTrace = cs1 :: this.myTrace
+      res
+
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
-        this match
-          case IncludeFailure(trace) =>
-            if ctx.settings.YccDebug.value then printer.toText(trace, ", ")
-            else blocking.show
-          case LevelError(cs: CaptureSet, elem: Capability) =>
-            Str(i"($elem at wrong level for $cs at level ${cs.level.toString})")
-
-    /** If not isOK, the blocking capture set */
-    def blocking: CaptureSet = (this: @unchecked) match
-      case IncludeFailure(cs) => cs.last
-      case LevelError(cs, _) => cs
-  end CompareFailure
-
-  case class IncludeFailure(trace: List[CaptureSet]) extends CompareFailure
-  case class LevelError(cs: CaptureSet, elem: Capability) extends CompareFailure
+        if levelError then
+          i"($elem at wrong level for $cs at level ${cs.level.toString})"
+        else
+          if ctx.settings.YccDebug.value
+          then i"$elem cannot be included in $trace"
+          else i"$elem cannot be included in $cs"
+  end IncludeFailure
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
