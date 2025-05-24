@@ -59,7 +59,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var monitored = false
 
   private var maxErrorLevel: Int = -1
-  private var errorNotes: List[(Int, ErrorNote)] = Nil
+  protected var errorNotes: List[(Int, ErrorNote)] = Nil
 
   private var needsGc = false
 
@@ -433,7 +433,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ =>
             if isCaptureVarComparison then
               return CCState.withCapAsRoot:
-                subCaptures(tp1.captureSet, tp2.captureSet).isOK
+                subCaptures(tp1.captureSet, tp2.captureSet)
             if (tp1 eq NothingType) || isBottom(tp1) then
               return true
         }
@@ -541,7 +541,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if subCaptures(refs1, tp2.captureSet).isOK && sameBoxed(tp1, tp2, refs1)
+          else if subCaptures(refs1, tp2.captureSet) && sameBoxed(tp1, tp2, refs1)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
           then
             val tp2a =
@@ -583,7 +583,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         if isCaptureVarComparison then
           return CCState.withCapAsRoot:
-            subCaptures(tp1.captureSet, tp2.captureSet).isOK
+            subCaptures(tp1.captureSet, tp2.captureSet)
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
@@ -668,12 +668,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1 @ CapturingType(parent1, refs1), info2: Type)
               if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                subCaptures(refs1, info2.captureSet).isOK && sameBoxed(info1, info2, refs1)
+                subCaptures(refs1, info2.captureSet) && sameBoxed(info1, info2, refs1)
                   && isSubInfo(parent1, info2)
               case (info1: Type, CapturingType(parent2, refs2))
               if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2).isOK) && sameBoxed(info1, info2, refs1)
+                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2)) && sameBoxed(info1, info2, refs1)
                   && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
@@ -867,12 +867,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // Eamples where this arises is capt-capibility.scala and function-combinators.scala
               val singletonOK = tp1 match
                 case tp1: SingletonType
-                if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate).isOK =>
+                if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate) =>
                   recur(tp1.widen, tp2)
                 case _ =>
                   false
               singletonOK
-              || subCaptures(refs1, refs2).isOK
+              || subCaptures(refs1, refs2)
                   && sameBoxed(tp1, tp2, refs1)
                   && (recur(tp1.widen.stripCapturing, parent2)
                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
@@ -2830,7 +2830,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if frozenConstraint then CaptureSet.VarState.Closed() else CaptureSet.VarState()
 
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet,
-      vs: CaptureSet.VarState = makeVarState())(using Context): CaptureSet.CompareResult =
+      vs: CaptureSet.VarState = makeVarState())(using Context): Boolean =
     try
       refs1.subCaptures(refs2, vs)
     catch case ex: AssertionError =>
@@ -2843,7 +2843,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs1.subCaptures(CaptureSet.empty, makeVarState()).isOK
+    || refs1.subCaptures(CaptureSet.empty, makeVarState())
 
   // ----------- Diagnostics --------------------------------------------------
 
@@ -3254,16 +3254,40 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  the same class as `note`.
    */
   def addErrorNote(note: ErrorNote): Unit =
-    if errorNotes.forall(_._2.getClass != note.getClass) then
+    if errorNotes.forall(_._2.kind != note.kind) then
       errorNotes = (recCount, note) :: errorNotes
       assert(maxErrorLevel <= recCount)
       maxErrorLevel = recCount
+
+  private[TypeComparer] inline
+  def isolated[T](inline op: Boolean, inline mapResult: Boolean => T)(using Context): T =
+    val savedNotes = errorNotes
+    val savedLevel = maxErrorLevel
+    errorNotes = Nil
+    maxErrorLevel = -1
+    try mapResult(op)
+    finally
+      errorNotes = savedNotes
+      maxErrorLevel = savedLevel
+
+  /** Run `op` on current type comparer, maping its Boolean result to
+   *  a CompareResult with possible outcomes OK and Fail(...)`. In case
+   *  of failure pass the accumulated errorNotes of this type comparer to
+   *  in the Fail value.
+   */
+  def compareResult(op: => Boolean)(using Context): CompareResult =
+    isolated(op, res =>
+      if res then CompareResult.OK else CompareResult.Fail(errorNotes.map(_._2)))
 }
 
 object TypeComparer {
 
   /** A base trait for data producing addenda to error messages */
-  trait ErrorNote
+  trait ErrorNote:
+    /** A disciminating kind. An error note is not added if it has the same kind
+     *  as an already existing error note.
+     */
+    def kind: Class[?] = getClass
 
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
@@ -3280,7 +3304,6 @@ object TypeComparer {
     else res match
       case ClassInfo(_, cls, _, _, _) => cls.showLocated
       case bounds: TypeBounds => i"type bounds [$bounds]"
-      case CaptureSet.CompareResult.OK => "OK"
       case res: printing.Showable => res.show
       case _ => String.valueOf(res).nn
 
@@ -3435,7 +3458,7 @@ object TypeComparer {
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     comparing(_.reduceMatchWith(op))
 
-  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
+  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): Boolean =
     comparing(_.subCaptures(refs1, refs2, vs))
 
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
@@ -3444,15 +3467,16 @@ object TypeComparer {
   def addErrorNote(note: ErrorNote)(using Context): Unit =
     comparer.addErrorNote(note)
 
-  /** Run `op` on current type comparer, maping its Boolean result to
-   *  a CompareResult with possible outcomes OK and Fail(...)`. In case
-   *  of failure pass the accumulated errorNotes of this type comparer to
-   *  in the Fail value.
-   */
-  def test(op: => Boolean)(using Context): CompareResult =
-    comparing: comparer =>
-      if op then CompareResult.OK
-      else CompareResult.Fail(comparer.errorNotes.map(_._2))
+  def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
+    comparer.errorNotes = comparer.errorNotes.mapConserve: p =>
+      val (level, note) = p
+      if f.isDefinedAt(note) then (level, f(note)) else p
+
+  def compareResult(op: => Boolean)(using Context): CompareResult =
+    comparing(_.compareResult(op))
+
+  inline def noNotes(inline op: Boolean)(using Context): Boolean =
+    comparer.isolated(op, x => x)
 }
 
 object MatchReducer:
@@ -3857,9 +3881,11 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   private val b = new StringBuilder
   private var lastForwardGoal: String | Null = null
 
-  private def appendFailure(x: String) =
+  private def appendFailure(notes: List[ErrorNote]) =
     if lastForwardGoal != null then  // last was deepest goal that failed
-      b.append(s"  = $x")
+      b.append(s"  = false")
+      for case note: printing.Showable <- notes do
+        b.append(i": $note")
       lastForwardGoal = null
 
   override def traceIndented[T](str: String)(op: => T): T =
@@ -3875,9 +3901,9 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       if short then
         res match
           case false =>
-            appendFailure("false")
-          case res: CaptureSet.CompareResult if res != CaptureSet.CompareResult.OK =>
-            appendFailure(show(res))
+            appendFailure(errorNotes.map(_._2))
+          case CompareResult.Fail(notes) =>
+            appendFailure(notes)
           case _ =>
             b.length = curLength // don't show successful subtraces
       else
@@ -3927,7 +3953,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       super.gadtAddBound(sym, b, isUpper)
     }
 
-  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): CaptureSet.CompareResult =
+  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): Boolean =
     traceIndented(i"subcaptures $refs1 <:< $refs2 in ${vs.toString}") {
       super.subCaptures(refs1, refs2, vs)
     }

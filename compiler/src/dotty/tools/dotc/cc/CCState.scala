@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import CaptureSet.{CompareResult, VarState}
+import CaptureSet.VarState
 import collection.mutable
 import reporting.Message
 import Contexts.Context
