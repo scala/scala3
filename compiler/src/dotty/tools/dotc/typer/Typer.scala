@@ -4265,12 +4265,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     )
                   case _ =>
                     mapOver(t)
-              val resultAlreadyConstrained = pt1.isInstanceOf[MethodOrPoly]
               if !formal.isGround
                 && (formal.simplified `ne` formal)
                 && (pt1 `ne` pt)
-                && (pt1 ne sharpenedPt)
-                && !resultAlreadyConstrained then
+                && (pt1 ne sharpenedPt) then
                 val approxRes = wildApprox(pt1.resultType)
                 val stripedApproxRes = tm(approxRes)
                 if !stripedApproxRes.containsWildcardTypes then
