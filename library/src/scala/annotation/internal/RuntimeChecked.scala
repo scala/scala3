@@ -7,5 +7,4 @@ import scala.annotation.experimental
  *
  * The compiler will remove certain static checks except those that can't be performed at runtime.
  */
-@experimental
 final class RuntimeChecked() extends Annotation
