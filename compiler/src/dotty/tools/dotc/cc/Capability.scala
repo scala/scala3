@@ -138,8 +138,8 @@ object Capabilities:
    *                 for diagnostics
    */
   case class FreshCap private (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
-    val hiddenSet = CaptureSet.HiddenSet(owner)
-    hiddenSet.owningCap = this
+    val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
+      // fails initialization check without the @unchecked
 
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that

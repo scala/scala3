@@ -950,16 +950,15 @@ object CaptureSet:
    *  which are already subject through snapshotting and rollbacks in VarState.
    *  It's advantageous if we don't need to deal with other pieces of state there.
    */
-  class HiddenSet(initialOwner: Symbol)(using @constructorOnly ictx: Context)
+  class HiddenSet(initialOwner: Symbol, val owningCap: FreshCap)(using @constructorOnly ictx: Context)
   extends Var(initialOwner):
-    var owningCap: FreshCap = uninitialized // initialized when owning FreshCap is created
     var givenOwner: Symbol = initialOwner
 
     override def owner = givenOwner
 
-    //assert(id != 4)
+    //assert(id != 3)
 
-    description = i"elements subsumed by $owningCap"
+    description = i"of elements subsumed by a fresh cap in $initialOwner"
 
     private def aliasRef: FreshCap | Null =
       if myElems.size == 1 then
