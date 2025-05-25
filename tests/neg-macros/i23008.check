@@ -5,8 +5,8 @@
   |                 Exception occurred while executing macro expansion.
   |                 java.lang.IllegalArgumentException: requirement failed: value of StringConstant cannot be `null`
   |                 	at scala.Predef$.require(Predef.scala:337)
+  |                 	at scala.quoted.runtime.impl.QuotesImpl$reflect$StringConstant$.apply(QuotesImpl.scala:2534)
   |                 	at scala.quoted.runtime.impl.QuotesImpl$reflect$StringConstant$.apply(QuotesImpl.scala:2533)
-  |                 	at scala.quoted.runtime.impl.QuotesImpl$reflect$StringConstant$.apply(QuotesImpl.scala:2532)
   |                 	at scala.quoted.ToExpr$StringToExpr.apply(ToExpr.scala:80)
   |                 	at scala.quoted.ToExpr$StringToExpr.apply(ToExpr.scala:78)
   |                 	at scala.quoted.Expr$.apply(Expr.scala:70)
