@@ -550,8 +550,8 @@ class Definitions {
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
   @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
-     completeClass(enterCompleteClassSymbol(
-       ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
+    completeClass(enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
 
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
@@ -1328,8 +1328,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refs) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refs)
+      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
+        RetainingType(apply(tp1), refSet)
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match

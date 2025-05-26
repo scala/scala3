@@ -174,17 +174,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
            //     ~ Str("?").provided(!cs.isConst)
       core ~ cs.optionalInfo
 
-  private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
-    case ref: RefTree[?] =>
-      ref.typeOpt match
-        case c: Capability => toTextCapability(c)
-        case _ => toText(ref)
-    case _ => toText(ref)
+  private def toTextRetainedElem(ref: Type): Text = ref match
+    case c: Capability => toTextCapability(c)
+    case _ =>
+      try toTextCapability(ref.toCapability)
+      catch case _ =>
+        toText(ref)
 
-  private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
+  private def toTextRetainedElems(refs: List[Type]): Text =
     "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
 
-  type GeneralCaptureSet = CaptureSet | List[tpd.Tree]
+  type GeneralCaptureSet = CaptureSet | List[Type]
 
   protected def isUniversalCaptureSet(refs: GeneralCaptureSet): Boolean = refs match
     case refs: CaptureSet =>
@@ -203,12 +203,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         )
       isUniversal
       || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !ccVerbose
-    case (ref: tpd.Tree) :: Nil => ref.symbol == defn.captureRoot
+    case (ref: TermRef) :: Nil => ref.symbol == defn.captureRoot
     case _ => false
 
   protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
     case refs: CaptureSet => toTextCaptureSet(refs)
-    case refs: List[tpd.Tree] => toTextRetainedElems(refs)
+    case refs: List[Type] => toTextRetainedElems(refs)
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -284,10 +284,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
             && refs.isReadOnly
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
-      case tp @ RetainingType(parent, refsType) =>
-        val refs = refsType.retainedElementsRaw
+      case tp @ RetainingType(parent, refSet) =>
         if Feature.ccEnabledSomewhere then
-          toTextCapturing(parent, refs.map(r => ast.tpd.TypeTree(r)), "") ~ Str("R").provided(printDebug)
+          toTextCapturing(parent, refSet.retainedElementsRaw, "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
@@ -314,7 +313,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
             ann.tree.retainedSet.retainedElementsRaw match
               case (ref: TermRef) :: Nil if ref.symbol == defn.captureRoot => Str("=>")
-              case refs => Str("->") ~ toTextRetainedElems(refs.map(r => ast.tpd.TypeTree(r)))
+              case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))

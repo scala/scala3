@@ -59,7 +59,7 @@ extension (tree: Tree)
         refs
 
   /** The type representing the capture set of retains annotation.
-    */
+   */
   def retainedSet(using Context): Type =
     tree match
       case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
@@ -69,19 +69,22 @@ extension (tree: Tree)
 
 extension (tp: Type)
 
-  def toCapabilities(using Context): List[Capability] = tp match
+  def toCapability(using Context): Capability = tp match
     case ReachCapability(tp1) =>
-      tp1.toCapabilities.map(_.reach)
+      tp1.toCapability.reach
     case ReadOnlyCapability(tp1) =>
-      tp1.toCapabilities.map(_.readOnly)
+      tp1.toCapability.readOnly
     case ref: TermRef if ref.isCapRef =>
-      GlobalCap :: Nil
+      GlobalCap
     case ref: Capability if ref.isTrackableRef =>
-      ref :: Nil
+      ref
     case _ =>
       // if this was compiled from cc syntax, problem should have been reported at Typer
       throw IllegalCaptureRef(tp)
 
+  /** A list of raw elements of a retained set.
+   *  This will not crash even if it contains a non-wellformed Capability.
+   */
   def retainedElementsRaw(using Context): List[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
@@ -90,8 +93,10 @@ extension (tp: Type)
       if tp.isNothingType then Nil
       else tp :: Nil // should be checked by wellformedness
 
+  /** A list of capabilities tof a retained set.
+   */
   def retainedElements(using Context): List[Capability] =
-    retainedElementsRaw.flatMap(_.toCapabilities)
+    retainedElementsRaw.map(_.toCapability)
 
   /** Is this type a Capability that can be tracked?
    *  This is true for
