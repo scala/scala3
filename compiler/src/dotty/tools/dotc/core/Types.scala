@@ -770,6 +770,7 @@ object Types extends TypeUtils {
         case tp: ClassInfo => tp.appliedRef
         case _ => widenIfUnstable
       }
+      // The dummy term capture variable can only be found in a capture set.
       val excluded1 = if ctx.mode.is(Mode.InCaptureSet) then excluded else excluded | CaptureParam
       findMember(name, pre, required, excluded1)
     }

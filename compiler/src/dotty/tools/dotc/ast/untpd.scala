@@ -537,8 +537,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       annot = New(annot, Nil)
     else
       val trefs =
-        if refs.isEmpty then ref(defn.NothingType)
-        else refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
+        if refs.isEmpty then
+          // The NothingType is used to represent the empty capture set.
+          ref(defn.NothingType)
+        else
+          // Treat all references as term references before typing.
+          // A dummy term symbol will be created for each capture variable,
+          // and references to them will be replaced with the corresponding
+          // type references during typing.
+          refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
       annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
       annot.putAttachment(RetainsAnnot, ())
     Annotated(parent, annot)

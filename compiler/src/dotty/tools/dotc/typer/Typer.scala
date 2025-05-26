@@ -626,6 +626,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val saved2 = foundUnderScala2
       unimported = Set.empty
       foundUnderScala2 = NoType
+      // The dummy term capture variable can only be found in a capture set.
       val excluded = if ctx.mode.is(Mode.InCaptureSet) then EmptyFlags else CaptureParam
       try
         val found = findRef(name, pt, EmptyFlags, excluded, tree.srcPos)
@@ -2533,6 +2534,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): Tree = {
     val ref1 = typedExpr(tree.ref, SingletonTypeProto)
     if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.is(Flags.CaptureParam) then
+      // When a dummy term capture variable is found, it is replaced with
+      // the corresponding type references (stored in the underling types).
       return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)
     checkStable(ref1.tpe, tree.srcPos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)

@@ -318,6 +318,7 @@ object NamerOps:
 
   /** Add a dummy term symbol for a type def that has capture parameter flag.
    *  The dummy symbol has the same name as the original type symbol and is stable.
+   *  The underlying info stores the corresponding type reference.
    *
    *  @param param the original type symbol of the capture parameter
    */
