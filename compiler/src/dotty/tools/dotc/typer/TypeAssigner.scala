@@ -162,6 +162,7 @@ trait TypeAssigner {
             // if this fails.
             ctx.javaFindMember(name, pre, lookInCompanion = false)
           else
+            // The dummy term capture variable can only be found in a capture set.
             val excluded = if ctx.mode.is(Mode.InCaptureSet) then EmptyFlags else CaptureParam
             qualType.findMember(name, pre, excluded = excluded)
 

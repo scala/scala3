@@ -61,8 +61,7 @@ extension (tree: Tree)
         tree.putAttachment(Captures, refs)
         refs
 
-  /** The type representing the capture set of retains annotation.
-   */
+  /** The type representing the capture set of @retains, @retainsCap or @retainsByName annotation. */
   def retainedSet(using Context): Type =
     tree match
       case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
@@ -96,8 +95,7 @@ extension (tp: Type)
       if tp.isNothingType then Nil
       else tp :: Nil // should be checked by wellformedness
 
-  /** A list of capabilities tof a retained set.
-   */
+  /** A list of capabilities of a retained set. */
   def retainedElements(using Context): List[Capability] =
     retainedElementsRaw.map(_.toCapability)
 
@@ -553,6 +551,9 @@ trait FollowAliasesMap(using Context) extends TypeMap:
       else t
     else mapOver(t)
 
+/** A base class for extractors that match annotated types with a specific
+ *  Capability annotation.
+ */
 abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =
     AnnotatedType(tp, Annotation(annotCls, util.Spans.NoSpan))
