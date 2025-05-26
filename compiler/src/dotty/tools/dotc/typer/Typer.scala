@@ -3195,6 +3195,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val superCls = cls.superClass
         superCls.exists && superCls.asClass.baseClasses.contains(m.symbol.owner)
 
+      // Before losing the reference to ctx.owner
+      // when calling implicitArgTree with searchCtx,
+      // let's store ctx.owner as the fallback "responsibleForImports"
+      // in DependencyRecorder.  That way, if we end up recording any dependencies
+      // we use ctx.owner as the "fromClass" rather than emitting a warning
+      // (because ctx.compilationUnit.tpdTree is still EmptyTree during typer).
+      // For example, to record mirror dependencies, see i23049.
+      inline def withOwnerResponsibleForImports[A](inline op: A): A =
+        val depRecorder = ctx.compilationUnit.depRecorder
+        val responsibleForImports = depRecorder._responsibleForImports
+        if responsibleForImports == null then
+          depRecorder._responsibleForImports = ctx.owner
+        op.tap: _ =>
+          if responsibleForImports == null then
+            depRecorder._responsibleForImports = null
+
       def givenImpl(mbr: TermRef): ValDef =
         val dcl = mbr.symbol
         val target = dcl.info.asSeenFrom(cls.thisType, dcl.owner)
@@ -3203,29 +3219,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val paramScope = newScopeWith(usingParamAccessors*)
         val searchCtx = ctx.outer.fresh.setScope(paramScope)
 
-        // Before losing the reference to ctx.owner
-        // when calling implicitArgTree with searchCtx,
-        // let's store ctx.owner as the fallback "responsibleForImports"
-        // in DependencyRecorder.  That way, if we end up recording any dependencies
-        // we use ctx.owner as the "fromClass" rather than emitting a warning
-        // (because ctx.compilationUnit.tpdTree is still EmptyTree during typer).
-        // For example, to record mirror dependencies, see i23049.
-        val depRecorder = ctx.compilationUnit.depRecorder
-        val responsibleForImports = depRecorder._responsibleForImports
-        if responsibleForImports == null then
-          depRecorder._responsibleForImports = ctx.owner
-
-        val rhs = implicitArgTree(target, cdef.span,
+        val rhs = withOwnerResponsibleForImports:
+          implicitArgTree(target, cdef.span,
             where = i"inferring the implementation of the deferred ${dcl.showLocated}"
           )(using searchCtx)
-        val resolvedHere =
-          rhs.tpe match
-          case tp: NamedType => (tp.prefix.typeSymbol eq cls) && tp.name == mbr.name && !tp.typeSymbol.is(Method)
-          case _             => false
-        if resolvedHere then failFor(mbr, "the result is self-recursive")
-
-        if responsibleForImports == null then
-          depRecorder._responsibleForImports = null
+            .tap:
+              _.tpe match
+              case tp: NamedType =>
+                val resolvedHere = tp.prefix.typeSymbol == cls && tp.name == mbr.name && !tp.typeSymbol.is(Method)
+                if resolvedHere then failFor(mbr, "the result is self-recursive")
+              case _ =>
 
         val impl = dcl.copy(cls,
           flags = dcl.flags &~ (HasDefault | Deferred) | Final | Override,
@@ -3243,15 +3246,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       if cls.is(Trait) || ctx.isAfterTyper then body
       else
-        val givenImpls =
-          cls.thisType.implicitMembers
-            //.showing(i"impl def givens for $cls/$result")
-            .filter(_.symbol.isAllOf(DeferredGivenFlags, butNot = Param))
-            .filter(!willBeImplementedInParentClass(_)) // only implement the given in the topmost class
-            //.showing(i"impl def filtered givens for $cls/$result")
-            .filter(isGivenValue)
-            .map(givenImpl)
-        body ++ givenImpls
+        body ++ cls.thisType.implicitMembers
+          //.showing(i"impl def givens for $cls/$result")
+          .filter(_.symbol.isAllOf(DeferredGivenFlags, butNot = Param))
+          .filter(!willBeImplementedInParentClass(_)) // only implement the given in the topmost class
+          //.showing(i"impl def filtered givens for $cls/$result")
+          .filter(isGivenValue)
+          .map(givenImpl)
     end implementDeferredGivens
 
     ensureCorrectSuperClass()
