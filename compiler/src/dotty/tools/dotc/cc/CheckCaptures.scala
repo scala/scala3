@@ -1300,7 +1300,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
           i"""
-             |
              |Note that ${msg.toString}"""
 
 

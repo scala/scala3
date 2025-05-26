@@ -19,7 +19,6 @@
   |                                   ^² refers to a fresh root capability in the type of value g
   |                                   ^³ refers to a root capability associated with the result type of (x: A^): B^³
   |
-  |
   |                         Note that the existential capture root in B^
   |                         cannot subsume the capability cap
   |
@@ -54,7 +53,6 @@
    |                        where:    ^  refers to the universal root capability
    |                                  ^² refers to a root capability associated with the result type of (x: A^): B^²
    |
-   |
    |                        Note that the existential capture root in B^
    |                        cannot subsume the capability x.type since that capability is not a SharedCapability
    |
@@ -68,7 +66,6 @@
    |               where:    ^   refers to a fresh root capability in the type of value h
    |                         ^²  refers to a root capability associated with the result type of (x: S^{cap.rd}): B^²
    |                         cap is the universal root capability
-   |
    |
    |               Note that the existential capture root in B^
    |               cannot subsume the capability cap

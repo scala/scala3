@@ -8,7 +8,6 @@
    |          cap  is the universal root capability
    |          cap² is a root capability associated with the result type of (x$0: Cap^{lcap}): box Id[box Cap^{cap².rd}]^?
    |
-   |
    |Note that reference <cap of (x$0: Cap^{lcap}): box Id[box Cap^{cap.rd}]^?>.rd
    |cannot be included in outer capture set ?
    |

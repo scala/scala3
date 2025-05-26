@@ -24,7 +24,6 @@
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          cap is the universal root capability
    |
-   |
    |Note that reference contextual$9.type
    |cannot be included in outer capture set ?
 70 |            fr.await.ok

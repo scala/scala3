@@ -9,7 +9,6 @@
   |          ^   refers to the universal root capability
   |          ^²  refers to a root capability associated with the result type of (): box Id[box Cap^²]^?
   |
-  |
   |Note that reference <cap of (): box Id[box Cap^]^?>
   |cannot be included in outer capture set ?
   |
