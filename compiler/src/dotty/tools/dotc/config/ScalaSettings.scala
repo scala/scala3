@@ -37,7 +37,8 @@ object ScalaSettings:
     ScalaRelease.values.toList.map(_.show)
 
   def supportedSourceVersions: List[String] =
-    SourceVersion.values.toList.map(_.toString)
+    SourceVersion.values.diff(SourceVersion.illegalInSettings)
+      .map(_.toString).toList
 
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
