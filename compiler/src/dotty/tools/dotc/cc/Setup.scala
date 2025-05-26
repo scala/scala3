@@ -735,7 +735,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // Infer the self type for the rest, which is all classes without explicit
                   // self types (to which we also add nested module classes), provided they are
                   // neither pure, nor are publicily extensible with an unconstrained self type.
-                  CapturingType(cinfo.selfType, CaptureSet.Var(cls, level = ccState.currentLevel))
+                  val cs = CaptureSet.Var(cls, level = ccState.currentLevel)
+                  if cls.derivesFrom(defn.Caps_Capability) then
+                    // If cls is a capability class, we need to add a fresh readonly capability to
+                    // ensure we cannot treat the class as pure.
+                    CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  CapturingType(cinfo.selfType, cs)
 
               // Compute new parent types
               val ps1 = inContext(ctx.withOwner(cls)):
