@@ -611,7 +611,7 @@ object Capabilities:
         c match
           case _: ReadOnly => ReadOnlyCapability(c1)
           case _: Reach => ReachCapability(c1)
-          // TODO: do we need to handle Maybe here?
+          case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
     def toText(printer: Printer): Text = printer.toTextCapability(this)

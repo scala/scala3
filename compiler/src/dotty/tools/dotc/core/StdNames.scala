@@ -550,6 +550,7 @@ object StdNames {
     val materializeClassTag: N  = "materializeClassTag"
     val materializeWeakTypeTag: N = "materializeWeakTypeTag"
     val materializeTypeTag: N   = "materializeTypeTag"
+    val maybeCapability: N      = "maybeCapability"
     val mirror : N              = "mirror"
     val moduleClass : N         = "moduleClass"
     val mut: N                  = "mut"

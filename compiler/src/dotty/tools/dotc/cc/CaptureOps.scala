@@ -47,28 +47,6 @@ def ccState(using Context): CCState =
 
 extension (tree: Tree)
 
-  /** Map tree with a Capability type to the corresponding capability,
-   *  map CapSet^{refs} to the `refs` references,
-   *  throw IllegalCaptureRef otherwise
-   */
-  // def toCapabilities(using Context): List[Capability] = tree match
-  //   case ReachCapabilityApply(arg) =>
-  //     arg.toCapabilities.map(_.reach)
-  //   case ReadOnlyCapabilityApply(arg) =>
-  //     arg.toCapabilities.map(_.readOnly)
-  //   case CapsOfApply(arg) =>
-  //     arg.toCapabilities
-  //   case _ => tree.tpe.dealiasKeepAnnots match
-  //     case ref: TermRef if ref.isCapRef =>
-  //       GlobalCap :: Nil
-  //     case ref: Capability if ref.isTrackableRef =>
-  //       ref :: Nil
-  //     case AnnotatedType(parent, ann)
-  //     if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
-  //       ann.tree.toCaptureSet.elems.toList
-  //     case tpe =>
-  //       throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
-
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
    *  For efficience, the result is cached as an Attachment on the tree.
    */
@@ -79,6 +57,7 @@ extension (tree: Tree)
         val refs = CaptureSet(tree.retainedSet.retainedElements*)
         tree.putAttachment(Captures, refs)
         refs
+
   /** The type representing the capture set of retains annotation.
     */
   def retainedSet(using Context): Type =
@@ -561,10 +540,15 @@ end AnnotatedCapability
  */
 object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot)
 
-/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
+/** An extractor for `ref @reachCapability`, which is used to express
  *  the reach capability `ref*` as a type.
  */
 object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
+
+/** An extractor for `ref @amaybeCapability`, which is used to express
+ *  the maybe capability `ref?` as a type.
+ */
+object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?

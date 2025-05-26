@@ -549,6 +549,10 @@ class Definitions {
     cls
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
+  @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
+     completeClass(enterCompleteClassSymbol(
+       ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
+
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
   @tu lazy val SeqModule: Symbol           = requiredModule("scala.collection.immutable.Seq")
@@ -2229,7 +2233,8 @@ class Definitions {
       NullClass,
       NothingClass,
       SingletonClass,
-      CBCompanion)
+      CBCompanion,
+      MaybeCapabilityAnnot)
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,
