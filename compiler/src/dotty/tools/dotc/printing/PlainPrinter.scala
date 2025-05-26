@@ -313,7 +313,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
             ann.tree.retainedSet.retainedElementsRaw match
-              case (ref: CaptureRef) :: Nil if ref.isCap => Str("=>")
+              case (ref: TermRef) :: Nil if ref.symbol == defn.captureRoot => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs.map(r => ast.tpd.TypeTree(r)))
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
