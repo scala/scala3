@@ -728,12 +728,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 else if cls.isPureClass then
                   // is cls is known to be pure, nothing needs to be added to self type
                   selfInfo
-                else if cls.derivesFrom(defn.Caps_Capability) then
-                  // If cls is a capability class, we need to add a fresh capability to
-                  // ensure we cannot treat itself as pure.
-                  CapturingType(cinfo.selfType,
-                    CaptureSet.fresh(Origin.InDecl(cls)).readOnly
-                    ++ CaptureSet.Var(cls, level = ccState.currentLevel))
                 else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
                   // assume {cap} for completely unconstrained self types of publicly extensible classes
                   CapturingType(cinfo.selfType, CaptureSet.universal)
@@ -741,7 +735,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // Infer the self type for the rest, which is all classes without explicit
                   // self types (to which we also add nested module classes), provided they are
                   // neither pure, nor are publicily extensible with an unconstrained self type.
-                  CapturingType(cinfo.selfType, CaptureSet.Var(cls, level = ccState.currentLevel))
+                  val cs = CaptureSet.Var(cls, level = ccState.currentLevel)
+                  if cls.derivesFrom(defn.Caps_Capability) then
+                    // If cls is a capability class, we need to add a fresh readonly capability to
+                    // ensure we cannot treat the class as pure.
+                    CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  CapturingType(cinfo.selfType, cs)
 
               // Compute new parent types
               val ps1 = inContext(ctx.withOwner(cls)):
