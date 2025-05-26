@@ -603,6 +603,17 @@ object Capabilities:
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
+    def toType(using Context): Type = this match
+      case c: RootCapability => defn.captureRoot.termRef
+      case c: CoreCapability => c
+      case c: DerivedCapability =>
+        val c1 = c.underlying.toType
+        c match
+          case _: ReadOnly => ReadOnlyCapability(c1)
+          case _: Reach => ReachCapability(c1)
+          // TODO: do we need to handle Maybe here?
+          case _ => c1
+
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability
 

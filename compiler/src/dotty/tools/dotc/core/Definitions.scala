@@ -1554,11 +1554,6 @@ class Definitions {
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
-  @tu lazy val capabilityQualifierAnnots: Set[Symbol] =
-    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot)
-  @tu lazy val capabilityWrapperAnnots: Set[Symbol] =
-    capabilityQualifierAnnots + RootCapabilityAnnot
-
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)

@@ -42,10 +42,10 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     if symbol == defn.RetainsCapAnnot then
       New(symbol.typeRef, Nil)
     else
-      val elems = refs.elems.toList
+      val elems = refs.elems.toList.map(_.toType)
       val trefs =
         if elems.isEmpty then defn.NothingType
-        else elems.reduce[Type]((a, b) => OrType(a, b, soft = false))
+        else elems.reduce((a, b) => OrType(a, b, soft = false))
       New(AppliedType(symbol.typeRef, trefs :: Nil), Nil)
 
   override def symbol(using Context) = cls

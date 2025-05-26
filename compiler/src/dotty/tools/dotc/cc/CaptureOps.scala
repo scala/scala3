@@ -86,15 +86,24 @@ extension (tree: Tree)
       case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
       case _ =>
         if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-        then ref(defn.captureRoot) else NoType
+        then defn.captureRoot.termRef else NoType
 
 extension (tp: Type)
 
-  def retainedElementsRaw(using Context): List[Type] = tp match
+  def toCapabilities(using Context): List[Capability] = tp match
     case ReachCapability(tp1) =>
-      tp1.reach :: Nil
+      tp1.toCapabilities.map(_.reach)
     case ReadOnlyCapability(tp1) =>
-      tp1.readOnly :: Nil
+      tp1.toCapabilities.map(_.readOnly)
+    case ref: TermRef if ref.isCapRef =>
+      GlobalCap :: Nil
+    case ref: Capability if ref.isTrackableRef =>
+      ref :: Nil
+    case _ =>
+      // if this was compiled from cc syntax, problem should have been reported at Typer
+      throw IllegalCaptureRef(tp)
+
+  def retainedElementsRaw(using Context): List[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
     case tp =>
@@ -103,9 +112,7 @@ extension (tp: Type)
       else tp :: Nil // should be checked by wellformedness
 
   def retainedElements(using Context): List[Capability] =
-    retainedElementsRaw.map:
-      case tp: CaptureRef => tp
-      case tp => throw IllegalCaptureRef(tp)
+    retainedElementsRaw.flatMap(_.toCapabilities)
 
   /** Is this type a Capability that can be tracked?
    *  This is true for
@@ -539,57 +546,25 @@ class CleanupRetains(using Context) extends TypeMap:
         RetainingType(tp, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
       case _ => mapOver(tp)
 
-// /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
-//  *  capability as a tree in a @retains annotation.
-//  */
-// object ReachCapabilityApply:
-//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-//     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
-//     case _ => None
-
-// /** An extractor for `caps.readOnlyCapability(ref)`, which is used to express a read-only
-//  *  capability as a tree in a @retains annotation.
-//  */
-// object ReadOnlyCapabilityApply:
-//   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
-//     case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
-//     case _ => None
-
 abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =
-    assert(tp.isTrackableRef, i"not a trackable ref: $tp")
-    tp match
-      case AnnotatedType(_, annot) =>
-        assert(!unwrappable.contains(annot.symbol), i"illegal combination of derived capabilities: $annotCls over ${annot.symbol}")
-      case _ =>
-    tp match
-      case tp: Capability => tp.derivedRef(annotCls)
-      case _ => AnnotatedType(tp, Annotation(annotCls, util.Spans.NoSpan))
+    AnnotatedType(tp, Annotation(annotCls, util.Spans.NoSpan))
 
-  def unapply(tree: AnnotatedType)(using Context): Option[Capability] = tree match
-    case AnnotatedType(parent: Capability, ann) if ann.hasSymbol(annotCls) => Some(parent)
+  def unapply(tree: AnnotatedType)(using Context): Option[Type] = tree match
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(annotCls) => Some(parent)
     case _ => None
 
-  protected def unwrappable(using Context): Set[Symbol]
 end AnnotatedCapability
-
-object QualifiedCapability:
-  def unapply(tree: AnnotatedType)(using Context): Option[Capability] = tree match
-    case AnnotatedType(parent: Capability, ann)
-    if defn.capabilityQualifierAnnots.contains(ann.symbol) => Some(parent)
-    case _ => None
 
 /** An extractor for `ref @readOnlyCapability`, which is used to express
  *  the read-only capability `ref.rd` as a type.
  */
-object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot):
-  protected def unwrappable(using Context) = Set()
+object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot)
 
 /** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
  *  the reach capability `ref*` as a type.
  */
-object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot):
-  protected def unwrappable(using Context) = Set(defn.ReadOnlyCapabilityAnnot)
+object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?
