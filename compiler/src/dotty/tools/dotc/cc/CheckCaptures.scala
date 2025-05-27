@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, CompareResult, CompareFailure, ExistentialSubsumesFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -349,22 +349,24 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Assert subcapturing `cs1 <: cs2` (available for debugging, otherwise unused) */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
-      assert(cs1.subCaptures(cs2).isOK, i"$cs1 is not a subset of $cs2")
+      assert(cs1.subCaptures(cs2), i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: TypeComparer.CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       res match
-        case res: CompareFailure =>
+        case TypeComparer.CompareResult.Fail(notes) =>
+          val ((res: IncludeFailure) :: Nil, otherNotes) =
+            notes.partition(_.isInstanceOf[IncludeFailure]): @unchecked
           def msg(provisional: Boolean) =
-            def toAdd: String = errorNotes(res.errorNotes).toAdd.mkString
+            def toAdd: String = errorNotes(otherNotes).toAdd.mkString
             def descr: String =
-              val d = res.blocking.description
+              val d = res.cs.description
               if d.isEmpty then provenance else ""
             def kind = if provisional then "previously estimated\n" else "allowed "
-            em"$prefix included in the ${kind}capture set ${res.blocking}$descr$toAdd"
+            em"$prefix included in the ${kind}capture set ${res.cs}$descr$toAdd"
           target match
             case target: CaptureSet.Var
-            if res.blocking.isProvisionallySolved =>
+            if res.cs.isProvisionallySolved =>
               report.warning(
                 msg(provisional = true)
                   .prepend(i"Another capture checking run needs to be scheduled because\n"),
@@ -380,7 +382,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: Capability, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
-          ccState.test(elem.singletonCaptureSet.subCaptures(cs)),
+          TypeComparer.compareResult(elem.singletonCaptureSet.subCaptures(cs)),
           i"$elem cannot be referenced here; it is not",
           elem, cs, pos, provenance)
 
@@ -388,7 +390,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
         provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
-          ccState.test(cs1.subCaptures(cs2)),
+          TypeComparer.compareResult(cs1.subCaptures(cs2)),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.nth(0)}$cs1description is not"
           else i"references $cs1$cs1description are not all",
           cs1, cs2, pos, provenance)
@@ -1272,12 +1274,16 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
-    private def errorNotes(notes: List[ErrorNote])(using Context): Addenda =
-      if notes.isEmpty then NothingToAdd
+    private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
+      val printableNotes = notes.filter:
+        case IncludeFailure(_, _, true) => true
+        case _: ExistentialSubsumesFailure => true
+        case _ => false
+      if printableNotes.isEmpty then NothingToAdd
       else new Addenda:
-        override def toAdd(using Context) = notes.map: note =>
+        override def toAdd(using Context) = printableNotes.map: note =>
           val msg = note match
-            case CompareResult.LevelError(cs, ref) =>
+            case IncludeFailure(cs, ref, _) =>
               if ref.core.isCapOrFresh then
                 i"""the universal capability $ref
                    |cannot be included in capture set $cs"""
@@ -1294,7 +1300,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
           i"""
-             |
              |Note that ${msg.toString}"""
 
 
@@ -1336,20 +1341,20 @@ class CheckCaptures extends Recheck, SymTransformer:
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
-      ccState.testOK(isCompatible(actualBoxed, expected1)) match
-        case CompareResult.OK =>
+      TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
+        case TypeComparer.CompareResult.Fail(notes) =>
+          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
+          err.typeMismatch(tree.withType(actualBoxed), expected1,
+              addApproxAddenda(
+                  addenda ++ errorNotes(notes),
+                  expected1))
+          actual
+        case /*OK*/ _ =>
           if debugSuccesses then tree match
               case Ident(_) =>
                 println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
               case _ =>
           actualBoxed
-        case fail: CompareFailure =>
-          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          err.typeMismatch(tree.withType(actualBoxed), expected1,
-              addApproxAddenda(
-                  addenda ++ errorNotes(fail.errorNotes),
-                  expected1))
-          actual
     end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
@@ -1512,7 +1517,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val cs = actual.captureSet
           if covariant then cs ++ leaked
           else
-            if !leaked.subCaptures(cs).isOK then
+            if !leaked.subCaptures(cs) then
               report.error(
                 em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
                     |since the additional capture set $leaked resulting from box conversion is not allowed in $actual""", tree.srcPos)

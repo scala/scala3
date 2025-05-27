@@ -41,9 +41,6 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
 /** An exception thrown if a @retains argument is not syntactically a Capability */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
-/** A base trait for data producing addenda to error messages */
-trait ErrorNote
-
 /** The currently valid CCState */
 def ccState(using Context): CCState =
   Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState1
@@ -157,7 +154,7 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate).isOK)
+    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate))
         && !cs.keepAlways
     then tp
     else tp match

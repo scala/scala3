@@ -86,7 +86,6 @@
    |                  where:    ^  refers to the universal root capability
    |                            ^² refers to a root capability associated with the result type of (x: File^): File^²
    |
-   |
    |                  Note that the existential capture root in File^
    |                  cannot subsume the capability x.type since that capability is not a SharedCapability
    |

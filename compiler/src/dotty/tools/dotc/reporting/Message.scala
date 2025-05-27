@@ -53,7 +53,7 @@ object Message:
       case None => false
   end Disambiguation
 
-  private type Recorded = Symbol | ParamRef | SkolemType | Capability
+  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -183,31 +183,11 @@ object Message:
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-        case ref: Capability =>
+        case ref: RootCapability =>
           val relation =
             if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
             else "is"
-          def ownerStr(owner: Symbol): String =
-            if owner.isConstructor then
-              i"constructor of ${ownerStr(owner.owner)}"
-            else if owner.isAnonymousFunction then
-              i"anonymous function of type ${owner.info}"
-            else if owner.name.toString.contains('$') then
-              ownerStr(owner.owner)
-            else
-              owner.show
-          val descr =
-            ref match
-              case GlobalCap => "the universal root capability"
-              case ref: FreshCap =>
-                val descr = ref.origin match
-                  case origin @ Origin.InDecl(sym) if sym.exists =>
-                    origin.explanation
-                  case origin =>
-                    i" created in ${ownerStr(ref.hiddenSet.owner)}${origin.explanation}"
-                i"a fresh root capability$descr"
-              case ResultCap(binder) => i"a root capability associated with the result type of $binder"
-          s"$relation $descr"
+          s"$relation ${ref.descr}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -274,14 +254,16 @@ object Message:
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet
       if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
-        boxText ~ toTextLocal(parent) ~ seen.record("^", isType = true, refs.elems.nth(0))
+        boxText
+        ~ toTextLocal(parent)
+        ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 
     override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       refs match
         case refs: CaptureSet if isUniversalCaptureSet(refs) && seen.isActive =>
-          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0))
+          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
 

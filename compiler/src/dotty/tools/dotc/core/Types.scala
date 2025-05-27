@@ -39,7 +39,7 @@ import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
 import cc.*
-import CaptureSet.{CompareResult, IdentityCaptRefMap}
+import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
 
 import scala.annotation.internal.sharable

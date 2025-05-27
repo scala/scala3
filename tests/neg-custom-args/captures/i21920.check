@@ -7,7 +7,6 @@
    |where:    => refers to a fresh root capability created in value cell when checking argument to parameter f of method open
    |          ^  refers to the universal root capability
    |
-   |
    |Note that reference <cap of (): IterableOnce[box File^?]^>
    |cannot be included in outer capture set ?
    |

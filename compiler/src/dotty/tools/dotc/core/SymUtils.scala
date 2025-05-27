@@ -118,6 +118,16 @@ class SymUtils:
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
+    def sanitizedDescription(using Context): String =
+      if self.isConstructor then
+        i"constructor of ${self.owner.sanitizedDescription}"
+      else if self.isAnonymousFunction then
+        i"anonymous function of type ${self.info}"
+      else if self.name.toString.contains('$') then
+        self.owner.sanitizedDescription
+      else
+        self.show
+
     /** Is this an old style implicit conversion?
      *  @param directOnly            only consider explicitly written methods
      *  @param forImplicitClassOnly  only consider methods generated from implicit classes

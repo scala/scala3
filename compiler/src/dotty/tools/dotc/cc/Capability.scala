@@ -58,6 +58,7 @@ object Capabilities:
   trait RootCapability extends Capability:
     val rootId = nextRootId
     nextRootId += 1
+    def descr(using Context): String
 
   /** The base trait of all capabilties represented as types */
   trait CoreCapability extends TypeProxy, Capability:
@@ -120,6 +121,7 @@ object Capabilities:
    */
   @sharable // We override below all operations that access internal capability state
   object GlobalCap extends RootCapability:
+    def descr(using Context) = "the universal root capability"
     override val maybe = Maybe(this)
     override val readOnly = ReadOnly(this)
     override def reach = unsupported("cap.reach")
@@ -136,12 +138,20 @@ object Capabilities:
    *                 for diagnostics
    */
   case class FreshCap private (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
-    val hiddenSet = CaptureSet.HiddenSet(owner)
-    hiddenSet.owningCap = this
+    val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
+      // fails initialization check without the @unchecked
 
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that
       case _ => false
+
+    def descr(using Context) =
+      val originStr = origin match
+        case Origin.InDecl(sym) if sym.exists =>
+          origin.explanation
+        case _ =>
+          i" created in ${hiddenSet.owner.sanitizedDescription}${origin.explanation}"
+      i"a fresh root capability$originStr"
 
   object FreshCap:
     def apply(origin: Origin)(using Context): FreshCap | GlobalCap.type =
@@ -225,6 +235,9 @@ object Capabilities:
             rcap.myOrigin = primary
             primary.variants += rcap
             rcap
+
+    def descr(using Context) =
+      i"a root capability associated with the result type of $binder"
   end ResultCap
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
@@ -545,7 +558,7 @@ object Capabilities:
             case y: ResultCap => vs.unify(x, y)
             case _ => y.derivesFromSharedCapability
           if !result then
-            ccState.addNote(CaptureSet.ExistentialSubsumesFailure(x, y))
+            TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
           result
         case GlobalCap =>
           y match

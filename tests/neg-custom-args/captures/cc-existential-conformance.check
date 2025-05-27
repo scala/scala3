@@ -19,7 +19,6 @@
   |                           where:    ^  refers to a fresh root capability in the type of value y
   |                                     ^² refers to a root capability associated with the result type of (x: A): B^²
   |
-  |
   |                           Note that the existential capture root in B^
   |                           cannot subsume the capability cap
   |
@@ -44,7 +43,6 @@
    |
    |                        where:    ^  refers to a fresh root capability in the type of value y
    |                                  ^² refers to a root capability associated with the result type of (x: A): B^²
-   |
    |
    |                        Note that the existential capture root in B^
    |                        cannot subsume the capability cap

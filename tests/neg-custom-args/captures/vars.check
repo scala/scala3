@@ -27,7 +27,6 @@
    |
    |        where:    ^ refers to the universal root capability
    |
-   |
    |        Note that reference cap3.type
    |        cannot be included in outer capture set ?
 37 |    def g(x: String): String = if cap3 == cap3 then "" else "a"

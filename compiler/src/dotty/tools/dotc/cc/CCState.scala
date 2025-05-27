@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import CaptureSet.{CompareResult, CompareFailure, VarState}
+import CaptureSet.VarState
 import collection.mutable
 import reporting.Message
 import Contexts.Context
@@ -15,24 +15,6 @@ class CCState:
   import CCState.*
 
   // ------ Error diagnostics -----------------------------
-
-  /** Error reprting notes produces since the last call to `test` */
-  var notes: List[ErrorNote] = Nil
-
-  def addNote(note: ErrorNote): Unit =
-    if !notes.exists(_.getClass == note.getClass) then
-      notes = note :: notes
-
-  def test(op: => CompareResult): CompareResult =
-    val saved = notes
-    notes = Nil
-    try op match
-      case res: CompareFailure => res.withNotes(notes)
-      case res => res
-    finally notes = saved
-
-  def testOK(op: => Boolean): CompareResult =
-    test(if op then CompareResult.OK else CompareResult.Fail(Nil))
 
   /** Warnings relating to upper approximations of capture sets with
    *  existentially bound variables.

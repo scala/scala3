@@ -39,7 +39,6 @@
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
-   |
    |Note that reference x.type
    |cannot be included in outer capture set ?
 36 |    (x: CanThrow[Exception]) =>
@@ -57,7 +56,6 @@
    |
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
-   |
    |
    |Note that reference x.type
    |cannot be included in outer capture set ?

@@ -7,7 +7,6 @@
    |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability
    |
-   |
    |Note that reference c.type
    |cannot be included in outer capture set ?
 11 |    () => { c.use() }
@@ -22,7 +21,6 @@
    |
    |    where:    => refers to a root capability associated with the result type of (c: Capp^): () => Unit
    |              ^  refers to the universal root capability
-   |
    |
    |    Note that the existential capture root in () => Unit
    |    cannot subsume the capability x$0.type since that capability is not a SharedCapability
