@@ -114,7 +114,7 @@ class Objects(using Context @constructorOnly):
   /**
    * A reference caches the values for outers and immutable fields.
    */
-  sealed abstract class Scope(using trace: Trace):
+  sealed abstract class Scope(using trace: Trace): // TODO: rename it to reflect that it is key to the heap
     def isObjectRef: Boolean = this.isInstanceOf[ObjectRef]
 
     def getTrace: Trace = trace
@@ -293,7 +293,11 @@ class Objects(using Context @constructorOnly):
 
     def toValueSet: ValueSet = ValueSet(scopes.asInstanceOf[Set[ValueElement]])
 
-  case class Package(packageModuleClass: ClassSymbol) extends Value:
+    def lookupSymbol(sym: Symbol)(using Heap.MutableData) = scopes.map(_.valValue(sym)).join
+
+    def outers(using Heap.MutableData): ScopeSet = scopes.map(_.outer).join
+
+  case class Package(packageModuleClass: ClassSymbol) extends Value: // TODO: try to remove packages
     def show(using Context): String = "Package(" + packageModuleClass.show + ")"
 
   object Package:
@@ -448,7 +452,7 @@ class Objects(using Context @constructorOnly):
           val outerThis = resolveThisRecur(targetClass, resultSet)
           Some((outerThis, resultSet))
         else
-          val outerScopes = scopeSet.scopes.map(_.outer).join
+          val outerScopes = scopeSet.outers
           resolveEnvRecur(target, outerScopes, bySymbol)
 
 
@@ -1184,7 +1188,7 @@ class Objects(using Context @constructorOnly):
         // Assume forward reference check is doing a good job
         val scopesOwnedByOthers = scopeSet.scopes.filter(_.owner != State.currentObject)
         if scopesOwnedByOthers.isEmpty then
-          scopeSet.scopes.map(_.varValue(sym)).join
+          scopeSet.lookupSymbol(sym)
         else
           errorReadOtherStaticObject(State.currentObject, scopesOwnedByOthers.head)
           Bottom
@@ -1195,7 +1199,7 @@ class Objects(using Context @constructorOnly):
           eval(rhs, thisV, sym.enclosingClass.asClass, cacheResult = true)
         else
           // Assume forward reference check is doing a good job
-          val value = scopeSet.scopes.map(_.varValue(sym)).join
+          val value = scopeSet.lookupSymbol(sym)
           if isByNameParam(sym) then
             evalByNameParam(value)
           else
@@ -1835,7 +1839,7 @@ class Objects(using Context @constructorOnly):
         }
 
     // parents
-    def initParent(parent: Tree, tasks: Tasks) =
+    def initParent(parent: Tree, tasks: Tasks) = // TODO: store the parent objects and resolve `p.this` for parent classes `p`
       parent match
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         evalExprs(stats, thisV, klass)
@@ -1933,9 +1937,9 @@ class Objects(using Context @constructorOnly):
         if klass == target then
           scopeSet.toValueSet
         else
-          resolveThisRecur(target, scopeSet.scopes.map(_.outer).join)
+          resolveThisRecur(target, scopeSet.outers)
       else
-        resolveThisRecur(target, scopeSet.scopes.map(_.outer).join)
+        resolveThisRecur(target, scopeSet.outers)
 
   /** Resolve C.this that appear in `D.this`
    *
