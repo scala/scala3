@@ -34,7 +34,7 @@ class CompilerSearchVisitor(
       logger.log(Level.WARNING, err.getMessage())
       false
     case NonFatal(e) =>
-      reports.incognito.create(
+      reports.incognito.nn.create(
         () => Report(
           "is_public",
           s"""Symbol: $sym""".stripMargin,

@@ -86,7 +86,7 @@ object HoverProvider:
           s"$uri::$posId"
         )
       end report
-      reportContext.unsanitized.create(() => report, /*ifVerbose =*/ true)
+      reportContext.unsanitized.nn.create(() => report, /*ifVerbose =*/ true)
       ju.Optional.empty().nn
     else
       val skipCheckOnName =
