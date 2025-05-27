@@ -2831,7 +2831,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val trees1 = tree.trees.mapconserve: t =>
         nestedCtx.gadtState.restore(preGadt)
         val res = typed(t, pt)(using nestedCtx)
-        gadtConstrs += ctx.gadt
+        gadtConstrs += nestedCtx.gadt
         res
       .mapconserve(ensureValueTypeOrWildcard)
     // Look for the necessary constraint that is subsumed by all alternatives.
