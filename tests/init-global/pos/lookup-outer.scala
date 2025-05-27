@@ -10,7 +10,7 @@ object O:
   def bar(t: T) = {
     class A {
       class B {
-        t.foo() // warn
+        t.foo()
       }
 
       val b = new B
