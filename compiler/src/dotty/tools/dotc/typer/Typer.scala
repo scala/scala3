@@ -1938,9 +1938,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // to
           //   (a1, ..., aN) => e
           val params1 = desugar.patternsToParams(elems)
+          val matchCheck = scrut.getAttachment(desugar.CheckIrrefutable)
+            .getOrElse(desugar.MatchCheck.IrrefutablePatDef)
           desugared = if params1.hasSameLengthAs(elems)
             then cpy.Function(tree)(params1, rhs)
-            else desugar.makeCaseLambda(cases, desugar.MatchCheck.IrrefutablePatDef, protoFormals.length)
+            else desugar.makeCaseLambda(cases, matchCheck, protoFormals.length)
         case _ =>
 
     if desugared.isEmpty then
