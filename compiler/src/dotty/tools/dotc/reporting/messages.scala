@@ -3255,3 +3255,11 @@ class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotParti
        |
        |Efficient operations will use `applyOrElse` to avoid computing the match twice,
        |but the `apply` body would be executed "per element" in the example."""
+
+final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
+  override protected def msg(using Context): String =
+    i"Context bounds are not allowed in this position"
+
+  override protected def explain(using Context): String = ""
+
+end IllegalContextBounds

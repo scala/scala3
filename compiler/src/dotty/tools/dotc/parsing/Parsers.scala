@@ -67,7 +67,6 @@ object Parsers {
       this == Given || this == ExtensionFollow
     def acceptsVariance =
       this == Class || this == CaseClass || this == Type
-
   end ParamOwner
 
   enum ParseKind:
@@ -3283,7 +3282,7 @@ object Parsers {
         ok
 
       def typeParam(): TypeDef = {
-        val isAbstractOwner = paramOwner == ParamOwner.Type || paramOwner == ParamOwner.TypeParam
+        val isAbstractOwner = (paramOwner == ParamOwner.Type || paramOwner == ParamOwner.TypeParam)
         val start = in.offset
         var mods = annotsAsMods() | Param
         if paramOwner == ParamOwner.Class || paramOwner == ParamOwner.CaseClass then
@@ -3304,7 +3303,13 @@ object Parsers {
             }
             else ident().toTypeName
           val hkparams = typeParamClauseOpt(ParamOwner.Type)
-          val bounds = if (isAbstractOwner) typeBounds() else typeParamBounds(name)
+          // val bounds = if (isAbstractOwner) typeBounds() else typeParamBounds(name)
+          val bounds = typeParamBounds(name) match
+            case bounds: TypeBoundsTree => bounds
+            case bounds: ContextBounds if !isAbstractOwner => bounds
+            case ContextBounds(bounds, cxBounds) =>
+              for cbound <- cxBounds do  report.error(IllegalContextBounds(), cbound.srcPos)
+              bounds
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
