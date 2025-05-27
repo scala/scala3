@@ -19,7 +19,7 @@ import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.{ImportInfo, Typer}
 import dotty.tools.dotc.typer.Deriving.OriginalTypeClass
-import dotty.tools.dotc.util.{Property, Spans, SrcPos}, Spans.Span
+import dotty.tools.dotc.util.{Property, Spans, SrcPos}, Spans.{NoSpan, Span}
 import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
 import dotty.tools.dotc.util.chaining.*
 
@@ -426,12 +426,14 @@ object CheckUnused:
   class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining")
 
   class RefInfos:
-    val defs = mutable.Set.empty[(Symbol, SrcPos)]    // definitions
-    val pats = mutable.Set.empty[(Symbol, SrcPos)]    // pattern variables
-    val refs = mutable.Set.empty[Symbol]              // references
-    val asss = mutable.Set.empty[Symbol]              // targets of assignment
-    val skip = mutable.Set.empty[Symbol]              // methods to skip (don't warn about their params)
-    val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
+    val defs,  // definitions
+        pats   // pattern variables
+      = mutable.Set.empty[(Symbol, SrcPos)]
+    val refs,  // references
+        asss,  // targets of assignment
+        skip,  // methods to skip (don't warn about their params)
+        nowarn // marked @nowarn
+      = mutable.Set.empty[Symbol]
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
     def register(tree: Tree)(using Context): Unit = if inlined.isEmpty then
@@ -608,6 +610,7 @@ object CheckUnused:
         warnAt(pos)(UnusedSymbol.localDefs)
 
     def checkPatvars() =
+      //println(infos.pats.mkString("PATVARS\n", "\n", "\n----\n"))
       // convert the one non-synthetic span so all are comparable; filter NoSpan below
       def uniformPos(sym: Symbol, pos: SrcPos): SrcPos =
         if pos.span.isSynthetic then pos else pos.sourcePos.withSpan(pos.span.toSynthetic)
