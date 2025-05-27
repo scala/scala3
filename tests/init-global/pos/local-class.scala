@@ -18,4 +18,5 @@ class Outer {
 
 object O {
   val c = new Outer
+  val d: Object = c.foo
 }
