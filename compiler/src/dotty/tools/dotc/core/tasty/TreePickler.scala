@@ -630,8 +630,13 @@ class TreePickler(pickler: TastyPickler) {
         case tree: TypeTree =>
           pickleType(tree.tpe)
         case SingletonTypeTree(ref) =>
-          writeByte(SINGLETONtpt)
-          pickleTree(ref)
+          val tp = ref.tpe
+          val tp1 = tp.deskolemized
+          if tp1 ne tp then
+            pickleType(tp1)
+          else
+            writeByte(SINGLETONtpt)
+            pickleTree(ref)
         case RefinedTypeTree(parent, refinements) =>
           if (refinements.isEmpty) pickleTree(parent)
           else {
