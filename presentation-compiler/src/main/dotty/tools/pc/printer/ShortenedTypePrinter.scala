@@ -2,7 +2,7 @@ package dotty.tools.pc.printer
 
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch

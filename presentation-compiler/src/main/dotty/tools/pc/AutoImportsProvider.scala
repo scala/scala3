@@ -4,7 +4,7 @@ import java.nio.file.Paths
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.AutoImportsResultImpl
 import scala.meta.pc.*
 

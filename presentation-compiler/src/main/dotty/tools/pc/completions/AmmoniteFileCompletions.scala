@@ -63,7 +63,7 @@ object AmmoniteFileCompletions:
       )
 
     def matches(file: Path): Boolean =
-      (Files.isDirectory(file) || file.toAbsolutePath().toString.isAmmoniteScript) &&
+      (Files.isDirectory(file) || file.toAbsolutePath().toString.isScalaScript) &&
         query.exists(q => CompletionFuzzy.matches(q.nn, file.getFileName().toString))
 
     (split, workspace) match
