@@ -155,8 +155,7 @@ object Capabilities:
 
   object FreshCap:
     def apply(origin: Origin)(using Context): FreshCap | GlobalCap.type =
-      if ccConfig.useSepChecks then FreshCap(ctx.owner, origin)
-      else GlobalCap
+      FreshCap(ctx.owner, origin)
 
   /** A root capability associated with a function type. These are conceptually
    *  existentially quantified over the function's result type.
@@ -716,14 +715,12 @@ object Capabilities:
    *  the map being installed for future use.
    */
   def capToFresh(tp: Type, origin: Origin)(using Context): Type =
-    if ccConfig.useSepChecks then
-      ccState.withoutMappedFutureElems:
-        CapToFresh(origin)(tp)
-    else tp
+    ccState.withoutMappedFutureElems:
+      CapToFresh(origin)(tp)
 
   /** Maps fresh to cap */
   def freshToCap(tp: Type)(using Context): Type =
-    if ccConfig.useSepChecks then CapToFresh(Origin.Unknown).inverse(tp) else tp
+    CapToFresh(Origin.Unknown).inverse(tp)
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type, origin: Origin)(using Context): Type =
@@ -808,17 +805,14 @@ object Capabilities:
           case c @ ResultCap(`mt`) =>
             // do a reverse getOrElseUpdate on `seen` to produce the
             // `Fresh` assosicated with `t`
-            if !ccConfig.useSepChecks then
-              FreshCap(Origin.Unknown) // warning: this can cause cycles
-            else
-              val primary = c.primaryResultCap
-              primary.origin match
-                case GlobalCap =>
-                  val fresh = FreshCap(Origin.Unknown)
-                  primary.setOrigin(fresh)
-                  fresh
-                case origin: FreshCap =>
-                  origin
+            val primary = c.primaryResultCap
+            primary.origin match
+              case GlobalCap =>
+                val fresh = FreshCap(Origin.Unknown)
+                primary.setOrigin(fresh)
+                fresh
+              case origin: FreshCap =>
+                origin
           case _ =>
             super.mapCapability(c, deep)
 
