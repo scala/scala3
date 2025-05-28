@@ -222,7 +222,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       boxText
       ~ toTextLocal(parent)
       ~ "^"
-      ~ toTextGeneralCaptureSet(refs).provided(!isUniversalCaptureSet(refs))
+      ~ toTextGeneralCaptureSet(refs).provided(!isUniversalCaptureSet(refs) || ccVerbose)
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
