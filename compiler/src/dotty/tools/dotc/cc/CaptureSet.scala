@@ -103,6 +103,21 @@ sealed abstract class CaptureSet extends Showable:
   final def containsTerminalCapability(using Context) =
     elems.exists(_.isTerminalCapability)
 
+  /** Does this capture set contain a ResultCap element? */
+  final def containsResultCapability(using Context) =
+    elems.exists(_.core.isInstanceOf[ResultCap])
+
+  /** Does this capture set contain a GlobalCap or FreshCap, and at the same time
+   *  does not contain a ResultCap?
+   */
+  final def containsCapOrFresh(using Context) =
+    !containsResultCapability
+    && elems.exists: elem =>
+      elem.core match
+        case GlobalCap => true
+        case _: FreshCap => true
+        case _ => false
+
   final def containsCap(using Context) =
     elems.exists(_.core eq GlobalCap)
 

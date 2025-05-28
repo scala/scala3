@@ -65,18 +65,6 @@
    |                                     ^² refers to a fresh root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:38 --------------------------------------
-62 |  val leaked = usingFile[File^{id*}]: f => // error // error
-   |                                      ^
-   |Found:    (f: File^?) ->? box File^?
-   |Required: (f: File^) => box File^{id*}
-   |
-   |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
-   |          ^  refers to the universal root capability
-63 |    val f1: File^{id*} = id(f)
-64 |    f1
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:32 --------------------------------------
 67 |  val id: (x: File^) -> File^ = x => x // error
    |                                ^^^^^^
@@ -91,9 +79,9 @@
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
-70 |  val leaked = usingFile[File^{id*}]: f => // error // error
+70 |  val leaked = usingFile[File^{id*}]: f => // error
    |                                      ^
-   |Found:    (f: File^?) ->? box File^?
+   |Found:    (f: File^?) ->? box File^{id*}
    |Required: (f: File^) => box File^{id*}
    |
    |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
@@ -117,11 +105,3 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:62:31 -----------------------------------------------------------
-62 |  val leaked = usingFile[File^{id*}]: f => // error // error
-   |                               ^^^
-   |                               id* cannot be tracked since its deep capture set is empty
--- Error: tests/neg-custom-args/captures/reaches.scala:70:31 -----------------------------------------------------------
-70 |  val leaked = usingFile[File^{id*}]: f => // error // error
-   |                               ^^^
-   |                               id* cannot be tracked since its deep capture set is empty

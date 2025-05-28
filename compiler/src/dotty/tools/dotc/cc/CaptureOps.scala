@@ -354,7 +354,7 @@ extension (tp: Type)
         def apply(t: Type) =
           if variance <= 0 then t
           else t.dealias match
-            case t @ CapturingType(p, cs) if cs.containsTerminalCapability =>
+            case t @ CapturingType(p, cs) if cs.containsCapOrFresh =>
               change = true
               val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
               t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
@@ -362,14 +362,7 @@ extension (tp: Type)
               // Don't map annotations, which includes capture sets
               t.derivedAnnotatedType(this(parent), ann)
             case t @ FunctionOrMethod(args, res) =>
-              if args.forall(_.isAlwaysPure) then
-                // Also map existentials in results to reach capabilities if all
-                // preceding arguments are known to be always pure
-                t.derivedFunctionOrMethod(
-                  args,
-                  apply(resultToFresh(res, Origin.ResultInstance(t, NoSymbol))))
-              else
-                t
+              t.derivedFunctionOrMethod(args, apply(res))
             case _ =>
               mapOver(t)
       end narrowCaps
@@ -642,17 +635,15 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
   def apply(acc: T, t: Type) =
     if variance < 0 then acc
     else t.dealias match
-      case t @ CapturingType(p, cs1) =>
-        capturingCase(acc, p, cs1)
+      case t @ CapturingType(parent, cs) =>
+        capturingCase(acc, parent, cs)
       case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
         seen += t.symbol
         abstractTypeCase(acc, t, t.info.bounds.hi)
       case AnnotatedType(parent, _) =>
         this(acc, parent)
       case t @ FunctionOrMethod(args, res) =>
-        if args.forall(_.isAlwaysPure) then
-          this(acc, resultToFresh(res, Origin.ResultInstance(t, NoSymbol)))
-        else acc
+        this(acc, res)
       case _ =>
         foldOver(acc, t)
 end DeepTypeAccumulator

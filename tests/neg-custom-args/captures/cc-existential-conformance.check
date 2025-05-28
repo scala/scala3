@@ -13,14 +13,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:9:29 --------------------
 9 |  val z: A -> (x: A) -> B^ = y // error
   |                             ^
-  |                           Found:    (y : A -> A -> B^)
-  |                           Required: A -> (x: A) -> B^²
+  |                             Found:    A -> A -> B^{y*}
+  |                             Required: A -> (x: A) -> B^
   |
-  |                           where:    ^  refers to a fresh root capability in the type of value y
-  |                                     ^² refers to a root capability associated with the result type of (x: A): B^²
+  |                             where:    ^ refers to a root capability associated with the result type of (x: A): B^
   |
-  |                           Note that the existential capture root in B^
-  |                           cannot subsume the capability cap
+  |                             Note that the existential capture root in B^
+  |                             cannot subsume the capability y* since that capability is not a SharedCapability
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
@@ -38,13 +37,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:14:24 -------------------
 14 |  val z: (x: A) -> B^ = y // error
    |                        ^
-   |                        Found:    (y : A -> B^)
-   |                        Required: (x: A) -> B^²
+   |                        Found:    A -> B^{y*}
+   |                        Required: (x: A) -> B^
    |
-   |                        where:    ^  refers to a fresh root capability in the type of value y
-   |                                  ^² refers to a root capability associated with the result type of (x: A): B^²
+   |                        where:    ^ refers to a root capability associated with the result type of (x: A): B^
    |
    |                        Note that the existential capture root in B^
-   |                        cannot subsume the capability cap
+   |                        cannot subsume the capability y* since that capability is not a SharedCapability
    |
    | longer explanation available when compiling with `-explain`
