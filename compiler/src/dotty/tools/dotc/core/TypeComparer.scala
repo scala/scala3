@@ -26,6 +26,7 @@ import cc.*
 import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
+import scala.util.boundary, boundary.break
 
 /** Provides methods to compare types.
  */
@@ -2090,6 +2091,45 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else op2
   end necessaryEither
 
+  /** Finds the necessary (the weakest) GADT constraint among a list of them.
+   * It returns the one being subsumed by all others if exists, and `None` otherwise.
+   *
+   * This is used when typechecking pattern alternatives, for instance:
+   *
+   *   enum Expr[+T]:
+   *     case I1(x: Int) extends Expr[Int]
+   *     case I2(x: Int) extends Expr[Int]
+   *     case B(x: Boolean) extends Expr[Boolean]
+   *   import Expr.*
+   *
+   * The following function should compile:
+   *
+   *   def foo[T](e: Expr[T]): T = e match
+   *     case I1(_) | I2(_) => 42
+   *
+   * since `T >: Int` is subsumed by both alternatives in the first match clause.
+   *
+   * However, the following should not:
+   * 
+   *   def foo[T](e: Expr[T]): T = e match
+   *     case I1(_) | B(_) => 42
+   *
+   * since the `I1(_)` case gives the constraint `T >: Int` while `B(_)` gives `T >: Boolean`.
+   * Neither of the constraints is subsumed by the other.
+   */
+  def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] = boundary:
+    constrs match
+      case Nil => break(None)
+      case c0 :: constrs =>
+        var weakest = c0
+        for c <- constrs do
+          if subsumes(weakest.constraint, c.constraint, preGadt.constraint) then
+            weakest = c
+          else if !subsumes(c.constraint, weakest.constraint, preGadt.constraint) then
+            // this two constraints are disjoint
+            break(None)
+        break(Some(weakest))
+
   inline def rollbackConstraintsUnless(inline op: Boolean): Boolean =
     val saved = constraint
     var result = false
@@ -3448,6 +3488,9 @@ object TypeComparer {
 
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
+
+  def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] =
+    comparing(_.necessaryGadtConstraint(constrs, preGadt))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
     comparing(_.explained(op, header, short))
