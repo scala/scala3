@@ -369,6 +369,7 @@ extension (tp: Type)
       val tp1 = narrowCaps(tp)
       if narrowCaps.change then
         capt.println(i"narrow $tp of $ref to $tp1")
+        //println(i"reach refinement $tp at $ref to $tp1 (${ctx.compilationUnit})")
         tp1
       else
         tp
