@@ -116,6 +116,29 @@ class PcInlayHintsProvider(
               InlayHintKind.Type,
             )
             .addDefinition(adjustedPos.start)
+      case ByNameParameters(byNameParams) =>
+        def adjustByNameParameterPos(pos: SourcePosition): SourcePosition =
+          val adjusted = adjustPos(pos)
+          val start = text.indexWhere(!_.isWhitespace, adjusted.start)
+          val end = text.lastIndexWhere(!_.isWhitespace, adjusted.end - 1)
+
+          val startsWithBrace = text.lift(start).contains('{')
+          val endsWithBrace = text.lift(end).contains('}')
+
+          if startsWithBrace && endsWithBrace then
+            adjusted.withStart(start + 1)
+          else
+            adjusted
+
+        byNameParams.foldLeft(inlayHints) {
+          case (ih, pos) => 
+            val adjusted = adjustByNameParameterPos(pos)
+            ih.add(
+              adjusted.startPos.toLsp,
+              List(LabelPart("=> ")),
+              InlayHintKind.Parameter
+            )
+        }
       case _ => inlayHints
 
   private def toLabelParts(
@@ -388,3 +411,28 @@ object InferredType:
     index >= 0 && index < afterDef.size && afterDef(index) == '@'
 
 end InferredType
+
+object ByNameParameters:
+  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[List[SourcePosition]] =
+    def shouldSkipSelect(sel: Select) = 
+      isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply
+
+    if (params.byNameParameters()){
+      tree match
+        case Apply(TypeApply(sel: Select, _), _) if shouldSkipSelect(sel) => 
+          None 
+        case Apply(sel: Select, _) if shouldSkipSelect(sel) => 
+          None
+        case Apply(fun, args) =>
+          val funTp = fun.typeOpt.widenTermRefExpr
+          val params = funTp.paramInfoss.flatten
+          Some(
+            args
+            .zip(params)
+            .collect {
+              case (tree, param) if param.isByName => tree.sourcePos
+            }
+          )
+        case _ => None
+    } else None
+end ByNameParameters

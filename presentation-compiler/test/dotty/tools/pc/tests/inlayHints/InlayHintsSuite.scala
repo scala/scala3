@@ -611,17 +611,17 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |class DemoSpec {
         |  import ScalatestMock._
         |
-        |  /*StringTestOps<<(6:17)>>(*/"foo"/*)*/ should {
-        |    /*StringTestOps<<(6:17)>>(*/"checkThing1"/*)*/ in {
+        |  /*StringTestOps<<(6:17)>>(*/"foo"/*)*/ should {/*=> */
+        |    /*StringTestOps<<(6:17)>>(*/"checkThing1"/*)*/ in {/*=> */
         |      checkThing1[String]/*(using instancesString<<(10:15)>>)*/
         |    }/*(using here<<(5:15)>>)*/
-        |    /*StringTestOps<<(6:17)>>(*/"checkThing2"/*)*/ in {
+        |    /*StringTestOps<<(6:17)>>(*/"checkThing2"/*)*/ in {/*=> */
         |      checkThing2[String]/*(using instancesString<<(10:15)>>, instancesString<<(10:15)>>)*/
         |    }/*(using here<<(5:15)>>)*/
         |  }/*(using subjectRegistrationFunction<<(3:15)>>)*/
         |
-        |  /*StringTestOps<<(6:17)>>(*/"bar"/*)*/ should {
-        |    /*StringTestOps<<(6:17)>>(*/"checkThing1"/*)*/ in {
+        |  /*StringTestOps<<(6:17)>>(*/"bar"/*)*/ should {/*=> */
+        |    /*StringTestOps<<(6:17)>>(*/"checkThing1"/*)*/ in {/*=> */
         |      checkThing1[String]/*(using instancesString<<(10:15)>>)*/
         |    }/*(using here<<(5:15)>>)*/
         |  }/*(using subjectRegistrationFunction<<(3:15)>>)*/
@@ -1075,4 +1075,113 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |   val x: (path: String, num: Int, line: Int) = test
          |""".stripMargin
     )
+
+  @Test def `by-name-regular` =
+    check(
+      """|object Main:
+         |  def foo(x: => Int, y: Int, z: => Int)(w: Int, v: => Int): Unit = ()
+         |  foo(1, 2, 3)(4, 5)
+         |""".stripMargin,
+      """|object Main:
+         |  def foo(x: => Int, y: Int, z: => Int)(w: Int, v: => Int): Unit = ()
+         |  foo(/*=> */1, 2, /*=> */3)(4, /*=> */5)
+         |""".stripMargin
+    )
+
+  @Test def `by-name-block` =
+    check(
+      """|object Main:
+         |  def Future[A](arg: => A): A = arg
+         |
+         |  Future(1 + 2)
+         |  Future {
+         |    1 + 2
+         |  }
+         |  Future {
+         |    val x = 1
+         |    val y = 2
+         |    x + y
+         |  }
+         |  Some(Option(2)
+         |    .getOrElse {
+         |      List(1,2)
+         |        .headOption
+         |    })
+         |""".stripMargin,
+      """|object Main:
+         |  def Future[A](arg: => A): A = arg
+         |
+         |  Future/*[Int<<scala/Int#>>]*/(/*=> */1 + 2)
+         |  Future/*[Int<<scala/Int#>>]*/ {/*=> */
+         |    1 + 2
+         |  }
+         |  Future/*[Int<<scala/Int#>>]*/ {/*=> */
+         |    val x/*: Int<<scala/Int#>>*/ = 1
+         |    val y/*: Int<<scala/Int#>>*/ = 2
+         |    x + y
+         |  }
+         |  Some/*[Int<<scala/Int#>> | Option<<scala/Option#>>[Int<<scala/Int#>>]]*/(Option/*[Int<<scala/Int#>>]*/(2)
+         |    .getOrElse/*[Int<<scala/Int#>> | Option<<scala/Option#>>[Int<<scala/Int#>>]]*/ {/*=> */
+         |      List/*[Int<<scala/Int#>>]*/(1,2)
+         |        .headOption
+         |    })
+         |""".stripMargin
+    )
+
+  @Test def `by-name-for-comprehension` =
+    check(
+      """|object Main:
+         |  case class Test[A](v: A):
+         |     def flatMap(f: => (A => Test[Int])): Test[Int] = f(v)
+         |     def map(f: => (A => Int)): Test[Int] = Test(f(v))
+         |
+         |  def main(args: Array[String]): Unit =
+         |    val result: Test[Int] = for {
+         |      a <- Test(10)
+         |      b <- Test(20)
+         |    } yield a + b
+         |
+         |""".stripMargin,
+      """|object Main:
+         |  case class Test[A](v: A):
+         |     def flatMap(f: => (A => Test[Int])): Test[Int] = f(v)
+         |     def map(f: => (A => Int)): Test[Int] = Test/*[Int<<scala/Int#>>]*/(f(v))
+         |
+         |  def main(args: Array[String]): Unit =
+         |    val result: Test[Int] = for {
+         |      a <- Test/*[Int<<scala/Int#>>]*/(10)
+         |      b <- Test/*[Int<<scala/Int#>>]*/(20)
+         |    } yield a + b
+         |
+         |""".stripMargin,
+    )
+
+  @Test def `by-name-for-comprehension-generic` =
+    check(
+      """|object Main:
+         |  case class Test[A](v: A):
+         |     def flatMap[B](f: => (A => Test[B])): Test[B] = f(v)
+         |     def map[B](f: => (A => B)): Test[B] = Test(f(v))
+         |
+         |  def main(args: Array[String]): Unit =
+         |    val result: Test[Int] = for {
+         |      a <- Test(10)
+         |      b <- Test(20)
+         |    } yield a + b
+         |
+         |""".stripMargin,
+      """|object Main:
+         |  case class Test[A](v: A):
+         |     def flatMap[B](f: => (A => Test[B])): Test[B] = f(v)
+         |     def map[B](f: => (A => B)): Test[B] = Test/*[B<<(4:13)>>]*/(f(v))
+         |
+         |  def main(args: Array[String]): Unit =
+         |    val result: Test[Int] = for {
+         |      a <- Test/*[Int<<scala/Int#>>]*/(10)
+         |      b <- Test/*[Int<<scala/Int#>>]*/(20)
+         |    } yield a + b
+         |
+         |""".stripMargin,
+    )
+
 }
