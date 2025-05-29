@@ -777,6 +777,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
+            && funType.paramInfos.isEmpty
             && qualCaptures.mightSubcapture(refs)
             && argCaptures.forall(_.mightSubcapture(refs)) =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
