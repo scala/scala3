@@ -748,7 +748,9 @@ object Types extends TypeUtils {
         case tp: ClassInfo => tp.appliedRef
         case _ => widenIfUnstable
       }
-      findMember(name, pre, required, excluded)
+      // The dummy term capture variable can only be found in a capture set.
+      val excluded1 = if ctx.mode.is(Mode.InCaptureSet) then excluded else excluded | CaptureParam
+      findMember(name, pre, required, excluded1)
     }
 
     /** The implicit members with given name. If there are none and the denotation

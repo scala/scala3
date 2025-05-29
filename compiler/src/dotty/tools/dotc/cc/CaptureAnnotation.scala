@@ -39,15 +39,14 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
 
   /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
-    val elems = refs.elems.toList.map {
-      case c: TermRef => ref(c)
-      case c: TermParamRef => untpd.Ident(c.paramName).withType(c)
-      case c: ThisType => This(c.cls)
-      case c: RootCapability => ref(defn.captureRoot)
-      // TODO: Will crash if the type is an annotated type, for example `cap.rd`
-    }
-    val arg = repeated(elems, TypeTree(defn.AnyType))
-    New(symbol.typeRef, arg :: Nil)
+    if symbol == defn.RetainsCapAnnot then
+      New(symbol.typeRef, Nil)
+    else
+      val elems = refs.elems.toList.map(_.toType)
+      val trefs =
+        if elems.isEmpty then defn.NothingType
+        else elems.reduce((a, b) => OrType(a, b, soft = false))
+      New(AppliedType(symbol.typeRef, trefs :: Nil), Nil)
 
   override def symbol(using Context) = cls
 
