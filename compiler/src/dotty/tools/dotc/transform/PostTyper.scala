@@ -704,6 +704,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ =>
       if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
       else tp
+    case _ if sym.is(ConstructorProxy) => NoType
     case _ => tp
 
   private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
