@@ -75,6 +75,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
              ||
              method.owner.owner == sym.owner && !method.owner.isOneOf(MethodOrLazy)
           )
+          && !sym.owner.is(Module) // lambdalift doesn't transform correctly (to do)
         val inConstructor =
              (method.isPrimaryConstructor || inAnonFunInCtor)
           && ctx.owner.enclosingClass == sym.owner
