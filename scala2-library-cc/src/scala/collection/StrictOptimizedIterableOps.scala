@@ -104,7 +104,7 @@ trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
-  override def flatMap[B](f: A => IterableOnce[B]^): CC[B] =
+  override def flatMap[B](@caps.use f: A => IterableOnce[B]^): CC[B] =
     strictOptimizedFlatMap(iterableFactory.newBuilder, f)
 
   /**

@@ -592,7 +592,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     */
   // optimisations are not for speed, but for functionality
   // see tickets #153, #498, #2147, and corresponding tests in run/ (as well as run/stream_flatmap_odds.scala)
-  override def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} =
+  override def flatMap[B](@caps.use f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} =
     if (knownIsEmpty) LazyListIterable.empty
     else LazyListIterable.flatMapImpl(this, f)
 
@@ -1307,7 +1307,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     extends collection.WithFilter[A, LazyListIterable] {
     private[this] val filtered = lazyList.filter(p)
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
-    def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
+    def flatMap[B](@caps.use f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
     def withFilter(q: A => Boolean): collection.WithFilter[A, LazyListIterable]^{this, q} = new WithFilter(filtered, q)
   }

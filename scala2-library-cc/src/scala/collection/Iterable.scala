@@ -682,7 +682,7 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
 
   def map[B](f: A => B): CC[B]^{this, f} = iterableFactory.from(new View.Map(this, f))
 
-  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} = iterableFactory.from(new View.FlatMap(this, f))
+  def flatMap[B](@caps.use f: A => IterableOnce[B]^): CC[B]^{this, f*} = iterableFactory.from(new View.FlatMap(this, f))
 
   def flatten[B](implicit asIterable: A -> IterableOnce[B]): CC[B]^{this} = flatMap(asIterable)
 
@@ -902,7 +902,7 @@ object IterableOps {
     def map[B](f: A => B): CC[B]^{this, f} =
       self.iterableFactory.from(new View.Map(filtered, f))
 
-    def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} =
+    def flatMap[B](@caps.use f: A => IterableOnce[B]^): CC[B]^{this, f*} =
       self.iterableFactory.from(new View.FlatMap(filtered, f))
 
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
