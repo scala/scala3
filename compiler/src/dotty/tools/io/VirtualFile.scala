@@ -49,7 +49,8 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
     * @return     the created virtual file
     */
   def this(path: JPath, content: Array[Byte]) = {
-    this(path.toString.replace(java.io.File.separatorChar, '/'), content)
+    this(path.getFileName().toString(), path.toString())
+    this.content = content
     this.jpath_ = path
   }
 
@@ -59,11 +60,12 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
 
   def absolute: AbstractFile = this
 
-  /** Returns null. */
+  /** Returns path, which might be a non-existing file or null. */
   def jpath: JPath = jpath_
 
   override def sizeOption: Option[Int] = Some(content.length)
 
+  /** Always returns true, even if jpath is a non-existing file. */
   override def exists: Boolean = true
 
   def input : InputStream = new ByteArrayInputStream(content)
