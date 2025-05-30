@@ -85,6 +85,9 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
       selectionRange.setRange(srcPos.toLsp)
       selectionRange
 
+    def maybeToSelectionRange(srcPos: SourcePosition): Option[SelectionRange] =
+      if srcPos.contains(pos) then Some(toSelectionRange(srcPos)) else None
+
     val treeSelectionRange = Seq(toSelectionRange(tree.sourcePos))
 
     def allArgsSelectionRange(args: List[Tree]): Option[SelectionRange] =
@@ -94,16 +97,25 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
           val srcPos = list.head.sourcePos
           val lastSpan = list.last.span
           val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer)
-          if allArgsSrcPos.contains(pos) then Some(toSelectionRange(allArgsSrcPos))
-          else None
+          maybeToSelectionRange(allArgsSrcPos)
 
-    tree match
-      case DefDef(_, paramss, _, _) => paramss.flatMap(allArgsSelectionRange) ++ treeSelectionRange
-      case Apply(_, args) => allArgsSelectionRange(args) ++ treeSelectionRange
-      case TypeApply(_, args) => allArgsSelectionRange(args) ++ treeSelectionRange
-      case UnApply(_, _, pattern) => allArgsSelectionRange(pattern) ++ treeSelectionRange
-      case Function(args, body) => allArgsSelectionRange(args) ++ treeSelectionRange
-      case _ => treeSelectionRange
+    val allSelectionRanges: Iterable[SelectionRange] = tree match
+      case vdef @ ValDef(_, _, _) =>
+        maybeToSelectionRange(vdef.namePos)
+      case tdef @ TypeDef(_, _) =>
+        maybeToSelectionRange(tdef.namePos)
+      case mdef @ ModuleDef(_, _) =>
+        maybeToSelectionRange(mdef.namePos)
+      case DefDef(_, paramss, _, _) =>
+        paramss.flatMap(allArgsSelectionRange)
+      case Apply(_, args) =>
+        allArgsSelectionRange(args)
+      case TypeApply(_, args) =>
+        allArgsSelectionRange(args)
+      case Function(args, _) =>
+        allArgsSelectionRange(args)
+      case _ => Seq.empty
+    allSelectionRanges ++ treeSelectionRange
 
   private def setParent(
       child: SelectionRange,
