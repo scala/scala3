@@ -1735,7 +1735,7 @@ object SymDenotations {
             c.ensureCompleted()
       end completeChildrenIn
 
-      if is(Sealed) || isAllOf(JavaEnum) && isClass then
+      if (is(Sealed) || is(Private) || isAllOf(JavaEnum)) && isClass then
         if !is(ChildrenQueried) then
           // Make sure all visible children are completed, so that
           // they show up in Child annotations. A possible child is visible if it
