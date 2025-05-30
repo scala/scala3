@@ -128,18 +128,17 @@ trait Dynamic {
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
    *    foo.bar = baz ~~> foo.updateDynamic(bar)(baz)
    */
-  def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree = {
+  def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
     def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree =
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selSpan, targs), tree.rhs), pt)
-    tree.lhs match {
+    tree.lhs match
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, Nil)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
-      case _ =>
-        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name))
-    }
-  }
+      case lhs =>
+        val name = lhs match { case nt: NameTree => nt.name case _ => nme.NO_NAME }
+        errorTree(tree, ReassignmentToVal(lhs.symbol, name))
 
   private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: List[untpd.Tree])(using Context): untpd.Apply = {
     val select = untpd.Select(qual, dynName).withSpan(selSpan)
