@@ -418,6 +418,9 @@ object PatternMatcher {
               && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
+
+          if (tpt.tpe.hasNull || tpt.tpe.hasNothing) report.error(em"${tpt.tpe} cannot be used in runtime type tests", tpt)
+          
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
             letAbstract(ref(scrutinee).cast(tpt.tpe)) { casted =>
               nonNull += casted
