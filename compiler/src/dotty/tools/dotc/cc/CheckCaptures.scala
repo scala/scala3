@@ -1584,7 +1584,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       case actual @ CapturingType(parent, refs)
       if parent.derivesFrom(defn.Caps_Mutable)
           && expected.isValueType
-          && !expected.isMutableType
+          && !expected.derivesFromMutable
           && !expected.isSingleton
           && !expected.isBoxedCapturing =>
         actual.derivedCapturingType(parent, refs.readOnly)
