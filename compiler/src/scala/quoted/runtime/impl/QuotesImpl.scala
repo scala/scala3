@@ -3183,6 +3183,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Implicit: Flags = dotc.core.Flags.Implicit
       def Infix: Flags = dotc.core.Flags.Infix
       def Inline: Flags = dotc.core.Flags.Inline
+      def Into: Flags = dotc.core.Flags.Into
       def Invisible: Flags = dotc.core.Flags.Invisible
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
       def JavaStatic: Flags = dotc.core.Flags.JavaStatic
@@ -3208,6 +3209,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def StableRealizable: Flags = dotc.core.Flags.StableRealizable
       @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags = dotc.core.Flags.JavaStatic
       def Synthetic: Flags = dotc.core.Flags.Synthetic
+      def Tracked: Flags = dotc.core.Flags.Tracked
       def Trait: Flags = dotc.core.Flags.Trait
       def Transparent: Flags = dotc.core.Flags.Transparent
 

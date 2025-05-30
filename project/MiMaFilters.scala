@@ -15,7 +15,10 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
 
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.2.13"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$2$u002E13$")
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$2$u002E13$"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
       ),
 
       // Additions since last LTS

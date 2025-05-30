@@ -315,4 +315,11 @@ object NamerOps:
             ann.tree match
               case ast.tpd.WitnessNamesAnnot(witnessNames) =>
                 addContextBoundCompanionFor(sym, witnessNames, Nil)
+
+  /** if `sym` is a term parameter or parameter accessor, map all occurrences of
+   *  `into[T]` in its type to `T @$into`.
+   */
+  extension (tp: Type)
+    def suppressIntoIfParam(sym: Symbol)(using Context): Type =
+      if sym.isOneOf(TermParamOrAccessor) then TypeOps.suppressInto(tp) else tp
 end NamerOps

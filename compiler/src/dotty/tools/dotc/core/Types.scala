@@ -44,7 +44,6 @@ import Capabilities.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
-import dotty.tools.dotc.cc.ccConfig
 
 object Types extends TypeUtils {
 
@@ -447,10 +446,33 @@ object Types extends TypeUtils {
     def isRepeatedParam(using Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
-    /** Is this a parameter type that allows implicit argument converson? */
+    /** Is this type of the form `compiletime.into[T]`, which means it can be the
+     *  target of an implicit converson without requiring a language import?
+     */
     def isInto(using Context): Boolean = this match
-      case AnnotatedType(_, annot) => annot.symbol == defn.IntoParamAnnot
+      case AppliedType(tycon: TypeRef, arg :: Nil) => defn.isInto(tycon.symbol)
       case _ => false
+
+    /** Is this type a legal target type for an implicit conversion, so that
+     *  no `implicitConversions` language import is necessary?
+     */
+    def isConversionTargetType(using Context): Boolean =
+      dealias(KeepOpaques).match
+        case tp: TypeRef =>
+          (tp.symbol.isClass || tp.symbol.isOpaqueAlias) && tp.symbol.is(Into)
+        case tp @ AppliedType(tycon, _) =>
+          isInto || tycon.isConversionTargetType
+        case tp: AndOrType =>
+          tp.tp1.isConversionTargetType && tp.tp2.isConversionTargetType
+        case tp: TypeVar =>
+          false
+        case tp: MatchType =>
+          val tp1 = tp.reduced
+          (tp1 ne tp) && tp1.isConversionTargetType
+        case tp: RefinedType =>
+          tp.parent.isConversionTargetType
+        case _ =>
+          false
 
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
@@ -1472,48 +1494,48 @@ object Types extends TypeUtils {
             case Atoms.Unknown => Atoms.Unknown
         case _ => Atoms.Unknown
 
-    private def dealias1(keep: AnnotatedType => Context ?=> Boolean, keepOpaques: Boolean)(using Context): Type = this match {
+    def dealias(keeps: Keeps)(using Context): Type = this match
       case tp: TypeRef =>
-        if (tp.symbol.isClass) tp
-        else tp.info match {
-          case TypeAlias(alias) if !(keepOpaques && tp.symbol.is(Opaque)) =>
-            alias.dealias1(keep, keepOpaques)
+        if tp.symbol.isClass then tp
+        else tp.info match
+          case TypeAlias(alias) if (keeps & KeepOpaques) == 0 || !tp.symbol.is(Opaque) =>
+            alias.dealias(keeps)
           case _ => tp
-        }
       case app @ AppliedType(tycon, _) =>
-        val tycon1 = tycon.dealias1(keep, keepOpaques)
-        if (tycon1 ne tycon) app.superType.dealias1(keep, keepOpaques)
+        val tycon1 = tycon.dealias(keeps)
+        if tycon1 ne tycon then app.superType.dealias(keeps)
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias1(keep, keepOpaques) else tp
+        if tp1.exists then tp1.dealias(keeps) else tp
       case tp: AnnotatedType =>
-        val parent1 = tp.parent.dealias1(keep, keepOpaques)
-        if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
+        val parent1 = tp.parent.dealias(keeps)
+        if (keeps & KeepAnnots) != 0
+            || (keeps & KeepRefiningAnnots) != 0 && tp.isRefining
+        then tp.derivedAnnotatedType(parent1, tp.annot)
         else tp match
           case tp @ CapturingType(parent, refs) =>
             tp.derivedCapturingType(parent1, refs)
           case _ =>
             parent1
       case tp: LazyRef =>
-        tp.ref.dealias1(keep, keepOpaques)
+        tp.ref.dealias(keeps)
       case _ => this
-    }
 
     /** Follow aliases and dereference LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealias(using Context): Type = dealias1(keepNever, keepOpaques = false)
+    final def dealias(using Context): Type = dealias(KeepNothing)
 
     /** Follow aliases and dereference LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      *  Goes through annotated types and rewraps annotations on the result.
      */
-    final def dealiasKeepAnnots(using Context): Type = dealias1(keepAlways, keepOpaques = false)
+    final def dealiasKeepAnnots(using Context): Type = dealias(KeepAnnots)
 
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
-    final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining, keepOpaques = false)
+    final def dealiasKeepRefiningAnnots(using Context): Type = dealias(KeepRefiningAnnots)
 
     /** Like dealias, but does not follow aliases if symbol is Opaque. This is
      *  necessary if we want to look at the info of a symbol containing opaque
@@ -1531,13 +1553,13 @@ object Types extends TypeUtils {
      *  Here, we dealias symbol infos at the start of capture checking in operation `fluidify`.
      *  We have to be careful not to accidentally reveal opaque aliases when doing so.
      */
-    final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
+    final def dealiasKeepOpaques(using Context): Type = dealias(KeepOpaques)
 
     /** Like dealiasKeepAnnots, but does not follow opaque aliases. See `dealiasKeepOpaques`
      *  for why this is sometimes necessary.
      */
     final def dealiasKeepAnnotsAndOpaques(using Context): Type =
-      dealias1(keepAlways, keepOpaques = true)
+      dealias(KeepAnnots | KeepOpaques)
 
     /** Approximate this type with a type that does not contain skolem types. */
     final def deskolemized(using Context): Type =
@@ -1569,19 +1591,18 @@ object Types extends TypeUtils {
       case tp: AppliedType => tp.underlyingNormalizable
       case _ => NoType
 
-    private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
-      val res = this.widen.dealias1(keep, keepOpaques = false)
-      if (res eq this) res else res.widenDealias1(keep)
-    }
+    private def widenDealias(keeps: Keeps)(using Context): Type =
+      val tp1 = widen.dealias(keeps)
+      if tp1 eq this then this else tp1.widenDealias(keeps)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
-    final def widenDealias(using Context): Type = widenDealias1(keepNever)
+    final def widenDealias(using Context): Type = widenDealias(KeepNothing)
 
     /** Perform successive widenings and dealiasings while rewrapping annotations, until none can be applied anymore */
-    final def widenDealiasKeepAnnots(using Context): Type = widenDealias1(keepAlways)
+    final def widenDealiasKeepAnnots(using Context): Type = widenDealias(KeepAnnots)
 
     /** Perform successive widenings and dealiasings while rewrapping refining annotations, until none can be applied anymore */
-    final def widenDealiasKeepRefiningAnnots(using Context): Type = widenDealias1(keepIfRefining)
+    final def widenDealiasKeepRefiningAnnots(using Context): Type = widenDealias(KeepRefiningAnnots)
 
     /** Widen from constant type to its underlying non-constant
      *  base type.
@@ -1968,8 +1989,7 @@ object Types extends TypeUtils {
           }
           defn.FunctionNOf(
             mt.paramInfos.mapConserve:
-              _.translateFromRepeated(toArray = isJava)
-               .mapIntoAnnot(defn.IntoParamAnnot, null),
+              _.translateFromRepeated(toArray = isJava),
             result1, isContextual)
         if mt.hasErasedParams then
           defn.PolyFunctionOf(mt)
@@ -2016,38 +2036,6 @@ object Types extends TypeUtils {
         tp.translateParameterized(typeSym, defn.RepeatedParamClass)
       case _ => this
     }
-
-    /** A mapping between mapping one kind of into annotation to another or
-     *  dropping into annotations.
-     *  @param from the into annotation to map
-     *  @param to   either the replacement annotation symbol, or `null`
-     *              in which case the `from` annotations are dropped.
-     */
-    def mapIntoAnnot(from: ClassSymbol, to: ClassSymbol | Null)(using Context): Type = this match
-      case self @ AnnotatedType(tp, annot) =>
-        val tp1 = tp.mapIntoAnnot(from, to)
-        if annot.symbol == from then
-          if to == null then tp1
-          else AnnotatedType(tp1, Annotation(to, annot.tree.span))
-        else self.derivedAnnotatedType(tp1, annot)
-      case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.RepeatedParamClass =>
-        val arg1 = arg.mapIntoAnnot(from, to)
-        if arg1 eq arg then this
-        else AppliedType(tycon, arg1 :: Nil)
-      case defn.FunctionOf(argTypes, resType, isContextual) =>
-        val resType1 = resType.mapIntoAnnot(from, to)
-        if resType1 eq resType then this
-        else defn.FunctionOf(argTypes, resType1, isContextual)
-      case RefinedType(parent, rname, mt: MethodOrPoly) =>
-        val mt1 = mt.mapIntoAnnot(from, to)
-        if mt1 eq mt then this
-        else RefinedType(parent.mapIntoAnnot(from, to), rname, mt1)
-      case mt: MethodOrPoly =>
-        mt.derivedLambdaType(resType = mt.resType.mapIntoAnnot(from, to))
-      case tp: ExprType =>
-        tp.derivedExprType(tp.resType.mapIntoAnnot(from, to))
-      case _ =>
-        this
 
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
@@ -4223,11 +4211,11 @@ object Types extends TypeUtils {
 
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
-     *   - replace @repeated annotations on Seq or Array types by <repeated> types
+     *   - replace `@repeated` annotations on Seq or Array types by <repeated> types
      *   - map into annotations to $into annotations
-     *   - add @inlineParam to inline parameters
-     *   - add @erasedParam to erased parameters
-     *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
+     *   - add `@inlineParam` to inline parameters
+     *   - add `@erasedParam` to erased parameters
+     *   - map `T @$into` types to `into[T]`
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
       apply(params.map(_.name.asTermName))(
@@ -4241,9 +4229,7 @@ object Types extends TypeUtils {
       def addAnnotation(tp: Type, cls: ClassSymbol, param: Symbol): Type = tp match
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
-      var paramType = pinfo
-        .annotatedToRepeated
-        .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
+      var paramType = TypeOps.revealInto(pinfo).annotatedToRepeated
       if param.is(Inline) then
         paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
       if param.is(Erased) then
@@ -6173,6 +6159,18 @@ object Types extends TypeUtils {
 
   end BiTypeMap
 
+  /** A typemap that follows aliases and keeps their transformed results if
+  *  there is a change.
+  */
+  trait FollowAliasesMap(using Context) extends TypeMap:
+    def mapFollowingAliases(t: Type): Type =
+      val t1 = t.dealiasKeepAnnots
+      if t1 ne t then
+        val t2 = apply(t1)
+        if t2 ne t1 then t2
+        else t
+      else mapOver(t)
+
   abstract class TypeMap(implicit protected var mapCtx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
 
@@ -7122,6 +7120,15 @@ object Types extends TypeUtils {
     def apply(pre: Type, name: Name)(using Context): Boolean = true
     def isStable = true
   }
+
+  // ----- Dealias keep flags --------------------------------------------
+
+  private type Keeps = Int
+
+  private val KeepNothing = 0
+  private val KeepAnnots = 1
+  private val KeepRefiningAnnots = 2
+  private val KeepOpaques = 4
 
   // ----- Debug ---------------------------------------------------------
 

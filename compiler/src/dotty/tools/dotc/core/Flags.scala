@@ -252,7 +252,7 @@ object Flags {
   /** A field generated for a primary constructor parameter (no matter if it's a 'val' or not),
    *  or an accessor of such a field.
    */
-  val (_, ParamAccessor @ _, _) = newFlags(14, "<paramaccessor>")
+  val (ParamAccessorOrInto @ _, ParamAccessor @ _, Into @ _) = newFlags(14, "<paramaccessor>", "into")
 
   /** A value or class implementing a module */
   val (Module @ _, ModuleVal @ _, ModuleClass @ _) = newFlags(15, "module")
@@ -452,7 +452,7 @@ object Flags {
     commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased)
 
   val TypeSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
+    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open | Into
 
   val TermSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Tracked
@@ -467,7 +467,7 @@ object Flags {
    *  TODO: Should check that FromStartFlags do not change in completion
    */
   val FromStartFlags: FlagSet = commonFlags(
-    Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessor,
+    Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessorOrInto,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,

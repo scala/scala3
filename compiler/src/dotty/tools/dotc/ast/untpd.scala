@@ -236,6 +236,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Tracked()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Tracked)
 
+    case class Into()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Into)
+
     /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }
@@ -564,12 +566,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeSyntheticParameter(n: Int = 1, tpt: Tree | Null = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
-
-  def isInto(t: Tree)(using Context): Boolean = t match
-    case PrefixOp(Ident(tpnme.into), _) => true
-    case Function(_, res) => isInto(res)
-    case Parens(t) => isInto(t)
-    case _ => false
 
   def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
     params match

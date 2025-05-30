@@ -334,9 +334,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case AnnotatedType(tpe, annot) =>
         if defn.SilentAnnots.contains(annot.symbol) && !printDebug then
           toText(tpe)
-        else if (annot.symbol == defn.IntoAnnot || annot.symbol == defn.IntoParamAnnot)
-            && !printDebug
-        then atPrec(GlobalPrec)( Str("into ") ~ toText(tpe) )
         else if annot.isInstanceOf[CaptureAnnotation] then
           toTextLocal(tpe) ~ "^" ~ toText(annot)
         else

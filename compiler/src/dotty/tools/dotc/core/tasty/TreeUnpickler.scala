@@ -667,7 +667,11 @@ class TreeUnpickler(reader: TastyReader,
         }
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
-      val annots = annotFns.map(_(annotOwner))
+      var annots = annotFns.map(_(annotOwner))
+      if annots.exists(_.symbol == defn.SilentIntoAnnot) then
+        // Temporary measure until we can change TastyFormat to include an INTO tag
+        sym.setFlag(Into)
+        annots = annots.filterNot(_.symbol == defn.SilentIntoAnnot)
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
@@ -933,7 +937,7 @@ class TreeUnpickler(reader: TastyReader,
           DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
-          sym.info = tpt.tpe
+          sym.info = tpt.tpe.suppressIntoIfParam(sym)
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
@@ -978,7 +982,7 @@ class TreeUnpickler(reader: TastyReader,
         case PARAM =>
           val tpt = readTpt()(using localCtx)
           assert(nothingButMods(end))
-          sym.info = tpt.tpe
+          sym.info = tpt.tpe.suppressIntoIfParam(sym)
           ValDef(tpt)
       }
       goto(end)
