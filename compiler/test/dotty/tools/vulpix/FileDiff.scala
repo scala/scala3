@@ -35,18 +35,21 @@ object FileDiff {
     else None
   }
 
-  def matches(actual: String, expect: String): Boolean = {
-      val actual1 = actual.stripLineEnd
-      val expect1  = expect.stripLineEnd
+  def matches(actual: String, expect: String): Boolean =
+    val actual1 = actual.stripLineEnd
+    val expect1 = expect.stripLineEnd
+    // handle check file path mismatch on windows
+    def matchesWindowsPath = File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+    // obscure line numbers in frames of stack trace output
+    def obscureFrameLine(s: String): Option[String] =
+      //at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:257)
+      val frame = """\s+at [^(]+\([^:]+:(\d+)\)""".r
+      frame.findFirstMatchIn(s).map(m => s"${m.before(1)}_${m.after(1)}")
+    def matchesStackFrame =
+      actual1.endsWith(")") && expect1.endsWith(")") && obscureFrameLine(actual1) == obscureFrameLine(expect1)
+    actual1 == expect1 || matchesStackFrame || matchesWindowsPath
 
-      // handle check file path mismatch on windows
-      actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
-  }
-
-  def matches(actual: Seq[String], expect: Seq[String]): Boolean = {
-    actual.length == expect.length
-    && actual.lazyZip(expect).forall(matches)
-  }
+  def matches(actual: Seq[String], expect: Seq[String]): Boolean = actual.corresponds(expect)(matches)
 
   def dump(path: String, content: Seq[String]): Unit = {
     val outFile = dotty.tools.io.File(path)
