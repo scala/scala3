@@ -799,3 +799,19 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
          "def valueOf($name: String): Foo".hover
     )
+
+  @Test def `i7460` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.foo.sub@@string(2, 4)
+         |""".stripMargin,
+         "def substring(x$0: Int, x$1: Int): String".hover
+    )
+
+  @Test def `i7460-2` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.bar.sub@@string(2, 4)
+         |""".stripMargin,
+         "def substring(x$0: Int, x$1: Int): String".hover
+    )
