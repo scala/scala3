@@ -25,4 +25,6 @@ resolvers +=
 
 addSbtPlugin("com.gradle" % "sbt-develocity" % "1.2.2-rc-1")
 
+addSbtPlugin("com.gradle" % "sbt-develocity-common-custom-user-data" % "1.1")
+
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
