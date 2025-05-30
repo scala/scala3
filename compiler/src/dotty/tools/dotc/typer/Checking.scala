@@ -591,6 +591,10 @@ object Checking {
       checkWithDeferred(Private)
       checkWithDeferred(Final)
     }
+
+    if !sym.owner.isClass && sym.is(Method) && sym.isOneOf(NonAllowedLocalModifier) then
+        report.error("not allowed", sym.srcPos)
+
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
