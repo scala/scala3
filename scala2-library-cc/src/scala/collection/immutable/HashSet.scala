@@ -1884,11 +1884,10 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
 }
 
 private final class SetIterator[A](rootNode: SetNode[A])
-  extends ChampBaseIterator[SetNode[A]](rootNode) with Iterator[A] {
+  extends ChampBaseIterator[A, SetNode[A]](rootNode) {
 
   def next() = {
-    if (!hasNext)
-      throw new NoSuchElementException
+    if (!hasNext) Iterator.empty.next()
 
     val payload = currentValueNode.getPayload(currentValueCursor)
     currentValueCursor += 1
@@ -1899,11 +1898,10 @@ private final class SetIterator[A](rootNode: SetNode[A])
 }
 
 private final class SetReverseIterator[A](rootNode: SetNode[A])
-  extends ChampBaseReverseIterator[SetNode[A]](rootNode) with Iterator[A] {
+  extends ChampBaseReverseIterator[A, SetNode[A]](rootNode) {
 
   def next(): A = {
-    if (!hasNext)
-      throw new NoSuchElementException
+    if (!hasNext) Iterator.empty.next()
 
     val payload = currentValueNode.getPayload(currentValueCursor)
     currentValueCursor -= 1
@@ -1914,13 +1912,12 @@ private final class SetReverseIterator[A](rootNode: SetNode[A])
 }
 
 private final class SetHashIterator[A](rootNode: SetNode[A])
-  extends ChampBaseIterator[SetNode[A]](rootNode) with Iterator[AnyRef] {
+  extends ChampBaseIterator[AnyRef, SetNode[A]](rootNode) {
   private[this] var hash = 0
   override def hashCode(): Int = hash
 
   def next(): AnyRef = {
-    if (!hasNext)
-      throw new NoSuchElementException
+    if (!hasNext) Iterator.empty.next()
 
     hash = currentValueNode.getHash(currentValueCursor)
     currentValueCursor += 1
@@ -2089,7 +2086,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     ensureUnaliased()
     xs match {
       case hm: HashSet[A] =>
-        new ChampBaseIterator[SetNode[A]](hm.rootNode) {
+        new ChampBaseIterator[A, SetNode[A]](hm.rootNode) {
           while(hasNext) {
             val originalHash = currentValueNode.getHash(currentValueCursor)
             update(
@@ -2101,6 +2098,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
             )
             currentValueCursor += 1
           }
+          override def next() = Iterator.empty.next()
         }
       case other =>
         val it = other.iterator
