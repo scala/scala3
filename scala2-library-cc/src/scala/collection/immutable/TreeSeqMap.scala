@@ -234,7 +234,7 @@ final class TreeSeqMap[K, +V] private (
     bdr.result()
   }
 
-  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): TreeSeqMap[K2, V2] = {
+  override def flatMap[K2, V2](@caps.use f: ((K, V)) => IterableOnce[(K2, V2)]^): TreeSeqMap[K2, V2] = {
     val bdr = newBuilder[K2, V2](orderedBy)
     val iter = ordering.iterator
     while (iter.hasNext) {

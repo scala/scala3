@@ -208,7 +208,7 @@ object SortedMapOps {
     def map[K2 : Ordering, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
       self.sortedMapFactory.from(new View.Map(filtered, f))
 
-    def flatMap[K2 : Ordering, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
+    def flatMap[K2 : Ordering, V2](@caps.use f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
       self.sortedMapFactory.from(new View.FlatMap(filtered, f))
 
     override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, MapCC, CC]^{this, q} =
