@@ -396,7 +396,7 @@ object Build {
       for {
         username <- sys.env.get("SONATYPE_USER")
         password <- sys.env.get("SONATYPE_PW")
-      } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
+      } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
     PgpKeys.useGpgPinentry := true,
