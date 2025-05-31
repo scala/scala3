@@ -370,32 +370,6 @@ object Types extends TypeUtils {
       loop(this)
     }
 
-    /* Is this type exactly Nothing or is an AndOrType with a type that is exactly Nothing? */
-    def hasNothing(using Context): Boolean = {
-      def loop(tp: Type): Boolean = tp match {
-        case tp: TypeRef =>
-          tp.isExactlyNothing
-        case tp: AndOrType =>
-          loop(tp.tp1) || loop(tp.tp2)
-        case _ =>
-          false
-      }
-      loop(this)
-    }
-
-    /* Is this type exactly Null or is an AndOrType with a type that is exactly Null? */
-    def hasNull(using Context): Boolean = {
-      def loop(tp: Type): Boolean = tp match {
-        case tp: TypeRef =>
-          tp.isExactlyNull
-        case tp: AndOrType =>
-          loop(tp.tp1) || loop(tp.tp2)
-        case _ =>
-          false
-      }
-      loop(this)
-    }
-
     /** Is this type guaranteed not to have `null` as a value? */
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
