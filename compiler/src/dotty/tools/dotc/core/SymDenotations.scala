@@ -685,7 +685,7 @@ object SymDenotations {
       isAbstractOrAliasType && !isAbstractOrParamType
 
     /** Is this symbol an abstract or alias type? */
-    final def isAbstractOrAliasType: Boolean = isType & !isClass
+    final def isAbstractOrAliasType: Boolean = isType && !isClass
 
     /** Is this symbol an abstract type or type parameter? */
     final def isAbstractOrParamType(using Context): Boolean = this.isOneOf(DeferredOrTypeParam)
