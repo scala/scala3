@@ -905,16 +905,9 @@ object CheckUnused:
     def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
     def isMarkerTrait: Boolean =
-      def isEmptyInterface(info: Type): Boolean =
-        info.allMembers.forall: d =>
-          val m = d.symbol
-          !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
-      if sym.isClass then isEmptyInterface(sym.info)
-      else if sym.is(Deferred) then
-        sym.info match
-        case TypeBounds(_, hi) => hi == defn.AnyType || isEmptyInterface(hi)
-        case _ => true
-      else false
+      sym.info.hiBound.allMembers.forall: d =>
+        val m = d.symbol
+        !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
     def isEffectivelyPrivate: Boolean =
       sym.is(Private, butNot = ParamAccessor)
       || sym.owner.isAnonymousClass && !sym.isEffectivelyOverride
