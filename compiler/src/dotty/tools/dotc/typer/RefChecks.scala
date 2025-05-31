@@ -1118,8 +1118,8 @@ object RefChecks {
    *  This check is suppressed if the method is an override. (Because the type of the receiver
    *  may be narrower in the override.)
    *
-   *  If the extension method is nilary, it is always hidden by a member of the same name.
-   *  (Either the member is nilary, or the reference is taken as the eta-expansion of the member.)
+   *  If the extension method is nullary (has no param lists), it is always hidden by a member of the same name.
+   *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
    *
    *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
    *  That check would account for accessibility and opacity. As a limitation, this check considers
@@ -1161,7 +1161,7 @@ object RefChecks {
       def targetOfHiddenExtension: Symbol =
         val target =
           val target0 = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
-          target0.dealiasKeepOpaques.typeSymbol.info
+          target0.dealiasKeepOpaques.typeSymbol.info.hiBound
         val member = target.nonPrivateMember(sym.name)
           .filterWithPredicate: member =>
             member.symbol.isPublic && memberHidesMethod(member)
