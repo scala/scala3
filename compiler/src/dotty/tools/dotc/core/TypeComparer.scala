@@ -1010,7 +1010,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if isCaptureCheckingOrSetup then
             tp1
               .match
-                case tp1: Capability if tp1.isTracked =>
+                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
                   CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
                 case _ =>
                   tp1w
@@ -2110,7 +2110,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    * since `T >: Int` is subsumed by both alternatives in the first match clause.
    *
    * However, the following should not:
-   * 
+   *
    *   def foo[T](e: Expr[T]): T = e match
    *     case I1(_) | B(_) => 42
    *
