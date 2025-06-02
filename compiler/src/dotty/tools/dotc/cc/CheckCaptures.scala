@@ -834,10 +834,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             initCs ++ FreshCap(Origin.NewCapability(core)).readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
+          val paramSym = cls.primaryConstructor.paramNamed(getterName)
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
             refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
-            allCaptures ++= argType.captureSet
+            if paramSym.isUseParam then
+              allCaptures ++= argType.deepCaptureSet
+            else
+              allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
