@@ -1423,7 +1423,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   private def compilationTargets(sourceDir: JFile, fileFilter: FileFilter = FileFilter.NoFilter): (List[JFile], List[JFile]) =
     sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
       if (!fileFilter.accept(f.getName)) (dirs, files)
-      else if (f.isDirectory && FileFilter.ExcludeDotFiles.accept(f.getName)) (f :: dirs, files)
+      else if (f.isDirectory) (f :: dirs, files)
       else if (isSourceFile(f)) (dirs, f :: files)
       else (dirs, files)
     }

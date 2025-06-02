@@ -692,7 +692,7 @@ jobs:
       - name: Publish Nightly
         if: "steps.not_yet_published.outcome == 'success'"
         run: |
-          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
 
   nightly_documentation:
     runs-on: [self-hosted, Linux]
@@ -862,7 +862,7 @@ jobs:
           scala3-${{ env.RELEASE_TAG }}.msi 
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaUpload"
 
 
   open_issue_on_failure:

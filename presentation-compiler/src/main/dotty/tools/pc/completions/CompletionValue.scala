@@ -261,13 +261,13 @@ object CompletionValue:
   end NamedArg
 
   case class Autofill(
-      value: String
+      value: String,
+      override val label: String,
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
     override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
     override def insertText: Option[String] = Some(value)
-    override def label: String = "Autofill with default values"
 
   case class Keyword(label: String, override val insertText: Option[String])
       extends CompletionValue:

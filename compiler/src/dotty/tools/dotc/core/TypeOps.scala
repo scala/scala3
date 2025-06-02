@@ -19,7 +19,7 @@ import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
-import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
+import CaptureSet.{CompareResult, IdentityCaptRefMap, VarState}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -56,7 +56,7 @@ object TypeOps:
   }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
 
     /** The number of range approximations in invariant or contravariant positions
      *  performed by this TypeMap.
@@ -124,7 +124,7 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
-    pre.isStable || !ctx.phase.isTyper
+    pre.isStable
 
   /** Implementation of Types#simplified */
   def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
@@ -161,7 +161,7 @@ object TypeOps:
         TypeComparer.lub(simplify(l, theMap), simplify(r, theMap), isSoft = tp.isSoft)
       case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
-            && refs.subCaptures(parent.captureSet, frozen = true).isOK
+            && refs.subCaptures(parent.captureSet, VarState.Separate).isOK
             && (tp.isBoxed || !parent.isBoxedCapturing)
               // fuse types with same boxed status and outer boxed with any type
         then
@@ -180,7 +180,7 @@ object TypeOps:
         if (normed.exists) simplify(normed, theMap) else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
-        val addTypeVars = new TypeMap with IdempotentCaptRefMap:
+        val addTypeVars = new TypeMap:
           val constraint = ctx.typerState.constraint
           def apply(t: Type): Type = t match
             case t: TypeParamRef => constraint.typeVarOfParam(t).orElse(t)
@@ -448,7 +448,7 @@ object TypeOps:
   }
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
-  abstract class AvoidMap(using Context) extends AvoidWildcardsMap, IdempotentCaptRefMap:
+  abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
     @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
 
     def toAvoid(tp: NamedType): Boolean

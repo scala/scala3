@@ -24,6 +24,7 @@ t5031_2.scala
 i16997.scala
 i7414.scala
 i17588.scala
+i8300.scala
 i9804.scala
 i13433.scala
 i16649-irrefutable.scala
@@ -70,6 +71,7 @@ i18211.scala
 named-tuples1.scala
 i20897.scala
 i20512.scala
+i22645b.scala
 
 # Opaque type
 i5720.scala

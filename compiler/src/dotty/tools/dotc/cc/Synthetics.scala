@@ -116,7 +116,7 @@ object Synthetics:
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
-        val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
+        val newParamInfo = CapturingType(paramInfo, CaptureSet.fresh())
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>
@@ -132,23 +132,26 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
+      val paramCaptures = CaptureSet(enclThis, root.cap)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
-        mt1 => mt.paramInfos.map(_.capturing(CaptureSet.universal)),
+        mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
 
     def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
       val (et: ExprType) = info: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      def mapFinalResult(tp: Type, f: Type => Type): Type =
-        val defn.FunctionNOf(args, res, isContextual) = tp: @unchecked
-        if defn.isFunctionNType(res) then
-          defn.FunctionNOf(args, mapFinalResult(res, f), isContextual)
-        else
+      def mapFinalResult(tp: Type, f: Type => Type): Type = tp match
+        case FunctionOrMethod(args, res) =>
+          tp.derivedFunctionOrMethod(args, mapFinalResult(res, f))
+        case _ =>
           f(tp)
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
     def transformCompareCaptures =
-      MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType)
+      val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+      MethodType(
+        defn.ObjectType.capturing(CaptureSet(root.cap, enclThis)) :: Nil,
+        defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
       case DefaultGetterName(nme.copy, n) =>

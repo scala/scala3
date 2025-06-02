@@ -130,14 +130,24 @@ trait Migrations:
   def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
     val mversion = mv.ImplicitParamsWithoutUsing
     if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty then
-      val rewriteMsg = Message.rewriteNotice("This code", mversion.patchFrom)
+      // The application can only be rewritten if it uses parentheses syntax.
+      // See issue #22927 and related tests.
+      val hasParentheses =
+        ctx.source.content
+          .slice(tree.span.end, pt.args.head.span.start)
+          .exists(_ == '(')
+      val rewriteMsg =
+        if hasParentheses then
+          Message.rewriteNotice("This code", mversion.patchFrom)
+        else
+          ""
       report.errorOrMigrationWarning(
         em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
             |To disable the warning, please use the following option: 
             |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
             |""", 
         pt.args.head.srcPos, mversion)
-      if mversion.needsPatch then
+      if hasParentheses && mversion.needsPatch then
         patch(Span(pt.args.head.span.start), "using ")
   end implicitParams
 

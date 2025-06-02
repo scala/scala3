@@ -569,6 +569,7 @@ class Completions(
         then
           indexedContext.lookupSym(sym) match
             case IndexedContext.Result.InScope => false
+            case IndexedContext.Result.Missing if indexedContext.rename(sym).isDefined => false
             case _ if completionMode.is(Mode.ImportOrExport) =>
               visit(
                 CompletionValue.Workspace(

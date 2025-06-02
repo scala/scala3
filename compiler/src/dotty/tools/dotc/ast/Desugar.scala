@@ -703,7 +703,7 @@ object desugar {
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
-    val caseClassInScala2Library = isCaseClass && ctx.settings.YcompileScala2Library.value
+    val caseClassInScala2Library = isCaseClass && Feature.shouldBehaveAsScala2
 
     val originalTparams = constr1.leadingTypeParams
     val originalVparamss = asTermOnly(constr1.trailingParamss)
@@ -922,7 +922,7 @@ object desugar {
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
-          if ctx.settings.YcompileScala2Library.value then flags &~= Private
+          if Feature.shouldBehaveAsScala2 then flags &~= Private
           DefDef(
             nme.copy,
             joinParams(derivedTparams, copyFirstParams :: copyRestParamss),
@@ -983,7 +983,7 @@ object desugar {
           else {
             val appMods =
               var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
-              if ctx.settings.YcompileScala2Library.value then flags &~= Private
+              if Feature.shouldBehaveAsScala2 then flags &~= Private
               Modifiers(flags).withPrivateWithin(constr1.mods.privateWithin)
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
@@ -1066,7 +1066,7 @@ object desugar {
             paramss // drop leading () that got inserted by class
                     // TODO: drop this once we do not silently insert empty class parameters anymore
           case paramss => paramss
-        val finalFlag = if ctx.settings.YcompileScala2Library.value then EmptyFlags else Final
+        val finalFlag = if Feature.shouldBehaveAsScala2 then EmptyFlags else Final
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(
@@ -2262,6 +2262,8 @@ object desugar {
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
         else if op.name == nme.CC_REACH then
           Apply(ref(defn.Caps_reachCapability), t :: Nil)
+        else if op.name == nme.CC_READONLY then
+          Apply(ref(defn.Caps_readOnlyCapability), t :: Nil)
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

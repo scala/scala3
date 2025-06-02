@@ -1694,7 +1694,7 @@ class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
 
   def msg(using Context) = i"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
   def explain(using Context) =
-    if sym.is(Mutable) then "Note that variables need to be initialized to be defined."
+    if sym.isMutableVarOrAccessor then "Note that variables need to be initialized to be defined."
     else ""
 }
 
@@ -1810,6 +1810,12 @@ class ValueClassNeedsOneValParam(valueClass: Symbol)(using Context)
 class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(using Context)
   extends SyntaxMsg(ValueClassParameterMayNotBeCallByNameID) {
   def msg(using Context) = s"Value class parameter `${param.name}` may not be call-by-name"
+  def explain(using Context) = ""
+}
+
+class ValueClassCannotExtendAliasOfAnyVal(valueClass: Symbol, alias: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A value class cannot extend a type alias ($alias) of ${hl("AnyVal")}"""
   def explain(using Context) = ""
 }
 
@@ -2421,12 +2427,14 @@ class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends 
 }
 
 class NotAnExtractor(tree: untpd.Tree)(using Context) extends PatternMatchMsg(NotAnExtractorID) {
-  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
+  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an ${hl("unapply")} or ${hl("unapplySeq")} method with the appropriate signature"
   def explain(using Context) =
-    i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
+    i"""|An ${hl("unapply")} method should be in an ${hl("object")}, take a single explicit term parameter, and:
         |  - If it is just a test, return a ${hl("Boolean")}. For example ${hl("case even()")}
         |  - If it returns a single sub-value of type T, return an ${hl("Option[T]")}
         |  - If it returns several sub-values T1,...,Tn, group them in an optional tuple ${hl("Option[(T1,...,Tn)]")}
+        |
+        |Additionaly, ${hl("unapply")} or ${hl("unapplySeq")} methods cannot take type parameters after their explicit term parameter.
         |
         |Sometimes, the number of sub-values isn't fixed and we would like to return a sequence.
         |For this reason, you can also define patterns through ${hl("unapplySeq")} which returns ${hl("Option[Seq[T]]")}.
@@ -3302,23 +3310,29 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |are not values themselves, they can only be referred to in selections."""
 
 class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
-extends Message(UnusedSymbolID) {
+extends Message(UnusedSymbolID):
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
   override def actions(using Context) = this.actions
-}
 
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
-  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
-  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
+  def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
-  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
-  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  def unsetLocals(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  private def paramAddendum(sym: Symbol)(using Context): String =
+    if sym.denot.owner.is(ExtensionMethod) then i" in extension ${sym.denot.owner}"
+    else ""
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
@@ -3430,12 +3444,12 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
       val isCtor = method.isConstructor
       def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
       val prefix = s"Cannot unroll parameters of $what"
-      if method.is(Deferred) then
-        i"$prefix: it must not be abstract"
+      if method.isLocal then
+        i"$prefix because it is a local method"
+      else if !method.isEffectivelyFinal then
+        i"$prefix because it can be overridden"
       else if isCtor && method.owner.is(Trait) then
         i"implementation restriction: $prefix"
-      else if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
-        i"$prefix: it is not final"
       else if method.owner.companionClass.is(CaseClass) then
         i"$prefix of a case class companion object: please annotate the class constructor instead"
       else
@@ -3444,3 +3458,38 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
 
   def explain(using Context) = ""
 end IllegalUnrollPlacement
+
+class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
+  def kind = MessageKind.Interpolation
+  protected def msg(using Context) = errorText
+  protected def explain(using Context) = ""
+
+class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotPartialFunctionID):
+  protected def msg(using Context) =
+    "match expression in result of block will not be used to synthesize partial function"
+  protected def explain(using Context) =
+    i"""A `PartialFunction` can be synthesized from a function literal if its body is just a pattern match.
+       |
+       |For example, `collect` takes a `PartialFunction`.
+       |  (1 to 10).collect(i => i match { case n if n % 2 == 0 => n })
+       |is equivalent to using a "pattern-matching anonymous function" directly:
+       |  (1 to 10).collect { case n if n % 2 == 0 => n }
+       |Compare an operation that requires a `Function1` instead:
+       |  (1 to 10).map { case n if n % 2 == 0 => n case n => n + 1 }
+       |
+       |As a convenience, the "selector expression" of the match can be an arbitrary expression:
+       |  List("1", "two", "3").collect(x => Try(x.toInt) match { case Success(i) => i })
+       |In this example, `isDefinedAt` evaluates the selector expression and any guard expressions
+       |in the pattern match in order to report whether an input is in the domain of the function.
+       |
+       |However, blocks of statements are not supported by this idiom:
+       |  List("1", "two", "3").collect: x =>
+       |    val maybe = Try(x.toInt) // statements preceding the match
+       |    maybe match
+       |    case Success(i) if i % 2 == 0 => i // throws MatchError on cases not covered
+       |
+       |This restriction is enforced to simplify the evaluation semantics of the partial function.
+       |Otherwise, it might not be clear what is computed by `isDefinedAt`.
+       |
+       |Efficient operations will use `applyOrElse` to avoid computing the match twice,
+       |but the `apply` body would be executed "per element" in the example."""

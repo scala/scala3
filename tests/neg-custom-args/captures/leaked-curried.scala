@@ -17,3 +17,4 @@ def main(): Unit =
         () => () => io // error
     new Foo
   val bad = leaked.get()().use()  // using a leaked capability
+

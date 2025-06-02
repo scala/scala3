@@ -8,8 +8,10 @@
    |                   ^
    |                   Type variable X of constructor Foo2 cannot be instantiated to box File^ since
    |                   that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:23:21 -----------------------------------------------------
-23 |        boom.use(f): (f1: File^{backdoor*}) => // error
-   |                     ^
-   |                     Local reach capability backdoor* leaks into capture scope of method bad
-24 |            escaped = f1
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:18:31 --------------------------------
+18 |    val backdoor: Foo[File^] = new Bar   // error (follow-on, since the parent Foo[File^] of bar is illegal).
+   |                               ^^^^^^^
+   |                               Found:    Bar^?
+   |                               Required: Foo[box File^]
+   |
+   | longer explanation available when compiling with `-explain`

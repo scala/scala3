@@ -26,21 +26,17 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
   def rendererOptions(opt: MutableDataHolder): Unit = ()
 
   case class AnchorLink(link: String) extends BlankLine(BasedSequence.EmptyBasedSequence())
-  object SectionHandler extends CustomNodeRenderer[Section]:
-    val repeatedIds: mutable.Map[(NodeRendererContext, String), Int] = mutable.Map()
+  class SectionHandler extends CustomNodeRenderer[Section]:
     val idGenerator = new HeaderIdGenerator.Factory().create()
+    idGenerator.setResolveDupes(true)
     override def render(node: Section, c: NodeRendererContext, html: HtmlWriter): Unit =
       val Section(header, body) = node
-      val headerText = header.getText.toString
-      val idSuffix = repeatedIds.getOrElseUpdate((c, headerText), 0)
-      val ifSuffixStr = if(idSuffix == 0) then "" else idSuffix.toString
-      repeatedIds.update((c, headerText), idSuffix + 1)
 
       /* #19524 flexmark's `HeaderIdGenerator` does not appear to be thread-safe,
        * so we protect its usage with a full `synchronize`.
        */
       val id = idGenerator.synchronized {
-        idGenerator.getId(headerText + ifSuffixStr)
+        idGenerator.getId(header.getText)
       }
 
       val anchor = AnchorLink(s"#$id")
@@ -68,13 +64,12 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
   object Render extends NodeRenderer:
     override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[?]] =
       JSet(
-        new NodeRenderingHandler(classOf[Section], SectionHandler),
+        new NodeRenderingHandler(classOf[Section], new SectionHandler),
         new NodeRenderingHandler(classOf[AnchorLink], AnchorLinkHandler)
       )
 
   object Factory extends NodeRendererFactory:
     override def apply(options: DataHolder): NodeRenderer = Render
-
 
   def extend(htmlRendererBuilder: HtmlRenderer.Builder, tpe: String): Unit =
     htmlRendererBuilder.nodeRendererFactory(Factory)

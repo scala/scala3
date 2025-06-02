@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/filevar-expanded.scala:34:13 --------------------------------------------------
+34 |    withFile(io3): f => // error: separation failure
+   |             ^^^
+   |   Separation failure: argument of type  (io3 : test2.IO^)
+   |   to method withFile: [T](io2: test2.IO^)(op: (f: test2.File^{io2}) => T): T
+   |   corresponds to capture-polymorphic formal parameter io2 of type  test2.IO^
+   |   and hides capabilities  {io3}.
+   |   Some of these overlap with the captures of the second argument with type  (f: test2.File^{io3}) ->{io3} Unit.
+   |
+   |     Hidden set of current argument        : {io3}
+   |     Hidden footprint of current argument  : {io3}
+   |     Capture set of second argument        : {io3}
+   |     Footprint set of second argument      : {io3}
+   |     The two sets overlap at               : {io3}

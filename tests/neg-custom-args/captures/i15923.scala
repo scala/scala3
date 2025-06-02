@@ -9,6 +9,6 @@ def bar() = {
     result
   }
 
-  val leak = withCap(cap => mkId(cap))  // error // error
+  val leak = withCap(cap => mkId(cap))  // error
   leak { cap => cap.use() }
 }
