@@ -684,7 +684,7 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
 
   def flatMap[B](@caps.use f: A => IterableOnce[B]^): CC[B]^{this, f*} = iterableFactory.from(new View.FlatMap(this, f))
 
-  def flatten[B](implicit asIterable: A -> IterableOnce[B]): CC[B]^{this} = flatMap(asIterable)
+  def flatten[B](implicit asIterable: A -> IterableOnce[B]): CC[B]^{this, asIterable*} = flatMap(asIterable)
 
   def collect[B](pf: PartialFunction[A, B]^): CC[B]^{this, pf} =
     iterableFactory.from(new View.Collect(this, pf))

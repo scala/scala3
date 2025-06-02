@@ -600,7 +600,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     *
     * $preservesLaziness
     */
-  override def flatten[B](implicit asIterable: A -> IterableOnce[B]): LazyListIterable[B]^{this} = flatMap(asIterable)
+  override def flatten[B](implicit asIterable: A -> IterableOnce[B]): LazyListIterable[B]^{this, asIterable*} = flatMap(asIterable)
 
   /** @inheritdoc
     *
