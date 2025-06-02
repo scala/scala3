@@ -1,6 +1,5 @@
 package dotty.tools.backend.jvm
 
-//import scala.language.unsafeNulls
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
@@ -68,7 +67,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
             null
 
         if sym.isClass then
-          val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode // LHOTAK
+          val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
         def registerGeneratedClass(classNode: ClassNode | Null, isArtifact: Boolean): Unit =

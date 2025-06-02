@@ -1,6 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls //
 
 import collection.mutable
 

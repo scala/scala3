@@ -8,7 +8,6 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 
-//import scala.language.unsafeNulls
 
 /**
  * This component hosts tools and utilities used in the backend that require access to a `BTypes`

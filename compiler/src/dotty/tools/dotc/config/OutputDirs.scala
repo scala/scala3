@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-//import scala.language.unsafeNulls
 
 import io.*
 

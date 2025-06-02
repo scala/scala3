@@ -3,7 +3,6 @@
  */
 package dotty.tools.dotc.classpath
 
-//import scala.language.unsafeNulls
 
 import java.io.File
 import java.net.URL
