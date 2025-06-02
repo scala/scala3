@@ -21,14 +21,6 @@
 34 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------
-39 |    val next: () => Unit = cur.head   // error
-   |                           ^^^^^^^^
-   |                           reference cap is not included in the allowed capture set ?
-   |                           of the enclosing method runAll2
-   |
-   |                           Note that the universal capability cap
-   |                           cannot be included in capture set ?
 -- Error: tests/neg-custom-args/captures/reaches.scala:44:16 -----------------------------------------------------------
 44 |  val cur = Ref[List[Proc]](xs) // error
    |                ^^^^^^^^^^

@@ -15,7 +15,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
     var file: AbstractFile | Null = base
     val dirParts = pathParts.init.iterator
     while (dirParts.hasNext) {
-      val dirPart = dirParts.next
+      val dirPart = dirParts.next()
       file = file.lookupName(dirPart, directory = true)
       if (file == null)
         return null

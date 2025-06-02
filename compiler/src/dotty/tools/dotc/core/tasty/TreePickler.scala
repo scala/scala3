@@ -716,8 +716,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           if passesConditionForErroringBestEffortCode(tree.hasType) then pickleType(tree.tpe)
           else pickleErrorType()
         case SingletonTypeTree(ref) =>
-          writeByte(SINGLETONtpt)
-          pickleTree(ref)
+          val tp = ref.tpe
+          val tp1 = tp.deskolemized
+          if tp1 ne tp then
+            pickleType(tp1)
+          else
+            writeByte(SINGLETONtpt)
+            pickleTree(ref)
         case RefinedTypeTree(parent, refinements) =>
           if (refinements.isEmpty) pickleTree(parent)
           else {
@@ -958,7 +963,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       val it = mp.keysIterator
       var i = 0
       while i < keys.length do
-        keys(i) = it.next
+        keys(i) = it.next()
         i += 1
       assert(!it.hasNext)
       i = 0

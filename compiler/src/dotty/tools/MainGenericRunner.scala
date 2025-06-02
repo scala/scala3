@@ -158,7 +158,7 @@ object MainGenericRunner {
         .withScriptArgs(tail*)
         .noSave // -save not useful here
     case arg :: tail =>
-      val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
+      val line = Try(Source.fromFile(arg).getLines().toList).toOption.flatMap(_.headOption)
       lazy val hasScalaHashbang = { val s = line.getOrElse("") ; s.startsWith("#!") && s.contains("scala") }
       if arg.endsWith(".scala") || arg.endsWith(".sc") || hasScalaHashbang then
         settings

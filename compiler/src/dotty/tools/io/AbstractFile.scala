@@ -196,7 +196,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns all abstract subfiles of this abstract directory. */
-  def iterator(): Iterator[AbstractFile]
+  def iterator: Iterator[AbstractFile]
 
   /** Drill down through subdirs looking for the target, as in lookupName.
    *  Ths target name is the last of parts.

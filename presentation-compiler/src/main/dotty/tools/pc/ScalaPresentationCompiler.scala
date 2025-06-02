@@ -15,11 +15,10 @@ import scala.jdk.CollectionConverters._
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.EmptyCancelToken
-import scala.meta.internal.metals.EmptyReportContext
+import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.internal.metals.PcQueryContext
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.metals.ReportLevel
-import scala.meta.internal.metals.StdReportContext
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.CompilerAccess
 import scala.meta.internal.pc.DefinitionResultImpl
@@ -54,7 +53,10 @@ case class ScalaPresentationCompiler(
     folderPath: Option[Path] = None,
     reportsLevel: ReportLevel = ReportLevel.Info,
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
+    reportContext: ReportContext = EmptyReportContext()
 ) extends PresentationCompiler:
+
+  given ReportContext = reportContext
 
   override def supportedCodeActions(): ju.List[String] = List(
      CodeActionId.ConvertToNamedArguments,
@@ -72,10 +74,6 @@ case class ScalaPresentationCompiler(
   private val forbiddenOptions = Set("-print-lines", "-print-tasty")
   private val forbiddenDoubleOptions = Set.empty[String]
 
-  given ReportContext =
-    folderPath
-      .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
-      .getOrElse(EmptyReportContext)
 
   override def codeAction[T](
     params: OffsetParams,
@@ -512,6 +510,9 @@ case class ScalaPresentationCompiler(
 
   def withSearch(search: SymbolSearch): PresentationCompiler =
     copy(search = search)
+
+  override def withReportContext(reportContext: ReportContext): PresentationCompiler =
+    copy(reportContext = reportContext)
 
   def withWorkspace(workspace: Path): PresentationCompiler =
     copy(folderPath = Some(workspace))

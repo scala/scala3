@@ -3,7 +3,7 @@ package dotty.tools.pc
 import java.util as ju
 
 import scala.meta.internal.metals.Report
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.ScalaHover
 import scala.meta.pc.ContentType
 import scala.meta.pc.HoverSignature
@@ -88,7 +88,7 @@ object HoverProvider:
           s"$uri::$posId"
         )
       end report
-      reportContext.unsanitized.create(report, ifVerbose = true)
+      reportContext.unsanitized.create(() => report, /*ifVerbose =*/ true)
       ju.Optional.empty().nn
     else
       val skipCheckOnName =

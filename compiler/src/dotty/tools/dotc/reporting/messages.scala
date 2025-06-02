@@ -62,7 +62,7 @@ trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
     super.msgPostscript ++ matchReductionAddendum(tps*)
 
-abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
   def kind = MessageKind.TypeMismatch
   def explain(using Context) = err.whyNoMatchStr(found, expected)
@@ -3142,7 +3142,7 @@ extends ReferenceMsg(CannotBeAccessedID):
       case _ =>
         i"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
-    val whyNot = new StringBuffer
+    val whyNot = new StringBuilder
     for alt <- alts do
       val cls = alt.owner.enclosingSubClass
       val owner = if cls.exists then cls else alt.owner
@@ -3150,10 +3150,10 @@ extends ReferenceMsg(CannotBeAccessedID):
         if alt.is(Protected) then
           if alt.privateWithin.exists && alt.privateWithin != owner then
             if owner.is(Final) then alt.privateWithin.showLocated
-            else alt.privateWithin.showLocated + ", or " + owner.showLocated + " or one of its subclasses"
+            else s"${alt.privateWithin.showLocated}, or ${owner.showLocated} or one of its subclasses"
           else
             if owner.is(Final) then owner.showLocated
-            else owner.showLocated + " or one of its subclasses"
+            else s"${owner.showLocated} or one of its subclasses"
         else
           alt.privateWithin.orElse(owner).showLocated
       val accessMod = if alt.is(Protected) then "protected" else "private"
@@ -3312,23 +3312,29 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |are not values themselves, they can only be referred to in selections."""
 
 class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
-extends Message(UnusedSymbolID) {
+extends Message(UnusedSymbolID):
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
   override def actions(using Context) = this.actions
-}
 
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
-  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
-  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
+  def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
-  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
-  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  def unsetLocals(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  private def paramAddendum(sym: Symbol)(using Context): String =
+    if sym.denot.owner.is(ExtensionMethod) then i" in extension ${sym.denot.owner}"
+    else ""
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
@@ -3510,3 +3516,11 @@ final class OnlyFullyDependentAppliedConstructorType()(using Context)
     i"Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked"
 
   override protected def explain(using Context): String = ""
+
+final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
+  override protected def msg(using Context): String = 
+    i"Context bounds are not allowed in this position"
+
+  override protected def explain(using Context): String = ""
+
+end IllegalContextBounds

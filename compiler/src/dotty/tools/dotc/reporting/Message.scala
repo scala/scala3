@@ -8,7 +8,8 @@ import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
 import printing.Texts.Text
 import printing.Formatting.hl
 import config.SourceVersion
-import cc.{CaptureRef, CaptureSet, root, rootAnnot}
+import cc.CaptureSet
+import cc.Capabilities.*
 
 import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
@@ -52,7 +53,7 @@ object Message:
       case None => false
   end Disambiguation
 
-  private type Recorded = Symbol | ParamRef | SkolemType | CaptureRef
+  private type Recorded = Symbol | ParamRef | SkolemType | Capability
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -182,7 +183,7 @@ object Message:
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-        case ref: CaptureRef =>
+        case ref: Capability =>
           val relation =
             if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
             else "is"
@@ -196,17 +197,16 @@ object Message:
             else
               owner.show
           val descr =
-            if ref.isCap then "the universal root capability"
-            else ref match
-              case ref @ root.Fresh(hidden) =>
-                val (kind: root.Kind.Fresh) = ref.rootAnnot.kind: @unchecked
-                val descr = kind.origin match
-                  case origin @ root.Origin.InDecl(sym) if sym.exists =>
+            ref match
+              case GlobalCap => "the universal root capability"
+              case ref: FreshCap =>
+                val descr = ref.origin match
+                  case origin @ Origin.InDecl(sym) if sym.exists =>
                     origin.explanation
                   case origin =>
-                    i" created in ${ownerStr(hidden.owner)}${origin.explanation}"
+                    i" created in ${ownerStr(ref.hiddenSet.owner)}${origin.explanation}"
                 i"a fresh root capability$descr"
-              case root.Result(binder) => i"a root capability associated with the result type of $binder"
+              case ResultCap(binder) => i"a root capability associated with the result type of $binder"
           s"$relation $descr"
     end explanation
 
@@ -218,7 +218,7 @@ object Message:
         case param: ParamRef     => false
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-        case ref: CaptureRef     => ref.isRootCapability
+        case ref: Capability     => ref.isTerminalCapability
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -267,10 +267,9 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
-    override def toTextCaptureRef(tp: Type): Text = tp match
-      case tp: CaptureRef if tp.isRootCapability && !tp.isReadOnly && seen.isActive =>
-        seen.record("cap", isType = false, tp)
-      case _ => super.toTextCaptureRef(tp)
+    override def toTextCapability(c: Capability): Text = c match
+      case c: RootCapability if seen.isActive => seen.record("cap", isType = false, c)
+      case _ => super.toTextCapability(c)
 
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet
@@ -487,12 +486,17 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?=> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?=> String, actions: List[CodeAction] = List.empty)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind
 
+  override def actions(using Context): List[CodeAction] = actions
+
   override def toString(): String = msg
+
+  def withActions(actions: CodeAction*): NoExplanation =
+    new NoExplanation(msgFn, actions.toList)
 }
 
 /** The extractor for `NoExplanation` can be used to check whether any error

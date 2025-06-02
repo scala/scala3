@@ -41,7 +41,7 @@ extension (str: String) def dropExtension =
 
 private
 def withFile[T](file: File)(action: Source => T): T = resource(Source.fromFile(file, UTF_8.name))(action)
-def readLines(f: File): List[String]                = withFile(f)(_.getLines.toList)
+def readLines(f: File): List[String]                = withFile(f)(_.getLines().toList)
 def readFile(f: File): String                       = withFile(f)(_.mkString)
 
 private object Unthrown extends ControlThrowable

@@ -40,6 +40,7 @@ import java.lang.ref.WeakReference
 import compiletime.uninitialized
 import cc.*
 import CaptureSet.{CompareResult, IdentityCaptRefMap}
+import Capabilities.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -406,7 +407,7 @@ object Types extends TypeUtils {
       case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
       case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
       case WildcardType(optBounds) => optBounds.unusableForInference
-      case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.unusableForInference)
+      case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.coreType.unusableForInference)
       case _: ErrorType => true
       case _ => false
     catch case ex: Throwable => handleRecursive("unusableForInference", show, ex)
@@ -868,7 +869,7 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = CCState.ignoringFreshLevels:
+            val joint = CCState.withCollapsedFresh:
                 pdenot.meet(
                   new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
                   pre,
@@ -1630,7 +1631,7 @@ object Types extends TypeUtils {
     def underlyingIterator(using Context): Iterator[Type] = new Iterator[Type] {
       var current = Type.this
       var hasNext = true
-      def next = {
+      def next() = {
         val res = current
         hasNext = current.isInstanceOf[TypeProxy]
         if (hasNext) current = current.asInstanceOf[TypeProxy].underlying
@@ -2912,7 +2913,7 @@ object Types extends TypeUtils {
    */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType, ImplicitRef, SingletonCaptureRef {
+    extends NamedType, ImplicitRef, SingletonType, ObjectCapability {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -2941,7 +2942,7 @@ object Types extends TypeUtils {
 
   abstract case class TypeRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType, CaptureRef {
+    extends NamedType, SetCapability {
 
     type ThisType = TypeRef
     type ThisName = TypeName
@@ -3077,7 +3078,7 @@ object Types extends TypeUtils {
    *  do not survive runs whereas typerefs do.
    */
   abstract case class ThisType(tref: TypeRef)
-  extends CachedProxyType, SingletonCaptureRef {
+  extends CachedProxyType, SingletonType, ObjectCapability {
     def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
       case cls: ClassSymbol => cls
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
@@ -3862,7 +3863,7 @@ object Types extends TypeUtils {
         if tp.prefix eq pre then tp
         else
           pre match
-            case ref: ParamRef if (ref.binder eq self) && tp.symbol.exists =>
+            case ref: ParamRef if (ref.binder eq self) && tp.symbol.exists && tp.symbol.is(Method) =>
               NamedType(pre, tp.name, tp.denot.asSeenFrom(pre))
             case _ =>
               tp.derivedSelect(pre)
@@ -3993,7 +3994,7 @@ object Types extends TypeUtils {
 
     override def resultType(using Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
-        val dealiasMap = new TypeMap with IdentityCaptRefMap {
+        object dealiasMap extends TypeMap with IdentityCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, _) =>
               tp.info match {
@@ -4043,7 +4044,7 @@ object Types extends TypeUtils {
                 val status1 = (compute(status, parent, theAcc) /: refs.elems):
                   (s, ref) => ref.stripReach match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, TrueDeps)
-                    case tp => combine(s, compute(status, tp, theAcc))
+                    case tp => combine(s, compute(status, tp.coreType, theAcc))
                 if refs.isConst || forParams // We assume capture set variables in parameters don't generate param dependencies
                 then status1
                 else combine(status1, Provisional)
@@ -4113,16 +4114,12 @@ object Types extends TypeUtils {
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
-        val dropDependencies = new ApproximatingTypeMap {
+        object dropDependencies extends ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
             case CapturingType(_, _) =>
               mapOver(tp)
-            case ReachCapability(tp1) =>
-              apply(tp1) match
-                case tp1a: CaptureRef if tp1a.isTrackableRef => tp1a.reach
-                case _ => root.cap
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
               if ann.symbol.isRetainsLike then
@@ -4133,6 +4130,12 @@ object Types extends TypeUtils {
                 parent1
             case _ => mapOver(tp)
           }
+          override def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+            case Reach(c1) =>
+              apply(c1) match
+                case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
+                case _ => GlobalCap
+            case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)
       else resultType
@@ -4281,7 +4284,7 @@ object Types extends TypeUtils {
                       ps.get(elemName) match
                         case Some(elemRef) => assert(elemRef eq elem, i"bad $mt")
                         case _ =>
-                    case root.Result(binder: MethodType) if binder ne mt =>
+                    case ResultCap(binder: MethodType) if binder ne mt =>
                       assert(binder.paramNames.toList != mt.paramNames.toList, i"bad $mt")
                     case _ =>
               checkRefs(refs)
@@ -4787,7 +4790,7 @@ object Types extends TypeUtils {
     override def hashIsStable: Boolean = false
   }
 
-  abstract class ParamRef extends BoundType, CaptureRef {
+  abstract class ParamRef extends BoundType, CoreCapability {
     type BT <: LambdaType
     def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
@@ -4822,7 +4825,7 @@ object Types extends TypeUtils {
    *  refer to `TermParamRef(binder, paramNum)`.
    */
   abstract case class TermParamRef(binder: TermLambda, paramNum: Int)
-  extends ParamRef, SingletonCaptureRef {
+  extends ParamRef, SingletonType, ObjectCapability {
     type BT = TermLambda
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -4834,7 +4837,7 @@ object Types extends TypeUtils {
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int)
-  extends ParamRef {
+  extends ParamRef, SetCapability {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -5791,7 +5794,7 @@ object Types extends TypeUtils {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType, CaptureRef {
+  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType, ValueType {
 
     override def underlying(using Context): Type = parent
 
@@ -6159,22 +6162,11 @@ object Types extends TypeUtils {
     /** The inverse of the type map */
     def inverse: BiTypeMap
 
-    /** A restriction of this map to a function on tracked CaptureRefs */
-    def forward(ref: CaptureRef): CaptureRef =
-      val result = this(ref)
-      def ensureTrackable(tp: Type): CaptureRef = tp match
-        case tp: CaptureRef =>
-          if tp.isTrackableRef then tp
-          else ensureTrackable(tp.underlying)
-        case tp: TypeAlias =>
-          ensureTrackable(tp.alias)
-        case _ =>
-          assert(false, i"not a trackable CaptureRef: $result with underlying ${result.underlyingIterator.toList}")
-      ensureTrackable(result)
-
-    /** A restriction of the inverse to a function on tracked CaptureRefs */
-    def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
-      case result: CaptureRef if result.isTrackableRef => result
+    /** A restriction of this map to a function on tracked Capabilities */
+    override def mapCapability(c: Capability, deep: Boolean): Capability =
+      super.mapCapability(c, deep) match
+        case c1: Capability => c1
+        case (cs, _) => assert(false, i"bimap $toString should map $c to a capability, but result = $cs")
 
     /** Fuse with another map */
     def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
@@ -6258,6 +6250,44 @@ object Types extends TypeUtils {
       variance = v
       try derivedCapturingType(tp, this(parent), refs.map(this))
       finally variance = saved
+
+    def toTrackableRef(tp: Type): Capability | Null = tp match
+      case CapturingType(_) =>
+        null
+      case tp: CoreCapability =>
+        if tp.isTrackableRef then tp
+        else toTrackableRef(tp.underlying)
+      case tp: TypeAlias =>
+        toTrackableRef(tp.alias)
+      case _ =>
+        null
+
+    def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+      case c: RootCapability => c
+      case Reach(c1) =>
+        mapCapability(c1, deep = true)
+      case ReadOnly(c1) =>
+        assert(!deep)
+        mapCapability(c1) match
+          case c2: Capability => c2.readOnly
+          case (cs: CaptureSet, exact) => (cs.readOnly, exact)
+      case Maybe(c1) =>
+        assert(!deep)
+        mapCapability(c1) match
+          case c2: Capability => c2.maybe
+          case (cs: CaptureSet, exact) => (cs.maybe, exact)
+      case ref: CoreCapability =>
+        val tp1 = apply(ref)
+        val ref1 = toTrackableRef(tp1)
+        if ref1 != null then
+          if deep then ref1.reach
+          else ref1
+        else
+          val isLiteral = tp1.typeSymbol == defn.Caps_CapSet
+          val cs =
+            if deep && !isLiteral then CaptureSet.ofTypeDeeply(tp1)
+            else CaptureSet.ofType(tp1, followResult = false)
+          (cs, isLiteral)
 
     /** Utility method. Maps the supertype of a type proxy. Returns the
      *  type proxy itself if the mapping leaves the supertype unchanged.
@@ -6832,7 +6862,8 @@ object Types extends TypeUtils {
         foldOver(x2, tp.cases)
 
       case CapturingType(parent, refs) =>
-        (this(x, parent) /: refs.elems)(this)
+        (this(x, parent) /: refs.elems): (x, elem) =>
+          this(x, elem.coreType)
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)

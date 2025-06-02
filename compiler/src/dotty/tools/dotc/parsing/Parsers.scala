@@ -68,8 +68,8 @@ object Parsers {
       this == Given || this == ExtensionFollow
     def acceptsVariance =
       this == Class || this == CaseClass || this == Hk
-    def acceptsCtxBounds =
-      !(this == Type || this == Hk)
+    def acceptsCtxBounds(using Context) =
+      !(this == Type || this == Hk) || (sourceVersion.enablesNewGivens && this == Type)
     def acceptsWildcard =
       this == Type || this == Hk
 
@@ -721,7 +721,7 @@ object Parsers {
     def checkNextNotIndented(): Unit =
       if in.isNewLine then
         val nextIndentWidth = in.indentWidth(in.next.offset)
-        if in.currentRegion.indentWidth < nextIndentWidth then
+        if in.currentRegion.indentWidth < nextIndentWidth && in.currentRegion.closedBy == OUTDENT then
           warning(em"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
@@ -3549,10 +3549,12 @@ object Parsers {
             else ident().toTypeName
           val isCap = gobbleHat()
           val hkparams = typeParamClauseOpt(ParamOwner.Hk)
-          val bounds =
-            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name)
-            else if sourceVersion.enablesNewGivens && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
-            else typeBounds()
+          val bounds = typeAndCtxBounds(name) match
+            case bounds: TypeBoundsTree => bounds
+            case bounds: ContextBounds if paramOwner.acceptsCtxBounds => bounds
+            case ContextBounds(bounds, cxBounds) =>
+              for cbound <- cxBounds do  report.error(IllegalContextBounds(), cbound.srcPos)
+              bounds
           val res = TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
           if isCap then
             res.pushAttachment(CaptureVar, ())
