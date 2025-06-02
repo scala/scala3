@@ -27,7 +27,6 @@ import dotty.tools.sbtplugin.ScalaLibraryPlugin
 
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
-import xerial.sbt.Sonatype.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -398,7 +397,7 @@ object Build {
       for {
         username <- sys.env.get("SONATYPE_USER")
         password <- sys.env.get("SONATYPE_PW")
-      } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
+      } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
     PgpKeys.useGpgPinentry := true,
@@ -2187,7 +2186,11 @@ object Build {
   lazy val publishSettings = Seq(
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
-    publishTo := sonatypePublishToBundle.value,
+    publishTo := {
+      val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+      if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+      else localStaging.value
+    },
     publishConfiguration ~= (_.withOverwrite(true)),
     publishLocalConfiguration ~= (_.withOverwrite(true)),
     projectID ~= {id =>
