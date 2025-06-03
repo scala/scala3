@@ -114,10 +114,10 @@ object NamerOps:
   private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
 
   /** The flags of a constructor companion */
-  private val ConstructorCompanionFlags = Synthetic | ConstructorProxy
+  private val ConstructorCompanionFlags = Synthetic | PhantomSymbol
 
   /** The flags of an `apply` method that serves as a constructor proxy */
-  val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
+  val ApplyProxyFlags = Synthetic | PhantomSymbol | Inline | Method
 
   /** If this is a reference to a class and the reference has a stable prefix, the reference
    *  otherwise NoType
@@ -217,7 +217,7 @@ object NamerOps:
             underlyingStableClassRef(mbr.info.loBound): @unchecked match
               case ref: TypeRef =>
                 val proxy = ref.symbol.registeredCompanion
-                if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then
+                if proxy.is(PhantomSymbol) && !memberExists(cls, mbr.name.toTermName) then
                   typeConstructorCompanion(mbr, ref.prefix, proxy).entered
 
     if cls.is(Module)

@@ -538,7 +538,7 @@ object SymDenotations {
       // doesn't find them it will invalidate whatever referenced them, so
       // any reference to a fake companion will lead to extra recompilations.
       // Instead, use the class name since it's guaranteed to exist at runtime.
-      val clsFlatName = if isOneOf(JavaDefined | ConstructorProxy) then flatName.stripModuleClassSuffix else flatName
+      val clsFlatName = if isOneOf(JavaDefined | PhantomSymbol) then flatName.stripModuleClassSuffix else flatName
       builder.append(clsFlatName.mangledString)
       builder.toString
 

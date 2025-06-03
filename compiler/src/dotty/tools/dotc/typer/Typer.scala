@@ -210,7 +210,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       altImports: mutable.ListBuffer[TermRef] | Null = null)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
-    def suppressErrors = excluded.is(ConstructorProxy)
+    def suppressErrors = excluded.is(PhantomSymbol)
       // when searching for references shadowed by a constructor proxy, do not report errors
     def fail(msg: Message) =
       if !suppressErrors then report.error(msg, pos)
@@ -649,8 +649,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      */
     def checkNotShadowed(ownType: Type): Type =
       ownType match
-        case ownType: TermRef if ownType.symbol.is(ConstructorProxy) && !ctx.mode.is(Mode.InCaptureSet) =>
-          findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
+        case ownType: TermRef if ownType.symbol.is(PhantomSymbol) && !ctx.mode.is(Mode.InCaptureSet) =>
+          findRef(name, pt, EmptyFlags, PhantomSymbol, tree.srcPos) match
             case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
               pt match
                 case pt: FunOrPolyProto =>

@@ -2110,8 +2110,8 @@ trait Applications extends Compatibility {
             else 0
     end compareWithTypes
 
-    if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
-    else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
+    if alt1.symbol.is(PhantomSymbol) && !alt2.symbol.is(PhantomSymbol) then -1
+    else if alt2.symbol.is(PhantomSymbol) && !alt1.symbol.is(PhantomSymbol) then 1
     else
       val fullType1 = widenGiven(alt1.widen, alt1)
       val fullType2 = widenGiven(alt2.widen, alt2)

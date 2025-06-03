@@ -349,12 +349,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(ConstructorProxy) then
+      if tree.symbol.is(PhantomSymbol) then
         unusable(ConstructorProxyNotValue(_))
       else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
-      else if tree.symbol.isDummyCaptureParam then
-        throw new Exception(s"Dummy capture param ${tree.symbol} should not be used as a value")
       else
         tree
 
@@ -709,7 +707,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ =>
       if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
       else tp
-    case _ if sym.is(ConstructorProxy) => NoType
+    case _ if sym.is(PhantomSymbol) => NoType
     case _ => tp
 
   private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
