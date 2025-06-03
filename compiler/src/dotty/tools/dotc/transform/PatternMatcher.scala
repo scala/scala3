@@ -418,6 +418,7 @@ object PatternMatcher {
               && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
+          
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
             letAbstract(ref(scrutinee).cast(tpt.tpe)) { casted =>
               nonNull += casted
