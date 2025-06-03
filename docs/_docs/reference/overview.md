@@ -46,7 +46,7 @@ These constructs replace existing constructs with the aim of making the language
   replace implicit classes with a clearer and simpler mechanism.
 - [Opaque type aliases](other-new-features/opaques.md)
   replace most uses of value classes while guaranteeing the absence of boxing.
-- [Top-level definitions](dropped-features/package-objects.md)
+- [Top-level definitions](other-new-features/toplevel-definitions.md)
   replace package objects, dropping syntactic boilerplate.
 - [Export clauses](other-new-features/export.md)
   provide a simple and general way to express aggregation, which can replace
