@@ -1,19 +1,17 @@
-//> using options -Xfatal-warnings
-
 class Foo:
 
   val s: String = ???
 
   s match
     case s: String => 100
-    case _ => 200 // warn: unreachable case except for null
+    case _ => 200 // warn: unreachable
 
   s match
     case s: String => 100
-    case null => 200
+    case null => 200 // warn: unreachable
 
   s match
-    case null => 100
+    case null => 100 // warn: unreachable
     case _ => 200
 
   val s2: String | Null = ???
@@ -50,5 +48,3 @@ class Foo:
     case Dog(_) => 100
     case Cat => 200
     case null => 300 // ok
-
-// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

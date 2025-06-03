@@ -969,12 +969,5 @@ object SpaceEngine {
 
   def checkMatch(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
-
-    if reachabilityCheckable(m.selector) then
-      // With explicit nulls, even if the selector type is non-nullable,
-      // we still need to consider the possibility of null value,
-      // so we use the after-erasure nullability for space operations
-      // to achieve consistent runtime behavior.
-      // For example, `val x: String = ???; x match { case null => }` should not be unreachable.
-      withoutMode(Mode.SafeNulls)(checkReachability(m))
+    if reachabilityCheckable(m.selector) then checkReachability(m)
 }
