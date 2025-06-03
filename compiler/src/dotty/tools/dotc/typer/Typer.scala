@@ -626,10 +626,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val saved2 = foundUnderScala2
       unimported = Set.empty
       foundUnderScala2 = NoType
-      // The dummy term capture variable can only be found in a capture set.
-      val excluded = if ctx.mode.is(Mode.InCaptureSet) then EmptyFlags else CaptureParam
       try
-        val found = findRef(name, pt, EmptyFlags, excluded, tree.srcPos)
+        val found = findRef(name, pt, EmptyFlags, EmptyFlags, tree.srcPos)
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             em"""Name resolution will change.
@@ -651,7 +649,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      */
     def checkNotShadowed(ownType: Type): Type =
       ownType match
-        case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
+        case ownType: TermRef if ownType.symbol.is(ConstructorProxy) && !ctx.mode.is(Mode.InCaptureSet) =>
           findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
             case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
               pt match

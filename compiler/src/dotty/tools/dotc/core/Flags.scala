@@ -380,8 +380,6 @@ object Flags {
   /** Tracked modifier for class parameter / a class with some tracked parameters */
   val (Tracked @ _, _, Dependent @ _) = newFlags(46, "tracked")
 
-  val (CaptureParam @ _, _, _) = newFlags(47, "capture-param")
-
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
@@ -438,6 +436,8 @@ object Flags {
   /** Symbol is a constructor proxy (either companion, or apply method) */
   val (ConstructorProxy @ _, _, _) = newFlags(62, "<constructor proxy>") // (could be merged with Lifted)
 
+  val CaptureParam = ConstructorProxy
+
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** All possible flags */
@@ -471,7 +471,7 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessorOrInto,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
-    OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked, CaptureParam,
+    OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
     SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
 
