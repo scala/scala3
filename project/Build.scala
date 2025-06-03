@@ -16,7 +16,6 @@ import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
-import xerial.sbt.Sonatype.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -1915,7 +1914,11 @@ object Build {
   lazy val publishSettings = Seq(
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
-    publishTo := sonatypePublishToBundle.value,
+    publishTo := {
+      val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+      if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+      else localStaging.value
+    },
     publishConfiguration ~= (_.withOverwrite(true)),
     publishLocalConfiguration ~= (_.withOverwrite(true)),
     projectID ~= {id =>
