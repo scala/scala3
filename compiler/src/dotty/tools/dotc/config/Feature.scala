@@ -61,7 +61,8 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (into, "Allow into modifier on parameter types"),
-    (modularity, "Enable experimental modularity features")
+    (modularity, "Enable experimental modularity features"),
+    (packageObjectValues, "Enable experimental package objects as values"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -152,6 +153,10 @@ object Feature:
     ctx.compilationUnit.sourceVersion match
       case Some(v) => v
       case none => sourceVersionSetting
+
+  /* Should we behave as scala 2?*/
+  def shouldBehaveAsScala2(using Context): Boolean =
+    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`

@@ -42,7 +42,8 @@ import dotty.tools.dotc.util.chaining.*
 import java.util.{Timer, TimerTask}
 
 /** A compiler run. Exports various methods to compile source files */
-class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
+class Run(comp: Compiler, ictx: Context)
+extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   /** Default timeout to stop looking for further implicit suggestions, in ms.
    *  This is usually for the first import suggestion; subsequent suggestions
@@ -519,6 +520,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Print summary of warnings and errors encountered */
   def printSummary(): Unit = {
     printMaxConstraint()
+    printMaxPath()
     val r = runContext.reporter
     if !r.errorsReported then
       profile.printSummary()
@@ -529,6 +531,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   override def reset(): Unit = {
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
+    super[CaptureRunInfo].reset()
     myCtx = null
     myUnits = Nil
     myUnitsCached = Nil

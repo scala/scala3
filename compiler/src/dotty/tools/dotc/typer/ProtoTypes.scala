@@ -1017,6 +1017,15 @@ object ProtoTypes {
         paramInfos = tl.paramInfos.mapConserve(wildApprox(_, theMap, seen, internal1).bounds),
         resType = wildApprox(tl.resType, theMap, seen, internal1)
       )
+    case tp @ AnnotatedType(parent, _) =>
+      // This case avoids approximating types in the annotation tree, which can
+      // cause the type assigner to fail.
+      // See #22893 and tests/pos/annot-default-arg-22874.scala.
+      val parentApprox = wildApprox(parent, theMap, seen, internal)
+      if tp.isRefining then
+        WildcardType(TypeBounds.upper(parentApprox))
+      else
+        parentApprox
     case _ =>
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen, internal))
         .mapOver(tp)

@@ -1,0 +1,77 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-curried.scala:48:43 ----------------------------------
+48 |  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
+   |                                        ^^^^^^
+   |                                        Found:    (y: Ref[Int]^) ->{a} Unit
+   |                                        Required: (y: Ref[Int]^{a}) ->{a} Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/sep-curried.scala:16:6 --------------------------------------------------------
+16 |  foo(a)(a)  // error
+   |      ^
+   |      Separation failure: argument of type  (a : Ref[Int]^)
+   |      to method foo: (x: Ref[Int]^)(y: Ref[Int]^{a}): Unit
+   |      corresponds to capture-polymorphic formal parameter x of type  Ref[Int]^
+   |      and hides capabilities  {a}.
+   |      Some of these overlap with the captures of the second argument with type  (a : Ref[Int]^).
+   |
+   |        Hidden set of current argument        : {a}
+   |        Hidden footprint of current argument  : {a}
+   |        Capture set of second argument        : {a}
+   |        Footprint set of second argument      : {a}
+   |        The two sets overlap at               : {a}
+-- Error: tests/neg-custom-args/captures/sep-curried.scala:22:44 -------------------------------------------------------
+22 |  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
+   |                                            ^
+   |         Separation failure: argument of type  (a : Ref[Int]^)
+   |         to a function of type (x: Ref[Int]^) -> (y: Ref[Int]^{a}) ->{x} Unit
+   |         corresponds to capture-polymorphic formal parameter x of type  Ref[Int]^
+   |         and hides capabilities  {a}.
+   |         Some of these overlap with the captures of the function result with type  (y: Ref[Int]^{a}) ->{a} Unit.
+   |
+   |           Hidden set of current argument        : {a}
+   |           Hidden footprint of current argument  : {a}
+   |           Capture set of function result        : {a}
+   |           Footprint set of function result      : {a}
+   |           The two sets overlap at               : {a}
+-- Error: tests/neg-custom-args/captures/sep-curried.scala:29:6 --------------------------------------------------------
+29 |  foo(a)(a)  // error
+   |      ^
+   |      Separation failure: argument of type  (a : Ref[Int]^)
+   |      to a function of type (x: Ref[Int]^) -> (y: Ref[Int]^{a}) ->{x} Unit
+   |      corresponds to capture-polymorphic formal parameter x of type  Ref[Int]^
+   |      and hides capabilities  {a}.
+   |      Some of these overlap with the captures of the function result with type  (y: Ref[Int]^{a}) ->{a} Unit.
+   |
+   |        Hidden set of current argument        : {a}
+   |        Hidden footprint of current argument  : {a}
+   |        Capture set of function result        : {a}
+   |        Footprint set of function result      : {a}
+   |        The two sets overlap at               : {a}
+-- Error: tests/neg-custom-args/captures/sep-curried.scala:35:9 --------------------------------------------------------
+35 |  foo(a)(a)  // error
+   |         ^
+   |         Separation failure: argument of type  (a : Ref[Int]^)
+   |         to a function of type (y: Ref[Int]^) ->{a} Unit
+   |         corresponds to capture-polymorphic formal parameter y of type  Ref[Int]^
+   |         and hides capabilities  {a}.
+   |         Some of these overlap with the captures of the function prefix.
+   |
+   |           Hidden set of current argument        : {a}
+   |           Hidden footprint of current argument  : {a}
+   |           Capture set of function prefix        : {a}
+   |           Footprint set of function prefix      : {a}
+   |           The two sets overlap at               : {a}
+-- Error: tests/neg-custom-args/captures/sep-curried.scala:42:4 --------------------------------------------------------
+42 |  f(a) // error
+   |    ^
+   |    Separation failure: argument of type  (a : Ref[Int]^)
+   |    to a function of type (y: Ref[Int]^) ->{a} Unit
+   |    corresponds to capture-polymorphic formal parameter y of type  Ref[Int]^
+   |    and hides capabilities  {a}.
+   |    Some of these overlap with the captures of the function prefix.
+   |
+   |      Hidden set of current argument        : {a}
+   |      Hidden footprint of current argument  : {a}
+   |      Capture set of function prefix        : {f}
+   |      Footprint set of function prefix      : {f, a}
+   |      The two sets overlap at               : {a}

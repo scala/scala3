@@ -534,3 +534,14 @@ class PcRenameSuite extends BasePcRenameSuite:
         |""".stripMargin,
      wrap = false
    )
+
+  @Test def `local-object-with-end-rename` =
+   check(
+     """|def bar =
+        |  object <<fo@@o>>:
+        |    def aaa = ???
+        |  end <<foo>>
+        |  1
+        |""".stripMargin,
+     wrap = false
+   )

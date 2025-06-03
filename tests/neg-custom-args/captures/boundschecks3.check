@@ -1,4 +1,24 @@
--- Error: tests/neg-custom-args/captures/boundschecks3.scala:11:13 -----------------------------------------------------
-11 |  val bar: T -> T = ??? // error, since `T` is expanded here. But the msg is not very good.
-   |           ^^^^^^
-   |           test.C[box test.Tree^] captures the root capability `cap` in invariant position
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:9:11 ---------------------------------
+9 |  val foo: C[Tree^] = ??? // error
+  |           ^
+  |    Type argument box test.Tree^ does not conform to upper bound test.Tree in inferred type test.C[box test.Tree^]
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:10:11 --------------------------------
+10 |  type T = C[Tree^] // error
+   |           ^
+   |  Type argument box test.Tree^ does not conform to upper bound test.Tree in inferred type test.C[box test.Tree^]
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:11:11 --------------------------------
+11 |  val bar: T -> T = ??? // error
+   |           ^
+   |Type argument box test.Tree^ does not conform to upper bound test.Tree in subpart test.C[box test.Tree^] of inferred type test.C[box test.Tree^] -> test.C[box test.Tree^]
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg-custom-args/captures/boundschecks3.scala:12:11 --------------------------------
+12 |  val baz: C[Tree^] -> Unit = ??? // error
+   |           ^
+   |Type argument box test.Tree^ does not conform to upper bound test.Tree in subpart test.C[box test.Tree^] of inferred type test.C[box test.Tree^] -> Unit
+   |
+   | longer explanation available when compiling with `-explain`

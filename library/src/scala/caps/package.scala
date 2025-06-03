@@ -29,6 +29,16 @@ trait Capability extends Any
 @experimental
 object cap extends Capability
 
+/** Marker trait for classes with methods that requires an exclusive reference. */
+@experimental
+trait Mutable extends Capability
+
+/** Marker trait for capabilities that can be safely shared in a concurrent context.
+  * During separation checking, shared capabilities are not taken into account.
+  */
+@experimental
+trait SharedCapability extends Capability
+
 /** Carrier trait for capture set type parameters */
 @experimental
 trait CapSet extends Any
@@ -58,11 +68,21 @@ object Contains:
 @experimental
 final class use extends annotation.StaticAnnotation
 
-/** A trait to allow expressing existential types such as
- *
- *      (x: Exists) => A ->{x} B
+/** An annotations on parameters and update methods.
+ *  On a parameter it states that any capabilties passed in the argument
+ *  are no longer available afterwards, unless they are of class `SharableCapabilitty`.
+ *  On an update method, it states that the `this` of the enclosing class is
+ *  consumed, which means that any capabilities of the method prefix are
+ *  no longer available afterwards.
  */
 @experimental
+final class consume extends annotation.StaticAnnotation
+
+/** A trait that used to allow expressing existential types. Replaced by
+*  root.Result instances.
+*/
+@experimental
+@deprecated
 sealed trait Exists extends Capability
 
 @experimental
@@ -79,6 +99,28 @@ object internal:
    *  they are  represented as `x.type @annotation.internal.reachCapability`.
    */
   extension (x: Any) def reachCapability: Any = x
+
+  /** Read-only capabilities x.rd which appear as terms in @retains annotations are encoded
+   *  as `caps.readOnlyCapability(x)`. When converted to CaptureRef types in capture sets
+   *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
+   */
+  extension (x: Any) def readOnlyCapability: Any = x
+
+  /** An internal annotation placed on a refinement created by capture checking.
+   *  Refinements with this annotation unconditionally override any
+   *  info from the parent type, so no intersection needs to be formed.
+   *  This could be useful for tracked parameters as well.
+   */
+  final class refineOverride extends annotation.StaticAnnotation
+
+  /** An annotation used internally for root capability wrappers of `cap` that
+   *  represent either Fresh or Result capabilities.
+   *  A capability is encoded as `caps.cap @rootCapability(...)` where
+   *  `rootCapability(...)` is a special kind of annotation of type `root.Annot`
+   *  that contains either a hidden set for Fresh instances or a method type binder
+   *  for Result instances.
+   */
+  final class rootCapability extends annotation.StaticAnnotation
 
 @experimental
 object unsafe:

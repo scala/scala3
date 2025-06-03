@@ -826,8 +826,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |aaa = g : Int
-         |abb = : Option[Int]
          |abb = : Int
+         |abb = : Option[Int]
          |abb = g : Int
          |""".stripMargin,
       topLines = Some(5),
@@ -1127,4 +1127,17 @@ class CompletionArgSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """x: Int
         |x = : Any""".stripMargin,
+    )
+
+  @Test def `autofill-arguments-case-class` =
+    check(
+      """
+        |case class A(x: Int, y: Int)
+        |
+        |def main() =
+        |  A(x@@)
+        |""".stripMargin,
+      """x = : Int
+        |x = ???, y = ???""".stripMargin,
+      // this looks strange due to the Autofill message belonging to the description
     )

@@ -68,7 +68,7 @@ class TypeUtils:
     def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[List[Type]] =
       def recur(tp: Type, bound: Int): Option[List[Type]] =
         if bound < 0 then Some(Nil)
-        else (if normalize then tp.normalized else tp).dealias match
+        else (if normalize then tp.dealias.normalized else tp).dealias match
           case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
             recur(tl, bound - 1).map(hd :: _)
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>

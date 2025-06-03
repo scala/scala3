@@ -21,6 +21,7 @@ val usageMessage = """
   |The <validation-command> should be one of:
   |* compile <arg1> <arg2> ...
   |* run <arg1> <arg2> ...
+  |* test <arg1> <arg2> ...
   |* <custom-validation-script-path>
   |
   |The arguments for 'compile' and 'run' should be paths to the source file(s) and optionally additional options passed directly to scala-cli.
@@ -101,6 +102,7 @@ object ScriptOptions:
 enum ValidationCommand:
   case Compile(args: Seq[String])
   case Run(args: Seq[String])
+  case Test(args: Seq[String])
   case CustomValidationScript(scriptFile: File)
 
   def validationScript: File = this match
@@ -108,6 +110,8 @@ enum ValidationCommand:
       ValidationScript.tmpScalaCliScript(command = "compile", args)
     case Run(args) =>
       ValidationScript.tmpScalaCliScript(command = "run", args)
+    case Test(args) =>
+      ValidationScript.tmpScalaCliScript(command = "test", args)
     case CustomValidationScript(scriptFile) =>
       ValidationScript.copiedFrom(scriptFile)
 
@@ -115,6 +119,7 @@ object ValidationCommand:
   def fromArgs(args: Seq[String]) = args match
     case Seq("compile", commandArgs*) => Compile(commandArgs)
     case Seq("run", commandArgs*) => Run(commandArgs)
+    case Seq("test", commandArgs*) => Test(commandArgs)
     case Seq(path) => CustomValidationScript(new File(path))
 
 

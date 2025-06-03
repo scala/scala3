@@ -60,6 +60,7 @@ object Macros {
       printout(defn.FunctionClass(i).name)
 
     for (i <- 0 to 25)
+      printout(defn.FunctionClass(i, isContextual = true).name)
       printout(defn.FunctionClass(i, isImplicit = true).name)
 
     // should fail

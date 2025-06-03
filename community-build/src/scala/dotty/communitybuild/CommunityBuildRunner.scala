@@ -13,8 +13,7 @@ object CommunityBuildRunner:
    *  is necessary since we run tests each time on a fresh
    *  Docker container. We run the update on Docker container
    *  creation time to create the cache of the dependencies
-   *  and avoid network overhead. See https://github.com/lampepfl/dotty-drone
-   *  for more infrastructural details.
+   *  and avoid network overhead.
    */
   extension (self: CommunityProject) 
     def run()(using suite: CommunityBuildRunner): Unit =

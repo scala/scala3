@@ -188,7 +188,7 @@ class ReplDriver(settings: Array[String],
             /* complete = */ false  // if true adds space when completing
           )
         }
-        val comps = completionsWithSignatures(line.cursor, line.line, state)
+        val comps = completions(line.cursor, line.line, state)
         candidates.addAll(comps.map(_.label).distinct.map(makeCandidate).asJava)
         val lineWord = line.word()
         comps.filter(c => c.label == lineWord && c.symbols.nonEmpty) match
@@ -275,22 +275,8 @@ class ReplDriver(settings: Array[String],
     else
       label
 
-  @deprecated("Use completionsWithSignatures instead", "3.4.2")
-  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] =
-    completionsWithSignatures(cursor, expr, state0).map: c =>
-      new Candidate(
-        /* value    = */ c.label,
-        /* displ    = */ stripBackTicks(c.label), // displayed value
-        /* group    = */ null,  // can be used to group completions together
-        /* descr    = */ null,  // TODO use for documentation?
-        /* suffix   = */ null,
-        /* key      = */ null,
-        /* complete = */ false  // if true adds space when completing
-      )
-  end completions
-
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected final def completionsWithSignatures(cursor: Int, expr: String, state0: State): List[Completion] =
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
     if expr.startsWith(":") then
       ParseResult.commands.collect {
         case command if command._1.startsWith(expr) => Completion(command._1, "", List())
@@ -309,7 +295,7 @@ class ReplDriver(settings: Array[String],
           try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
         }
         .getOrElse(Nil)
-  end completionsWithSignatures
+  end completions
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {

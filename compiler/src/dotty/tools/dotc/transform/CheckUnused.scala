@@ -154,6 +154,19 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForBind(tree: Bind)(using Context): Context =
     refInfos.register(tree)
     ctx
+  /* cf QuotePattern
+  override def transformBind(tree: Bind)(using Context): tree.type =
+    tree.symbol.info match
+    case TypeBounds(lo, hi) =>
+      def resolve(tpe: Type): Unit =
+        val sym = tpe.typeSymbol
+        if sym.exists then
+          resolveUsage(sym, sym.name, NoPrefix)
+      resolve(lo)
+      resolve(hi)
+    case _ =>
+    tree
+  */
 
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
@@ -202,15 +215,6 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       refInfos.register(tree)
     tree
 
-  override def prepareForTemplate(tree: Template)(using Context): Context =
-    ctx.fresh.setProperty(resolvedKey, Resolved())
-
-  override def prepareForPackageDef(tree: PackageDef)(using Context): Context =
-    ctx.fresh.setProperty(resolvedKey, Resolved())
-
-  override def prepareForStats(trees: List[Tree])(using Context): Context =
-    ctx.fresh.setProperty(resolvedKey, Resolved())
-
   override def transformOther(tree: Tree)(using Context): tree.type =
     tree match
     case imp: Import =>
@@ -222,6 +226,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           selector.bound match
           case untpd.TypedSplice(bound) => transformAllDeep(bound)
           case _ =>
+    case exp: Export =>
+      transformAllDeep(exp.expr)
     case AppliedTypeTree(tpt, args) =>
       transformAllDeep(tpt)
       args.foreach(transformAllDeep)
@@ -250,7 +256,17 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case Splice(expr) =>
       transformAllDeep(expr)
     case QuotePattern(bindings, body, quotes) =>
-      bindings.foreach(transformAllDeep)
+      bindings.foreach:
+        case b @ Bind(_, _) =>
+          b.symbol.info match
+          case TypeBounds(lo, hi) =>
+            def resolve(tpe: Type): Unit =
+              val sym = tpe.typeSymbol
+              if sym.exists then
+                resolveUsage(sym, sym.name, NoPrefix)
+            resolve(lo)
+            resolve(hi)
+          case _ =>
       transformAllDeep(body)
       transformAllDeep(quotes)
     case SplicePattern(body, typeargs, args) =>
@@ -264,7 +280,6 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case ByNameTypeTree(result) =>
       transformAllDeep(result)
     //case _: InferredTypeTree => // do nothing
-    //case _: Export => // nothing to do
     //case _ if tree.isType =>
     case _ =>
     tree
@@ -292,7 +307,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
 
     def matchingSelector(info: ImportInfo): ImportSelector | Null =
       val qtpe = info.site
-      def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol == sym)
+      def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith: alt =>
+           alt.symbol == sym
+        || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -323,15 +340,6 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       && ctxsym.thisType.baseClasses.contains(sym.owner)
       && ctxsym.thisType.member(sym.name).hasAltWith(d => d.containsSym(sym) && !name.exists(_ != d.name))
 
-    // Attempt to cache a result at the given context. Not all contexts bear a cache, including NoContext.
-    // If there is already any result for the name and prefix, do nothing.
-    def addCached(where: Context, result: Precedence): Unit =
-      if where.moreProperties ne null then
-        where.property(resolvedKey) match
-        case Some(resolved) =>
-          resolved.record(sym, name, prefix, result)
-        case none =>
-
     // Avoid spurious NoSymbol and also primary ctors which are never warned about.
     // Selections C.this.toString should be already excluded, but backtopped here for eq, etc.
     if !sym.exists || sym.isPrimaryConstructor || sym.isEffectiveRoot || defn.topClasses(sym.owner) then return
@@ -340,39 +348,20 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     // If the sym is an enclosing definition (the owner of a context), it does not count toward usages.
     val isLocal = sym.isLocalToBlock
     var candidate: Context = NoContext
-    var cachePoint: Context = NoContext // last context with Resolved cache
     var importer: ImportSelector | Null = null // non-null for import context
     var precedence = NoPrecedence // of current resolution
+    var enclosed = false // true if sym is owner of an enclosing context
     var done = false
-    var cached = false
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
-      if cur.owner eq sym then
-        addCached(cachePoint, Definition)
-        return // found enclosing definition
-      else if isLocal then
+      if cur.owner.userSymbol == sym && !sym.is(Package) then
+        enclosed = true // found enclosing definition, don't register the reference
+      if isLocal then
         if cur.owner eq sym.owner then
           done = true // for local def, just checking that it is not enclosing
       else
-        val cachedPrecedence =
-          cur.property(resolvedKey) match
-          case Some(resolved) =>
-            // conservative, cache must be nested below the result context
-            if precedence.isNone then
-              cachePoint = cur // no result yet, and future result could be cached here
-            resolved.hasRecord(sym, name, prefix)
-          case none => NoPrecedence
-        cached = !cachedPrecedence.isNone
-        if cached then
-          // if prefer cached precedence, then discard previous result
-          if precedence.weakerThan(cachedPrecedence) then
-            candidate = NoContext
-            importer = null
-            cachePoint = cur // actual cache context
-            precedence = cachedPrecedence // actual cached precedence
-          done = true
-        else if cur.isImportContext then
+        if cur.isImportContext then
           val sel = matchingSelector(cur.importInfo.nn)
           if sel != null then
             if cur.importInfo.nn.isRootImport then
@@ -392,7 +381,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
                 candidate = cur
                 importer = sel
         else if checkMember(cur.owner) then
-          if sym.srcPos.sourcePos.source == ctx.source then
+          if sym.is(Package) || sym.srcPos.sourcePos.source == ctx.source then
             precedence = Definition
             candidate = cur
             importer = null // ignore import in same scope; we can't check nesting level
@@ -402,16 +391,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             candidate = cur
     end while
     // record usage and possibly an import
-    refInfos.refs.addOne(sym)
+    if !enclosed then
+      refInfos.refs.addOne(sym)
     if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
-    // possibly record that we have performed this look-up
-    // if no result was found, take it as Definition (local or rooted head of fully qualified path)
-    val adjusted = if precedence.isNone then Definition else precedence
-    if !cached && (cachePoint ne NoContext) then
-      addCached(cachePoint, adjusted)
-    if cachePoint ne ctx then
-      addCached(ctx, adjusted) // at this ctx, since cachePoint may be far up the outer chain
   end resolveUsage
 end CheckUnused
 
@@ -423,14 +406,7 @@ object CheckUnused:
 
   val refInfosKey = Property.StickyKey[RefInfos]
 
-  val resolvedKey = Property.Key[Resolved]
-
   inline def refInfos(using Context): RefInfos = ctx.property(refInfosKey).get
-
-  inline def resolved(using Context): Resolved =
-    ctx.property(resolvedKey) match
-    case Some(res) => res
-    case _ => throw new MatchError("no Resolved for context")
 
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
@@ -460,7 +436,7 @@ object CheckUnused:
         if inliners == 0
           && languageImport(imp.expr).isEmpty
           && !imp.isGeneratedByEnum
-          && !ctx.outer.owner.name.isReplWrapperName
+          && !ctx.owner.name.isReplWrapperName
         then
           imps.put(imp, ())
       case tree: Bind =>
@@ -487,24 +463,6 @@ object CheckUnused:
     var inliners = 0 // depth of inline def (not inlined yet)
   end RefInfos
 
-  // Symbols already resolved in the given Context (with name and prefix of lookup).
-  class Resolved:
-    import PrecedenceLevels.*
-    private val seen = mutable.Map.empty[Symbol, List[(Name, Type, Precedence)]].withDefaultValue(Nil)
-    // if a result has been recorded, return it; otherwise, NoPrecedence.
-    def hasRecord(symbol: Symbol, name: Name, prefix: Type)(using Context): Precedence =
-      seen(symbol).find((n, p, _) => n == name && p =:= prefix) match
-      case Some((_, _, r)) => r
-      case none => NoPrecedence
-    // "record" the look-up result, if there is not already a result for the name and prefix.
-    def record(symbol: Symbol, name: Name, prefix: Type, result: Precedence)(using Context): Unit =
-      require(NoPrecedence.weakerThan(result))
-      seen.updateWith(symbol):
-        case svs @ Some(vs) =>
-          if vs.exists((n, p, _) => n == name && p =:= prefix) then svs
-          else Some((name, prefix, result) :: vs)
-        case none => Some((name, prefix, result) :: Nil)
-
   // Names are resolved by definitions and imports, which have four precedence levels:
   object PrecedenceLevels:
     opaque type Precedence = Int
@@ -530,6 +488,8 @@ object CheckUnused:
     val warnings = ArrayBuilder.make[MessageInfo]
     def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
     val infos = refInfos
+    //println(infos.defs.mkString("DEFS\n", "\n", "\n---"))
+    //println(infos.refs.mkString("REFS\n", "\n", "\n---"))
 
     def checkUnassigned(sym: Symbol, pos: SrcPos) =
       if sym.isLocalToBlock then
@@ -570,7 +530,7 @@ object CheckUnused:
             if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor) && !infos.refs(alias.symbol) then
               if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits then
-                  warnAt(pos)(UnusedSymbol.explicitParams)
+                  warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
               else
                 if ctx.settings.WunusedHas.privates then
                   warnAt(pos)(UnusedSymbol.privateMembers)
@@ -584,11 +544,11 @@ object CheckUnused:
           && !sym.name.isInstanceOf[DerivedName]
           && !ctx.platform.isMainMethod(m)
         then
-          warnAt(pos)(UnusedSymbol.explicitParams)
+          warnAt(pos)(UnusedSymbol.explicitParams(sym))
       end checkExplicit
       // begin
       if !infos.skip(m)
-        && !m.nextOverriddenSymbol.exists
+        && !m.isEffectivelyOverride
         && !allowed
       then
         checkExplicit()
@@ -600,18 +560,20 @@ object CheckUnused:
         val dd = defn
            m.isDeprecated
         || m.is(Synthetic)
-        || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
-        || sym.name.is(ContextBoundParamName) && sym.info.typeSymbol.isMarkerTrait // a ubiquitous parameter
         || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
+        || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
+        || sym.isCanEqual
         || sym.info.typeSymbol.match                // more ubiquity
            case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
-           case _ => false
+           case tps =>
+             tps.isMarkerTrait // no members to use; was only if sym.name.is(ContextBoundParamName)
+             ||                // but consider NotGiven
+             tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
-        || sym.isCanEqual
-        || sym.info.typeSymbol.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
+        && !m.isEffectivelyOverride
         && !allowed
       then
         if m.isPrimaryConstructor then
@@ -622,9 +584,9 @@ object CheckUnused:
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
             if checking && !infos.refs(alias.symbol) then
-              warnAt(pos)(UnusedSymbol.implicitParams)
+              warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
         else
-          warnAt(pos)(UnusedSymbol.implicitParams)
+          warnAt(pos)(UnusedSymbol.implicitParams(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
       if ctx.settings.WunusedHas.locals
@@ -889,41 +851,49 @@ object CheckUnused:
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
     inline def isWildcard: Boolean = nm == nme.WILDCARD || nm.is(WildcardParamName)
 
-  extension (tp: Type)
-    def importPrefix(using Context): Type = tp match
+  extension (tp: Type)(using Context)
+    def importPrefix: Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.superType.normalizedPrefix
       case _ => NoType
-    def underlyingPrefix(using Context): Type = tp match
+    def underlyingPrefix: Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.underlying.underlyingPrefix
       case _ => NoType
-    def skipPackageObject(using Context): Type =
+    def skipPackageObject: Type =
       if tp.typeSymbol.isPackageObject then tp.underlyingPrefix else tp
-    def underlying(using Context): Type = tp match
+    def underlying: Type = tp match
       case tp: TypeProxy => tp.underlying
       case _ => tp
 
   private val serializationNames: Set[TermName] =
     Set("readResolve", "readObject", "readObjectNoData", "writeObject", "writeReplace").map(termName(_))
 
-  extension (sym: Symbol)
-    def isSerializationSupport(using Context): Boolean =
+  extension (sym: Symbol)(using Context)
+    def isSerializationSupport: Boolean =
       sym.is(Method) && serializationNames(sym.name.toTermName) && sym.owner.isClass
         && sym.owner.derivesFrom(defn.JavaSerializableClass)
-    def isCanEqual(using Context): Boolean =
+    def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
-    def isMarkerTrait(using Context): Boolean =
+    def isMarkerTrait: Boolean =
       sym.isClass && sym.info.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
-    def isEffectivelyPrivate(using Context): Boolean =
+    def isEffectivelyPrivate: Boolean =
       sym.is(Private, butNot = ParamAccessor)
-      || sym.owner.isAnonymousClass && !sym.nextOverriddenSymbol.exists
+      || sym.owner.isAnonymousClass && !sym.isEffectivelyOverride
+    def isEffectivelyOverride: Boolean =
+      sym.is(Override)
+      ||
+      sym.canMatchInheritedSymbols && { // inline allOverriddenSymbols using owner.info or thisType
+        val owner = sym.owner.asClass
+        val base = if owner.classInfo.selfInfo != NoType then owner.thisType else owner.info
+        base.baseClasses.drop(1).iterator.exists(sym.overriddenSymbol(_).exists)
+      }
     // pick the symbol the user wrote for purposes of tracking
-    inline def userSymbol(using Context): Symbol=
+    inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
 
   extension (sel: ImportSelector)
@@ -937,13 +907,13 @@ object CheckUnused:
       case untpd.Ident(nme.WILDCARD) => true
       case _ => false
 
-  extension (imp: Import)
+  extension (imp: Import)(using Context)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
-    def isPrimaryClause(using Context): Boolean =
+    def isPrimaryClause: Boolean =
       imp.srcPos.span.pointDelta > 0 // primary clause starts at `import` keyword with point at clause proper
 
     /** Generated import of cases from enum companion. */
-    def isGeneratedByEnum(using Context): Boolean =
+    def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
 
     /** Under -Wunused:strict-no-implicit-warn, avoid false positives
@@ -951,7 +921,7 @@ object CheckUnused:
      *  specifically does import an implicit.
      *  Similarly, import of CanEqual must not warn, as it is always witness.
      */
-    def isLoose(sel: ImportSelector)(using Context): Boolean =
+    def isLoose(sel: ImportSelector): Boolean =
       if ctx.settings.WunusedHas.strictNoImplicitWarn then
         if sel.isWildcard
           || imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isOneOf(GivenOrImplicit))

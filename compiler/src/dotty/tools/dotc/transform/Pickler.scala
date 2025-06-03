@@ -291,7 +291,7 @@ class Pickler extends Phase {
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
       val attributes = Attributes(
         sourceFile = sourceRelativePath,
-        scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
+        scala2StandardLibrary = Feature.shouldBehaveAsScala2,
         explicitNulls = ctx.settings.YexplicitNulls.value,
         captureChecked = Feature.ccEnabled,
         withPureFuns = Feature.pureFunsEnabled,

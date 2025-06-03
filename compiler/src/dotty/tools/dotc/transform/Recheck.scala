@@ -19,9 +19,7 @@ import typer.ErrorReporting.{Addenda, NothingToAdd}
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
-import reporting.trace
 import annotation.constructorOnly
-import cc.CaptureSet.IdempotentCaptRefMap
 import annotation.tailrec
 import dotty.tools.dotc.cc.boxed
 
@@ -167,7 +165,11 @@ abstract class Recheck extends Phase, SymTransformer:
        *  from the current type.
        */
       def setNuType(tpe: Type): Unit =
-        if nuTypes.lookup(tree) == null && (tpe ne tree.tpe) then nuTypes(tree) = tpe
+        if nuTypes.lookup(tree) == null then updNuType(tpe)
+
+      /** Set new type of the tree unconditionally. */
+      def updNuType(tpe: Type): Unit =
+        if tpe ne tree.tpe then nuTypes(tree) = tpe
 
       /** The new type of the tree, or if none was installed, the original type */
       def nuType(using Context): Type =
@@ -185,6 +187,9 @@ abstract class Recheck extends Phase, SymTransformer:
      */
     def keepNuTypes(using Context): Boolean =
       ctx.settings.Xprint.value.containsPhase(thisPhase)
+
+    def resetNuTypes()(using Context): Unit =
+      nuTypes.clear(resetToInitial = false)
 
     /** A map from NamedTypes to the denotations they had before this phase.
      *  Needed so that we can `reset` them after this phase.
@@ -219,10 +224,10 @@ abstract class Recheck extends Phase, SymTransformer:
         sharpen: Denotation => Denotation)(using Context): Type =
       if name.is(OuterSelectName) then tree.tpe
       else
-        //val pre = ta.maybeSkolemizePrefix(qualType, name)
+        val pre = ta.maybeSkolemizePrefix(qualType, name)
         val mbr =
           sharpen(
-            qualType.findMember(name, qualType,
+            qualType.findMember(name, pre,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
           )).suchThat(tree.symbol == _)
         val newType = tree.tpe match
@@ -285,7 +290,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  The invocation is currently disabled in recheckApply.
      */
     private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
-      val tm = new TypeMap with IdempotentCaptRefMap:
+      val tm = new TypeMap:
         def apply(t: Type) =
           t match
             case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
@@ -580,7 +585,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *          Otherwise, `tp` itself
      */
     def widenSkolems(tp: Type)(using Context): Type =
-      object widenSkolems extends TypeMap, IdempotentCaptRefMap:
+      object widenSkolems extends TypeMap:
         var didWiden: Boolean = false
         def apply(t: Type): Type = t match
           case t: SkolemType if variance >= 0 =>
@@ -603,6 +608,7 @@ abstract class Recheck extends Phase, SymTransformer:
       case _ => checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
     def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
+     try
       actual <:< expected
       || expected.isRepeatedParam
           && isCompatible(actual,
@@ -611,6 +617,9 @@ abstract class Recheck extends Phase, SymTransformer:
         val widened = widenSkolems(expected)
         (widened ne expected) && isCompatible(actual, widened)
       }
+     catch case ex: AssertionError =>
+      println(i"fail while $actual iscompat $expected")
+      throw ex
 
     def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Type =
       //println(i"check conforms $actual <:< $expected")

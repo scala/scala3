@@ -10,11 +10,13 @@ import NameOps.*
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
+import config.Feature
 
 import util.Property
 import util.Spans.Span
 import config.Printers.derive
 import NullOpsDecorator.*
+import scala.runtime.Statics
 
 object SyntheticMembers {
 
@@ -78,11 +80,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol =
     val existing = sym.matchingMember(clazz.thisType)
-    if ctx.settings.YcompileScala2Library.value && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
+    if Feature.shouldBehaveAsScala2 && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
       NoSymbol
-    else if existing != sym && !existing.is(Deferred) then 
-      existing 
-    else 
+    else if existing != sym && !existing.is(Deferred) then
+      existing
+    else
       NoSymbol
   end existingDef
 
@@ -101,6 +103,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val isSimpleEnumValue = isEnumValue && !clazz.owner.isAllOf(EnumCase)
     val isJavaEnumValue = isEnumValue && clazz.derivesFrom(defn.JavaEnumClass)
     val isNonJavaEnumValue = isEnumValue && !isJavaEnumValue
+    val ownName = clazz.name.stripModuleClassSuffix.toString
 
     val symbolsToSynthesize: List[Symbol] =
       if clazz.is(Case) then
@@ -124,8 +127,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       def forwardToRuntime(vrefs: List[Tree]): Tree =
         ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) :: vrefs)
 
-      def ownName: Tree =
-        Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
+      def ownNameLit: Tree = Literal(Constant(ownName))
 
       def nameRef: Tree =
         if isJavaEnumValue then
@@ -152,7 +154,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           Literal(Constant(candidate.get))
 
       def toStringBody(vrefss: List[List[Tree]]): Tree =
-        if (clazz.is(ModuleClass)) ownName
+        if (clazz.is(ModuleClass)) ownNameLit
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
@@ -165,9 +167,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.ordinal => ordinalRef
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix if isEnumValue => nameRef
-        case nme.productPrefix => ownName
+        case nme.productPrefix => ownNameLit
         case nme.productElement =>
-          if ctx.settings.YcompileScala2Library.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
+          if Feature.shouldBehaveAsScala2 then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
           else productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }
@@ -335,39 +337,36 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       ref(accessors.head).select(nme.hashCode_).ensureApplied
     }
 
-    /** The class
+    /**
+     * A `case object C` or a `case class C()` without parameters gets the `hashCode` method
+     * ```
+     *    def hashCode: Int = "C".hashCode // constant folded
+     * ```
      *
-     *  ```
-     *  case object C
-     *  ```
+     * Otherwise, if none of the parameters are primitive types:
+     * ```
+     *   def hashCode: Int = MurmurHash3.productHash(
+     *      this,
+     *      Statics.mix(0xcafebabe, "C".hashCode), // constant folded
+     *      ignorePrefix = true)
+     * ```
      *
-     *  gets the `hashCode` method:
+     * The implementation used to invoke `ScalaRunTime._hashCode`, but that implementation mixes in the result
+     * of `productPrefix`, which causes scala/bug#13033. By setting `ignorePrefix = true` and mixing in the case
+     * name into the seed, the bug can be fixed and the generated code works with the unchanged Scala library.
      *
-     *  ```
-     *  def hashCode: Int = "C".hashCode // constant folded
-     *  ```
-     *
-     *  The class
-     *
-     *  ```
-     *  case class C(x: T, y: U)
-     *  ```
-     *
-     *  if none of `T` or `U` are primitive types, gets the `hashCode` method:
-     *
-     *  ```
-     *  def hashCode: Int = ScalaRunTime._hashCode(this)
-     *  ```
-     *
-     *  else if either `T` or `U` are primitive, gets the `hashCode` method implemented by [[caseHashCodeBody]]
+     * For case classes with primitive paramters, see [[caseHashCodeBody]].
      */
     def chooseHashcode(using Context) =
-      if (clazz.is(ModuleClass))
-        Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
+      if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
-        ref(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
+        ref(defn.MurmurHash3Module).select(defn.MurmurHash3_productHash).appliedTo(
+          This(clazz),
+          Literal(Constant(Statics.mix(0xcafebabe, ownName.hashCode))),
+          Literal(Constant(true))
+        )
 
     /** The class
      *
@@ -380,7 +379,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      *  def hashCode: Int = {
      *    <synthetic> var acc: Int = 0xcafebabe
-     *    acc = Statics.mix(acc, this.productPrefix.hashCode());
+     *    acc = Statics.mix(acc, "C".hashCode);
      *    acc = Statics.mix(acc, x);
      *    acc = Statics.mix(acc, Statics.this.anyHash(y));
      *    Statics.finalizeHash(acc, 2)
@@ -391,7 +390,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val acc = newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
       val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
       val mixPrefix = Assign(ref(acc),
-        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), This(clazz).select(defn.Product_productPrefix).select(defn.Any_hashCode).appliedToNone))
+        ref(defn.staticsMethod("mix")).appliedTo(ref(acc), Literal(Constant(ownName.hashCode))))
       val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
@@ -571,8 +570,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       newSymbol(ctx.owner, pref.paramName.freshened, Synthetic,
         pref.underlying.translateFromRepeated(toArray = false), coord = ctx.owner.span.focus)
     val bindingRefs = bindingSyms.map(TermRef(NoPrefix, _))
-    // Fix the infos for dependent parameters
-    if constrMeth.isParamDependent then
+    // Fix the infos for dependent parameters. We also need to include false dependencies that would
+    // be fixed by de-aliasing since we do no such de-aliasing here. See i22944.scala.
+    if constrMeth.looksParamDependent then
       bindingSyms.foreach: bindingSym =>
         bindingSym.info = bindingSym.info.substParams(constrMeth, bindingRefs)
 
@@ -721,7 +721,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
     val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
-    if ctx.settings.YcompileScala2Library.value then impl1
+    if Feature.shouldBehaveAsScala2 then impl1
     else addMirrorSupport(impl1)
   }
 

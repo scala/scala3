@@ -83,7 +83,9 @@ class CompilationTests {
       compileFile("tests/rewrites/ambiguous-named-tuple-assignment.scala", defaultOptions.and("-rewrite", "-source:3.6-migration")),
       compileFile("tests/rewrites/i21382.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/unused.scala", defaultOptions.and("-rewrite", "-Wunused:all")),
-      compileFile("tests/rewrites/i22440.scala", defaultOptions.and("-rewrite"))
+      compileFile("tests/rewrites/i22440.scala", defaultOptions.and("-rewrite")),
+      compileFile("tests/rewrites/i22731.scala", defaultOptions.and("-rewrite", "-source:3.7-migration")),
+      compileFile("tests/rewrites/i22731b.scala", defaultOptions.and("-rewrite", "-source:3.7-migration")),
     ).checkRewrites()
   }
 
@@ -273,20 +275,45 @@ class CompilationTests {
      * compatible, but (b) and (c) are not. If (b) and (c) are compiled together, there should be
      * an error when reading the files' TASTy trees. */
     locally {
-      val tastyErrorGroup = TestGroup("checkInit/tasty-error")
+      val tastyErrorGroup = TestGroup("checkInit/tasty-error/val-or-defdef")
       val tastyErrorOptions = options.without("-Xfatal-warnings")
 
-      val a0Dir = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
-      val a1Dir = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
-      val b1Dir = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
+      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
+      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
 
       val tests = List(
-        compileFile("tests/init/tasty-error/v1/A.scala", tastyErrorOptions)(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/v1/B.scala", tastyErrorOptions.withClasspath(a1Dir))(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v1/B.scala", tastyErrorOptions.withClasspath(classA1))(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
       ).map(_.keepOutput.checkCompile())
 
-      compileFile("tests/init/tasty-error/Main.scala", tastyErrorOptions.withClasspath(a0Dir).withClasspath(b1Dir))(tastyErrorGroup).checkExpectedErrors()
+      compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(tastyErrorGroup).checkExpectedErrors()
+
+      tests.foreach(_.delete())
+    }
+
+    /* This tests for errors in the program's TASTy trees.
+     * The test consists of five files: Main, C, v1/A, v1/B, and v0/A. The files v1/A, v1/B, and v0/A all depend on C. v1/A and v1/B are
+     * compatible, but v1/B and v0/A are not. If v1/B and v0/A are compiled together, there should be
+     * an error when reading the files' TASTy trees. This fact is demonstrated by the compilation of Main. */
+    locally {
+      val tastyErrorGroup = TestGroup("checkInit/tasty-error/typedef")
+      val tastyErrorOptions = options.without("-Xfatal-warnings").without("-Ycheck:all")
+
+      val classC = defaultOutputDir + tastyErrorGroup + "/C/typedef/C"
+      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
+      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
+      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+
+      val tests = List(
+        compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v1/A.scala", tastyErrorOptions.withClasspath(classC))(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v1/B.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA1))(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v0/A.scala", tastyErrorOptions.withClasspath(classC))(tastyErrorGroup),
+      ).map(_.keepOutput.checkCompile())
+
+      compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }

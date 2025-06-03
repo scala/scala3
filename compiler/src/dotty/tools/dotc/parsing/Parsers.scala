@@ -732,16 +732,17 @@ object Parsers {
 
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
       val txt = source.content
-      idx < txt.length && p(txt(idx))
+      idx >= 0 && idx < txt.length && p(txt(idx))
     }
 
     def testChar(idx: Int, c: Char): Boolean = {
       val txt = source.content
-      idx < txt.length && txt(idx) == c
+      idx >= 0 && idx < txt.length && txt(idx) == c
     }
 
     def testChars(from: Int, str: String): Boolean =
-      str.isEmpty ||
+      str.isEmpty
+      ||
       testChar(from, str.head) && testChars(from + 1, str.tail)
 
     def skipBlanks(idx: Int, step: Int = 1): Int =
@@ -1600,22 +1601,36 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]
      *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
-      val ref = dotSelectors(simpleRef())
-      if isIdent(nme.raw.STAR) then
+
+      def derived(ref: Tree, name: TermName) =
         in.nextToken()
-        atSpan(startOffset(ref)):
-          PostfixOp(ref, Ident(nme.CC_REACH))
-      else if isIdent(nme.UPARROW) then
-        in.nextToken()
-        atSpan(startOffset(ref)):
-          convertToTypeId(ref) match
-            case ref: RefTree => makeCapsOf(ref)
-            case ref => ref
-      else ref
+        atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
+
+      def recur(ref: Tree): Tree =
+        if in.token == DOT then
+          in.nextToken()
+          if in.isIdent(nme.rd) then derived(ref, nme.CC_READONLY)
+          else recur(selector(ref))
+        else if in.isIdent(nme.raw.STAR) then
+          val reachRef = derived(ref, nme.CC_REACH)
+          if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+            in.nextToken()
+            derived(reachRef, nme.CC_READONLY)
+          else reachRef
+        else if isIdent(nme.UPARROW) then
+          in.nextToken()
+          atSpan(startOffset(ref)):
+            convertToTypeId(ref) match
+              case ref: RefTree => makeCapsOf(ref)
+              case ref => ref
+        else ref
+
+      recur(simpleRef())
+    end captureRef
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -1624,7 +1639,7 @@ object Parsers {
     }
 
     def capturesAndResult(core: () => Tree): Tree =
-      if Feature.ccEnabled && in.token == LBRACE && in.offset == in.lastOffset
+      if Feature.ccEnabled && in.token == LBRACE && canStartCaptureSetContentsTokens.contains(in.lookahead.token)
       then CapturesAndResult(captureSet(), core())
       else core()
 
@@ -1805,8 +1820,9 @@ object Parsers {
         val start = in.offset
         val tparams = typeParamClause(ParamOwner.Type)
         if in.token == TLARROW then
+          // Filter illegal context bounds and report syntax error
           atSpan(start, in.skipToken()):
-            LambdaTypeTree(tparams, toplevelTyp())
+            LambdaTypeTree(tparams.mapConserve(stripContextBounds("type lambdas")), toplevelTyp())
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp(nestedIntoOK(in.token))
@@ -1821,6 +1837,13 @@ object Parsers {
       else
         typeRest(infixType(inContextBound))
     end typ
+
+    /** Removes context bounds from TypeDefs and returns a syntax error. */
+    private def stripContextBounds(in: String)(tparam: TypeDef) = tparam match
+      case TypeDef(name, rhs: ContextBounds) =>
+        syntaxError(em"context bounds are not allowed in $in", rhs.span)
+        TypeDef(name, rhs.bounds)
+      case other => other
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
@@ -3304,13 +3327,14 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
-          case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
+          case nme.erased if in.erasedEnabled => Mod.Erased()
+          case nme.mut if Feature.ccEnabled => Mod.Mut()
         }
     }
 
@@ -3378,7 +3402,8 @@ object Parsers {
      *                  |  override
      *                  |  opaque
      *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased |
-     *                     inline | transparent | infix
+     *                     inline | transparent | infix |
+     *                     mut                              -- under cc
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -3482,7 +3507,7 @@ object Parsers {
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’]
-     *                         (id | ‘_’) [HkTypePamClause] TypeBounds
+     *                         (id | ‘_’) [HkTypeParamClause] TypeBounds
      */
     def typeParamClause(paramOwner: ParamOwner): List[TypeDef] = inBracketsWithCommas {
 
@@ -3539,7 +3564,7 @@ object Parsers {
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
      *                         [{Modifier} (‘val’ | ‘var’)] Param
-     *  TypelessClause    ::= DefTermParamClause
+     *  ConstrParamClause ::= DefTermParamClause
      *                      | UsingParamClause
      *
      *  DefTermParamClause::= [nl] ‘(’ [DefTermParams] ‘)’
@@ -3665,7 +3690,7 @@ object Parsers {
     }
 
     /** ClsTermParamClauses   ::=  {ClsTermParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-     *  TypelessClauses       ::=  TypelessClause {TypelessClause}
+     *  ConstrParamClauses    ::=  ConstrParamClause {ConstrParamClause}
      *
      *  @return  The parameter definitions
      */
@@ -3939,7 +3964,7 @@ object Parsers {
     }
 
     /** DefDef  ::=  DefSig [‘:’ Type] [‘=’ Expr]
-     *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
+     *            |  this ConstrParamClauses [DefImplicitClause] `=' ConstrExpr
      *  DefSig  ::=  id [DefParamClauses] [DefImplicitClause]
      */
     def defDefOrDcl(start: Offset, mods: Modifiers, numLeadParams: Int = 0): DefDef = atSpan(start, nameStart) {
@@ -4691,7 +4716,8 @@ object Parsers {
           syntaxError(msg, tree.span)
           Nil
         tree match
-          case tree: MemberDef if !(tree.mods.flags & (ModifierFlags &~ Mutable)).isEmpty =>
+          case tree: MemberDef
+          if !(tree.mods.flags & ModifierFlags).isEmpty && !tree.mods.isMutableVar => // vars are OK, mut defs are not
             fail(em"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}")
           case tree: DefDef if tree.termParamss.nestedExists(!_.rhs.isEmpty) =>
             fail(em"refinement cannot have default arguments")

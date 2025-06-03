@@ -1,0 +1,9 @@
+-- Error: tests/neg-custom-args/captures/filevar.scala:8:6 -------------------------------------------------------------
+8 |  var file: File^ = uninitialized  // error, was OK under unsealed
+  |      ^
+  |      Mutable variable file cannot have type File^ since
+  |      that type captures the root capability `cap`.
+-- Warning: tests/neg-custom-args/captures/filevar.scala:11:55 ---------------------------------------------------------
+11 |def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =
+   |                                                       ^
+   |                                                       redundant capture: File already accounts for l.type

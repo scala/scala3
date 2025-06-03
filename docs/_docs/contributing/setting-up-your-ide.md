@@ -42,7 +42,15 @@ want to make sure you do two things:
 +    val enableBspAllProjects = true,
 ```
 
-2. Run `sbt publishLocal` to get the needed presentation compiler jars.
+2. Run in sbt shell `sbt> scala3-bootstrapped/compile` and then `sbt> scala3-bootstrapped/publishLocalBin`
+   to get the required presentation compiler jars.
+
+   If any step fails due to random errors, try removing `./out/` directory and running `sbt> clean`
+
+   This step has to be repeated every time compiler version has been bumped.
+
+
+
 
 By default Metals uses Bloop build server, however you can also use sbt
 directly. You can achieve this with the `Metals: Switch Build Server` command
