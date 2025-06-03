@@ -6,7 +6,7 @@ authorImg: images/anatolii.png
 date: 2019-05-23
 ---
 
-Hi! We are very excited to announce the 15th release of Dotty. The most exciting thing in this release is the full bootstrap for Dotty introduced by PR [#5923](https://github.com/lampepfl/dotty/pull/5923)🎉😍. This means that we now always compile Dotty with Dotty itself, hence we can use use all the new features in the compiler code base.
+Hi! We are very excited to announce the 15th release of Dotty. The most exciting thing in this release is the full bootstrap for Dotty introduced by PR [#5923](https://github.com/scala/scala3/pull/5923)🎉😍. This means that we now always compile Dotty with Dotty itself, hence we can use use all the new features in the compiler code base.
 
 With this release comes a bunch of new features and improvements, such as the ability to enforce whether an operator is intended to be used in an infix position, the type safe pattern bindings and more.
 
@@ -36,7 +36,7 @@ This is our 15th scheduled release according to our
 ## Full Bootstrap
 Bootstrapping Dotty is a big milestone for us and in compiler construction in general. Firstly, we feel more confident that our compiler works as is (even without reusing the new features). Secondly, in the immediate future, we will be able to reuse many of the features that dotty proposes within dotty itself. For example, we have no fewer than 2641 occurrences of the text string (implicit ctx: Context) in the compiler that we can scrap with [Contextual Function types](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html). Big milestones have high risk/high gain and we must be attentive. That is the reason that we will wait a bit until we start using new features. Consequently, at the moment we cross-compile the build with 2.12 on the CI so that we don't accidentally start using Dotty features in case we need to revise the bootstrap process (we'll start using Dotty features eventually, but let's wait until we're confident that this setup works well enough).
 
-Check the following for more information [#5923 (comment)](https://github.com/lampepfl/dotty/pull/5923#issuecomment-485421148) and please let us know if you have any incremental compilation issues or anything else!
+Check the following for more information [#5923 (comment)](https://github.com/scala/scala3/pull/5923#issuecomment-485421148) and please let us know if you have any incremental compilation issues or anything else!
 
 ## Operator Rules
 This change addresses the problem of the regulation of whether an operator is supposed to be used in an infix position. The motivation is for the library authors to be able to enforce whether a method or a type is supposed to be used in an infix position by the users. This ability will help to make code bases more consistent in the way the calls to methods are performed.
@@ -150,7 +150,7 @@ For the migration purposes, the above change will only take effect in Scala 3.1.
 For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
 
 ## Further improvements to Generalised Algebraic Data Types (GADTs) support
-In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs, thus fixing [#2985](https://github.com/lampepfl/dotty/issues/2985):
+In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs, thus fixing [#2985](https://github.com/scala/scala3/issues/2985):
 
 ```scala
 enum Expr[+T] {
@@ -164,20 +164,20 @@ def eval[T](e: Expr[T]): T = e match {
 }
 ```
 
-We've also plugged a few soundness problems (e.g. [#5667](https://github.com/lampepfl/dotty/issues/5667)) caused by inferring too much when matching on abstract, union and intersection types. For more information, see PR [#5736](https://github.com/lampepfl/dotty/pull/5736).
+We've also plugged a few soundness problems (e.g. [#5667](https://github.com/scala/scala3/issues/5667)) caused by inferring too much when matching on abstract, union and intersection types. For more information, see PR [#5736](https://github.com/scala/scala3/pull/5736).
 
 ## Other changes
 Some of the other notable changes include the following:
 
 - Singletons are now allowed in union types. E.g. the following is allowed: `object foo; type X = Int | foo.type`.
-- A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/lampepfl/dotty/pull/6454) and [#6467](https://github.com/lampepfl/dotty/pull/6467).
-- Improvements to the Scala 2 code support which, in particular, improves Cats support – see PRs [#6494](https://github.com/lampepfl/dotty/pull/6494) and [#6498](https://github.com/lampepfl/dotty/pull/6498).
+- A bunch of improvements was made for the type inference system – see, e.g., PRs [#6454](https://github.com/scala/scala3/pull/6454) and [#6467](https://github.com/scala/scala3/pull/6467).
+- Improvements to the Scala 2 code support which, in particular, improves Cats support – see PRs [#6494](https://github.com/scala/scala3/pull/6494) and [#6498](https://github.com/scala/scala3/pull/6498).
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -205,7 +205,7 @@ According to `git shortlog -sn --no-merges 0.14.0-RC1..0.15.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

@@ -1,0 +1,12 @@
+-- Warning: tests/init-global/warn/partial-ordering.scala:1:7 ----------------------------------------------------------
+1 |object Names: // warn
+  |       ^
+  |       Cyclic initialization: object Names -> object MethodName -> object Names. Calling trace:
+  |       ├── object Names: // warn	[ partial-ordering.scala:1 ]
+  |       │   ^
+  |       ├── val ctorName: MethodName = MethodName.apply(ctorString)	[ partial-ordering.scala:3 ]
+  |       │                              ^^^^^^^^^^
+  |       ├── object MethodName:	[ partial-ordering.scala:6 ]
+  |       │   ^
+  |       └── val ctor: MethodName = new MethodName(Names.ctorString)	[ partial-ordering.scala:7 ]
+  |                                                 ^^^^^

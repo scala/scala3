@@ -7,9 +7,8 @@ import typer.{TyperPhase, RefChecks}
 import parsing.Parser
 import Phases.Phase
 import transform.*
-import dotty.tools.backend
 import backend.jvm.{CollectSuperCalls, GenBCode}
-import localopt.StringInterpolatorOpt
+import localopt.{StringInterpolatorOpt, DropForMap}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -34,26 +33,26 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // Compiler frontend: scanner, parser
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
-    List(new CheckUnused.PostTyper) :: // Check for unused elements
-    List(new CheckShadowing) :: // Check shadowing elements
+    List(CheckUnused.PostTyper(), CheckShadowing()) :: // Check for unused, shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB.ExtractSemanticInfo) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
+    List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
-    List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
+    List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
-    List(new CheckUnused.PostInlining) ::  // Check for unused elements
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
+    List(new CheckUnused.PostInlining) ::  // Check for unused elements
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -64,18 +63,19 @@ class Compiler {
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
-         new CheckStatic,            // Check restrictions that apply to @static members
          new CheckLoopingImplicits,  // Check that implicit defs do not call themselves in an infinite loop
          new BetaReduce,             // Reduce closure applications
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
+         new RefChecks,              // Various checks mostly related to abstract members and overriding
+         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
     List(new semanticdb.ExtractSemanticDB.AppendDiagnostics) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
+         new CheckStatic,            // Check restrictions that apply to @static members
          new ElimByName,             // Map by-name parameters to functions
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ForwardDepChecks,       // Check that there are no forward references to local vals
@@ -110,7 +110,7 @@ class Compiler {
          new LetOverApply,           // Lift blocks from receivers of applications
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-    List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
+    List(new ElimErasedValueType,    // Expand erased value types to their underlying implementation types
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new EtaReduce,              // Reduce eta expansions of pure paths to the underlying function reference
@@ -132,6 +132,7 @@ class Compiler {
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped
     List(new DropOuterAccessors,     // Drop unused outer accessors
+         new DropParentRefinements,  // Drop parent refinements from a template
          new CheckNoSuperThis,       // Check that supercalls don't contain references to `this`
          new Flatten,                // Lift all inner classes to package scope
          new TransformWildcards,     // Replace wildcards with default values
@@ -151,7 +152,10 @@ class Compiler {
     List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
-  var runId: Int = 1
+  // TODO: Initially 0, so that the first nextRunId call would return InitialRunId == 1
+  // Changing the initial runId from 1 to 0 makes the scala2-library-bootstrap fail to compile,
+  // when the underlying issue is fixed, please update dotc.profiler.RealProfiler.chromeTrace logic
+  private var runId: Int = 1
   def nextRunId: Int = {
     runId += 1; runId
   }
@@ -166,6 +170,8 @@ class Compiler {
     reset()
     val rctx =
       if ctx.settings.Xsemanticdb.value then
+        ctx.addMode(Mode.ReadPositions)
+      else if ctx.settings.YcheckInitGlobal.value then
         ctx.addMode(Mode.ReadPositions)
       else
         ctx

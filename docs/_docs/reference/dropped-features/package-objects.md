@@ -11,7 +11,7 @@ package object p {
   def b = ...
 }
 ```
-will be dropped. They are still available, but will be deprecated and removed afterwards.
+will be dropped. They are still available, but will be deprecated and removed at some point in the future.
 
 Package objects are no longer needed since all kinds of definitions can now be written at the top-level. Example:
 ```scala

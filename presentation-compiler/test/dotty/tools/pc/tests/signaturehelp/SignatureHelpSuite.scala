@@ -2,7 +2,7 @@ package dotty.tools.pc.tests.signaturehelp
 
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
-import org.junit.Test
+import org.junit.{ Ignore, Test }
 
 class SignatureHelpSuite extends BaseSignatureHelpSuite:
 
@@ -66,7 +66,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|Random()
          |Random(seed: Int)
          |Random(seed: Long)
-         |Random(self: java.util.Random)
+         |Random(self: Random)
          |""".stripMargin
     )
 
@@ -103,9 +103,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new File(@@)
         |}
       """.stripMargin,
-      """|File(x$0: java.net.URI)
-         |     ^^^^^^^^^^^^^^^^^
-         |File(x$0: java.io.File, x$1: String)
+      """|File(x$0: URI)
+         |     ^^^^^^^^
+         |File(x$0: File, x$1: String)
          |File(x$0: String, x$1: String)
          |File(x$0: String)
          |""".stripMargin
@@ -118,9 +118,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new java.io.File(@@)
         |}
                  """.stripMargin,
-      """|File(x$0: java.net.URI)
-         |     ^^^^^^^^^^^^^^^^^
-         |File(x$0: java.io.File, x$1: String)
+      """|File(x$0: URI)
+         |     ^^^^^^^^
+         |File(x$0: File, x$1: String)
          |File(x$0: String, x$1: String)
          |File(x$0: String)
          |""".stripMargin
@@ -191,12 +191,12 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  // https://github.com/lampepfl/dotty/issues/15244
+  // https://github.com/scala/scala3/issues/15244
   @Test def `vararg` =
     check(
       """
         |object a {
-        |  List(1, 2@@
+        |  List(1, 2@@)
         |}
     """.stripMargin,
       """|apply[A](elems: A*): List[A]
@@ -256,12 +256,51 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     check(
       """
         |object a {
+        |  List[Int](1).lengthCompare(@@)
+        |}
+      """.stripMargin,
+      """|lengthCompare(len: Int): Int
+         |              ^^^^^^^^
+         |lengthCompare(that: Iterable[?]): Int
+         |""".stripMargin
+    )
+
+  @Ignore("See if applyCallInfo can still inform on lengthCompare's sig, even if recv is in error")
+  @Test def `tparam5_TypeMismatch` =
+    check(
+      """
+        |object a {
         |  List[String](1).lengthCompare(@@)
         |}
       """.stripMargin,
       """|lengthCompare(len: Int): Int
          |              ^^^^^^^^
          |lengthCompare(that: Iterable[?]): Int
+         |""".stripMargin
+    )
+
+  @Test def `tparam5_nonvarargs` =
+    check(
+      """
+        |object a {
+        |  Option[Int](1).getOrElse(@@)
+        |}
+      """.stripMargin,
+      """|getOrElse[B >: Int](default: => B): B
+         |                    ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("Similar to `tparam5_TypeMismatch`")
+  @Test def `tparam5_nonvarargs_TypeMismatch` =
+    check(
+      """
+        |object a {
+        |  Option[String](1).getOrElse(@@)
+        |}
+      """.stripMargin,
+      """|getOrElse[B >: String](default: => B): B
+         |                       ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -323,9 +362,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  } yield k
         |}
       """.stripMargin,
-      """|to(end: Int): scala.collection.immutable.Range.Inclusive
+      """|to(end: Int): Inclusive
          |   ^^^^^^^^
-         |to(end: Int, step: Int): scala.collection.immutable.Range.Inclusive
+         |to(end: Int, step: Int): Inclusive
          |""".stripMargin,
       stableOrder = false
     )
@@ -388,7 +427,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |
         |
       """.stripMargin,
-      """|apply(viewId: String, nodeUri: String, label: String, command: String, icon: String, tooltip: String, collapseState: String): TreeViewNode
+      """|apply(viewId: String, nodeUri: String, label: String, [collapseState: String], [command: String], [icon: String], [tooltip: String]): TreeViewNode
          |      ^^^^^^^^^^^^^^
          |""".stripMargin
     )
@@ -424,7 +463,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |
         |
       """.stripMargin,
-      """|apply(viewId: String, nodeUri: String, label: String, command: String, collapseState: String): TreeViewNode
+      """|apply(viewId: String, nodeUri: String, label: String, [collapseState: String], [command: String]): TreeViewNode
          |      ^^^^^^^^^^^^^^
          |""".stripMargin
     )
@@ -437,8 +476,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  User(age = 1, @@)
         |}
       """.stripMargin,
-      """|apply(name: String, age: Int): User
-         |                    ^^^^^^^^
+      """|apply([age: Int], [name: String]): User
+         |                  ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -477,8 +516,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  def x = user(str@@eet = 42, name = "", age = 2)
         |}
       """.stripMargin,
-      """|user(name: String, age: Int, street: Int): Int
-         |                             ^^^^^^^^^^^
+      """|user([street: Int], [name: String], [age: Int]): Int
+         |     ^^^^^^^^^^^^^
          |user(name: String, age: Int): Int
          |""".stripMargin
     )
@@ -502,9 +541,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new scala.util.control.Exception.Catch(@@)
         |}
       """.stripMargin,
-      // TODO short names are not supported yet
-      """|Catch[T](pf: scala.util.control.Exception.Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
-         |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      """|Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
+         |         ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -515,7 +553,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new java.util.HashMap[String, Int]().computeIfAbsent(@@)
         |}
       """.stripMargin,
-      // TODO short names are not supported yet
+      // This is the correct result, as there is a conflict at Function: scala.Function and java.util.function.Function
       """|computeIfAbsent(x$0: String, x$1: java.util.function.Function[? >: String, ? <: Int]): Int
          |                ^^^^^^^^^^^
          |""".stripMargin
@@ -548,6 +586,19 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     )
 
   @Test def `last-arg1` =
+    check(
+      """
+        |object A {
+        |  List[Int](1).map(a => @@)
+        |}
+      """.stripMargin,
+      """|map[B](f: Int => B): List[B]
+         |       ^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("Similar to `tparam5_TypeMismatch`")
+  @Test def `last-arg1_TypeMismatch` =
     check(
       """
         |object A {
@@ -650,9 +701,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  identity(42)@@
         |}
         |""".stripMargin,
-      """|identity[A](x: A): A
-         |            ^^^^
-         |""".stripMargin
+      ""
     )
 
   @Test def `off-by-one2` =
@@ -675,7 +724,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |}
         |""".stripMargin,
       """|fold[B](ifEmpty: => B)(f: Int => B): B
-         |        ^^^^^^^^^^^^^
+         |                       ^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -763,7 +812,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object O:
          |  implicit class Test[T](xs: List[T]):
          |    def test(x: T): List[T] = ???
-         |  List(1,2,3).test(@@""".stripMargin,
+         |  List(1,2,3).test(s@@)""".stripMargin,
       """|test(x: Int): List[Int]
          |     ^^^^^^
          |""".stripMargin
@@ -774,24 +823,13 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object O:
          |  implicit class Test[T](xs: List[T]):
          |    def test(x: T): List[T] = ???
-         |  List(1,2,3).test(s@@""".stripMargin,
-      """|test(x: Int): List[Int]
-         |     ^^^^^^
-         |""".stripMargin
-    )
-
-  @Test def `instantiated-type-var-old-ext-3` =
-    check(
-      """|object O:
-         |  implicit class Test[T](xs: List[T]):
-         |    def test(x: T): List[T] = ???
          |  List(1,2,3).test(@@)""".stripMargin,
       """|test(x: Int): List[Int]
          |     ^^^^^^
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-old-ext-4` =
+  @Test def `instantiated-type-var-old-ext-3` =
     check(
       """|object O:
          |  implicit class Test[T](xs: List[T]):
@@ -804,7 +842,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-old-ext-5` =
+  @Test def `instantiated-type-var-old-ext-4` =
     check(
       """|object O:
          |  implicit class Test[T](xs: List[T]):
@@ -818,7 +856,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-old-ext-6` =
+  @Test def `instantiated-type-var-old-ext-5` =
     check(
       """|object O:
          |  implicit class Test[T](xs: List[T]):
@@ -828,4 +866,747 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|test(y: String, x: Int): List[Int]
          |                ^^^^^^
          |""".stripMargin
+    )
+
+  @Test def `multiline-before` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(@@
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |           ^^^^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-after-first` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc", @@
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |                        ^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-between-first-and-second-a` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc"
+         |    @@
+         |
+         |    ,snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |           ^^^^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-between-first-and-second-b` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc",
+         |    @@
+         |
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |                        ^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-end` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc",
+         |    snd = 1
+         |  @@)
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |                        ^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-before` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[@@
+             Int,
+         |   String,
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
+         |           ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-after` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |   Int, @@
+         |   String,
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
+         |              ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-between-first-and-second-a` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |   Int
+         |   @@
+         |
+         |   ,String
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
+         |           ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-between-first-and-second-b` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |   Int,
+         |   @@
+         |
+         |   String,
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
+         |              ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-end` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |     String,
+         |     Int,
+         |  @@](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
+         |              ^
+         |""".stripMargin
+     )
+
+  @Test def `dont-show-directly-after-parenthesis` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)@@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-directly-after-parenthesis-2` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)@@
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-directly-when-unclosed` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, (2 + 1)@@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-1` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2) @@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-2` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)  @@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-newline` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)
+         |@@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-newline-last-statement` =
+    check(
+      """|object Main:
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)
+         |
+         |@@
+         |
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-newline-last-statement-unclosed-1` =
+    check(
+      """|object Main:
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |@@
+         |
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-newline-last-statement-unclosed-2` =
+    check(
+      """|object Main:
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, (1 + 2)
+         |
+         |@@
+         |
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-unclosed-2` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |  @@
+         |}
+         |""".stripMargin,
+       ""
+     )
+
+  @Test def `select-arg-detection` =
+    check(
+      """|object Main:
+         |  object Foo:
+         |    case class Test(x: Int)
+         |  def test(a: Foo.Test, b: Foo.Test): Int = ???
+         |  test(Foo.Test(1), @@)
+         |""".stripMargin,
+      """|test(a: Test, b: Test): Int
+         |              ^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `singature-help-works-in-select` =
+    check(
+      """|object Main:
+         |  object Foo:
+         |    class Test(x: Int, y: Int)
+         |  new Foo.Test(1, @@)
+         |""".stripMargin,
+      """|Test(x: Int, y: Int)
+         |             ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `curried-help-works-in-select` =
+    check(
+      """|object Main:
+         |  def test(xxx: Int, yyy: Int)(zzz: Int): Int = ???
+         |  test(yyy = 5, xxx = 7)(@@)
+         |""".stripMargin,
+      """|test([yyy: Int], [xxx: Int])(zzz: Int): Int
+         |                             ^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `no-signature-help-for-parameterless-method` =
+    check(
+      """|object Main:
+         |  def test: Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `show-methods-returning-tuples` =
+    check(
+      """|object Main:
+         |  def test(): (Int, Int) = ???
+         |  test(@@)
+         |""".stripMargin,
+      "test(): (Int, Int)"
+    )
+
+  @Test def `show-methods-returning-tuples-2` =
+    check(
+      """|object Main:
+         |  def test(x: Int): (Int, Int) = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int): (Int, Int)
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `dont-show-tuples-application` =
+    check(
+      """|object Main:
+         |  (1, @@)
+         |""".stripMargin,
+      ""
+    )
+
+  // Improvement would be to create synthetic signature help showing
+  // add(x: Int)(y: Int): Int
+  @Test def `dont-show-functionN` =
+    check(
+      """|object Main:
+         |  val add = (x: Int) => (y: Int) => x + y
+         |  add(@@)
+         |""".stripMargin,
+         ""
+    )
+
+  @Test def `dont-show-functionN-2` =
+    check(
+      """|object Main:
+         |  val add = (x: Int) => (y: Int) => x + y
+         |  add(1, @@)
+         |""".stripMargin,
+         ""
+    )
+
+  @Test def `type-param-start` =
+    check(
+      """|object Main:
+         |  def test[A](x: A): A = ???
+         |  test[@@]
+         |""".stripMargin,
+      """|test[A](x: A): A
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `error-recovery-1` =
+    check(
+      """|object Main:
+         |  def test[A](x: A): Foo[A] = ???
+         |  test[@@]
+         |""".stripMargin,
+      """|test[A](x: A): Foo[A]
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `error-recovery-2` =
+    check(
+      """|object Main:
+         |  def test[A](x: A): Foo[A] = ???
+         |  test[Int](@@)
+         |""".stripMargin,
+      """|test[A](x: A): Foo[A]
+         |        ^^^^
+         |""".stripMargin
+    )
+
+  @Test def `type-param-shortening` =
+    check(
+      """|object M:
+         |  def test[T <: java.io.File](x: Int): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test[T <: File](x: Int): Int
+         |                ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `implicit-param` =
+    check(
+      """|object M:
+         |  trait Context
+         |  def test(x: Int)(using ctx: Context): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int)(using ctx: Context): Int
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `context-param` =
+    check(
+      """|object M:
+         |  def test(x: Int, y: Int = 7)(z: Int ?=> Int): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int, y: Int)(z: (Int) ?=> Int): Int
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `empty-implicit-params` =
+    check(
+      """|object M:
+         |  def test(x: Int)(using String): Int = ???
+         |  test(1)(@@)
+         |""".stripMargin,
+      """|test(x: Int)(using String): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-1` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String): Int = ???
+         |  a(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String): Int
+         |        ^^^
+         |""".stripMargin
+    )
+
+
+  @Test def `multiple-implicits-2` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String): Int = ???
+         |  a(using 5)(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-3` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String)(x: Int): Int
+         |        ^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-4` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(using 5)(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String)(x: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-error-1` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(5)(@@)
+         |""".stripMargin,
+      """|
+         |a(using Int)(using String)(x: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-error-2` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(5)(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String)(x: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `dont-crash-at-last-position` =
+    check(
+      """|object M:
+         |  def test(x: Int): Int = ???
+         |  test(@@""".stripMargin,
+      ""
+    )
+
+  @Test def `type-var-position` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A@@, C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-1` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[@@A, C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-2` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A@@
+         |  , C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-3` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A, C@@]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-4` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A,@@ C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-5` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A, @@C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-6` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A@@,
+         |    C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-7` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    C@@
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-position-8` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    @@C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-position-9` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    C
+         |  @@]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-position-10` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[@@
+         |    A,
+         |    C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+     )
+
+  @Test def `correct-alternative` =
+    check(
+      """
+        |object x {
+        |  def foo(i: Int, s: String): Unit = ???
+        |  def foo(i: Boolean, s: Int, x: Double): Unit = ???
+        |
+        |  foo(false, @@)
+        |}
+        |""".stripMargin,
+      """
+        |foo(i: Boolean, s: Int, x: Double): Unit
+        |                ^^^^^^
+        |foo(i: Int, s: String): Unit
+        |""".stripMargin
+    )
+
+  @Test def `correct-alternative1` =
+    check(
+      """
+        |object x {
+        |  def foo(i: Boolean, s: String)(b: Int): Unit = ???
+        |  def foo(i: Boolean, s: Int)(b: String): Unit = ???
+        |
+        |  foo(false, 123)(@@)
+        |}
+        |""".stripMargin,
+      """
+        |foo(i: Boolean, s: Int)(b: String): Unit
+        |                        ^^^^^^^^^
+        |foo(i: Boolean, s: String)(b: Int): Unit
+        |""".stripMargin
+    )
+
+  @Test def `proper-param-empty-list` =
+    check(
+      """
+        |object x {
+        |  def foo[K, V](): Unit = ???
+        |  foo(@@)
+        |}
+        |""".stripMargin,
+      "foo[K, V](): Unit"
+    )
+  
+  @Test def `proper-param-list-after-param-empty-list` =
+    check(
+      """
+        |object x {
+        |  def foo[K, V]()(x: Int): Unit = ???
+        |  foo()(@@)
+        |}
+        |""".stripMargin,
+      """
+      |foo[K, V]()(x: Int): Unit
+      |            ^^^^^^
+      """.stripMargin
     )

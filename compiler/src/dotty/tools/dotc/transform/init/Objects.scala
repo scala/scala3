@@ -11,6 +11,7 @@ import StdNames.*
 import Names.TermName
 import NameKinds.OuterSelectName
 import NameKinds.SuperAccessorName
+import Decorators.*
 
 import ast.tpd.*
 import util.{ SourcePosition, NoSourcePosition }
@@ -27,6 +28,8 @@ import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.core.Flags.AbstractOrTrait
+import dotty.tools.dotc.util.SrcPos
 
 /** Check initialization safety of static objects
  *
@@ -52,10 +55,10 @@ import scala.annotation.constructorOnly
  *     This principle not only put initialization of static objects on a solid foundation, but also
  *     avoids whole-program analysis.
  *
- *  2. The design is based on the concept of "cold aliasing" --- a cold alias may not be actively
- *     used during initialization, i.e., it's forbidden to call methods or access fields of a cold
- *     alias. Method arguments are cold aliases by default unless specified to be sensitive. Method
- *     parameters captured in lambdas or inner classes are always cold aliases.
+ *  2. The design is based on the concept of "Top" --- a Top value may not be actively
+ *     used during initialization, i.e., it's forbidden to call methods or access fields of a Top.
+ *     Method arguments are widened to Top by default unless specified to be sensitive.
+ *     Method parameters captured in lambdas or inner classes are always widened to Top.
  *
  *  3. It is inter-procedural and flow-sensitive.
  *
@@ -65,7 +68,22 @@ import scala.annotation.constructorOnly
  *     whole-program analysis. However, the check is not modular in terms of project boundaries.
  *
  */
-object Objects:
+class Objects(using Context @constructorOnly):
+  val immutableHashSetNode: Symbol = requiredClass("scala.collection.immutable.SetNode")
+  // TODO: this should really be an annotation on the rhs of the field initializer rather than the field itself.
+  val SetNode_EmptySetNode: Symbol = Denotations.staticRef("scala.collection.immutable.SetNode.EmptySetNode".toTermName).symbol
+  val immutableHashSet: Symbol = requiredModule("scala.collection.immutable.HashSet")
+  val HashSet_EmptySet: Symbol = Denotations.staticRef("scala.collection.immutable.HashSet.EmptySet".toTermName).symbol
+  val immutableVector: Symbol = requiredModule("scala.collection.immutable.Vector")
+  val Vector_EmptyIterator: Symbol = immutableVector.requiredValue("emptyIterator")
+  val immutableMapNode: Symbol = requiredModule("scala.collection.immutable.MapNode")
+  val MapNode_EmptyMapNode: Symbol = immutableMapNode.requiredValue("EmptyMapNode")
+  val immutableHashMap: Symbol = requiredModule("scala.collection.immutable.HashMap")
+  val HashMap_EmptyMap: Symbol = immutableHashMap.requiredValue("EmptyMap")
+  val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
+  val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
+
+  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -75,11 +93,12 @@ object Objects:
    *      | OfClass(class, vs[outer], ctor, args, env)                   // instance of a class
    *      | OfArray(object[owner], regions)
    *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
+   *      | SafeValue                                                    // values on which method calls and field accesses won't cause warnings. Int, String, etc.
    * vs ::= ValueSet(ve)                                                 // set of abstract values
    * Bottom ::= ValueSet(Empty)
-   * val ::= ve | Cold | vs                                              // all possible abstract values in domain
+   * val ::= ve | Top | UnknownValue | vs | Package          // all possible abstract values in domain
    * Ref ::= ObjectRef | OfClass                                         // values that represent a reference to some (global or instance) object
-   * ThisValue ::= Ref | Cold                                            // possible values for 'this'
+   * ThisValue ::= Ref | Top                                    // possible values for 'this'
    *
    * refMap = Ref -> ( valsMap, varsMap, outersMap )                     // refMap stores field informations of an object or instance
    * valsMap = valsym -> val                                             // maps immutable fields to their values
@@ -171,7 +190,7 @@ object Objects:
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
-      "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + ", vals = " + valFields + ")"
+      "OfClass(" + klass.show + ", outer = " + outer + ", args = " + args.map(_.show) + " env = " + env.show + ", vals = " + valFields + ")"
 
   object OfClass:
     def apply(
@@ -196,36 +215,94 @@ object Objects:
    *
    * @param owner The static object whose initialization creates the array.
    */
-  case class OfArray(owner: ClassSymbol, regions: Regions.Data)(using @constructorOnly ctx: Context) extends ValueElement:
+  case class OfArray(owner: ClassSymbol, regions: Regions.Data)(using @constructorOnly ctx: Context, @constructorOnly trace: Trace) extends ValueElement:
     val klass: ClassSymbol = defn.ArrayClass
     val addr: Heap.Addr = Heap.arrayAddr(regions, owner)
     def show(using Context) = "OfArray(owner = " + owner.show + ")"
 
   /**
    * Represents a lambda expression
+   * @param klass The enclosing class of the anonymous function's creation site
    */
   case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
     def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
+
+  /**
+   * Represents common base values like Int, String, etc.
+   * Assumption: all methods calls on such values should not trigger initialization of global objects
+   * or read/write mutable fields
+   */
+  case class SafeValue(typeSymbol: Symbol) extends ValueElement:
+    assert(SafeValue.safeTypeSymbols.contains(typeSymbol), "Invalid creation of SafeValue! Type = " + typeSymbol)
+    def show(using Context): String = "SafeValue of " + typeSymbol.show
+
+  object SafeValue:
+    val safeTypeSymbols =
+      defn.StringClass ::
+      (defn.ScalaNumericValueTypeList ++
+       List(defn.UnitType, defn.BooleanType, defn.NullType, defn.ClassClass.typeRef))
+      .map(_.symbol)
+
+    def getSafeTypeSymbol(tpe: Type): Option[Symbol] =
+      val baseType = if tpe.isInstanceOf[AppliedType] then tpe.asInstanceOf[AppliedType].underlying else tpe
+      if baseType.isInstanceOf[TypeRef] then
+        val typeRef = baseType.asInstanceOf[TypeRef]
+        val typeSymbol = typeRef.symbol
+        val typeAlias = typeRef.translucentSuperType
+        if safeTypeSymbols.contains(typeSymbol) then
+          Some(typeSymbol)
+        else if typeAlias.isInstanceOf[TypeRef] && typeAlias.asInstanceOf[TypeRef].symbol == defn.StringClass then
+          // Special case, type scala.Predef.String = java.lang.String
+          Some(defn.StringClass)
+        else None
+      else
+        None
+
+    def apply(tpe: Type): SafeValue =
+      // tpe could be a AppliedType(java.lang.Class, T)
+      val typeSymbol = getSafeTypeSymbol(tpe)
+      assert(typeSymbol.isDefined, "Invalid creation of SafeValue with type " + tpe)
+      new SafeValue(typeSymbol.get)
 
   /**
    * Represents a set of values
    *
    * It comes from `if` expressions.
    */
-  case class ValueSet(values: ListSet[ValueElement]) extends Value:
+  case class ValueSet(values: Set[ValueElement]) extends Value:
     def show(using Context) = values.map(_.show).mkString("[", ",", "]")
 
-  /** A cold alias which should not be used during initialization.
-   *
-   *  Cold is not ValueElement since RefSet containing Cold is equivalent to Cold
+  case class Package(packageModuleClass: ClassSymbol) extends Value:
+    def show(using Context): String = "Package(" + packageModuleClass.show + ")"
+
+  object Package:
+    def apply(packageSym: Symbol): Package =
+      assert(packageSym.is(Flags.Package), "Invalid symbol to create Package!")
+      Package(packageSym.moduleClass.asClass)
+
+  /** Represents values unknown to the checker, such as values loaded without source
+   *  UnknownValue is not ValueElement since RefSet containing UnknownValue
+   *  is equivalent to UnknownValue
    */
-  case object Cold extends Value:
-    def show(using Context) = "Cold"
+  case object UnknownValue extends Value:
+    def show(using Context): String = "UnknownValue"
+
+  /** Represents values lost due to widening
+   *
+   *  This is the top of the abstract domain lattice, which should not
+   *  be used during initialization.
+   *
+   *  Top is not ValueElement since RefSet containing Top
+   *  is equivalent to Top
+  */
+
+  case object Top extends Value:
+    def show(using Context): String = "Top"
 
   val Bottom = ValueSet(ListSet.empty)
 
   /** Possible types for 'this' */
-  type ThisValue = Ref | Cold.type
+  type ThisValue = Ref | Top.type
 
   /** Checking state  */
   object State:
@@ -387,11 +464,18 @@ object Objects:
 
     def getVar(x: Symbol)(using data: Data, ctx: Context): Option[Heap.Addr] = data.getVar(x)
 
-    def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
+    private[Env] def _of(argMap: Map[Symbol, Value], meth: Symbol, outer: Data): Data =
+      new LocalEnv(argMap, meth, outer)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
+
+    def ofDefDef(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
       assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
-      new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
+      _of(params.zip(args).toMap, ddef.symbol, outer)
+
+    def ofByName(byNameParam: Symbol, outer: Data): Data =
+      assert(byNameParam.is(Flags.Param) && byNameParam.info.isInstanceOf[ExprType]);
+      _of(Map.empty, byNameParam, outer)
 
     def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
       assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
@@ -412,7 +496,40 @@ object Objects:
         throw new RuntimeException("Incorrect local environment for initializing " + x.show)
 
     /**
-     * Resolve the environment owned by the given method.
+     * Resolve the environment by searching for a given symbol.
+     *
+     * Searches for the environment that owns `target`, starting from `env` as the innermost.
+     *
+     * Due to widening, the corresponding environment might not exist. As a result reading the local
+     * variable will return `Cold` and it's forbidden to write to the local variable.
+     *
+     * @param target The symbol to search for.
+     * @param thisV  The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env    The local environment where the local variable is referenced.
+     *
+     * @return the environment that owns the `target` and value for `this` owned by the given method.
+     */
+    def resolveEnvByValue(target: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env by value for " + target.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+      env match
+      case localEnv: LocalEnv =>
+        if localEnv.getVal(target).isDefined then Some(thisV -> localEnv)
+        else if localEnv.getVar(target).isDefined then Some(thisV -> localEnv)
+        else resolveEnvByValue(target, thisV, localEnv.outer)
+      case NoEnv =>
+        thisV match
+        case ref: OfClass =>
+          ref.outer match
+          case outer : ThisValue =>
+            resolveEnvByValue(target, outer, ref.env)
+          case _ =>
+            // TODO: properly handle the case where ref.outer is ValueSet
+            None
+        case _ =>
+          None
+    }
+
+    /**
+     * Resolve the environment owned by the given method `enclosing`.
      *
      * The method could be located in outer scope with intermixed classes between its definition
      * site and usage site.
@@ -420,23 +537,25 @@ object Objects:
      * Due to widening, the corresponding environment might not exist. As a result reading the local
      * variable will return `Cold` and it's forbidden to write to the local variable.
      *
-     * @param meth  The method which owns the environment
-     * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
-     * @param env   The local environment where the local variable is referenced.
+     * @param enclosing The method which owns the environment. This method is called to look up the environment
+     *                  owned by the enclosing method of some symbol.
+     * @param thisV     The value for `this` of the enclosing class where the local variable is referenced.
+     * @param env       The local environment where the local variable is referenced.
      *
      * @return the environment and value for `this` owned by the given method.
      */
-    def resolveEnv(meth: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env for " + meth.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+    def resolveEnvByOwner(enclosing: Symbol, thisV: ThisValue, env: Data)(using Context): Option[(ThisValue, Data)] = log("Resolving env by owner for " + enclosing.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
+      assert(enclosing.is(Flags.Method), "Only method symbols allows, got " + enclosing.show)
       env match
       case localEnv: LocalEnv =>
-        if localEnv.meth == meth then Some(thisV -> env)
-        else resolveEnv(meth, thisV, localEnv.outer)
+        if localEnv.meth == enclosing then Some(thisV -> env)
+        else resolveEnvByOwner(enclosing, thisV, localEnv.outer)
       case NoEnv =>
         thisV match
         case ref: OfClass =>
           ref.outer match
           case outer : ThisValue =>
-            resolveEnv(meth, outer, ref.env)
+            resolveEnvByOwner(enclosing, outer, ref.env)
           case _ =>
             // TODO: properly handle the case where ref.outer is ValueSet
             None
@@ -453,9 +572,11 @@ object Objects:
     abstract class Addr:
       /** The static object which owns the mutable slot */
       def owner: ClassSymbol
+      def getTrace: Trace = Trace.empty
 
     /** The address for mutable fields of objects. */
-    private case class FieldAddr(regions: Regions.Data, field: Symbol, owner: ClassSymbol) extends Addr
+    private case class FieldAddr(regions: Regions.Data, field: Symbol, owner: ClassSymbol)(trace: Trace) extends Addr:
+      override def getTrace: Trace = trace
 
     /** The address for mutable local variables . */
     private case class LocalVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol) extends Addr
@@ -495,13 +616,15 @@ object Objects:
     def localVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
       LocalVarAddr(regions, sym, owner)
 
-    def fieldVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
-      FieldAddr(regions, sym, owner)
+    def fieldVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol)(using Trace): Addr =
+      FieldAddr(regions, sym, owner)(summon[Trace])
 
-    def arrayAddr(regions: Regions.Data, owner: ClassSymbol)(using Context): Addr =
-      FieldAddr(regions, defn.ArrayClass, owner)
+    def arrayAddr(regions: Regions.Data, owner: ClassSymbol)(using Trace, Context): Addr =
+      FieldAddr(regions, defn.ArrayClass, owner)(summon[Trace])
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
+
+    def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
 
   /** Cache used to terminate the check  */
   object Cache:
@@ -518,6 +641,7 @@ object Objects:
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
           Res(fun(expr), Heap.getHeapData())
         }
+        Heap.setHeap(result.heap)
         result.value
   end Cache
 
@@ -565,22 +689,34 @@ object Objects:
 
   // --------------------------- domain operations -----------------------------
 
-  type ArgInfo = TraceValue[Value]
+  case class ArgInfo(value: Value, trace: Trace, tree: Tree)
 
   extension (a: Value)
     def join(b: Value): Value =
+      assert(!a.isInstanceOf[Package] && !b.isInstanceOf[Package], "Unexpected join between " + a + " and " + b)
       (a, b) match
-      case (Cold, _)                              => Cold
-      case (_, Cold)                              => Cold
+      case (Top, _)                               => Top
+      case (_, Top)                               => Top
+      case (UnknownValue, _)                      => UnknownValue
+      case (_, UnknownValue)                      => UnknownValue
       case (Bottom, b)                            => b
       case (a, Bottom)                            => a
       case (ValueSet(values1), ValueSet(values2)) => ValueSet(values1 ++ values2)
       case (a : ValueElement, ValueSet(values))   => ValueSet(values + a)
       case (ValueSet(values), b : ValueElement)   => ValueSet(values + b)
-      case (a : ValueElement, b : ValueElement)   => ValueSet(ListSet(a, b))
+      case (a : ValueElement, b : ValueElement)   => ValueSet(Set(a, b))
+      case _                                      => Bottom
 
-    def widen(height: Int)(using Context): Value =
-      if height == 0 then Cold
+    def remove(b: Value): Value = (a, b) match
+      case (ValueSet(values1), b: ValueElement)   => ValueSet(values1 - b)
+      case (ValueSet(values1), ValueSet(values2)) => ValueSet(values1.removedAll(values2))
+      case (a: Ref, b: Ref) if a.equals(b)        => Bottom
+      case (a: SafeValue, b: SafeValue) if a == b => Bottom
+      case (a: Package, b: Package) if a == b     => Bottom
+      case _ => a
+
+    def widen(height: Int)(using Context): Value = log("widening value " + a.show + " down to height " + height, printer, (_: Value).show) {
+      if height == 0 then Top
       else
         a match
           case Bottom => Bottom
@@ -589,7 +725,7 @@ object Objects:
             values.map(ref => ref.widen(height)).join
 
           case Fun(code, thisV, klass, env) =>
-            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height - 1))
+            Fun(code, thisV.widenThisValue(height), klass, env.widen(height - 1))
 
           case ref @ OfClass(klass, outer, _, args, env) =>
             val outer2 = outer.widen(height - 1)
@@ -598,14 +734,55 @@ object Objects:
             ref.widenedCopy(outer2, args2, env2)
 
           case _ => a
+    }
 
-  extension (value: Ref | Cold.type)
-    def widenRefOrCold(height : Int)(using Context) : Ref | Cold.type = value.widen(height).asInstanceOf[ThisValue]
+    def filterType(tpe: Type)(using Context): Value =
+      tpe match
+        case t @ SAMType(_, _) if a.isInstanceOf[Fun] => a // if tpe is SAMType and a is Fun, allow it
+        case _ =>
+          val baseClasses = tpe.baseClasses
+          if baseClasses.isEmpty then a
+          else filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
+
+    // Filter the value according to a class symbol, and only leaves the sub-values
+    // which could represent an object of the given class
+    def filterClass(sym: Symbol)(using Context): Value =
+      if !sym.isClass then a
+      else
+        val klass = sym.asClass
+        a match
+          case UnknownValue | Top => a
+          case Package(packageModuleClass) =>
+            // the typer might mistakenly set the receiver to be a package instead of package object.
+            // See pos/packageObjectStringInterpolator.scala
+            if packageModuleClass == klass || (klass.denot.isPackageObject && klass.owner == packageModuleClass) then a else Bottom
+          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) then a else Bottom
+          case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
+          case ValueSet(values) => values.map(v => v.filterClass(klass)).join
+          case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
+          case fun: Fun =>
+            if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
+
+  extension (value: ThisValue)
+    def widenThisValue(height : Int)(using Context) : ThisValue =
+      assert(height > 0, "Cannot call widenThisValue with height 0!")
+      value.widen(height).asInstanceOf[ThisValue]
 
   extension (values: Iterable[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
 
     def widen(height: Int): Contextual[List[Value]] = values.map(_.widen(height)).toList
+
+  /** Check if the checker option reports warnings about unknown code
+   */
+  val reportUnknown: Boolean = false
+
+  def reportWarningForUnknownValue(msg: => String, pos: SrcPos)(using Context): Value =
+    if reportUnknown then
+      report.warning(msg, pos)
+      Bottom
+    else
+      UnknownValue
 
   /** Handle method calls `e.m(args)`.
    *
@@ -617,12 +794,62 @@ object Objects:
    * @param needResolve  Whether the target of the call needs resolution?
    */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-    value match
-    case Cold =>
-      report.warning("Using cold alias. " + Trace.show, Trace.position)
+    value.filterClass(meth.owner) match
+    case Top =>
+      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
       Bottom
+    case UnknownValue =>
+      reportWarningForUnknownValue("Using unknown value. " + Trace.show, Trace.position)
+
+    case Package(packageModuleClass) =>
+      if meth.equals(defn.throwMethod) then
+        Bottom
+      else if meth.owner.denot.isPackageObject then
+        // calls on packages are unexpected. However the typer might mistakenly
+        // set the receiver to be a package instead of package object.
+        // See packageObjectStringInterpolator.scala
+        // Method call on package object instead
+        val packageObj = accessObject(meth.owner.moduleClass.asClass)
+        call(packageObj, meth, args, receiver, superType, needResolve)
+      else
+        report.warning("[Internal error] Unexpected call on package = " + value.show + ", meth = " + meth.show + Trace.show, Trace.position)
+        Bottom
+
+    case v @ SafeValue(_) =>
+      if v.typeSymbol == defn.NullClass then
+        // call on Null is sensible on AST level but not in practice
+        Bottom
+      else
+        // Assume such method is pure. Check return type, only try to analyze body if return type is not safe
+        val target = resolve(v.typeSymbol.asClass, meth)
+        val targetType = target.denot.info
+        assert(targetType.isInstanceOf[ExprType] || targetType.isInstanceOf[MethodType],
+          "Unexpected type! Receiver = " + v.show + ", meth = " + target + ", type = " + targetType)
+        val returnType =
+          if targetType.isInstanceOf[ExprType] then
+            // corresponds to parameterless method like `def meth: ExprType[T]`
+            // See pos/toDouble.scala
+            targetType.asInstanceOf[ExprType].resType
+          else
+            targetType.asInstanceOf[MethodType].resType
+        val typeSymbol = SafeValue.getSafeTypeSymbol(returnType)
+        if typeSymbol.isDefined then
+          // since method is pure and return type is safe, no need to analyze method body
+          SafeValue(typeSymbol.get)
+        else if !target.hasSource then
+          UnknownValue
+        else
+          val ddef = target.defTree.asInstanceOf[DefDef]
+          val cls = target.owner.enclosingClass.asClass
+          // convert SafeType to an OfClass before analyzing method body
+          val ref = OfClass(cls, Bottom, NoSymbol, Nil, Env.NoEnv)
+          call(ref, meth, args, receiver, superType, needResolve)
 
     case Bottom =>
+      Bottom
+
+    // Bottom arguments mean unreachable call
+    case _ if args.map(_.value).contains(Bottom) =>
       Bottom
 
     case arr: OfArray =>
@@ -632,18 +859,18 @@ object Objects:
         if arr.addr.owner == State.currentObject then
           Heap.read(arr.addr)
         else
-          errorReadOtherStaticObject(State.currentObject, arr.addr.owner)
+          errorReadOtherStaticObject(State.currentObject, arr.addr)
           Bottom
       else if target == defn.Array_update then
         assert(args.size == 2, "Incorrect number of arguments for Array update, found = " + args.size)
         if arr.addr.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, arr.addr.owner)
+          errorMutateOtherStaticObject(State.currentObject, arr.addr)
         else
           Heap.writeJoin(arr.addr, args.tail.head.value)
         Bottom
       else
         // Array.length is OK
-        Bottom
+        SafeValue(defn.IntType)
 
     case ref: Ref =>
       val isLocal = !meth.owner.isClass
@@ -662,6 +889,9 @@ object Objects:
           val arr = OfArray(State.currentObject, summon[Regions.Data])
           Heap.writeJoin(arr.addr, args.map(_.value).join)
           arr
+        else if target.equals(defn.Predef_classOf) then
+          // Predef.classOf is a stub method in tasty and is replaced in backend
+          UnknownValue
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -671,9 +901,9 @@ object Objects:
             if meth.owner.isClass then
               (ref, Env.NoEnv)
             else
-              Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+              Env.resolveEnvByOwner(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Top -> Env.NoEnv)
 
-          val env2 = Env.of(ddef, args.map(_.value), outerEnv)
+          val env2 = Env.ofDefDef(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
             given Env.Data = env2
             cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
@@ -684,7 +914,7 @@ object Objects:
             }
           }
         else
-          Bottom
+          UnknownValue
       else if target.exists then
         select(ref, target, receiver, needResolve = false)
       else
@@ -704,7 +934,7 @@ object Objects:
         code match
         case ddef: DefDef =>
           if meth.name == nme.apply then
-            given Env.Data = Env.of(ddef, args.map(_.value), env)
+            given Env.Data = Env.ofDefDef(ddef, args.map(_.value), env)
             extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
           else
             // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
@@ -712,15 +942,15 @@ object Objects:
               value
             else
               // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
-              // For now, return `Cold` to ensure soundness and trigger a warning.
-              Cold
+              // For now, return `UnknownValue` to ensure soundness and trigger a warning when reportUnknown = true.
+              UnknownValue
             end if
           end if
 
         case _ =>
-          // by-name closure
-          given Env.Data = env
-          extendTrace(code) { eval(code, thisV, klass, cacheResult = true) }
+          // Should be unreachable, by-name closures are handled by readLocal
+          report.warning("[Internal error] Only DefDef should be possible here, but found " + code.show + ". " + Trace.show, Trace.position)
+          Bottom
 
     case ValueSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
@@ -733,7 +963,6 @@ object Objects:
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
   def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -741,7 +970,7 @@ object Objects:
         val ddef = ctor.defTree.asInstanceOf[DefDef]
         val argValues = args.map(_.value)
 
-        given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
+        given Env.Data = Env.ofDefDef(ddef, argValues, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
@@ -750,10 +979,11 @@ object Objects:
             Returns.installHandler(ctor)
             eval(ddef.rhs, ref, cls, cacheResult = true)
             Returns.popHandler(ctor)
+            value
           }
       else
         // no source code available
-        Bottom
+        UnknownValue
 
     case _ =>
       report.warning("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + value + Trace.show, Trace.position)
@@ -768,10 +998,28 @@ object Objects:
    * @param needResolve  Whether the target of the selection needs resolution?
    */
   def select(value: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value.show, printer, (_: Value).show) {
-    value match
-    case Cold =>
-      report.warning("Using cold alias", Trace.position)
+    value.filterClass(field.owner) match
+    case Top =>
+      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
       Bottom
+    case UnknownValue =>
+      reportWarningForUnknownValue("Using unknown value. " + Trace.show, Trace.position)
+
+    case v @ SafeValue(_) =>
+      if v.typeSymbol != defn.NullClass then
+        // selection on Null is sensible on AST level; no warning for it
+        report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
+      end if
+      Bottom
+
+    case Package(packageModuleClass) =>
+      if field.isStaticObject then
+        accessObject(field.moduleClass.asClass)
+      else if field.is(Flags.Package) then
+        Package(field)
+      else
+        report.warning("[Internal error] Unexpected selection on package " + packageModuleClass.show + ", field = " + field.show + Trace.show, Trace.position)
+        Bottom
 
     case ref: Ref =>
       val target = if needResolve then resolve(ref.klass, field) else field
@@ -781,15 +1029,16 @@ object Objects:
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, ref, target.owner.asClass, cacheResult = true)
         else
-          Bottom
+          UnknownValue
       else if target.exists then
-        if target.isOneOf(Flags.Mutable) then
+        def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name.toString == "next"
+        if target.isMutableVarOrAccessor && !isNextFieldOfColonColon then
           if ref.hasVar(target) then
             val addr = ref.varAddr(target)
             if addr.owner == State.currentObject then
               Heap.read(addr)
             else
-              errorReadOtherStaticObject(State.currentObject, addr.owner)
+              errorReadOtherStaticObject(State.currentObject, addr)
               Bottom
           else if ref.isObjectRef && ref.klass.hasSource then
             report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
@@ -811,9 +1060,9 @@ object Objects:
           report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
           Bottom
         else
-          // This is possible due to incorrect type cast.
-          // See tests/init/pos/Type.scala
-          Bottom
+          // This is possible due to incorrect type cast or accessing standard library objects
+          // See tests/init/pos/Type.scala / tests/init/warn/unapplySeq-implicit-arg2.scala
+          UnknownValue
 
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
@@ -823,9 +1072,7 @@ object Objects:
       report.warning("[Internal error] unexpected tree in selecting an array, array = " + arr.show + Trace.show, Trace.position)
       Bottom
 
-    case Bottom =>
-      if field.isStaticObject then ObjectRef(field.moduleClass.asClass)
-      else Bottom
+    case Bottom => Bottom
 
     case ValueSet(values) =>
       values.map(ref => select(ref, field, receiver)).join
@@ -839,17 +1086,20 @@ object Objects:
    * @param rhsTyp      The type of the right-hand side.
    */
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
-    lhs match
+    lhs.filterClass(field.owner) match
+    case Top =>
+      report.warning("Value is unknown to the checker due to widening. " + Trace.show, Trace.position)
+    case UnknownValue =>
+      val _ = reportWarningForUnknownValue("Assigning to unknown value. " + Trace.show, Trace.position)
+    case p: Package =>
+      report.warning("[Internal error] unexpected tree in assignment, package = " + p.show + Trace.show, Trace.position)
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
-
     case arr: OfArray =>
-      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + " field = " + field + Trace.show, Trace.position)
 
-    case Cold =>
-      report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
-
-    case Bottom =>
+    case SafeValue(_) =>
+      report.warning("Assigning to base value is forbidden. " + Trace.show, Trace.position)
 
     case ValueSet(values) =>
       values.foreach(ref => assign(ref, field, rhs, rhsTyp))
@@ -858,7 +1108,7 @@ object Objects:
       if ref.hasVar(field) then
         val addr = ref.varAddr(field)
         if addr.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, addr.owner)
+          errorMutateOtherStaticObject(State.currentObject, addr)
         else
           Heap.writeJoin(addr, rhs)
       else
@@ -868,7 +1118,10 @@ object Objects:
     Bottom
   }
 
-  /** Handle new expression `new p.C(args)`.
+  /**
+   * Handle new expression `new p.C(args)`.
+   * The actual instance might be cached without running the constructor.
+   * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
    * @param klass       The symbol of the class `C`.
@@ -876,37 +1129,43 @@ object Objects:
    * @param args        The arguments passsed to the constructor.
    */
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-    outer match
-
-    case _ : Fun | _: OfArray  =>
+    outer.filterClass(klass.owner) match
+    case _ : Fun | _: OfArray | SafeValue(_)  =>
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
 
-    case outer: (Ref | Cold.type | Bottom.type) =>
+    case UnknownValue =>
+      reportWarningForUnknownValue("Instantiating when outer is unknown. " + Trace.show, Trace.position)
+
+    case outer: (Ref | Top.type | Package) =>
       if klass == defn.ArrayClass then
-        val arr = OfArray(State.currentObject, summon[Regions.Data])
-        Heap.writeJoin(arr.addr, Bottom)
-        arr
+        args.head.tree.tpe match
+          case ConstantType(Constants.Constant(0)) =>
+            // new Array(0)
+            Bottom
+          case _ =>
+            val arr = OfArray(State.currentObject, summon[Regions.Data])
+            Heap.writeJoin(arr.addr, Bottom)
+            arr
       else
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
         val (outerWidened, envWidened) =
           outer match
-            case _ : Bottom.type => // For top-level classes
-              (Bottom, Env.NoEnv)
-            case thisV : (Ref | Cold.type) =>
+            case Package(_) => // For top-level classes
+              (outer, Env.NoEnv)
+            case thisV : ThisValue =>
               if klass.owner.isClass then
                 if klass.owner.is(Flags.Package) then
-                  report.warning("[Internal error] top-level class should have `Bottom` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
+                  report.warning("[Internal error] top-level class should have `Package` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
                   (Bottom, Env.NoEnv)
                 else
-                  (thisV.widenRefOrCold(1), Env.NoEnv)
+                  (thisV.widenThisValue(1), Env.NoEnv)
               else
                 // klass.enclosingMethod returns its primary constructor
-                Env.resolveEnv(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+                Env.resolveEnvByOwner(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(UnknownValue -> Env.NoEnv)
 
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
-        instance
 
     case ValueSet(values) =>
       values.map(ref => instantiate(ref, klass, ctor, args)).join
@@ -933,7 +1192,9 @@ object Objects:
    */
   def readLocal(thisV: ThisValue, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
     def isByNameParam(sym: Symbol) = sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType]
-    Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
+    // Can't use enclosingMethod here because values defined in a by-name closure will have the wrong enclosingMethod,
+    // since our phase is before elimByName.
+    Env.resolveEnvByValue(sym, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       if sym.is(Flags.Mutable) then
         // Assume forward reference check is doing a good job
@@ -943,7 +1204,7 @@ object Objects:
           if addr.owner == State.currentObject then
             Heap.read(addr)
           else
-            errorReadOtherStaticObject(State.currentObject, addr.owner)
+            errorReadOtherStaticObject(State.currentObject, addr)
             Bottom
           end if
         case _ =>
@@ -961,12 +1222,14 @@ object Objects:
           if isByNameParam(sym) then
             value match
             case fun: Fun =>
-              given Env.Data = fun.env
+              given Env.Data = Env.ofByName(sym, fun.env)
               eval(fun.code, fun.thisV, fun.klass)
-            case Cold =>
-              report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
+            case UnknownValue =>
+              reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
+            case Top =>
+              report.warning("Calling on value lost due to widening. " + Trace.show, Trace.position)
               Bottom
-            case _: ValueSet | _: Ref | _: OfArray =>
+            case _: ValueSet | _: Ref | _: OfArray | _: Package | SafeValue(_) =>
               report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
               Bottom
           else
@@ -977,7 +1240,7 @@ object Objects:
         report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
         Bottom
       else
-        Cold
+        UnknownValue
   }
 
   /** Handle local variable assignmenbt, `x = e`.
@@ -988,14 +1251,15 @@ object Objects:
    */
   def writeLocal(thisV: ThisValue, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
-
-    Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
+    // Can't use enclosingMethod here because values defined in a by-name closure will have the wrong enclosingMethod,
+    // since our phase is before elimByName.
+    Env.resolveEnvByValue(sym, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       given Env.Data = env
       Env.getVar(sym) match
       case Some(addr) =>
         if addr.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, addr.owner)
+          errorMutateOtherStaticObject(State.currentObject, addr)
         else
           Heap.writeJoin(addr, value)
       case _ =>
@@ -1086,6 +1350,9 @@ object Objects:
           instantiate(outer, cls, ctor, args)
         }
 
+      case TypeCast(elem, tpe) =>
+        eval(elem, thisV, klass).filterType(tpe)
+
       case Apply(ref, arg :: Nil) if ref.symbol == defn.InitRegionMethod =>
         val regions2 = Regions.extend(expr.sourcePos)
         if Regions.exists(expr.sourcePos) then
@@ -1150,8 +1417,8 @@ object Objects:
       case _: This =>
         evalType(expr.tpe, thisV, klass)
 
-      case Literal(_) =>
-        Bottom
+      case Literal(const) =>
+        SafeValue(const.tpe)
 
       case Typed(expr, tpt) =>
         if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) then
@@ -1177,11 +1444,12 @@ object Objects:
               extendTrace(id) { evalType(prefix, thisV, klass) }
 
         val value = eval(rhs, thisV, klass)
+        val widened = widenEscapedValue(value, rhs)
 
         if isLocal then
-          writeLocal(thisV, lhs.symbol, value)
+          writeLocal(thisV, lhs.symbol, widened)
         else
-          withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
+          withTrace(trace2) { assign(receiver, lhs.symbol, widened, rhs.tpe) }
 
       case closureDef(ddef) =>
         Fun(ddef, thisV, klass, summon[Env.Data])
@@ -1225,7 +1493,14 @@ object Objects:
         res
 
       case SeqLiteral(elems, elemtpt) =>
-        evalExprs(elems, thisV, klass).join
+        // Obtain the output Seq from SeqLiteral tree by calling respective wrapArrayMethod
+        val wrapArrayMethodName = ast.tpd.wrapArrayMethodName(elemtpt.tpe)
+        val meth = defn.getWrapVarargsArrayModule.requiredMethod(wrapArrayMethodName)
+        val module = defn.getWrapVarargsArrayModule.moduleClass.asClass
+        val args = evalArgs(elems.map(Arg.apply), thisV, klass)
+        val arr = OfArray(State.currentObject, summon[Regions.Data])
+        Heap.writeJoin(arr.addr, args.map(_.value).join)
+        call(ObjectRef(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
         evalExprs(bindings, thisV, klass)
@@ -1285,11 +1560,6 @@ object Objects:
     def getMemberMethod(receiver: Type, name: TermName, tp: Type): Denotation =
       receiver.member(name).suchThat(receiver.memberInfo(_) <:< tp)
 
-    def evalCase(caseDef: CaseDef): Value =
-      evalPattern(scrutinee, caseDef.pat)
-      eval(caseDef.guard, thisV, klass)
-      eval(caseDef.body, thisV, klass)
-
     /** Abstract evaluation of patterns.
      *
      *  It augments the local environment for bound pattern variables. As symbols are globally
@@ -1297,17 +1567,18 @@ object Objects:
      *
      *  Currently, we assume all cases are reachable, thus all patterns are assumed to match.
      */
-    def evalPattern(scrutinee: Value, pat: Tree): Value = log("match " + scrutinee.show + " against " + pat.show, printer, (_: Value).show):
+    def evalPattern(scrutinee: Value, pat: Tree): (Type, Value) = log("match " + scrutinee.show + " against " + pat.show, printer, (_: (Type, Value))._2.show):
       val trace2 = Trace.trace.add(pat)
       pat match
       case Alternative(pats) =>
-        for pat <- pats do evalPattern(scrutinee, pat)
-        scrutinee
+        val (types, values) = pats.map(evalPattern(scrutinee, _)).unzip
+        val orType = types.fold(defn.NothingType)(OrType(_, _, false))
+        (orType, values.join)
 
       case bind @ Bind(_, pat) =>
-        val value = evalPattern(scrutinee, pat)
+        val (tpe, value) = evalPattern(scrutinee, pat)
         initLocal(bind.symbol, value)
-        scrutinee
+        (tpe, value)
 
       case UnApply(fun, implicits, pats) =>
         given Trace = trace2
@@ -1315,6 +1586,10 @@ object Objects:
         val fun1 = funPart(fun)
         val funRef = fun1.tpe.asInstanceOf[TermRef]
         val unapplyResTp = funRef.widen.finalResultType
+
+        val receiverType = fun1 match
+          case ident: Ident => funRef.prefix
+          case select: Select => select.qualifier.tpe
 
         val receiver = fun1 match
           case ident: Ident =>
@@ -1328,7 +1603,7 @@ object Objects:
           case _ => List()
 
         val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
-        val args = implicitArgsBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitArgsAfterScrutinee)
+        val args = implicitArgsBeforeScrutinee(fun) ++ (ArgInfo(scrutinee, summon[Trace], EmptyTree) :: implicitArgsAfterScrutinee)
         val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
         if fun.symbol.name == nme.unapplySeq then
@@ -1404,17 +1679,20 @@ object Objects:
             end if
           end if
         end if
-        scrutinee
+        // TODO: receiverType is the companion object type, not the class itself;
+        //       cannot filter scrutinee by this type
+        (receiverType, scrutinee)
 
       case Ident(nme.WILDCARD) | Ident(nme.WILDCARD_STAR) =>
-        scrutinee
+        (defn.ThrowableType, scrutinee)
 
-      case Typed(pat, _) =>
-        evalPattern(scrutinee, pat)
+      case Typed(pat, typeTree) =>
+        val (_, value) = evalPattern(scrutinee.filterType(typeTree.tpe), pat)
+        (typeTree.tpe, value)
 
       case tree =>
         // For all other trees, the semantics is normal.
-        eval(tree, thisV, klass)
+        (defn.ThrowableType, eval(tree, thisV, klass))
 
     end evalPattern
 
@@ -1425,7 +1703,7 @@ object Objects:
       // call .lengthCompare or .length
       val lengthCompareDenot = getMemberMethod(scrutineeType, nme.lengthCompare, lengthCompareType)
       if lengthCompareDenot.exists then
-        call(scrutinee, lengthCompareDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(UnknownValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
       else
         val lengthDenot = getMemberMethod(scrutineeType, nme.length, lengthType)
         call(scrutinee, lengthDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
@@ -1433,18 +1711,18 @@ object Objects:
 
       // call .apply
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
-      val applyRes = call(scrutinee, applyDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
-          val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
+          val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType))
           val toSeqRes = call(scrutinee, toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
           evalPattern(toSeqRes, pats.head)
         else
           // call .drop
-          val dropDenot = getMemberMethod(scrutineeType, nme.drop, applyType(elemType))
-          val dropRes = call(scrutinee, dropDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+          val dropDenot = getMemberMethod(scrutineeType, nme.drop, dropType(elemType))
+          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
         end if
@@ -1454,8 +1732,20 @@ object Objects:
       end if
     end evalSeqPatterns
 
+    def canSkipCase(remainingScrutinee: Value, catchValue: Value) =
+      remainingScrutinee == Bottom || catchValue == Bottom
 
-    cases.map(evalCase).join
+    var remainingScrutinee = scrutinee
+    val caseResults: mutable.ArrayBuffer[Value] = mutable.ArrayBuffer()
+    for caseDef <- cases do
+      val (tpe, value) = evalPattern(remainingScrutinee, caseDef.pat)
+      eval(caseDef.guard, thisV, klass)
+      if !canSkipCase(remainingScrutinee, value) then
+        caseResults.addOne(eval(caseDef.body, thisV, klass))
+      if catchesAllOf(caseDef, tpe) then
+        remainingScrutinee = remainingScrutinee.remove(value)
+
+    caseResults.join
   end patternMatch
 
   /** Handle semantics of leaf nodes
@@ -1472,13 +1762,13 @@ object Objects:
    */
   def evalType(tp: Type, thisV: ThisValue, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     tp match
-      case _: ConstantType =>
-        Bottom
+      case consttpe: ConstantType =>
+        SafeValue(consttpe.underlying)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
         if sym.is(Flags.Package) then
-          Bottom
+          Package(sym)
         else if sym.owner.isClass then
           // The typer incorrectly assigns a TermRef with NoPrefix for `config`,
           // while the actual denotation points to the symbol of the class member
@@ -1504,7 +1794,7 @@ object Objects:
       case tp @ ThisType(tref) =>
         val sym = tref.symbol
         if sym.is(Flags.Package) then
-          Bottom
+          Package(sym)
         else if sym.isStaticObject && sym != klass then
           // The typer may use ThisType to refer to an object outside its definition.
           if elideObjectAccess then
@@ -1519,6 +1809,36 @@ object Objects:
         throw new Exception("unexpected type: " + tp + ", Trace:\n" + Trace.show)
   }
 
+  /** Widen the escaped value (a method argument or rhs of an assignment)
+   *
+   *  The default widening is 1 for most values, 2 for function values.
+   *  User-specified widening annotations are repected.
+   */
+  def widenEscapedValue(value: Value, annotatedTree: Tree): Contextual[Value] =
+    def parseAnnotation: Option[Int] =
+      annotatedTree.tpe.getAnnotation(defn.InitWidenAnnot).flatMap: annot =>
+          annot.argument(0).get match
+            case arg @ Literal(c: Constants.Constant) =>
+              val height = c.intValue
+              if height < 0 then
+                report.warning("The argument should be positive", arg)
+                None
+              else
+                Some(height)
+            case arg =>
+              report.warning("The argument should be a constant integer value", arg)
+              None
+    end parseAnnotation
+
+    parseAnnotation match
+      case Some(i) =>
+        value.widen(i)
+
+      case None =>
+        if value.isInstanceOf[Fun]
+        then value.widen(2)
+        else value.widen(1)
+
   /** Evaluate arguments of methods and constructors */
   def evalArgs(args: List[Arg], thisV: ThisValue, klass: ClassSymbol): Contextual[List[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
@@ -1529,24 +1849,8 @@ object Objects:
         else
           eval(arg.tree, thisV, klass)
 
-      val widened =
-        arg.tree.tpe.getAnnotation(defn.InitWidenAnnot) match
-        case Some(annot) =>
-          annot.argument(0).get match
-          case arg @ Literal(c: Constants.Constant) =>
-            val height = c.intValue
-            if height < 0 then
-              report.warning("The argument should be positive", arg)
-              res.widen(1)
-            else
-              res.widen(c.intValue)
-          case arg =>
-            report.warning("The argument should be a constant integer value", arg)
-            res.widen(1)
-        case _ =>
-          res.widen(1)
-
-      argInfos += TraceValue(widened, trace.add(arg.tree))
+      val widened = widenEscapedValue(res, arg.tree)
+      argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
     argInfos.toList
 
@@ -1644,7 +1948,7 @@ object Objects:
             // The parameter check of traits comes late in the mixin phase.
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
-            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty))
+            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty, EmptyTree))
             extendTrace(superParent) {
               superCall(tref, ctor, args, tasks)
             }
@@ -1657,8 +1961,8 @@ object Objects:
     // class body
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
-        val res = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
+        val res = if (allowList.contains(sym)) Bottom else eval(vdef.rhs, thisV, klass)
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
           thisV.initVar(sym, addr)
@@ -1690,7 +1994,7 @@ object Objects:
     if target == klass then
       thisV
     else if target.is(Flags.Package) then
-      Bottom
+      Package(target) // TODO: What is the semantics for package.this?
     else if target.isStaticObject then
       val res = ObjectRef(target.moduleClass.asClass)
       if elideObjectAccess then res
@@ -1698,7 +2002,8 @@ object Objects:
     else
       thisV match
         case Bottom => Bottom
-        case Cold => Cold
+        case UnknownValue => UnknownValue
+        case Top => Top
         case ref: Ref =>
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !ref.hasOuter(klass) then
@@ -1709,7 +2014,7 @@ object Objects:
             resolveThis(target, ref.outerValue(klass), outerCls)
         case ValueSet(values) =>
           values.map(ref => resolveThis(target, ref, klass)).join
-        case _: Fun | _ : OfArray =>
+        case _: Fun | _ : OfArray | _: Package | SafeValue(_) =>
           report.warning("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Bottom
   }
@@ -1729,16 +2034,31 @@ object Objects:
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
 
-  def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
-    val msg =
-      s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
-      "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show
+  def printTraceWhenMultiple(trace: Trace)(using Context): String =
+    if trace.toVector.size > 1 then
+      Trace.buildStacktrace(trace, "The mutable state is created through: " + System.lineSeparator())
+    else ""
 
-    report.warning(msg, Trace.position)
+  val mutateErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
+  def errorMutateOtherStaticObject(currentObj: ClassSymbol, addr: Heap.Addr)(using Trace, Context) =
+    val otherObj = addr.owner
+    val addr_trace = addr.getTrace
+    if mutateErrorSet.add((currentObj, otherObj)) then
+      val msg =
+        s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
+        "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show +
+        printTraceWhenMultiple(addr_trace)
 
-  def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
-    val msg =
-      "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show
+      report.warning(msg, Trace.position)
 
-    report.warning(msg, Trace.position)
+  val readErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
+  def errorReadOtherStaticObject(currentObj: ClassSymbol, addr: Heap.Addr)(using Trace, Context) =
+    val otherObj = addr.owner
+    val addr_trace = addr.getTrace
+    if readErrorSet.add((currentObj, otherObj)) then
+      val msg =
+        "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
+        "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show +
+        printTraceWhenMultiple(addr_trace)
+
+      report.warning(msg, Trace.position)

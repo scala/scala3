@@ -13,22 +13,17 @@ class ReusableClassRunner(testClass: Class[BasePCSuite])
     testClass.getDeclaredConstructor().newInstance()
 
   override def createTest(): AnyRef = instance
-  override def withBefores(
-      method: FrameworkMethod,
-      target: Object,
-      statement: Statement
-  ): Statement =
-    statement
 
   override def withAfters(
       method: FrameworkMethod,
       target: Object,
       statement: Statement
   ): Statement =
+    val newStatement = super.withAfters(method, target, statement)
     new Statement():
       override def evaluate(): Unit =
         try
-          statement.evaluate()
+          newStatement.evaluate()
         finally
           if (isLastTestCase(method)) then instance.clean()
 

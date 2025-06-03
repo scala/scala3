@@ -45,7 +45,7 @@ object ScaladocSupport:
     val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
-        import dotty.tools.dotc.core.Comments.CommentsContext
+        import dotty.tools.dotc.core.Comments.docCtx
         given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
 
         val docCtx = ctx.docCtx.get

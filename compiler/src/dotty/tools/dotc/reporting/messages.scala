@@ -15,13 +15,15 @@ import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
 import config.{Feature, ScalaVersion}
+import transform.patmat.Space
+import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
 import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
-import printing.Formatting.hl
+import Formatting.{hl, delay}
 import ast.Trees.*
 import ast.untpd
 import ast.tpd
@@ -33,7 +35,9 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
+import Message.Disambiguation
 
 /**  Messages
   *  ========
@@ -58,7 +62,7 @@ trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
     super.msgPostscript ++ matchReductionAddendum(tps*)
 
-abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
   def kind = MessageKind.TypeMismatch
   def explain(using Context) = err.whyNoMatchStr(found, expected)
@@ -84,8 +88,29 @@ abstract class PatternMatchMsg(errorId: ErrorMessageID)(using Context) extends M
 abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   def kind = MessageKind.Cyclic
 
+  val ex: CyclicReference
+  protected def cycleSym = ex.denot.symbol
+
+  protected def debugInfo =
+    if ctx.settings.YdebugCyclic.value then
+      "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
+    else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
+
+  protected def context: String = ex.optTrace match
+    case Some(trace) =>
+      s"\n\nThe error occurred while trying to ${
+        trace.map(identity) // map with identity will turn Context ?=> String elements to String elements
+          .mkString("\n  which required to ")
+      }$debugInfo"
+    case None =>
+      "\n\n Run with -explain-cyclic for more details."
+end CyclicMsg
+
 abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   def kind = MessageKind.Reference
+
+abstract class StagingMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  override final def kind = MessageKind.Staging
 
 abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
 extends SyntaxMsg(errNo) {
@@ -272,7 +297,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], addenda: => String*)(using Context)
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   def msg(using Context) =
@@ -283,6 +308,7 @@ class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], adde
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
     object reported extends TypeMap, IdentityCaptRefMap:
+      var notes: String = ""
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false
@@ -300,6 +326,15 @@ class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], adde
         case tp: LazyRef =>
           fbounded = true
           tp
+        case tp @ TypeRef(pre, _) =>
+          if pre != NoPrefix && !pre.member(tp.name).exists then
+            notes ++=
+              i"""
+                 |
+                 |Note that I could not resolve reference $tp.
+                 |${MissingType(pre, tp.name).reason}
+                 """
+          mapOver(tp)
         case _ =>
           mapOver(tp)
 
@@ -309,9 +344,9 @@ class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], adde
     val (found2, expected2) =
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
-    val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)
+    val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
     i"""|Found:    $foundStr
-        |Required: $expectedStr"""
+        |Required: $expectedStr${reported.notes}"""
   end msg
 
   override def msgPostscript(using Context) =
@@ -828,12 +863,13 @@ extends Message(LossyWideningConstantConversionID):
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(uncoveredCases: Seq[String], tree: untpd.Match)(using Context)
+class PatternMatchExhaustivity(uncoveredCases: Seq[Space], tree: untpd.Match)(using Context)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
 
   private val hasMore = uncoveredCases.lengthCompare(6) > 0
-  val uncovered = uncoveredCases.take(6).mkString(", ")
+  val uncovered = uncoveredCases.take(6).map(SpaceEngine.display).mkString(", ")
+  private val casesWithoutColor = inContext(ctx.withoutColors)(uncoveredCases.map(SpaceEngine.display))
 
   def msg(using Context) =
     val addendum = if hasMore then "(More unmatched cases are elided)" else ""
@@ -861,12 +897,12 @@ extends Message(PatternMatchExhaustivityID) {
     val pathes = List(
       ActionPatch(
         srcPos = endPos,
-        replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
+        replacement = casesWithoutColor.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
     )
     List(
-      CodeAction(title = s"Insert missing cases (${uncoveredCases.size})",
+      CodeAction(title = s"Insert missing cases (${casesWithoutColor.size})",
         description = None,
         patches = pathes
       )
@@ -907,7 +943,7 @@ class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
 extends TypeMsg(MatchableWarningID) {
   def msg(using Context) =
     val kind = if pattern then "pattern selector" else "value"
-    i"""${kind} should be an instance of Matchable,,
+    i"""${kind} should be an instance of Matchable,
        |but it has unmatchable type $tp instead"""
 
   def explain(using Context) =
@@ -1137,6 +1173,7 @@ class OverrideError(
     member: Symbol, other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
+  withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
       (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
@@ -1146,8 +1183,8 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
             |(Note that ${err.infoStringWithLocation(other, base)} is abstract,
             |and is therefore overridden by concrete ${err.infoStringWithLocation(member, base)})"""
         else ""
-    i"""error overriding ${err.infoStringWithLocation(other, base)};
-        |  ${err.infoString(member, base, showLocation = member.owner != base.typeSymbol)} $core$addendum"""
+    i"""error overriding ${delay(err.infoStringWithLocation(other, base))};
+        |  ${delay(err.infoString(member, base, showLocation = member.owner != base.typeSymbol))} $core$addendum"""
   override def canExplain =
     memberTp.exists && otherTp.exists
   def explain(using Context) =
@@ -1249,9 +1286,9 @@ class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(Unreduc
         |Such applications are equivalent to existential types, which are not
         |supported in Scala 3."""
 
-class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(using Context)
+class OverloadedOrRecursiveMethodNeedsResultType(val ex: CyclicReference)(using Context)
 extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
-  def msg(using Context) = i"""Overloaded or recursive $cycleSym needs return type"""
+  def msg(using Context) = i"""Overloaded or recursive $cycleSym needs return type$context"""
   def explain(using Context) =
     i"""Case 1: $cycleSym is overloaded
         |If there are multiple methods named $cycleSym and at least one definition of
@@ -1263,29 +1300,29 @@ extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
         |"""
 }
 
-class RecursiveValueNeedsResultType(cycleSym: Symbol)(using Context)
+class RecursiveValueNeedsResultType(val ex: CyclicReference)(using Context)
 extends CyclicMsg(RecursiveValueNeedsResultTypeID) {
-  def msg(using Context) = i"""Recursive $cycleSym needs type"""
+  def msg(using Context) = i"""Recursive $cycleSym needs type$context"""
   def explain(using Context) =
     i"""The definition of $cycleSym is recursive and you need to specify its type.
         |"""
 }
 
-class CyclicReferenceInvolving(denot: SymDenotation)(using Context)
+class CyclicReferenceInvolving(val ex: CyclicReference)(using Context)
 extends CyclicMsg(CyclicReferenceInvolvingID) {
   def msg(using Context) =
-    val where = if denot.exists then s" involving $denot" else ""
-    i"Cyclic reference$where"
+    val where = if ex.denot.exists then s" involving ${ex.denot}" else ""
+    i"Cyclic reference$where$context"
   def explain(using Context) =
-    i"""|$denot is declared as part of a cycle which makes it impossible for the
-        |compiler to decide upon ${denot.name}'s type.
-        |To avoid this error, try giving ${denot.name} an explicit type.
+    i"""|${ex.denot} is declared as part of a cycle which makes it impossible for the
+        |compiler to decide upon ${ex.denot.name}'s type.
+        |To avoid this error, try giving ${ex.denot.name} an explicit type.
         |"""
 }
 
-class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(using Context)
+class CyclicReferenceInvolvingImplicit(val ex: CyclicReference)(using Context)
 extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
-  def msg(using Context) = i"""Cyclic reference involving implicit $cycleSym"""
+  def msg(using Context) = i"""Cyclic reference involving implicit $cycleSym$context"""
   def explain(using Context) =
     i"""|$cycleSym is declared as part of a cycle which makes it impossible for the
         |compiler to decide upon ${cycleSym.name}'s type.
@@ -1659,7 +1696,7 @@ class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
 
   def msg(using Context) = i"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
   def explain(using Context) =
-    if sym.is(Mutable) then "Note that variables need to be initialized to be defined."
+    if sym.isMutableVarOrAccessor then "Note that variables need to be initialized to be defined."
     else ""
 }
 
@@ -1778,6 +1815,12 @@ class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(u
   def explain(using Context) = ""
 }
 
+class ValueClassCannotExtendAliasOfAnyVal(valueClass: Symbol, alias: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A value class cannot extend a type alias ($alias) of ${hl("AnyVal")}"""
+  def explain(using Context) = ""
+}
+
 class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
   extends SyntaxMsg(SuperCallsNotAllowedInlineableID) {
   def msg(using Context) = i"Super call not allowed in inlineable $symbol"
@@ -1785,12 +1828,23 @@ class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
 }
 
 class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID):
-  def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path"
+  def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path" + inlineParamAddendum
   def explain(using Context) =
     i"""An immutable path is
         | - a reference to an immutable value, or
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
+
+  def inlineParamAddendum(using Context) =
+    val sym = tp.termSymbol
+    if sym.isAllOf(Flags.InlineParam) then
+      i"""
+         |Inline parameters are not considered immutable paths and cannot be used as
+         |singleton types.
+         |
+         |Hint: Removing the `inline` qualifier from the `${sym.name}` parameter
+         |may help resolve this issue."""
+    else ""
 
 class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
@@ -1810,7 +1864,7 @@ class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expec
 
 class DuplicatePrivateProtectedQualifier()(using Context)
   extends SyntaxMsg(DuplicatePrivateProtectedQualifierID) {
-  def msg(using Context) = "Duplicate private/protected qualifier"
+  def msg(using Context) = "Duplicate private/protected modifier"
   def explain(using Context) =
     i"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
 }
@@ -1819,7 +1873,13 @@ class ExpectedStartOfTopLevelDefinition()(using Context)
   extends SyntaxMsg(ExpectedStartOfTopLevelDefinitionID) {
   def msg(using Context) = "Expected start of definition"
   def explain(using Context) =
-    i"You have to provide either ${hl("class")}, ${hl("trait")}, ${hl("object")}, or ${hl("enum")} definitions after qualifiers"
+    i"You have to provide either ${hl("class")}, ${hl("trait")}, ${hl("object")}, or ${hl("enum")} definitions after modifiers"
+}
+
+class FinalLocalDef()(using Context)
+  extends SyntaxMsg(FinalLocalDefID) {
+  def msg(using Context) = i"The ${hl("final")} modifier is not allowed on local definitions"
+  def explain(using Context) = ""
 }
 
 class NoReturnFromInlineable(owner: Symbol)(using Context)
@@ -1888,6 +1948,20 @@ class TailrecNotApplicable(symbol: Symbol)(using Context)
     s"TailRec optimisation not applicable, $reason"
   }
   def explain(using Context) = ""
+}
+
+class TailrecNestedCall(definition: Symbol, innerDef: Symbol)(using Context)
+  extends SyntaxMsg(TailrecNestedCallID) {
+  def msg(using Context) = {
+    s"The tail recursive def ${definition.name} contains a recursive call inside the non-inlined inner def ${innerDef.name}"
+  }
+
+  def explain(using Context) =
+    """Tail recursion is only validated and optimised directly in the definition.
+      |Any calls to the recursive method via an inner def cannot be validated as
+      |tail recursive, nor optimised if they are. To enable tail recursion from
+      |inner calls, mark the inner def as inline.
+      |""".stripMargin
 }
 
 class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
@@ -2251,7 +2325,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2340,9 +2414,9 @@ class TypeTestAlwaysDiverges(scrutTp: Type, testTp: Type)(using Context) extends
 }
 
 // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
-class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(using Context)
+class TermMemberNeedsResultTypeForImplicitSearch(val ex: CyclicReference)(using Context)
   extends CyclicMsg(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
-  def msg(using Context) = i"""$cycleSym needs result type because its right-hand side attempts implicit search"""
+  def msg(using Context) = i"""$cycleSym needs result type because its right-hand side attempts implicit search$context"""
   def explain(using Context) =
     i"""|The right hand-side of $cycleSym's definition requires an implicit search at the highlighted position.
         |To avoid this error, give `$cycleSym` an explicit type.
@@ -2355,12 +2429,14 @@ class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends 
 }
 
 class NotAnExtractor(tree: untpd.Tree)(using Context) extends PatternMatchMsg(NotAnExtractorID) {
-  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
+  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an ${hl("unapply")} or ${hl("unapplySeq")} method with the appropriate signature"
   def explain(using Context) =
-    i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
+    i"""|An ${hl("unapply")} method should be in an ${hl("object")}, take a single explicit term parameter, and:
         |  - If it is just a test, return a ${hl("Boolean")}. For example ${hl("case even()")}
         |  - If it returns a single sub-value of type T, return an ${hl("Option[T]")}
         |  - If it returns several sub-values T1,...,Tn, group them in an optional tuple ${hl("Option[(T1,...,Tn)]")}
+        |
+        |Additionaly, ${hl("unapply")} or ${hl("unapplySeq")} methods cannot take type parameters after their explicit term parameter.
         |
         |Sometimes, the number of sub-values isn't fixed and we would like to return a sequence.
         |For this reason, you can also define patterns through ${hl("unapplySeq")} which returns ${hl("Option[Seq[T]]")}.
@@ -2403,7 +2479,7 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
 class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
   extends Message(PureUnitExpressionID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. You may want to use `()`."
+  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. Add `: Unit` to discard silently."
   def explain(using Context) =
     i"""As this expression is not of type Unit, it is desugared into `{ $stat; () }`.
        |Here the `$stat` expression is a pure statement that can be discarded.
@@ -2415,9 +2491,14 @@ class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Cont
   def kind = MessageKind.PotentialIssue
   def msg(using Context) = i"Suspicious top-level unqualified call to ${hl(method.name.toString)}"
   def explain(using Context) =
+    val getClassExtraHint =
+      if method.name == nme.getClass_ && ctx.settings.classpath.value.contains("scala3-staging") then
+        i"""\n\n
+           |This class should not be used to get the classloader for `scala.quoted.staging.Compile.make`."""
+      else ""
     i"""Top-level unqualified calls to ${hl("AnyRef")} or ${hl("Any")} methods such as ${hl(method.name.toString)} are
        |resolved to calls on ${hl("Predef")} or on imported methods. This might not be what
-       |you intended."""
+       |you intended.$getClassExtraHint"""
 }
 
 class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
@@ -2428,6 +2509,31 @@ class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
     i"""|You called the ${hl("synchronized")} method on a boxed primitive. This might not be what
         |you intended."""
 }
+
+class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
+  extends Message(ExtensionNullifiedByMemberID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    val targetName = hl(target.name.toString)
+    i"""Extension method ${hl(method.name.toString)} will never be selected from type $targetName
+       |because $targetName already has a member with the same name and compatible parameter types."""
+  def explain(using Context) =
+    i"""Although extensions can be overloaded, they do not overload existing member methods.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension.
+       |
+       |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
+
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -2553,13 +2659,13 @@ class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
     """
   }
 
-class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using Context)
+class IllegalCyclicTypeReference(val ex: CyclicReference, sym: Symbol, where: String, lastChecked: Type)(using Context)
   extends CyclicMsg(IllegalCyclicTypeReferenceID) {
   def msg(using Context) =
     val lastCheckedStr =
       try lastChecked.show
       catch case ex: CyclicReference => "..."
-    i"illegal cyclic type reference: ${where} ${hl(lastCheckedStr)} of $sym refers back to the type itself"
+    i"illegal cyclic type reference: ${where} ${hl(lastCheckedStr)} of $sym refers back to the type itself$context"
   def explain(using Context) = ""
 }
 
@@ -2753,7 +2859,11 @@ extends SyntaxMsg(TargetNameOnTopLevelClassID):
 class NotClassType(tp: Type)(using Context)
 extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
   def msg(using Context) = i"$tp is not a class type"
-  def explain(using Context) = ""
+  def explain(using Context) =
+    i"""A class type includes classes and traits in a specific order. Defining a class, even an anonymous class,
+        |requires specifying a linearization order for the traits it extends. For example, `A & B` is not a class type
+        |because it doesn't specify which trait takes precedence, A or B. For more information about class types, please see the Scala Language Specification.
+        |Class types also can't have refinements."""
 
 class NotConstant(suffix: String, tp: Type)(using Context)
 extends TypeMsg(NotConstantID), ShowMatchTrace(tp):
@@ -2784,19 +2894,27 @@ class MissingImplicitArgument(
       val idx = paramNames.indexOf(name)
       if (idx >= 0) Some(i"${args(idx)}") else None
     """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match
-      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
+      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("?" + v)).nn
     )
 
   /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
    *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
+   *  @param paramNames       Names of type parameters to substitute with `args` in the message template
+   *  @param args             Resolved type arguments to substitute for `paramNames` in the message template
    *  @param substituteType   Function substituting specific types for abstract types associated with variables, e.g A -> Int
    */
-  def formatAnnotationMessage(rawMsg: String, sym: Symbol, substituteType: Type => Type)(using Context): String =
+  def formatAnnotationMessage(
+    rawMsg: String,
+    sym: Symbol,
+    paramNames: List[Name],
+    args: List[Type],
+    substituteType: Type => Type,
+  )(using Context): String =
     val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
     userDefinedErrorString(
       rawMsg,
-      paramNames = substitutableTypesSymbols.map(_.name.unexpandedName.toString),
-      args = substitutableTypesSymbols.map(_.typeRef).map(substituteType)
+      paramNames = (paramNames ::: substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
+      args = args ::: substitutableTypesSymbols.map(_.typeRef).map(substituteType)
     )
 
   /** Extract a user defined error message from a symbol `sym`
@@ -2808,14 +2926,17 @@ class MissingImplicitArgument(
       msg <- ann.argumentConstantString(0)
     yield msg
 
-  def userDefinedImplicitNotFoundTypeMessageFor(sym: Symbol)(using Context): Option[String] =
-    for
-      rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
-      if Feature.migrateTo3 || sym != defn.Function1
-        // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
-    yield
-      val substituteType = (_: Type).asSeenFrom(pt, sym)
-      formatAnnotationMessage(rawMsg, sym, substituteType)
+  def userDefinedImplicitNotFoundTypeMessageFor(
+    sym: Symbol,
+    params: List[ParamInfo] = Nil,
+    args: List[Type] = Nil
+  )(using Context): Option[String] = for
+    rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
+    if Feature.migrateTo3 || sym != defn.Function1
+    // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+  yield
+    val paramNames = params.map(_.paramName)
+    formatAnnotationMessage(rawMsg, sym, paramNames, args, _.asSeenFrom(pt, sym))
 
   /** Extracting the message from a method parameter, e.g. in
    *
@@ -2830,19 +2951,22 @@ class MissingImplicitArgument(
         val targs = tpd.typeArgss(applTree).flatten
         val methodOwner = fn.symbol.owner
         val methodOwnerType = tpd.qualifier(fn).tpe
-        val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)
+        val methodTypeParams = fn.symbol.paramSymss.flatten.withFilter(_.isType).map(_.name)
         val methodTypeArgs = targs.map(_.tpe)
-        val substituteType = (_: Type).asSeenFrom(methodOwnerType, methodOwner).subst(methodTypeParams, methodTypeArgs)
-        formatAnnotationMessage(rawMsg, sym.owner, substituteType)
+        formatAnnotationMessage(rawMsg, sym.owner, methodTypeParams, methodTypeArgs, _.asSeenFrom(methodOwnerType, methodOwner))
 
   def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
-    def recur(tp: Type): Option[String] = tp match
+    def recur(tp: Type, params: List[ParamInfo] = Nil, args: List[Type] = Nil): Option[String] = tp match
+      case tp: AppliedType =>
+        val tycon = tp.typeConstructor
+        val typeParams = if tycon.isLambdaSub then tycon.hkTypeParams else tycon.typeParams
+        recur(tycon, typeParams ::: params, tp.args ::: args)
       case tp: TypeRef =>
-        val sym = tp.symbol
-        userDefinedImplicitNotFoundTypeMessageFor(sym).orElse(recur(tp.info))
+        userDefinedImplicitNotFoundTypeMessageFor(tp.symbol, params, args)
+          .orElse(recur(tp.info))
       case tp: ClassInfo =>
         tp.baseClasses.iterator
-          .map(userDefinedImplicitNotFoundTypeMessageFor)
+          .map(userDefinedImplicitNotFoundTypeMessageFor(_))
           .find(_.isDefined).flatten
       case tp: TypeProxy =>
         recur(tp.superType)
@@ -2901,11 +3025,20 @@ class MissingImplicitArgument(
 
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
+    /** Default error message for non-nested ambiguous implicits. */
     def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
-      s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
+      s"Ambiguous given instances: ${ambi.explanation}${location("of")}${ambi.priorityChangeWarningNote}"
 
+    /** Default error messages for non-ambiguous implicits, or nested ambiguous
+     *  implicits.
+     *
+     *  The default message is shown for ambiguous implicits only if they have
+     *  the `nested` flag set. In this case, we output "no best given instance"
+     *  instead of "no given instance".
+     */
     def defaultImplicitNotFoundMessage =
-      i"No given instance of type $pt was found${location("for")}"
+      val bestStr = if arg.tpe.isInstanceOf[AmbiguousImplicits] then " best" else ""
+      i"No$bestStr given instance of type $pt was found${location("for")}"
 
     /** Construct a custom error message given an ambiguous implicit
      *  candidate `alt` and a user defined message `raw`.
@@ -2943,7 +3076,7 @@ class MissingImplicitArgument(
      *  def foo(implicit foo: Foo): Any = ???
      */
     arg.tpe match
-      case ambi: AmbiguousImplicits =>
+      case ambi: AmbiguousImplicits if !ambi.nested =>
         (ambi.alt1, ambi.alt2) match
           case (alt @ AmbiguousImplicitMsg(msg), _) =>
             userDefinedAmbiguousImplicitMsg(alt, msg)
@@ -3009,7 +3142,7 @@ extends ReferenceMsg(CannotBeAccessedID):
       case _ =>
         i"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
-    val whyNot = new StringBuffer
+    val whyNot = new StringBuilder
     for alt <- alts do
       val cls = alt.owner.enclosingSubClass
       val owner = if cls.exists then cls else alt.owner
@@ -3017,10 +3150,10 @@ extends ReferenceMsg(CannotBeAccessedID):
         if alt.is(Protected) then
           if alt.privateWithin.exists && alt.privateWithin != owner then
             if owner.is(Final) then alt.privateWithin.showLocated
-            else alt.privateWithin.showLocated + ", or " + owner.showLocated + " or one of its subclasses"
+            else s"${alt.privateWithin.showLocated}, or ${owner.showLocated} or one of its subclasses"
           else
             if owner.is(Final) then owner.showLocated
-            else owner.showLocated + " or one of its subclasses"
+            else s"${owner.showLocated} or one of its subclasses"
         else
           alt.privateWithin.orElse(owner).showLocated
       val accessMod = if alt.is(Protected) then "protected" else "private"
@@ -3052,10 +3185,19 @@ extends SyntaxMsg(InlineGivenShouldNotBeFunctionID):
        |      inline def apply(x: A) = x.toB
      """
 
+class InlinedAnonClassWarning()(using Context)
+  extends Message(InlinedAnonClassWarningID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = "New anonymous class definition will be duplicated at each inline site"
+    def explain(using Context) =
+      i"""Anonymous class will be defined at each use site, which may lead to a larger number of classfiles.
+      |
+      |To inline class definitions, you may provide an explicit class name to avoid this warning."""
+
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
-    def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def msg(using Context) = i"discarded non-Unit value of type ${tp.widen}. Add `: Unit` to discard silently."
     def explain(using Context) = ""
 
 class UnusedNonUnitValue(tp: Type)(using Context)
@@ -3073,6 +3215,10 @@ class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
     def explain(using Context) = ""
 
+class MatchTypeLegacyPattern(errorText: String)(using Context) extends TypeMsg(MatchTypeLegacyPatternID):
+  def msg(using Context) = errorText
+  def explain(using Context) = ""
+
 class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
   extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
     def msg(using Context) =
@@ -3087,3 +3233,294 @@ class ImplausiblePatternWarning(pat: tpd.Tree, selType: Type)(using Context)
           |$pat  could match selector of type  $selType
           |only if there is an `equals` method identifying elements of the two types."""
     def explain(using Context) = ""
+
+class UnstableInlineAccessor(accessed: Symbol, accessorTree: tpd.Tree)(using Context)
+  extends Message(UnstableInlineAccessorID) {
+  def kind = MessageKind.Compatibility
+
+  def msg(using Context) =
+    i"""Unstable inline accessor ${accessor.name} was generated in $where."""
+
+  def explain(using Context) =
+    i"""Access to non-public $accessed causes the automatic generation of an accessor.
+       |This accessor is not stable, its name may change or it may disappear
+       |if not needed in a future version.
+       |
+       |To make sure that the inlined code is binary compatible you must make sure that
+       |$accessed is public in the binary API.
+       | * Option 1: Annotate $accessed with @publicInBinary
+       | * Option 2: Make $accessed public
+       |
+       |This change may break binary compatibility if a previous version of this
+       |library was compiled with generated accessors. Binary compatibility should
+       |be checked using MiMa. If binary compatibility is broken, you should add the
+       |old accessor explicitly in the source code. The following code should be
+       |added to $where:
+       |  @publicInBinary private[$within] ${accessorTree.show}
+       |"""
+
+  private def accessor = accessorTree.symbol
+
+  private def where =
+    if accessor.owner.name.isPackageObjectName then s"package ${within}"
+    else if accessor.owner.is(Module) then s"object $within"
+    else s"class $within"
+
+  private def within =
+    if accessor.owner.name.isPackageObjectName then accessor.owner.owner.name.stripModuleClassSuffix
+    else accessor.owner.name.stripModuleClassSuffix
+}
+
+class VolatileOnVal()(using Context)
+extends SyntaxMsg(VolatileOnValID):
+  protected def msg(using Context): String = "values cannot be volatile"
+  protected def explain(using Context): String = ""
+
+class ConstructorProxyNotValue(sym: Symbol)(using Context)
+extends TypeMsg(ConstructorProxyNotValueID):
+  protected def msg(using Context): String =
+    i"constructor proxy $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A constructor proxy is a symbol made up by the compiler to represent a non-existent
+       |factory method of a class. For instance, in
+       |
+       |   class C(x: Int)
+       |
+       |C does not have an apply method since it is not a case class. Yet one can
+       |still create instances with applications like `C(3)` which expand to `new C(3)`.
+       |The `C` in this call is a constructor proxy. It can only be used as applications
+       |but not as a stand-alone value."""
+
+class ContextBoundCompanionNotValue(sym: Symbol)(using Context)
+extends TypeMsg(ConstructorProxyNotValueID):
+  protected def msg(using Context): String =
+    i"context bound companion $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A context bound companion is a symbol made up by the compiler to represent the
+       |witness or witnesses generated for the context bound(s) of a type parameter or type.
+       |For instance, in
+       |
+       |   class Monoid extends SemiGroup:
+       |     type Self
+       |     def unit: Self
+       |
+       |   type A: Monoid
+       |
+       |there is just a type `A` declared but not a value `A`. Nevertheless, one can write
+       |the selection `A.unit`, which works because the compiler created a context bound
+       |companion value with the (term-)name `A`. However, these context bound companions
+       |are not values themselves, they can only be referred to in selections."""
+
+class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
+extends Message(UnusedSymbolID):
+  def kind = MessageKind.UnusedSymbol
+
+  override def msg(using Context) = errorText
+  override def explain(using Context) = ""
+  override def actions(using Context) = this.actions
+
+object UnusedSymbol:
+  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
+  def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
+  def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
+  def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
+  def unsetLocals(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  private def paramAddendum(sym: Symbol)(using Context): String =
+    if sym.denot.owner.is(ExtensionMethod) then i" in extension ${sym.denot.owner}"
+    else ""
+
+class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
+
+  override protected def msg(using Context): String =
+    "Named arguments are required for Java defined annotations"
+    + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  override protected def explain(using Context): String =
+    i"""Starting from Scala 3.6.0, named arguments are required for Java defined annotations.
+        |Java defined annotations don't have an exact constructor representation
+        |and we previously relied on the order of the fields to create one.
+        |One possible issue with this representation is the reordering of the fields.
+        |Lets take the following example:
+        |
+        |  public @interface Annotation {
+        |    int a() default 41;
+        |    int b() default 42;
+        |  }
+        |
+        |Reordering the fields is binary-compatible but it might affect the meaning of @Annotation(1)
+        """
+
+end NonNamedArgumentInJavaAnnotation
+
+final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(QuotedTypeMissingID):
+
+  private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
+
+  override protected def msg(using Context): String =
+    i"Reference to $tpe within quotes requires a given ${witness} in scope"
+
+  override protected def explain(using Context): String =
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope.
+        |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code.
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression.
+        |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
+        |"""
+
+end QuotedTypeMissing
+
+final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
+  override protected def msg(using Context): String =
+    i"""Deprecated syntax: since 3.7 this is interpreted as a named tuple with one element,
+      |not as an assignment.
+      |
+      |To assign a value, use curly braces: `{${key} = ${value}}`."""
+      + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  override protected def explain(using Context): String = ""
+
+class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
+  def msg(using Context) =
+    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+       |To avoid this warning, either remove the argument names or use dotted selection."""
+        + Message.rewriteNotice("This", version = SourceVersion.`3.7-migration`)
+
+  def explain(using Context) = ""
+
+class GivenSearchPriorityWarning(
+    pt: Type,
+    cmp: Int,
+    prev: Int,
+    winner: TermRef,
+    loser: TermRef,
+    isLastOldVersion: Boolean
+)(using Context) extends Message(GivenSearchPriorityID):
+  def kind = MessageKind.PotentialIssue
+  def choice(nth: String, c: Int) =
+    if c == 0 then "none - it's ambiguous"
+    else s"the $nth alternative"
+  val (change, whichChoice) =
+    if isLastOldVersion
+    then ("will change in the future release", "Current choice ")
+    else ("has changed",                       "Previous choice")
+  def warningMessage: String =
+    i"""Given search preference for $pt between alternatives
+       |  ${loser}
+       |and
+       |  ${winner}
+       |$change.
+       |$whichChoice       : ${choice("first", prev)}
+       |Choice from Scala 3.7 : ${choice("second", cmp)}"""
+  def migrationHints: String =
+    i"""Suppress this warning by choosing -source 3.5, -source 3.7, or
+       |by using @annotation.nowarn("id=205")"""
+  def ambiguousNote: String =
+    i"""
+       |
+       |Note: $warningMessage"""
+  def msg(using Context) =
+    i"""$warningMessage
+       |
+       |$migrationHints"""
+
+  def explain(using Context) = ""
+
+final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxMsg(EnumMayNotBeValueClassesID):
+    def msg(using Context): String = i"$sym may not be a value class"
+
+    def explain(using Context) = ""
+end EnumMayNotBeValueClasses
+
+class IllegalUnrollPlacement(origin: Option[Symbol])(using Context)
+extends DeclarationMsg(IllegalUnrollPlacementID):
+  def msg(using Context) = origin match
+    case None => "@unroll is only allowed on a method parameter"
+    case Some(method) =>
+      val isCtor = method.isConstructor
+      def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
+      val prefix = s"Cannot unroll parameters of $what"
+      if method.isLocal then
+        i"$prefix because it is a local method"
+      else if !method.isEffectivelyFinal then
+        i"$prefix because it can be overridden"
+      else if isCtor && method.owner.is(Trait) then
+        i"implementation restriction: $prefix"
+      else if method.owner.companionClass.is(CaseClass) then
+        i"$prefix of a case class companion object: please annotate the class constructor instead"
+      else
+        assert(method.owner.is(CaseClass))
+        i"$prefix of a case class: please annotate the class constructor instead"
+
+  def explain(using Context) = ""
+end IllegalUnrollPlacement
+
+class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
+  def kind = MessageKind.Interpolation
+  protected def msg(using Context) = errorText
+  protected def explain(using Context) = ""
+
+class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotPartialFunctionID):
+  protected def msg(using Context) =
+    "match expression in result of block will not be used to synthesize partial function"
+  protected def explain(using Context) =
+    i"""A `PartialFunction` can be synthesized from a function literal if its body is just a pattern match.
+       |
+       |For example, `collect` takes a `PartialFunction`.
+       |  (1 to 10).collect(i => i match { case n if n % 2 == 0 => n })
+       |is equivalent to using a "pattern-matching anonymous function" directly:
+       |  (1 to 10).collect { case n if n % 2 == 0 => n }
+       |Compare an operation that requires a `Function1` instead:
+       |  (1 to 10).map { case n if n % 2 == 0 => n case n => n + 1 }
+       |
+       |As a convenience, the "selector expression" of the match can be an arbitrary expression:
+       |  List("1", "two", "3").collect(x => Try(x.toInt) match { case Success(i) => i })
+       |In this example, `isDefinedAt` evaluates the selector expression and any guard expressions
+       |in the pattern match in order to report whether an input is in the domain of the function.
+       |
+       |However, blocks of statements are not supported by this idiom:
+       |  List("1", "two", "3").collect: x =>
+       |    val maybe = Try(x.toInt) // statements preceding the match
+       |    maybe match
+       |    case Success(i) if i % 2 == 0 => i // throws MatchError on cases not covered
+       |
+       |This restriction is enforced to simplify the evaluation semantics of the partial function.
+       |Otherwise, it might not be clear what is computed by `isDefinedAt`.
+       |
+       |Efficient operations will use `applyOrElse` to avoid computing the match twice,
+       |but the `apply` body would be executed "per element" in the example."""
+
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    val act = i"$tpt(${args.map(_.show).mkString(", ")})"
+    i"""|Applied constructor type $act has no effect.
+        |The resulting type of $act is the same as its base type, namely: $tpe""".stripMargin
+
+  override protected def explain(using Context): String =
+    i"""|Applied constructor types are used to ascribe specialized types of constructor applications.
+        |To benefit from this feature, the constructor in question has to have a more specific type than the class itself.
+        |
+        |If you want to track a precise type of any of the class parameters, make sure to mark the parameter as `tracked`.
+        |Otherwise, you can safely remove the argument list from the type.
+        |"""
+
+final class OnlyFullyDependentAppliedConstructorType()(using Context)
+  extends TypeMsg(OnlyFullyDependentAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    i"Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked"
+
+  override protected def explain(using Context): String = ""
+
+final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
+  override protected def msg(using Context): String = 
+    i"Context bounds are not allowed in this position"
+
+  override protected def explain(using Context): String = ""
+
+end IllegalContextBounds

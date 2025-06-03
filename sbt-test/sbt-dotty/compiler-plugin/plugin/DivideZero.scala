@@ -22,7 +22,8 @@ class DivideZero extends PluginPhase with StandardPlugin {
   override val runsAfter = Set(Pickler.name)
   override val runsBefore = Set(Staging.name)
 
-  def init(options: List[String]): List[PluginPhase] = this :: Nil
+  // We keep using deprecated variant here just to ensure it still works correctly
+  override def init(options: List[String]): List[PluginPhase] = this :: Nil
 
   private def isNumericDivide(sym: Symbol)(implicit ctx: Context): Boolean = {
     def test(tpe: String): Boolean =

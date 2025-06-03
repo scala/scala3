@@ -1,6 +1,7 @@
 package scala.quoted
 package runtime.impl.printers
 
+import scala.collection.mutable
 import scala.quoted.*
 
 object Extractors {
@@ -67,6 +68,12 @@ object Extractors {
     import quotes.reflect.*
 
     private val sb: StringBuilder = new StringBuilder
+    private var recTypeCounter = 0
+    private val recTypeIds = mutable.Map.empty[RecursiveType, Int]
+
+    private def nextRecTypeId(): Int =
+      recTypeCounter += 1
+      recTypeCounter
 
     def result(): String = sb.result()
 
@@ -177,6 +184,8 @@ object Extractors {
         this += "Alternatives(" ++= patterns += ")"
       case TypedOrTest(tree, tpt) =>
         this += "TypedOrTest(" += tree += ", " += tpt += ")"
+      case tree =>
+        this += s"<Internal compiler AST $tree does not have a corresponding reflect extractor>"
     }
 
     def visitConstant(x: Constant): this.type = x match {
@@ -224,9 +233,14 @@ object Extractors {
       case SuperType(thistpe, supertpe) =>
         this += "SuperType(" += thistpe += ", " += supertpe += ")"
       case RecursiveThis(binder) =>
-        this += "RecursiveThis(" += binder += ")"
-      case RecursiveType(underlying) =>
-        this += "RecursiveType(" += underlying += ")"
+        val id = recTypeIds.getOrElse(binder, -1)
+        if (id == -1)
+          this += "RecursiveThis(" += binder += ")"
+        else
+          this += "RecursiveThis(<rec" += id += ">)"
+      case rt @ RecursiveType(underlying) =>
+        val id = recTypeIds.getOrElseUpdate(rt, nextRecTypeId())
+        this += "RecursiveType(rec" += id += " => " += underlying += ")"
       case MethodType(argNames, argTypes, resType) =>
         this += "MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
       case PolyType(argNames, argBounds, resType) =>
@@ -239,6 +253,10 @@ object Extractors {
         this += "NoPrefix()"
       case MatchCase(pat, rhs) =>
         this += "MatchCase(" += pat += ", " += rhs += ")"
+      case FlexibleType(tp) =>
+        this += "FlexibleType(" += tp += ")"
+      case tp =>
+        this += s"<Internal compiler type $tp does not have a corresponding reflect extractor>"
     }
 
     def visitSignature(sig: Signature): this.type = {

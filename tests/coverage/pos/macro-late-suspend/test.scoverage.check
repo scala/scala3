@@ -1,0 +1,88 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+macro-late-suspend/VisitorMacros.scala
+example
+VisitorMacros$package
+Object
+example.VisitorMacros$package
+mkVisitorTypeImpl
+124
+144
+6
+unpickleExprV2
+Apply
+false
+0
+false
+new VisitorType[T]{}
+
+2
+macro-late-suspend/VisitorMacros.scala
+example
+VisitorMacros$package
+Object
+example.VisitorMacros$package
+mkVisitorTypeImpl
+40
+69
+5
+mkVisitorTypeImpl
+DefDef
+false
+0
+false
+private def mkVisitorTypeImpl
+
+3
+macro-late-suspend/Test.scala
+example
+Test
+Object
+example.Test
+<init>
+102
+121
+8
+<init>
+Apply
+false
+0
+false
+mkVisitorType[Test]
+
+4
+macro-late-suspend/UsesTest.scala
+example
+UsesTest$package
+Object
+example.UsesTest$package
+<init>
+22
+22
+3
+<none>
+Literal
+true
+0
+false
+
+

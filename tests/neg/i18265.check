@@ -1,0 +1,6 @@
+-- [E019] Syntax Error: tests/neg/i18265.scala:5:13 --------------------------------------------------------------------
+5 |    def twice // error
+  |             ^
+  |             Missing return type
+  |
+  | longer explanation available when compiling with `-explain`

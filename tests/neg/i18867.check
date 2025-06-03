@@ -1,6 +1,0 @@
--- Error: tests/neg/i18867.scala:5:15 ----------------------------------------------------------------------------------
-5 |def test = foo _ // error
-  |           ^^^^^
-  |           The syntax `<function> _` is no longer supported;
-  |           you can simply leave out the trailing ` _`
-  |           This construct can be rewritten automatically under -rewrite -source 3.4-migration.

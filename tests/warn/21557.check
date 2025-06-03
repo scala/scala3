@@ -1,0 +1,18 @@
+-- [E190] Potential Issue Warning: tests/warn/21557.scala:9:16 ---------------------------------------------------------
+9 |  val x: Unit = 1 + 1 // warn
+  |                ^^^^^
+  |                Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E176] Potential Issue Warning: tests/warn/21557.scala:10:2 ---------------------------------------------------------
+10 |  1 + 1 // warn
+   |  ^^^^^
+   |  unused value of type (2 : Int)
+-- [E175] Potential Issue Warning: tests/warn/21557.scala:15:52 --------------------------------------------------------
+15 |  val x1: Unit = new Assertion("another").shouldPass() // warn (enabled by -Wvalue-discard)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 discarded non-Unit value of type Assertion. Add `: Unit` to discard silently.
+-- [E176] Potential Issue Warning: tests/warn/21557.scala:16:41 --------------------------------------------------------
+16 |  new Assertion("yet another").shouldPass() // warn (enabled by -Wnonunit-statement)
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  unused value of type Assertion

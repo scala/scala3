@@ -3,7 +3,7 @@ type Id[X] = [T] -> (op: X => T) -> T
 def mkId[X](x: X): Id[X] = [T] => (op: X => T) => op(x)
 
 def foo(x: Id[Cap^]) = {
-  x(_.use())  // was error, now OK
+  x(_.use())  // OK under sealed policy
 }
 
 def bar(io: Cap^, x: Id[Cap^{io}]) = {

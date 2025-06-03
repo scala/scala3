@@ -1,4 +1,4 @@
-//> using options -source future -deprecation -Xfatal-warnings
+//> using options -source future -deprecation
 
 // Compile with -strict -Xfatal-warnings -deprecation
 class C:
@@ -8,7 +8,7 @@ class C:
   def +(x: Int): Int = ???
 
 object C:
-  given AnyRef with
+  given AnyRef:
     extension (x: C)
       infix def iop (y: Int) = ???
       def mop (y: Int) = ???

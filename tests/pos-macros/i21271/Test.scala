@@ -1,0 +1,1 @@
+val inputValueSchema = Schema.derived

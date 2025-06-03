@@ -49,7 +49,7 @@ represented by `=>>`. As a result a function from types to types is written as
 `[X] =>> F[X]`.
 
 For those who are interested in the discussions,
-[#6558](https://github.com/lampepfl/dotty/pull/6558) introduced the new syntax.
+[#6558](https://github.com/scala/scala3/pull/6558) introduced the new syntax.
 
 ## Syntax Change: Wildcard Arguments in Types
 
@@ -92,7 +92,7 @@ delegate ListOrd[T] for Ord[List[T]] given (ord: Ord[T]) {
 ```
 
 For more information, the documentation has been updated as part of the relevant
-PR [#6649](https://github.com/lampepfl/dotty/pull/6649)
+PR [#6649](https://github.com/scala/scala3/pull/6649)
 
 ## Polymorphic function types
 
@@ -127,7 +127,7 @@ With PFTs we can now achieve what we want:
 ```
 
 For those who are interested in the discussions and more test cases,
-[#4672](https://github.com/lampepfl/dotty/pull/4672/) introduced PFTs.
+[#4672](https://github.com/scala/scala3/pull/4672/) introduced PFTs.
 
 ## `lazy val`s are now thread-safe by default
 
@@ -156,9 +156,9 @@ enum B(val gravity: Double) extends java.lang.Enum[B] {
 }
 ```
 
-For more information please check the [test case](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java) and
-also the relevant PRs [#6602](https://github.com/lampepfl/dotty/pull/6602) and
-[#6629](https://github.com/lampepfl/dotty/pull/6629).
+For more information please check the [test case](https://github.com/scala/scala3/tree/main/tests/run/enum-java) and
+also the relevant PRs [#6602](https://github.com/scala/scala3/pull/6602) and
+[#6629](https://github.com/scala/scala3/pull/6629).
 
 In the test, the enums are defined in the `MainScala.scala` file and used from a
 Java source, `Test.java`.
@@ -212,13 +212,13 @@ Advantages of new scheme:
 - Complete decoupling between derives clauses and mirror generation.
 
 For the technical details of these changes please consule the corresponding PR
-[#6531](https://github.com/lampepfl/dotty/pull/6531).
+[#6531](https://github.com/scala/scala3/pull/6531).
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -245,7 +245,7 @@ According to `git shortlog -sn --no-merges 0.15.0-RC1..0.16.0-RC3` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

@@ -2,7 +2,7 @@ import scala.compiletime.{erasedValue, summonFrom}
 
 import scala.quoted._
 
-inline given summonAfterTypeMatch[T]: Any =
+inline given summonAfterTypeMatch: [T] => Any =
   ${ summonAfterTypeMatchExpr[T] }
 
 private def summonAfterTypeMatchExpr[T: Type](using Quotes): Expr[Any] =
@@ -10,4 +10,4 @@ private def summonAfterTypeMatchExpr[T: Type](using Quotes): Expr[Any] =
 
 trait Foo[T]
 
-given IntFoo[T <: Int]: Foo[T] = ???
+given IntFoo: [T <: Int] => Foo[T] = ???

@@ -54,13 +54,6 @@
    |                    no pattern match extractor named * was found
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg/t5702-neg-bad-and-wild.scala:13:22 ---------------------------------------------------------------
-13 |      case List(1, _*3:) =>  // error // error
-   |                      ^
-   |                  Type ascriptions after patterns other than:
-   |                    * variable pattern, e.g. `case x: String =>`
-   |                    * number literal pattern, e.g. `case 10.5: Double =>`
-   |                  are no longer supported. Remove the type ascription or move it to a separate variable pattern.
 -- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
 22 |    val K(x @ _*) = k
    |                    ^

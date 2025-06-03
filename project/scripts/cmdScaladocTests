@@ -16,11 +16,11 @@ DOTTY_NONBOOTSTRAPPED_VERSION=$(eval $DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND | ta
 DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyVersion)\""
 DOTTY_BOOTSTRAPPED_VERSION=$(eval $DOTTY_BOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
-SOURCE_LINKS_REPOSITORY="lampepfl/dotty"
+SOURCE_LINKS_REPOSITORY="${GITHUB_REPOSITORY:-scala/scala3}"
 SOURCE_LINKS_VERSION="${GITHUB_SHA:-$DOTTY_BOOTSTRAPPED_VERSION}"
 
 "$SBT" "scaladoc/generateTestcasesDocumentation" > "$tmp" 2>&1 || echo "generated testcases project with sbt"
-dist/target/pack/bin/scaladoc \
+dist/target/universal/stage/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
   -source-links:out/bootstrap/scala2-library-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \
@@ -30,16 +30,16 @@ dist/target/pack/bin/scaladoc \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/_assets/images/logo.svg \
-  -social-links:github::https://github.com/lampepfl/dotty,discord::https://discord.com/invite/scala,twitter::https://twitter.com/scala_lang \
+  -social-links:github::https://github.com/scala/scala3,discord::https://discord.com/invite/scala,twitter::https://twitter.com/scala_lang \
   -Ygenerate-inkuire \
   "-skip-by-id:scala.runtime.stdLibPatches" \
   "-skip-by-id:scala.runtime.MatchCase" \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
   "-comment-syntax:scaladoc-testcases/src/example/comment-md=markdown,scaladoc-testcases/src/example/comment-wiki=wiki" \
   -siteroot scaladoc-testcases/docs \
-  -project-footer "Copyright (c) 2002-2023, LAMP/EPFL" \
+  -project-footer "Copyright (c) 2002-$(date +%Y), LAMP/EPFL" \
   -default-template static-site-main \
   -author -groups -revision main -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
   "-quick-links:Learn::https://docs.scala-lang.org/,Install::https://www.scala-lang.org/download/,Playground::https://scastie.scala-lang.org,Find A Library::https://index.scala-lang.org,Community::https://www.scala-lang.org/community/,Blog::https://www.scala-lang.org/blog/," \
   out/bootstrap/scaladoc-testcases/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/classes > "$tmp" 2>&1 || echo "generated testcases project with scripts"
-diff -rq "$OUT1" "scaladoc/output/testcases"
+diff -r "$OUT1" "scaladoc/output/testcases"

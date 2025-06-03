@@ -96,7 +96,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|age = : Int
          |followers = : Int
          |Main test
-         |User test
+         |User(name: String = ..., age: Int = ..., address: String = ..., followers: Int = ...): User
          |""".stripMargin,
       topLines = Option(4)
     )
@@ -130,7 +130,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|age = : Int
          |followers = : Int
          |Main test
-         |User test
+         |User(name: String = ..., age: Int = ..., address: String = ..., followers: Int = ...): User
          |""".stripMargin,
       topLines = Option(4)
     )
@@ -583,7 +583,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `contructor-param` =
+  @Test def `constructor-param` =
     check(
       """|class Foo (xxx: Int)
          |
@@ -595,7 +595,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `contructor-param2` =
+  @Test def `constructor-param2` =
     check(
       """|class Foo ()
          |
@@ -614,8 +614,9 @@ class CompletionArgSuite extends BaseCompletionSuite:
     check(
       s"""|case class Context()
           |
-          |def foo(arg1: (Context) ?=> Int, arg2: Int): String = ???
-          |val m = foo(ar@@)
+          |object Main:
+          |  def foo(arg1: (Context) ?=> Int, arg2: Int): String = ???
+          |  val m = foo(ar@@)
           |""".stripMargin,
       """|arg1 = : (Context) ?=> Int
          |arg2 = : Int
@@ -627,8 +628,9 @@ class CompletionArgSuite extends BaseCompletionSuite:
     check(
       s"""|case class Context()
           |
-          |def foo(arg1: Context ?=> Int, arg2: Context ?=> Int): String = ???
-          |val m = foo(arg1 = ???, a@@)
+          |object Main:
+          |  def foo(arg1: Context ?=> Int, arg2: Context ?=> Int): String = ???
+          |  val m = foo(arg1 = ???, a@@)
           |""".stripMargin,
       """|arg2 = : (Context) ?=> Int
          |""".stripMargin,
@@ -639,8 +641,9 @@ class CompletionArgSuite extends BaseCompletionSuite:
     check(
       s"""|case class Context()
           |
-          |def foo(arg1: (Boolean, Context) ?=> Int ?=> String, arg2: (Boolean, Context) ?=> Int ?=> String): String = ???
-          |val m = foo(arg1 = ???, a@@)
+          |object Main:
+          |  def foo(arg1: (Boolean, Context) ?=> Int ?=> String, arg2: (Boolean, Context) ?=> Int ?=> String): String = ???
+          |  val m = foo(arg1 = ???, a@@)
           |""".stripMargin,
       """|arg2 = : (Boolean, Context) ?=> (Int) ?=> String
          |""".stripMargin,
@@ -786,33 +789,35 @@ class CompletionArgSuite extends BaseCompletionSuite:
 
   @Test def `overloaded-with-param` =
     check(
-      """|def m(idd : String, abb: Int): Int = ???
-         |def m(inn : Int, uuu: Option[Int]): Int = ???
-         |def m(inn : Int, aaa: Int): Int = ???
-         |def k: Int = m(1, a@@)
+      """|object Main:
+         |  def m(idd : String, abb: Int): Int = ???
+         |  def m(inn : Int, uuu: Option[Int]): Int = ???
+         |  def m(inn : Int, aaa: Int): Int = ???
+         |  def k: Int = m(1, a@@)
          |""".stripMargin,
       """|aaa = : Int
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(2),
     )
 
   @Test def `overloaded-with-named-param` =
     check(
-      """|def m(idd : String, abb: Int): Int = ???
-         |def m(inn : Int, uuu: Option[Int]): Int = ???
-         |def m(inn : Int, aaa: Int): Int = ???
-         |def k: Int = m(inn = 1, a@@)
+      """|object Main:
+         |  def m(idd : String, abb: Int): Int = ???
+         |  def m(inn : Int, uuu: Option[Int]): Int = ???
+         |  def m(inn : Int, aaa: Int): Int = ???
+         |  def k: Int = m(inn = 1, a@@)
          |""".stripMargin,
       """|aaa = : Int
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(2),
     )
 
   @Test def `overloaded-generic` =
     check(
-      """|object M:
+      """|object Main:
          |  val g = 3
          |  val l : List[Int] = List(1,2,3)
          |  def m[T](inn : List[T], yy: Int, aaa: Int, abb: Option[Int]): Int = ???
@@ -821,8 +826,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |aaa = g : Int
-         |abb = : Option[Int]
          |abb = : Int
+         |abb = : Option[Int]
          |abb = g : Int
          |""".stripMargin,
       topLines = Some(5),
@@ -899,28 +904,30 @@ class CompletionArgSuite extends BaseCompletionSuite:
 
   @Test def `overloaded-function-param` =
     check(
-      """|def m[T](i: Int)(inn: T => Int, abb: Option[Int]): Int = ???
-         |def m[T](i: Int)(inn: T => Int, aaa: Int): Int = ???
-         |def m[T](i: Int)(inn: T => String, acc: List[Int]): Int = ???
-         |def k = m(1)(inn = identity[Int], a@@)
+      """|object Main:
+         |  def m[T](i: Int)(inn: T => Int, abb: Option[Int]): Int = ???
+         |  def m[T](i: Int)(inn: T => Int, aaa: Int): Int = ???
+         |  def m[T](i: Int)(inn: T => String, acc: List[Int]): Int = ???
+         |  def k = m(1)(inn = identity[Int], a@@)
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
 
   @Test def `overloaded-function-param2` =
     check(
-      """|def m[T](i: Int)(inn: T => Int, abb: Option[Int]): Int = ???
-         |def m[T](i: Int)(inn: T => Int, aaa: Int): Int = ???
-         |def m[T](i: String)(inn: T => Int, acc: List[Int]): Int = ???
-         |def k = m(1)(inn = identity[Int], a@@)
+      """|object Main:
+         |  def m[T](i: Int)(inn: T => Int, abb: Option[Int]): Int = ???
+         |  def m[T](i: Int)(inn: T => Int, aaa: Int): Int = ???
+         |  def m[T](i: String)(inn: T => Int, acc: List[Int]): Int = ???
+         |  def k = m(1)(inn = identity[Int], a@@)
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -938,7 +945,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -956,7 +963,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|abb = : Option[Int]
          |acc = : List[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -978,9 +985,10 @@ class CompletionArgSuite extends BaseCompletionSuite:
 
   @Test def `overloaded-function-param3` =
     check(
-      """|def m[T](inn: Int => T, abb: Option[Int]): Int = ???
-         |def m[T](inn: String => T, aaa: Int): Int = ???
-         |def k = m(identity[Int], a@@)
+      """|object Main:
+         |  def m[T](inn: Int => T, abb: Option[Int]): Int = ???
+         |  def m[T](inn: String => T, aaa: Int): Int = ???
+         |  def k = m(identity[Int], a@@)
          |""".stripMargin,
       """|abb = : Option[Int]
          |""".stripMargin,
@@ -1047,7 +1055,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |    bbb = 123,
          |    aa@@
          |  )
-         |} 
+         |}
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
@@ -1063,7 +1071,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |    ccc = 123,
          |    aa@@
          |  )
-         |} 
+         |}
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
@@ -1079,7 +1087,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |    ccc = 123,
          |    aa@@
          |  )
-         |} 
+         |}
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
@@ -1105,4 +1113,31 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|str = : String
          | """.stripMargin,
       topLines = Some(1),
+    )
+
+  @Test def `comparison` =
+    check(
+      """
+        |object w {
+        |  abstract class T(x: Int) {
+        |    def met(x: Int): Unit = {
+        |      println(x@@)
+        |    }
+        |  }}
+        |""".stripMargin,
+      """x: Int
+        |x = : Any""".stripMargin,
+    )
+
+  @Test def `autofill-arguments-case-class` =
+    check(
+      """
+        |case class A(x: Int, y: Int)
+        |
+        |def main() =
+        |  A(x@@)
+        |""".stripMargin,
+      """x = : Int
+        |x = ???, y = ???""".stripMargin,
+      // this looks strange due to the Autofill message belonging to the description
     )

@@ -147,16 +147,13 @@ We now want to deprecate the `Pluto` case. First we add the `scala.deprecated` a
 Outside the lexical scopes of `enum Planet` or `object Planet`, references to `Planet.Pluto` will produce a deprecation warning, but within those scopes we can still reference it to implement introspection over the deprecated cases:
 
 ```scala
-trait Deprecations[T <: reflect.Enum] {
+trait Deprecations[T <: reflect.Enum]:
   extension (t: T) def isDeprecatedCase: Boolean
-}
 
-object Planet {
-  given Deprecations[Planet] with {
+object Planet:
+  given Deprecations[Planet]:
     extension (p: Planet)
       def isDeprecatedCase = p == Pluto
-  }
-}
 ```
 
 We could imagine that a library may use [type class derivation](../contextual/derivation.md) to automatically provide an instance for `Deprecations`.
@@ -167,7 +164,8 @@ If you want to use the Scala-defined enums as [Java enums](https://docs.oracle.c
 the class `java.lang.Enum`, which is imported by default, as follows:
 
 ```scala
-enum Color extends Enum[Color] { case Red, Green, Blue }
+enum Color extends Enum[Color]:
+  case Red, Green, Blue
 ```
 
 The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.
@@ -180,7 +178,7 @@ scala> Color.Red.compareTo(Color.Green)
 val res15: Int = -1
 ```
 
-For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
+For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/scala/scala3/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
 
 ## Implementation
 
@@ -218,5 +216,5 @@ val Red: Color = $new(0, "Red")
 
 ## Reference
 
-For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970) and
-[PR #4003](https://github.com/lampepfl/dotty/pull/4003).
+For more information, see [Issue #1970](https://github.com/scala/scala3/issues/1970) and
+[PR #4003](https://github.com/scala/scala3/pull/4003).

@@ -23,15 +23,11 @@ trait SchemaDerivation {
     inline summonInline[Mirror.Of[A]] match {
       case m: Mirror.SumOf[A] =>
         lazy val subTypes = recurse[m.MirroredElemTypes]
-        new Schema[A] {
-          def build: A = ???
-        }
+        ???
 
       case m: Mirror.ProductOf[A] =>
         lazy val fields = recurse[m.MirroredElemTypes]
-        new Schema[A] {
-          def build: A = ???
-        }
+        ???
     }
 
   inline given gen[A]: Schema[A] = derived

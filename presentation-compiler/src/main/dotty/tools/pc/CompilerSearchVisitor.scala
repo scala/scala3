@@ -4,13 +4,15 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 import scala.meta.internal.metals.Report
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.*
 import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.pc.utils.InteractiveEnrichments.companion
 
 class CompilerSearchVisitor(
     visitSymbol: Symbol => Boolean
@@ -19,15 +21,21 @@ class CompilerSearchVisitor(
 
   val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName().nn).nn
 
+  private def isAccessibleImplicitClass(sym: Symbol) =
+    val owner = sym.maybeOwner
+    owner != NoSymbol && owner.isClass &&
+    owner.is(Flags.Implicit) &&
+    owner.isStatic && owner.isPublic
+
   private def isAccessible(sym: Symbol): Boolean = try
-    sym != NoSymbol && sym.isPublic && sym.isStatic
+    (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
   catch
     case err: AssertionError =>
       logger.log(Level.WARNING, err.getMessage())
       false
     case NonFatal(e) =>
       reports.incognito.create(
-        Report(
+        () => Report(
           "is_public",
           s"""Symbol: $sym""".stripMargin,
           e
@@ -51,6 +59,7 @@ class CompilerSearchVisitor(
               .filter(denot => denot.exists)
               .map(_.symbol)
               .filter(isAccessible)
+              .filter(!_.is(Flags.Given))
           }
           loop(next, tl)
         case Nil => owners
@@ -83,11 +92,12 @@ class CompilerSearchVisitor(
       range: org.eclipse.lsp4j.Range
   ): Int =
     val gsym = SemanticdbSymbols.inverseSemanticdbSymbol(symbol).headOption
-    gsym
-      .filter(isAccessible)
-      .map(visitSymbol)
-      .map(_ => 1)
-      .getOrElse(0)
+    val matching = for
+      sym0 <- gsym.toList
+      sym <- if sym0.companion.is(Flags.Synthetic) then List(sym0, sym0.companion) else List(sym0)
+      if isAccessible(sym)
+    yield visitSymbol(sym)
+    matching.size
 
   def shouldVisitPackage(pkg: String): Boolean =
     isAccessible(requiredPackage(normalizePackage(pkg)))
@@ -95,6 +105,6 @@ class CompilerSearchVisitor(
   override def isCancelled: Boolean = false
 
   private def normalizePackage(pkg: String): String =
-    pkg.replace("/", ".").nn.stripSuffix(".")
+    pkg.replace("/", ".").stripSuffix(".")
 
 end CompilerSearchVisitor

@@ -1,6 +1,7 @@
--- Error: tests/neg-custom-args/sourcepath2/hi/A.scala:3:6 -------------------------------------------------------------
-3 |class Hello { // error
+-- Warning: tests/neg-custom-args/sourcepath2/hi/A.scala:3:6 -----------------------------------------------------------
+3 |class Hello { // warn
   |      ^
   |      class Hello is in the wrong directory.
   |      It was declared to be in package <empty>
   |      But it is found in directory     hi
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

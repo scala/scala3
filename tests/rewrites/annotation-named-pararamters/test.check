@@ -1,0 +1,6 @@
+import java.util.concurrent.TimeUnit
+@MyAnnotation() class Test1
+@MyAnnotation(D = TimeUnit.DAYS) class Test2
+@MyAnnotation(D = TimeUnit.DAYS, C = TimeUnit.DAYS) class Test3
+@MyAnnotation(D = TimeUnit.DAYS, C = TimeUnit.DAYS, A = "foo") class Test4
+@MyAnnotation(D = TimeUnit.DAYS, C = TimeUnit.DAYS, A = "foo", B = "bar") class Test5

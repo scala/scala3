@@ -90,8 +90,8 @@ class CompletionCancelSuite extends BaseCompletionSuite:
         |  val x = asser@@
         |}
       """.stripMargin,
-      """|assert(assertion: Boolean): Unit
-         |assert(assertion: Boolean, message: => Any): Unit
+      """|assert(inline assertion: Boolean): Unit
+         |assert(inline assertion: Boolean, inline message: => Any): Unit
          |""".stripMargin
     )
 

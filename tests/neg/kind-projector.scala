@@ -1,4 +1,4 @@
-//> using options -Ykind-projector
+//> using options -Xkind-projector
 
 package kind_projector_neg
 

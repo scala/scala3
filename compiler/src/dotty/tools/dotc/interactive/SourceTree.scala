@@ -33,7 +33,7 @@ case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
         }
         val position = {
           // FIXME: This is incorrect in some cases, like with backquoted identifiers,
-          //        see https://github.com/lampepfl/dotty/pull/1634#issuecomment-257079436
+          //        see https://github.com/scala/scala3/pull/1634#issuecomment-257079436
           val (start, end) =
             if (!treeSpan.isSynthetic)
               (treeSpan.point, treeSpan.point + nameLength)
@@ -42,7 +42,12 @@ case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
               (treeSpan.end - nameLength, treeSpan.end)
           Span(start, end, start)
         }
-        source.atSpan(position)
+        // Don't widen the span, only narrow.
+        // E.g. The star in a wildcard export is 1 character,
+        // and that is the span of the type alias that results from it
+        // but the name may very well be larger, which we don't want.
+        val span1 = if treeSpan.contains(position) then position else treeSpan
+        source.atSpan(span1)
       }
     case _ =>
       NoSourcePosition

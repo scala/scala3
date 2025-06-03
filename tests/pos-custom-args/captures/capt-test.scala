@@ -36,3 +36,4 @@ def test(c: Cap, d: Cap) =
 
   val a4 = zs.map(identity)
   val a4c: LIST[Cap ->{d, y} Unit] = a4
+  val a5: LIST[Cap ->{d, y} Unit] = zs.map(identity)

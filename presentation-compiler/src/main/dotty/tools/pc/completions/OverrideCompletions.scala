@@ -4,7 +4,7 @@ package completions
 import java.util as ju
 
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
@@ -29,7 +29,7 @@ import dotty.tools.pc.AutoImports.AutoImport
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
 
@@ -95,7 +95,7 @@ object OverrideCompletions:
     // not using `td.tpe.abstractTermMembers` because those members includes
     // the abstract members in `td.tpe`. For example, when we type `def foo@@`,
     // `td.tpe.abstractTermMembers` contains `method foo: <error>` and it overrides the parent `foo` method.
-    val overridables = td.tpe.parents
+    val overridables = td.typeOpt.parents
       .flatMap { parent =>
         parent.membersBasedOnFlags(
           flags,
@@ -191,7 +191,7 @@ object OverrideCompletions:
               template :: path
             case path => path
 
-        val indexedContext = IndexedContext(
+        val indexedContext = IndexedContext(pos)(using
           Interactive.contextOfPath(path)(using newctx)
         )
         import indexedContext.ctx
@@ -279,7 +279,14 @@ object OverrideCompletions:
         else ""
       (indent, indent, lastIndent)
     end calcIndent
-    val abstractMembers = defn.tpe.abstractTermMembers.map(_.symbol)
+    val abstractMembers =
+      defn.tpe.abstractTermMembers.map(_.symbol).groupBy(_.owner).map {
+        case (owner, members) => (owner, members.sortWith{ (sym1, sym2) =>
+          if(sym1.sourcePos.exists && sym2.sourcePos.exists)
+            sym1.sourcePos.start <= sym2.sourcePos.start
+          else !sym2.sourcePos.exists
+        })
+      }.toSeq.sortBy(_._1.name.decoded).flatMap(_._2)
 
     val caseClassOwners = Set("Product", "Equals")
     val overridables =
@@ -307,7 +314,7 @@ object OverrideCompletions:
     if edits.isEmpty then Nil
     else
       // A list of declarations in the class/object to implement
-      val decls = defn.tpe.decls.toList
+      val decls = defn.typeOpt.decls.toList
         .filter(sym =>
           !sym.isPrimaryConstructor &&
             !sym.isTypeParam &&
@@ -418,7 +425,7 @@ object OverrideCompletions:
       // `iterator` method in `new Iterable[Int] { def iterato@@ }`
       // should be completed as `def iterator: Iterator[Int]` instead of `Iterator[A]`.
       val seenFrom =
-        val memInfo = defn.tpe.memberInfo(sym.symbol)
+        val memInfo = defn.typeOpt.memberInfo(sym.symbol)
         if memInfo.isErroneous || memInfo.finalResultType.isAny then
           sym.info.widenTermRefExpr
         else memInfo
@@ -506,6 +513,8 @@ object OverrideCompletions:
     defn match
       case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
+      case TypeDef(_, temp : Template) =>
+        temp.parentsOrDerived.lastOption.map(_.span.end).filter(text.charAt(_) == ':')
       case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =
@@ -521,8 +530,11 @@ object OverrideCompletions:
   object OverrideExtractor:
     def unapply(path: List[Tree])(using Context) =
       path match
-        // class FooImpl extends Foo:
-        //   def x|
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
+        //   def h|
         case (dd: (DefDef | ValDef)) :: (t: Template) :: (td: TypeDef) :: _
             if t.parents.nonEmpty =>
           val completing =
@@ -538,12 +550,13 @@ object OverrideCompletions:
             )
           )
 
-        // class FooImpl extends Foo:
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
         //   ov|
         case (ident: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && "override".startsWith(
-              ident.name.show.replace(Cursor.value, "")
-            ) =>
+            if t.parents.nonEmpty && "override".startsWith(ident.name.show.replace(Cursor.value, "")) =>
           Some(
             (
               td,
@@ -554,15 +567,13 @@ object OverrideCompletions:
             )
           )
 
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
         //    def@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && "def".startsWith(
-              id.name.decoded.replace(
-                Cursor.value,
-                "",
-              )
-            ) =>
+            if t.parents.nonEmpty && "def".startsWith(id.name.decoded.replace(Cursor.value, "")) =>
           Some(
             (
               td,
@@ -572,8 +583,12 @@ object OverrideCompletions:
               None,
             )
           )
+
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
-        //    he@@
+        //   he@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
             if t.parents.nonEmpty =>
           Some(
@@ -583,6 +598,23 @@ object OverrideCompletions:
               id.sourcePos.start,
               false,
               Some(id.name.show),
+            )
+          )
+
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
+        //   hello@ // this transforms into this.hello, thus is a Select
+        case (sel @ Select(th: This, name)) :: (t: Template) :: (td: TypeDef) :: _
+            if t.parents.nonEmpty && th.qual.name == td.name =>
+          Some(
+            (
+              td,
+              None,
+              sel.sourcePos.start,
+              false,
+              Some(name.show),
             )
           )
 

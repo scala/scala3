@@ -1,17 +1,19 @@
 package dotty.tools.dotc
 package staging
 
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.staging.StagingLevel.*
-import dotty.tools.dotc.staging.QuoteTypeTags.*
+import reporting.*
 
-import dotty.tools.dotc.typer.Implicits.SearchFailureType
-import dotty.tools.dotc.util.SrcPos
+import core.Contexts.*
+import core.Decorators.*
+import core.Flags.*
+import core.StdNames.*
+import core.Symbols.*
+import core.Types.*
+import StagingLevel.*
+import QuoteTypeTags.*
+
+import typer.Implicits.SearchFailureType
+import util.SrcPos
 
 class HealType(pos: SrcPos)(using Context) extends TypeMap {
 
@@ -35,7 +37,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
       case tp: TermRef =>
         val inconsistentRoot = levelInconsistentRootOfPath(tp)
         if inconsistentRoot.exists then levelError(inconsistentRoot, tp, pos)
-        else tp
+        else mapOver(tp)
       case tp: AnnotatedType =>
         derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
       case _ =>
@@ -47,7 +49,10 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
         checkNotWildcardSplice(tp)
         if level == 0 then tp else getTagRef(prefix)
       case _: TermRef | _: ThisType | NoPrefix =>
-        if levelInconsistentRootOfPath(tp).exists then
+        val inconsistentRoot = levelInconsistentRootOfPath(tp)
+        if inconsistentRoot.isClass && inconsistentRoot.isLocal then
+          levelError(inconsistentRoot, tp, pos)
+        else if inconsistentRoot.exists then
           tryHeal(tp)
         else
           tp
@@ -95,9 +100,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
             pos)
         tp
       case _ =>
-        report.error(em"""Reference to $tp within quotes requires a given $reqType in scope.
-                      |
-                      |""", pos)
+        report.error(QuotedTypeMissing(tp), pos)
         tp
   }
 

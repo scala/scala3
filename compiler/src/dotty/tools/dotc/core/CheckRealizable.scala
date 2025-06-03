@@ -116,15 +116,7 @@ class CheckRealizable(using Context) {
     case _: SingletonType | NoPrefix =>
       Realizable
     case tp =>
-      def isConcrete(tp: Type): Boolean = tp.dealias match {
-        case tp: TypeRef => tp.symbol.isClass
-        case tp: TypeParamRef => false
-        case tp: TypeProxy => isConcrete(tp.underlying)
-        case tp: AndType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
-        case tp: OrType  => isConcrete(tp.tp1) && isConcrete(tp.tp2)
-        case _ => false
-      }
-      if (!isConcrete(tp)) NotConcrete
+      if !MatchTypes.isConcrete(tp) then NotConcrete
       else boundsRealizability(tp).andAlso(memberRealizability(tp))
   }
 
@@ -139,8 +131,8 @@ class CheckRealizable(using Context) {
   /** `Realizable` if `tp` has good bounds, a `HasProblem...` instance
    *  pointing to a bad bounds member otherwise. "Has good bounds" means:
    *
-   *    - all type members have good bounds (except for opaque helpers)
-   *    - all refinements of the underlying type have good bounds (except for opaque companions)
+   *    - all type members have good bounds
+   *    - all refinements of the underlying type have good bounds
    *    - all base types are class types, and if their arguments are wildcards
    *      they have good bounds.
    *    - base types do not appear in multiple instances with different arguments.

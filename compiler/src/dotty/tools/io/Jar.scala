@@ -50,7 +50,7 @@ class Jar(file: File) {
   def mainClass: Option[String]     = manifest.map(_(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
   def classPathString: Option[String] =
-    for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH)) yield cp
+    for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH) if !cp.trim().isEmpty()) yield cp
   def classPathElements: List[String] = classPathString match {
     case Some(s)  => s.split("\\s+").toList
     case _        => Nil
@@ -165,7 +165,7 @@ object Jar {
 
   def isJarOrZip(f: Path): Boolean = isJarOrZip(f, true)
   def isJarOrZip(f: Path, examineFile: Boolean): Boolean =
-    f.hasExtension("zip", "jar") || (examineFile && magicNumberIsZip(f))
+    f.ext.isJarOrZip || (examineFile && magicNumberIsZip(f))
 
   def create(file: File, sourceDir: Directory, mainClass: String): Unit =  {
     val writer = new Jar(file).jarWriter(Name.MAIN_CLASS -> mainClass)

@@ -139,14 +139,15 @@ class TyperState() {
   def uncommittedAncestor: TyperState =
     if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
 
-  /** Commit typer state so that its information is copied into current typer state
+  /** Commit `this` typer state by copying information into the current typer state,
+   *  where "current" means contextual, so meaning `ctx.typerState`.
    *  In addition (1) the owning state of undetermined or temporarily instantiated
    *  type variables changes from this typer state to the current one. (2) Variables
    *  that were temporarily instantiated in the current typer state are permanently
    *  instantiated instead.
    *
    *  A note on merging: An interesting test case is isApplicableSafe.scala. It turns out that this
-   *  requires a context merge using the new `&' operator. Sequence of actions:
+   *  requires a context merge using the new `&` operator. Sequence of actions:
    *  1) Typecheck argument in typerstate 1.
    *  2) Cache argument.
    *  3) Evolve same typer state (to typecheck other arguments, say)
@@ -231,7 +232,7 @@ class TyperState() {
           val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
           if this.isCommittable then
             tvars.foreach(tvar =>
-              if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+              if !tvar.isPermanentlyInstantiated && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
           typeComparer.addToConstraint(tl, tvars)
         }) &&
         // Integrate the additional constraints on type variables from `other`
@@ -287,10 +288,10 @@ class TyperState() {
       for tvar <- ownedVars do
         val tvarState = tvar.owningState.nn.get
         assert(tvarState eqn this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
-        assert(!tvar.inst.exists, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
+        assert(!tvar.isPermanentlyInstantiated, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
         val inst = constraint.instType(tvar)
         if inst.exists then
-          tvar.setInst(inst)
+          tvar.setPermanentInst(inst)
           val tl = tvar.origin.binder
           if constraint.isRemovable(tl) then toCollect += tl
       for tl <- toCollect do

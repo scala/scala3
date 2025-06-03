@@ -112,7 +112,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  }
         |}
         |""".stripMargin,
-      // https://github.com/lampepfl/dotty/issues/8835
+      // https://github.com/scala/scala3/issues/8835
       """|object num: a.Xtension
          |""".stripMargin.hover
     )
@@ -269,9 +269,9 @@ class HoverTermSuite extends BaseHoverSuite:
         |  } yield x
         |}
         |""".stripMargin,
-      """|Option[Int]
-         |override def headOption: Option[A]
-         |""".stripMargin.hover
+      """|```scala
+         |override def headOption: Option[Int]
+         |```""".stripMargin.hover
     )
 
   @Test def `object` =
@@ -411,4 +411,391 @@ class HoverTermSuite extends BaseHoverSuite:
          |}
          |""".stripMargin,
       "def this(): tailrec".hover
+    )
+
+  @Test def `i5630` =
+    check(
+      """class MyIntOut(val value: Int)
+        |object MyIntOut:
+        |  extension (i: MyIntOut) def uneven = i.value % 2 == 1
+        |
+        |object Test:
+        |  val a = MyIntOut(1).un@@even
+        |""".stripMargin,
+      """extension (i: MyIntOut) def uneven: Boolean
+        |""".stripMargin.hover
+    )
+
+  @Test def `i5921` =
+    check(
+      """object Logarithms:
+        |  trait Logarithm
+        |  extension [K](vmap: Logarithm)
+        |    def multiply(k: Logarithm): Logarithm = ???
+        |
+        |object Test:
+        |  val in: Logarithms.Logarithm = ???
+        |  in.multi@@ply(in)
+        |""".stripMargin,
+      "extension [K](vmap: Logarithm) def multiply(k: Logarithm): Logarithm".hover
+    )
+
+  @Test def `i5976` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def noTypeArg: A
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.noTyp@@eArg.typeArg[Int])
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |Int
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def noTypeArg: A
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5976-1` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def noTypeArg: A
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.type@@Arg[Some[Int]].value.noTypeArg.typeArg[Int])
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |Some[Int]
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def typeArg[B <: A]: B
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.infer@@redTypeArg("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977-1` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.infer@@redTypeArg[String]("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977-2` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.infer@@redTypeArg("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977-3` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.infer@@redTypeArg[String]("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i20560`=
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlDriver",
+      """```scala
+        |val res: Int
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i20560-2`=
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlInexisting",
+      "", // crashes in the Macro; no type info
+    )
+
+  @Test def `import-rename` =
+    check(
+      """
+        |import scala.collection.{AbstractMap => AB}
+        |import scala.collection.{Set => S}
+        |
+        |object Main {
+        |  def test(): AB[Int, String] = ???
+        |  <<val t@@t = test()>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |type AB = AbstractMap
+        |```
+        |
+        |```scala
+        |val tt: AB[Int, String]
+        |```""".stripMargin,
+    )
+
+  @Test def `import-rename2` =
+    check(
+      """
+        |import scala.collection.{AbstractMap => AB}
+        |import scala.collection.{Set => S}
+        |
+        |object Main {
+        |  <<def te@@st(d: S[Int], f: S[Char]): AB[Int, String] = ???>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |type S = Set
+        |type AB = AbstractMap
+        |```
+        |
+        |```scala
+        |def test(d: S[Int], f: S[Char]): AB[Int, String]
+        |```""".stripMargin,
+  )
+
+  @Test def `import-no-rename` =
+    check(
+      """
+        |import scala.collection
+        |
+        |object O {
+        |  <<val ab@@c = collection.Map(1 -> 2)>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |val abc: scala.collection.Map[Int, Int]
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `dealias-type-members-in-structural-types1`: Unit =
+    check(
+      """object Obj {
+        |  trait A extends Sup { self =>
+        |    type T
+        |    def member : T
+        |  }
+        |  val x: A { type T = Int} = ???
+        |
+        |  <<x.mem@@ber>>
+        |
+        |}""".stripMargin,
+      """def member: Int""".stripMargin.hover
+  )
+
+  @Test def `dealias-type-members-in-structural-types2`: Unit =
+    check(
+      """object Obj:
+        |  trait A extends Sup { self =>
+        |    type T
+        |    def fun(body: A { type T = self.T} => Unit) = ()
+        |  }
+        |  val x: A { type T = Int} = ???
+        |
+        |  x.fun: <<y@@y>> =>
+        |    ()
+        |""".stripMargin,
+      """yy: A{type T = Int}""".stripMargin.hover
+  )
+
+  @Test def `right-assoc-extension`: Unit =
+    check(
+      """
+        |case class Wrap[+T](x: T)
+        |
+        |extension [T](a: T)
+        |  def <<*@@:>>[U <: Tuple](b: Wrap[U]): Wrap[T *: U] = Wrap(a *: b.x)
+        |""".stripMargin,
+      "extension [T](a: T) def *:[U <: Tuple](b: Wrap[U]): Wrap[T *: U]".hover
+    )
+
+  @Test def `dont-ignore-???-in-path`: Unit =
+    check(
+      """object Obj:
+        |  val x = ?@@??
+        |""".stripMargin,
+      """def ???: Nothing""".stripMargin.hover
+  )
+
+  @Test def `named-tuples`: Unit =
+    check(
+      """
+        |val foo = (name = "Bob", age = 42, height = 1.9d)
+        |val foo_name = foo.na@@me
+        |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuples2`: Unit =
+    check(
+      """|import NamedTuple.*
+         |
+         |class NamedTupleSelectable extends Selectable {
+         |  type Fields <: AnyNamedTuple
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person = new NamedTupleSelectable {
+         |  type Fields = (name: String, city: String)
+         |}
+         |
+         |val person_name = person.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )
+
+
+  @Test def `named-tuples3`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est
+         |""".stripMargin,
+      "def test: (path : String, num : Int, line : Int)".hover
+    )
+
+
+  @Test def `named-tuples4`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hel@@lo ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      "def hello: (path : String, num : Int)".hover
+    )
+
+  @Test def `named-tuples5`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test(x: (path: String, num: Int)) =
+         |  x ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est(hello)
+         |""".stripMargin,
+      "def test(x: (path : String, num : Int)): (path : String, num : Int, line : Int)".hover
+    )
+
+  @Test def `value-of`: Unit =
+    check(
+      """|enum Foo(val key: String) {
+         |  case Bar extends Foo("b")
+         |  case Baz extends Foo("z")
+         |}
+         |
+         |object Foo {
+         |  def parse(key: String) = Foo.va@@lueOf("b")
+         |
+         |""".stripMargin,
+         "def valueOf($name: String): Foo".hover
     )

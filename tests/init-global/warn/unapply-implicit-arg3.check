@@ -1,0 +1,14 @@
+-- Warning: tests/init-global/warn/unapply-implicit-arg3.scala:4:25 ----------------------------------------------------
+4 |    def m2(i: Int) = i + i2 // warn
+  |                         ^^
+  |                         Access uninitialized field value i2. Calling trace:
+  |                         ├── object Bar {	[ unapply-implicit-arg3.scala:1 ]
+  |                         │   ^
+  |                         ├── case Bar(i) => i	[ unapply-implicit-arg3.scala:12 ]
+  |                         │        ^^^^^^
+  |                         ├── def unapply(using f1: Foo)(i: Int): Option[Int] =	[ unapply-implicit-arg3.scala:6 ]
+  |                         │   ^
+  |                         ├── if i == 0 then Some(f1.m1(i)) else Some(f1.m2(i))	[ unapply-implicit-arg3.scala:7 ]
+  |                         │                                           ^^^^^^^^
+  |                         └── def m2(i: Int) = i + i2 // warn	[ unapply-implicit-arg3.scala:4 ]
+  |                                                  ^^

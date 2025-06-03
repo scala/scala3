@@ -18,10 +18,12 @@ object NIL extends LIST[Nothing]:
 def map[A, B](f: A => B)(xs: LIST[A]): LIST[B] =
   xs.map(f)
 
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 def test(c: Cap, d: Cap, e: Cap) =
+
   def f(x: Cap): Unit = if c == x then ()
+
   def g(x: Cap): Unit = if d == x then ()
   val y = f
   val ys = CONS(y, NIL)
@@ -30,7 +32,7 @@ def test(c: Cap, d: Cap, e: Cap) =
     CONS(z, ys)
   val zsc: LIST[Cap ->{d, y} Unit] = zs
   val z1 = zs.head
-  val z1c: Cap^ ->{y, d} Unit = z1
+  val z1c: Cap ->{y, d} Unit = z1
   val ys1 = zs.tail
   val y1 = ys1.head
 
@@ -44,6 +46,16 @@ def test(c: Cap, d: Cap, e: Cap) =
       (f: A => B) => (xs: LIST[A]) => xs.map(f)
 
   def m2c: [A, B] -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m2
+
+  def m3 = [A, B] => () =>
+      (f: A => B) => (xs: LIST[A]) => xs.map(f)
+
+  def m3c: [A, B] -> () -> (f: A => B) -> LIST[A] ->{f} LIST[B] = m3
+
+  def m4 = [A, B] =>
+      (f: A => B) => () => (xs: LIST[A]) => xs.map(f)
+
+  def m4c: [A, B] -> (f: A => B) -> () ->{f} LIST[A] ->{f} LIST[B] = m4
 
   def eff[A](x: A) = if x == e then x else x
 
@@ -87,4 +99,3 @@ def test(c: Cap, d: Cap, e: Cap) =
   val c2c: LIST[Cap ->{d, y} Unit]^{e} = c2
   val c3 = zs.map(eff2[Cap ->{d, y} Unit])
   val c3c: LIST[Cap ->{d, y} Unit]^{e} = c3
-

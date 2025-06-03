@@ -1,3 +1,5 @@
+//> using options -source:3.3
+
 import scala.util.Try
 
 trait RDF:

@@ -1,5 +1,6 @@
 
--- Error: tests/neg/i9408b/Test_2.scala:8:20 ---------------------------------------------------------------------------
-8 |  val length: Int = "abc" // error
+-- Migration Warning: tests/neg/i9408b/Test_2.scala:8:20 ---------------------------------------------------------------
+8 |  val length: Int = "abc" // warn
   |                    ^^^^^
   |The conversion (test.conversions.Conv.implicitLength : String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

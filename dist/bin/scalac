@@ -26,7 +26,7 @@ if [ -z "${PROG_HOME-}" ] ; then
   cd "$saveddir"
 fi
 
-source "$PROG_HOME/bin/common"
+source "$PROG_HOME/libexec/common"
 
 [ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
 
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
       # pass all remaining arguments to scala, e.g. to avoid interpreting them here as -D or -J
       while [[ $# -gt 0 ]]; do addScala "$1" && shift ; done
       ;;
-    # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+    # Optimize for short-running applications, see https://github.com/scala/scala3/issues/222
     -Oshort)
       addScala "-Oshort" && \
       addJava "-XX:+TieredCompilation" && addJava "-XX:TieredStopAtLevel=1" && shift ;;
@@ -86,6 +86,7 @@ eval "\"$JAVACMD\"" \
    ${JAVA_OPTS:-$default_java_opts} \
    "${java_args[@]}" \
    "-classpath \"$jvm_cp_args\"" \
+   "-Dscala.expandjavacp=true" \
    "-Dscala.usejavacp=true" \
    "-Dscala.home=\"$PROG_HOME\"" \
    "dotty.tools.MainGenericCompiler" \

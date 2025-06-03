@@ -4,6 +4,7 @@ package transform
 
 import core.*
 import Contexts.*, Symbols.*, Types.*, Annotations.*, Constants.*, Phases.*
+import Decorators.*
 import StdNames.nme
 import ast.untpd
 import ast.tpd.*
@@ -100,7 +101,7 @@ object ContextFunctionResults:
   def contextFunctionResultTypeAfter(meth: Symbol, depth: Int)(using Context) =
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
-      else tp match
+      else tp.dealias match
         case defn.FunctionTypeOfMethod(mt) => recur(mt.resType, n - 1)
     recur(meth.info.finalResultType, depth)
 
@@ -115,10 +116,8 @@ object ContextFunctionResults:
     else tree match
       case Select(qual, name) =>
         if name == nme.apply then
-          qual.tpe.nn.dealias match
+          qual.tpe.nn.widenDealias match
             case defn.FunctionTypeOfMethod(mt) if mt.isContextualMethod =>
-              integrateSelect(qual, n + 1)
-            case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
               integrateSelect(qual, n + 1)
             case _ =>
               n > 0 && contextResultCount(tree.symbol) >= n

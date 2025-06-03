@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 class Params{
     def bar[T](x: T)[T]: String = ??? // error

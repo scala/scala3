@@ -4,7 +4,10 @@ package core
 
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
+import ContextOps.enter
 import TypeApplications.EtaExpansion
+import collection.mutable
+import config.Printers.typr
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -15,8 +18,42 @@ object NamerOps:
    */
   def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
     paramss match
-      case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
-      case _ => ctor.owner.typeRef
+      case TypeSymbols(tparams) :: rest =>
+        addParamRefinements(ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef)), rest)
+      case _ =>
+        addParamRefinements(ctor.owner.typeRef, paramss)
+
+  /** Given a method with tracked term-parameters `p1, ..., pn`, and result type `R`, add the
+   *  refinements R { p1 = p1' } ... { pn = pn' }, where pi' is the TermParamRef
+   *  of the parameter and pi is its name. This matters only under experimental.modularity,
+   *  since without it there are no tracked parameters. Parameter refinements are added for
+   *  constructors and given companion methods.
+   */
+  def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
+    paramss.flatten.foldLeft(resType): (rt, param) =>
+      if param.is(Tracked) then RefinedType(rt, param.name, param.termRef)
+      else rt
+
+  /** Split dependent class refinements off parent type. Add them to `refinements`,
+   *  unless it is null.
+   */
+  extension (tp: Type)
+    def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null)(using Context): Type =
+      tp match
+        case RefinedType(tp1, rname, rinfo) =>
+          try tp1.separateRefinements(cls, refinements)
+          finally
+            if refinements != null then
+              val rinfo1 = rinfo.widenSkolems
+              refinements(rname) = refinements.get(rname) match
+                case Some(tp) => tp & rinfo1
+                case None => rinfo1
+        case tp @ AnnotatedType(tp1, ann) =>
+          tp.derivedAnnotatedType(tp1.separateRefinements(cls, refinements), ann)
+        case tp: RecType =>
+          tp.parent.substRecThis(tp, cls.thisType).separateRefinements(cls, refinements)
+        case tp =>
+          tp
 
   /** If isConstructor, make sure it has at least one non-implicit parameter list
    *  This is done by adding a () in front of a leading old style implicit parameter,
@@ -110,9 +147,11 @@ object NamerOps:
    */
   def addConstructorApplies(scope: MutableScope, cls: ClassSymbol, modcls: ClassSymbol)(using Context): scope.type =
     def proxy(constr: Symbol): Symbol =
+      var flags = ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags)
+      if cls.is(Protected) && !modcls.is(Protected) then flags |= Protected
       newSymbol(
         modcls, nme.apply,
-        ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
+        flags,
         ApplyProxyCompleter(constr),
         cls.privateWithin,
         constr.coord)
@@ -136,12 +175,15 @@ object NamerOps:
 
   /** A new symbol that is the constructor companion for class `cls` */
   def classConstructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
+    var flags = ConstructorCompanionFlags
+    if cls.is(Protected) then flags |= Protected
     val companion = newModuleSymbol(
         cls.owner, cls.name.toTermName,
-        ConstructorCompanionFlags, ConstructorCompanionFlags,
+        flags, flags,
         constructorCompanionCompleter(cls),
-        coord = cls.coord,
-        compUnitInfo = cls.compUnitInfo)
+        cls.privateWithin,
+        cls.coord,
+        cls.compUnitInfo)
     companion.moduleClass.registerCompanion(cls)
     cls.registerCompanion(companion.moduleClass)
     companion
@@ -222,4 +264,55 @@ object NamerOps:
       rhsCtx.gadtState.addBound(psym, tr, isUpper = true)
     }
 
+  /** Create a context-bound companion for type symbol `tsym`, which has a context
+   *  bound that defines a set of witnesses with names `witnessNames`.
+   *
+   *  @param params  If `tsym` is a type parameter, a list of parameter symbols
+   *                 that includes all witnesses, otherwise the empty list.
+   *
+   *  The context-bound companion has as name the name of `tsym` translated to
+   *  a term name. We create a synthetic val of the form
+   *
+   *    val A: `<context-bound-companion>`[witnessRef1 | ... | witnessRefN]
+   *
+   *  where
+   *
+   *      <context-bound-companion> is the CBCompanion type created in Definitions
+   *      withnessRefK is a reference to the K'th witness.
+   *
+   *  The companion has the same access flags as the original type.
+   */
+  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: List[Symbol])(using Context): Unit =
+    val prefix = ctx.owner.thisType
+    val companionName = tsym.name.toTermName
+    val witnessRefs =
+      if params.nonEmpty then
+        witnessNames.map: witnessName =>
+            prefix.select(params.find(_.name == witnessName).get)
+      else
+        witnessNames.map(TermRef(prefix, _))
+    val cbtype = defn.CBCompanion.typeRef.appliedTo:
+      witnessRefs.reduce[Type](OrType(_, _, soft = false))
+    val cbc = newSymbol(
+        ctx.owner, companionName,
+        (tsym.flagsUNSAFE & (AccessFlags)).toTermFlags | Synthetic,
+        cbtype)
+    typr.println(s"context bound companion created $cbc for $witnessNames in ${ctx.owner}")
+    ctx.enter(cbc)
+  end addContextBoundCompanionFor
+
+  /** Add context bound companions to all context-bound types declared in
+   *  this class. This assumes that these types already have their
+   *  WitnessNames annotation set even before they are completed. This is
+   *  the case for unpickling but currently not for Namer. So the method
+   *  is only called during unpickling.
+   */
+  def addContextBoundCompanions(cls: ClassSymbol)(using Context): Unit =
+    for sym <- cls.info.decls do
+      if sym.isType && !sym.isClass then
+        for ann <- sym.annotationsUNSAFE do
+          if ann.symbol == defn.WitnessNamesAnnot then
+            ann.tree match
+              case ast.tpd.WitnessNamesAnnot(witnessNames) =>
+                addContextBoundCompanionFor(sym, witnessNames, Nil)
 end NamerOps

@@ -4,11 +4,11 @@ trait Foo[F[_]]:
 
 def test1 =
   // Simplified from https://github.com/typelevel/spotted-leopards/issues/2
-  given listFoo: Foo[List] with
+  given listFoo: Foo[List]:
     extension [A](fa: List[A])
       def foo[B](fb: List[B]): Int = 1
 
-  given functionFoo[T]: Foo[[A] =>> T => A] with
+  given functionFoo: [T] => Foo[[A] =>> T => A]:
     extension [A](fa: T => A)
       def foo[B](fb: T => B): Int = 2
 
@@ -23,9 +23,9 @@ def test2 =
   trait Bar2:
     extension (x: Int => 1) def bar(y: Int): Int
 
-  given bla1[T]: Bar1[T] with
+  given bla1: [T] => Bar1[T]:
     extension (x: T => T) def bar(y: T): Int = 1
-  given bla2: Bar2 with
+  given bla2: Bar2:
     extension (x: Int => 1) def bar(y: Int): Int = 2
 
   val f: Int => 1 = x => 1

@@ -1,11 +1,10 @@
 import java.io.*
-import annotation.capability
 
 object Test1:
 
-  def usingLogFile[T](op: (local: caps.Cap) ?-> FileOutputStream => T): T =
+  def usingLogFile[T](op: (local: caps.Capability) ?-> FileOutputStream => T): T =
     val logFile = FileOutputStream("log")
-    val result = op(logFile)
+    val result = op(using caps.cap)(logFile)
     logFile.close()
     result
 
@@ -49,6 +48,6 @@ object Test3:
     op(logger)
 
   def test =
-    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
-      usingLogger(_, l => () => l.log("test")))
+    val later = usingFile("logfile", // now ok
+      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
     later()

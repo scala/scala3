@@ -1,9 +1,9 @@
 import language.experimental.captureChecking
 import annotation.{capability, constructorOnly}
 
-@capability class IO
+class IO extends caps.Capability
 class Blah
-class Pkg(using @constructorOnly io: IO):
+class Pkg(using io: IO):
   class Foo:
     def m(foo: Blah^{io}) = ???
 class Pkg2(using io: IO):
@@ -13,9 +13,9 @@ class Pkg2(using io: IO):
 def main(using io: IO) =
   val pkg = Pkg()
   val f = pkg.Foo()
-  f.m(???)
+  val x1 = f.m(???)
   val pkg2 = Pkg2()
   val f2 = pkg2.Foo()
-  f2.m(???)
+  val x2 = f2.m(???)
 
 

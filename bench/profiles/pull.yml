@@ -5,4 +5,4 @@ includes:
     - empty.yml
 
 config:
-    pr_base_url: "https://github.com/lampepfl/dotty/pull/"
+    pr_base_url: "https://github.com/scala/scala3/pull/"

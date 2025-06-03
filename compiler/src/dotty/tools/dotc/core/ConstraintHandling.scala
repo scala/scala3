@@ -120,7 +120,7 @@ trait ConstraintHandling {
    */
   private var myTrustBounds = true
 
-  inline def withUntrustedBounds(op: => Type): Type =
+  transparent inline def withUntrustedBounds(op: => Type): Type =
     val saved = myTrustBounds
     myTrustBounds = false
     try op finally myTrustBounds = saved
@@ -295,40 +295,63 @@ trait ConstraintHandling {
   end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
+
+    // Replace top-level occurrences of `param` in `bound` by `Nothing`
+    def sanitize(bound: Type): Type =
+      if bound.stripped eq param then defn.NothingType
+      else bound match
+        case bound: AndOrType =>
+          bound.derivedAndOrType(sanitize(bound.tp1), sanitize(bound.tp2))
+        case _ =>
+          bound
+
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(rawBound) then
-      // We don't allow recursive lower bounds when defining a type,
-      // so we shouldn't allow them as constraints either.
-      false
+    else if !isUpper && param.occursIn(rawBound.widen) then
+      val rawBound1 = sanitize(rawBound.widenDealias)
+      if param.occursIn(rawBound1) then
+        // We don't allow recursive lower bounds when defining a type,
+        // so we shouldn't allow them as constraints either.
+        false
+      else addOneBound(param, rawBound1, isUpper)
     else
-      val bound = legalBound(param, rawBound, isUpper)
-      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = (if isUpper then lo else hi) eq bound
-      if equalBounds && !bound.existsPart(_ eq param, StopAt.Static) then
-        // The narrowed bounds are equal and not recursive,
-        // so we can remove `param` from the constraint.
-        constraint = constraint.replace(param, bound)
-        true
-      else
-        // Narrow one of the bounds of type parameter `param`
-        // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-        // that `param >: bound`.
-        val narrowedBounds =
-          val saved = homogenizeArgs
-          homogenizeArgs = Config.alignArgsInAnd
-          try
-            withUntrustedBounds(
-              if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-              else oldBounds.derivedTypeBounds(lo | bound, hi))
-          finally
-            homogenizeArgs = saved
+
+      // Narrow one of the bounds of type parameter `param`
+      // If `isUpper` is true, ensure that `param <: `bound`,
+      // otherwise ensure that `param >: bound`.
+      val narrowedBounds: TypeBounds =
+        val bound = legalBound(param, rawBound, isUpper)
+        val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+
+        val saved = homogenizeArgs
+        homogenizeArgs = Config.alignArgsInAnd
+        try
+          withUntrustedBounds(
+            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+            else oldBounds.derivedTypeBounds(lo | bound, hi))
+        finally
+          homogenizeArgs = saved
+      end narrowedBounds
+
+      // If the narrowed bounds are equal and not recursive,
+      // we can remove `param` from the constraint.
+      def tryReplace(newBounds: TypeBounds): Boolean =
+        val TypeBounds(lo, hi) = newBounds
+        val canReplace = (lo eq hi) && !newBounds.existsPart(_ eq param, StopAt.Static)
+        if canReplace then constraint = constraint.replace(param, lo)
+        canReplace
+
+      tryReplace(narrowedBounds) || locally:
         //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
         || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
-          isSub(lo, hi)
+          val isSat = isSub(lo, hi)
+          if isSat then
+            // isSub may have narrowed the bounds further
+            tryReplace(constraint.nonParamBounds(param))
+          isSat
         }
   end addOneBound
 
@@ -647,25 +670,30 @@ trait ConstraintHandling {
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
+  def widenInferred(inst: Type, bound: Type, widen: Widen)(using Context): Type =
     def widenOr(tp: Type) =
-      if widenUnions then
+      if widen == Widen.Unions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && !tpw.isTransparent() && (tpw <:< bound) then tpw else tp
+        if tpw ne tp then
+          if tpw.isTransparent() then
+            // Now also widen singletons of soft unions. Before these were skipped
+            // since widenUnion on soft unions is independent of whether singletons
+            // are widened or not. This avoids an expensive subtype check in widenSingle,
+            // see i19907_*.scala for test cases.
+            widenSingle(tp, skipSoftUnions = false)
+          else if tpw <:< bound then tpw
+          else tp
+        else tp
       else tp.hardenUnions
 
-    def widenSingle(tp: Type) =
-      val tpw = tp.widenSingletons
+    def widenSingle(tp: Type, skipSoftUnions: Boolean) =
+      val tpw = tp.widenSingletons(skipSoftUnions)
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
-    def isSingleton(tp: Type): Boolean = tp match
-      case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
-      case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
-
     val wideInst =
-      if isSingleton(bound) then inst
+      if widen == Widen.None || bound.isSingletonBounded(frozen = true) then inst
       else
-        val widenedFromSingle = widenSingle(inst)
+        val widenedFromSingle = widenSingle(inst, skipSoftUnions = widen == Widen.Unions)
         val widenedFromUnion = widenOr(widenedFromSingle)
         val widened = dropTransparentTraits(widenedFromUnion, bound)
         widenIrreducible(widened)
@@ -687,9 +715,11 @@ trait ConstraintHandling {
       tp.rebind(tp.parent.hardenUnions)
     case tp: HKTypeLambda =>
       tp.derivedLambdaType(resType = tp.resType.hardenUnions)
+    case tp: FlexibleType =>
+      tp.derivedFlexibleType(tp.hi.hardenUnions)
     case tp: OrType =>
-      val tp1 = tp.stripNull
-      if tp1 ne tp then tp.derivedOrType(tp1.hardenUnions, defn.NullType)
+      val tp1 = tp.stripNull(stripFlexibleTypes = false)
+      if tp1 ne tp then tp.derivedOrType(tp1.hardenUnions, defn.NullType, soft = false)
       else tp.derivedOrType(tp.tp1.hardenUnions, tp.tp2.hardenUnions, soft = false)
     case _ =>
       tp
@@ -702,10 +732,10 @@ trait ConstraintHandling {
    *  The instance type is not allowed to contain references to types nested deeper
    *  than `maxLevel`.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int)(using Context): Type = {
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, widen: Widen, maxLevel: Int)(using Context): Type = {
     val approx = approximation(param, fromBelow, maxLevel).simplified
     if fromBelow then
-      val widened = widenInferred(approx, param, widenUnions)
+      val widened = widenInferred(approx, param, widen)
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
@@ -713,7 +743,7 @@ trait ConstraintHandling {
       // (we do not check for non-toplevel occurrences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
-        instanceType(param, fromBelow, widenUnions, maxLevel)
+        instanceType(param, fromBelow, widen, maxLevel)
       else
         widened
     else
@@ -858,7 +888,8 @@ trait ConstraintHandling {
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
-          kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
+          (pbound.isNothingType || kindCompatible(param, pbound))
+          && addBoundTransitively(param, pbound, !fromBelow)
       finally
         canWidenAbstract = saved
         addConstraintInvocations -= 1

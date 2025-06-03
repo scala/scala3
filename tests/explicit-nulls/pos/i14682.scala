@@ -1,4 +1,4 @@
-//> using options -Ysafe-init
+//> using options -Wsafe-init
 
 class C1:
   sealed abstract class Name {

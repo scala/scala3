@@ -43,7 +43,7 @@ class CheckReentrant extends MiniPhase {
     requiredClass("scala.annotation.internal.unshared"))
 
   private val scalaJSIRPackageClass = new CtxLazy(
-    getPackageClassIfDefined("org.scalajs.ir"))
+    getPackageClassIfDefined("dotty.tools.sjs.ir"))
 
   def isIgnored(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
@@ -65,7 +65,7 @@ class CheckReentrant extends MiniPhase {
       scanning(cls) {
         for (sym <- cls.classInfo.decls)
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
-            if (sym.is(Mutable)) {
+            if (sym.isMutableVarOrAccessor) {
               report.error(
                 em"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                     |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")

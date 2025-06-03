@@ -34,6 +34,9 @@ object Trees {
 
   val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Property key for marking capture-set variables and members */
+  val CaptureVar: Property.StickyKey[Unit] = Property.StickyKey()
+
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
    *  Untyped trees have type `Tree[Untyped]`.
@@ -304,6 +307,7 @@ object Trees {
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
     def withAddedFlags(flags: FlagSet): ThisTree[Untyped] = withMods(rawMods | flags)
+    def withAddedAnnotation(annot: Tree[Untyped]): ThisTree[Untyped] = withMods(rawMods.withAddedAnnotation(annot))
 
     /** Destructively update modifiers. To be used with care. */
     def setMods(mods: untpd.Modifiers): Unit = myMods = mods
@@ -460,8 +464,11 @@ object Trees {
         else if qualifier.span.exists && qualifier.span.start > span.point then // right associative
           val realName = name.stripModuleClassSuffix.lastPart
           Span(span.start, span.start + realName.length, point)
-        else
-          Span(point, span.end, point)
+        else if span.pointMayBeIncorrect then
+          val realName = name.stripModuleClassSuffix.lastPart
+          val probablyPoint = span.end - realName.length
+          Span(probablyPoint, span.end, probablyPoint)
+        else Span(point, span.end, point)
       else span
   }
 
@@ -661,8 +668,7 @@ object Trees {
    *
    *  @param  call      Info about the original call that was inlined
    *                    Until PostTyper, this is the full call, afterwards only
-   *                    a reference to the method or the top-level class from
-   *                    which the call was inlined.
+   *                    a reference to the toplevel class from which the call was inlined.
    *  @param  bindings  Bindings for proxies to be used in the inlined code
    *  @param  expansion The inlined tree, minus bindings.
    *
@@ -738,11 +744,11 @@ object Trees {
   }
 
   /** A tree representing a quote pattern `'{ type binding1; ...; body }` or `'[ type binding1; ...; body ]`.
-   *  `QuotePattern`s are created the type checker when typing an `untpd.Quote` in a pattern context.
+   *  `QuotePattern`s are created by the type checker when typing an `untpd.Quote` in a pattern context.
    *
    *  `QuotePattern`s are checked are encoded into `unapply`s  in the `staging` phase.
    *
-   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the oreder in
+   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the order in
    *   which they are defined in the source.
    *
    *   @param  bindings  Type variable definitions (`Bind` tree)
@@ -763,9 +769,10 @@ object Trees {
    *  `SplicePattern` can only be contained within a `QuotePattern`.
    *
    *  @param body  The tree that was spliced
+   *  @param typeargs The type arguments of the splice (the HOAS arguments)
    *  @param args  The arguments of the splice (the HOAS arguments)
    */
-  case class SplicePattern[+T <: Untyped] private[ast] (body: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class SplicePattern[+T <: Untyped] private[ast] (body: Tree[T], typeargs: List[Tree[T]], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = SplicePattern[T]
   }
@@ -777,6 +784,7 @@ object Trees {
     override def isEmpty: Boolean = !hasType
     override def toString: String =
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
+    def isInferred = false
   }
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
@@ -799,6 +807,7 @@ object Trees {
    */
   class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]:
     type ThisTree[+T <: Untyped] <: InferredTypeTree[T]
+    override def isInferred = true
 
   /** ref.type */
   case class SingletonTypeTree[+T <: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
@@ -1255,11 +1264,12 @@ object Trees {
         case _ => finalize(tree, untpd.Ident(name)(sourceFile(tree)))
       }
       def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = tree match {
-        case tree: SelectWithSig =>
-          if ((qualifier eq tree.qualifier) && (name == tree.name)) tree
-          else finalize(tree, SelectWithSig(qualifier, name, tree.sig)(sourceFile(tree)))
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
-        case _ => finalize(tree, untpd.Select(qualifier, name)(sourceFile(tree)))
+        case _ =>
+          val tree1 = tree match
+            case tree: SelectWithSig => untpd.SelectWithSig(qualifier, name, tree.sig)(using sourceFile(tree))
+            case _ => untpd.Select(qualifier, name)(using sourceFile(tree))
+          finalize(tree, tree1)
       }
       /** Copy Ident or Select trees */
       def Ref(tree: RefTree)(name: Name)(using Context): RefTree = tree match {
@@ -1371,9 +1381,9 @@ object Trees {
         case tree: QuotePattern if (bindings eq tree.bindings) && (body eq tree.body) && (quotes eq tree.quotes) => tree
         case _ => finalize(tree, untpd.QuotePattern(bindings, body, quotes)(sourceFile(tree)))
       }
-      def SplicePattern(tree: Tree)(body: Tree, args: List[Tree])(using Context): SplicePattern = tree match {
-        case tree: SplicePattern if (body eq tree.body) && (args eq tree.args) => tree
-        case _ => finalize(tree, untpd.SplicePattern(body, args)(sourceFile(tree)))
+      def SplicePattern(tree: Tree)(body: Tree, typeargs: List[Tree], args: List[Tree])(using Context): SplicePattern = tree match {
+        case tree: SplicePattern if (body eq tree.body) && (typeargs eq tree.typeargs) & (args eq tree.args) => tree
+        case _ => finalize(tree, untpd.SplicePattern(body, typeargs, args)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1502,7 +1512,7 @@ object Trees {
       * It ensures that the source is correct, and that the local context is used if
       * that's necessary for transforming the whole tree.
       * TODO: ensure transform is always called with the correct context as argument
-      * @see https://github.com/lampepfl/dotty/pull/13880#discussion_r836395977
+      * @see https://github.com/scala/scala3/pull/13880#discussion_r836395977
       */
     def transformCtx(tree: Tree)(using Context): Context =
       val sourced =
@@ -1621,8 +1631,8 @@ object Trees {
               cpy.Splice(tree)(transform(expr)(using spliceContext))
             case tree @ QuotePattern(bindings, body, quotes) =>
               cpy.QuotePattern(tree)(transform(bindings), transform(body)(using quoteContext), transform(quotes))
-            case tree @ SplicePattern(body, args) =>
-              cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(args))
+            case tree @ SplicePattern(body, targs, args) =>
+              cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(targs), transform(args))
             case tree @ Hole(isTerm, idx, args, content) =>
               cpy.Hole(tree)(isTerm, idx, transform(args), transform(content))
             case _ =>
@@ -1770,8 +1780,8 @@ object Trees {
               this(x, expr)(using spliceContext)
             case QuotePattern(bindings, body, quotes) =>
               this(this(this(x, bindings), body)(using quoteContext), quotes)
-            case SplicePattern(body, args) =>
-              this(this(x, body)(using spliceContext), args)
+            case SplicePattern(body, typeargs, args) =>
+              this(this(this(x, body)(using spliceContext), typeargs), args)
             case Hole(_, _, args, content) =>
               this(this(x, args), content)
             case _ =>

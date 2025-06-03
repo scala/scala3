@@ -113,11 +113,12 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       val directlyInheritedTraits = sym.directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
-      val superCalls = superCallsMap.getOrElse(sym, Set.empty)
-      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Trait))
+      val superCalls = superCallsMap.getOrElse(sym, List.empty)
+      val superCallsSet = superCalls.toSet
+      val additional = superCalls.filter(t => !directlyInheritedTraitsSet(t) && t.is(Trait))
 //      if (additional.nonEmpty)
 //        println(s"$fullName: adding supertraits $additional")
-      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
+      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCallsSet(t)) ++ additional
     }
 
     val interfaces = classSym.superInterfaces.map(classBTypeFromSymbol)
@@ -284,7 +285,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
     // tests/run/serialize.scala and https://github.com/typelevel/cats-effect/pull/2360).
     val privateFlag = !sym.isClass && (sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass))
 
-    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable, butNot = Accessor) && !sym.enclosingClass.is(Trait)
+    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.isMutableVar && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes.*
     import GenBCodeOps.addFlagIf

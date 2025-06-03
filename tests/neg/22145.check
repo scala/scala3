@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/22145.scala:5:7 -------------------------------------------------------------------
+5 |  base.foo() // error
+  |  ^^^^^^^^
+  |  value foo is not a member of foo.Collection

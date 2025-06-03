@@ -29,28 +29,33 @@ class Checker extends Phase:
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
-    super.isEnabled && (ctx.settings.YcheckInit.value || ctx.settings.YcheckInitGlobal.value)
+    super.isEnabled && (ctx.settings.Whas.checkInit || ctx.settings.YcheckInitGlobal.value)
 
   def traverse(traverser: InitTreeTraverser)(using Context): Boolean = monitor(phaseName):
     val unit = ctx.compilationUnit
     traverser.traverse(unit.tpdTree)
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    val checkCtx = ctx.fresh.setPhase(this.start)
+    val checkCtx = ctx.fresh.setPhase(this)
     val traverser = new InitTreeTraverser()
-    val unitContexts = units.map(unit => checkCtx.fresh.setCompilationUnit(unit))
 
     val units0 =
-      for unitContext <- unitContexts if traverse(traverser)(using unitContext) yield unitContext.compilationUnit
+      for
+        unit <- units
+        unitContext = checkCtx.fresh.setCompilationUnit(unit)
+        if traverse(traverser)(using unitContext)
+      yield
+        unitContext.compilationUnit
 
     cancellable {
       val classes = traverser.getClasses()
 
-      if ctx.settings.YcheckInit.value then
+      if ctx.settings.Whas.checkInit then
         Semantic.checkClasses(classes)(using checkCtx)
 
       if ctx.settings.YcheckInitGlobal.value then
-        Objects.checkClasses(classes)(using checkCtx)
+        val obj = new Objects
+        obj.checkClasses(classes)(using checkCtx)
     }
 
     units0

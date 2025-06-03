@@ -4,8 +4,9 @@ import scala.language.unsafeNulls
 
 import java.util.regex.Pattern
 
-import org.junit.Assert.{assertTrue => assert, _}
-import org.junit.{Ignore, Test}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.junit.Assert.{assertTrue => assert}
+import org.junit.Test
 import dotty.tools.dotc.core.Contexts.Context
 
 class ReplCompilerTests extends ReplTest:
@@ -17,6 +18,14 @@ class ReplCompilerTests extends ReplTest:
   @Test def compileSingle = initially {
     run("def foo: 1 = 1")
     assertEquals("def foo: 1", storedOutput().trim)
+  }
+
+  @Test def i18383NoWarnOnUnusedImport: Unit = {
+    initially {
+      run("import scala.collection.*")
+    } andThen {
+      println(lines().mkString("* ", "\n  * ", ""))
+    }
   }
 
   @Test def compileTwo =
@@ -107,28 +116,21 @@ class ReplCompilerTests extends ReplTest:
     assertEquals(expected, lines())
   }
 
-  // FIXME: Tests are not run in isolation, the classloader is corrupted after the first exception
-  @Ignore @Test def i3305: Unit = {
-    initially {
-      run("null.toString")
-      assert(storedOutput().startsWith("java.lang.NullPointerException"))
-    }
+  @Test def `i3305 SOE meh`: Unit = initially:
+    run("def foo: Int = 1 + foo; foo")
+    assert(storedOutput().startsWith("java.lang.StackOverflowError"))
 
-    initially {
-      run("def foo: Int = 1 + foo; foo")
-      assert(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
-    }
+  @Test def `i3305 NPE`: Unit = initially:
+    run("null.toString")
+    assert(storedOutput().startsWith("java.lang.NullPointerException"))
 
-    initially {
-      run("""throw new IllegalArgumentException("Hello")""")
-      assert(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
-    }
+  @Test def `i3305 IAE`: Unit = initially:
+    run("""throw new IllegalArgumentException("Hello")""")
+    assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
 
-    initially {
-      run("val (x, y) = null")
-      assert(storedOutput().startsWith("scala.MatchError: null"))
-    }
-  }
+  @Test def `i3305 ME`: Unit = initially:
+    run("val (x, y) = null")
+    assert(storedOutput().startsWith("scala.MatchError: null"))
 
   @Test def i2789: Unit = initially {
     run("(x: Int) => println(x)")
@@ -409,6 +411,116 @@ class ReplCompilerTests extends ReplTest:
   @Test def `i13097 expect template after colon` = contextually:
     assert(ParseResult.isIncomplete("class C:"))
 
+  @Test def i15562: Unit = initially {
+    val s1 = run("List(1, 2).filter(_ % 2 == 0).foreach(println)")
+    assertEquals("2", storedOutput().trim)
+    s1
+  } andThen { s1 ?=>
+    val comp = tabComplete("List(1, 2).filter(_ % 2 == 0).fore")
+    assertEquals(List("foreach"), comp.distinct)
+    s1
+  } andThen {
+    val s2 = run("List(1, 2).filter(_ % 2 == 0).foreach(println)")
+    assertEquals("2", storedOutput().trim)
+    s2
+  }
+
+  @Test def i15562b: Unit = initially {
+    val s1 = run("List(1, 2).filter(_ % 2 == 0).foreach(println)")
+    assertEquals("2", storedOutput().trim)
+    s1
+  } andThen { s1 ?=>
+    val comp = tabComplete("val x = false + true; List(1, 2).filter(_ % 2 == 0).fore")
+    assertEquals(List("foreach"), comp.distinct)
+    s1
+  } andThen {
+    val s2 = run("List(1, 2).filter(_ % 2 == 0).foreach(println)")
+    assertEquals("2", storedOutput().trim)
+    s2
+  }
+
+  @Test def `i17333 print null result of toString`: Unit =
+    initially:
+      run("val tpolecat = new Object { override def toString(): String = null }")
+    .andThen:
+      val last = lines().last
+      assertTrue(last, last.startsWith("val tpolecat: Object = null"))
+      assertTrue(last, last.endsWith("""// result of "tpolecat.toString" is null"""))
+
+  @Test def `i17333 print toplevel object with null toString`: Unit =
+    initially:
+      run("object tpolecat { override def toString(): String = null }")
+    .andThen:
+      run("tpolecat")
+      val last = lines().last
+      assertTrue(last, last.startsWith("val res0: tpolecat.type = null"))
+      assertTrue(last, last.endsWith("""// result of "res0.toString" is null"""))
+
+  @Test def `i21431 filter out best effort options`: Unit =
+    initially:
+      run(":settings -Ybest-effort -Ywith-best-effort-tasty")
+    .andThen:
+      run("0") // check for crash
+      val last = lines()
+      assertTrue(last(0), last(0) == ("Options incompatible with repl will be ignored: -Ybest-effort, -Ywith-best-effort-tasty"))
+      assertTrue(last(1), last(1) == ("val res0: Int = 0"))
+
+  @Test def `i9879`: Unit = initially:
+    run {
+      """|opaque type A = Int; def getA: A = 0
+         |object Wrapper { opaque type A = Int; def getA: A = 1 }
+         |val x = getA
+         |val y = Wrapper.getA""".stripMargin
+    }
+    val expected = List(
+      "def getA: A",
+      "// defined object Wrapper",
+      "val x: A = 0",
+      "val y: Wrapper.A = 1"
+    )
+    assertEquals(expected, lines())
+
+  @Test def `i9879b`: Unit = initially:
+    run {
+      """|def test =
+         |  type A = Int
+         |  opaque type B = String
+         |  object Wrapper { opaque type C = Int }
+         |  ()""".stripMargin
+    }
+    val all = lines()
+    assertEquals(6, all.length)
+    assertTrue(all.head.startsWith("-- [E103] Syntax Error"))
+    assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
+
+  @Test def `i16250a`: Unit = initially:
+    val hints = List(
+      "this language import is not allowed in the REPL",
+      "To use this language feature, include the flag `-language:experimental.captureChecking` when starting the REPL"
+    )
+    run("import language.experimental.captureChecking")
+    val all = lines()
+    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+
+  @Test def `i16250b`: Unit = initially:
+    val hints = List(
+      "this language import is not allowed in the REPL",
+      "To use this language feature, include the flag `-language:experimental.pureFunctions` when starting the REPL"
+    )
+    run("import language.experimental.pureFunctions")
+    val all = lines()
+    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+
+  @Test def `i22844 regression colon eol`: Unit = initially:
+    run:
+      """|println:
+         |  "hello, world"
+         |""".stripMargin // outdent, but this test does not exercise the bug
+    assertEquals(List("hello, world"), lines())
+
+  @Test def `i22844b regression colon arrow eol`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete("List(42).map: x =>"))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
@@ -458,3 +570,15 @@ class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose"):
   }
 
 end ReplVerboseTests
+
+class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.startsWith("-color")) :+ "-color:always"):
+  @Test def i18596: Unit = initially:
+    run("""(1 to 500).foldRight("x") { case (_, n) => s"<x>$n</x>" }""")
+
+  @Test def i16904: Unit = initially:
+    run(""""works not fine"* 10000""")
+
+    run("""
+      case class Tree(left: Tree, right: Tree)
+      def deepTree(depth: Int): Tree
+      deepTree(300)""")

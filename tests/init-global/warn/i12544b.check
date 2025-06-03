@@ -1,0 +1,20 @@
+-- Warning: tests/init-global/warn/i12544b.scala:5:9 -------------------------------------------------------------------
+5 |  object nested: // warn
+  |         ^
+  |         Cyclic initialization: object nested -> object Enum -> object nested. Calling trace:
+  |         ├── object nested: // warn	[ i12544b.scala:5 ]
+  |         │   ^
+  |         ├── val a: Enum = Case	[ i12544b.scala:6 ]
+  |         │                 ^^^^
+  |         ├── object Enum:	[ i12544b.scala:4 ]
+  |         │   ^
+  |         └── val b: Enum = f(nested.a) // warn	[ i12544b.scala:8 ]
+  |                             ^^^^^^
+-- Warning: tests/init-global/warn/i12544b.scala:8:25 ------------------------------------------------------------------
+8 |  val b: Enum = f(nested.a) // warn
+  |                  ^^^^^^^^
+  |                  Access uninitialized field value a. Calling trace:
+  |                  ├── object Enum:	[ i12544b.scala:4 ]
+  |                  │   ^
+  |                  └── val b: Enum = f(nested.a) // warn	[ i12544b.scala:8 ]
+  |                                      ^^^^^^^^

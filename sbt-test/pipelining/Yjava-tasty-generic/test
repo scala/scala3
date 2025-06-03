@@ -1,3 +1,0 @@
-> a/compile
-# Test depending on a java generic class through TASTy
-> b/run

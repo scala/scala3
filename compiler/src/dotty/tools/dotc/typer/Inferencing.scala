@@ -180,7 +180,15 @@ object Inferencing {
           t match
             case t: TypeRef =>
               if t.symbol == defn.NothingClass then
-                newTypeVar(TypeBounds.empty, nestingLevel = tvar.nestingLevel)
+                val notExactlyNothing = LazyRef(_ => defn.NothingType)
+                val bounds = TypeBounds(notExactlyNothing, defn.AnyType)
+                  // The new type variale has a slightly disguised lower bound Nothing.
+                  // This foils the `isExactlyNothing` test in `hasLowerBound` and
+                  // therefore makes the new type variable have a lower bound. That way,
+                  // we favor in `apply` below instantiating from below to `Nothing` instead
+                  // of from above to `Any`. That avoids a spurious flip of the original `Nothing`
+                  // instance to `Any`. See i21275 for a test case.
+                newTypeVar(bounds, nestingLevel = tvar.nestingLevel)
               else if t.symbol.is(ModuleClass) then
                 tryWidened(t.parents.filter(!_.isTransparent())
                   .foldLeft(defn.AnyType: Type)(TypeComparer.andType(_, _)))
@@ -205,7 +213,7 @@ object Inferencing {
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Boolean =
       if fromBelow && force.canImprove(tvar) then
         val inst = tvar.typeToInstantiateWith(fromBelow = true)
-        if apply(true, inst) then
+        if isFullyDefined(inst, ForceDegree.none) then
           // need to recursively check before improving, since improving adds type vars
           // which should not be instantiated at this point
           val better = improve(tvar)(inst)
@@ -232,25 +240,12 @@ object Inferencing {
           && {
             var fail = false
             var skip = false
-            val direction = instDirection(tvar.origin)
-            if minimizeSelected then
-              if direction <= 0 && tvar.hasLowerBound then
-                skip = instantiate(tvar, fromBelow = true)
-              else if direction >= 0 && tvar.hasUpperBound then
-                skip = instantiate(tvar, fromBelow = false)
-              // else hold off instantiating unbounded unconstrained variable
-            else if direction != 0 then
-              skip = instantiate(tvar, fromBelow = direction < 0)
-            else if variance >= 0 && tvar.hasLowerBound then
-              skip = instantiate(tvar, fromBelow = true)
-            else if (variance > 0 || variance == 0 && !tvar.hasUpperBound)
-                && force.ifBottom == IfBottom.ok
-            then // if variance == 0, prefer upper bound if one is given
-              skip = instantiate(tvar, fromBelow = true)
-            else if variance >= 0 && force.ifBottom == IfBottom.fail then
-              fail = true
-            else
-              toMaximize = tvar :: toMaximize
+            instDecision(tvar, variance, minimizeSelected, force.ifBottom) match
+              case Decision.Min   => skip = instantiate(tvar, fromBelow = true)
+              case Decision.Max   => skip = instantiate(tvar, fromBelow = false)
+              case Decision.Skip  => // hold off instantiating unbounded unconstrained variable
+              case Decision.Fail  => fail = true
+              case Decision.ToMax => toMaximize ::= tvar
             !fail && (skip || foldOver(x, tvar))
           }
         case tp => foldOver(x, tp)
@@ -383,8 +378,9 @@ object Inferencing {
   def isSkolemFree(tp: Type)(using Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
 
-  /** The list of uninstantiated type variables bound by some prefix of type `T` which
-   *  occur in at least one formal parameter type of a prefix application.
+  /** The list of uninstantiated type variables bound by some prefix of type `T` or
+   *  by arguments of an application prefix, which occur at least once as a formal type parameter
+   *  of an application either from a prefix or an argument of an application node.
    *  Considered prefixes are:
    *    - The function `f` of an application node `f(e1, .., en)`
    *    - The function `f` of a type application node `f[T1, ..., Tn]`
@@ -392,8 +388,10 @@ object Inferencing {
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
   def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): List[TypeVar] = {
-    @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
-      case Apply(fn, _) => boundVars(fn, acc)
+    def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+      case Apply(fn, args) =>
+        val argTpVars = args.flatMap(boundVars(_, Nil))
+        boundVars(fn, acc ++ argTpVars)
       case TypeApply(fn, targs) =>
         val tvars = targs.filter(_.isInstanceOf[InferredTypeTree]).tpes.collect {
           case tvar: TypeVar
@@ -406,16 +404,18 @@ object Inferencing {
       case Block(_, expr) => boundVars(expr, acc)
       case _ => acc
     }
-    @tailrec def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+    def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
       if (toTest.isEmpty) acc
       else tree match {
-        case Apply(fn, _) =>
+        case Apply(fn, args) =>
+          val argsOcc = args.flatMap(occurring(_, toTest, Nil))
+          val argsNocc = toTest.filterNot(argsOcc.contains)
           fn.tpe.widen match {
             case mtp: MethodType =>
-              val (occ, nocc) = toTest.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
-              occurring(fn, nocc, occ ::: acc)
+              val (occ, nocc) = argsNocc.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
+              occurring(fn, nocc, occ ::: argsOcc ::: acc)
             case _ =>
-              occurring(fn, toTest, acc)
+              occurring(fn, argsNocc, argsOcc ::: acc)
           }
         case TypeApply(fn, targs) => occurring(fn, toTest, acc)
         case Select(pre, _) => occurring(pre, toTest, acc)
@@ -439,8 +439,31 @@ object Inferencing {
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
     val approxAbove =
       if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
+    //println(i"instDirection($param) = $approxAbove - $approxBelow  original=[$original] constrained=[$constrained]")
     approxAbove - approxBelow
   }
+
+  /** The instantiation decision for given poly param computed from the constraint. */
+  enum Decision { case Min; case Max; case ToMax; case Skip; case Fail }
+  private def instDecision(tvar: TypeVar, v: Int, minimizeSelected: Boolean, ifBottom: IfBottom)(using Context): Decision =
+    import Decision.*
+    val direction = instDirection(tvar.origin)
+    val dec = if minimizeSelected then
+      if direction <= 0 && tvar.hasLowerBound then Min
+      else if direction >= 0 && tvar.hasUpperBound then Max
+      else Skip
+    else if direction != 0 then if direction < 0 then Min else Max
+    else if tvar.hasLowerBound then if v >= 0 then Min else ToMax
+    else ifBottom match
+      // What's left are unconstrained tvars with at most a non-Any param upperbound:
+      // * IfBottom.flip will always maximise to the param upperbound, for all variances
+      // * IfBottom.fail will fail the IFD check, for covariant or invariant tvars, maximise contravariant tvars
+      // * IfBottom.ok will minimise to Nothing covariant and unbounded invariant tvars, and max to Any the others
+      case IfBottom.ok   => if v > 0 || v == 0 && !tvar.hasUpperBound then Min else ToMax // prefer upper bound if one is given
+      case IfBottom.fail => if v >= 0 then Fail else ToMax
+      case ifBottom_flip => ToMax
+    //println(i"instDecision($tvar, v=v, minimizedSelected=$minimizeSelected, $ifBottom) dir=$direction = $dec")
+    dec
 
   /** Following type aliases and stripping refinements and annotations, if one arrives at a
    *  class type reference where the class has a companion module, a reference to
@@ -486,10 +509,15 @@ object Inferencing {
           }
         }
     }
-    val res = patternBindings.toList.map { (boundSym, _) =>
+    val res = patternBindings.toList.map { (boundSym, origin) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
       for (wildCard, param) <- patternBindings do
         boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)
+
+      // also substitute in any GADT bounds
+      // e.g. in i22879, replace the `T` in `X <: Iterable[T]` with the pattern bound `T$1`
+      ctx.gadtState.replace(origin, boundSym.typeRef)
+
       boundSym
     }
 
@@ -638,7 +666,7 @@ trait Inferencing { this: Typer =>
 
     val ownedVars = state.ownedVars
     if (ownedVars ne locked) && !ownedVars.isEmpty then
-      val qualifying = ownedVars -- locked
+      val qualifying = (ownedVars -- locked).toList
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
@@ -648,7 +676,6 @@ trait Inferencing { this: Typer =>
             // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
         val tp = tree.tpe.widen
-        val vs = variances(tp, pt)
 
         // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
         // Reason: The errors might reflect unsatisfiable constraints. In that
@@ -672,127 +699,137 @@ trait Inferencing { this: Typer =>
         //     val y: List[List[String]] = List(List(1))
         if state.reporter.hasUnreportedErrors then return tree
 
-        def constraint = state.constraint
-
-        /** Values of this type report type variables to instantiate with variance indication:
-         *    +1  variable appears covariantly, can be instantiated from lower bound
-         *    -1  variable appears contravariantly, can be instantiated from upper bound
-         *     0  variable does not appear at all, can be instantiated from either bound
-         */
-        type ToInstantiate = List[(TypeVar, Int)]
-
-        val toInstantiate: ToInstantiate =
-          val buf = new mutable.ListBuffer[(TypeVar, Int)]
-          for tvar <- qualifying do
-            if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
-              constrainIfDependentParamRef(tvar, tree)
-              if !tvar.isInstantiated then
-                // isInstantiated needs to be checked again, since previous interpolations could already have
-                // instantiated `tvar` through unification.
-                val v = vs.computedVariance(tvar)
-                if v == null then buf += ((tvar, 0))
-                else if v.intValue != 0 then buf += ((tvar, v.intValue))
-                else comparing(cmp =>
-                  if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
-                    // Invariant: The type of a tree whose enclosing scope is level
-                    // N only contains type variables of level <= N.
-                    typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
-                    cmp.atLevel(ctx.nestingLevel, tvar.origin)
-                  else
-                    typr.println(i"no interpolation for nonvariant $tvar in $state")
-                )
-          buf.toList
-
-        def typeVarsIn(xs: ToInstantiate): TypeVars =
-          xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
-
-        /** Filter list of proposed instantiations so that they don't constrain further
-         *  the current constraint.
-         */
-        def filterByDeps(tvs0: ToInstantiate): ToInstantiate =
-          val excluded =  // ignore dependencies from other variables that are being instantiated
-            typeVarsIn(tvs0)
-          def step(tvs: ToInstantiate): ToInstantiate = tvs match
-            case tvs @ (hd @ (tvar, v)) :: tvs1 =>
-              def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
-              def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
-              if v == 0 && !aboveOK then
-                step((tvar, 1) :: tvs1)
-              else if v == 0 && !belowOK then
-                step((tvar, -1) :: tvs1)
-              else if v == -1 && !aboveOK || v == 1 && !belowOK then
-                typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
-                step(tvs1)
-              else // no conflict, keep the instantiation proposal
-                tvs.derivedCons(hd, step(tvs1))
-            case Nil =>
-              Nil
-          val tvs1 = step(tvs0)
-          if tvs1 eq tvs0 then tvs1
-          else filterByDeps(tvs1) // filter again with smaller excluded set
-        end filterByDeps
-
-        /** Instantiate all type variables in `tvs` in the indicated directions,
-         *  as described in the doc comment of `ToInstantiate`.
-         *  If a type variable A is instantiated from below, and there is another
-         *  type variable B in `buf` that is known to be smaller than A, wait and
-         *  instantiate all other type variables before trying to instantiate A again.
-         *  Dually, wait instantiating a type variable from above as long as it has
-         *  upper bounds in `buf`.
-         *
-         *  This is done to avoid loss of precision when forming unions. An example
-         *  is in i7558.scala:
-         *
-         *      type Tr[+V1, +O1 <: V1]
-         *      extension [V2, O2 <: V2](tr: Tr[V2, O2]) def sl: Tr[V2, O2] = ???
-         *      def as[V3, O3 <: V3](tr: Tr[V3, O3]) : Tr[V3, O3] = tr.sl
-         *
-         *   Here we interpolate at some point V2 and O2 given the constraint
-         *
-         *      V2 >: V3, O2 >: O3, O2 <: V2
-         *
-         *   where O3 and V3 are type refs with O3 <: V3.
-         *   If we interpolate V2 first to V3 | O2, the widenUnion algorithm will
-         *   instantiate O2 to V3, leading to the final constraint
-         *
-         *      V2 := V3, O2 := V3
-         *
-         *   But if we instantiate O2 first to O3, and V2 next to V3, we get the
-         *   more flexible instantiation
-         *
-         *      V2 := V3, O2 := O3
-         */
-        def doInstantiate(tvs: ToInstantiate): Unit =
-
-          /** Try to instantiate `tvs`, return any suspended type variables */
-          def tryInstantiate(tvs: ToInstantiate): ToInstantiate = tvs match
-            case (hd @ (tvar, v)) :: tvs1 =>
-              val fromBelow = v == 1 || (v == 0 && tvar.hasLowerBound)
-              typr.println(
-                i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
-              if tvar.isInstantiated then
-                tryInstantiate(tvs1)
-              else
-                val suspend = tvs1.exists{ (following, _) =>
-                  if fromBelow
-                  then constraint.isLess(following.origin, tvar.origin)
-                  else constraint.isLess(tvar.origin, following.origin)
-                }
-                if suspend then
-                  typr.println(i"suspended: $hd")
-                  hd :: tryInstantiate(tvs1)
-                else
-                  tvar.instantiate(fromBelow)
-                  tryInstantiate(tvs1)
-            case Nil => Nil
-          if tvs.nonEmpty then doInstantiate(tryInstantiate(tvs))
-        end doInstantiate
-
-        doInstantiate(filterByDeps(toInstantiate))
+        instantiateTypeVars(tp, pt, qualifying, tree)
       }
     end if
     tree
   end interpolateTypeVars
+
+  def instantiateTypeVars(tp: Type, pt: Type, qualifying: List[TypeVar], tree: Tree = EmptyTree)(using Context): Unit =
+  trace(i"instantiateTypeVars($tp, $pt, $qualifying, $tree)", typr):
+    val state = ctx.typerState
+    def constraint = state.constraint
+
+    val vs = variances(tp, pt)
+
+    /** Values of this type report type variables to instantiate with variance indication:
+     *    +1  variable appears covariantly, can be instantiated from lower bound
+     *    -1  variable appears contravariantly, can be instantiated from upper bound
+     *     0  variable does not appear at all, can be instantiated from either bound
+     */
+    type ToInstantiate = List[(TypeVar, Int)]
+
+    val toInstantiate: ToInstantiate =
+      val buf = new mutable.ListBuffer[(TypeVar, Int)]
+      for tvar <- qualifying do
+        if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
+          constrainIfDependentParamRef(tvar, tree)
+          if !tvar.isInstantiated then
+            // isInstantiated needs to be checked again, since previous interpolations could already have
+            // instantiated `tvar` through unification.
+            val v = vs.computedVariance(tvar)
+            if v == null then buf += ((tvar, 0))
+            else if v.intValue != 0 then buf += ((tvar, v.intValue))
+            else comparing(cmp =>
+              if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
+                // Invariant: The type of a tree whose enclosing scope is level
+                // N only contains type variables of level <= N.
+                typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
+                cmp.atLevel(ctx.nestingLevel, tvar.origin)
+              else
+                typr.println(i"no interpolation for nonvariant $tvar in $state")
+            )
+      // constrainIfDependentParamRef could also have instantiated tvars added to buf before the check
+      buf.filterNot(_._1.isInstantiated).toList
+    end toInstantiate
+
+    def typeVarsIn(xs: ToInstantiate): TypeVars =
+      xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
+
+    /** Filter list of proposed instantiations so that they don't constrain further
+     *  the current constraint.
+     */
+    def filterByDeps(tvs0: ToInstantiate): ToInstantiate =
+      val excluded =  // ignore dependencies from other variables that are being instantiated
+        typeVarsIn(tvs0)
+      def step(tvs: ToInstantiate): ToInstantiate = tvs match
+        case tvs @ (hd @ (tvar, v)) :: tvs1 =>
+          def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
+          def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
+          if v == 0 && !aboveOK then
+            step((tvar, 1) :: tvs1)
+          else if v == 0 && !belowOK then
+            step((tvar, -1) :: tvs1)
+          else if v == -1 && !aboveOK || v == 1 && !belowOK then
+            typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
+            step(tvs1)
+          else // no conflict, keep the instantiation proposal
+            tvs.derivedCons(hd, step(tvs1))
+        case Nil =>
+          Nil
+      val tvs1 = step(tvs0)
+      if tvs1 eq tvs0 then tvs1
+      else filterByDeps(tvs1) // filter again with smaller excluded set
+    end filterByDeps
+
+    /** Instantiate all type variables in `tvs` in the indicated directions,
+     *  as described in the doc comment of `ToInstantiate`.
+     *  If a type variable A is instantiated from below, and there is another
+     *  type variable B in `buf` that is known to be smaller than A, wait and
+     *  instantiate all other type variables before trying to instantiate A again.
+     *  Dually, wait instantiating a type variable from above as long as it has
+     *  upper bounds in `buf`.
+     *
+     *  This is done to avoid loss of precision when forming unions. An example
+     *  is in i7558.scala:
+     *
+     *      type Tr[+V1, +O1 <: V1]
+     *      extension [V2, O2 <: V2](tr: Tr[V2, O2]) def sl: Tr[V2, O2] = ???
+     *      def as[V3, O3 <: V3](tr: Tr[V3, O3]) : Tr[V3, O3] = tr.sl
+     *
+     *   Here we interpolate at some point V2 and O2 given the constraint
+     *
+     *      V2 >: V3, O2 >: O3, O2 <: V2
+     *
+     *   where O3 and V3 are type refs with O3 <: V3.
+     *   If we interpolate V2 first to V3 | O2, the widenUnion algorithm will
+     *   instantiate O2 to V3, leading to the final constraint
+     *
+     *      V2 := V3, O2 := V3
+     *
+     *   But if we instantiate O2 first to O3, and V2 next to V3, we get the
+     *   more flexible instantiation
+     *
+     *      V2 := V3, O2 := O3
+     */
+    def doInstantiate(tvs: ToInstantiate): Unit =
+
+      /** Try to instantiate `tvs`, return any suspended type variables */
+      def tryInstantiate(tvs: ToInstantiate): ToInstantiate = tvs match
+        case (hd @ (tvar, v)) :: tvs1 =>
+          val fromBelow = v == 1 || (v == 0 && tvar.hasLowerBound)
+          typr.println(
+            i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
+          if tvar.isInstantiated then
+            tryInstantiate(tvs1)
+          else
+            val suspend = tvs1.exists{ (following, _) =>
+              if fromBelow
+              then constraint.isLess(following.origin, tvar.origin)
+              else constraint.isLess(tvar.origin, following.origin)
+            }
+            if suspend then
+              typr.println(i"suspended: $hd")
+              hd :: tryInstantiate(tvs1)
+            else
+              tvar.instantiate(fromBelow)
+              tryInstantiate(tvs1)
+        case Nil => Nil
+      if tvs.nonEmpty then doInstantiate(tryInstantiate(tvs))
+    end doInstantiate
+
+    doInstantiate(filterByDeps(toInstantiate))
+  end instantiateTypeVars
 
   /** If `tvar` represents a parameter of a dependent method type in the current `call`
    *  approximate it from below with the type of the actual argument. Skolemize that

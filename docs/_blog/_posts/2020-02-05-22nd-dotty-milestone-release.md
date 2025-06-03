@@ -55,7 +55,7 @@ println(s"Third: ${list.third}")  // 3
 
 This syntax is a completely separate one from the `given` syntax and hence is aimed to bring more clarity and disentangle the two different concepts.
 
-For the discussion, see [PR #7917](https://github.com/lampepfl/dotty/pull/7917). For more information on how to use extension methods in general and collective extension methods in particular, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html).
+For the discussion, see [PR #7917](https://github.com/scala/scala3/pull/7917). For more information on how to use extension methods in general and collective extension methods in particular, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html).
 
 # Kind projector syntax support
 [Kind projector](https://github.com/typelevel/kind-projector) is a popular compiler plugin for Scala 2. It is especially useful in the context of purely functional programming and type class derivation – everywhere where you need to work extensively with types.
@@ -90,7 +90,7 @@ object tupleFunctor extends Functor[λ[x => (x, x)]]
   println(squared)  // (1,4)
 ```
 
-For the discussion, see [PR #7775](https://github.com/lampepfl/dotty/pull/7775). Also see the GitHub [repository](https://github.com/typelevel/kind-projector) of the kind projector Scala 2 plugin for more context.
+For the discussion, see [PR #7775](https://github.com/scala/scala3/pull/7775). Also see the GitHub [repository](https://github.com/typelevel/kind-projector) of the kind projector Scala 2 plugin for more context.
 
 # Further improvements to the context parameters syntax
 Scala 3 context parameters are successors of Scala 2 implicits. In Scala 2, they proved useful for a wide range of applications including purely functional programming, dependency injection, type class derivation, type-level programming. Because their apparent value, one of the priorities in Scala 3 for us is to improve the conceptual framework behind them.
@@ -127,7 +127,7 @@ As opposed to the previous:
 f(2)(given 20)
 ```
 
-For the time being, the change is experimental and the old syntax is also supported. For the discussion, see [PR #8162](https://github.com/lampepfl/dotty/pull/8162). You can browse the documentation concerning the new syntax [here](https://dotty.epfl.ch/docs/reference/contextual/motivation-new.html).
+For the time being, the change is experimental and the old syntax is also supported. For the discussion, see [PR #8162](https://github.com/scala/scala3/pull/8162). You can browse the documentation concerning the new syntax [here](https://dotty.epfl.ch/docs/reference/contextual/motivation-new.html).
 
 # Semantics of inline parameters changed
 Inline parameters is a metaprogramming feature of Dotty which allows to splice the body of the parameter on its call site. Previously, inline parameters to methods were required to be known on compile time. With this release, this constraint has been relaxed. The following:
@@ -149,7 +149,7 @@ Notice how the value of the by-name parameter `b` is not inlined but is bound to
 
 So, if previously you had a macro `inline def operationOnCode(code: => Unit) = ${ mcrImpl('code) }` which did something on the AST of the passed `code`, with this release you need to change it to `inline def operationOnCode(inline code: Unit) = ${ mcrImpl('code) }`.
 
-This change was introduced by [PR #8060](https://github.com/lampepfl/dotty/pull/8060/).
+This change was introduced by [PR #8060](https://github.com/scala/scala3/pull/8060/).
 
 Another change in the semantics of the inline parameters involves the fact that the can no longer be passed as constants to macro implementations. Previously, the following was possible:
 
@@ -169,7 +169,7 @@ inline def power(x: Double, inline n: Int) = ${ powerCode('x, 'n) }
 private def powerCode(x: Expr[Double], n: Expr[Int])(given QuoteContext): Expr[Double] = ???
 ```
 
-You can obtain the constant value of `n` from within the macro implementation by calling `n.getValue` on it which returns an `Option`. This change was introduced by [PR #8061](https://github.com/lampepfl/dotty/pull/8061).
+You can obtain the constant value of `n` from within the macro implementation by calling `n.getValue` on it which returns an `Option`. This change was introduced by [PR #8061](https://github.com/scala/scala3/pull/8061).
 
 For more information about the inline capability of Dotty, see [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html).
 
@@ -194,7 +194,7 @@ The compile-time error above will say:
 
 This feature is particularly useful for data science applications. In data science, it is very easy to make a linear algebra mistake, multiply matrices of wrong dimensions and get a runtime error – sometimes after a few hours of running the model. Hence compile-time verification of the models has a great potential for saving time. With such a type-level arithmetic, Scala becomes well-positioned to implement such type-safe data science frameworks.
 
-For the discussion, see [PR #7628](https://github.com/lampepfl/dotty/pull/7628). The documentation is available [here](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html#the-scalacompiletimeops-package).
+For the discussion, see [PR #7628](https://github.com/scala/scala3/pull/7628). The documentation is available [here](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html#the-scalacompiletimeops-package).
 
 # Suggestions on missing context parameters
 If there's a compile-time error due to a missing context parameter and this error can be fixed with an import, the compiler will attempt to suggest such an import in the error message. Here is an example of how this error looks like:
@@ -212,7 +212,7 @@ If there's a compile-time error due to a missing context parameter and this erro
 
 One area where these suggestions will make life easier is purely functional programming with type-classes, with libraries like [cats](https://typelevel.org/cats/). Having the fix for a missing type class in the error message itself is a big time-saver.
 
-For the discussion, see [PR #7862](https://github.com/lampepfl/dotty/pull/7862).
+For the discussion, see [PR #7862](https://github.com/scala/scala3/pull/7862).
 
 # TASTy Inspector library
 TASTy Consumer was renamed to TASTy Inspector as of this release. It was also published in a library of its own. For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/tasty-inspect.html) on this library.
@@ -221,7 +221,7 @@ TASTy Consumer was renamed to TASTy Inspector as of this release. It was also pu
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -267,7 +267,7 @@ According to `git shortlog -sn --no-merges 0.21.0-RC1..0.22.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

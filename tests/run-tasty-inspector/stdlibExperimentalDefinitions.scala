@@ -25,38 +25,33 @@ val experimentalDefinitionInLibrary = Set(
   "scala.util.TupledFunction",
   "scala.util.TupledFunction$",
 
-  //// New feature: main annotation generalization
-  // Can be stabilized when language feature is stabilized.
-  // Needs user feedback.
-  // Should argGetter/varargGetter be simplified?
-  // Should we have better support for main annotation macros?
-  "scala.annotation.MainAnnotation",
-  "scala.annotation.MainAnnotation$",
-  "scala.annotation.MainAnnotation$.Info",
-  "scala.annotation.MainAnnotation$.Parameter",
-  "scala.annotation.MainAnnotation$.ParameterAnnotation",
-
-
-  //// New feature: prototype of new version of @main
-  // This will never be stabilized. When it is ready it should replace the old @main annotation (requires scala.annotation.MainAnnotation).
-  // Needs user feedback.
-  "scala.annotation.newMain",
-  "scala.annotation.newMain$",
-  "scala.annotation.newMain$.alias",
-  "scala.annotation.newMain.Help",
-  "scala.annotation.newMain.Help$",
-  "scala.annotation.newMain.Names",
-
   //// New feature: capture checking
   "scala.annotation.capability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
+  "scala.annotation.retainsCap",
+  "scala.annotation.retainsArg",
   "scala.Pure",
-  "scala.caps",
-  "scala.caps$",
+  "scala.caps.CapSet",
+  "scala.caps.Capability",
+  "scala.caps.Contains",
+  "scala.caps.Contains$",
+  "scala.caps.Contains$.containsImpl",
+  "scala.caps.Exists",
+  "scala.caps.Mutable",
+  "scala.caps.SharedCapability",
+  "scala.caps.consume",
+  "scala.caps.internal",
+  "scala.caps.internal$",
+  "scala.caps.cap",
+  "scala.caps.cap$",
+  "scala.caps.unsafe",
+  "scala.caps.unsafe$",
+  "scala.caps.use",
 
   //// New feature: into
-  "scala.annotation.allowConversions",
+  "scala.annotation.into",
+  "scala.annotation.internal.$into",
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
@@ -67,12 +62,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.init$.widen",
   "scala.annotation.init$.region",
 
-   //// New APIs: Quotes
-  "scala.quoted.Quotes.reflectModule.TypeLambdaMethods.paramVariances",
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.paramVariance",
-  // Can be stabilized in 3.4.0 (unsure) or later
+  //// New APIs: Quotes
+  // Can be stabilized in 3.5.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
-  "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
@@ -82,22 +74,38 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
+  // Added for 3.6.0, stabilize after feedback.
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newBoundedType",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newTypeAlias",
 
   // New feature: functions with erased parameters.
   // Need erasedDefinitions enabled.
-  "scala.runtime.ErasedFunction", // will be removed (now using PolyFunction)
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.GivenSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.OmitSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.RenameSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.SimpleSelectorModule.apply",
 
-  // New feature: reverse method on Tuple
-  "scala.Tuple.reverse",
-  "scala.Tuple$.Helpers",
-  "scala.Tuple$.Helpers$",
-  "scala.Tuple$.Helpers$.ReverseImpl",
-  "scala.Tuple$.Reverse",
-  "scala.runtime.Tuples$.reverse"
+  // New feature: fromNullable for explicit nulls
+  "scala.Predef$.fromNullable",
+
+  // New feature: modularity
+  "scala.Precise",
+  "scala.annotation.internal.WitnessNames",
+  "scala.runtime.stdLibPatches.Predef$.is",
+
+  // New feature: functions with erased parameters.
+  // Need quotedPatternsWithPolymorphicFunctions enabled.
+  "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
+
+  // New feature: SIP 57 - runtimeChecked replacement of @unchecked
+  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
+
+  // New feature: SIP 61 - @unroll annotation
+  "scala.annotation.unroll"
 )
 
 

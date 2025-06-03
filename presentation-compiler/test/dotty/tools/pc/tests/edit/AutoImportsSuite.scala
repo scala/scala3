@@ -13,6 +13,69 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
          |}
          |""".stripMargin,
       """|scala.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `basic-apply` =
+    check(
+      """|object A {
+          |  <<Future>>(2)
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
+         |""".stripMargin,
+    )
+
+  @Test def `basic-function-apply` =
+    check(
+      """|
+          |object ForgeFor{
+          |  def importMe(): Int = ???
+          |}
+          |object ForgeFor2{
+          |  case class importMe()
+          |}
+          |
+          |
+          |object test2 {
+          |  <<importMe>>()
+          |}
+          |""".stripMargin,
+      """|ForgeFor2
+         |ForgeFor
+         |""".stripMargin
+    )
+
+  @Test def `basic-apply-wrong` =
+    check(
+      """|object A {
+          |  new <<Future>>(2)
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
+         |java.util.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `basic-fuzzy` =
+    check(
+      """|object A {
+          |  <<Future>>.thisMethodDoesntExist(2)
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
+         |java.util.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `typed-simple` =
+    check(
+      """|object A {
+          |  import scala.concurrent.Promise
+          |  val fut: <<Future>> = Promise[Unit]().future
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
          |java.util.concurrent
          |""".stripMargin
     )
@@ -342,6 +405,113 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
       )
     )
 
+  @Test def `worksheet-import` =
+    checkWorksheetEdit(
+      worksheetPcWrapper(
+        """|//> using scala 3.3.0
+           |
+           |// Some comment
+           |
+           |// Object comment
+           |object A {
+           |  val p: <<Path>> = ???
+           |}
+           |""".stripMargin
+      ),
+      worksheetPcWrapper(
+        """|//> using scala 3.3.0
+           |
+           |// Some comment
+           |import java.nio.file.Path
+           |
+           |// Object comment
+           |object A {
+           |  val p: Path = ???
+           |}
+           |""".stripMargin
+      )
+    )
+
+  @Test def `object-import` =
+    checkEdit(
+      """|object A {
+         |  //some comment
+         |  val p: <<Path>> = ???
+         |}
+         |""".stripMargin,
+      """|import java.nio.file.Path
+         |object A {
+         |  //some comment
+         |  val p: Path = ???
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `toplevels-import` =
+    checkEdit(
+      """|//some comment
+         |
+         |val p: <<Path>> = ???
+         |
+         |//some other comment
+         |
+         |val v = 1
+         |""".stripMargin,
+      """|//some comment
+         |import java.nio.file.Path
+         |
+         |val p: Path = ???
+         |
+         |//some other comment
+         |
+         |val v = 1
+         |""".stripMargin,
+    )
+
+  @Test def `i6477` =
+    checkEdit(
+      """|package a
+         |import a.b.SomeClass as SC
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: <<SomeClass>> = ???
+         |""".stripMargin,
+      """|package a
+         |import a.b.SomeClass as SC
+         |import a.c.SomeClass
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass = ???
+         |""".stripMargin
+    )
+
+  @Test def `use-packages-in-scope` =
+    checkEdit(
+      """|import scala.collection.mutable as mut
+         |
+         |val l = <<ListBuffer>>(2)
+         |""".stripMargin,
+      """|import scala.collection.mutable as mut
+         |import mut.ListBuffer
+         |
+         |val l = ListBuffer(2)
+         |""".stripMargin
+    )
+
   private def ammoniteWrapper(code: String): String =
     // Vaguely looks like a scala file that Ammonite generates
     // from a sc file.
@@ -358,6 +528,11 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
         |$code
         |}
         |""".stripMargin
+
+  private def worksheetPcWrapper(code: String): String =
+    s"""|object worksheet{
+        |$code
+        |}""".stripMargin
 
   // https://dotty.epfl.ch/docs/internals/syntax.html#soft-keywords
   @Test
@@ -387,4 +562,58 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
           |object $keyword{ object ABC }
           |object Main{ val obj = ABC }
           |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterDirective =
+    checkEdit(
+      """|//> using scala 3.5.0
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|//> using scala 3.5.0
+         |import java.nio.file.Files
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicense =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicenseWithPackage =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
     )

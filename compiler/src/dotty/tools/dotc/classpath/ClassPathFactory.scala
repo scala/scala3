@@ -7,6 +7,7 @@ import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils.*
 import dotty.tools.io.ClassPath
 import dotty.tools.dotc.core.Contexts.*
+import java.nio.file.Files
 
 /**
  * Provides factory methods for classpath. When creating classpath instances for a given path,
@@ -52,20 +53,36 @@ class ClassPathFactory {
 
   // Internal
   protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    for {
+    val files = for {
       file <- expandPath(path, expand)
       dir <- {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
       }
     }
-    yield newClassPath(dir)
+    yield dir
+
+    val expanded =
+      if scala.util.Properties.propOrFalse("scala.expandjavacp") then
+        for
+          file <- files
+          a <- ClassPath.expandManifestPath(file.absolutePath)
+          path = java.nio.file.Paths.get(a.toURI())
+          if Files.exists(path)
+        yield
+          newClassPath(AbstractFile.getFile(path))
+      else
+        Seq.empty
+
+    files.map(newClassPath) ++ expanded
+
+  end classesInPathImpl
 
   private def createSourcePath(file: AbstractFile)(using Context): ClassPath =
     if (file.isJarOrZip)
       ZipAndJarSourcePathFactory.create(file)
     else if (file.isDirectory)
-      new DirectorySourcePath(file.file)
+      new DirectorySourcePath(file.file.nn)
     else
       sys.error(s"Unsupported sourcepath element: $file")
 }
@@ -77,7 +94,7 @@ object ClassPathFactory {
       if (file.isJarOrZip)
         ZipAndJarClassPathFactory.create(file)
       else if (file.isDirectory)
-        new DirectoryClassPath(file.file)
+        new DirectoryClassPath(file.file.nn)
       else
         sys.error(s"Unsupported classpath element: $file")
   }

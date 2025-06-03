@@ -55,7 +55,7 @@ object Linter:
       && !isJavaApplication(t)                  // Java methods are inherently side-effecting
       // && !treeInfo.hasExplicitUnit(t)           // suppressed by explicit expr: Unit // TODO Should explicit `: Unit` be added as warning suppression?
 
-    if ctx.settings.WNonUnitStatement.value && !ctx.isAfterTyper && checkInterestingShapes(t) then
+    if ctx.settings.Whas.nonUnitStatement && !ctx.isAfterTyper && checkInterestingShapes(t) then
       val where = t match
         case Block(_, res) => res
         case If(_, thenpart, Literal(Constant(()))) =>
@@ -119,7 +119,7 @@ object Linter:
           // still compute `canEqual(A & B, B & A) = true`.
           canEqual(a, b.tp1) || canEqual(a, b.tp2)
 
-    if ctx.settings.WimplausiblePatterns.value && !canEqual(pat.tpe, selType) then
+    if ctx.settings.Whas.implausiblePatterns && !canEqual(pat.tpe, selType) then
       report.warning(ImplausiblePatternWarning(pat, selType), pat.srcPos)
   end warnOnImplausiblePattern
 

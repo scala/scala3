@@ -13,12 +13,15 @@ import core.Constants.Constant
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
+import core.Decorators.*
 import coverage.*
 import typer.LiftCoverage
 import util.{SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
+import scala.util.matching.Regex
+import java.util.regex.Pattern
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -35,11 +38,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   override def isEnabled(using ctx: Context) =
     ctx.settings.coverageOutputDir.value.nonEmpty
 
-  // counter to assign a unique id to each statement
-  private var statementId = 0
-
-  // stores all instrumented statements
-  private val coverage = Coverage()
+  private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
+  private var coverageExcludeFilePatterns: List[Pattern] = Nil
 
   override def run(using ctx: Context): Unit =
     val outputPath = ctx.settings.coverageOutputDir.value
@@ -50,13 +50,34 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     if !newlyCreated then
       // If the directory existed before, let's clean it up.
-      dataDir.listFiles.nn
-        .filter(_.nn.getName.nn.startsWith("scoverage"))
-        .foreach(_.nn.delete())
+      dataDir.listFiles
+        .filter(_.getName.startsWith("scoverage"))
+        .foreach(_.delete())
     end if
+
+    // Initialise a coverage object if it does not exist yet
+    if ctx.base.coverage == null then
+      ctx.base.coverage = Coverage()
+
+    coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
+    coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
+
+    ctx.base.coverage.nn.removeStatementsFromFile(ctx.compilationUnit.source.file.absolute.jpath)
     super.run
 
-    Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
+    Serializer.serialize(ctx.base.coverage.nn, outputPath, ctx.settings.sourceroot.value)
+
+  private def isClassIncluded(sym: Symbol)(using Context): Boolean =
+    val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
+    coverageExcludeClasslikePatterns.isEmpty || !coverageExcludeClasslikePatterns.exists(
+      _.matcher(fqn).matches
+    )
+
+  private def isFileIncluded(file: SourceFile)(using Context): Boolean =
+    val normalizedPath = file.path.replace(".scala", "")
+    coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
+      _.matcher(normalizedPath).matches
+    )
 
   override protected def newTransformer(using Context) =
     CoverageTransformer(ctx.settings.coverageOutputDir.value)
@@ -88,8 +109,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return the statement's id
       */
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
-      val id = statementId
-      statementId += 1
+      val id = ctx.base.coverage.nn.nextStatementId()
 
       val sourceFile = pos.source
       val statement = Statement(
@@ -98,14 +118,14 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         start = pos.start,
         end = pos.end,
         // +1 to account for the line number starting at 1
-        // the internal line number is 0-base https://github.com/lampepfl/dotty/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
+        // the internal line number is 0-base https://github.com/scala/scala3/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
         line = pos.line + 1,
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
-        symbolName = tree.symbol.name.toSimpleName.toString,
-        treeName = tree.getClass.getSimpleName.nn,
+        symbolName = tree.symbol.name.toSimpleName.show,
+        treeName = tree.getClass.getSimpleName,
         branch
       )
-      coverage.addStatement(statement)
+      ctx.base.coverage.nn.addStatement(statement)
       id
 
     /**
@@ -269,8 +289,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             transformDefDef(tree)
 
           case tree: PackageDef =>
-            // only transform the statements of the package
-            cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+            if isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol) then
+              // only transform the statements of the package
+              cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+            else
+              tree
+
+          case tree: TypeDef =>
+            if isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol) then
+              super.transform(tree)
+            else
+              tree
 
           case tree: Assign =>
             // only transform the rhs

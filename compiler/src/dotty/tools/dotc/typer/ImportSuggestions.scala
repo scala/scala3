@@ -69,7 +69,7 @@ trait ImportSuggestions:
           && !(root.name == nme.raw.BAR && ctx.settings.scalajs.value && root == JSDefinitions.jsdefn.PseudoUnionModule)
       }
 
-    def nestedRoots(site: Type)(using Context): List[Symbol] =
+    def nestedRoots(site: Type, parentSymbols: Set[Symbol])(using Context): List[Symbol] =
       val seenNames = mutable.Set[Name]()
       site.baseClasses.flatMap { bc =>
         bc.info.decls.filter { dcl =>
@@ -79,34 +79,37 @@ trait ImportSuggestions:
         }
       }
 
-    def rootsStrictlyIn(ref: Type)(using Context): List[TermRef] =
+    def rootsStrictlyIn(ref: Type, parentSymbols: Set[Symbol] = Set())(using Context): List[TermRef] =
       val site = ref.widen
       val refSym = site.typeSymbol
-      val nested =
-        if refSym.is(Package) then
-          if refSym == defn.EmptyPackageClass       // Don't search the empty package
-              || refSym == defn.JavaPackageClass     // As an optimization, don't search java...
-              || refSym == defn.JavaLangPackageClass // ... or java.lang.
-          then Nil
-          else refSym.info.decls.filter(lookInside)
-        else if refSym.infoOrCompleter.isInstanceOf[StubInfo] then
-          Nil // Don't chase roots that do not exist
-        else
-          if !refSym.is(Touched) then
-            refSym.ensureCompleted() // JavaDefined is reliably known only after completion
-          if refSym.is(JavaDefined) then Nil
-          else nestedRoots(site)
-      nested
-        .map(mbr => TermRef(ref, mbr.asTerm))
-        .flatMap(rootsIn)
-        .toList
+      if parentSymbols.contains(refSym) then Nil
+      else
+        val nested =
+          if refSym.is(Package) then
+            if refSym == defn.EmptyPackageClass       // Don't search the empty package
+                || refSym == defn.JavaPackageClass     // As an optimization, don't search java...
+                || refSym == defn.JavaLangPackageClass // ... or java.lang.
+            then Nil
+            else refSym.info.decls.filter(lookInside)
+          else if refSym.infoOrCompleter.isInstanceOf[StubInfo] then
+            Nil // Don't chase roots that do not exist
+          else
+            if !refSym.is(Touched) then
+              refSym.ensureCompleted() // JavaDefined is reliably known only after completion
+            if refSym.is(JavaDefined) then Nil
+            else nestedRoots(site, parentSymbols)
+        val newParentSymbols = parentSymbols + refSym
+        nested
+          .map(mbr => TermRef(ref, mbr.asTerm))
+          .flatMap(rootsIn(_, newParentSymbols))
+          .toList
 
-    def rootsIn(ref: TermRef)(using Context): List[TermRef] =
+    def rootsIn(ref: TermRef, parentSymbols: Set[Symbol] = Set())(using Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
         implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
-        ref :: rootsStrictlyIn(ref)
+        ref :: rootsStrictlyIn(ref, parentSymbols)
 
     def rootsOnPath(tp: Type)(using Context): List[TermRef] = tp match
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
@@ -148,9 +151,9 @@ trait ImportSuggestions:
    *   `name` that are applicable to `T`.
    */
   private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
-    val timer = new Timer()
     val allotted = ctx.run.nn.importSuggestionBudget
     if allotted <= 1 then return (Nil, Nil)
+    val timer = new Timer()
     implicits.println(i"looking for import suggestions, timeout = ${allotted}ms")
     val start = System.currentTimeMillis()
     val deadLine = start + allotted
@@ -158,7 +161,7 @@ trait ImportSuggestions:
     // Candidates that are already available without explicit import because they
     // are already provided by the context (imported or inherited) or because they
     // are in the implicit scope of `pt`.
-    val alreadyAvailableCandidates: Set[Symbol] = {
+    lazy val alreadyAvailableCandidates: Set[Symbol] = {
       val wildProto = wildApprox(pt)
       val contextualCandidates = ctx.implicits.eligible(wildProto)
       val implicitScopeCandidates = ctx.run.nn.implicitScope(wildProto).eligible
@@ -264,7 +267,7 @@ trait ImportSuggestions:
   end importSuggestions
 
   /** Reduce next timeout for import suggestions by the amount of time it took
-   *  for current search, but but never less than to half of the previous budget.
+   *  for current search, but never less than to half of the previous budget.
    */
   private def reduceTimeBudget(used: Int)(using Context) =
     val run = ctx.run.nn
@@ -296,7 +299,7 @@ trait ImportSuggestions:
       var i = 0
       var diff = 0
       while i < filled && diff == 0 do
-        diff = compare(ref, top(i))(using noImplicitsCtx)
+        diff = compare(ref, top(i), preferGeneral = true)(using noImplicitsCtx)
         if diff > 0 then
           rest += top(i)
           top(i) = ref

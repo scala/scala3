@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+unset cygwin mingw msys darwin
+
+# COLUMNS is used together with command line option '-pageWidth'.
+if command -v tput >/dev/null 2>&1; then
+  export COLUMNS="$(tput -Tdumb cols)"
+fi
+
+case "`uname`" in
+  CYGWIN*) cygwin=true
+          ;;
+  MINGW*) mingw=true
+          ;;
+  MSYS*) msys=true
+          ;;
+  Darwin*) darwin=true
+           ;;
+esac
+
+unset DIST_PROJECT DIST_DIR
+
+if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
+  DIST_PROJECT="dist-win-x86_64"
+  DIST_DIR="dist/win-x86_64"
+else
+  # OS and arch logic taken from https://github.com/VirtusLab/scala-cli/blob/main/scala-cli.sh
+  unset arch ARCH_NORM
+  arch=$(uname -m)
+  if [[ "$arch" == "aarch64" ]] || [[ "$arch" == "x86_64" ]]; then
+    ARCH_NORM="$arch"
+  elif [[ "$arch" == "amd64" ]]; then
+    ARCH_NORM="x86_64"
+  elif [[ "$arch" == "arm64" ]]; then
+    ARCH_NORM="aarch64"
+  else
+    ARCH_NORM="unknown"
+  fi
+
+  if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "Linux" ]; then
+    if [[ "$ARCH_NORM" == "unknown" ]]; then
+      echo >&2 "unknown Linux CPU architecture, defaulting to JVM launcher"
+      DIST_PROJECT="dist"
+      DIST_DIR="dist"
+    else
+      DIST_PROJECT="dist-linux-$ARCH_NORM"
+      DIST_DIR="dist/linux-$ARCH_NORM"
+    fi
+  elif [ "$(uname)" == "Darwin" ]; then
+    if [[ "$ARCH_NORM" == "unknown" ]]; then
+      echo >&2 "unknown Darwin CPU architecture, defaulting to JVM launcher"
+      DIST_PROJECT="dist"
+      DIST_DIR="dist"
+    else
+      DIST_PROJECT="dist-mac-$ARCH_NORM"
+      DIST_DIR="dist/mac-$ARCH_NORM"
+    fi
+  else
+    echo >&2 "unknown OS, defaulting to JVM launcher"
+    DIST_PROJECT="dist"
+    DIST_DIR="dist"
+  fi
+fi

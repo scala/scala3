@@ -108,7 +108,11 @@ to get a source-like representation of the expression.
 import scala.quoted.*
 
 // make available the necessary compiler for runtime code generation
-given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
+given staging.Compiler =
+  // We need an instance of a class that is defined in the current application (not the standard library)
+  // `this` can be used instead of an instance of `Dummy` if the Compiler is instantiated within one of the application classes.
+  object Dummy
+  staging.Compiler.make(Dummy.getClass.getClassLoader)
 
 val f: Array[Int] => Int = staging.run {
   val stagedSum: Expr[Array[Int] => Int] =

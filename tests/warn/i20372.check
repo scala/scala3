@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20372.scala:8:5 ----------------------------------------------
+8 |  id(foo match { // warn
+  |     ^^^
+  |     match may not be exhaustive.
+  |
+  |     It would fail on pattern case: Baz
+  |
+  | longer explanation available when compiling with `-explain`

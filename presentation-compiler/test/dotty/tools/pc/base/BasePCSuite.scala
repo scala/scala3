@@ -22,25 +22,27 @@ import dotty.tools.pc.utils._
 import org.eclipse.lsp4j.MarkupContent
 import org.eclipse.lsp4j.jsonrpc.messages.Either as JEither
 import org.junit.runner.RunWith
+import scala.meta.pc.CompletionItemPriority
 
 object TestResources:
-  val scalaLibrary = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
+  val classpath = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
   val classpathSearch =
-    ClasspathSearch.fromClasspath(scalaLibrary, ExcludedPackagesHandler.default)
+    ClasspathSearch.fromClasspath(classpath, ExcludedPackagesHandler.default)
 
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:
+  val completionItemPriority: CompletionItemPriority = (_: String) => 0
   private val isDebug = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("-agentlib:jdwp")
 
   val tmp = Files.createTempDirectory("stable-pc-tests")
   val executorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor()
   val testingWorkspaceSearch = TestingWorkspaceSearch(
-    TestResources.scalaLibrary.map(_.toString)
+    TestResources.classpath.map(_.toString)
   )
 
   lazy val presentationCompiler: PresentationCompiler =
-    val myclasspath: Seq[Path] = TestResources.scalaLibrary
+    val myclasspath: Seq[Path] = TestResources.classpath
     val scalacOpts = scalacOptions(myclasspath)
     val search = new MockSymbolSearch(
       testingWorkspaceSearch,
@@ -53,6 +55,7 @@ abstract class BasePCSuite extends PcAssertions:
       .withExecutorService(executorService)
       .withScheduledExecutorService(executorService)
       .withSearch(search)
+      .withCompletionItemPriority(completionItemPriority)
       .newInstance("", myclasspath.asJava, scalacOpts.asJava)
 
   protected def config: PresentationCompilerConfig =

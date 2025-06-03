@@ -36,8 +36,8 @@ object LambdaLift:
     val liftedDefs: HashMap[Symbol, ListBuffer[Tree]] = new HashMap
 
     val deps = new Dependencies(ctx.compilationUnit.tpdTree, ctx.withPhase(thisPhase)):
-      def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
-      def enclosure(using Context) = ctx.owner.enclosingMethod
+      def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method) || sym.hasAnnotation(defn.ScalaStaticAnnot)
+      def enclosure(using Context) = ctx.owner.enclosingMethodOrStatic
 
       override def process(tree: Tree)(using Context): Unit =
         super.process(tree)

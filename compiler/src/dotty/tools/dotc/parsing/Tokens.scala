@@ -78,7 +78,7 @@ abstract class TokensCommon {
   //inline val YIELD = 48;            enter(YIELD, "yield")
   inline val DO = 49;               enter(DO, "do")
   //inline val TRAIT = 50;            enter(TRAIT, "trait")
-  //inline val SEALED = 51;           enter(SEALED, "sealed")
+  inline val SEALED = 51;           enter(SEALED, "sealed")
   inline val THROW = 52;            enter(THROW, "throw")
   inline val TRY = 53;              enter(TRY, "try")
   inline val CATCH = 54;            enter(CATCH, "catch")
@@ -169,7 +169,7 @@ object Tokens extends TokensCommon {
   inline val OBJECT = 44;           enter(OBJECT, "object")
   inline val YIELD = 48;            enter(YIELD, "yield")
   inline val TRAIT = 50;            enter(TRAIT, "trait")
-  inline val SEALED = 51;           enter(SEALED, "sealed")
+  //inline val SEALED = 51;           enter(SEALED, "sealed")
   inline val MATCH = 58;            enter(MATCH, "match")
   inline val LAZY = 59;             enter(LAZY, "lazy")
   inline val THEN = 60;             enter(THEN, "then")
@@ -238,6 +238,9 @@ object Tokens extends TokensCommon {
 
   final val canStartPatternTokens = atomicExprTokens | openParensTokens | BitSet(USCORE, QUOTE)
 
+  val canFollowSimpleTypeTokens =
+    BitSet(AT, WITH, COLONop, COLONfollow, COLONeol, LBRACE, IDENTIFIER, BACKQUOTED_IDENT, ARROW, CTXARROW, MATCH, FORSOME)
+
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
@@ -292,9 +295,11 @@ object Tokens extends TokensCommon {
 
   final val colonEOLPredecessors = BitSet(RPAREN, RBRACKET, BACKQUOTED_IDENT, THIS, SUPER, NEW)
 
+  final val canStartCaptureSetContentsTokens = BitSet(IDENTIFIER, BACKQUOTED_IDENT, THIS, RBRACE)
+
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
-  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 
   def showTokenDetailed(token: Int): String = debugString(token)
 

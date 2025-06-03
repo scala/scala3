@@ -6,7 +6,7 @@ authorImg: images/martin.jpg
 date: 2016-12-05
 ---
 
-I just made the [first pull request](https://github.com/lampepfl/dotty/pull/1775) to add _implicit function types_ to
+I just made the [first pull request](https://github.com/scala/scala3/pull/1775) to add _implicit function types_ to
 Scala. I am pretty excited about it, because - citing the explanation
 of the pull request - "_This is the first step to bring contextual
 abstraction to Scala_". What do I mean by this?
@@ -181,7 +181,7 @@ implicit Transaction => Int
 ```
 Just like the normal function type syntax `A => B`, desugars to `scala.Function1[A, B]`
 the implicit function type syntax `implicit A => B` desugars to `scala.ImplicitFunction1[A, B]`.
-The same holds at other function arities. With Dotty's [pull request #1758](https://github.com/lampepfl/dotty/pull/1758)
+The same holds at other function arities. With Dotty's [pull request #1758](https://github.com/scala/scala3/pull/1758)
 merged there is no longer an upper limit of 22 for such functions.
 
 The type `ImplicitFunction1` can be thought of being defined as follows:

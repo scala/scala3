@@ -1,3 +1,3 @@
 trait A
 trait B
-type T = {given(using a: A) as B} // error: refinement cannot be `given`
+type T = {given x(using a: A): B} // error: refinement cannot be `given`

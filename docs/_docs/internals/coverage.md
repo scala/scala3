@@ -5,7 +5,7 @@ title: "Code Coverage for Scala 3"
 
 ## Instrument code for coverage analysis
 
-[PR#13880](https://github.com/lampepfl/dotty/pull/13880) has implemented code coverage support for Dotty.
+[PR#13880](https://github.com/scala/scala3/pull/13880) has implemented code coverage support for Dotty.
 In general, code coverage "instruments" the program at compile time: code is inserted to record which statement are called. This does not change the behavior of the program. Also, a list of all the coverable statements is produced.
 
 To use this feature, add the compile option `-coverage-out:DIR`, where `DIR` is the destination of the measurement files.

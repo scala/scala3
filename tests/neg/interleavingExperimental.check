@@ -1,0 +1,4 @@
+-- [E040] Syntax Error: tests/neg/interleavingExperimental.scala:3:15 --------------------------------------------------
+3 |def ba[A](x: A)[B](using B): B = summon[B] // error: clauseInterleaving was experimental until 3.6
+  |               ^
+  |               '=' expected, but '[' found

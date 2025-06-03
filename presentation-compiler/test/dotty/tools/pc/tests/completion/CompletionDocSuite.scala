@@ -16,14 +16,14 @@ class CompletionDocSuite extends BaseCompletionSuite:
       MockDocumentation("java/lang/String#join().", "join", Seq(), Seq("delimiter", "elements")),
       MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
       MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
-      ScalaMockDocumentation("scala/collection/Iterator#sliding().", "sliding", List(MockParam("size"), MockParam("step", "1"))),
-      ScalaMockDocumentation("scala/collection/immutable/TreeMap#insert().", "insert", List(MockParam("key"), MockParam("value"))),
+      ScalaMockDocumentation("scala/collection/Iterator#sliding().", "sliding", List(), List(MockParam("size"), MockParam("step", "1"))),
+      ScalaMockDocumentation("scala/collection/immutable/TreeMap#insert().", "insert", List(), List(MockParam("key"), MockParam("value"))),
       ScalaMockDocumentation("scala/Option#isDefined().", "isDefined"),
       ScalaMockDocumentation("scala/util/DynamicVariable#", "DynamicVariable"),
       ScalaMockDocumentation("scala/util/DynamicVariable.", "DynamicVariable"),
-      ScalaMockDocumentation("scala/io/Source#reportWarning().", "reportWarning", List(MockParam("pos"), MockParam("msg"), MockParam("out", "Console.out"))),
+      ScalaMockDocumentation("scala/io/Source#reportWarning().", "reportWarning", List(), List(MockParam("pos"), MockParam("msg"), MockParam("out", "Console.out"))),
       ScalaMockDocumentation("scala/Predef.println().", "println"),
-      ScalaMockDocumentation("scala/Predef.println(+1).", "println", List(MockParam("x"))),
+      ScalaMockDocumentation("scala/Predef.println(+1).", "println", List(), List(MockParam("x"))),
       ScalaMockDocumentation("scala/Predef.", "Predef"),
       ScalaMockDocumentation("scala/runtime/stdLibPatches/Predef.", "Predef"),
       ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch"),
@@ -156,8 +156,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |Found documentation for scala/collection/Iterator.
         |Iterator scala.collection
         |""".stripMargin,
-
-      includeDocs = true
+      includeDocs = true,
+      topLines = Some(1)
     )
 
   @Test def `scala5` =
@@ -182,10 +182,10 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """
-        |> Found documentation for scala/util/Try.
-        |Try scala.util
         |> Found documentation for scala/util/Try.apply().
         |Try[T](r: => T): Try[T]
+        |> Found documentation for scala/util/Try.
+        |Try scala.util
         |""".stripMargin,
       includeDocs = true
     )
@@ -199,7 +199,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
       """.stripMargin,
       """
         |> Found documentation for scala/collection/mutable/StringBuilder.
-        |StringBuilder scala.collection.mutable
+        |StringBuilder(): StringBuilder
         |""".stripMargin,
       includeDocs = true,
       topLines = Some(1)
@@ -213,6 +213,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """
+        |Vector[A](elems: A*): Vector[A]
         |> Found documentation for scala/package.Vector.
         |Vector scala.collection.immutable
         |""".stripMargin,
@@ -227,11 +228,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """
-        |> ### class Catch
-        |Found documentation for scala/util/control/Exception.Catch#
-        |### object Catch
-        |Found documentation for scala/util/control/Exception.Catch.
-        |Catch[T] - scala.util.control.Exception
+        |> Found documentation for scala/util/control/Exception.Catch#
+        |Catch[T](pf: Catcher[T], fin: Option[Finally] = ..., rethrow: Throwable => Boolean = ...): Catch[T] - scala.util.control.Exception
         |> ### class Catch
         |Found documentation for scala/util/control/Exception.Catch#
         |### object Catch
@@ -248,8 +246,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  scala.util.Failure@@
         |}
       """.stripMargin,
-      """|Failure scala.util
-         |Failure[T](exception: Throwable): Failure[T]
+      """|Failure[T](exception: Throwable): Failure[T]
+         |Failure scala.util
          |""".stripMargin,
       includeDocs = true
     )
@@ -263,16 +261,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """
-        |> ### class DynamicVariable
-        |Found documentation for scala/util/DynamicVariable#
-        |### object DynamicVariable
-        |Found documentation for scala/util/DynamicVariable.
-        |DynamicVariable[T] scala.util
-        |> ### class DynamicVariable
-        |Found documentation for scala/util/DynamicVariable#
-        |### object DynamicVariable
-        |Found documentation for scala/util/DynamicVariable.
-        |DynamicVariable scala.util
+        |> Found documentation for scala/util/DynamicVariable#
+        |DynamicVariable[T](init: T): DynamicVariable[T]
         |""".stripMargin,
       includeDocs = true
     )

@@ -60,7 +60,6 @@ class TastyBootstrapTests {
     val lib =
       compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
-          "-language:experimental.erasedDefinitions", // support declaration of scala.compiletime.erasedValue
           //  "-source", "future",  // TODO: re-enable once library uses updated syntax for vararg splices, wildcard imports, and import renaming
           ))(libGroup)
 

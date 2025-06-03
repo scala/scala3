@@ -1,3 +1,4 @@
+
 class CC
 type Cap = CC^
 
@@ -11,8 +12,8 @@ def test(p: Proc, q: () => Unit) =
     x = q           // error
     x = (q: Proc)   // error
     y = (q: Proc)   // error
-    y = q           // error
+    y = q           // error, was OK under unsealed
 
-  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error
+  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
 
 

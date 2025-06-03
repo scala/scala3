@@ -10,7 +10,7 @@ import java.io.IOException
 import java.util.jar.Attributes.{ Name => AttributeName }
 import java.nio.charset.StandardCharsets
 
-/** Loads `library.properties` from the jar. */
+/** Loads `compiler.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
   protected def pickJarBasedOn: Class[PropertiesTrait] = classOf[PropertiesTrait]
@@ -45,7 +45,7 @@ trait PropertiesTrait {
 
   def propIsSet(name: String): Boolean                  = System.getProperty(name) != null
   def propIsSetTo(name: String, value: String): Boolean = propOrNull(name) == value
-  def propOrElse(name: String, alt: String): String     = System.getProperty(name, alt)
+  def propOrElse(name: String, alt: => String): String  = Option(System.getProperty(name)).getOrElse(alt)
   def propOrEmpty(name: String): String                 = propOrElse(name, "")
   def propOrNull(name: String): String                  = propOrElse(name, null)
   def propOrNone(name: String): Option[String]          = Option(propOrNull(name))
@@ -53,11 +53,11 @@ trait PropertiesTrait {
   def setProp(name: String, value: String): String      = System.setProperty(name, value)
   def clearProp(name: String): String                   = System.clearProperty(name)
 
-  def envOrElse(name: String, alt: String): String      = Option(System getenv name) getOrElse alt
+  def envOrElse(name: String, alt: => String): String   = Option(System getenv name) getOrElse alt
   def envOrNone(name: String): Option[String]           = Option(System getenv name)
 
   // for values based on propFilename
-  def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)
+  def scalaPropOrElse(name: String, alt: => String): String = scalaProps.getProperty(name, alt)
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
   def scalaPropOrNone(name: String): Option[String]      = Option(scalaProps.getProperty(name))
 
@@ -84,13 +84,8 @@ trait PropertiesTrait {
    */
   val versionString: String = "version " + simpleVersionString
 
-  /** Whether the current version of compiler is experimental
-   *
-   *  1. Snapshot, nightly releases and non-bootstrapped compiler are experimental.
-   *  2. Features supported by experimental versions of the compiler:
-   *     - research plugins
-   */
-  val experimental: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY") || versionString.contains("nonbootstrapped")
+  /** Whether the current version of compiler supports research plugins. */
+  val researchPluginEnabled: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY") || versionString.contains("nonbootstrapped")
 
   val copyrightString: String       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 

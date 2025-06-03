@@ -1,3 +1,5 @@
+//> using options -source:3.3
+
 trait TC[T]
 
 object TC {

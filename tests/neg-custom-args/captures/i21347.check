@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/captures/i21347.scala:4:15 -------------------------------------------------------------
+4 |  ops.foreach: op => // error
+  |               ^
+  |               Capture set parameter C leaks into capture scope of method runOps.
+  |               To allow this, the type C should be declared with a @use annotation
+5 |    op()
+-- Error: tests/neg-custom-args/captures/i21347.scala:11:15 ------------------------------------------------------------
+11 |  ops.foreach: op => // error
+   |               ^
+   |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
+   |               To allow this, the parameter ops should be declared with a @use annotation
+12 |    op()

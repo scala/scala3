@@ -102,7 +102,7 @@ object Test {
       assert(consume(v) == 10)
       assert(consumeInl(v) == 10)
       assert(v.a == 10)
-      // Pending, per https://github.com/lampepfl/dotty/issues/4528.
+      // Pending, per https://github.com/scala/scala3/issues/4528.
       // v.a = 11
       // assert(consume(v) == 11)
       // assert(consumeInl(v) == 11)

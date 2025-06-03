@@ -57,7 +57,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-      "",
+     "",
       includeCommitCharacter = true
     )
 
@@ -151,6 +151,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|value: Int
          |val
          |var
+         |varargs(): varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -167,6 +168,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|val
          |var
+         |varargs(): varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -181,9 +183,10 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  }
         |}
         |""".stripMargin,
-      """|given (commit: '')
-         |""".stripMargin,
-      includeCommitCharacter = true
+      """given (commit: '')
+        |""".stripMargin,
+      includeCommitCharacter = true,
+      topLines = Some(5)
     )
 
   @Test def `val-arg` =
@@ -198,8 +201,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|value: Int
-         |""".stripMargin,
-      topLines = Some(1)
+         |varargs(): varargs - scala.annotation""".stripMargin
     )
 
   @Test def `val-trailing-space` =
@@ -359,9 +361,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  val x: Map[Int, new@@]
         |}
       """.stripMargin,
-      "",
-      // to avoid newMain annotation
-      filter = str => !str.contains("newMain")
+      ""
     )
   // TODO: Should provide empty completions
   // The issue is that the tree looks the same as for `case @@` (it doesn't see `new`)
@@ -377,9 +377,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  }
         |}
       """.stripMargin,
-      "",
-      // to avoid newMain annotation
-      filter = str => !str.contains("newMain")
+      ""
     )
 
   @Test def `super-typeapply` =
@@ -406,7 +404,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  protected de@@
         |}
       """.stripMargin,
-      "def"
+      """|def
+         |""".stripMargin,
     )
 
   @Test def `protected-val` =
@@ -418,9 +417,9 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  protected va@@
         |}
       """.stripMargin,
-      """val
-        |var
-        |""".stripMargin
+      """|val
+         |var
+         |""".stripMargin
     )
 
   @Test def `topLevel` =
@@ -434,6 +433,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |given
          |extension
          |type
+         |opaque type
          |class
          |enum
          |case class
@@ -459,7 +459,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |}""".stripMargin,
       """|using (commit: '')
          |""".stripMargin,
-      includeCommitCharacter = true
+      includeCommitCharacter = true,
     )
 
   @Test def `not-using` =
@@ -467,7 +467,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|object A{
          |  def hello(a: String, u@@)
          |}""".stripMargin,
-      ""
+      "",
     )
 
   @Test def `extends-class` =
@@ -692,28 +692,26 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
 
   @Test def `derives-with-extends` =
     check(
-      """
-        |package foo
-        |
-        |trait Bar {}
-        |trait Baz {}
-        |
-        |class Foo(x: Int) extends Bar with Baz der@@
-                """.stripMargin,
+      """|package foo
+         |
+         |trait Bar {}
+         |trait Baz {}
+         |
+         |class Foo(x: Int) extends Bar with Baz der@@
+         |""".stripMargin,
       """|derives
          |""".stripMargin
     )
 
   @Test def `derives-with-constructor-extends` =
     check(
-      """
-        |package foo
-        |
-        |trait Bar {}
-        |class Baz(b: Int) {}
-        |
-        |class Foo(x: Int) extends Bar with Baz(1) der@@
-                  """.stripMargin,
+      """|package foo
+         |
+         |trait Bar {}
+         |class Baz(b: Int) {}
+         |
+         |class Foo(x: Int) extends Bar with Baz(1) der@@
+         |""".stripMargin,
       """|derives
          |""".stripMargin
     )

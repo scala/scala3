@@ -8,8 +8,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.{File => JavaIoFile, _}
 import java.nio.file.{Files, Paths}
 import java.nio.file.StandardOpenOption.*
@@ -39,8 +37,6 @@ object File {
  */
 class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
   override val creationCodec: io.Codec = constructorCodec
-
-  override def addExtension(ext: String): File = super.addExtension(ext).toFile
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile
   override def toDirectory: Directory = new Directory(jpath)
   override def toFile: File = this

@@ -4,13 +4,14 @@ package printing
 
 import core.*
 import Texts.*, ast.Trees.*
-import Types.{Type, SingletonType, LambdaParam, NamedType},
+import Types.{Type, SingletonType, LambdaParam, NamedType, RefinedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
 import typer.Implicits.*
 import util.SourcePosition
 import typer.ImportInfo
 import cc.CaptureSet
+import cc.Capabilities.Capability
 
 import scala.annotation.internal.sharable
 
@@ -71,7 +72,7 @@ abstract class Printer {
   def changePrec(prec: Precedence)(op: => Text): Text =
     if (prec < this.prec) atPrec(prec) ("(" ~ op ~ ")") else atPrec(prec)(op)
 
-  /** The name, possibly with with namespace suffix if debugNames is set:
+  /** The name, possibly with namespace suffix if debugNames is set:
    *  /L for local names, /V for other term names, /T for type names
    */
   def nameString(name: Name): String
@@ -104,8 +105,11 @@ abstract class Printer {
   /** Textual representation of a prefix of some reference, ending in `.` or `#` */
   def toTextPrefixOf(tp: NamedType): Text
 
+  /** textual representation of a refinement, with no enclosing {...} */
+  def toTextRefinement(rt: RefinedType): Text
+
   /** Textual representation of a reference in a capture set */
-  def toTextCaptureRef(tp: Type): Text
+  def toTextCapability(ref: Capability): Text
 
   /** Textual representation of a reference in a capture set */
   def toTextCaptureSet(cs: CaptureSet): Text

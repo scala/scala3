@@ -8,6 +8,7 @@ import MegaPhase.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
 import ast.TreeTypeMap
+import Constants.Constant
 
 import scala.collection.mutable.ListBuffer
 
@@ -75,10 +76,10 @@ object BetaReduce:
     val bindingsBuf = new ListBuffer[DefTree]
     def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
       case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
-        Some(reduceApplication(ddef, argss, bindingsBuf))
+        reduceApplication(ddef, argss, bindingsBuf)
       case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
         template.body match
-          case (ddef: DefDef) :: Nil => Some(reduceApplication(ddef, argss, bindingsBuf))
+          case (ddef: DefDef) :: Nil => reduceApplication(ddef, argss, bindingsBuf)
           case _ => None
       case Block(stats, expr) if stats.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Block(fn)(stats, _))
@@ -105,11 +106,21 @@ object BetaReduce:
       case _ =>
         tree
 
-  /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings */
-  def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])(using Context): Tree =
+  /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings.
+   *  @return optionally, the expanded call, or none if the actual argument
+   *          lists do not match in shape the formal parameters
+   */
+  def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])
+      (using Context): Option[Tree] =
     val (targs, args) = argss.flatten.partition(_.isType)
     val tparams = ddef.leadingTypeParams
     val vparams = ddef.termParamss.flatten
+
+    def shapeMatch(paramss: List[ParamClause], argss: List[List[Tree]]): Boolean = (paramss, argss) match
+      case (params :: paramss1, args :: argss1) if params.length == args.length =>
+        shapeMatch(paramss1, argss1)
+      case (Nil, Nil) => true
+      case _ => false
 
     val targSyms =
       for (targ, tparam) <- targs.zip(tparams) yield
@@ -127,27 +138,41 @@ object BetaReduce:
           case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
             ref.symbol
           case _ =>
-            val flags = Synthetic | (param.symbol.flags & Erased)
-            val tpe =
+            val isByNameArg = param.tpt.tpe.isInstanceOf[ExprType]
+            val flags =
+              if isByNameArg then Synthetic | Method | (param.symbol.flags & Erased)
+              else Synthetic | (param.symbol.flags & Erased)
+            val tpe0 =
               if arg.tpe.isBottomType then param.tpe.widenTermRefExpr
               else if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias
               else arg.tpe.widen
-            val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
-            if !(tpe.isInstanceOf[ConstantType] && isPureExpr(arg)) then
-              bindings += binding
-            binding.symbol
+            val tpe = if isByNameArg then ExprType(tpe0) else tpe0
+            val bindingSymbol = newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span)
+            val binding = if isByNameArg then DefDef(bindingSymbol, arg) else ValDef(bindingSymbol, arg)
+            if isByNameArg || !((tpe.isInstanceOf[ConstantType] || tpe.derivesFrom(defn.UnitClass)) && isPureExpr(arg)) then
+              bindings += binding.withSpan(arg.span)
+            bindingSymbol
 
-    val expansion = TreeTypeMap(
-      oldOwners = ddef.symbol :: Nil,
-      newOwners = ctx.owner :: Nil,
-      substFrom = (tparams ::: vparams).map(_.symbol),
-      substTo = targSyms ::: argSyms
-    ).transform(ddef.rhs)
+    if shapeMatch(ddef.paramss, argss) then
+      // We can't assume arguments always match. It's possible to construct a
+      // function with wrong apply method by hand which causes `shapeMatch` to fail.
+      // See neg/i21952.scala
+      val expansion = TreeTypeMap(
+        oldOwners = ddef.symbol :: Nil,
+        newOwners = ctx.owner :: Nil,
+        substFrom = (tparams ::: vparams).map(_.symbol),
+        substTo = targSyms ::: argSyms
+      ).transform(ddef.rhs)
 
-    val expansion1 = new TreeMap {
-      override def transform(tree: Tree)(using Context) = tree.tpe.widenTermRefExpr match
-        case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
-        case _ => super.transform(tree)
-    }.transform(expansion)
+      val expansion1 = new TreeMap {
+        override def transform(tree: Tree)(using Context) = tree.tpe.widenTermRefExpr match
+          case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
+          case tpe: TypeRef if tree.isTerm && tpe.derivesFrom(defn.UnitClass) && isPureExpr(tree) =>
+            cpy.Literal(tree)(Constant(()))
+          case _ => super.transform(tree)
+      }.transform(expansion)
 
-    expansion1
+      Some(expansion1)
+    else None
+  end reduceApplication
+end BetaReduce

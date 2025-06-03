@@ -26,7 +26,7 @@ class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
     p.fold(SnippetCompilerData.Position(0, 0))(p => SnippetCompilerData.Position(p.startLine - 1, p.startColumn))
 
   private def hackGetPositionOfDocstring(using Quotes)(s: qctx.reflect.Symbol): Option[qctx.reflect.Position] =
-    import dotty.tools.dotc.core.Comments.CommentsContext
+    import dotty.tools.dotc.core.Comments.docCtx
     import dotty.tools.dotc
     given ctx: Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val docCtx = ctx.docCtx.getOrElse {

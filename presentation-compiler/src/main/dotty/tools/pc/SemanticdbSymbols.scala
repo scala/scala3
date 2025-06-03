@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.semanticdb.*
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object SemanticdbSymbols:
 
@@ -49,7 +49,16 @@ object SemanticdbSymbols:
                   //   however in scalac this method is defined only in `module Files`
                   if typeSym.is(JavaDefined) then
                     typeSym :: owner.info.decl(termName(value)).symbol :: Nil
+                  /**
+                   * Looks like decl doesn't work for:
+                   *  package a:
+                   *   implicit class <<A>> (i: Int):
+                   *      def inc = i + 1
+                   */
+                  else if typeSym == NoSymbol then
+                    owner.info.member(typeName(value)).symbol :: Nil
                   else typeSym :: Nil
+                  end if
                 case Descriptor.Term(value) =>
                   val outSymbol = owner.info.decl(termName(value)).symbol
                   if outSymbol.exists
@@ -92,6 +101,8 @@ object SemanticdbSymbols:
                     .map(_.symbol)
                     .filter(sym => symbolName(sym) == s)
                     .toList
+          end match
+        end tryMember
 
         parentSymbol.flatMap(tryMember)
     try
@@ -107,8 +118,8 @@ object SemanticdbSymbols:
     b.toString
 
   /**
-   *  Taken from https://github.com/lampepfl/dotty/blob/2db43dae1480825227eb30d291b0dd0f0494e0f6/compiler/src/dotty/tools/dotc/semanticdb/ExtractSemanticDB.scala#L293
-   *  In future might be replaced by usage of compiler implementation after merging https://github.com/lampepfl/dotty/pull/12885
+   *  Taken from https://github.com/scala/scala3/blob/2db43dae1480825227eb30d291b0dd0f0494e0f6/compiler/src/dotty/tools/dotc/semanticdb/ExtractSemanticDB.scala#L293
+   *  In future might be replaced by usage of compiler implementation after merging https://github.com/scala/scala3/pull/12885
    */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 

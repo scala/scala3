@@ -1,0 +1,1 @@
+into class X // error

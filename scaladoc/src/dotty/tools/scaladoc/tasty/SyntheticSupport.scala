@@ -10,8 +10,6 @@ object SyntheticsSupport:
       import reflect._
       s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor) || s.isDefaultHelperMethod
 
-    def isSuperBridgeMethod: Boolean = s.name.contains("$super$")
-
     def isDefaultHelperMethod: Boolean = ".*\\$default\\$\\d+$".r.matches(s.name)
 
     def isOpaque: Boolean =

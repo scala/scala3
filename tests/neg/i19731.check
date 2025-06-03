@@ -1,0 +1,27 @@
+-- Error: tests/neg/i19731.scala:4:6 -----------------------------------------------------------------------------------
+4 |class F1 extends Foo: // error
+  |      ^
+  |      class F1 needs to be abstract, since def foo(): Unit in class F1 is not defined 
+-- Error: tests/neg/i19731.scala:7:6 -----------------------------------------------------------------------------------
+7 |class F2 extends Foo: // error
+  |      ^
+  |      class F2 needs to be abstract, since:
+  |      it has 2 unimplemented members.
+  |      /** As seen from class F2, the missing signatures are as follows.
+  |       *  For convenience, these are usable as stub implementations.
+  |       */
+  |        def foo(): Unit = ???
+  |        def foo(x: Int): Unit = ???
+-- Error: tests/neg/i19731.scala:16:6 ----------------------------------------------------------------------------------
+16 |class B1 extends Bar: // error
+   |      ^
+   |      class B1 needs to be abstract, since:
+   |      it has 2 unimplemented members.
+   |      /** As seen from class B1, the missing signatures are as follows.
+   |       *  For convenience, these are usable as stub implementations.
+   |       */
+   |        // Members declared in B1
+   |        def foo(x: Int): Unit = ???
+   |        
+   |        // Members declared in Bar
+   |        def foo(): Unit = ???

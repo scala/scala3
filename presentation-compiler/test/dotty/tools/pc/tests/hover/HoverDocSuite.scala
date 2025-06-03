@@ -10,10 +10,10 @@ class HoverDocSuite extends BaseHoverSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      ScalaMockDocumentation("java/lang/String#substring().", "substring", List(MockParam("beginIndex"))),
+      ScalaMockDocumentation("java/lang/String#substring().", "substring", List(), List(MockParam("beginIndex"))),
       ScalaMockDocumentation("java/util/Collections#emptyList().", "emptyList"),
-      ScalaMockDocumentation("_empty_/Alpha.apply().", "apply", List(MockParam("x"))),
-      ScalaMockDocumentation("_empty_/Alpha#", "init", List(MockParam("x"))),
+      ScalaMockDocumentation("_empty_/Alpha.apply().", "apply", List(), List(MockParam("x"))),
+      ScalaMockDocumentation("_empty_/Alpha#", "init", List(), List(MockParam("x"))),
       ScalaMockDocumentation("scala/collection/LinearSeqOps#headOption().", "headOption"),
     )
 
@@ -253,4 +253,16 @@ class HoverDocSuite extends BaseHoverSuite:
          |```
          |Found documentation for _empty_/Alpha#
          |""".stripMargin,
+    )
+
+  @Test def `i7093` =
+    check(
+      """|object O:
+         |  /** Ooopsie daisy */
+         |  val computeLogicOwners: Unit =
+         |    /** This is a comment */
+         |    <<def logi@@cOwners = ???>>
+         |    ???
+         |""".stripMargin,
+      """def logicOwners: Nothing""".hover.stripMargin
     )

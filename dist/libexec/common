@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+source "$PROG_HOME/libexec/common-shared"
+
+#/*--------------------------------------------------
+# * The code below is for Dotty
+# *-------------------------------------------------*/
+
+compilerJavaClasspathArgs () {
+  toolchain="$PROG_HOME/lib/scala.jar"
+  toolchain_extra="$PROG_HOME/lib/with_compiler.jar"
+
+  if [ -n "$toolchain_extra" ]; then
+    toolchain+="$PSEP$toolchain_extra"
+  fi
+
+  if [ -n "${jvm_cp_args-}" ]; then
+    jvm_cp_args="$toolchain$jvm_cp_args"
+  else
+    jvm_cp_args="$toolchain"
+  fi
+}
+
+default_java_opts="-Xmx768m -Xms768m"
+
+CompilerMain=dotty.tools.dotc.Main
+DecompilerMain=dotty.tools.dotc.decompiler.Main
+TastyPrinterMain=dotty.tools.dotc.core.tasty.TastyPrinter
+ReplMain=dotty.tools.repl.Main
+ScriptingMain=dotty.tools.scripting.Main
+
+declare -a java_args
+declare -a residual_args
+declare -a script_args
+
+addJava () {
+  java_args+=("'$1'")
+}
+addResidual () {
+  residual_args+=("'$1'")
+}
+addScript () {
+  script_args+=("'$1'")
+}

@@ -5,4 +5,5 @@ package scala.annotation
  *  @see [[https://dotty.epfl.ch/docs/reference/other-new-features/experimental-defs]]
  *  @syntax markdown
  */
-class experimental extends StaticAnnotation
+final class experimental(message: String) extends StaticAnnotation:
+  def this() = this("")

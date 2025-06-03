@@ -81,8 +81,9 @@ Standard-Section: "ASTs" TopLevelStat*
   Param         = TypeParam
                   TermParam
   Template      = TEMPLATE       Length TypeParam* TermParam* parent_Term* Self?
-                                        Stat*                                      -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
+                                        EndParents? Stat*                          -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
+  EndParents    = SPLITCLAUSE                                                      -- explicitly end the template header, e.g. if there is no primary constructor
 
   Term          = Path                                                             -- Paths represent both types and terms
                   IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef
@@ -109,10 +110,14 @@ Standard-Section: "ASTs" TopLevelStat*
                   WHILE          Length cond_Term body_Term                        -- while cond do body
                   REPEATED       Length elem_Type elem_Term*                       -- Varargs argument of type `elem`
                   SELECTouter    Length levels_Nat qual_Term underlying_Type       -- Follow `levels` outer links, starting from `qual`, with given `underlying` type
+                  QUOTE          Length body_Term bodyTpe_Type                     -- Quoted expression `'{ body }` of a body typed as `bodyTpe`
+                  SPLICE         Length expr_Term tpe_Type                         -- Spliced expression `${ expr }` typed as `tpe`
+                  SPLICEPATTEN   Length pat_Term tpe_Type targs_Type* args_Term*   -- Pattern splice `${pat}` or `$pat[targs*](args*)` in a quoted pattern of type `tpe`.
     -- patterns:
                   BIND           Length boundName_NameRef patType_Type pat_Term    -- name @ pat, wherev `patType` is the type of the bound symbol
                   ALTERNATIVE    Length alt_Term*                                  -- alt1 | ... | altn   as a pattern
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*   -- Unapply node `fun(_: pat_Type)(implicitArgs)` flowing into patterns `pat`.
+                  QUOTEPATTERN   Length body_Term quotes_Term pat_Type bindings_Term* -- Quote pattern node `'{ bindings*; body }(using quotes)`
     -- type trees:
                   IDENTtpt              NameRef Type                               -- Used for all type idents
                   SELECTtpt             NameRef qual_Term                          -- qual.name
@@ -175,6 +180,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ORtype         Length left_Type right_Type                       -- lefgt | right
                   MATCHtype      Length bound_Type sel_Type case_Type*             -- sel match {cases} with optional upper `bound`
                   MATCHCASEtype  Length pat_type rhs_Type                          -- match cases are MATCHCASEtypes or TYPELAMBDAtypes over MATCHCASEtypes
+                  FLEXIBLEtype   Length underlying_Type                            -- (underlying)?
                   BIND           Length boundName_NameRef bounds_Type Modifier*    -- boundName @ bounds,  for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type                            -- => underlying
                   PARAMtype      Length binder_ASTRef paramNum_Nat                 -- A reference to parameter # paramNum in lambda type `binder`
@@ -221,7 +227,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
-                  INVISIBLE                                                        -- invisible during typechecking
+                  INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
+                  TRACKED                                                          -- a tracked class parameter / a dependent class
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -315,9 +322,9 @@ object TastyFormat {
   /** Natural number. Each increment of the `MinorVersion`, within
    *  a series declared by the `MajorVersion`, breaks forward
    *  compatibility, but remains backwards compatible, with all
-   *  preceeding `MinorVersion`.
+   *  preceding `MinorVersion`.
    */
-  final val MinorVersion: Int = 4
+  final val MinorVersion: Int = 8
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing
@@ -503,6 +510,7 @@ object TastyFormat {
   final val INVISIBLE = 44
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
+  final val TRACKED = 47
 
   // Tree Cat. 2:    tag Nat
   final val firstNatTreeTag = SHAREDterm
@@ -541,7 +549,6 @@ object TastyFormat {
   final val BOUNDED = 102
   final val EXPLICITtpt = 103
   final val ELIDED = 104
-
 
   // Tree Cat. 4:    tag Nat AST
   final val firstNatASTTreeTag = IDENT
@@ -608,14 +615,17 @@ object TastyFormat {
   final val TYPEREFin = 175
   final val SELECTin = 176
   final val EXPORT = 177
-  // final val ??? = 178
-  // final val ??? = 179
+  final val QUOTE = 178
+  final val SPLICE = 179
   final val METHODtype = 180
   final val APPLYsigpoly = 181
+  final val QUOTEPATTERN = 182
+  final val SPLICEPATTERN = 183
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
   final val MATCHCASEtype = 192
+  final val FLEXIBLEtype = 193
 
   final val HOLE = 255
 
@@ -647,7 +657,7 @@ object TastyFormat {
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
-    firstLengthTreeTag <= tag && tag <= MATCHCASEtype ||
+    firstLengthTreeTag <= tag && tag <= FLEXIBLEtype ||
     tag == HOLE
 
   def isParamTag(tag: Int): Boolean = tag == PARAM || tag == TYPEPARAM
@@ -692,7 +702,8 @@ object TastyFormat {
        | INVISIBLE
        | ANNOTATION
        | PRIVATEqualified
-       | PROTECTEDqualified => true
+       | PROTECTEDqualified
+       | TRACKED => true
     case _ => false
   }
 
@@ -849,11 +860,16 @@ object TastyFormat {
     case MATCHCASEtype => "MATCHCASEtype"
     case MATCHtpt => "MATCHtpt"
     case PARAMtype => "PARAMtype"
+    case FLEXIBLEtype => "FLEXIBLEtype"
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case EXPLICITtpt => "EXPLICITtpt"
     case ELIDED => "ELIDED"
+    case QUOTE => "QUOTE"
+    case SPLICE => "SPLICE"
+    case QUOTEPATTERN => "QUOTEPATTERN"
+    case SPLICEPATTERN => "SPLICEPATTERN"
     case HOLE => "HOLE"
   }
 

@@ -74,4 +74,4 @@ The method value syntax `m _` is deprecated.
 
 ## Reference
 
-For more information, see [PR #2701](https://github.com/lampepfl/dotty/pull/2701).
+For more information, see [PR #2701](https://github.com/scala/scala3/pull/2701).

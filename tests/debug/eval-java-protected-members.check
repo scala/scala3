@@ -1,0 +1,13 @@
+break Test$ 3
+eval example.A.x1
+result x1
+eval example.A.x1 = "y1"; example.A.x1
+result y1
+eval example.A.m1()
+result m1
+eval x2
+result x2
+eval x2 = "y2"; x2
+result y2
+eval m2()
+result m2

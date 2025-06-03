@@ -61,8 +61,6 @@ abstract class ZipArchive(override val jpath: JPath, release: Option[String]) ex
   def isDirectory: Boolean = true
   def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
   def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
-  def create(): Unit = unsupported()
-  def delete(): Unit = unsupported()
   def output: OutputStream    = unsupported()
   def container: AbstractFile = unsupported()
   def absolute: AbstractFile  = unsupported()
@@ -160,7 +158,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
     override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
-  @volatile lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
+  lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
     val root = new DirEntry("/", null)
     val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
     val zipFile = openZipFile()
@@ -222,7 +220,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
 }
 
 final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
-  def iterator(): Iterator[AbstractFile] = {
+  def iterator: Iterator[AbstractFile] = {
     val root     = new DirEntry("/", null)
     val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
     val stream   = input

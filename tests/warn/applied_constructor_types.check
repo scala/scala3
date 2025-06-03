@@ -1,0 +1,4 @@
+-- [E212] Type Warning: tests/warn/applied_constructor_types.scala:6:10 ------------------------------------------------
+6 |  val v1: UnspecificBox(4) = UnspecificBox(4) // warn
+  |          ^^^^^^^^^^^^^^^^
+  |Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked

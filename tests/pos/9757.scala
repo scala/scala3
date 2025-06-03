@@ -1,3 +1,5 @@
+//> using options -source:3.3
+
 type RemoveFrom[R, A] = R match {
   case A & newType => newType
 }

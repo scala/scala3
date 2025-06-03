@@ -34,26 +34,44 @@ object ContextOps:
               if (elem.name == name) return elem.sym.denot // return self
             }
             val pre = ctx.owner.thisType
-            if ctx.isJava then javaFindMember(name, pre, required, excluded)
+            if ctx.isJava then
+              // Note: I didn't verify if there exists a code path that would require `lookInCompanion = true`,
+              // it is just to preserve the original behavior.
+              javaFindMember(name, pre, lookInCompanion = true, required, excluded)
             else pre.findMember(name, pre, required, excluded)
           }
           else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-            ctx.owner.findMember(name, ctx.owner.thisType, required, excluded)
+            if ctx.isJava then
+              javaFindMember(name, ctx.owner.thisType, lookInCompanion = true,required, excluded)
+            else
+              ctx.owner.findMember(name, ctx.owner.thisType, required, excluded)
         else
           ctx.scope.denotsNamed(name).filterWithFlags(required, excluded).toDenot(NoPrefix)
       }
 
-    final def javaFindMember(name: Name, pre: Type, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags): Denotation =
+    /** Look in the prefix with Java semantics.
+     * @param lookInCompanion  If true, try in the companion class of a module as a fallback.
+     *                         Note: originally this was used to type Select nodes in Java code,
+     *                         but that is no longer the case.
+     *                         It is preserved in case it is necessary for denotNamed, but this is unverified.
+     */
+    final def javaFindMember(name: Name, pre: Type, lookInCompanion: Boolean, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags): Denotation =
       assert(ctx.isJava)
       inContext(ctx) {
-
+        import dotty.tools.dotc.core.NameOps.*
         val preSym = pre.typeSymbol
-
         // 1. Try to search in current type and parents.
-        val directSearch = pre.findMember(name, pre, required, excluded)
+        val directSearch =
+          def asModule =
+            if name.isTypeName && name.endsWith(StdNames.str.MODULE_SUFFIX) then
+              pre.findMember(name.stripModuleClassSuffix.moduleClassName, pre, required, excluded)
+            else NoDenotation
+          pre.findMember(name, pre, required, excluded) match
+            case NoDenotation => asModule
+            case denot => denot
 
         // 2. Try to search in companion class if current is an object.
-        def searchCompanionClass = if preSym.is(Flags.Module) then
+        def searchCompanionClass = if lookInCompanion && preSym.is(Flags.Module) then
           preSym.companionClass.thisType.findMember(name, pre, required, excluded)
           else NoDenotation
 
@@ -114,7 +132,7 @@ object ContextOps:
     }
 
     def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context = inContext(ctx) {
-      if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+      if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree).setNewScope
       else ctx
     }
 end ContextOps

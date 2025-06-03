@@ -1,8 +1,0 @@
--- [E030] Match case Unreachable Error: tests/neg/18493.scala:6:9 ------------------------------------------------------
-6 |    case "abc" => // error
-  |         ^^^^^
-  |         Unreachable case
--- [E030] Match case Unreachable Error: tests/neg/18493.scala:12:9 -----------------------------------------------------
-12 |    case "abc" => // error
-   |         ^^^^^
-   |         Unreachable case

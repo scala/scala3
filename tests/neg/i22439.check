@@ -1,0 +1,26 @@
+-- [E171] Type Error: tests/neg/i22439.scala:7:3 -----------------------------------------------------------------------
+7 |  f() // error f() missing arg
+  |  ^^^
+  |  missing argument for parameter i of method f: (implicit i: Int, j: Int): Int
+-- [E050] Type Error: tests/neg/i22439.scala:8:2 -----------------------------------------------------------------------
+8 |  g() // error g(given_Int, given_Int)() doesn't take more params
+  |  ^
+  |  method g does not take more parameters
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E171] Type Error: tests/neg/i22439.scala:11:3 ----------------------------------------------------------------------
+11 |  f(j = 27) // error missing argument for parameter i of method f
+   |  ^^^^^^^^^
+   |  missing argument for parameter i of method f: (implicit i: Int, j: Int): Int
+-- [E172] Type Error: tests/neg/i22439.scala:16:3 ----------------------------------------------------------------------
+16 |  h // error
+   |   ^
+   |   No given instance of type String was found for parameter s of method h
+-- [E172] Type Error: tests/neg/i22439.scala:17:3 ----------------------------------------------------------------------
+17 |  h(using i = 17) // error
+   |  ^^^^^^^^^^^^^^^
+   |  No given instance of type String was found
+-- [E171] Type Error: tests/neg/i22439.scala:21:25 ---------------------------------------------------------------------
+21 |  val (ws, zs) = vs.unzip() // error!
+   |                 ^^^^^^^^^^
+   |missing argument for parameter asPair of method unzip in trait StrictOptimizedIterableOps: (implicit asPair: ((Int, Int)) => (A1, A2)): (List[A1], List[A2])

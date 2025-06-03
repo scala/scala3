@@ -30,8 +30,8 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    /** All arguments to this annotation in a single flat list */
-    def arguments(using Context): List[Tree] = tpd.allArguments(tree)
+    /** All term arguments of this annotation in a single flat list */
+    def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -43,7 +43,7 @@ object Annotations {
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
 
-    /** The tree evaluaton is in progress. */
+    /** The tree evaluation is in progress. */
     def isEvaluating: Boolean = false
 
     /** The tree evaluation has finished. */
@@ -54,15 +54,18 @@ object Annotations {
      *  type, since ranges cannot be types of trees.
      */
     def mapWith(tm: TypeMap)(using Context) =
-      val args = arguments
+      val args = tpd.allArguments(tree)
       if args.isEmpty then this
       else
+        // Checks if `tm` would result in any change by applying it to types
+        // inside the annotations' arguments and checking if the resulting types
+        // are different.
         val findDiff = new TreeAccumulator[Type]:
           def apply(x: Type, tree: Tree)(using Context): Type =
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if tp1 frozen_=:= tree.tpe then x else tp1, tree)
+              foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
         else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -70,14 +73,13 @@ object Annotations {
 
     /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
-      val args = arguments
+      val args = tpd.allArguments(tree)
       if args.isEmpty then false
-      else tree.existsSubTree {
-        case id: Ident => id.tpe.stripped match
+      else tree.existsSubTree:
+        case id: (Ident | This) => id.tpe.stripped match
           case TermParamRef(tl1, _) => tl eq tl1
           case _ => false
         case _ => false
-      }
 
     /** A string representation of the annotation. Overridden in BodyAnnotation.
      */
@@ -275,5 +277,42 @@ object Annotations {
               None
           }
       }
+  }
+
+  object ExperimentalAnnotation {
+
+    /** Create an instance of `@experimental(<msg>)` */
+    def apply(msg: String, span: Span)(using Context): Annotation =
+      Annotation(defn.ExperimentalAnnot, Literal(Constant(msg)), span)
+
+    /** Matches and extracts the message from an instance of `@experimental(msg)`
+     *  Returns `Some("")` for `@experimental` with no message.
+     */
+    def unapply(a: Annotation)(using Context): Option[String] =
+      if a.symbol ne defn.ExperimentalAnnot then
+        None
+      else a.argumentConstant(0) match
+        case Some(Constant(msg: String)) => Some(msg)
+        case _ => Some("")
+
+    /** Makes a copy of the `@experimental(msg)` annotation on `sym`
+     *  None is returned if the symbol does not have an `@experimental` annotation.
+     */
+    def copy(sym: Symbol)(using Context): Option[Annotation] =
+      sym.getAnnotation(defn.ExperimentalAnnot).map {
+        case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
+      }
+  }
+  
+  object PreviewAnnotation {
+    /** Matches and extracts the message from an instance of `@preview(msg)`
+     *  Returns `Some("")` for `@preview` with no message.
+     */
+    def unapply(a: Annotation)(using Context): Option[String] =
+      if a.symbol ne defn.PreviewAnnot then
+        None
+      else a.argumentConstant(0) match
+        case Some(Constant(msg: String)) => Some(msg)
+        case _ => Some("")
   }
 }

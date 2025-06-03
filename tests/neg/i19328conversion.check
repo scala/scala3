@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/i19328conversion.scala:13:5 ------------------------------------------------------------
+13 |  bar // error: missing implicit (should not crash)
+   |     ^
+   |     No given instance of type Boolean was found for parameter bool of method bar in object i19328conversion

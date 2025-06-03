@@ -61,8 +61,6 @@ extension (using Unit)(a: Int)
   def f14(): Any
   = ???
 
-import scala.language.experimental.clauseInterleaving
-
 extension (using String)(using Int)(a: Animal)(using Unit)(using Number)
   def f16(b: Any)[T](c: T): T
   = ???

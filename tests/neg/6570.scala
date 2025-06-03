@@ -1,3 +1,5 @@
+//> using options -source:3.3
+
 object Base {
   trait Trait1
   trait Trait2

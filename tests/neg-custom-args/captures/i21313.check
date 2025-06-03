@@ -1,0 +1,13 @@
+-- Error: tests/neg-custom-args/captures/i21313.scala:6:27 -------------------------------------------------------------
+6 |def foo(x: Async) = x.await(???) // error
+  |                           ^
+  |                           (x : Async) is not a tracked capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21313.scala:15:12 ---------------------------------------
+15 |  ac1.await(src2) // error
+   |            ^^^^
+   |Found:    (src2 : Source[Int, scala.caps.CapSet^{ac2}]^{})
+   |Required: Source[Int, scala.caps.CapSet^{ac1}]^
+   |
+   |where:    ^ refers to a fresh root capability created in method test when checking argument to parameter src of method await
+   |
+   | longer explanation available when compiling with `-explain`

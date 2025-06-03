@@ -32,14 +32,14 @@ project to the community build you can follow these steps:
    check out the [Scala 3 Migration
    Guide](https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html).
    You can see the submodules in
-   [community-projects](https://github.com/lampepfl/dotty/tree/main/community-build/community-projects/)
+   [community-projects](https://github.com/scala/scala3/tree/main/community-build/community-projects/)
    for examples of projects that compile with Scala 3.
 
 2. Open a PR against this repo that:
      - Adds your project as a new git submodule
        - `git submodule add https://github.com/dotty-staging/XYZ.git community-build/community-projects/XYZ`
-     - Add the project to [projects.scala](https://github.com/lampepfl/dotty/blob/main/community-build/src/scala/dotty/communitybuild/projects.scala)
-     - Adds a test in [CommunityBuildTest.scala](https://github.com/lampepfl/dotty/blob/main/community-build/test/scala/dotty/communitybuild/CommunityBuildTest.scala)
+     - Add the project to [projects.scala](https://github.com/scala/scala3/blob/main/community-build/src/scala/dotty/communitybuild/projects.scala)
+     - Adds a test in [CommunityBuildTest.scala](https://github.com/scala/scala3/blob/main/community-build/test/scala/dotty/communitybuild/CommunityBuildTest.scala)
 
 3. Once the CI is green, someone from the Dotty team will fork your repo and add
    it to [dotty-staging](https://github.com/dotty-staging). This enables us to

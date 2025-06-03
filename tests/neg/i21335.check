@@ -1,0 +1,8 @@
+-- Error: tests/neg/i21335.scala:7:6 -----------------------------------------------------------------------------------
+7 |class Z1 extends Bar1 // error
+  |      ^
+  |      class Z1 needs to be abstract, since override def bar(): Bar1 in trait Bar1 is not defined 
+-- Error: tests/neg/i21335.scala:12:6 ----------------------------------------------------------------------------------
+12 |class Z2 extends Bar2 // error
+   |      ^
+   |      class Z2 needs to be abstract, since def bar(): Bar2 in trait Bar2 is not defined 

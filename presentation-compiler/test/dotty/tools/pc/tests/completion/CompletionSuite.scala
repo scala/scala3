@@ -7,6 +7,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
+import org.junit.Ignore
 
 class CompletionSuite extends BaseCompletionSuite:
 
@@ -25,13 +26,12 @@ class CompletionSuite extends BaseCompletionSuite:
         |  Lis@@
         |}""".stripMargin,
       """
+        |List[A](elems: A*): List[A]
         |List scala.collection.immutable
         |List - java.awt
         |List - java.util
-        |List - scala.collection.immutable
-        |List[A](elems: A*): CC[A]
         |""".stripMargin,
-      topLines = Some(5)
+      topLines = Some(4)
     )
 
   @Test def member =
@@ -94,32 +94,33 @@ class CompletionSuite extends BaseCompletionSuite:
          |newBuilder[A]: Builder[A, List[A]]
          |apply[A](elems: A*): List[A]
          |concat[A](xss: Iterable[A]*): List[A]
-         |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): List[List[List[A]] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): List[List[List[List[A]]] @uncheckedVariance]
-         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): List[List[List[List[List[A]]]] @uncheckedVariance]
+         |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A]]
+         |fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): List[List[List[A]]]
+         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): List[List[List[List[A]]]]
+         |fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): List[List[List[List[List[A]]]]]
          |fill[A](n: Int)(elem: => A): List[A]
          |iterate[A](start: A, len: Int)(f: A => A): List[A]
          |range[A: Integral](start: A, end: A): List[A]
          |range[A: Integral](start: A, end: A, step: A): List[A]
-         |tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): List[List[A] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): List[List[List[A]] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]] @uncheckedVariance]
-         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]] @uncheckedVariance]
+         |tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): List[List[A]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): List[List[List[A]]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]]]
+         |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]]]
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
-         |->[B](y: B): (A, B)
-         |ensuring(cond: Boolean): A
-         |ensuring(cond: A => Boolean): A
-         |ensuring(cond: Boolean, msg: => Any): A
-         |ensuring(cond: A => Boolean, msg: => Any): A
-         |fromSpecific(from: From)(it: IterableOnce[A]): C
-         |fromSpecific(it: IterableOnce[A]): C
-         |nn: x.type & T
-         |toFactory(from: From): Factory[A, C]
+         |->[B](y: B): (List.type, B)
+         |ensuring(cond: Boolean): List.type
+         |ensuring(cond: List.type => Boolean): List.type
+         |ensuring(cond: Boolean, msg: => Any): List.type
+         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
+         |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
+         |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
+         |nn: List.type
+         |runtimeChecked scala.collection.immutable
+         |toFactory(from: Any): Factory[Nothing, List[Nothing]]
          |formatted(fmtstr: String): String
-         |→[B](y: B): (A, B)
+         |→[B](y: B): (List.type, B)
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean
@@ -146,6 +147,51 @@ class CompletionSuite extends BaseCompletionSuite:
       "XtensionMethod(a: Int): XtensionMethod"
     )
 
+  @Test def tupleDirect =
+    check(
+      """
+        |trait Foo {
+        |  def setup: List[(String, String)]
+        |}
+        |object Foo {
+        |  val foo: Foo = ???
+        |  foo.setup.exist@@
+        |}""".stripMargin,
+      """|exists(p: ((String, String)) => Boolean): Boolean
+          |""".stripMargin
+    )
+
+  @Test def tupleAlias =
+    check(
+      """
+        |trait Foo {
+        |  def setup: List[Foo.TupleAliasResult]
+        |}
+        |object Foo {
+        |  type TupleAliasResult = (String, String)
+        |  val foo: Foo = ???
+        |  foo.setup.exist@@
+        |}""".stripMargin,
+      """|exists(p: TupleAliasResult => Boolean): Boolean
+         |""".stripMargin
+    )
+
+  @Test def listAlias =
+    check(
+      """
+        |trait Foo {
+        |  def setup: List[Foo.ListAliasResult]
+        |}
+        |object Foo {
+        |  type ListAliasResult = List[String]
+        |  val foo: Foo = ???
+        |  foo.setup.exist@@
+        |}""".stripMargin,
+      """|exists(p: ListAliasResult => Boolean): Boolean
+         |""".stripMargin
+    )
+
+  @Ignore("This test should be handled by compiler fuzzy search")
   @Test def fuzzy =
     check(
       """
@@ -157,14 +203,14 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore("This test should be handled by compiler fuzzy search")
   @Test def fuzzy1 =
     check(
       """
         |object A {
-        |  new PBuil@@
+        |  new PBuilder@@
         |}""".stripMargin,
-      """|ProcessBuilder java.lang
-         |ProcessBuilder - scala.sys.process
+      """|ProcessBuilder - scala.sys.process
          |ProcessBuilderImpl - scala.sys.process
          |""".stripMargin,
       filter = _.contains("ProcessBuilder")
@@ -177,8 +223,24 @@ class CompletionSuite extends BaseCompletionSuite:
         |object A {
         |  TrieMap@@
         |}""".stripMargin,
-      """|TrieMap scala.collection.concurrent
-         |TrieMap[K, V](elems: (K, V)*): CC[K, V]
+      """|TrieMap[K, V](elems: (K, V)*): TrieMap[K, V]
+         |new TrieMap[K, V]: TrieMap[K, V]
+         |new TrieMap[K, V](hashf: Hashing[K], ef: Equiv[K]): TrieMap[K, V]
+         |TrieMap scala.collection.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `no-companion-apply-in-new`=
+    check(
+      """
+        |import scala.collection.concurrent._
+        |object A {
+        |  new TrieMap@@
+        |}""".stripMargin,
+      // TrieMap should be filtered if it doesn't contain any types that can be constructed in `new` keyword context.
+      """|TrieMap[K, V]: TrieMap[K, V]
+         |TrieMap[K, V](hashf: Hashing[K], ef: Equiv[K]): TrieMap[K, V]
+         |TrieMap scala.collection.concurrent
          |""".stripMargin
     )
 
@@ -214,16 +276,13 @@ class CompletionSuite extends BaseCompletionSuite:
       """
         |import JavaCon@@
         |""".stripMargin,
-      """|AsJavaConverters - scala.collection.convert
-         |JavaConverters - scala.collection
+      """|JavaConverters - scala.collection
          |JavaConversions - scala.concurrent
          |AsJavaConsumer - scala.jdk.FunctionWrappers
+         |AsJavaConverters - scala.collection.convert
          |FromJavaConsumer - scala.jdk.FunctionWrappers
          |AsJavaBiConsumer - scala.jdk.FunctionWrappers
          |AsJavaIntConsumer - scala.jdk.FunctionWrappers
-         |AsJavaLongConsumer - scala.jdk.FunctionWrappers
-         |FromJavaBiConsumer - scala.jdk.FunctionWrappers
-         |FromJavaIntConsumer - scala.jdk.FunctionWrappers
          |""".stripMargin
     )
 
@@ -390,6 +449,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |Function20 scala
          |Function21 scala
          |Function22 scala
+         |PartialFunction scala
          |""".stripMargin,
       topLines = Some(25)
     )
@@ -471,8 +531,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |
         |}
       """.stripMargin,
-      """|DelayedLazyVal scala.concurrent
-         |DelayedLazyVal[T](f: () => T, body: => Unit)(exec: ExecutionContext): DelayedLazyVal[T]""".stripMargin
+      "DelayedLazyVal[T](f: () => T, body: => Unit)(implicit exec: ExecutionContext): DelayedLazyVal[T]"
     )
 
   @Test def local2 =
@@ -515,10 +574,7 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|until(end: Int): Range
          |until(end: Int, step: Int): Range
-         |until(end: T): Exclusive[T]
-         |until(end: T, step: T): Exclusive[T]
          |""".stripMargin,
-      postProcessObtained = _.replace("Float", "Double"),
       stableOrder = false
     )
 
@@ -616,11 +672,51 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Some scala
          |Some[A](value: A): Some[A]
-         |SomeToExpr(x: Some[T])(using Quotes): Expr[Some[T]]
-         |SomeToExpr[T: Type: ToExpr]: SomeToExpr[T]
-         |SomeFromExpr[T](using Type[T], FromExpr[T]): SomeFromExpr[T]
+         |Some scala
+         |""".stripMargin
+    )
+
+  @Test def patRecursive =
+    check(
+      s"""|object Main {
+          |  Option(List(Option(1))) match {
+          |    case Some(List(None, Som@@))
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Main {
+          |  (null: Option[Option[Option[Option[Int]]]]) match
+          |    case Some(Some(Some(Som@@))))
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Main {
+          |  Option(Option(1)) match {
+          |    case Some(Som@@)
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Test:
+          |  case class NestedClass(x: Int)
+          |object TestRun:
+          |  Option(Test.NestedClass(5)) match
+          |    case Some(Test.Neste@@)
+          |""".stripMargin,
+      """|NestedClass(x) test.Test
+         |NestedClass test.Test
          |""".stripMargin
     )
 
@@ -631,11 +727,9 @@ class CompletionSuite extends BaseCompletionSuite:
           |    case List(Som@@)
           |}
           |""".stripMargin,
-      """|Some scala
-         |Some[A](value: A): Some[A]
-         |SomeToExpr(x: Some[T])(using Quotes): Expr[Some[T]]
-         |SomeToExpr[T: Type: ToExpr]: SomeToExpr[T]
-         |SomeFromExpr[T](using Type[T], FromExpr[T]): SomeFromExpr[T]
+      """|Some(value) scala
+         |Some scala
+         |Some scala
          |""".stripMargin
     )
 
@@ -660,8 +754,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Seq scala.collection.immutable
-         |Set scala.collection.immutable
+         |Set[A](elems: A*): Set[A]
+         |Seq[A](elems: A*): Seq[A]
          |""".stripMargin,
       topLines = Some(3)
     )
@@ -788,6 +882,10 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|intNumber: Int
+         |toInt: Int
+         |instance: Int
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -892,7 +990,7 @@ class CompletionSuite extends BaseCompletionSuite:
       topLines = Some(2)
     )
 
-  // issues with scala 3 https://github.com/lampepfl/dotty/pull/13515
+  // issues with scala 3 https://github.com/scala/scala3/pull/13515
   @Test def ordering4 =
     check(
       s"""|class Main {
@@ -1082,7 +1180,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  scala@@
           |}
           |""".stripMargin,
-      """|scala <root>
+      """|scala `<root>`
          |""".stripMargin
     )
 
@@ -1098,7 +1196,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|first: java.util.List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `object-at-type-pos` =
@@ -1158,8 +1257,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |def main =
          |  Testin@@
          |""".stripMargin,
-      """|Testing a
-         |Testing(): Testing
+      """|Testing(): Testing
          |""".stripMargin
     )
 
@@ -1172,8 +1270,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |def main =
          |  Testin@@
          |""".stripMargin,
-      """|Testing a
-         |Testing(a: Int, b: String): Testing
+      """|Testing(a: Int, b: String): Testing
          |""".stripMargin
     )
 
@@ -1193,7 +1290,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |  val x = Bar[M](new Foo[Int]{})
          |  x.bar.m@@
          |""".stripMargin,
-      """|map[B](f: A => B): Foo[B]
+      """|map[B](f: Int => B): Foo[B]
          |""".stripMargin,
       topLines = Some(1)
     )
@@ -1318,9 +1415,13 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|AClass[A <: Int] test.O
          |AClass test.O
-         |AbstractTypeClassManifest - scala.reflect.ClassManifestFactory
          """.stripMargin
     )
+
+  val extensionResult =
+    """|Foo test
+       |Found - scala.collection.Searching
+       """.stripMargin
 
   @Test def `extension-definition-scope` =
     check(
@@ -1328,8 +1429,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (x: Fo@@)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-symbol-search` =
@@ -1348,8 +1449,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A <: Fo@@]
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-type-parameter-symbol-search` =
@@ -1368,8 +1469,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Fo@@)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
 
@@ -1379,8 +1480,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (x: Int)(using Fo@@)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-2` =
@@ -1389,8 +1490,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Fo@@)(x: Int)(using Foo)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-3` =
@@ -1399,8 +1500,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Foo)(x: Int)(using Fo@@)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-4` =
@@ -1409,8 +1510,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](x: Fo@@)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-5` =
@@ -1419,8 +1520,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Fo@@)(x: Int)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-6` =
@@ -1429,8 +1530,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Foo)(x: Fo@@)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-7` =
@@ -1439,8 +1540,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Foo)(x: Fo@@)(using Foo)
          |""".stripMargin,
-      """|Foo test
-         |""".stripMargin
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-select` =
@@ -1473,7 +1574,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |  extension [T](x: Test.TestSel@@)
          |""".stripMargin,
       """|TestSelect[T] test.Test
-         |TestSelect test.Test
          |""".stripMargin
     )
 
@@ -1485,6 +1585,7 @@ class CompletionSuite extends BaseCompletionSuite:
       """|object O:
          |  val a = List.apply($0)
          |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `multiline-comment` =
@@ -1512,7 +1613,7 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-  @Test def `prepend-instead-of-replace-duplicate-word` =
+  @Test def `prepend-duplicate-word` =
     checkEdit(
       """|object O:
          |  println@@println()
@@ -1526,10 +1627,10 @@ class CompletionSuite extends BaseCompletionSuite:
   @Test def `replace-when-inside` =
     checkEdit(
       """|object O:
-         |  print@@ln()
+         |  pri@@nt()
          |""".stripMargin,
       """|object O:
-         |  println()
+         |  print()
          |""".stripMargin,
       assertSingleItem = false
     )
@@ -1545,3 +1646,632 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
+  @Test def `multi-export` =
+    check(
+      """export scala.collection.{AbstractMap, Se@@}
+        |""".stripMargin,
+      """Set scala.collection
+        |SetOps scala.collection
+        |AbstractSet scala.collection
+        |BitSet scala.collection
+        |BitSetOps scala.collection
+        |SortedSet scala.collection
+        |SortedSetFactoryDefaults scala.collection
+        |SortedSetOps scala.collection
+        |StrictOptimizedSetOps scala.collection
+        |StrictOptimizedSortedSetOps scala.collection
+        |GenSet = scala.collection.Set[X]
+        |""".stripMargin,
+      filter = _.contains("Set")
+
+    )
+
+  @Test def `multi-imports` =
+    check(
+      """import scala.collection.{AbstractMap, Set@@}
+        |""".stripMargin,
+      """Set scala.collection
+        |SetOps scala.collection
+        |AbstractSet scala.collection
+        |BitSet scala.collection
+        |BitSetOps scala.collection
+        |SortedSet scala.collection
+        |SortedSetFactoryDefaults scala.collection
+        |SortedSetOps scala.collection
+        |StrictOptimizedSetOps scala.collection
+        |StrictOptimizedSortedSetOps scala.collection
+        |GenSet = scala.collection.Set[X]
+        |""".stripMargin,
+      filter = _.contains("Set")
+    )
+
+
+  @Test def `multi-imports-empty-query` =
+    check(
+      """import scala.collection.{AbstractMap, @@}
+        |""".stripMargin,
+      """+: scala.collection
+        |:+ scala.collection
+        |AbstractIndexedSeqView scala.collection
+        |AbstractIterable scala.collection
+        |AbstractIterator scala.collection
+        |""".stripMargin,
+      topLines = Some(5)
+    )
+
+  @Test def `import-rename` =
+    check(
+      """import scala.collection.{AbstractMap => Set@@}
+        |""".stripMargin,
+      ""
+    )
+
+  @Ignore
+  @Test def `dont-crash-implicit-search` =
+    check(
+      """object M:
+        |  Array[Int].fi@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `extension-definition-type-variable-inference` =
+    check(
+      """|object M:
+         |  extension [T](xs: List[T]) def test(p: T => Boolean): List[T] = ???
+         |  List(1,2,3).tes@@
+         |""".stripMargin,
+      """|test(p: Int => Boolean): List[Int]
+         |""".stripMargin,
+      topLines = Some(1)
+    )
+
+  @Test def `old-style-extension-type-variable-inference` =
+    check(
+      """|object M:
+         |  implicit class ListUtils[T](xs: List[T]) {
+         |    def test(p: T => Boolean): List[T] = ???
+         |  }
+         |  List(1,2,3).tes@@
+         |""".stripMargin,
+      """|test(p: Int => Boolean): List[Int]
+         |""".stripMargin,
+      topLines = Some(1)
+    )
+
+  @Test def `instantiate-type-vars-in-extra-apply-completions` =
+    check(
+      """|object M:
+         |  val fooBar = List(123)
+         |  foo@@
+         |""".stripMargin,
+      """|fooBar: List[Int]
+         |""".stripMargin
+    )
+
+  @Test def `show-underlying-type-instead-of-CC` =
+    check(
+      """|object M:
+         |  List@@
+         |""".stripMargin,
+      """|List[A](elems: A*): List[A]
+         |ListSet[A](elems: A*): ListSet[A] - scala.collection.immutable
+         |ListMap[K, V](elems: (K, V)*): ListMap[K, V] - scala.collection.immutable
+         |new ListMap[K, V]: ListMap[K, V] - scala.collection.immutable
+         |new ListSet[A]: ListSet[A] - scala.collection.immutable
+         |ListMap[K, V](elems: (K, V)*): ListMap[K, V] - scala.collection.mutable
+         |new ListMap[K, V]: ListMap[K, V] - scala.collection.mutable
+         |LazyList[A](elems: A*): LazyList[A]
+         |""".stripMargin,
+      filter = _.contains("[")
+    )
+
+  @Test def `empty-import` =
+    check(
+      """|import @@
+         |""".stripMargin,
+      """|java `<root>`
+         |javax `<root>`
+         |""".stripMargin,
+      filter = _.startsWith("java")
+    )
+
+  @Test def `empty-import-selector` =
+    check(
+      """|import java.@@
+         |""".stripMargin,
+      """|util java
+         |""".stripMargin,
+      filter = _.startsWith("util")
+    )
+
+  @Test def `empty-export` =
+    check(
+      """|export @@
+         |""".stripMargin,
+      """|java `<root>`
+         |javax `<root>`
+         |""".stripMargin,
+      filter = _.startsWith("java")
+    )
+
+  @Test def `empty-export-selector` =
+    check(
+      """|export java.@@
+         |""".stripMargin,
+      """|util java
+         |""".stripMargin,
+      filter = _.startsWith("util")
+    )
+
+  @Test def `annotation` =
+    check(
+      """|@Over@@
+         |object M {}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `no-annotation` =
+    check(
+      """|
+         |object M {
+         |  Overr@@
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `no-annotation-param-first-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-annotation-param-second-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int, Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-annotation-param-second-list` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int)(Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+
+  @Test def `annotation-param-first-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(@Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `annotation-param-second-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int, @Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `annotation-param-second-list` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int)( @Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `fuzzy-search-test` =
+    check(
+      """|
+         |object MyInterface {
+         |  def someMethod(x: Int): Int = ???
+         |}
+         |object Test {
+         |  MyInterface.m@@
+         |}
+         |""".stripMargin,
+      """|someMethod(x: Int): Int
+         |""".stripMargin,
+      topLines = Some(1)
+    )
+
+  @Test def `fuzzy-search-test-multiple` =
+    check(
+      """|
+         |trait MyInterface {
+         |  def someMethod(x: Int): Int = ???
+         |}
+         |object Test {
+         |  extension (interface: MyInterface) def someExtMethod(x: Int): Int = ???
+         |  implicit class MyInterfaceExtension(interface: MyInterface):
+         |    def someOldExtMethod(x: Int): Int = ???
+         |  val x: MyInterface = ???
+         |  x.m@@
+         |}
+         |""".stripMargin,
+      """|someMethod(x: Int): Int
+         |someExtMethod(x: Int): Int
+         |someOldExtMethod(x: Int): Int
+         |""".stripMargin,
+      topLines = Some(3)
+    )
+
+  @Test def `context-bound-in-extension-construct` =
+    check(
+      """
+        |object x {
+        |  extension [T: Orde@@]
+        |}
+        |""".stripMargin,
+      """Ordered[T] scala.math
+        |Ordering[T] scala.math
+        |""".stripMargin,
+      topLines = Some(2)
+    )
+
+  @Test def `context-bounds-in-extension-construct` =
+    check(
+      """
+        |object x {
+        |  extension [T: Ordering: Orde@@]
+        |}
+        |""".stripMargin,
+      """Ordered[T] scala.math
+        |Ordering[T] scala.math
+        |""".stripMargin,
+      topLines = Some(2)
+    )
+
+  @Test def `type-bound-in-extension-construct` =
+    check(
+      """
+        |object x {
+        |  extension [T <: Orde@@]
+        |}
+        |""".stripMargin,
+      """Ordered[T] scala.math
+        |Ordering[T] scala.math
+        |""".stripMargin,
+      topLines = Some(2)
+    )
+
+  @Test def `no-enum-completions-in-new-context` =
+    check(
+      """enum TestEnum:
+        |  case TestCase
+        |object M:
+        |  new TestEnu@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-enum-case-completions-in-new-context` =
+    check(
+      """enum TestEnum:
+        |  case TestCase
+        |object M:
+        |  new TestEnum.TestCas@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `deduplicated-enum-completions` =
+    check(
+      """enum TestEnum:
+        |  case TestCase
+        |object M:
+        |  val x: TestEn@@
+        |""".stripMargin,
+      """TestEnum test
+        |""".stripMargin,
+    )
+
+  @Test def `i6477-1` =
+    checkEdit(
+      """|package a
+         |import a.b.SomeClass as SC
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass@@
+         |""".stripMargin,
+      """|package a
+         |import a.b.SomeClass as SC
+         |import a.c.SomeClass
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass
+         |""".stripMargin,
+    )
+
+  @Test def `namedTuple completions` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jamie", city = "Lausanne")
+         |
+         |val n = person.na@@""".stripMargin,
+      "name: String",
+      filter = _.contains("name")
+    )
+
+  @Test def `namedTuple-completions-2` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |def hello = (path = ".", num = 5)++ (line = 1)
+         |val hello2 = (path = ".", num = 5)++ (line = 1)
+         |
+         |@main def bla =
+         |   hello@@
+         |""".stripMargin,
+      """|hello2: (path : String, num : Int, line : Int)
+         |hello: (path : String, num : Int, line : Int)
+      """.stripMargin,
+    )
+
+  @Test def `Selectable with namedTuple Fields member` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |class NamedTupleSelectable extends Selectable {
+         |  type Fields <: AnyNamedTuple
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NamedTupleSelectable {
+         |  type Fields = (name: String, city: String)
+         |}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|name: String
+         |selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
+
+  @Test def `Selectable without namedTuple Fields mamber` =
+    check(
+      """|class NonNamedTupleSelectable extends Selectable {
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NonNamedTupleSelectable {}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
+
+  @Test def `with-parenthesis` =
+    check(
+      """|package a
+         |class MyClass
+         |val i = MyClass@@()
+         |""".stripMargin,
+         """|MyClass(): MyClass (Constructor)
+            |""".stripMargin,
+         includeCompletionKind = true
+    )
+
+  @Test def `def-arg` =
+    check(
+     """|package a
+        |object W {
+        |  val aaaaaa = 1
+        |}
+        |object O {
+        |  def foo(aa@@)
+        |}
+        |""".stripMargin,
+     ""
+   )
+
+  @Test def conflict =
+    check(
+      """|package a
+         |object O {
+         |  val foofoo: Int = 123
+         |  def method = {
+         |    val foofoo: String = "abc"
+         |    foofoo@@
+         |  }
+         |}
+         |""".stripMargin,
+      """|foofoo: String
+         |foofoo - a.O: Int
+         |""".stripMargin
+    )
+
+  @Test def `conflict-2` =
+    check(
+      """|package a
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo@@
+         |}
+         |""".stripMargin,
+      """|foo - a.A: Int
+         |foo - a.B: Int
+         |""".stripMargin
+    )
+
+  @Test def `conflict-3` =
+   check(
+     """|package a
+        |object A {
+        |  var foo = 1
+        |}
+        |object B {
+        |  var foo = 1
+        |}
+        |object O {
+        |  val x: Int = foo@@
+        |}
+        |""".stripMargin,
+     """|foo - a.A: Int
+        |foo - a.B: Int
+        |""".stripMargin
+   )
+
+  @Test def `shadowing` =
+   check(
+     """|package pkg
+        |object Main {
+        |  val x = ListBuff@@
+        |}
+        |""".stripMargin,
+     """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
+        |new ListBuffer[A]: ListBuffer[A] - scala.collection.mutable
+        |ListBuffer - scala.collection.mutable
+        |""".stripMargin
+   )
+
+  @Test def `conflict-edit-2` =
+    checkEdit(
+      """|package a
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo@@
+         |}
+         |""".stripMargin,
+      """|package a
+         |
+         |import a.A.foo
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo
+         |}
+         |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `metals-i6861` =
+    check(
+      """|trait Builder[Alg]:
+         |  def withTraces: String
+         |
+         |trait BuilderFactory:
+         |  def transformRouter(f: [Alg] => Builder[Alg] => String): BuilderFactory
+         |  def build: Unit
+         |
+         |def demo =
+         |  (??? : BuilderFactory)
+         |    .transformRouter([Alg] => _.withTraces)
+         |    .build@@
+         |""".stripMargin,
+      """|build: Unit
+         |""".stripMargin,
+    )
+
+  @Test def i7191 =
+    check(
+      """|val x = Some(3).map(_.@@)
+         |""".stripMargin,
+      """|!=(x: Byte): Boolean
+         |!=(x: Char): Boolean
+         |!=(x: Double): Boolean
+         |""".stripMargin,
+      topLines = Some(3)
+    )
+
+  @Test def `packageIssueIdent` =
+    check(
+      """package one@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `packageIssueSelect` =
+    check(
+      """package one.two@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-completions-on-package-selection` =
+    check(
+      """package one.@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-extension-completion-on-packages` =
+    check(
+      """object M:
+        |  scala.runt@@
+        |""".stripMargin,
+      """runtime scala
+        |PartialFunction scala""".stripMargin // those are the actual members of scala
+    )
+
+  @Test def `no-extension-completions-on-package-objects` =
+    check(
+      """package object magic { def test: Int = ??? }
+        |object M:
+        |  magic.@@
+        |""".stripMargin,
+      "test: Int"
+    )

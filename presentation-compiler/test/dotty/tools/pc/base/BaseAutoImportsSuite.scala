@@ -41,6 +41,18 @@ trait BaseAutoImportsSuite extends BaseCodeActionSuite:
       selection
     )
 
+  def checkWorksheetEdit(
+      original: String,
+      expected: String,
+      selection: Int = 0
+  ): Unit =
+    checkEditSelection(
+      "example.worksheet.sc",
+      original,
+      expected,
+      selection
+    )
+
   def checkEditSelection(
       filename: String,
       original: String,

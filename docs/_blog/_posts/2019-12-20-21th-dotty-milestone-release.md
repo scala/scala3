@@ -17,7 +17,7 @@ happy to announce that we are now feature complete!
 # Feature Complete!
 
 This release is a HUGE milestone for us, for Dotty, for Scala 3, for our community. Since that
-[initial commit](https://github.com/lampepfl/dotty/commit/90962407e72d88f8f3249ade0f6bd60ff15af5ce)
+[initial commit](https://github.com/scala/scala3/commit/90962407e72d88f8f3249ade0f6bd60ff15af5ce)
 on the 6th December of 2012 when the only feature was the basic structure of a
 compiler based on the DOT calculus, we have come a long way.
 
@@ -48,7 +48,7 @@ It means that we can now put the Scala 3 compiler under heavy load, getting it
 ready for industrial strength applications. At the moment we have 23
 projects on our community projects and we expect this number to go up!
 
-> https://github.com/lampepfl/dotty/tree/main/community-build/community-projects
+> https://github.com/scala/scala3/tree/main/community-build/community-projects
 
 This project contains tests to build and test a corpus of open sources Scala 2.x
 projects against Scala 3.
@@ -333,7 +333,7 @@ root for `.semanticdb` files) and `-sourceroot` to calculate a relative path for
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -378,7 +378,7 @@ According to `git shortlog -sn --no-merges 0.20.0-RC1..0.21.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

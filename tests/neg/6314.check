@@ -1,0 +1,44 @@
+-- [E007] Type Mismatch Error: tests/neg/6314.scala:28:27 --------------------------------------------------------------
+28 |    val i: Bar[Y | Type] = 1 // error
+   |                           ^
+   |                           Found:    (1 : Int)
+   |                           Required: Test1Bis.Bar[Test1Bis.Y | Test.this.Type]
+   |
+   |                           Note: a match type could not be fully reduced:
+   |
+   |                             trying to reduce  Test1Bis.Bar[Test1Bis.Y | Test.this.Type]
+   |                             failed since selector Test1Bis.Y | Test.this.Type
+   |                             does not match  case Test1Bis.X & Test1Bis.Y => String
+   |                             and cannot be shown to be disjoint from it either.
+   |                             Therefore, reduction cannot advance to the remaining case
+   |
+   |                               case Any => Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6314.scala:45:33 --------------------------------------------------------------
+45 |    def right(fa: Bar[L]): Int = fa // error
+   |                                 ^^
+   |                                 Found:    (fa : Wizzle.this.Bar[L])
+   |                                 Required: Int
+   |
+   |                                 where:    L is a type in trait Wizzle with bounds <: Int & Singleton
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6314.scala:55:33 --------------------------------------------------------------
+55 |    def right(fa: Bar[L]): Int = fa // error
+   |                                 ^^
+   |                                 Found:    (fa : Wazzlo.this.Bar[L])
+   |                                 Required: Int
+   |
+   |                                 where:    L is a type in trait Wazzlo with bounds <: Int & AnyVal
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6314.scala:65:33 --------------------------------------------------------------
+65 |    def right(fa: Bar[L]): Int = fa // error
+   |                                 ^^
+   |                                 Found:    (fa : Wuzzlu.this.Bar[L])
+   |                                 Required: Int
+   |
+   |                                 where:    L is a type in trait Wuzzlu with bounds <: String & AnyRef
+   |
+   | longer explanation available when compiling with `-explain`

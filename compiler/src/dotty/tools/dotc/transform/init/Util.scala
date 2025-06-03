@@ -15,11 +15,15 @@ import config.Printers.init as printer
 import Trace.*
 
 object Util:
+  /** Exception used for errors encountered when reading TASTy. */
+  case class TastyTreeException(msg: String) extends RuntimeException(msg)
+  
   /** Utility definition used for better error-reporting of argument errors */
   case class TraceValue[T](value: T, trace: Trace)
 
   def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match
     case tref: TypeRef => tref
+    case RefinedType(parent, _, _) => typeRefOf(parent)
     case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
 
 
@@ -42,6 +46,8 @@ object Util:
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
+        if (args.size != argTps.size)
+          report.warning("[Internal error] Number of arguments do not match number of argument types in " + tree.symbol.name)
         val normArgs: List[Arg] = args.zip(argTps).map {
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
@@ -78,6 +84,13 @@ object Util:
       case _ =>
         None
 
+  object TypeCast:
+    def unapply(tree: Tree)(using Context): Option[(Tree, Type)] =
+      tree match
+        case TypeApply(Select(qual, _), typeArgs) if tree.symbol.isTypeCast =>
+          Some(qual, typeArgs.head.tpe)
+        case _ => None
+
   def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show):
     if sym.isEffectivelyFinal then sym
     else sym.matchingMember(cls.appliedRef)
@@ -104,5 +117,5 @@ object Util:
 
   /** Whether the class or its super class/trait contains any mutable fields? */
   def isMutable(cls: ClassSymbol)(using Context): Boolean =
-    cls.classInfo.decls.exists(_.is(Flags.Mutable)) ||
+    cls.classInfo.decls.exists(_.isMutableVarOrAccessor) ||
     cls.parentSyms.exists(parentCls => isMutable(parentCls.asClass))

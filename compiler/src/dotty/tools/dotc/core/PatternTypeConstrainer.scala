@@ -88,11 +88,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    def stripRefinement(tp: Type): Type = tp match {
-      case tp: RefinedOrRecType => stripRefinement(tp.parent)
-      case tp => tp
-    }
-
     def tryConstrainSimplePatternType(pat: Type, scrut: Type) = {
       val patCls = pat.classSymbol
       val scrCls = scrut.classSymbol
@@ -163,7 +158,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    def dealiasDropNonmoduleRefs(tp: Type) = tp.dealias match {
+    def dealiasDropNonmoduleRefs(tp: Type): Type = tp.dealias match {
       case tp: TermRef =>
         // we drop TermRefs that don't have a class symbol, as they can't
         // meaningfully participate in GADT reasoning and just get in the way.
@@ -172,6 +167,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         // additional trait - argument-less enum cases desugar to vals.
         // See run/enum-Tree.scala.
         if tp.classSymbol.exists then tp else tp.info
+      case tp: FlexibleType => dealiasDropNonmoduleRefs(tp.underlying)
       case tp => tp
     }
 
@@ -181,14 +177,14 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case AndType(scrut1, scrut2) =>
         constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
       case scrut: RefinedOrRecType =>
-        constrainPatternType(pat, stripRefinement(scrut))
+        constrainPatternType(pat, scrut.stripRefinement)
       case scrut => dealiasDropNonmoduleRefs(pat) match {
         case OrType(pat1, pat2) =>
           either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
         case AndType(pat1, pat2) =>
           constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
         case pat: RefinedOrRecType =>
-          constrainPatternType(stripRefinement(pat), scrut)
+          constrainPatternType(pat.stripRefinement, scrut)
         case pat =>
           tryConstrainSimplePatternType(pat, scrut)
           || classesMayBeCompatible && constrainUpcasted(scrut)
@@ -200,8 +196,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *
    *  This function expects to receive two types (scrutinee and pattern), both
    *  of which have class symbols, one of which is derived from another. If the
-   *  type "being derived from" is an applied type, it will 1) "upcast" the
-   *  deriving type to an applied type with the same constructor and 2) infer
+   *  type "being derived from" is an applied type, it will 1) "upcast" both
+   *  types to an applied type with the same constructor and 2) infer
    *  constraints for the applied types' arguments that follow from both
    *  types being inhabited by one value (the scrutinee).
    *
@@ -252,11 +248,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     val scrutineeCls = scrutineeTp.classSymbol
 
     // NOTE: we already know that there is a derives-from relationship in either direction
-    val upcastPattern =
-      patternCls.derivesFrom(scrutineeCls)
-
-    val pt = if upcastPattern then patternTp.baseType(scrutineeCls) else patternTp
-    val tp = if !upcastPattern then scrutineeTp.baseType(patternCls) else scrutineeTp
+    val base = if patternCls.derivesFrom(scrutineeCls) then scrutineeCls else patternCls
+    val pt = patternTp.baseType(base)
+    val tp = scrutineeTp.baseType(base)
 
     val assumeInvariantRefinement =
       migrateTo3 || forceInvariantRefinement || refinementIsInvariant(patternTp)

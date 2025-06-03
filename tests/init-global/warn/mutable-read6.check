@@ -1,0 +1,18 @@
+-- Warning: tests/init-global/warn/mutable-read6.scala:7:35 ------------------------------------------------------------
+7 |    final def source: SourceFile = _source // warn
+  |                                   ^^^^^^^
+  |Reading mutable state of object Contexts during initialization of object Implicits.
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object Implicits:	[ mutable-read6.scala:12 ]
+  |│   ^
+  |├── val NoMatchingFailure: SearchFailure = SearchFailure(1, NoContext.source)	[ mutable-read6.scala:15 ]
+  |│                                                           ^^^^^^^^^^^^^^^^
+  |└── final def source: SourceFile = _source // warn	[ mutable-read6.scala:7 ]
+  |                                   ^^^^^^^
+  |The mutable state is created through: 
+  |├── object Contexts:	[ mutable-read6.scala:3 ]
+  |│   ^
+  |├── val NoContext: Context = new Context	[ mutable-read6.scala:4 ]
+  |│                            ^^^^^^^^^^^
+  |└── class Context:	[ mutable-read6.scala:5 ]
+  |    ^

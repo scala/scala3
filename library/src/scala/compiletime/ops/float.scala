@@ -11,7 +11,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type +[X <: Float, Y <: Float] <: Float
+  infix type +[X <: Float, Y <: Float] <: Float
 
   /** Subtraction of two `Float` singleton types.
    *  ```scala
@@ -22,7 +22,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type -[X <: Float, Y <: Float] <: Float
+  infix type -[X <: Float, Y <: Float] <: Float
 
   /** Multiplication of two `Float` singleton types.
    *  ```scala
@@ -33,7 +33,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type *[X <: Float, Y <: Float] <: Float
+  infix type *[X <: Float, Y <: Float] <: Float
 
   /** Integer division of two `Float` singleton types.
    *  ```scala
@@ -44,7 +44,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type /[X <: Float, Y <: Float] <: Float
+  infix type /[X <: Float, Y <: Float] <: Float
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
@@ -55,7 +55,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type %[X <: Float, Y <: Float] <: Float
+  infix type %[X <: Float, Y <: Float] <: Float
 
   /** Less-than comparison of two `Float` singleton types.
    *  ```scala
@@ -67,7 +67,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type <[X <: Float, Y <: Float] <: Boolean
+  infix type <[X <: Float, Y <: Float] <: Boolean
 
   /** Greater-than comparison of two `Float` singleton types.
    *  ```scala
@@ -79,7 +79,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type >[X <: Float, Y <: Float] <: Boolean
+  infix type >[X <: Float, Y <: Float] <: Boolean
 
   /** Greater-or-equal comparison of two `Float` singleton types.
    *  ```scala
@@ -91,7 +91,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type >=[X <: Float, Y <: Float] <: Boolean
+  infix type >=[X <: Float, Y <: Float] <: Boolean
 
   /** Less-or-equal comparison of two `Float` singleton types.
    *  ```scala
@@ -103,7 +103,7 @@ object float:
    *  ```
    *  @syntax markdown
    */
-  type <=[X <: Float, Y <: Float] <: Boolean
+  infix type <=[X <: Float, Y <: Float] <: Boolean
 
   /** Absolute value of an `Float` singleton type.
    *  ```scala

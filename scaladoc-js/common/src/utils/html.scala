@@ -26,7 +26,7 @@ object HTML {
         case ("id", id) => elem.id = id
         case ("class", value) => value.split("\\s+").foreach(cls => elem.classList.add(cls))
         case (attr, value) => elem.setAttribute(attr, value)
-        case s: Seq[AppliedAttr] => unpackAttributes(s*)
+        case s: Seq[AppliedAttr @unchecked] => unpackAttributes(s*)
       }
 
       unpackTags(tags*)

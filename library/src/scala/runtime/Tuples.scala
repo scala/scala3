@@ -1,7 +1,5 @@
 package scala.runtime
 
-import scala.annotation.experimental
-
 object Tuples {
 
   inline val MaxSpecialized = 22
@@ -352,7 +350,7 @@ object Tuples {
     }
   }
 
-  def tail(self: NonEmptyTuple): Tuple = (self: Any) match {
+  def tail(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlTail(xxl)
     case _ => specialCaseTail(self)
   }
@@ -505,7 +503,6 @@ object Tuples {
     }
   }
 
-  @experimental
   def reverse(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlReverse(xxl)
     case _ => specialCaseReverse(self)
@@ -561,16 +558,16 @@ object Tuples {
     }
   }
 
-  def init(self: NonEmptyTuple): Tuple = (self: Any) match {
+  def init(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlInit(xxl)
     case _ => specialCaseInit(self)
   }
 
-  def last(self: NonEmptyTuple): Any = (self: Any) match {
+  def last(self: Tuple): Any = (self: Any) match {
     case self: Product => self.productElement(self.productArity - 1)
   }
 
-  def apply(self: NonEmptyTuple, n: Int): Any =
+  def apply(self: Tuple, n: Int): Any =
     self.productElement(n)
 
   // Benchmarks showed that this is faster than doing (it1 zip it2).copyToArray(...)

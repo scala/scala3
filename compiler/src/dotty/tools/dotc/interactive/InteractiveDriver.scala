@@ -33,8 +33,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
-    rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    rootCtx.setSetting(rootCtx.settings.XcookComments, true)
+    rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     val ctx = setup(settings.toArray, rootCtx) match
       case Some((_, ctx)) => ctx
       case None => rootCtx
@@ -47,14 +47,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   private val compiler: Compiler = new InteractiveCompiler
 
-  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
-    override def default(key: URI) = NoSource
-  }
+  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile].withDefaultValue(NoSource)
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
 
-  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
-    override def default(key: URI) = Nil
-  }
+  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]].withDefaultValue(Nil)
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
 
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
@@ -281,7 +277,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         if (t.symbol.exists && t.hasType) {
           if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
           t.symbol.annotations.foreach { annot =>
-            /* In some cases annotations are are used on themself (possibly larger cycles).
+            /* In some cases annotations are used on themself (possibly larger cycles).
             *  This is the case with the java.lang.annotation.Target annotation, would end
             *  in an infinite loop while cleaning. The `seen` is added to ensure that those
             *  trees are not cleand twice.

@@ -56,7 +56,7 @@ object TypeTestsCasts {
    *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P).
    *  10. otherwise, ""
    */
-  def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
+  def whyUncheckable(X: Type, P: Type, span: Span, trustTypeApplication: Boolean)(using Context): String = atPhase(Phases.refchecksPhase.next) {
     extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
     extension (inline b: Boolean) inline def |||(inline s: String): String = if b then "" else s
 
@@ -135,6 +135,7 @@ object TypeTestsCasts {
     def recur(X: Type, P: Type): String = trace(s"recur(${X.show}, ${P.show})") {
       (X <:< P) ||| P.dealias.match
       case _: SingletonType     => ""
+      case MatchType.Normalizing(tp) => recur(X, tp)
       case _: TypeProxy
       if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
@@ -142,7 +143,7 @@ object TypeTestsCasts {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe @ AppliedType(tycon, targs)     =>
+      case tpe @ AppliedType(tycon, targs) if !trustTypeApplication =>
         X.widenDealias match {
           case OrType(tp1, tp2) =>
             // This case is required to retrofit type inference,
@@ -151,10 +152,15 @@ object TypeTestsCasts {
             //   - T1 & T2 <:< T3
             // See TypeComparer#either
             recur(tp1, P) && recur(tp2, P)
-
+          case tpX: FlexibleType =>
+            recur(tpX.underlying, P)
           case x =>
             // always false test warnings are emitted elsewhere
-            TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
+            // provablyDisjoint wants fully applied types as input; because we're in the middle of erasure, we sometimes get raw types here
+            val xApplied =
+              val tparams = x.typeParams
+              if tparams.isEmpty then x else x.appliedTo(tparams.map(_ => WildcardType))
+            TypeComparer.provablyDisjoint(xApplied, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
             || typeArgsDeterminable(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
@@ -250,7 +256,8 @@ object TypeTestsCasts {
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType) && inMatch then
+          val tp = if expr.tpe.isPrimitiveValueType then defn.boxedType(expr.tpe) else expr.tpe
+          if tp <:< testType && inMatch then
             if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
@@ -359,8 +366,7 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          if !isTrusted then
-            checkTypePattern(expr.tpe, argType, expr.srcPos)
+          checkTypePattern(expr.tpe, argType, expr.srcPos, isTrusted)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
@@ -385,10 +391,10 @@ object TypeTestsCasts {
   def checkBind(tree: Bind)(using Context) =
     checkTypePattern(defn.ThrowableType, tree.body.tpe, tree.srcPos)
 
-  private def checkTypePattern(exprTpe: Type, castTpe: Type, pos: SrcPos)(using Context) =
+  private def checkTypePattern(exprTpe: Type, castTpe: Type, pos: SrcPos, trustTypeApplication: Boolean = false)(using Context) =
     val isUnchecked = exprTpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
     if !isUnchecked then
-      val whyNot = whyUncheckable(exprTpe, castTpe, pos.span)
+      val whyNot = whyUncheckable(exprTpe, castTpe, pos.span, trustTypeApplication)
       if whyNot.nonEmpty then
         report.uncheckedWarning(UncheckedTypePattern(castTpe, whyNot), pos)
 

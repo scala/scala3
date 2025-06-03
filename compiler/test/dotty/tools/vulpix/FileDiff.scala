@@ -12,10 +12,13 @@ import java.nio.charset.StandardCharsets
 
 
 object FileDiff {
+  def diffCommand(expectFile: String, actualFile: String): String =
+    s"git diff --no-index -- $expectFile $actualFile"
+
   def diffMessage(expectFile: String, actualFile: String): String =
       s"""Test output dumped in: $actualFile
-          |  See diff of the checkfile (`brew install icdiff` for colored diff)
-          |    > diff $expectFile $actualFile
+          |  See diff of the checkfile (`--color=always` for colored diff)
+          |    > ${FileDiff.diffCommand(expectFile, actualFile)}
           |  Replace checkfile with current output
           |    > mv $actualFile $expectFile
       """.stripMargin

@@ -40,6 +40,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
   def contextually[A](op: Context ?=> A): A = op(using initialState.context)
 
+  /** Returns the `(<instance completions>, <companion completions>)`*/
+  def tabComplete(src: String)(implicit state: State): List[String] =
+    completions(src.length, src, state).map(_.label).sorted.distinct
+
   extension [A](state: State)
     infix def andThen(op: State ?=> A): A = op(using state)
 
@@ -94,16 +98,13 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         FileDiff.dump(checkFile.toPath.toString, actualOutput)
         println(s"Wrote updated script file to $checkFile")
       else
-        println("expected =========>")
-        println(expectedOutput.mkString(EOL))
-        println("actual ===========>")
-        println(actualOutput.mkString(EOL))
+        println(dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
 
         fail(s"Error in script $name, expected output did not match actual")
     end if
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-language:experimental.erasedDefinitions", "-pagewidth", "80")
+  val commonOptions = Array("-color:never", "-pagewidth", "80")
   val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.basicClasspath)
   lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.withStagingClasspath)

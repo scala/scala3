@@ -79,7 +79,7 @@ public class CompilerBridgeDriver extends Driver {
       underline + "\n" +
       "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
       "    This is likely a bug in incremental compilation for the Scala 3 compiler.\n" +
-      "    Please report it to the Scala 3 maintainers at https://github.com/lampepfl/dotty/issues.";
+      "    Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues.";
     reporter.reportBasicWarning(message);
   }
 

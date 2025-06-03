@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{isTasty, hasClassExtension, hasTastyExtension}
+import dotty.tools.dotc.classpath.FileUtils.{hasClassExtension, hasTastyExtension}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Types.*
 
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
@@ -64,7 +64,7 @@ class ExtractDependencies extends Phase {
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
 
-  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  // when `-Xjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
 
   // This phase should be run directly after `Frontend`, if it is run after
@@ -84,7 +84,7 @@ class ExtractDependencies extends Phase {
       Arrays.sort(deps)
       Arrays.sort(names)
 
-      val pw = io.File(unit.source.file.jpath).changeExtension("inc").toFile.printWriter()
+      val pw = io.File(unit.source.file.jpath).changeExtension(FileExtension.Inc).toFile.printWriter()
       // val pw = Console.out
       try {
         pw.println("Used Names:")
@@ -105,8 +105,24 @@ object ExtractDependencies {
   val name: String = "sbt-deps"
   val description: String = "sends information on classes' dependencies to sbt"
 
+  /** Construct String name for the given sym.
+   * See https://github.com/sbt/zinc/blob/v1.9.6/internal/zinc-apiinfo/src/main/scala/sbt/internal/inc/ClassToAPI.scala#L86-L99
+   *
+   * For a Java nested class M of a class C returns C's canonical name + "." + M's simple name.
+   */
   def classNameAsString(sym: Symbol)(using Context): String =
-    sym.fullName.stripModuleClassSuffix.toString
+    def isJava(sym: Symbol)(using Context): Boolean =
+      Option(sym.source) match
+        case Some(src) => src.toString.endsWith(".java")
+        case None      => false
+    def classNameAsString0(sym: Symbol)(using Context): String =
+      sym.fullName.stripModuleClassSuffix.toString
+    def javaClassNameAsString(sym: Symbol)(using Context): String =
+      if sym.owner.isClass && !sym.owner.isRoot then
+        javaClassNameAsString(sym.owner) + "." + sym.name.stripModuleClassSuffix.toString
+      else classNameAsString0(sym)
+    if isJava(sym) then javaClassNameAsString(sym)
+    else classNameAsString0(sym)
 
   /** Report an internal error in incremental compilation. */
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
@@ -495,7 +511,7 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTasty = depFile.hasTastyExtension
+      val isTastyOrSig = depFile.hasTastyExtension
 
       def processExternalDependency() = {
         val binaryClassName = depClass.binaryClassName
@@ -506,13 +522,13 @@ class DependencyRecorder {
                 binaryDependency(zip.jpath, binaryClassName)
               case _ =>
           case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-            binaryDependency(if isTasty then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
+            binaryDependency(if isTastyOrSig then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
           case _ =>
             internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", fromClass.srcPos)
         }
       }
 
-      if isTasty || depFile.hasClassExtension then
+      if isTastyOrSig || depFile.hasClassExtension then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
@@ -561,7 +577,7 @@ class DependencyRecorder {
     clazz
   }
 
-  private var _responsibleForImports: Symbol = uninitialized
+  private[dotc] var _responsibleForImports: Symbol | Null = null
 
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.

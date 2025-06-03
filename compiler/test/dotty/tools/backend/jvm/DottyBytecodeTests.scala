@@ -158,6 +158,126 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def switchOnUnionOfInts = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(x: 1 | 2 | 3 | 4 | 5) = x match {
+        |    case 1 => println(3)
+        |    case 2 | 3 => println(2)
+        |    case 4 => println(1)
+        |    case 5 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfStrings = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(s: "one" | "two" | "three" | "four" | "five") = s match {
+        |    case "one" => println(3)
+        |    case "two" | "three" => println(2)
+        |    case "four" | "five" => println(1)
+        |    case _ => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfChars = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(ch: 'a' | 'b' | 'c' | 'd' | 'e'): Int = ch match {
+        |    case 'a' => 1
+        |    case 'b' => 2
+        |    case 'c' => 3
+        |    case 'd' => 4
+        |    case 'e' => 5
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfIntSingletons = {
+    val source =
+      """
+        |object Foo {
+        |  final val One = 1
+        |  final val Two = 2
+        |  final val Three = 3
+        |  final val Four = 4
+        |  final val Five = 5
+        |  type Values = One.type | Two.type | Three.type | Four.type | Five.type
+        |
+        |  def foo(s: Values) = s match {
+        |    case One => println(3)
+        |    case Two | Three => println(2)
+        |    case Four => println(1)
+        |    case Five => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfStringSingletons = {
+    val source =
+      """
+        |object Foo {
+        |  final val One = "one"
+        |  final val Two = "two"
+        |  final val Three = "three"
+        |  final val Four = "four"
+        |  final val Five = "five"
+        |  type Values = One.type | Two.type | Three.type | Four.type | Five.type
+        |
+        |  def foo(s: Values) = s match {
+        |    case One => println(3)
+        |    case Two | Three => println(2)
+        |    case Four => println(1)
+        |    case Five => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
   @Test def matchWithDefaultNoThrowMatchError = {
     val source =
       """class Test {
@@ -1731,6 +1851,140 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       )
 
       assertSameCode(instructions, expected)
+    }
+  }
+
+  @Test def newInPrefixesOfDefaultParam = {
+    val source =
+      s"""class A:
+         |  def f(x: Int = 1): Int = x
+         |
+         |class Test:
+         | def meth1() = (new A).f()
+         | def meth2() = { val a = new A; a.f() }
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val meth1      = getMethod(clsNode, "meth1")
+      val meth2      = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`assert` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+
+  @Test def newInDependentOfDefaultParam = {
+    val source =
+      s"""class A:
+         |  def i: Int = 1
+         |
+         |class Test:
+         |  def f(a: A)(x: Int = a.i): Int = x
+         |  def meth1() = f(new A)()
+         |  def meth2() = { val a = new A; f(a)() }
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val meth1      = getMethod(clsNode, "meth1")
+      val meth2      = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`assert` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+
+
+  @Test def i15098 = {
+    val source =
+      """object Main {
+        |  def main(args: Array[String]): Unit = {
+        |    Array(1).foreach { n =>
+        |      val x = 123
+        |      println(n)
+        |    }
+        |  }
+        |}
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "main")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      val expected = List(
+        LineNumber(3, Label(0)),
+      )
+
+      assertSameCode(instructions, expected)
+    }
+  }
+
+  @Test def i15098_2 = {
+    val source =
+      """object Main {
+        |  def main(args: Array[String]): Unit = {
+        |    Array(1).map { n =>
+        |      val x = 123
+        |      x + n
+        |    }.foreach { n =>
+        |      println(n)
+        |      println(n)
+        |    }
+        |  }
+        |}
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "main")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      val expected = List(
+        LineNumber(3, Label(0)),
+        LineNumber(6, Label(15)),
+        LineNumber(3, Label(24)),
+        LineNumber(6, Label(27)),
+      )
+
+      assertSameCode(instructions, expected)
+    }
+  }
+
+  /**
+   * Test 'additional' imports are generated in deterministic order
+   * https://github.com/scala/scala3/issues/20496
+   */
+  @Test def deterministicAdditionalImports = {
+    val source =
+    """trait Actor:
+        |  def receive() = ()
+        |trait Timers:
+        |  def timers() = ()
+        |abstract class ShardCoordinator extends Actor with Timers
+        |class PersistentShardCoordinator extends ShardCoordinator:
+        |  def foo =
+        |    super.receive()
+        |    super.timers()""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+
+      val expected = List("Actor", "Timers")
+      assertEquals(expected, clsNode.interfaces.asScala)
     }
   }
 }

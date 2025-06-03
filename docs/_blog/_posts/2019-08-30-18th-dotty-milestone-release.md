@@ -168,7 +168,7 @@ val iterator = Iterator.from(10, -1)
 }
 ```
 
-For more information, see PR [#6994](https://github.com/lampepfl/dotty/pull/6994).
+For more information, see PR [#6994](https://github.com/scala/scala3/pull/6994).
 
 ## Brace-less syntax for control expressions
 This is an effort to clean-up the control expressions. Scala 2 has two ways of writing `if` statements – with and without parentheses. Parentheses can be dropped in Scala 2 `if`s inside `match` or `for` statements. We'd like to have a single style of writing all of the control expressions, and the cleaner the better.
@@ -202,7 +202,7 @@ This release, hence, brings the ability to write all of the control expressions 
 
 Moreover, the compiler can automatically rewrite your sources from the old syntax to the new syntax and vice versa. To rewrite the sources to the new syntax, run the compiler with the `-rewrite -new-syntax` flags, and to rewrite to the old syntax, use `-rewrite -old-syntax`. So far, both syntaxes are supported.
 
-For more information and the precise rules, see PR [#7024](https://github.com/lampepfl/dotty/pull/7024).
+For more information and the precise rules, see PR [#7024](https://github.com/scala/scala3/pull/7024).
 
 ## Significant indentation syntax
 Significant indentations syntax is here! A logical continuation of the brace-less syntax for control expressions described above, meant as an exploration into a better way to write Scala, it allows writing Scala programs without braces. For example:
@@ -232,7 +232,7 @@ given as scala.util.FromString[Day]:
 
 So far, it is a purely experimental effort. This means there is no final decision yet on whether or not it will be included in Scala 3. However, we treat this feature seriously enough to give it an extended period of trial and see if it is viable as the new look and feel for Scala.
 
-For more details and the discussion, see PRs [#7083](https://github.com/lampepfl/dotty/pull/7083) and [#7114](https://github.com/lampepfl/dotty/pull/7114).
+For more details and the discussion, see PRs [#7083](https://github.com/scala/scala3/pull/7083) and [#7114](https://github.com/scala/scala3/pull/7114).
 
 ## Generic Number Literals
 It is now possible to seamlessly integrate with different number formats: that is, to write a number and get it automatically converted to your class of choice. E.g.:
@@ -256,13 +256,13 @@ For precise rules, semantics and a larger example of `BigFloat`, see [the docume
 ## Metaprogramming Progress
 We are making steady progress with the language metaprogramming features. The metaprogramming spotlights of this release are as follows:
 
-- `toExprOfTuple` method which allows converting a `Seq[Expr[Any]]` to `Expr[Tuple]`. The types of the expressions will be preserved in the tuple. See [#7037](https://github.com/lampepfl/dotty/pull/7037) and [#7076](https://github.com/lampepfl/dotty/pull/7076) for the details.
-- `toExprOfTuple` method that converts a tuple of expressions to an expression of tuple – see [#7047](https://github.com/lampepfl/dotty/pull/7047).
-- `toExprOfSeq` which converts an `Seq[Expr[A]]` to `Expr[Seq[A]]` – see [#6935](https://github.com/lampepfl/dotty/pull/6935).
-- More `Liftable` instances – for Tuples of arity greater than 22, `BigInt` and `BigDecimal` – see [#6947](https://github.com/lampepfl/dotty/pull/6947) and [#6944](https://github.com/lampepfl/dotty/pull/6944).
-- Leverage implicit lambdas to simplify `Liftable.toExpr` method – see [#6924](https://github.com/lampepfl/dotty/pull/6924) to learn how it is done.
-- Runtime staging `run` moved to `scala.quoted.staging` in [#7077](https://github.com/lampepfl/dotty/pull/7077).
-- Runtime staging factored out to a separate library in [#7080](https://github.com/lampepfl/dotty/pull/7080).
+- `toExprOfTuple` method which allows converting a `Seq[Expr[Any]]` to `Expr[Tuple]`. The types of the expressions will be preserved in the tuple. See [#7037](https://github.com/scala/scala3/pull/7037) and [#7076](https://github.com/scala/scala3/pull/7076) for the details.
+- `toExprOfTuple` method that converts a tuple of expressions to an expression of tuple – see [#7047](https://github.com/scala/scala3/pull/7047).
+- `toExprOfSeq` which converts an `Seq[Expr[A]]` to `Expr[Seq[A]]` – see [#6935](https://github.com/scala/scala3/pull/6935).
+- More `Liftable` instances – for Tuples of arity greater than 22, `BigInt` and `BigDecimal` – see [#6947](https://github.com/scala/scala3/pull/6947) and [#6944](https://github.com/scala/scala3/pull/6944).
+- Leverage implicit lambdas to simplify `Liftable.toExpr` method – see [#6924](https://github.com/scala/scala3/pull/6924) to learn how it is done.
+- Runtime staging `run` moved to `scala.quoted.staging` in [#7077](https://github.com/scala/scala3/pull/7077).
+- Runtime staging factored out to a separate library in [#7080](https://github.com/scala/scala3/pull/7080).
 
 ## Type Class Derivation
 Type class derivation has received a major rework and an [updated documentation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html). We have dropped the usage of the `Shape` type to describe the shape of a type. Instead, all the relevant information is now encoded in the `Mirror` type and its subtypes as tuples.
@@ -270,15 +270,15 @@ Type class derivation has received a major rework and an [updated documentation]
 For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html).
 
 ## Other
-- This release also features the new version of the SBT Dotty Plugin – 0.3.4. It contains some bug fixes – see [#7120](https://github.com/lampepfl/dotty/pull/7120) for details.
-- Scala Days 2019 talks related to Dotty are now [mentioned](https://dotty.epfl.ch/docs/resources/talks.html) at our website – this allows to systematize the knowledge about the next generation of Scala in one place – see [#6984](https://github.com/lampepfl/dotty/pull/6984).
-- ScalaJS needs your help! We would like to have robust support for ScalaJS in Dotty, which unfortunately is not the case so far. If you are interested in contributing, please see [the getting started tutorial](https://gist.github.com/sjrd/e0823a5bddbcef43999cdaa032b1220c) and [the discussion](https://github.com/lampepfl/dotty/issues/7113).
+- This release also features the new version of the SBT Dotty Plugin – 0.3.4. It contains some bug fixes – see [#7120](https://github.com/scala/scala3/pull/7120) for details.
+- Scala Days 2019 talks related to Dotty are now [mentioned](https://dotty.epfl.ch/docs/resources/talks.html) at our website – this allows to systematize the knowledge about the next generation of Scala in one place – see [#6984](https://github.com/scala/scala3/pull/6984).
+- ScalaJS needs your help! We would like to have robust support for ScalaJS in Dotty, which unfortunately is not the case so far. If you are interested in contributing, please see [the getting started tutorial](https://gist.github.com/sjrd/e0823a5bddbcef43999cdaa032b1220c) and [the discussion](https://github.com/scala/scala3/issues/7113).
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -310,7 +310,7 @@ According to `git shortlog -sn --no-merges 0.17.0-RC1..0.18.1-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

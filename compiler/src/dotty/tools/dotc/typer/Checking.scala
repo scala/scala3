@@ -29,19 +29,19 @@ import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
-import Applications.unapplyArgs
+import Applications.UnapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import transform.ValueClasses.underlyingOfValueClass
-import config.Feature
-import config.Feature.sourceVersion
+import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.isCaptureChecking
+import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
 
 import collection.mutable
 import reporting.*
+import Annotations.ExperimentalAnnotation
 
 object Checking {
   import tpd.*
@@ -197,7 +197,7 @@ object Checking {
    *  and that the instance conforms to the self type of the created class.
    */
   def checkInstantiable(tp: Type, srcTp: Type, pos: SrcPos)(using Context): Unit =
-    tp.underlyingClassRef(refinementOK = false) match
+    tp.underlyingClassRef(refinementOK = Feature.enabled(modularity)) match
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.isOneOf(AbstractOrTrait)) {
@@ -287,11 +287,16 @@ object Checking {
      */
     def checkInfo(tp: Type): Type = tp match {
       case tp @ TypeAlias(alias) =>
-        tp.derivedAlias(checkPart(alias, "alias"))
+        val lo1 = atVariance(-1)(checkPart(alias, "alias"))
+        val hi1 = checkUpper(alias, "alias")
+        if lo1 eq hi1 then
+          tp.derivedAlias(lo1)
+        else
+          tp.derivedTypeBounds(lo1, hi1)
       case tp @ MatchAlias(alias) =>
-        tp.derivedAlias(checkUpper(alias, "match"))
+        tp.derivedAlias(atVariance(0)(checkUpper(alias, "match")))
       case tp @ TypeBounds(lo, hi) =>
-        tp.derivedTypeBounds(checkPart(lo, "lower bound"), checkUpper(hi, "upper bound"))
+        tp.derivedTypeBounds(atVariance(-1)(checkPart(lo, "lower bound")), checkUpper(hi, "upper bound"))
       case _ =>
         tp
     }
@@ -312,12 +317,12 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
-      case tp @ AppliedType(tycon, args) =>
-        tp.derivedAppliedType(this(tycon), args.mapConserve(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ RefinedType(parent, name, rinfo) =>
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
+      case tp: LazyRef =>
+        tp
       case tp @ TypeRef(pre, _) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -332,8 +337,14 @@ object Checking {
                 || sym.owner.isContainedIn(prefix.cls) // sym reachable through member references
               )
             case prefix: NamedType =>
-              (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
-              (!prefix.symbol.moduleClass.isStaticOwner && isInteresting(prefix.prefix))
+              !sym.is(Private) && prefix.derivesFrom(sym.owner)
+              || {
+                val pcls = prefix.symbol.moduleClass
+                if pcls.isStaticOwner then
+                  pcls.span.exists && pcls.defRunId == ctx.runId // cheaper approximation to isDefinedInCurrentRun
+                else
+                  isInteresting(prefix.prefix)
+              }
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
@@ -342,15 +353,25 @@ object Checking {
             case _ => false
           }
 
-          if (isInteresting(pre)) {
-            val pre1 = this(pre, false, false)
-            if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
-              throw CyclicReference(tp.symbol)
-            locked += tp
-            try if (!tp.symbol.isClass) checkInfo(tp.info)
-            finally locked -= tp
-            tp.withPrefix(pre1)
-          }
+          if isInteresting(pre) then
+            CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
+              val pre1 = atVariance(variance max 0)(this(pre, false, false))
+              if locked.contains(tp)
+                  || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
+                  && tp.symbol == sym
+              then
+                throw CyclicReference(tp.symbol)
+              locked += tp
+              try
+                if tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter] then
+                  ; // skip checking info (and avoid forcing the symbol with .isOpaqueAlias/etc)
+                else if tp.symbol.isOpaqueAlias then
+                  checkInfo(TypeAlias(tp.translucentSuperType))
+                else if !tp.symbol.isClass then
+                  checkInfo(tp.info)
+              finally
+                locked -= tp
+              tp.withPrefix(pre1)
           else tp
         }
         catch {
@@ -362,6 +383,16 @@ object Checking {
         }
       case _ => mapOver(tp)
     }
+
+    override def mapArg(arg: Type, tparam: ParamInfo): Type =
+      val varianceDiff = variance != tparam.paramVarianceSign
+      atVariance(variance * tparam.paramVarianceSign):
+        // Using tests/pos/i22257.scala as an example,
+        // if we consider FP's lower-bound of Fixed[Node]
+        // than `Node` is a type argument in contravariant
+        // position, while the type parameter is covariant.
+        val nestedCycleOK1 = nestedCycleOK || variance != 0 && varianceDiff
+        this(arg, nestedCycleOK, nestedCycleOK1)
   }
 
   /** Under -Yrequire-targetName, if `sym` has an operator name, check that it has a
@@ -387,11 +418,15 @@ object Checking {
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(using Context): Type = {
     val checker = withMode(Mode.CheckCyclic)(new CheckNonCyclicMap(sym, reportErrors))
-    try checker.checkInfo(info)
+    try
+      val toCheck = info match
+        case info: RealTypeBounds if sym.isOpaqueAlias => TypeAlias(sym.opaqueAlias)
+        case _ => info
+      checker.checkInfo(toCheck)
     catch {
       case ex: CyclicReference =>
         if (reportErrors)
-          errorType(IllegalCyclicTypeReference(sym, checker.where, checker.lastChecked), sym.srcPos)
+          errorType(IllegalCyclicTypeReference(ex, sym, checker.where, checker.lastChecked), sym.srcPos)
         else info
     }
   }
@@ -538,6 +573,12 @@ object Checking {
         fail(em"Inline methods cannot be @tailrec")
     if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
       fail(TargetNameOnTopLevelClass(sym))
+    if sym.hasAnnotation(defn.PublicInBinaryAnnot) then
+      if sym.is(Enum) then fail(em"@publicInBinary cannot be used on enum definitions")
+      else if sym.isType && !sym.is(Module) && !(sym.is(Given) || sym.companionModule.is(Given)) then fail(em"@publicInBinary cannot be used on ${sym.showKind} definitions")
+      else if !sym.owner.isClass && !(sym.is(Param) && sym.owner.isConstructor) then fail(em"@publicInBinary cannot be used on local definitions")
+      else if sym.is(ParamAccessor) && sym.is(Private) then fail(em"@publicInBinary cannot be non `val` constructor parameters")
+      else if sym.is(Private) && !sym.privateWithin.exists && !sym.isConstructor then fail(em"@publicInBinary cannot be used on private definitions\n\nConsider using `private[${sym.owner.name}]` or `protected` instead")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
@@ -555,7 +596,7 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail(em"Traits cannot have secondary constructors$addendum")
-    checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
+    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor)
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -564,8 +605,12 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
+      fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
     checkApplicable(Erased,
-      !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
+      !sym.is(Lazy, butNot = Given)
+      && !sym.isMutableVarOrAccessor
+      && (!sym.isType || sym.isClass))
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
@@ -577,6 +622,7 @@ object Checking {
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
     checkCombination(Erased, Inline)
+    checkNoConflict(Tracked, Mutable, em"mutable variables may not be `tracked`")
     checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
@@ -587,6 +633,8 @@ object Checking {
     val mods = mdef.mods
     def flagSourcePos(flag: FlagSet) =
       mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    if mods.is(Open) then
+      report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
     if mods.is(Abstract) then
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
@@ -677,8 +725,7 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
-        case tp @ AnnotatedType(underlying, annot)
-        if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike =>
           val underlying1 = this(underlying)
           val saved = inCaptureSet
           inCaptureSet = true
@@ -696,7 +743,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -704,20 +751,36 @@ object Checking {
         report.error(ValueClassesMayNotDefineNonParameterField(clazz, stat.symbol), stat.srcPos)
       case _: DefDef if stat.symbol.isConstructor =>
         report.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, stat.symbol), stat.srcPos)
-      case _: MemberDef | _: Import | EmptyTree =>
+      case _: MemberDef | _: Import | _: Export | EmptyTree =>
       // ok
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (clazz.isDerivedValueClass) {
+    inline def checkParentIsNotAnyValAlias(): Unit =
+      cdef.rhs match {
+        case impl: Template =>
+          val parent = impl.parents.head
+          if parent.symbol.isAliasType && parent.typeOpt.dealias =:= defn.AnyValType then
+            report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parent.symbol), cdef.srcPos)
+        case _ => ()
+      }
+    // We don't check synthesised enum anonymous classes that are generated from
+    // enum extending a value class type (AnyVal or an alias of it)
+    // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
+    if (clazz.isDerivedValueClass && !clazz.isEnumAnonymClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
+      if (clazz.is(Enum))
+        report.error(EnumMayNotBeValueClasses(clazz), clazz.srcPos)
       if (clazz.is(Abstract))
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
+
+      checkParentIsNotAnyValAlias()
+
       if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
         report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
@@ -726,6 +789,8 @@ object Checking {
         }
         clParamAccessors match {
           case param :: params =>
+            if (defn.isContextFunctionType(param.info))
+              report.error("value classes are not allowed for context function types", param.srcPos)
             if (param.is(Mutable))
               report.error(ValueClassParameterMayNotBeAVar(clazz, param), param.srcPos)
             if (param.info.isInstanceOf[ExprType])
@@ -756,69 +821,59 @@ object Checking {
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
 
-  def checkValue(tree: Tree)(using Context): Unit =
-    val sym = tree.tpe.termSymbol
-    if sym.isNoValue && !ctx.isJava then
-      report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
-
-  /** Check that `tree` refers to a value, unless `tree` is selected or applied
-   *  (singleton types x.type don't count as selections).
-   */
-  def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
-    tree match
-      case tree: RefTree if tree.name.isTermName =>
-        proto match
-          case _: SelectionProto if proto ne SingletonTypeProto => // no value check
-          case _: FunOrPolyProto => // no value check
-          case _ => checkValue(tree)
-      case _ =>
-    tree
-
   /** Check that experimental language imports in `trees`
-   *  are done only in experimental scopes, or in a top-level
-   *  scope with only @experimental definitions.
+   *  are done only in experimental scopes. For top-level
+   *  experimental imports, all top-level definitions are transformed
+   *  to @experimental definitions.
+   *
    */
-  def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
+  def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
+    def nonExperimentalTopLevelDefs(): List[Symbol] =
+      new TreeAccumulator[List[Symbol]] {
+        override def apply(x: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
+          def addIfNotExperimental(sym: Symbol) =
+            if !sym.isExperimental then sym :: x
+            else x
+          tree match {
+            case tpd.PackageDef(_, contents) => apply(x, contents)
+            case typeDef @ tpd.TypeDef(_, temp: Template) if typeDef.symbol.isPackageObject =>
+              apply(x, temp.body)
+            case mdef: tpd.MemberDef => addIfNotExperimental(mdef.symbol)
+            case _ => x
+          }
+      }.apply(Nil, ctx.compilationUnit.tpdTree)
 
-    def nonExperimentalStat(trees: List[Tree]): Tree = trees match
-      case (_: Import | EmptyTree) :: rest =>
-        nonExperimentalStat(rest)
-      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
-        nonExperimentalStat(impl.body).orElse(nonExperimentalStat(rest))
-      case (tree: PackageDef) :: rest =>
-        nonExperimentalStat(tree.stats).orElse(nonExperimentalStat(rest))
-      case (tree: MemberDef) :: rest =>
-        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
-          nonExperimentalStat(rest)
-        else
-          tree
-      case tree :: rest =>
-        tree
-      case Nil =>
-        EmptyTree
-
-    for case imp @ Import(qual, selectors) <- trees do
+    def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
-        || name == Feature.erasedDefinitions
         || name == Feature.captureChecking
+      trees.filter {
+        case Import(qual, selectors) =>
+          languageImport(qual) match
+            case Some(nme.experimental) =>
+              !selectors.forall(isAllowedImport) && !ctx.owner.isInExperimentalScope
+            case _ => false
+        case _ => false
+      }
 
-      languageImport(qual) match
-        case Some(nme.experimental)
-        if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
-          def check(stable: => String) =
-            Feature.checkExperimentalFeature("features", imp.srcPos,
-              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
-          if ctx.owner.is(Package) then
-            // allow top-level experimental imports if all definitions are @experimental
-            nonExperimentalStat(trees) match
-              case EmptyTree =>
-              case tree: MemberDef => check(i"${tree.symbol}")
-              case tree => check(i"expression ${tree}")
-          else Feature.checkExperimentalFeature("features", imp.srcPos)
+    if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
+      def markTopLevelDefsAsExperimental(why: String): Unit =
+        for sym <- nonExperimentalTopLevelDefs() do
+          sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
+
+      unitExperimentalLanguageImports match
+        case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>
-  end checkExperimentalImports
+          Feature.experimentalEnabledByLanguageSetting match
+            case Some(sel) => markTopLevelDefsAsExperimental(i"-language:experimental.$sel")
+            case _ if ctx.settings.experimental.value => markTopLevelDefsAsExperimental(i"-experimental")
+            case _ =>
+    else
+      for imp <- unitExperimentalLanguageImports do
+        Feature.checkExperimentalFeature("feature local import", imp.srcPos)
+
+  end checkAndAdaptExperimentalImports
 
   /** Checks that PolyFunction only have valid refinements.
    *
@@ -852,6 +907,38 @@ object Checking {
     templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
       case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
       case None =>
+
+  /** check that parameters of a java defined annotations are all named arguments if we have more than one parameter */
+  def checkNamedArgumentForJavaAnnotation(annot: untpd.Tree, sym: ClassSymbol)(using Context): untpd.Tree =
+    assert(sym.is(JavaDefined))
+
+    def annotationHasValueField: Boolean =
+      sym.info.decls.exists(_.name == nme.value)
+
+    lazy val annotationFieldNamesByIdx: Map[Int, TermName] =
+      sym.info.decls.filter: decl =>
+        decl.is(Method) && decl.name != nme.CONSTRUCTOR
+      .map(_.name.toTermName)
+      .zipWithIndex
+      .map(_.swap)
+      .toMap
+
+    annot match
+      case untpd.Apply(fun, List(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
+        untpd.cpy.Apply(annot)(fun, List(untpd.cpy.NamedArg(param)(nme.value, param)))
+      case untpd.Apply(_, params) =>
+        for
+          (param, paramIdx) <- params.zipWithIndex
+          if !param.isInstanceOf[untpd.NamedArg]
+        do
+          report.errorOrMigrationWarning(NonNamedArgumentInJavaAnnotation(), param, MigrationVersion.NonNamedArgumentInJavaAnnotation)
+          if MigrationVersion.NonNamedArgumentInJavaAnnotation.needsPatch then
+            annotationFieldNamesByIdx.get(paramIdx).foreach: paramName =>
+              patch(param.span.startPos, s"$paramName = ")
+        annot
+      case _ => annot
+  end checkNamedArgumentForJavaAnnotation
+
 }
 
 trait Checking {
@@ -936,14 +1023,21 @@ trait Checking {
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean =
+    // Is scrutinee type `pt` a subtype of `pat.tpe`, after stripping named tuples
+    // and accounting for large generic tuples?
+    // Named tuples need to be stripped off, since names are dropped in patterns
+    def conforms(pat: Tree, pt: Type): Boolean =
       pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
-      || pt <:< pat.tpe
-      || fail(pat, pt, Reason.NonConforming)
+      || pt.stripNamedTuple <:< pat.tpe
+      || (pt.widen ne pt) && conforms(pat, pt.widen)
+
+    def check(pat: Tree, pt: Type): Boolean =
+      conforms(pat, pt) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
       || pt.hasAnnotation(defn.UncheckedAnnot)
+      || pt.hasAnnotation(defn.RuntimeCheckedAnnot)
       || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match
@@ -952,13 +1046,15 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
             pats.forall(recur(_, pt))
           case Typed(arg, tpt) =>
             check(pat, pt) && recur(arg, pt)
+          case NamedArg(name, pat) =>
+            recur(pat, pt)
           case Ident(nme.WILDCARD) =>
             true
           case pat: QuotePattern =>
@@ -1031,8 +1127,8 @@ trait Checking {
   *   check that class prefix is stable.
    *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
-  def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type =
-    tp.underlyingClassRef(refinementOK = false) match {
+  def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean = false)(using Context): Type =
+    tp.underlyingClassRef(refinementOK) match
       case tref: TypeRef =>
         if (traitReq && !tref.symbol.is(Trait)) report.error(TraitIsExpected(tref.symbol), pos)
         if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
@@ -1040,7 +1136,6 @@ trait Checking {
       case _ =>
         report.error(NotClassType(tp), pos)
         defn.ObjectType
-    }
 
   /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
@@ -1055,14 +1150,14 @@ trait Checking {
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that the expected type is
-   *  a convertible formal parameter type or that implicit conversions are enabled.
+   *  annotated with @$into or that implicit conversions are enabled.
    */
   def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit =
     val sym = tree.symbol
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
-       && !expected.isConvertibleParam
+       && !expected.isInto
     then
       def conv = methPart(tree) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
@@ -1150,11 +1245,13 @@ trait Checking {
   /** A hook to exclude selected symbols from double declaration check */
   def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean = false
 
+  def matchesSameStatic(decl: Symbol, other: Symbol)(using Context): Boolean =
+    def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+    decl.matches(other) && !staticNonStaticPair
+
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
-    val seen = new mutable.HashMap[Name, List[Symbol]] {
-      override def default(key: Name) = Nil
-    }
+    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
@@ -1163,7 +1260,7 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if (decl.matches(other) && !javaFieldMethodPair) {
+        if (matchesSameStatic(decl, other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
@@ -1221,32 +1318,8 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
-    Checking.checkDerivedValueClass(clazz, stats)
-
-  /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
-   *  the superclass of `cls` derived from the superclass of `parent`.
-   *
-   *  An exception is made if `cls` extends `Any`, and `parent` is `java.io.Serializable`
-   *  or `java.lang.Comparable`. These two classes are treated by Scala as universal
-   *  traits. E.g. the following is OK:
-   *
-   *      ... extends Any with java.io.Serializable
-   *
-   *  The standard library relies on this idiom.
-   */
-  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
-    parent match {
-      case parent: ClassSymbol if parent.is(Trait) =>
-        val psuper = parent.superClass
-        val csuper = cls.superClass
-        val ok = csuper.derivesFrom(psuper) ||
-          parent.is(JavaDefined) && csuper == defn.AnyClass &&
-          (parent == defn.JavaSerializableClass || parent == defn.ComparableClass)
-        if (!ok)
-          report.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
-      case _ =>
-    }
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit =
+    Checking.checkDerivedValueClass(cdef, clazz, stats)
 
   /** Check that case classes are not inherited by case classes.
    */
@@ -1321,20 +1394,20 @@ trait Checking {
   }
 
   /** Check that user-defined (result) type is fully applied */
-  def checkFullyAppliedType(tree: Tree)(using Context): Unit = tree match
+  def checkFullyAppliedType(tree: Tree, prefix: String)(using Context): Unit = tree match
     case TypeBoundsTree(lo, hi, alias) =>
-      checkFullyAppliedType(lo)
-      checkFullyAppliedType(hi)
-      checkFullyAppliedType(alias)
+      checkFullyAppliedType(lo, prefix)
+      checkFullyAppliedType(hi, prefix)
+      checkFullyAppliedType(alias, prefix)
     case Annotated(arg, annot) =>
-      checkFullyAppliedType(arg)
+      checkFullyAppliedType(arg, prefix)
     case LambdaTypeTree(_, body) =>
-      checkFullyAppliedType(body)
+      checkFullyAppliedType(body, prefix)
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
         val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
-        report.error(em"$what takes type parameters", tree.srcPos)
+        report.error(em"$prefix$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
@@ -1369,6 +1442,10 @@ trait Checking {
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+      case Apply(tycon, arg :: Nil) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
+        arg.tpe.widenTermRefExpr.normalized match
+          case _: ConstantType => ()
+          case _ => report.error(em"@${cls.name} requires constant expressions as a parameter", arg.srcPos)
       case _ =>
     tree
 
@@ -1506,7 +1583,7 @@ trait Checking {
       val annotCls = Annotations.annotClass(annot)
       val concreteAnnot = Annotations.ConcreteAnnotation(annot)
       val pos = annot.srcPos
-      if (annotCls == defn.MainAnnot || concreteAnnot.matches(defn.MainAnnotationClass)) {
+      if (annotCls == defn.MainAnnot) {
         if (!sym.isRealMethod)
           report.error(em"main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
@@ -1599,7 +1676,7 @@ trait ReChecking extends Checking {
   override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
-  override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
+  override def checkFullyAppliedType(tree: Tree, prefix: String)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
@@ -1615,7 +1692,7 @@ trait NoChecking extends ReChecking {
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
-  override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
+  override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
@@ -1623,8 +1700,7 @@ trait NoChecking extends ReChecking {
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
-  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp

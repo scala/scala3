@@ -24,6 +24,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.report
+import dotty.tools.dotc.ast.Trees.SyntheticUnit
 
 /*
  *
@@ -218,10 +219,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val success = new asm.Label
       val failure = new asm.Label
 
-      val hasElse = !elsep.isEmpty && (elsep match {
-        case Literal(value) if value.tag == UnitTag => false
-        case _ => true
-      })
+      val hasElse = !elsep.hasAttachment(SyntheticUnit)
 
       genCond(condp, success, failure, targetIfNoJump = success)
       markProgramPoint(success)
@@ -250,6 +248,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if hasElse then
           genLoadTo(elsep, expectedType, dest)
         else
+          lineNumber(tree.cond)
           genAdaptAndSendToDest(UNIT, expectedType, dest)
         expectedType
       end if
@@ -1144,7 +1143,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          *       - Every time when generating an ATHROW, a new basic block is started.
          *       - During classfile writing, such basic blocks are found to be dead: no branches go there
          *       - Eliminating dead code would probably require complex shifts in the output byte buffer
-         *       - But there's an easy solution: replace all code in the dead block with with
+         *       - But there's an easy solution: replace all code in the dead block with
          *         `nop; nop; ... nop; athrow`, making sure the bytecode size stays the same
          *       - The corresponding stack frame can be easily generated: on entering a dead the block,
          *         the frame requires a single Throwable on the stack.
@@ -1774,8 +1773,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
-      // TODO specialization
-      val instantiatedMethodType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
       val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
@@ -1788,7 +1785,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
 
       val methodName = samMethod.javaSimpleName
-      val samMethodType = asmMethodType(samMethod).toASMType
+      val samMethodBType = asmMethodType(samMethod)
+      val samMethodType = samMethodBType.toASMType
+
+      def boxInstantiated(instantiatedType: BType, samType: BType): BType =
+        if(!samType.isPrimitive && instantiatedType.isPrimitive)
+          boxedClassOfPrimitive(instantiatedType.asPrimitiveBType)
+        else instantiatedType
+      // TODO specialization
+      val instantiatedMethodBType = new MethodBType(
+        lambdaParamTypes.map(p =>  toTypeKind(p)),
+        boxInstantiated(toTypeKind(lambdaTarget.info.resultType), samMethodBType.returnType)
+      )
+
+      val instantiatedMethodType = instantiatedMethodBType.toASMType
+
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType

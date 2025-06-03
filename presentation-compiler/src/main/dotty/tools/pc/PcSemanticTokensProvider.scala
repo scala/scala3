@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.SemanticTokenModifiers
 import org.eclipse.lsp4j.SemanticTokenTypes
@@ -60,7 +60,7 @@ final class PcSemanticTokensProvider(
         case _ => !df.rhs.isEmpty
     case _ => false
 
-  object Collector extends PcCollector[Option[Node]](driver, params):
+  object Collector extends SimpleCollector[Option[Node]](driver, params):
     override def collect(
         parent: Option[Tree]
     )(tree: Tree | EndMarker, pos: SourcePosition, symbol: Option[Symbol]): Option[Node] =

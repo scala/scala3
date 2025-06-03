@@ -104,7 +104,7 @@ every part of CI. For example, maybe you're just updating some documentation and
 there is no need to run the community build for this. We skip parts of the CI by
 utilizing keywords inside of brackets. The most up-to-date way to see this are
 by looking in the `if` statements of jobs. For example you can see some
-[here](https://github.com/lampepfl/dotty/blob/5d2812a5937389f8a46f9e97ab9cbfbb3f298d87/.github/workflows/ci.yaml#L54-L64).
+[here](https://github.com/scala/scala3/blob/5d2812a5937389f8a46f9e97ab9cbfbb3f298d87/.github/workflows/ci.yaml#L54-L64).
 Below are commonly used ones:
 
 
@@ -160,8 +160,8 @@ you're PR will be merged in!
 [pull-request]: https://docs.github.com/en?query=pull+requests
 [lampepfl/dotty]: https://github.com/lampepfl/dotty
 [cla]: http://typesafe.com/contribute/cla/scala
-[issues]: https://github.com/lampepfl/dotty/issues
-[full-list]: https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md
+[issues]: https://github.com/scala/scala3/issues
+[full-list]: https://github.com/scala/scala3/blob/master/CONTRIBUTING.md
 [discord]: https://discord.gg/TSmY9zkHar
 [dry]: https://www.oreilly.com/library/view/97-things-every/9780596809515/ch30.html
 [scouts]: https://www.oreilly.com/library/view/97-things-every/9780596809515/ch08.html

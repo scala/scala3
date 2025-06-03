@@ -1,0 +1,13 @@
+-- [E172] Type Error: tests/neg/match-type-enumeration-value-hack.scala:11:40 ------------------------------------------
+11 |  summon[Suit#Value =:= EnumValue[Suit]] // error
+   |                                        ^
+   |                                        Cannot prove that Suit#Value =:= EnumValue[Suit].
+   |
+   |                                        Note: a match type could not be fully reduced:
+   |
+   |                                          trying to reduce  EnumValue[Suit]
+   |                                          failed since selector Suit
+   |                                          does not uniquely determine parameter t in
+   |                                            case EnumValueAux[t] => t
+   |                                          The computed bounds for the parameter are:
+   |                                            t >: ?1.Value <: ?1.Value

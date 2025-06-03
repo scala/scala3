@@ -1,0 +1,10 @@
+# as described in build.sbt, this will fail to compile.
+# m defines a macro, depending on a.A, defined in upstream project a
+# however because m also tries to run the macro in the same project,
+# a/A.class is not available yet, so a reflection error will occur.
+# This is caught by the compiler and presents a pretty diagnostic to the user,
+# suggesting to disable pipelining in the project defining A.
+-> m/compile
+# This will run, simulating a user following the suggestion to
+# disable pipelining in project a.
+> m_alt/run

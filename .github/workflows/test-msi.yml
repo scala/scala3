@@ -1,0 +1,77 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO TEST SCALA WITH MSI RUNNER                  ###
+### HOW TO USE:                                                                                 ###
+###  Provide optional `version` to test if installed binaries are installed with                ###
+###  correct Scala version.                                                                     ###
+### NOTE: Requires `scala.msi` artifact uploaded within the same run                            ###
+###                                                                                             ###
+###################################################################################################
+
+name: Test 'scala' MSI Package
+run-name: Test 'scala' (${{ inputs.version }}) MSI Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      java-version:
+        required: true
+        type    : string
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+      - name: Download MSI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: scala.msi
+          path: .
+
+      # Run the MSI installer
+      # During normal installation msiexec would modify the PATH automatically. 
+      # However, it seems not to work in GH Actions. Append the PATH manually instead.
+      - name: Install Scala Runner
+        shell: pwsh
+        run: |
+          Start-Process 'msiexec.exe' -ArgumentList '/I "scala.msi" /L*V "install.log" /qb' -Wait
+          Get-Content 'install.log'
+          Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\scala\bin"
+
+      # Run tests to ensure the Scala Runner was installed and works
+      - name: Test Scala Runner
+        shell: pwsh
+        run: |
+          scala --version
+          if (-not (scala --version | Select-String "Scala version \(default\): ${{ inputs.version }}")) {
+            Write-Host "Invalid Scala version of MSI installed runner, expected ${{ inputs.version }}"
+            Exit 1
+          }
+      - name : Test the `scalac` command
+        shell: pwsh
+        run: |
+          scalac --version
+          if (-not (scalac --version | Select-String "Scala compiler version ${{ inputs.version }}")) {
+            Write-Host "Invalid scalac version of MSI installed runner, expected ${{ inputs.version }}"
+            Exit 1
+          }
+      - name : Test the `scaladoc` command
+        shell: pwsh
+        run: |
+          scaladoc --version
+          if (-not (scaladoc --version | Select-String "Scaladoc version ${{ inputs.version }}")) {
+            Write-Host "Invalid scaladoc version of MSI installed runner, expected ${{ inputs.version }}"
+            Exit 1
+          }
+      - name : Uninstall the `scala` package
+        shell: pwsh
+        run: |
+          Start-Process 'msiexec.exe' -ArgumentList '/X "scala.msi" /L*V "uninstall.log" /qb' -Wait
+          Get-Content 'uninstall.log'
+        

@@ -13,7 +13,7 @@ import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
-  val description: String = "expand erased value types to their underlying implmementation types"
+  val description: String = "expand erased value types to their underlying implementation types"
 
   def elimEVT(tp: Type)(using Context): Type = tp match {
     case ErasedValueType(_, underlying) =>

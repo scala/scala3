@@ -2,7 +2,6 @@ package dotty.tools.scaladoc
 
 import scala.io.Source
 import dotty.tools.scaladoc.PageEntry
-import org.scalajs.dom.webworkers.Worker
 import org.scalajs.dom._
 import scala.scalajs.js.{ JSON, Dynamic }
 import scala.collection.mutable.ListBuffer

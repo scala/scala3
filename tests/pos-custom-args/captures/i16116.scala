@@ -9,14 +9,13 @@ trait CpsMonad[F[_]] {
 
 object CpsMonad {
   type Aux[F[_],C] = CpsMonad[F] { type Context = C }
-  given CpsMonad[Future] with {}
+  given CpsMonad[Future]()
 }
 
 @experimental
 object Test {
 
-  @capability
-  class CpsTransform[F[_]] {
+  class CpsTransform[F[_]] extends caps.Capability {
      def await[T](ft: F[T]): T^{ this } = ???
   }
 

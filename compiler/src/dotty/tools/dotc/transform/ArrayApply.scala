@@ -76,7 +76,7 @@ class ArrayApply extends MiniPhase {
         tree.args match
           // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
           case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
-              if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
+              if rest.elems.isEmpty || defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
             Some(rest.elems)
           case _ => None
       else None

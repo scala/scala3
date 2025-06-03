@@ -101,7 +101,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
           val parentCls = parent.tpe.classSymbol.asClass
           parent match
             // if we are in a regular class and first parent is also a regular class,
-            // make sure we have a contructor
+            // make sure we have a constructor
             case parent: TypeTree
             if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
               New(parent.tpe, Nil).withSpan(impl.span)
@@ -218,18 +218,17 @@ object ExplicitOuter {
    */
   private def needsOuterAlways(cls: ClassSymbol)(using Context): Boolean =
     needsOuterIfReferenced(cls) &&
-    (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
+    (!hasOnlyLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
      cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
      cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
   /** Class is only instantiated in the compilation unit where it is defined */
-  private def hasLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
+  private def hasOnlyLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
     // Modules are normally locally instantiated, except if they are declared in a trait,
     // in which case they will be instantiated in the classes that mix in the trait.
-    cls.owner.ownersIterator.takeWhile(!_.isStatic).exists(_.isTerm)
-    || cls.is(Private, butNot = Module)
-    || cls.is(Module) && !cls.owner.is(Trait)
+    if cls.is(Module) then !cls.owner.is(Trait)
+    else cls.isLocalToCompilationUnit
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
@@ -344,25 +343,12 @@ object ExplicitOuter {
   private final val HoistableFlags = Method | Lazy | Module
 
   /** The outer prefix implied by type `tpe` */
-  private def outerPrefix(tpe: Type)(using Context): Type = tpe match {
-    case tpe: TypeRef =>
-      tpe.symbol match {
-        case cls: ClassSymbol =>
-          if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
-          else tpe.prefix
-        case _ =>
-          // Need to be careful to dealias before erasure, otherwise we lose prefixes.
-          atPhaseNoLater(erasurePhase)(outerPrefix(tpe.underlying))
-          	// underlying is fine here and below since we are calling this after erasure.
-          	// However, there is some weird stuff going on with parboiled2 where an
-          	// AppliedType with a type alias as constructor is fed to outerPrefix.
-          	// For some other unknown reason this works with underlying but not with superType.
-          	// I was not able to minimize the problem and parboiled2 spits out way too much
-          	// macro generated code to be able to pinpoint the root problem.
-      }
+  private def outerPrefix(tpe: Type)(using Context): Type = tpe match
+    case tpe: TypeRef if tpe.symbol.isClass =>
+      if tpe.prefix eq NoPrefix then tpe.symbol.owner.enclosingClass.thisType
+      else tpe.prefix
     case tpe: TypeProxy =>
-      outerPrefix(tpe.underlying)
-  }
+      atPhaseNoLater(erasurePhase)(outerPrefix(tpe.superType))
 
   /** It's possible (i1755.scala gives an example) that the type
    *  given by outerPrefix contains a This-reference to a module outside
@@ -468,7 +454,7 @@ object ExplicitOuter {
             val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
             val outerAcc = atPhaseNoLater(lambdaLiftPhase) {
               // lambdalift mangles local class names, which means we cannot
-              // reliably find outer acessors anymore
+              // reliably find outer accessors anymore
               tree match
                 case tree: This if tree.symbol == enclClass && !enclClass.is(Trait) =>
                   outerParamAccessor(enclClass)

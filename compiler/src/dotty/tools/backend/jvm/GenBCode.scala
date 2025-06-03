@@ -10,6 +10,10 @@ import Symbols.*
 import dotty.tools.io.*
 import scala.collection.mutable
 import scala.compiletime.uninitialized
+import java.util.concurrent.TimeoutException
+
+import scala.concurrent.duration.Duration
+import scala.concurrent.Await
 
 class GenBCode extends Phase { self =>
 
@@ -17,10 +21,13 @@ class GenBCode extends Phase { self =>
 
   override def description: String = GenBCode.description
 
-  private val superCallsMap = new MutableSymbolMap[Set[ClassSymbol]]
+  override def isRunnable(using Context) = super.isRunnable && !ctx.usedBestEffortTasty
+
+  private val superCallsMap = new MutableSymbolMap[List[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
-    val old = superCallsMap.getOrElse(sym, Set.empty)
-    superCallsMap.update(sym, old + calls)
+    val old = superCallsMap.getOrElse(sym, List.empty)
+    if (!old.contains(calls))
+      superCallsMap.update(sym, old :+ calls)
   }
 
   private val entryPoints = new mutable.HashSet[String]()
@@ -75,7 +82,7 @@ class GenBCode extends Phase { self =>
   }
 
   override def run(using Context): Unit =
-    frontendAccess.frontendSynch {
+    frontendAccess.frontendSynchWithoutContext {
       backendInterface.ctx
       .asInstanceOf[FreshContext]
       .setCompilationUnit(ctx.compilationUnit)
@@ -90,6 +97,15 @@ class GenBCode extends Phase { self =>
     try
       val result = super.runOn(units)
       generatedClassHandler.complete()
+      try
+        for
+          async <- ctx.run.nn.asyncTasty
+          bufferedReporter <- async.sync()
+        do
+          bufferedReporter.relayReports(frontendAccess.backendReporting)
+      catch
+        case ex: Exception =>
+          report.error(s"exception from future: $ex, (${Option(ex.getCause())})")
       result
     finally
       // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized

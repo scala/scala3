@@ -1,0 +1,5 @@
+No given in scope:
+TC[C2] generated in macro without TC[C1]
+Given in scope:
+TC[C2] generated in macro using:
+TC[C1] defined by a user

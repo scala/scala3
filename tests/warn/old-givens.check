@@ -1,0 +1,25 @@
+-- Warning: tests/warn/old-givens.scala:8:20 ---------------------------------------------------------------------------
+8 |  given intC: C[Int] // warn
+  |                    ^
+  |                    This defines an abstract given, which is no longer supported. Use a `deferred` given instead.
+  |                    Or, if you intend to define a concrete given, follow the type with `()` arguments.
+-- Warning: tests/warn/old-givens.scala:11:8 ---------------------------------------------------------------------------
+11 |  given [T]: Ord[T] with  // warn // warn
+   |        ^
+   |        This old given syntax is no longer supported; use `=>` instead of `:`
+-- Warning: tests/warn/old-givens.scala:11:20 --------------------------------------------------------------------------
+11 |  given [T]: Ord[T] with  // warn // warn
+   |                    ^
+   |Given member definitions starting with `with` are no longer supported; use `{...}` or `:` followed by newline instead
+-- Warning: tests/warn/old-givens.scala:14:8 ---------------------------------------------------------------------------
+14 |  given [T](using Ord[T]): Ord[List[T]] with // warn // warn
+   |        ^
+   |        This old given syntax is no longer supported; use `=>` instead of `:`
+-- Warning: tests/warn/old-givens.scala:14:40 --------------------------------------------------------------------------
+14 |  given [T](using Ord[T]): Ord[List[T]] with // warn // warn
+   |                                        ^
+   |Given member definitions starting with `with` are no longer supported; use `{...}` or `:` followed by newline instead
+-- Warning: tests/warn/old-givens.scala:17:15 --------------------------------------------------------------------------
+17 |  def f[T: Ord : C]() = ???  // warn
+   |               ^
+   |               Multiple context bounds should be enclosed in `{ ... }`

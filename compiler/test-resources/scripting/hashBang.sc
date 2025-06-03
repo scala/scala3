@@ -1,4 +1,4 @@
-#!/usr/bin/env scala
+#!/usr/bin/env fake-program-to-test-hashbang-removal
 # comment
 STUFF=nada
 !#

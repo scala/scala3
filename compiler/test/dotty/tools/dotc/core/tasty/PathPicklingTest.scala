@@ -14,7 +14,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.decompiler
-import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
 import dotty.tools.dotc.core.Mode
@@ -48,8 +47,8 @@ class PathPicklingTest {
       val sb = new StringBuffer
       val jar = JarArchive.open(Path(s"$out/out.jar"), create = false)
       try
-        for file <- jar.iterator() if file.name.endsWith(".tasty") do
-          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true))
+        for file <- jar.iterator if file.name.endsWith(".tasty") do
+          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true, isBestEffortTasty = false))
       finally jar.close()
       sb.toString()
 

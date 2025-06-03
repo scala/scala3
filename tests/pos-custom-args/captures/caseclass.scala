@@ -1,4 +1,4 @@
-@annotation.capability class C
+class C extends caps.Capability
 object test1:
   case class Ref(x: String^)
 
@@ -31,4 +31,4 @@ object test2:
 
     val y4 = y3 match
       case Ref(xx) => xx
-    val y4c: () ->{x3} Unit = y4
+    val y4c: () ->{y3} Unit = y4

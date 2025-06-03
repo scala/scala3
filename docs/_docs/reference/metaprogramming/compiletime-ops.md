@@ -259,5 +259,5 @@ val notMissing : NotMissing = summonInlineCheck(3)
 
 ## Reference
 
-For more information about compile-time operations, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
-which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/lampepfl/dotty/pull/7201) which explains the new `summonFrom` syntax.
+For more information about compile-time operations, see [PR #4768](https://github.com/scala/scala3/pull/4768),
+which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/scala/scala3/pull/7201) which explains the new `summonFrom` syntax.

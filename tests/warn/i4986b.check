@@ -1,0 +1,40 @@
+-- [E158] Reference Warning: tests/warn/i4986b.scala:5:65 --------------------------------------------------------------
+5 |@implicitNotFound(msg = "Cannot construct a collection of type ${Too} with elements of type ${Elem} based on a collection of type ${From}.") // warn // warn
+  |                                                                 ^
+  |                                      Invalid reference to a type variable `Too` found in the annotation argument.
+  |                                      The variable does not occur as a parameter in the scope of type `Meh`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:5:94 --------------------------------------------------------------
+5 |@implicitNotFound(msg = "Cannot construct a collection of type ${Too} with elements of type ${Elem} based on a collection of type ${From}.") // warn // warn
+  |                                                                                              ^
+  |                                     Invalid reference to a type variable `Elem` found in the annotation argument.
+  |                                     The variable does not occur as a parameter in the scope of type `Meh`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:8:71 --------------------------------------------------------------
+8 |@implicitNotFound(msg = "Cannot construct a collection of type ${To} ${Elem}.") // warn
+  |                                                                       ^
+  |                                     Invalid reference to a type variable `Elem` found in the annotation argument.
+  |                                     The variable does not occur as a parameter in the scope of type `Meh2`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:11:46 -------------------------------------------------------------
+11 |class C[T](implicit @implicitNotFound("No C[${t}] available") t: T) // warn
+   |                                              ^
+   |                              Invalid reference to a type variable `t` found in the annotation argument.
+   |                              The variable does not occur as a parameter in the scope of the constructor of `C`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:14:54 -------------------------------------------------------------
+14 |  def m[Aaa](implicit @implicitNotFound("I see no C[${Uuh}]") theC: C[Aaa]) = ??? // warn
+   |                                                      ^
+   |                                    Invalid reference to a type variable `Uuh` found in the annotation argument.
+   |                                    The variable does not occur as a parameter in the scope of method `m`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:20:73 -------------------------------------------------------------
+20 |    def m[S](implicit @implicitNotFound("${X} ${Y} ${ Z } ${R} ${S} -- ${XX} ${ZZ} ${ Nix }") i: Int) = ??? // warn // warn // warn
+   |                                                                         ^
+   |                                     Invalid reference to a type variable `XX` found in the annotation argument.
+   |                                     The variable does not occur as a parameter in the scope of method `m`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:20:79 -------------------------------------------------------------
+20 |    def m[S](implicit @implicitNotFound("${X} ${Y} ${ Z } ${R} ${S} -- ${XX} ${ZZ} ${ Nix }") i: Int) = ??? // warn // warn // warn
+   |                                                                               ^
+   |                                     Invalid reference to a type variable `ZZ` found in the annotation argument.
+   |                                     The variable does not occur as a parameter in the scope of method `m`.
+-- [E158] Reference Warning: tests/warn/i4986b.scala:20:86 -------------------------------------------------------------
+20 |    def m[S](implicit @implicitNotFound("${X} ${Y} ${ Z } ${R} ${S} -- ${XX} ${ZZ} ${ Nix }") i: Int) = ??? // warn // warn // warn
+   |                                                                                      ^
+   |                                    Invalid reference to a type variable `Nix` found in the annotation argument.
+   |                                    The variable does not occur as a parameter in the scope of method `m`.

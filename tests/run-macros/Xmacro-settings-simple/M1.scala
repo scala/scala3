@@ -1,3 +1,5 @@
+//> using options -experimental
+
 package x
 
 import scala.quoted.*

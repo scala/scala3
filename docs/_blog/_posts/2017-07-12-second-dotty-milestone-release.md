@@ -34,52 +34,52 @@ The [previous technology preview](/_blog/_posts/2017-05-31-first-dotty-milestone
 
 This technology preview is geared towards improving stability and reliability. It includes:
 
-  - [Local optimizations upstreamed from the Dotty Linker](https://github.com/lampepfl/dotty/pull/2513), [2647](https://github.com/lampepfl/dotty/pull/2647) by ([@OlivierBlanvillain](https://github.com/OlivierBlanvillain)). See more details below.
-  - [Optimizing Pattern Matcher](https://github.com/lampepfl/dotty/pull/2829) by ([@odersky](https://github.com/odersky))
-  - [Idempotency checks](https://github.com/lampepfl/dotty/pull/2756) are the first step to reproducible builds
-  - [Faster Base class sets](https://github.com/lampepfl/dotty/pull/2676) by ([@odersky](https://github.com/odersky)) and ([@darkdimius](https://twitter.com/darkdimius))
+  - [Local optimizations upstreamed from the Dotty Linker](https://github.com/scala/scala3/pull/2513), [2647](https://github.com/scala/scala3/pull/2647) by ([@OlivierBlanvillain](https://github.com/OlivierBlanvillain)). See more details below.
+  - [Optimizing Pattern Matcher](https://github.com/scala/scala3/pull/2829) by ([@odersky](https://github.com/odersky))
+  - [Idempotency checks](https://github.com/scala/scala3/pull/2756) are the first step to reproducible builds
+  - [Faster Base class sets](https://github.com/scala/scala3/pull/2676) by ([@odersky](https://github.com/odersky)) and ([@darkdimius](https://twitter.com/darkdimius))
   - Numerous fixes to IDE and Dotty Language Server covering:
 
-     - [Windows support for VS Code plugin](https://github.com/lampepfl/dotty/pull/2776)
-     - [Fix hover-on-type for implicitly converted expressions](https://github.com/lampepfl/dotty/pull/2836)
-     - [Fixes to find all references in external projects](https://github.com/lampepfl/dotty/pull/2810), [2773](https://github.com/lampepfl/dotty/pull/2773/files)
-     - [Fix conflict with  dragos-vscode-scala](https://github.com/lampepfl/dotty/pull/2777)
-     - [Fix ide crash on non-parsable file](https://github.com/lampepfl/dotty/pull/2752)
-     - [Fix hover functionality for enum classes](https://github.com/lampepfl/dotty/pull/2722)
-     - [Report errors on Dotty Language Server initialization](https://github.com/lampepfl/dotty/pull/2708)
-     - [Fixes to sbt setting up Dotty IDE](https://github.com/lampepfl/dotty/pull/2690)
-     - General stability improvements [2838](https://github.com/lampepfl/dotty/pull/2838), [2787](https://github.com/lampepfl/dotty/pull/2787), [2692](https://github.com/lampepfl/dotty/pull/2692)
+     - [Windows support for VS Code plugin](https://github.com/scala/scala3/pull/2776)
+     - [Fix hover-on-type for implicitly converted expressions](https://github.com/scala/scala3/pull/2836)
+     - [Fixes to find all references in external projects](https://github.com/scala/scala3/pull/2810), [2773](https://github.com/scala/scala3/pull/2773/files)
+     - [Fix conflict with  dragos-vscode-scala](https://github.com/scala/scala3/pull/2777)
+     - [Fix ide crash on non-parsable file](https://github.com/scala/scala3/pull/2752)
+     - [Fix hover functionality for enum classes](https://github.com/scala/scala3/pull/2722)
+     - [Report errors on Dotty Language Server initialization](https://github.com/scala/scala3/pull/2708)
+     - [Fixes to sbt setting up Dotty IDE](https://github.com/scala/scala3/pull/2690)
+     - General stability improvements [2838](https://github.com/scala/scala3/pull/2838), [2787](https://github.com/scala/scala3/pull/2787), [2692](https://github.com/scala/scala3/pull/2692)
 
   - Scalac compatibility improvements:
 
-     - [Support Scala 2.12 traits](https://github.com/lampepfl/dotty/pull/2685)
-     - [Fixes to handling of Scala 2 classfiles](https://github.com/lampepfl/dotty/pull/2834/files)
-     - [Scalac parser crashes on Dotty.jar](https://github.com/lampepfl/dotty/pull/2719)
+     - [Support Scala 2.12 traits](https://github.com/scala/scala3/pull/2685)
+     - [Fixes to handling of Scala 2 classfiles](https://github.com/scala/scala3/pull/2834/files)
+     - [Scalac parser crashes on Dotty.jar](https://github.com/scala/scala3/pull/2719)
 
   - Java compatibility improvements:
 
-     - [Fixes to handing of Java generic signatures](https://github.com/lampepfl/dotty/pull/2831)
-     - [java.lang.System.out is final but that's a lie](https://github.com/lampepfl/dotty/pull/2781)
+     - [Fixes to handing of Java generic signatures](https://github.com/scala/scala3/pull/2831)
+     - [java.lang.System.out is final but that's a lie](https://github.com/scala/scala3/pull/2781)
 
   - Improved error messages:
 
-     - [Nicer error message for "implicit function type needs non-empty parameter list"](https://github.com/lampepfl/dotty/pull/2821)
-     - [Nicer error message for nonsensical modifier combination](https://github.com/lampepfl/dotty/pull/2807/files), [2747](https://github.com/lampepfl/dotty/pull/2747)
-     - [Nicer error message for supercall inside @inline method](https://github.com/lampepfl/dotty/pull/2740)
-     - [Check that case classes don't inherit case classes](https://github.com/lampepfl/dotty/pull/2790)
-     - [Check that named parameters don't conflict with positional ones](https://github.com/lampepfl/dotty/pull/2785)
+     - [Nicer error message for "implicit function type needs non-empty parameter list"](https://github.com/scala/scala3/pull/2821)
+     - [Nicer error message for nonsensical modifier combination](https://github.com/scala/scala3/pull/2807/files), [2747](https://github.com/scala/scala3/pull/2747)
+     - [Nicer error message for supercall inside @inline method](https://github.com/scala/scala3/pull/2740)
+     - [Check that case classes don't inherit case classes](https://github.com/scala/scala3/pull/2790)
+     - [Check that named parameters don't conflict with positional ones](https://github.com/scala/scala3/pull/2785)
 
   - Improved command line handling:
 
-     - [Support params in a file like @file.txt](https://github.com/lampepfl/dotty/pull/2765)
+     - [Support params in a file like @file.txt](https://github.com/scala/scala3/pull/2765)
 
   - Type system stability:
 
-     - [Handle wildcard types in unions and intersections](https://github.com/lampepfl/dotty/pull/2742)
+     - [Handle wildcard types in unions and intersections](https://github.com/scala/scala3/pull/2742)
 
   - Fixes to implicit search:
 
-     - [Fix shadowing of higher order implicits](https://github.com/lampepfl/dotty/pull/2739)
+     - [Fix shadowing of higher order implicits](https://github.com/scala/scala3/pull/2739)
 
 
 ### Better generated code:
@@ -313,7 +313,7 @@ using Dotty with sbt, see the
 
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
@@ -338,10 +338,10 @@ You can try it out there without installing anything.
 
 Over the coming weeks and months, we plan to work on the following topics:
 
- - [Add support for using Dotty generated classes with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
- - [Add Language-level support for HMaps and HLists](https://github.com/lampepfl/dotty/pull/2199);
+ - [Add support for using Dotty generated classes with Scala 2.12](https://github.com/scala/scala3/pull/2827)
+ - [Add Language-level support for HMaps and HLists](https://github.com/scala/scala3/pull/2199);
  - Upstream more optimizations from Dotty Linker
- - [Add support for existing in the same classpath with Scala 2.12](https://github.com/lampepfl/dotty/pull/2827)
+ - [Add support for existing in the same classpath with Scala 2.12](https://github.com/scala/scala3/pull/2827)
 
 If you want to get your hands dirty with any of this, now is a good
 moment to get involved! Join the team of contributors, including

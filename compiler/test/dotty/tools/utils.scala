@@ -20,12 +20,17 @@ import dotc.config.CommandLineParser
 object Dummy
 
 def scripts(path: String): Array[File] = {
-  val dir = new File(Dummy.getClass.getResource(path).getPath)
-  assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
+  val dir = scriptsDir(path)
   dir.listFiles.filter { f =>
     val path = if f.isDirectory then f.getPath + "/" else f.getPath
     Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
   }
+}
+
+def scriptsDir(path: String): File = {
+  val dir = new File(Dummy.getClass.getResource(path).getPath)
+  assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
+  dir
 }
 
 extension (f: File) def absPath =
@@ -36,7 +41,7 @@ extension (str: String) def dropExtension =
 
 private
 def withFile[T](file: File)(action: Source => T): T = resource(Source.fromFile(file, UTF_8.name))(action)
-def readLines(f: File): List[String]                = withFile(f)(_.getLines.toList)
+def readLines(f: File): List[String]                = withFile(f)(_.getLines().toList)
 def readFile(f: File): String                       = withFile(f)(_.mkString)
 
 private object Unthrown extends ControlThrowable
@@ -52,25 +57,54 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
     case NonFatal(other) => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
 end assertThrows
 
+enum TestPlatform:
+  case JVM, ScalaJS
+  override def toString: String = this match
+    case JVM     => "jvm"
+    case ScalaJS => "scala-js"
+
+object TestPlatform:
+  def named(s: String): TestPlatform = s match
+    case "jvm"      => TestPlatform.JVM
+    case "scala-js" => TestPlatform.ScalaJS
+    case _          => throw IllegalArgumentException(s)
+
 /** Famous tool names in the ecosystem. Used for tool args in test files. */
 enum ToolName:
-  case Scala, Scalac, Java, Javac, ScalaJS, Test
+  case Scala, Scalac, Java, Javac, ScalaJS, Test, Target
 object ToolName:
   def named(s: String): ToolName = values.find(_.toString.equalsIgnoreCase(s)).getOrElse(throw IllegalArgumentException(s))
 
 type ToolArgs = Map[ToolName, List[String]]
+type PlatformFiles = Map[TestPlatform, List[String]]
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  */
 def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
-  files.foldLeft(Map.empty[ToolName, List[String]]) { (res, path) =>
+  val (_, toolArgs) = platformAndToolArgsFor(files, charset)
+  toolArgs
+
+/** Take a prefix of each file, extract tool args, parse, and combine.
+ *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
+ *  If the ToolName is Target, then also accumulate the file name associated with the given platform.
+ */
+def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
+  files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>
     val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)), Some(path.toString))
     toolargs.foldLeft(res) {
-      case (acc, (tool, args)) =>
+      case ((plat, acc), (tool, args)) =>
         val name = ToolName.named(tool)
         val tokens = CommandLineParser.tokenize(args)
-        acc.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
+
+        val plat1 = if name eq ToolName.Target then
+          val testPlatform = TestPlatform.named(tokens.head)
+          val fileName = path.toString
+          plat.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
+        else
+          plat
+
+        plat1 -> acc.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
     }
   }
 
@@ -81,7 +115,17 @@ def toolArgsFor(tool: ToolName, filename: Option[String])(lines: List[String]): 
 // groups are (name, args)
 // note: ideally we would replace everything that requires this to use directive syntax, however scalajs: --skip has no directive equivalent yet.
 private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})):((?:[^*]|\*(?!/))*)".r.unanchored
+
+// ================================================================================================
+// =================================== VULPIX DIRECTIVES ==========================================
+// ================================================================================================
+
+/** Directive to specify to vulpix the options to pass to Dotty */
 private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
+private val directiveJavacOptions = raw"//> using javacOpt (.*)".r.unanchored
+private val directiveTargetOptions = raw"//> using target.platform (jvm|scala-js)".r.unanchored
+private val directiveUnsupported = raw"//> using (scala) (.*)".r.unanchored
+private val directiveUnknown = raw"//> using (.*)".r.unanchored
 
 // Inspect the lines for compiler options of the form
 // `//> using options args`, `// scalajs: args`, `/* scalajs: args`, ` * scalajs: args` etc.
@@ -90,10 +134,18 @@ private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
 def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,String)] =
   lines.flatMap {
     case toolArg("scalac", _) => sys.error(s"`// scalac: args` not supported. Please use `//> using options args`${filename.fold("")(f => s" in file $f")}")
+    case toolArg("javac", _) => sys.error(s"`// javac: args` not supported. Please use `//> using javacOpt args`${filename.fold("")(f => s" in file $f")}")
     case toolArg(name, args) => List((name, args))
     case _ => Nil
   } ++
-  lines.flatMap { case directiveOptionsArg(args) => List(("scalac", args)) case _ => Nil }
+  lines.flatMap {
+    case directiveOptionsArg(args) => List(("scalac", args))
+    case directiveJavacOptions(args) => List(("javac", args))
+    case directiveTargetOptions(platform) => List(("target", platform))
+    case directiveUnsupported(name, args) => Nil
+    case directiveUnknown(rest) => sys.error(s"Unknown directive: `//> using ${CommandLineParser.tokenize(rest).headOption.getOrElse("''")}`${filename.fold("")(f => s" in file $f")}")
+    case _ => Nil
+  }
 
 import org.junit.Test
 import org.junit.Assert._
@@ -104,6 +156,6 @@ class ToolArgsTest:
   @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: Nil))
   @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: Nil))
   @Test def `multitool is present`: Unit =
-    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
-    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
+    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Java, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
 end ToolArgsTest

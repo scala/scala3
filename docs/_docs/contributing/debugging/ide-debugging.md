@@ -74,7 +74,7 @@ To locate them on your filesystem you can run the `export scala3-library-bootstr
 ```
 $ sbt
 > export scala3-library-bootstrapped/fullClasspath
-/home/user/lampepfl/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar
+/home/user/scala/scala3/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar
 [success] Total time: 1 s, completed Mar 10, 2023, 4:37:43 PM
 ```
 
@@ -93,7 +93,7 @@ Here is the final configuration:
     "../tests/pos/HelloWorld.scala",
     "-classpath",
     // To replace with your own paths
-    "/home/user/lampepfl/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar",
+    "/home/user/scala/scala3/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar",
     "-color",
     "never"
     ],
@@ -112,7 +112,7 @@ You can compile more than one Scala file, by adding them in the `args`:
   "file1.scala",
   "file2.scala",
   "-classpath",
-  "/home/user/lampepfl/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar"
+  "/home/user/scala/scala3/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar"
 ]
 ```
 
@@ -132,7 +132,7 @@ And concatenate the output into the classpath argument, which should already con
 "args": [
   "using-cats.scala",
   "-classpath",
-  "/home/user/lampepfl/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/typelevel/cats-core_3/2.9.0/cats-core_3-2.9.0.jar:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/typelevel/cats-kernel_3/2.9.0/cats-kernel_3-2.9.0.jar"
+  "/home/user/scala/scala3/out/bootstrap/scala3-library-bootstrapped/scala-3.3.1-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/typelevel/cats-core_3/2.9.0/cats-core_3-2.9.0.jar:/home/user/.cache/coursier/v1/https/repo1.maven.org/maven2/org/typelevel/cats-kernel_3/2.9.0/cats-kernel_3-2.9.0.jar"
 ]
 ```
 

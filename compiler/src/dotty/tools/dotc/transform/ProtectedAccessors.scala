@@ -37,14 +37,17 @@ object ProtectedAccessors {
    *  is not in a subclass or subtrait of `sym`?
    */
   def needsAccessorIfNotInSubclass(sym: Symbol)(using Context): Boolean =
-    sym.isTerm && sym.is(Protected) &&
+    sym.isTerm && sym.is(Protected) && !sym.hasPublicInBinary &&
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym)
 
   /** Do we need a protected accessor for accessing sym from the current context's owner? */
   def needsAccessor(sym: Symbol)(using Context): Boolean =
     needsAccessorIfNotInSubclass(sym) &&
-    !ctx.owner.enclosingClass.derivesFrom(sym.owner)
+    !needsAccessorIsSubclass(sym)
+
+  def needsAccessorIsSubclass(sym: Symbol)(using Context): Boolean =
+    ctx.owner.enclosingClass.derivesFrom(sym.owner)
 }
 
 class ProtectedAccessors extends MiniPhase {

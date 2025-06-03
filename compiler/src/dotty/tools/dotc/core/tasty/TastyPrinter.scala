@@ -13,46 +13,55 @@ import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSec
 import java.nio.file.{Files, Paths}
 import dotty.tools.io.{JarArchive, Path}
 import dotty.tools.tasty.TastyFormat.header
+import scala.collection.immutable.BitSet
 
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyBuffer.Addr
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.classpath.FileUtils.hasTastyExtension
 
 object TastyPrinter:
 
   def showContents(bytes: Array[Byte], noColor: Boolean): String =
+    showContents(bytes, noColor, isBestEffortTasty = false, testPickler = false)
+
+  def showContents(bytes: Array[Byte], noColor: Boolean, isBestEffortTasty: Boolean, testPickler: Boolean = false): String =
     val printer =
-      if noColor then new TastyPrinter(bytes)
-      else new TastyAnsiiPrinter(bytes)
+      if noColor then new TastyPrinter(bytes, isBestEffortTasty, testPickler)
+      else new TastyAnsiiPrinter(bytes, isBestEffortTasty, testPickler)
     printer.showContents()
 
   def main(args: Array[String]): Unit = {
     // TODO: Decouple CliCommand from Context and use CliCommand.distill?
+    val betastyOpt = "-Ywith-best-effort-tasty"
     val lineWidth = 80
     val line = "-" * lineWidth
     val noColor = args.contains("-color:never")
+    val allowBetasty = args.contains(betastyOpt)
     var printLastLine = false
-    def printTasty(fileName: String, bytes: Array[Byte]): Unit =
+    def printTasty(fileName: String, bytes: Array[Byte], isBestEffortTasty: Boolean): Unit =
       println(line)
       println(fileName)
       println(line)
-      println(showContents(bytes, noColor))
+      println(showContents(bytes, noColor, isBestEffortTasty, testPickler = false))
       println()
       printLastLine = true
     for arg <- args do
       if arg == "-color:never" then () // skip
+      else if arg == betastyOpt then () // skip
       else if arg.startsWith("-") then println(s"bad option '$arg' was ignored")
-      else if arg.endsWith(".tasty") then
+      else if arg.endsWith(".tasty") || (allowBetasty && arg.endsWith(".betasty")) then
         val path = Paths.get(arg)
         if Files.exists(path) then
-          printTasty(arg, Files.readAllBytes(path).nn)
+          printTasty(arg, Files.readAllBytes(path), arg.endsWith(".betasty"))
         else
           println("File not found: " + arg)
           System.exit(1)
       else if arg.endsWith(".jar") then
         val jar = JarArchive.open(Path(arg), create = false)
         try
-          for file <- jar.iterator() if file.name.endsWith(".tasty") do
-            printTasty(s"$arg ${file.path}", file.toByteArray)
+          for file <- jar.iterator if file.hasTastyExtension do
+            printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
         finally jar.close()
       else
         println(s"Not a '.tasty' or '.jar' file: $arg")
@@ -62,9 +71,11 @@ object TastyPrinter:
       println(line)
   }
 
-class TastyPrinter(bytes: Array[Byte]) {
+class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickler: Boolean) {
 
-  class TastyPrinterUnpickler extends TastyUnpickler(bytes) {
+  def this(bytes: Array[Byte]) = this(bytes, isBestEffortTasty = false, testPickler = false)
+
+  class TastyPrinterUnpickler extends TastyUnpickler(bytes, isBestEffortTasty) {
     var namesStart: Addr = uninitialized
     var namesEnd: Addr = uninitialized
     override def readNames() = {
@@ -77,39 +88,53 @@ class TastyPrinter(bytes: Array[Byte]) {
   private val unpickler: TastyPrinterUnpickler = new TastyPrinterUnpickler
   import unpickler.{nameAtRef, unpickle}
 
-  private def nameToString(name: Name): String = name.debugString
-
-  private def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
-
   private def printHeader(sb: StringBuilder): Unit =
     val header = unpickler.header
     sb.append("Header:\n")
-    sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
-    sb.append("  tooling: ").append(header.toolingVersion).append("\n")
-    sb.append("     UUID: ").append(header.uuid).append("\n")
-    sb.append("\n")
+    if testPickler then
+      // these fields are not stable when the TASTy/compiler versions change, so not useful for testing
+      sb.append("  version: <elided>\n")
+      sb.append("  tooling: <elided>\n")
+      sb.append("     UUID: <elided>\n")
+    else
+      sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
+      sb.append("  tooling: ").append(header.toolingVersion).append("\n")
+      sb.append("     UUID: ").append(header.uuid).append("\n")
+    end if
 
-  private def printNames(sb: StringBuilder): Unit =
-    sb.append(s"Names (${unpickler.namesEnd.index - unpickler.namesStart.index} bytes, starting from ${unpickler.namesStart.index}):\n")
+  private def printNames(sb: StringBuilder)(using refs: NameRefs): Unit =
+    sb.append(sectionHeader(
+      name = "Names",
+      count = (unpickler.namesEnd.index - unpickler.namesStart.index).toString,
+      base = showBase(unpickler.namesStart.index),
+      lineEnd = true
+    ))
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
       val index = nameStr("%6d".format(idx))
-      sb.append(index).append(": ").append(nameToString(name)).append("\n")
+      sb.append(index).append(": ").append(refs.nameRefToString(NameRef(idx))).append("\n")
     }
 
   def showContents(): String = {
     val sb: StringBuilder = new StringBuilder
+    given NameRefs = unpickle0(new SourceFileUnpickler)(using NameRefs.empty).getOrElse(NameRefs.empty)
     printHeader(sb)
     printNames(sb)
-    unpickle(new TreeSectionUnpickler(sb))
-    unpickle(new PositionSectionUnpickler(sb))
-    unpickle(new CommentSectionUnpickler(sb))
-    unpickle(new AttributesSectionUnpickler(sb))
-    sb.result
+    unpickle0(new TreeSectionUnpickler(sb))
+    unpickle0(new PositionSectionUnpickler(sb))
+    unpickle0(new CommentSectionUnpickler(sb))
+    unpickle0(new AttributesSectionUnpickler(sb))
+    sb.result()
   }
 
-  class TreeSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](ASTsSection) {
-    import dotty.tools.tasty.TastyFormat.*
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
+  def unpickle0[R](sec: PrinterSectionUnpickler[R])(using NameRefs): Option[R] =
+    unpickle(new SectionUnpickler[R](sec.name) {
+      def unpickle(reader: TastyReader, nameAtRef: NameTable): R =
+        sec.unpickle0(reader.subReader(reader.startAddr, reader.endAddr)) // fork so we can visit multiple times
+    })
+
+  class TreeSectionUnpickler(sb: StringBuilder) extends PrinterSectionUnpickler[Unit](ASTsSection) {
+    import dotty.tools.tasty.besteffort.BestEffortTastyFormat.* // superset on TastyFormat
+    def unpickle0(reader: TastyReader)(using refs: NameRefs): Unit = {
       import reader.*
       var indent = 0
       def newLine() = {
@@ -119,7 +144,7 @@ class TastyPrinter(bytes: Array[Byte]) {
       def printNat() = sb.append(treeStr(" " + readNat()))
       def printName() = {
         val idx = readNat()
-        sb.append(nameStr(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
+        sb.append(nameStr(" " + idx + " [" + refs.nameRefToString(NameRef(idx)) + "]"))
       }
       def printTree(): Unit = {
         newLine()
@@ -170,19 +195,20 @@ class TastyPrinter(bytes: Array[Byte]) {
           }
         indent -= 2
       }
-      sb.append(s"\n\nTrees (${endAddr.index - startAddr.index} bytes, starting from $base):")
+      sb.append(sectionHeader("Trees", reader, lineEnd = false))
       while (!isAtEnd) {
         printTree()
         newLine()
       }
+      sb.append("\n")
     }
   }
 
-  class PositionSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](PositionsSection) {
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
+  class PositionSectionUnpickler(sb: StringBuilder) extends PrinterSectionUnpickler[Unit](PositionsSection) {
+    def unpickle0(reader: TastyReader)(using tastyName: NameRefs): Unit = {
       import reader.*
       val posUnpickler = new PositionUnpickler(reader, tastyName)
-      sb.append(s"\n\nPositions (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
+      sb.append(sectionHeader("Positions", reader))
       val lineSizes = posUnpickler.lineSizes
       sb.append(s"  lines: ${lineSizes.length}\n")
       sb.append(s"  line sizes:\n")
@@ -210,12 +236,12 @@ class TastyPrinter(bytes: Array[Byte]) {
     }
   }
 
-  class CommentSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](CommentsSection) {
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
+  class CommentSectionUnpickler(sb: StringBuilder) extends PrinterSectionUnpickler[Unit](CommentsSection) {
+    def unpickle0(reader: TastyReader)(using NameRefs): Unit = {
       import reader.*
       val comments = new CommentUnpickler(reader).comments
       if !comments.isEmpty then
-        sb.append(s"\n\nComments (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
+        sb.append(sectionHeader("Comments", reader))
         val sorted = comments.toSeq.sortBy(_._1.index)
         for ((addr, cmt) <- sorted) {
           sb.append(treeStr("%6d".format(addr.index)))
@@ -224,12 +250,14 @@ class TastyPrinter(bytes: Array[Byte]) {
     }
   }
 
-  class AttributesSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](AttributesSection) {
+  class AttributesSectionUnpickler(sb: StringBuilder) extends PrinterSectionUnpickler[Unit](AttributesSection) {
     import dotty.tools.tasty.TastyFormat.*
-    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
+    def unpickle0(reader: TastyReader)(using nameAtRef: NameRefs): Unit = {
       import reader.*
-      sb.append(s"\n\nAttributes (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
+      sb.append(sectionHeader("Attributes", reader))
       while !isAtEnd do
+        // TODO: Should we elide attributes under testPickler? (i.e.
+        //   if we add new attributes many check files will need to be updated)
         val tag = readByte()
         sb.append("  ").append(attributeTagToString(tag))
         if isBooleanAttrTag(tag) then ()
@@ -238,8 +266,52 @@ class TastyPrinter(bytes: Array[Byte]) {
           val value = nameAtRef(utf8Ref).toString
           sb.append(nameStr(s" ${utf8Ref.index} [$value]"))
         sb.append("\n")
-      sb.result
+      sb.result()
     }
+  }
+
+  class NameRefs(sourceFileRefs: Set[NameRef]) extends (NameRef => TermName):
+    private val isSourceFile = sourceFileRefs.map(_.index).to(BitSet)
+
+    def nameRefToString(ref: NameRef): String = this(ref).debugString
+
+    def apply(ref: NameRef): TermName =
+      if isSourceFile(ref.index) then NameRefs.elidedSourceFile
+      else nameAtRef(ref)
+
+  object NameRefs:
+    import dotty.tools.dotc.core.Names.termName
+
+    private val elidedSourceFile = termName("<elided source file name>")
+    val empty = NameRefs(Set.empty)
+
+
+  class SourceFileUnpickler extends PrinterSectionUnpickler[NameRefs](PositionsSection) {
+    def unpickle0(reader: TastyReader)(using nameAtRef: NameRefs): NameRefs = {
+      if !testPickler then return NameRefs.empty
+      val buf = Set.newBuilder[NameRef]
+      val posUnpickler = new PositionUnpickler(reader, nameAtRef)
+      val sources = posUnpickler.sourceNameRefs
+      for ((_, nameRef) <- sources.iterator) {
+        buf += nameRef
+      }
+      NameRefs(buf.result())
+    }
+  }
+
+  private final def showBase(index: Int): String =
+    if testPickler then "<elided base index>" else index.toString()
+
+  private final def sectionHeader(name: String, reader: TastyReader, lineEnd: Boolean = true): String =
+    val count = reader.endAddr.index - reader.startAddr.index
+    sectionHeader(name, count.toString, {showBase(reader.base)}, lineEnd)
+
+  private final def sectionHeader(name: String, count: String, base: String, lineEnd: Boolean): String =
+    val suffix = if lineEnd then "\n" else ""
+    s"\n$name ($count bytes, starting from $base):$suffix"
+
+  abstract class PrinterSectionUnpickler[T](val name: String) {
+    def unpickle0(reader: TastyReader)(using refs: NameRefs): T
   }
 
   protected def nameStr(str: String): String = str

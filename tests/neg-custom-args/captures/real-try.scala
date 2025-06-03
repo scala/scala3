@@ -1,3 +1,5 @@
+
+
 import language.experimental.saferExceptions
 
 class Ex1 extends Exception("Ex1")
@@ -33,4 +35,4 @@ def test(): Unit =
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  b.x
+  b

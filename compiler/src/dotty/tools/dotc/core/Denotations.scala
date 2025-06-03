@@ -22,6 +22,7 @@ import config.Config
 import config.Printers.overload
 import util.common.*
 import typer.ProtoTypes.NoViewsAllowed
+import reporting.Message
 import collection.mutable.ListBuffer
 
 import scala.compiletime.uninitialized
@@ -477,12 +478,11 @@ object Denotations {
                 else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
-          val relaxedOverriding = ctx.explicitNulls && (sym1.is(JavaDefined) || sym2.is(JavaDefined))
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, relaxedOverriding, matchLoosely, checkClassInfo = false) then
+          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, relaxedOverriding, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
@@ -579,7 +579,7 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
-    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation
 
     final def name(using Context): Name = symbol.name
 
@@ -718,7 +718,8 @@ object Denotations {
         ctx.runId >= validFor.runId
         || ctx.settings.YtestPickler.value // mixing test pickler with debug printing can travel back in time
         || ctx.mode.is(Mode.Printing)  // no use to be picky when printing error messages
-        || symbol.isOneOf(ValidForeverFlags),
+        || symbol.isOneOf(ValidForeverFlags)
+        || ctx.tolerateErrorsForBestEffort,
         s"denotation $this invalid in run ${ctx.runId}. ValidFor: $validFor")
       var d: SingleDenotation = this
       while ({
@@ -740,6 +741,8 @@ object Denotations {
      *     the old version otherwise.
      *   - If the symbol did not have a denotation that was defined at the current phase
      *     return a NoDenotation instead.
+     *   - If the symbol was first defined in one of the transform phases (after pickling), it should not
+     *     be visible in new runs, so also return a NoDenotation.
      */
     private def bringForward()(using Context): SingleDenotation = {
       this match {
@@ -753,6 +756,7 @@ object Denotations {
       }
       if (!symbol.exists) return updateValidity()
       if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
+      if (coveredInterval.firstPhaseId >= Phases.firstTransformPhase.id) return NoDenotation
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
@@ -954,7 +958,9 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      throw new StaleSymbol(staleSymbolMsg)
+      if symbol.lastKnownDenotation.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      then throw StaleSymbolTypeError(symbol)
+      else throw StaleSymbolException(staleSymbolMsg)
 
     def staleSymbolMsg(using Context): String = {
       def ownerMsg = this match {
@@ -1065,7 +1071,9 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
-      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
+      val realExcluded =
+        if ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy) then excluded
+        else excluded | Invisible
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
@@ -1159,11 +1167,11 @@ object Denotations {
     prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
       if isRefinedMethod then
-        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+        new JointRefDenotation(s, i, currentStablePeriod, pre, isRefinedMethod)
       else
-        new UniqueRefDenotation(s, i, validFor, pre)
+        new UniqueRefDenotation(s, i, currentStablePeriod, pre)
   }
 
   class JointRefDenotation(
@@ -1174,15 +1182,15 @@ object Denotations {
     override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
-      new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
+      new JointRefDenotation(s, i, currentStablePeriod, pre, isRefinedMethod)
   }
 
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
       this
   }
 
@@ -1362,9 +1370,19 @@ object Denotations {
     else
       NoSymbol
 
+  trait StaleSymbol extends Exception
+
   /** An exception for accessing symbols that are no longer valid in current run */
-  class StaleSymbol(msg: => String) extends Exception {
+  class StaleSymbolException(msg: => String) extends Exception, StaleSymbol {
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
   }
+
+  /** An exception that is at the same type a StaleSymbol and a TypeError.
+   *  Sine it is a TypeError it can be reported as a nroaml error instead of crashing
+   *  the compiler.
+   */
+  class StaleSymbolTypeError(symbol: Symbol)(using Context) extends TypeError, StaleSymbol:
+    def toMessage(using Context) =
+      em"Cyclic macro dependency; macro refers to a toplevel symbol in ${symbol.source} from which the macro is called"
 }

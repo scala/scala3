@@ -33,7 +33,7 @@ class UninitializedDefs extends MiniPhase:
     def recur(rhs: Tree): Boolean = rhs match
       case rhs: RefTree =>
         rhs.symbol == defn.Compiletime_uninitialized
-        && tree.symbol.is(Mutable) && tree.symbol.owner.isClass
+        && tree.symbol.isMutableVarOrAccessor && tree.symbol.owner.isClass
       case closureDef(ddef) if defn.isContextFunctionType(tree.tpt.tpe.dealias) =>
         recur(ddef.rhs)
       case _ =>

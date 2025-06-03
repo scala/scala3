@@ -1,19 +1,23 @@
 package dotty.tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import reporting.StoreReporter
 import vulpix.TestConfiguration
 
 import core.Contexts.{Context, ContextBase}
-import dotty.tools.dotc.config.Settings._
+import dotty.tools.dotc.config.Settings.*
+import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
+import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.vulpix.TestConfiguration.mkClasspath
+import dotty.tools.io.PlainDirectory
+import dotty.tools.io.Directory
+import dotty.tools.dotc.config.ScalaVersion
 
 import java.nio.file._
 
 import org.junit.Test
 import org.junit.Assert._
+import scala.util.Using
 
 class SettingsTests {
 
@@ -43,8 +47,8 @@ class SettingsTests {
 
   @Test def acceptUnconstrained: Unit =
     object Settings extends SettingGroup:
-      val foo = StringSetting("-foo", "foo", "Foo", "a")
-      val bar = IntSetting("-bar", "Bar", 0)
+      val foo = StringSetting(RootSetting, "foo", "foo", "Foo", "a")
+      val bar = IntSetting(RootSetting, "bar", "Bar", 0)
 
     val args = List("-foo", "b", "-bar", "1")
     val summary = Settings.processArguments(args, true)
@@ -72,7 +76,7 @@ class SettingsTests {
 
   @Test def `dont crash on many options`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting("-option", "Some option")
+      val option = BooleanSetting(RootSetting, "option", "Some option")
 
     val limit = 6000
     val args = List.fill(limit)("-option")
@@ -87,7 +91,7 @@ class SettingsTests {
 
   @Test def `bad option warning consumes an arg`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting("-option", "Some option")
+      val option = BooleanSetting(RootSetting, "option", "Some option")
 
     val args = List("-adoption", "dogs", "cats")
     val summary = Settings.processArguments(args, processAll = true)
@@ -97,7 +101,7 @@ class SettingsTests {
 
   @Test def `bad option settings throws`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting("-option", "Some option")
+      val option = BooleanSetting(RootSetting, "option", "Some option")
 
     def checkMessage(s: String): (Throwable => Boolean) = t =>
       if t.getMessage == s then true
@@ -112,12 +116,12 @@ class SettingsTests {
 
   @Test def validateChoices: Unit =
     object Settings extends SettingGroup:
-      val foo = ChoiceSetting("-foo", "foo", "Foo", List("a", "b"), "a")
-      val bar = IntChoiceSetting("-bar", "Bar", List(0, 1, 2), 0)
-      val baz = IntChoiceSetting("-baz", "Baz", 0 to 10, 10)
+      val foo = ChoiceSetting(RootSetting, "foo", "foo", "Foo", List("a", "b"), "a")
+      val bar = IntChoiceSetting(RootSetting, "bar", "Bar", List(0, 1, 2), 0)
+      val baz = IntChoiceSetting(RootSetting, "baz", "Baz", 0 to 10, 10)
 
-      val quux = ChoiceSetting("-quux", "quux", "Quux", List(), "")
-      val quuz = IntChoiceSetting("-quuz", "Quuz", List(), 0)
+      val quux = ChoiceSetting(RootSetting, "quux", "quux", "Quux", List(), "")
+      val quuz = IntChoiceSetting(RootSetting, "quuz", "Quuz", List(), 0)
 
     locally {
       val args = List("-foo", "b", "-bar", "1", "-baz", "5")
@@ -169,7 +173,7 @@ class SettingsTests {
 
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
-      val foo = IntSetting("-foo", "foo", 80)
+      val foo = IntSetting(RootSetting, "foo", "foo", 80)
     import Settings._
 
     val args = List("-foo:100")
@@ -181,10 +185,10 @@ class SettingsTests {
 
   @Test def `Set BooleanSettings correctly`: Unit =
     object Settings extends SettingGroup:
-      val foo = BooleanSetting("-foo", "foo", false)
-      val bar = BooleanSetting("-bar", "bar", true)
-      val baz = BooleanSetting("-baz", "baz", false)
-      val qux = BooleanSetting("-qux", "qux", false)
+      val foo = BooleanSetting(RootSetting, "foo", "foo", false)
+      val bar = BooleanSetting(RootSetting, "bar", "bar", true)
+      val baz = BooleanSetting(RootSetting, "baz", "baz", false)
+      val qux = BooleanSetting(RootSetting, "qux", "qux", false)
     import Settings._
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
@@ -197,6 +201,125 @@ class SettingsTests {
       assertEquals(false, qux.value)
       assertEquals(List("Flag -qux set repeatedly"), summary.warnings)
     }
+
+  @Test def `Output setting is overriding existing jar`: Unit =
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
+      object Settings extends SettingGroup:
+        val defaultDir = new PlainDirectory(Directory("."))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
+
+      import Settings._
+
+      Files.write(file, "test".getBytes())
+      val fileStateBefore = String(Files.readAllBytes(file))
+
+      val args = List(s"-testOutput:${file.toString}")
+      val summary = processArguments(args, processAll = true)
+
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
+
+    }(Files.deleteIfExists(_))
+
+  @Test def `Output setting is respecting previous setting`: Unit =
+    val result = Using.resources(
+      Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
+    ){ (file1, file2) =>
+      object Settings extends SettingGroup:
+        val defaultDir = new PlainDirectory(Directory("."))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
+
+      import Settings._
+
+      Files.write(file1, "test1".getBytes())
+      Files.write(file2, "test2".getBytes())
+
+      val file1StateBefore = String(Files.readAllBytes(file1))
+      val file2StateBefore = String(Files.readAllBytes(file2))
+
+      val creationTime = Files.getLastModifiedTime(file1)
+      val args = List(s"-testOutput:${file1.toString}", s"-testOutput:${file2.toString}")
+      val summary = processArguments(args, processAll = true)
+
+      // The output is a new filesystem without information of original path
+      // We can't check the `testOutput.value` as in other tests.
+      assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
+      assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
+
+    }(using Files.deleteIfExists(_), Files.deleteIfExists(_))
+
+  @Test def `Output side effect is not present when setting is deprecated`: Unit =
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
+      object Settings extends SettingGroup:
+        val defaultDir = new PlainDirectory(Directory("."))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
+
+      import Settings._
+
+      Files.write(file, "test".getBytes())
+      val fileStateBefore = String(Files.readAllBytes(file))
+
+      val args = List(s"-testOutput:${file.toString}")
+      val summary = processArguments(args, processAll = true)
+
+      assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
+
+    }(Files.deleteIfExists(_))
+
+  @Test def `Arguments of flags are correctly parsed with both ":" and " " separating`: Unit =
+    object Settings extends SettingGroup:
+      val booleanSetting = BooleanSetting(RootSetting, "booleanSetting", "booleanSetting", false)
+      val stringSetting  = StringSetting(RootSetting, "stringSetting", "stringSetting", "", "test")
+      val choiceSetting =  ChoiceSetting(RootSetting, "choiceSetting", "choiceSetting", "", List("a", "b"), "a")
+      val multiChoiceSetting=  MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", "", List("a", "b"), List(), legacyChoices = List("c"))
+      val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", "", List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List(), legacyChoices = List("c"))
+      val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
+      val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
+      val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", "", List("a", "b"), List())
+      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", "", new PlainDirectory(Directory(".")))
+      val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
+      val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
+      val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
+
+    import Settings._
+    Using.resource(Files.createTempDirectory("testDir")) { dir =>
+
+      val args = List(
+        List("-booleanSetting", "true"),
+        List("-stringSetting", "newTest"),
+        List("-choiceSetting", "b"),
+        List("-multiChoiceSetting", "a,b,c"),
+        List("-multiChoiceHelpSetting", "a,b,c"),
+        List("-intSetting", "42"),
+        List("-intChoiceSetting", "2"),
+        List("-multiStringSetting", "a,b"),
+        List("-outputSetting", dir.toString),
+        List("-pathSetting", dir.toString),
+        List("-phasesSetting", "parser,typer"),
+        List("-versionSetting", "1.0.0"),
+      )
+
+      def testValues(summary: ArgsSummary) =
+        withProcessedArgs(summary) {
+          assertEquals(true, booleanSetting.value)
+          assertEquals("newTest", stringSetting.value)
+          assertEquals("b", choiceSetting.value)
+          assertEquals(List("a", "b"), multiChoiceSetting.value)
+          assertEquals(List("a", "b"), multiChoiceHelpSetting.value)
+          assertEquals(42, intSetting.value)
+          assertEquals(2, intChoiceSetting.value)
+          assertEquals(List("a", "b"), multiStringSetting.value)
+          assertEquals(dir.toString, outputSetting.value.path)
+          assertEquals(dir.toString, pathSetting.value)
+          assertEquals(List("parser", "typer"), phasesSetting.value)
+          assertEquals(ScalaVersion.parse("1.0.0").get, versionSetting.value)
+        }
+
+      val summaryColon = processArguments(args.map(_.mkString(":")), processAll = true)
+      val summaryWhitespace = processArguments(args.flatten, processAll = true)
+      testValues(summary = summaryColon)
+      testValues(summary = summaryWhitespace)
+
+    }(Files.deleteIfExists(_))
 
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 

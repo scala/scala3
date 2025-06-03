@@ -5,9 +5,10 @@ import org.scalajs.dom.ext._
 
 import scala.util.matching.Regex._
 import scala.util.matching._
-import org.scalajs.dom.ext.Ajax
-import scala.scalajs.js.JSON
+import org.scalajs.dom._
 import scala.scalajs.js
+import scala.scalajs.js.JSON
+import scala.scalajs.js.Thenable.Implicits.thenable2future
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -55,8 +56,8 @@ class ContentContributors:
   def linkForFilename(filename: String) = githubContributorsUrl() + s"/commits?path=$filename"
   def getAuthorsForFilename(filename: String): Future[List[FullAuthor]] = {
     val link = linkForFilename(filename)
-    Ajax.get(link).map(_.responseText).flatMap { json =>
-      val res = JSON.parse(json).asInstanceOf[Commits]
+    fetch(link).flatMap(_.json()).flatMap { json =>
+      val res = json.asInstanceOf[Commits]
       val authors = res.map { commit =>
         commit.author match
           case null =>
@@ -79,8 +80,8 @@ class ContentContributors:
     }
   }
   def findRename(link: String, filename: String): Future[Option[String]] = {
-    Ajax.get(link).map(_.responseText).map { json =>
-        val res = JSON.parse(json).asInstanceOf[CommitDescription]
+    fetch(link).flatMap(_.json()).map { json =>
+        val res = json.asInstanceOf[CommitDescription]
         val files = res.files
         files
           .find(_.filename == filename)

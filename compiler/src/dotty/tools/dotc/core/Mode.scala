@@ -41,6 +41,8 @@ object Mode {
   val Pattern: Mode = newMode(0, "Pattern")
   val Type: Mode = newMode(1, "Type")
 
+  val PatternOrTypeBits: Mode = Pattern | Type
+
   val ImplicitsEnabled: Mode = newMode(2, "ImplicitsEnabled")
   val InferringReturnType: Mode = newMode(3, "InferringReturnType")
 
@@ -89,6 +91,14 @@ object Mode {
    */
   val ImplicitExploration: Mode = newMode(12, "ImplicitExploration")
 
+  /** We are currently inside a capture set.
+   *  A term name could be a capture variable, so we need to
+   *  check that it is valid to use as type name.
+   *  Since this mode is only used during annotation typing,
+   *  we can reuse the value of `ImplicitExploration` to save bits.
+   */
+  val InCaptureSet: Mode = ImplicitExploration
+
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
 
@@ -101,16 +111,19 @@ object Mode {
    */
   val CheckBoundsOrSelfType: Mode = newMode(14, "CheckBoundsOrSelfType")
 
-  /** Use Scala2 scheme for overloading and implicit resolution */
-  val OldOverloadingResolution: Mode = newMode(15, "OldOverloadingResolution")
+  /** Use previous Scheme for implicit resolution. Currently significant
+   *  in 3.0-migration where we use Scala-2's scheme instead and in 3.5 and 3.6-migration
+   *  where we use the previous scheme up to 3.4 for comparison with the new scheme.
+   */
+  val OldImplicitResolution: Mode = newMode(15, "OldImplicitResolution")
 
   /** Treat CapturingTypes as plain AnnotatedTypes even in phase CheckCaptures.
-   *  Reuses the value of OldOverloadingResolution to save Mode bits.
-   *  This is OK since OldOverloadingResolution only affects implicit search, which
+   *  Reuses the value of OldImplicitResolution to save Mode bits.
+   *  This is OK since OldImplicitResolution only affects implicit search, which
    *  is done during phases Typer and Inlinig, and IgnoreCaptures only has an
    *  effect during phase CheckCaptures.
    */
-  val IgnoreCaptures = OldOverloadingResolution
+  val IgnoreCaptures = OldImplicitResolution
 
   /** Allow hk applications of type lambdas to wildcard arguments;
    *  used for checking that such applications do not normally arise
@@ -120,7 +133,8 @@ object Mode {
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
 
-  val PatternOrTypeBits: Mode = Pattern | Type
+  /** We are resolving a SELECT name from TASTy */
+  val ResolveFromTASTy: Mode = newMode(18, "ResolveFromTASTy")
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
@@ -132,6 +146,8 @@ object Mode {
 
   /** We are typing the body of an inline method */
   val InlineableBody: Mode = newMode(21, "InlineableBody")
+
+  val NewGivenRules: Mode = newMode(22, "NewGivenRules")
 
   /** We are synthesizing the receiver of an extension method */
   val SynthesizeExtMethodReceiver: Mode = newMode(23, "SynthesizeExtMethodReceiver")
@@ -158,10 +174,35 @@ object Mode {
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
 
-  /** This mode is enabled when we check Java overriding in explicit nulls.
-   *  Type `Null` becomes a subtype of non-primitive value types in TypeComparer.
+  /** Are we typing the argument of an annotation?
+   *
+   *  This mode is used through [[Applications.isAnnotConstr]] to avoid lifting
+   *  arguments of annotation constructors. This mode is disabled in nested
+   *  applications (from [[ProtoTypes.typedArg]]) and in "explicit" annotation
+   *  constructors applications (annotation classes constructed with `new`).
+   *
+   *  In the following example:
+   *
+   *  ```scala
+   *  @annot(y = new annot(y = Array("World"), x = 1), x = 2)
+   *  ```
+   *
+   *  the mode will be set when typing `@annot(...)` but not when typing
+   *  `new annot(...)`, such that the arguments of the former are not lifted but
+   *  the arguments of the later can be:
+   *
+   *  ```scala
+   *  @annot(x = 2, y = {
+   *    val y$3: Array[String] =
+   *      Array.apply[String](["World" : String]*)(
+   *        scala.reflect.ClassTag.apply[String](classOf[String]))
+   *    new annot(x = 1, y = y$3)
+   *  })
+   *  ```
+   *
+   *  See #22035, #22526, #22553 and `dependent-annot-default-args.scala`.
    */
-  val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
+  val InAnnotation: Mode = newMode(30, "InAnnotation")
 
   /** Skip inlining of methods. */
   val NoInline: Mode = newMode(31, "NoInline")

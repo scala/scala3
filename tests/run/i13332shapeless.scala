@@ -119,7 +119,7 @@ package GenericTestsAux2 {
   class Bar[A]
 
   object Bar {
-    given gen[A](using Generic[A]): Bar[A] = Bar()
+    given gen: [A: Generic] => Bar[A] = Bar()
   }
 
   class Outer1 {
@@ -362,7 +362,7 @@ package shapeless {
         case Mirror.Sum { type MirroredType = T } => CListRefl[Elems]
         case Mirror.Product { type MirroredType = T } => Elems
 
-      transparent inline given [T](using m: Mirror.Of[T]): Generic[T] = apply[T]
+      transparent inline given [T: Mirror.Of] => Generic[T] = apply[T]
 
       transparent inline def apply[T](using m: Mirror.Of[T]) = new Generic[T] {
         type Repr = Generic.Repr[T, m.type, m.MirroredElemTypes]

@@ -16,9 +16,8 @@ import scala.tools.asm.tree.ClassNode
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
   self =>
-  import bTypes.{classBTypeFromInternalName, int}
+  import bTypes.{classBTypeFromInternalName}
   import frontendAccess.{backendReporting, compilerSettings}
-  import int.given
 
   val backendUtils = new BackendUtils(this)
   val classfileWriters = new ClassfileWriters(frontendAccess)
@@ -27,7 +26,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
+  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !compilerSettings.outputOnlyTasty then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -37,7 +36,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
         setInnerClasses(classNode)
         serializeClass(classNode)
       catch
-        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.nn.contains("too large!") =>
+        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
           backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Throwable =>
@@ -45,11 +44,11 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
           backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
-     if bytes != null then
-        if (AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern))
-          AsmUtils.traceClass(bytes)
-        val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
-        if clsFile != null then clazz.onFileCreated(clsFile)
+    if bytes != null then
+      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
+        AsmUtils.traceClass(bytes)
+      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      clazz.onFileCreated(clsFile)
   }
 
   def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
@@ -59,8 +58,8 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   }
 
   private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass) = {
-    val name = clazz.classNode.name.nn
-    val lowerCaseJavaName = name.nn.toLowerCase
+    val name = clazz.classNode.name
+    val lowerCaseJavaName = name.toLowerCase
     val clsPos = clazz.position
     caseInsensitively.putIfAbsent(lowerCaseJavaName, (name, clsPos)) match {
       case null => ()
@@ -72,9 +71,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
         val locationAddendum =
           if pos1.source.path == pos2.source.path then ""
           else s" (defined in ${pos2.source.file.name})"
-        def nicify(name: String): String = name.replace('/', '.').nn
+        def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
-          backendReporting.warning(
+          backendReporting.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
         else
           backendReporting.warning(

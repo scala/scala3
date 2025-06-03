@@ -1,12 +1,21 @@
--- [E030] Match case Unreachable Error: tests/neg/i8711.scala:9:9 ------------------------------------------------------
+-- [E030] Match case Unreachable Warning: tests/neg/i8711.scala:9:9 ----------------------------------------------------
 9 |    case x: B => x // error: this case is unreachable since class A is not a subclass of class B
   |         ^^^^
   |         Unreachable case
--- [E030] Match case Unreachable Error: tests/neg/i8711.scala:14:9 -----------------------------------------------------
+-- [E030] Match case Unreachable Warning: tests/neg/i8711.scala:14:9 ---------------------------------------------------
 14 |    case x: C => x // error
    |         ^^^^
    |         Unreachable case
--- [E030] Match case Unreachable Error: tests/neg/i8711.scala:19:9 -----------------------------------------------------
-19 |    case x: (B | C) => x // error
+-- [E030] Match case Unreachable Warning: tests/neg/i8711.scala:19:9 ---------------------------------------------------
+19 |    case x: (B | C) => x // warn
    |         ^^^^^^^^^^
    |         Unreachable case
+-- Error: tests/neg/i8711.scala:9:9 ------------------------------------------------------------------------------------
+9 |    case x: B => x // error: this case is unreachable since class A is not a subclass of class B
+  |         ^
+  |         this case is unreachable since type A and class B are unrelated
+-- Error: tests/neg/i8711.scala:14:9 -----------------------------------------------------------------------------------
+14 |    case x: C => x // error
+   |         ^
+   |         this case is unreachable since type A | B and class C are unrelated
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

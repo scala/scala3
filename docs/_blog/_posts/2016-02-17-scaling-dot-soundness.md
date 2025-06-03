@@ -69,9 +69,9 @@ categories:
     is not associated with a runtime value.
 
 We can in fact construct soundness issues in all of these cases. Look
-at the discussion for issues [#50](https://github.com/lampepfl/dotty/issues/50)
-and [#1050](https://github.com/lampepfl/dotty/issues/1050) in the
-[Dotty](https://github.com/lampepfl/dotty/issues/1050) repository
+at the discussion for issues [#50](https://github.com/scala/scala3/issues/50)
+and [#1050](https://github.com/scala/scala3/issues/1050) in the
+[Dotty](https://github.com/scala/scala3/issues/1050) repository
 on GitHub. All issues work fundamentally in the same way: Construct a type `S`
 which has a type member `T` with bad bounds, say:
 
@@ -98,7 +98,7 @@ course. The promise is usually broken at run-time by failing with a
 ## Plugging the Loopholes
 
 To get back to soundness we need to plug the loopholes. Some of the
-necessary measures are taken in pull request [#1051](https://github.com/lampepfl/dotty/issues/1051).
+necessary measures are taken in pull request [#1051](https://github.com/scala/scala3/issues/1051).
 That pull request
 
  - tightens the rules for overrides of lazy values: lazy values

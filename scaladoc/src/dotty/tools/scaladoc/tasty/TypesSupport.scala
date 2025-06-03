@@ -4,6 +4,7 @@ package tasty
 import scala.jdk.CollectionConverters._
 
 import scala.quoted._
+import scala.util.control.NonFatal
 
 import NameNormalizer._
 import SyntheticsSupport._
@@ -75,7 +76,7 @@ trait TypesSupport:
         else inner(tpe) ++ plain(".").l ++ suffix
       case tpe => inner(tpe)
 
-  // TODO #23 add support for all types signatures that makes sense
+  // TODO #23 add support for all types signatures that make sense
   private def inner(
     using Quotes,
   )(
@@ -87,7 +88,7 @@ trait TypesSupport:
   ): SSignature =
     import reflect._
     def noSupported(name: String): SSignature =
-      println(s"WARN: Unsupported type: $name: ${tp.show}")
+      report.warning(s"Unsupported type: $name: ${tp.show}")
       plain(s"Unsupported[$name]").l
     tp match
       case OrType(left, right) =>
@@ -123,6 +124,12 @@ trait TypesSupport:
         }) ++ plain("]").l
         ++ keyword(" =>> ").l
         ++ inner(resType)
+
+      case Refinement(parent, "apply", mt : MethodType) if isPolyOrEreased(parent) =>
+        val isCtx = isContextualMethod(mt)
+        val sym = defn.FunctionClass(mt.paramTypes.length, isCtx)
+        val at = sym.typeRef.appliedTo(mt.paramTypes :+ mt.resType)
+        inner(Refinement(at, "apply", mt))
 
       case r: Refinement => { //(parent, name, info)
         def getRefinementInformation(t: TypeRepr): List[TypeRepr] = t match {
@@ -164,16 +171,22 @@ trait TypesSupport:
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
             val method = t.resType.asInstanceOf[MethodType]
-            val paramList = getParamList(method)
-            val resType = inner(method.resType)
-            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ paramList ++ keyword(" => ").l ++ resType
+            val rest = parseDependentFunctionType(method)
+            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ rest
           case other => noSupported(s"Not supported type in refinement $info")
         }
 
         def parseDependentFunctionType(info: TypeRepr): SSignature = info match {
           case m: MethodType =>
-            val paramList = getParamList(m)
-            paramList ++ keyword(" => ").l ++ inner(m.resType)
+            val isCtx = isContextualMethod(m)
+            if isDependentMethod(m) then
+              val paramList = getParamList(m)
+              val arrow = keyword(if isCtx then " ?=> " else " => ").l
+              val resType = inner(m.resType)
+              paramList ++ arrow ++ resType
+            else
+              val sym = defn.FunctionClass(m.paramTypes.length, isCtx)
+              inner(sym.typeRef.appliedTo(m.paramTypes :+ m.resType))
           case other => noSupported("Dependent function type without MethodType refinement")
         }
 
@@ -191,35 +204,43 @@ trait TypesSupport:
           prefix ++ plain("{ ").l ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ plain(" }").l
         }
       }
+
+      case AppliedType(tpe, args) if defn.isTupleClass(tpe.typeSymbol) && args.length > 1 =>
+        inParens(commas(args.map(inner(_))))
+
+      case AppliedType(namedTuple, List(AppliedType(tuple1, names), AppliedType(tuple2, types)))
+          if namedTuple.typeSymbol == Symbol.requiredModule("scala.NamedTuple").typeMember("NamedTuple")
+          && defn.isTupleClass(tuple1.typeSymbol) && defn.isTupleClass(tuple2.typeSymbol) && names.length == types.length
+          && names.forall { case ConstantType(StringConstant(_)) => true case _ => false } =>
+        val elems = names
+          .collect { case ConstantType(StringConstant(s)) => s }
+          .zip(types)
+          .map((name, tpe) => plain(name) +: plain(": ") +: inner(tpe))
+        inParens(commas(elems))
+
+      case t @ AppliedType(tpe, List(lhs, rhs)) if isInfix(t) =>
+        inParens(inner(lhs), shouldWrapInParens(lhs, t, true))
+        ++ plain(" ").l
+        ++ inner(tpe)
+        ++ plain(" ").l
+        ++ inParens(inner(rhs), shouldWrapInParens(rhs, t, false))
+
+      case t @ AppliedType(tpe, args) if t.isFunctionType =>
+        val arrow = if t.isContextFunctionType then " ?=> " else " => "
+        args match
+          case Nil => Nil
+          case List(rtpe) => plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
+          case List(arg, rtpe) =>
+            val wrapInParens = stripAnnotated(arg) match
+              case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => false
+              case at: AppliedType if !isInfix(at) && !at.isFunctionType && !at.isTupleN => false
+              case _ => true
+            inParens(inner(arg), wrapInParens) ++ keyword(arrow).l ++ inner(rtpe)
+          case _ =>
+            plain("(").l ++ commas(args.init.map(inner(_))) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)
+
       case t @ AppliedType(tpe, typeList) =>
-        import dotty.tools.dotc.util.Chars._
-        if defn.isTupleClass(tpe.typeSymbol) && typeList.length != 1 then
-          typeList match
-            case Nil => Nil
-            case args => inParens(commas(args.map(inner(_))))
-        else if isInfix(t) then
-          val lhs = typeList.head
-          val rhs = typeList.last
-          inParens(inner(lhs), shouldWrapInParens(lhs, t, true))
-          ++ plain(" ").l
-          ++ inner(tpe)
-          ++ plain(" ").l
-          ++ inParens(inner(rhs), shouldWrapInParens(rhs, t, false))
-        else if t.isFunctionType then
-          val arrow = if t.isContextFunctionType then " ?=> " else " => "
-          typeList match
-            case Nil =>
-              Nil
-            case Seq(rtpe) =>
-              plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
-            case Seq(arg, rtpe) =>
-              val partOfSignature = arg match
-                case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => inner(arg)
-                case _ => inParens(inner(arg))
-              partOfSignature ++ keyword(arrow).l ++ inner(rtpe)
-            case args =>
-              plain("(").l ++ commas(args.init.map(inner(_))) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)
-        else inner(tpe) ++ plain("[").l ++ commas(typeList.map { t => t match
+        inner(tpe) ++ plain("[").l ++ commas(typeList.map { t => t match
           case _: TypeBounds => keyword("_").l ++ inner(t)
           case _ => topLevelProcess(t)
         }) ++ plain("]").l
@@ -298,7 +319,7 @@ trait TypesSupport:
       }
 
       case tpe =>
-        val msg = s"Encountered unsupported type. Report this problem to https://github.com/lampepfl/dotty/.\n" +
+        val msg = s"Encountered unsupported type. Report this problem to https://github.com/scala/scala3/.\n" +
           s"${tpe.show(using Printer.TypeReprStructure)}"
         throw MatchError(msg)
 
@@ -385,3 +406,21 @@ trait TypesSupport:
         case _ => false
 
     at.args.size == 2 && (!at.typeSymbol.name.forall(isIdentifierPart) || infixAnnot)
+
+  private def isPolyOrEreased(using Quotes)(tr: reflect.TypeRepr) =
+    Set("scala.PolyFunction", "scala.runtime.ErasedFunction")
+      .contains(tr.typeSymbol.fullName)
+
+  private def isContextualMethod(using Quotes)(mt: reflect.MethodType) =
+    mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType].isContextualMethod
+
+  private def isDependentMethod(using Quotes)(mt: reflect.MethodType) =
+    val method = mt.asInstanceOf[dotty.tools.dotc.core.Types.MethodType]
+    try method.isParamDependent || method.isResultDependent
+    catch case NonFatal(_) => true
+
+  private def stripAnnotated(using Quotes)(tr: reflect.TypeRepr): reflect.TypeRepr =
+    import reflect.*
+    tr match
+      case AnnotatedType(tr, _) => stripAnnotated(tr)
+      case other => other

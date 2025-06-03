@@ -1,0 +1,10 @@
+-- Warning: tests/init-global/warn/global-cycle2.scala:6:21 ------------------------------------------------------------
+6 |  def foo(): Int = A.a * 2 // warn
+  |                   ^^^
+  |                   Access uninitialized field value a. Calling trace:
+  |                   ├── object A {	[ global-cycle2.scala:1 ]
+  |                   │   ^
+  |                   ├── val a: Int = B.foo()	[ global-cycle2.scala:2 ]
+  |                   │                ^^^^^^^
+  |                   └── def foo(): Int = A.a * 2 // warn	[ global-cycle2.scala:6 ]
+  |                                        ^^^

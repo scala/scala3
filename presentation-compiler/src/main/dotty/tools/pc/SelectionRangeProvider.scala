@@ -6,11 +6,14 @@ import java.util as ju
 import scala.jdk.CollectionConverters._
 import scala.meta.pc.OffsetParams
 
+import dotty.tools.dotc.ast.untpd.*
+import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j
 import org.eclipse.lsp4j.SelectionRange
@@ -21,10 +24,7 @@ import org.eclipse.lsp4j.SelectionRange
  * @param compiler Metals Global presentation compiler wrapper.
  * @param params offset params converted from the selectionRange params.
  */
-class SelectionRangeProvider(
-    driver: InteractiveDriver,
-    params: ju.List[OffsetParams]
-):
+class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetParams]):
 
   /**
    * Get the seletion ranges for the provider params
@@ -42,15 +42,14 @@ class SelectionRangeProvider(
       val source = SourceFile.virtual(filePath.toString, text)
       driver.run(uri, source)
       val pos = driver.sourcePosition(param)
-      val path =
-        Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
+      val unit = driver.compilationUnits(uri)
 
-      val bareRanges = path
-        .map { tree =>
-          val selectionRange = new SelectionRange()
-          selectionRange.setRange(tree.sourcePos.toLsp)
-          selectionRange
-        }
+      val untpdPath: List[Tree] = NavigateAST
+        .pathTo(pos.span, List(unit.untpdTree), true).collect:
+          case untpdTree: Tree => untpdTree
+
+      val bareRanges = untpdPath
+        .flatMap(selectionRangesFromTree(pos))
 
       val comments =
         driver.compilationUnits.get(uri).map(_.comments).toList.flatten
@@ -78,6 +77,33 @@ class SelectionRangeProvider(
         .getOrElse(new SelectionRange())
     }
   end selectionRange
+
+  /** Given a tree, create a seq of [[SelectionRange]]s corresponding to that tree. */
+  private def selectionRangesFromTree(pos: SourcePosition)(tree: Tree)(using Context) =
+    def toSelectionRange(srcPos: SourcePosition) =
+      val selectionRange = new SelectionRange()
+      selectionRange.setRange(srcPos.toLsp)
+      selectionRange
+
+    val treeSelectionRange = Seq(toSelectionRange(tree.sourcePos))
+
+    def allArgsSelectionRange(args: List[Tree]): Option[SelectionRange] =
+      args match
+        case Nil => None
+        case list =>
+          val srcPos = list.head.sourcePos
+          val lastSpan = list.last.span
+          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer)
+          if allArgsSrcPos.contains(pos) then Some(toSelectionRange(allArgsSrcPos))
+          else None
+
+    tree match
+      case DefDef(_, paramss, _, _) => paramss.flatMap(allArgsSelectionRange) ++ treeSelectionRange
+      case Apply(_, args) => allArgsSelectionRange(args) ++ treeSelectionRange
+      case TypeApply(_, args) => allArgsSelectionRange(args) ++ treeSelectionRange
+      case UnApply(_, _, pattern) => allArgsSelectionRange(pattern) ++ treeSelectionRange
+      case Function(args, body) => allArgsSelectionRange(args) ++ treeSelectionRange
+      case _ => treeSelectionRange
 
   private def setParent(
       child: SelectionRange,

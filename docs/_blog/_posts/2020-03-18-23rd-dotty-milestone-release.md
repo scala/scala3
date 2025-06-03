@@ -52,7 +52,7 @@ In this release, we have added an aid for the programmer to detect such mistakes
 1 error found
 ```
 
-You can learn more about the feature from the [documentation](https://dotty.epfl.ch/0.23.0-RC1/docs/reference/other-new-features/safe-initialization.html). For the discussion, see PR [#7789](https://github.com/lampepfl/dotty/pull/7789).
+You can learn more about the feature from the [documentation](https://dotty.epfl.ch/0.23.0-RC1/docs/reference/other-new-features/safe-initialization.html). For the discussion, see PR [#7789](https://github.com/scala/scala3/pull/7789).
 
 ## Bitwise Int compiletime operations
 In the previous release, Dotty has [received](https://dotty.epfl.ch/blog/2020/02/05/22nd-dotty-milestone-release.html#primitive-compiletime-operations-on-singleton-types) a support for type-level arithmetic operations on integers. In this release, we are extending this support by adding bitwise operations. For example:
@@ -246,7 +246,7 @@ Notice how above, we are calling `app.fun` and `app.args`. `fun` and `args` are 
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -294,7 +294,7 @@ According to `git shortlog -sn --no-merges 0.22.0-RC1..0.23.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

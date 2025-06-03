@@ -1,0 +1,5 @@
+-- [E176] Potential Issue Warning: tests/neg/i18632.scala:12:2 ---------------------------------------------------------
+12 |  bar // warn
+   |  ^^^
+   |  unused value of type String
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

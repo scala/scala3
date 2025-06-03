@@ -1,0 +1,7 @@
+break Test$ 2 // breaks in Test$.<clinit>
+break Test$ 2
+eval
+  val a = new A
+  val b = "b"
+  a.toString + b
+result Ab

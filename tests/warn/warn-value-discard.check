@@ -1,0 +1,20 @@
+-- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:27:36 -------------------------------------------
+27 |    mutable.Set.empty[String].remove("") // warn
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    discarded non-Unit value of type Boolean. Add `: Unit` to discard silently.
+-- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:37:41 -------------------------------------------
+37 |    mutable.Set.empty[String].subtractOne("") // warn
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    discarded non-Unit value of type scala.collection.mutable.Set[String]. Add `: Unit` to discard silently.
+-- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:57:4 --------------------------------------------
+57 |    mutable.Set.empty[String] += "" // warn
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    discarded non-Unit value of type scala.collection.mutable.Set[String]. Add `: Unit` to discard silently.
+-- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:15:35 -------------------------------------------
+15 |  firstThing().map(_ => secondThing()) // warn
+   |                        ^^^^^^^^^^^^^
+   |                        discarded non-Unit value of type Either[Failed, Unit]. Add `: Unit` to discard silently.
+-- [E175] Potential Issue Warning: tests/warn/warn-value-discard.scala:18:35 -------------------------------------------
+18 |  firstThing().map(_ => secondThing()) // warn
+   |                        ^^^^^^^^^^^^^
+   |                        discarded non-Unit value of type Either[Failed, Unit]. Add `: Unit` to discard silently.

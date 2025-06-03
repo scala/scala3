@@ -1,0 +1,45 @@
+-- Warning: tests/warn/looping-givens.scala:9:22 -----------------------------------------------------------------------
+9 |  given aa: A = summon       // warn
+  |                      ^
+  |                      Result of implicit search for A & B will change.
+  |                      Current result ab will be no longer eligible
+  |                        because it is not defined before the search position.
+  |                      Result with new rules: a.
+  |                      To opt into the new rules, compile with `-source future` or use
+  |                      the `scala.language.future` language import.
+  |
+  |                      To fix the problem without the language import, you could try one of the following:
+  |                        - use a `given ... with` clause as the enclosing given,
+  |                        - rearrange definitions so that ab comes earlier,
+  |                        - use an explicit argument.
+  |                      This will be an error in Scala 3.5 and later.
+-- Warning: tests/warn/looping-givens.scala:10:22 ----------------------------------------------------------------------
+10 |  given bb: B = summon       // warn
+   |                      ^
+   |                      Result of implicit search for A & B will change.
+   |                      Current result ab will be no longer eligible
+   |                        because it is not defined before the search position.
+   |                      Result with new rules: b.
+   |                      To opt into the new rules, compile with `-source future` or use
+   |                      the `scala.language.future` language import.
+   |
+   |                      To fix the problem without the language import, you could try one of the following:
+   |                        - use a `given ... with` clause as the enclosing given,
+   |                        - rearrange definitions so that ab comes earlier,
+   |                        - use an explicit argument.
+   |                      This will be an error in Scala 3.5 and later.
+-- Warning: tests/warn/looping-givens.scala:11:28 ----------------------------------------------------------------------
+11 |  given ab: (A & B) = summon // warn
+   |                            ^
+   |                            Result of implicit search for A & B will change.
+   |                            Current result ab will be no longer eligible
+   |                              because it is not defined before the search position.
+   |                            Result with new rules: joint.
+   |                            To opt into the new rules, compile with `-source future` or use
+   |                            the `scala.language.future` language import.
+   |
+   |                            To fix the problem without the language import, you could try one of the following:
+   |                              - use a `given ... with` clause as the enclosing given,
+   |                              - rearrange definitions so that ab comes earlier,
+   |                              - use an explicit argument.
+   |                            This will be an error in Scala 3.5 and later.

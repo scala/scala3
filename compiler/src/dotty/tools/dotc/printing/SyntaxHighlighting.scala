@@ -124,24 +124,30 @@ object SyntaxHighlighting {
         }
       }
 
-      val parser = new Parser(source)
-      val trees = parser.blockStatSeq()
-      TreeHighlighter.highlight(trees)
+      try
+        val parser = new Parser(source)
+        val trees = parser.blockStatSeq()
+        TreeHighlighter.highlight(trees)
 
-      val highlighted = new StringBuilder()
 
-      for (idx <- colorAt.indices) {
-        val prev = if (idx == 0) NoColor else colorAt(idx - 1)
-        val curr = colorAt(idx)
-        if (curr != prev)
-          highlighted.append(curr)
-        highlighted.append(in(idx))
-      }
+        val highlighted = new StringBuilder()
 
-      if (colorAt.last != NoColor)
-        highlighted.append(NoColor)
+        for (idx <- colorAt.indices) {
+          val prev = if (idx == 0) NoColor else colorAt(idx - 1)
+          val curr = colorAt(idx)
+          if (curr != prev)
+            highlighted.append(curr)
+          highlighted.append(in(idx))
+        }
 
-      highlighted.toString
+        if (colorAt.last != NoColor)
+          highlighted.append(NoColor)
+
+        highlighted.toString
+      catch
+        case e: StackOverflowError =>
+          in
     }
   }
+
 }

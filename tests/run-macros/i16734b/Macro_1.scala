@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 
 inline def typeVariances[A <: AnyKind]: String =

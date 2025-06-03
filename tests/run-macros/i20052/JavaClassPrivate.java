@@ -1,0 +1,3 @@
+class JavaClassPrivate {
+  private JavaClassPrivate() {}
+}

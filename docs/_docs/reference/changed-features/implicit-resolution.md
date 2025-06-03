@@ -163,8 +163,51 @@ The new rules are as follows: An implicit `a` defined in `A` is more specific th
 
 Condition (*) is new. It is necessary to ensure that the defined relation is transitive.
 
-
-
-
-
 [//]: # todo: expand with precise rules
+
+
+**9.** Given disambiguation has changed. When comparing two givens that both match an expected type, we used to pick the most specific one, in alignment with
+overloading resolution. From Scala 3.5 on, we pick the most general one instead. Compiling with Scala 3.5-migration will print a warning in all cases where the preference has changed. Example:
+```scala
+class A
+class B extends A
+class C extends A
+
+given A = A()
+given B = B()
+given C = C()
+
+summon[A]  // was ambiguous, will now return `given_A`
+```
+
+**10.** The following change is currently enabled in `-source future`:
+
+Implicit resolution now avoids generating recursive givens that can lead to an infinite loop at runtime. Here is an example:
+
+```scala
+object Prices {
+  opaque type Price = BigDecimal
+
+  object Price{
+    given Ordering[Price] = summon[Ordering[BigDecimal]] // was error, now avoided
+  }
+}
+```
+
+Previously, implicit resolution would resolve the `summon` to the given in `Price`, leading to an infinite loop (a warning was issued in that case). We now use the underlying given in `BigDecimal` instead. We achieve that by adding the following rule for implicit search:
+
+ - When doing an implicit search while checking the implementation of a `given` definition `G` of the form
+    ```
+    given ... = ....
+    ```
+    discard all search results that lead back to `G` or to a given with the same owner as `G` that comes later in the source than `G`.
+
+The new behavior is currently enabled in `source.future` and will be enabled at the earliest in Scala 3.6. For earlier source versions, the behavior is as
+follows:
+
+ - Scala 3.3: no change
+ - Scala 3.4: A warning is issued where the behavior will change in 3.future.
+ - Scala 3.5: An error is issued where the behavior will change in 3.future.
+
+Old-style implicit definitions are unaffected by this change.
+

@@ -1,5 +1,0 @@
--- Error: tests/neg/i18862-3.4.scala:6:38 ------------------------------------------------------------------------------
-6 |def test(xs: List[Int]): Unit = f(xs: _*) // error: migration warning
-  |                                      ^
-  |                               The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead
-  |                               This construct can be rewritten automatically under -rewrite -source 3.4-migration.

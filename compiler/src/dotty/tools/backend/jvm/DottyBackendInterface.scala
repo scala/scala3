@@ -25,7 +25,7 @@ import StdNames.nme
 import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
-class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
+class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, List[ClassSymbol]])(using val ctx: Context) {
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -126,7 +126,7 @@ object DottyBackendInterface {
        *  See also `genPlainClass` in `BCodeSkelBuilder.scala`.
        *
        *  TODO: remove the special handing of `LazyBitMapName` once we swtich to
-       *        the new lazy val encoding: https://github.com/lampepfl/dotty/issues/7140
+       *        the new lazy val encoding: https://github.com/scala/scala3/issues/7140
        */
       def isStaticModuleField(using Context): Boolean =
         sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName) && !sym.name.is(LazyLocalName)

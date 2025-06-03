@@ -7,7 +7,7 @@ import Settings.*
 import core.Contexts.*
 import printing.Highlighting
 
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
 
 trait CliCommand:
@@ -53,21 +53,25 @@ trait CliCommand:
   end distill
 
   /** Creates a help message for a subset of options based on cond */
-  protected def availableOptionsMsg(p: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def availableOptionsMsg(p: Setting[?] => Boolean, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
     // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
     def help(s: Setting[?]): (String, String) =
       // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
       def defaultValue = s.default match
         case _: Int | _: String => s.default.toString
         case _ => ""
-      val info = List(shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
+      val deprecationMessage = s.deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
+      val info = List(deprecationMessage, shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
 
     val ss = settings.allSettings.filter(p).toList.sortBy(_.name)
     val formatter = Columnator("", "", maxField = 30)
     val fresh = ContextBase().initialCtx.fresh.setSettings(summon[SettingsState])
-    formatter(List(ss.map(help) :+ ("@<file>", "A text file containing compiler arguments (options and source files).")))(using fresh)
+    var msg = ss.map(help)
+    if showArgFileMsg then
+      msg = msg :+ ("@<file>", "A text file containing compiler arguments (options and source files).")
+    formatter(List(msg))(using fresh)
   end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
@@ -86,7 +90,7 @@ trait CliCommand:
   protected def isVerbose(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-V") && s.name != "-V"
   protected def isWarning(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
-    s.name.startsWith("-W") && s.name != "-W" || s.name == "-Xlint"
+    s.name.startsWith("-W") && s.name != "-W"
   protected def isAdvanced(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-X") && s.name != "-X"
   protected def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =

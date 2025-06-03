@@ -1,0 +1,10 @@
+-- Warning: tests/init-global/warn/ScalaCheck.scala:16:9 ---------------------------------------------------------------
+16 |  object OptMinSuccess extends IntOpt:  // warn
+   |         ^
+   |       Cyclic initialization: object OptMinSuccess -> object FirstParser -> object OptMinSuccess. Calling trace:
+   |       ├── object OptMinSuccess extends IntOpt:  // warn	[ ScalaCheck.scala:16 ]
+   |       │   ^
+   |       ├── object FirstParser extends CmdLineParser:	[ ScalaCheck.scala:15 ]
+   |       │   ^
+   |       └── val opts = Some(OptMinSuccess)	[ ScalaCheck.scala:21 ]
+   |                           ^^^^^^^^^^^^^

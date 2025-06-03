@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/11706
+// https://github.com/scala/scala3/issues/11706
 import scala.compiletime.erasedValue
 
 object Obj:

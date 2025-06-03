@@ -4,7 +4,7 @@ import scala.meta.internal.mtags.CoursierComplete
 
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object AmmoniteIvyCompletions:
   def contribute(
@@ -13,7 +13,7 @@ object AmmoniteIvyCompletions:
       completionPos: CompletionPos,
       text: String
   )(using Context): List[CompletionValue] =
-    val pos = completionPos.sourcePos
+    val pos = completionPos.originalCursorPosition
     val query = selector.collectFirst {
       case sel: ImportSelector
           if sel.sourcePos.encloses(pos) && sel.sourcePos.`end` > pos.`end` =>

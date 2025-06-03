@@ -58,4 +58,13 @@ class Synthetic {
       given Int = 1
       foo(0)
   }
+
+  // Argument lifting
+  val _ =
+    def f(s: String)(i: Int = s.length()) = i + 1
+    def g(s: String, t: String) = s + t
+
+    def impure(s: String) = { ???; s }
+    val _ = f(impure(""))()
+    val _ = g(t = impure(""), s = "a")
 }

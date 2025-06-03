@@ -24,13 +24,13 @@ object Schema {
     inline summonInline[Mirror.Of[A]] match {
       case m: Mirror.SumOf[A]     =>
         lazy val members     = recurse[m.MirroredElemLabels, m.MirroredElemTypes]()
-        new Schema[A] {}
+        ???
       case m: Mirror.ProductOf[A] =>
         lazy val fields           = recurse[m.MirroredElemLabels, m.MirroredElemTypes]()
-        new Schema[A] {}
+        ???
     }
 
-  inline given gen[A]: Schema[A] = derived[A]
+  inline given gen: [A] => Schema[A] = derived[A]
 }
 
 sealed trait InputValue

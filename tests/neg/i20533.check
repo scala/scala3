@@ -1,0 +1,5 @@
+-- Error: tests/neg/i20533.scala:5:8 -----------------------------------------------------------------------------------
+5 |    [X] => (x, y) => Map(x -> y) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    Provided polymorphic function value doesn't match the expected type [X, Y] => (x$1: X, x$2: Y) => Map[X, Y].
+  |    Expected type should be a polymorphic function with the same number of type and value parameters.

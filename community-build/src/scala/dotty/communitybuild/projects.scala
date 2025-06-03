@@ -10,9 +10,6 @@ lazy val compilerVersion: String =
   val file = communitybuildDir.resolve("scala3-bootstrapped.version")
   new String(Files.readAllBytes(file), UTF_8)
 
-lazy val compilerSupportExperimental: Boolean =
-  compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
-
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
@@ -43,7 +40,6 @@ sealed trait CommunityProject:
   val testOnlyDependencies: () => List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
-  val requiresExperimental: Boolean
   val environment: Map[String, String] = Map.empty
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -53,7 +49,6 @@ sealed trait CommunityProject:
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
-    // TODO what should this do with .requiresExperimental?
     if !published then
       publishDependencies()
       log(s"Publishing $project")
@@ -65,11 +60,6 @@ sealed trait CommunityProject:
       published = true
 
   final def doc(): Unit =
-    if this.requiresExperimental && !compilerSupportExperimental then
-      log(
-        s"Skipping ${this.project} - it needs experimental features unsupported in this build."
-      )
-      return
     publishDependencies()
     log(s"Documenting $project")
     if docCommand eq null then
@@ -89,8 +79,7 @@ final case class MillCommunityProject(
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
     testOnlyDependencies: () => List[CommunityProject] = () => Nil,
-    ignoreDocs: Boolean = false,
-    requiresExperimental: Boolean = false,
+    ignoreDocs: Boolean = false
     ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
@@ -109,8 +98,7 @@ final case class SbtCommunityProject(
     testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
-    requiresExperimental: Boolean = false,
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -140,7 +128,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.9.3",
+      "-sbt-version", "1.10.7",
       "-Dsbt.supershell=false",
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
@@ -149,7 +137,7 @@ final case class SbtCommunityProject(
 object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
-    "-Ysafe-init",
+    "-Wsafe-init",
   )
 
 object projects:
@@ -260,7 +248,6 @@ object projects:
     project       = "intent",
     sbtTestCommand   = "test",
     sbtDocCommand = "doc",
-    requiresExperimental = true,
   )
 
   lazy val scalacheck = SbtCommunityProject(
@@ -362,7 +349,7 @@ object projects:
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -429,7 +416,7 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(munit, scodecBits),
   )
 
@@ -489,8 +476,8 @@ object projects:
 
   lazy val scalaCollectionCompat = SbtCommunityProject(
     project        = "scala-collection-compat",
-    sbtTestCommand = "compat30/test",
-    sbtPublishCommand = "compat30/publishLocal",
+    sbtTestCommand = "compat3/test",
+    sbtPublishCommand = "compat3/publishLocal",
   )
 
   lazy val scalaJava8Compat = SbtCommunityProject(
@@ -510,7 +497,7 @@ object projects:
     project = "discipline",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(scalacheck)
   )
 
@@ -526,7 +513,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init")
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init")
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
@@ -540,8 +527,7 @@ object projects:
     sbtTestCommand = "set Global/scalaJSStage := FastOptStage;rootJVM/test;rootJS/test",
     sbtPublishCommand = "rootJVM/publishLocal;rootJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
-
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init") // disable -Ysafe-init or -Wsafe-init, due to -Xfatal-warning
   )
 
   lazy val catsMtl = SbtCommunityProject(
@@ -605,7 +591,7 @@ object projects:
     project           = "AsyncFile",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scissLog, scalatest),
+    dependencies      = List(scissLog, scissModel, scalatest),
   )
 
   lazy val scissSpan = SbtCommunityProject(
@@ -656,7 +642,7 @@ object projects:
       """set actorTests/Compile/scalacOptions -= "-Xfatal-warnings"""",
       "akka-actor-tests/Test/compile",
     ).mkString("; "),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
@@ -707,7 +693,7 @@ object projects:
     project = "fs2",
     sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
   )
 
@@ -744,7 +730,7 @@ object projects:
     project = "http4s",
     sbtTestCommand = """set ThisBuild / tlFatalWarnings := false; rootJVM/test""",
     sbtPublishCommand = "publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
   )
 

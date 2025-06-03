@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
+import ast.Trees
 import core.Phases.*
 import core.DenotTransformers.*
 import core.Denotations.*
@@ -12,6 +13,7 @@ import core.Types.*
 import core.Names.*
 import core.StdNames.*
 import core.NameOps.*
+import core.Periods.currentStablePeriod
 import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
 import core.Scopes.newScopeWith
 import core.Decorators.*
@@ -22,7 +24,6 @@ import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
 import typer.ErrorReporting.errorTree
-import typer.Checking.checkValue
 import core.TypeErasure.*
 import core.Decorators.*
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -34,6 +35,7 @@ import ExplicitOuter.*
 import core.Mode
 import util.Property
 import reporting.*
+import scala.annotation.tailrec
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -131,7 +133,7 @@ class Erasure extends Phase with DenotTransformer {
       }
     case ref: JointRefDenotation =>
       new UniqueRefDenotation(
-        ref.symbol, transformInfo(ref.symbol, ref.symbol.info), ref.validFor, ref.prefix)
+        ref.symbol, transformInfo(ref.symbol, ref.symbol.info), currentStablePeriod, ref.prefix)
     case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
@@ -565,7 +567,13 @@ object Erasure {
           case Some(annot) =>
             val message = annot.argumentConstant(0) match
               case Some(c) =>
-                c.stringValue.toMessage
+                val addendum = tree match
+                  case tree: RefTree
+                  if tree.symbol == defn.Compiletime_deferred && tree.name != nme.deferred =>
+                    i".\nNote that `deferred` can only be used under its own name when implementing a given in a trait; `${tree.name}` is not accepted."
+                  case _ =>
+                    ""
+                (c.stringValue ++ addendum).toMessage
               case _ =>
                 em"""Reference to ${tree.symbol.showLocated} should not have survived,
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
@@ -592,9 +600,9 @@ object Erasure {
 
     def erasedDef(sym: Symbol)(using Context): Tree =
       if sym.isClass then
-      	// We cannot simply drop erased classes, since then they would not generate classfiles
-      	// and would not be visible under separate compilation. So we transform them to
-      	// empty interfaces instead.
+        // We cannot simply drop erased classes, since then they would not generate classfiles
+        // and would not be visible under separate compilation. So we transform them to
+        // empty interfaces instead.
         tpd.ClassDef(sym.asClass, DefDef(sym.primaryConstructor.asTerm), Nil)
       else
         if sym.owner.isClass then sym.dropAfter(erasurePhase)
@@ -665,9 +673,9 @@ object Erasure {
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       if tree.name == nme.apply && integrateSelect(tree) then
-      	return typed(tree.qualifier, pt)
+        return typed(tree.qualifier, pt)
 
-      val qual1 = typed(tree.qualifier, AnySelectionProto)
+      var qual1 = typed(tree.qualifier, AnySelectionProto)
 
       def mapOwner(sym: Symbol): Symbol =
         if !sym.exists && tree.name == nme.apply then
@@ -716,7 +724,8 @@ object Erasure {
 
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
-      if owner == defn.ObjectClass then checkValue(qual1)
+      if owner == defn.ObjectClass then
+        qual1 = checkValue(qual1)
 
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree)(qual, sym.name).withType(NamedType(qual.tpe, sym))
@@ -756,7 +765,8 @@ object Erasure {
           (ctx.owner.enclosingPackageClass eq boundary)
         }
 
-      def recur(qual: Tree): Tree = {
+      @tailrec
+      def recur(qual: Tree): Tree =
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
 
@@ -765,33 +775,34 @@ object Erasure {
             inContext(preErasureCtx):
               tree.qualifier.typeOpt.widen.finalResultType)
 
-        if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
+        if qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType then
           recur(box(qual))
-        else if (!qualIsPrimitive && symIsPrimitive)
+        else if !qualIsPrimitive && symIsPrimitive then
           recur(unbox(qual, sym.owner.typeRef))
-        else if (sym.owner eq defn.ArrayClass)
+        else if sym.owner eq defn.ArrayClass then
           selectArrayMember(qual, originalQual)
-        else {
-          val qual1 = adaptIfSuper(qual)
-          if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
-            select(qual1, sym)
-          else
-            val castTarget = // Avoid inaccessible cast targets, see i8661
-              if isJvmAccessible(sym.owner) && sym.owner.isType
-              then
-                sym.owner.typeRef
-              else
-                // If the owner is inaccessible, try going through the qualifier,
-                // but be careful to not go in an infinite loop in case that doesn't
-                // work either.
-                val tp = originalQual
-                if tp =:= qual1.tpe.widen then
-                  return errorTree(qual1,
-                    em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
-                tp
-            recur(cast(qual1, castTarget))
-        }
-      }
+        else
+          adaptIfSuper(qual) match
+            case qual1: Super =>
+              select(qual1, sym)
+            case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
+                || !qual1.tpe.derivesFrom(sym.owner) =>
+              val castTarget = // Avoid inaccessible cast targets, see i8661
+                if isJvmAccessible(sym.owner) && sym.owner.isType then
+                  sym.owner.typeRef
+                else
+                  // If the owner is inaccessible, try going through the qualifier,
+                  // but be careful to not go in an infinite loop in case that doesn't
+                  // work either.
+                  val tp = originalQual
+                  if tp =:= qual1.tpe.widen then
+                    return errorTree(qual1,
+                      em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                  tp
+              recur(cast(qual1, castTarget))
+            case qual1 =>
+              select(qual1, sym)
+      end recur
 
       checkNotErased(recur(qual1))
     }
@@ -937,6 +948,8 @@ object Erasure {
                   vparams = vparams :+ param
               if crCount == 1 then meth.rhs.changeOwnerAfter(meth.symbol, sym, erasurePhase)
               else skipContextClosures(meth.rhs, crCount - 1)
+            case inlined: Inlined =>
+              skipContextClosures(Inlines.dropInlined(inlined), crCount)
 
         var rhs1 = skipContextClosures(ddef.rhs.asInstanceOf[Tree], contextResultCount(sym))
 
@@ -1044,7 +1057,21 @@ object Erasure {
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
       if cls.is(Flags.Erased) then erasedDef(cls)
-      else super.typedClassDef(cdef, cls)
+      else
+        val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
+        // In the case where a trait extends a class, we need to strip any non trait class from the signature
+        // and accept the first one (see tests/run/mixins.scala)
+        val newTraits = impl.parents.tail.filterConserve: tree =>
+          def isTraitConstructor = tree match
+            case Trees.Block(_, expr) => // Specific management for trait constructors (see tests/pos/i9213.scala)
+              expr.symbol.isConstructor && expr.symbol.owner.is(Flags.Trait)
+            case _ => tree.symbol.isConstructor && tree.symbol.owner.is(Flags.Trait)
+          tree.symbol.is(Flags.Trait) || isTraitConstructor
+
+        val newParents =
+          if impl.parents.tail eq newTraits then impl.parents
+          else impl.parents.head :: newTraits
+        cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)

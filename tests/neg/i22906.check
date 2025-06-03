@@ -1,0 +1,6 @@
+Flag -indent set repeatedly
+-- Error: tests/neg/i22906.scala:6:15 ----------------------------------------------------------------------------------
+6 |    {`1`: Int  =>  5} // error
+  |               ^
+  |               parentheses are required around the parameter of a lambda
+  |               This construct can be rewritten automatically under -rewrite -source 3.0-migration.

@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/i19328.scala:14:5 ----------------------------------------------------------------------
+14 |  bar // error: missing implicit (should not crash)
+   |     ^
+   |     No given instance of type Boolean was found for parameter bool of method bar in object i19328

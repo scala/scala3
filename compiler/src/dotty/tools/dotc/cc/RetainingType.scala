@@ -23,7 +23,7 @@ object RetainingType:
 
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, List[Tree])] =
     val sym = tp.annot.symbol
-    if sym == defn.RetainsAnnot || sym == defn.RetainsByNameAnnot then
+    if sym.isRetainsLike then
       tp.annot match
         case _: CaptureAnnotation =>
           assert(ctx.mode.is(Mode.IgnoreCaptures), s"bad retains $tp at ${ctx.phase}")

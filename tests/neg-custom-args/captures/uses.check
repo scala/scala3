@@ -1,0 +1,28 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:8:17 ------------------------------------------
+8 |  val _: D^{y} = d // error, should be ok
+  |                 ^
+  |                 Found:    (d : D^{x, y})
+  |                 Required: D^{y}
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:9:13 ------------------------------------------
+9 |  val _: D = d // error
+  |             ^
+  |             Found:    (d : D^{x, y})
+  |             Required: D
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:18:34 -----------------------------------------
+18 |  val _: () ->{x} () ->{y} Unit = g // error, should be ok
+   |                                  ^
+   |                                  Found:    () ->{x, y} () ->{y} Unit
+   |                                  Required: () ->{x} () ->{y} Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/uses.scala:19:28 -----------------------------------------
+19 |  val _: () -> () -> Unit = g // error
+   |                            ^
+   |                            Found:    () ->{x, y} () ->{y} Unit
+   |                            Required: () -> () -> Unit
+   |
+   | longer explanation available when compiling with `-explain`

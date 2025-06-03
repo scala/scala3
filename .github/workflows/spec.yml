@@ -16,6 +16,10 @@ env:
 jobs:
   specification:
     runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]'))  ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+        github.event_name == 'push' ||
+        github.event_name == 'merge_group'
     defaults:
       run:
         working-directory: ./docs/_spec
@@ -29,7 +33,8 @@ jobs:
           ruby-version: '2.7'
       - name: Install required gems
         run: |
-          gem update --system
+          gem install "rubygems-update:<3.5" --no-document
+          update_rubygems
           gem install sass-embedded -v 1.58.0
           gem install bundler:1.17.2 jekyll
           bundle install
@@ -44,7 +49,7 @@ jobs:
         env:
           USER_FOR_TEST: ${{ secrets.SPEC_DEPLOY_USER }}
         if: ${{ env.USER_FOR_TEST != '' }}
-        uses: burnett01/rsync-deployments@6.0.0
+        uses: burnett01/rsync-deployments@7.0.2
         with:
           switches: -rzv
           path: docs/_spec/_site/

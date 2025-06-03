@@ -1,4 +1,4 @@
-#!dist/target/pack/bin/scala
+// this file is intended to be ran as an argument to the dotty.tools.scripting.ScriptingDriver class
 
   def main(args: Array[String]): Unit =
     args.zipWithIndex.foreach { case (arg,i) => printf("arg %d: [%s]\n",i,arg) }

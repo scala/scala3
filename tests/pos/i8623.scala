@@ -11,7 +11,7 @@ def test1 =
   unseal.pos
 
 def test2 =
-  given QC with {}
+  given QC()
   def unseal(using qctx: QC): qctx.tasty.Tree = ???
   unseal.pos
 

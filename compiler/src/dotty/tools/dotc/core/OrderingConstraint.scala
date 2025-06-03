@@ -265,9 +265,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private var coDeps: ReverseDeps = SimpleIdentityMap.empty
 
   /** A map that associates type parameters of this constraint with all other type
-   *  parameters that refer to them in their bounds covariantly, such that, if the
+   *  parameters that refer to them in their bounds contravariantly, such that, if the
    *  type parameter is instantiated to a smaller type, the constraint would be narrowed.
-   *  (i.e. solution set changes other than simply being made larger).
+   *  (i.e. solution set changes other than simply being made smaller).
    */
   private var contraDeps: ReverseDeps = SimpleIdentityMap.empty
 
@@ -315,7 +315,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
       def tparams(tycon: Type): List[ParamInfo] = tycon match
-        case tycon: TypeVar if !tycon.inst.exists => tparams(tycon.origin)
+        case tycon: TypeVar if !tycon.isPermanentlyInstantiated => tparams(tycon.origin)
         case tycon: TypeParamRef if !hasBounds(tycon) =>
           val entryParams = entry(tycon).typeParams
           if entryParams.nonEmpty then entryParams
@@ -370,7 +370,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     /** Adjust reverse dependencies of all type parameters referenced by `bound`
      *  @param  isLower `bound` is a lower bound
-     *  @param  add     if true, add referenced variables to dependencoes, otherwise drop them.
+     *  @param  add     if true, add referenced variables to dependencies, otherwise drop them.
      */
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
@@ -396,8 +396,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           }
         case _ => false
 
-    /** Add or remove depenencies referenced in `bounds`.
-     *  @param add   if true, dependecies are added, otherwise they are removed
+    /** Add or remove dependencies referenced in `bounds`.
+     *  @param add   if true, dependencies are added, otherwise they are removed
      */
     def adjustBounds(bounds: TypeBounds, add: Boolean) =
       adjustReferenced(bounds.lo, isLower = true, add)
@@ -562,11 +562,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         val underlying1 = recur(tp.underlying)
         if underlying1 ne tp.underlying then underlying1 else tp
       case CapturingType(parent, refs) =>
-        val parent1 = recur(parent)
-        if parent1 ne parent then tp.derivedCapturingType(parent1, refs) else tp
+        tp.derivedCapturingType(recur(parent), refs)
+      case tp: FlexibleType =>
+        tp.derivedFlexibleType(recur(tp.hi))
       case tp: AnnotatedType =>
-        val parent1 = recur(tp.parent)
-        if parent1 ne tp.parent then tp.derivedAnnotatedType(parent1, tp.annot) else tp
+        tp.derivedAnnotatedType(recur(tp.parent), tp.annot)
       case _ =>
         val tp1 = tp.dealiasKeepAnnots
         if tp1 ne tp then
@@ -715,7 +715,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         var newDepEntry = newEntry
         replacedTypeVar match
           case tvar: TypeVar =>
-            if tvar.inst.exists // `isInstantiated` would use ctx.typerState.constraint rather than the current constraint
+            if tvar.isPermanentlyInstantiated // `isInstantiated` would use ctx.typerState.constraint rather than the current constraint
             then
               // If the type variable has been instantiated, we need to forget about
               // the instantiation for old dependencies.
@@ -781,7 +781,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     @tailrec def allRemovable(last: Int): Boolean =
       if (last < 0) true
       else typeVar(entries, last) match {
-        case tv: TypeVar => tv.inst.exists && allRemovable(last - 1)
+        case tv: TypeVar => tv.isPermanentlyInstantiated && allRemovable(last - 1)
         case _ => false
       }
     allRemovable(paramCount(entries) - 1)
@@ -887,7 +887,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       val limit = paramCount(entries)
       while i < limit do
         typeVar(entries, i) match
-          case tv: TypeVar if !tv.inst.exists => op(tv)
+          case tv: TypeVar if !tv.isPermanentlyInstantiated => op(tv)
           case _ =>
         i += 1
     }
@@ -896,12 +896,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {
-    if (myUninstVars == null || myUninstVars.uncheckedNN.exists(_.inst.exists)) {
+    if (myUninstVars == null || myUninstVars.uncheckedNN.exists(_.isPermanentlyInstantiated)) {
       myUninstVars = new mutable.ArrayBuffer[TypeVar]
       boundsMap.foreachBinding { (poly, entries) =>
         for (i <- 0 until paramCount(entries))
           typeVar(entries, i) match {
-            case tv: TypeVar if !tv.inst.exists && isBounds(entries(i)) => myUninstVars.uncheckedNN += tv
+            case tv: TypeVar if !tv.isPermanentlyInstantiated && isBounds(entries(i)) => myUninstVars.uncheckedNN += tv
             case _ =>
           }
       }

@@ -1,0 +1,12 @@
+-- [E172] Type Error: tests/neg/deferred-givens-2.scala:17:6 -----------------------------------------------------------
+17 |class SortedIntWrong1 extends Sorted: // error
+   |^
+   |No given instance of type Ord{type Self = SortedIntWrong1.this.Element} was found for inferring the implementation of the deferred given instance given_Ord_Element in trait Sorted
+18 |  type Element = Int
+19 |  override given (Element is Ord)()
+-- [E172] Type Error: tests/neg/deferred-givens-2.scala:21:6 -----------------------------------------------------------
+21 |class SortedIntWrong2 extends Sorted: // error
+   |^
+   |No given instance of type Ord{type Self = SortedIntWrong2.this.Element} was found for inferring the implementation of the deferred given instance given_Ord_Element in trait Sorted
+22 |  type Element = Int
+23 |  override given (Int is Ord)()

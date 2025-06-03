@@ -1,6 +1,6 @@
 charts:
     - name: "Find Ref"
-      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/FindRef.scala
+      url: https://github.com/scala/scala3/blob/main/tests/bench/FindRef.scala
       lines:
         - key: find-ref
           label: bootstrapped
@@ -11,4 +11,4 @@ scripts:
         - measure $PROG_HOME/dotty/tests/bench/FindRef.scala
 
 config:
-    pr_base_url: "https://github.com/lampepfl/dotty/pull/"
+    pr_base_url: "https://github.com/scala/scala3/pull/"

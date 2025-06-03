@@ -6,7 +6,7 @@ trait TupleConversion[A, B] {
 }
 
 object TupleConversion  {
-  inline given autoTupleConversion[Prod <: Product](using m: Mirror.ProductOf[Prod]): TupleConversion[Prod, m.MirroredElemTypes] =
+  inline given autoTupleConversion: [Prod <: Product] => (m: Mirror.ProductOf[Prod]) => TupleConversion[Prod, m.MirroredElemTypes] =
     new TupleConversion[Prod, m.MirroredElemTypes] {
       def to(a: Prod): m.MirroredElemTypes = Tuple.fromProductTyped(a)
       def from(b: m.MirroredElemTypes): Prod = m.fromProduct(b)

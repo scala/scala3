@@ -99,7 +99,7 @@ object DesugarEnums {
     val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
     val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
     val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
-    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil)
+    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil).setApplyKind(ApplyKind.Using)
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
@@ -126,7 +126,7 @@ object DesugarEnums {
 
     val valuesOfBody: Tree =
       val defaultCase =
-        val msg = Apply(Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
+        val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with name: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
           Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
       val stringCases = enumValues.map(enumValue =>
@@ -148,7 +148,8 @@ object DesugarEnums {
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
-        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Select(ordinal, nme.toString_) :: Nil)))
+        val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with ordinal: ")), nme.PLUS), Select(ordinal, nme.toString_))
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(msg :: Nil)))
       if !constraints.cached then
         fromOrdinalMeth(throwArg)
       else

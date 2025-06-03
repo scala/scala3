@@ -14,7 +14,7 @@ abstract class FreshNameCreator {
 object FreshNameCreator {
   class Default extends FreshNameCreator {
     protected var counter: Int = 0
-    protected val counters: mutable.Map[String, Int] = mutable.AnyRefMap() withDefaultValue 0
+    protected val counters: mutable.Map[String, Int] = mutable.HashMap() withDefaultValue 0
 
     /**
      * Create a fresh name with the given prefix. It is guaranteed

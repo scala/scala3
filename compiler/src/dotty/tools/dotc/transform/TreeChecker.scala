@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
+import config.Printers.checks as printer
 import core.Names.Name
 import core.DenotTransformers.*
 import core.SymDenotations.*
@@ -23,6 +24,7 @@ import collection.mutable
 import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
+import cc.{isRetainsLike, CaptureAnnotation}
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -162,6 +164,13 @@ object TreeChecker {
    */
   def checkNoOrphans(tp0: Type, tree: untpd.Tree = untpd.EmptyTree)(using Context): Type = new TypeMap() {
     val definedBinders = new java.util.IdentityHashMap[Type, Any]
+    private var inRetainingAnnot = false
+
+    def insideRetainingAnnot[T](op: => T): T =
+      val saved = inRetainingAnnot
+      inRetainingAnnot = true
+      try op finally inRetainingAnnot = saved
+
     def apply(tp: Type): Type = {
       tp match {
         case tp: BindingType =>
@@ -169,16 +178,37 @@ object TreeChecker {
           mapOver(tp)
           definedBinders.remove(tp)
         case tp: ParamRef =>
-          assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
+          val isValidRef =
+            definedBinders.get(tp.binder) != null
+              || inRetainingAnnot
+              // Inside a normal @retains annotation, the captured references could be ill-formed. See issue #19661.
+              // But this is ok since capture checking does not rely on them.
+          assert(isValidRef, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
+        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike && !annot.isInstanceOf[CaptureAnnotation] =>
+          val underlying1 = this(underlying)
+          val annot1 = insideRetainingAnnot:
+            annot.mapWith(this)
+          derivedAnnotatedType(tp, underlying1, annot1)
         case _ =>
           mapOver(tp)
       }
       tp
     }
   }.apply(tp0)
+
+  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree])(using Context): Unit =
+    val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
+    val treeParents = parents.map(_.tpe.dealias.typeSymbol)
+    assert(symbolParents == treeParents,
+      i"""Parents of class symbol differs from the parents in the tree for $sym
+          |
+          |Parents in symbol: $symbolParents
+          |Parents in tree: $treeParents
+          |""".stripMargin)
+  end checkParents
 
   /** Run some additional checks on the nodes of the trees.  Specifically:
    *
@@ -206,7 +236,7 @@ object TreeChecker {
   private[TreeChecker] def isValidJVMMethodName(name: Name): Boolean = name.toString.forall(isValidJVMMethodChar)
 
 
-  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
+  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
     import ast.tpd.*
 
     protected val nowDefinedSyms = util.HashSet[Symbol]()
@@ -214,7 +244,7 @@ object TreeChecker {
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+    override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
 
     def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
       var locally = List.empty[Symbol]
@@ -281,9 +311,11 @@ object TreeChecker {
     def assertDefined(tree: untpd.Tree)(using Context): Unit =
       if (tree.symbol.maybeOwner.isTerm) {
         val sym = tree.symbol
+        def isAllowed = // constructor proxies and context bound companions are flagged at PostTyper
+          isSymWithoutDef(sym) && ctx.phase.id < postTyperPhase.id
         assert(
-          nowDefinedSyms.contains(sym) || patBoundSyms.contains(sym),
-          i"undefined symbol ${sym} at line " + tree.srcPos.line
+          nowDefinedSyms.contains(sym) || patBoundSyms.contains(sym) || isAllowed,
+          i"undefined symbol ${sym} in ${sym.owner} at line " + tree.srcPos.line
         )
 
         if (!ctx.phase.patternTranslated)
@@ -354,6 +386,9 @@ object TreeChecker {
       case _ =>
     }
 
+    def isSymWithoutDef(sym: Symbol)(using Context): Boolean =
+      sym.is(ConstructorProxy) || sym.isContextBoundCompanion
+
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
      *  completely in phase `Erasure` if they are defined in a currently compiled unit.
@@ -389,31 +424,24 @@ object TreeChecker {
     }
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
-      val res = tree match {
-        case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
-          super.typedUnadapted(tree, pt, locked)
-        case _ if tree.isType =>
-          promote(tree)
-        case _ =>
-          val tree1 = super.typedUnadapted(tree, pt, locked)
-          def isSubType(tp1: Type, tp2: Type) =
-            (tp1 eq tp2) || // accept NoType / NoType
-            (tp1 <:< tp2)
-          def divergenceMsg(tp1: Type, tp2: Type) =
-            s"""Types differ
-               |Original type : ${tree.typeOpt.show}
-               |After checking: ${tree1.tpe.show}
-               |Original tree : ${tree.show}
-               |After checking: ${tree1.show}
-               |Why different :
-             """.stripMargin + core.TypeComparer.explained(_.isSubType(tp1, tp2))
-          if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
-            assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
-          tree1
-      }
-      checkNoOrphans(res.tpe)
-      phasesToCheck.foreach(_.checkPostCondition(res))
-      res
+      try
+        val res = tree match
+          case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
+            super.typedUnadapted(tree, pt, locked)
+          case _ if tree.isType =>
+            promote(tree)
+          case _ =>
+            val tree1 = super.typedUnadapted(tree, pt, locked)
+            if tree.hasType then // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
+              checkType(tree1.tpe, tree.typeOpt, tree, "typedUnadapted")
+            tree1
+        checkNoOrphans(res.tpe)
+        phasesToCheck.foreach(_.checkPostCondition(res))
+        res
+      catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+        val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
+        printer.println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
+        throw ex
     }
 
     def checkNotRepeated(tree: Tree)(using Context): tree.type = {
@@ -547,8 +575,17 @@ object TreeChecker {
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
     }
 
+    private def checkParents(tree: untpd.TypeDef)(using Context): Unit = {
+      val TypeDef(_, impl: Template) = tree: @unchecked
+      assert(ctx.owner.isClass)
+      val sym = ctx.owner.asClass
+      if !sym.isPrimitiveValueClass then
+        TreeChecker.checkParents(sym, impl.parents)
+    }
+
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
       assert(sym.info.isInstanceOf[ClassInfo | TypeBounds], i"wrong type, expect a template or type bounds for ${sym.fullName}, but found: ${sym.info}")
+      if sym.isClass then checkParents(tdef)
       super.typedTypeDef(tdef, sym)
     }
 
@@ -561,6 +598,8 @@ object TreeChecker {
       checkOwner(impl)
       checkOwner(impl.constr)
 
+      checkParents(cdef)
+
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
         !x.name.is(DocArtifactName) &&
@@ -569,14 +608,12 @@ object TreeChecker {
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
-      def isAllowed(sym: Symbol): Boolean = sym.is(ConstructorProxy)
+      val symbolsMissingDefs = (decls -- defined - constr.symbol).filterNot(isSymWithoutDef)
 
-      val symbolsNotDefined = (decls -- defined - constr.symbol).filterNot(isAllowed)
-
-      assert(symbolsNotDefined.isEmpty,
-        i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
-        i"expected: ${decls.toList}%, %\n" +
-        i"defined: ${defined}%, %")
+      assert(symbolsMissingDefs.isEmpty,
+        i"""$cls tree does not define members: ${symbolsMissingDefs.toList}%, %
+           |expected: ${decls.toList}%, %
+           |defined: ${defined}%, %""")
 
       super.typedClassDef(cdef, cls)
     }
@@ -776,16 +813,20 @@ object TreeChecker {
         && !isPrimaryConstructorReturn
         && !pt.isInstanceOf[FunOrPolyProto]
       then
-        assert(tree.tpe <:< pt, {
-          val mismatch = TypeMismatch(tree.tpe, pt, Some(tree))
-          i"""|Type Mismatch:
-              |${mismatch.message}
-              |tree = $tree ${tree.className}""".stripMargin
-        })
+        checkType(tree.tpe, pt, tree, "adapt")
       tree
     }
 
     override def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type = tree
+
+    private def checkType(tp1: Type, tp2: Type, tree: untpd.Tree, step: String)(using Context) =
+      // Accept NoType <:< NoType as true
+      assert((tp1 eq tp2) || (tp1 <:< tp2), {
+        val mismatch = TypeMismatch(tp1, tp2, None)
+        i"""|Type Mismatch (while checking $step):
+            |${mismatch.message}${mismatch.explanation}
+            |tree = $tree ${tree.className}""".stripMargin
+      })
   }
 
   /** Tree checker that can be applied to a local tree. */
@@ -797,36 +838,50 @@ object TreeChecker {
 
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
+      // We want make sure that transparent inline macros are checked in the same way that
+      // non transparent macros are, so we try to prepare a context which would make
+      // the checks behave the same way for both types of macros.
+      //
+      // E.g. Different instances of skolem types are by definition not able to be a subtype of
+      // one another, however in practice this is only upheld during typer phase, and we do not want
+      // it to be upheld during this check.
+      // See issue: #17009
       val checkingCtx = ctx
         .fresh
         .setReporter(new ThrowingReporter(ctx.reporter))
+        .setPhase(ctx.base.inliningPhase)
+
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
+
+      def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
+        val stack =
+          if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
+          else if err.getStackTrace == null then "  no stacktrace"
+          else err.getStackTrace.mkString("  ", "  \n", "")
+        report.error(
+          em"""Malformed tree was found while expanding macro with -Xcheck-macros.
+              |The tree does not conform to the compiler's tree invariants.
+              |
+              |Macro was:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
+              |
+              |The macro returned:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
+              |
+              |Error:
+              |$msg
+              |$stack
+              |""",
+          original
+        )
 
       try treeChecker.typed(expansion)(using checkingCtx)
       catch
         case err: java.lang.AssertionError =>
-          val stack =
-            if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
-            else if err.getStackTrace == null then "  no stacktrace"
-            else err.getStackTrace.nn.mkString("  ", "  \n", "")
-
-          report.error(
-            s"""Malformed tree was found while expanding macro with -Xcheck-macros.
-               |The tree does not conform to the compiler's tree invariants.
-               |
-               |Macro was:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
-               |
-               |The macro returned:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
-               |
-               |Error:
-               |${err.getMessage}
-               |$stack
-               |""",
-            original
-          )
+          reportMalformedMacroTree(err.getMessage(), err)
+        case err: UnhandledError =>
+          reportMalformedMacroTree(err.diagnostic.message, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>

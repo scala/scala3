@@ -3,10 +3,10 @@
 trait Foo[A]
 
 type Fooable[A] = {
-  def foo(implicit @annotation.implicitNotFound("There's no Foo[${A}]") ev: Foo[A]): Any // error
+  def foo(implicit @annotation.implicitNotFound("There's no Foo[${A}]") ev: Foo[A]): Any // warn
 
   type InnerFooable = {
-    def foo(implicit @annotation.implicitNotFound("There's no Foo[${A}]") ev: Foo[A]): Any // error
+    def foo(implicit @annotation.implicitNotFound("There's no Foo[${A}]") ev: Foo[A]): Any // warn
   }
 }
 
@@ -22,3 +22,4 @@ trait Bar[A]
 type Barable[A] = {
   def bar(implicit ev: Bar[A]): Any // ok
 }
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

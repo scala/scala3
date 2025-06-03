@@ -106,7 +106,7 @@ This kind of reasoning is necessary for many advanced GADT usages!
 
 ### And much more!
 
-Please read our [release notes](https://github.com/lampepfl/dotty/releases/tag/0.12.0-RC1)
+Please read our [release notes](https://github.com/scala/scala3/releases/tag/0.12.0-RC1)
 for more details!
 
 ## Trying out Dotty
@@ -137,7 +137,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 For macOS users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
 running:
@@ -156,7 +156,7 @@ brew upgrade dotty
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -195,7 +195,7 @@ According to `git shortlog -sn --no-merges 0.11.0-RC1..0.12.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

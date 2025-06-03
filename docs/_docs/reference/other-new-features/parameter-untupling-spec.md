@@ -56,4 +56,4 @@ Obsolete conversions could be detected and fixed by [`Scalafix`](https://scalace
 
 ## Reference
 
-For more information, see [Issue #897](https://github.com/lampepfl/dotty/issues/897).
+For more information, see [Issue #897](https://github.com/scala/scala3/issues/897).

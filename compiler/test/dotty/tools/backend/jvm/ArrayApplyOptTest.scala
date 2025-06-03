@@ -161,6 +161,42 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
     }
   }
 
+  @Test def emptyListApplyAvoidsIntermediateArray =
+    checkApplyAvoidsIntermediateArray("EmptyList"):
+      """import scala.collection.immutable.Nil
+        |class Foo {
+        |  def meth1: List[String] = List()
+        |  def meth2: List[String] = Nil
+        |}
+      """.stripMargin
+
+  @Test def emptyRefListApplyAvoidsIntermediateArray =
+    checkApplyAvoidsIntermediateArray("EmptyListOfRef"):
+      """import scala.collection.immutable.Nil
+        |class Foo {
+        |  def meth1: List[String] = List[String]()
+        |  def meth2: List[String] = Nil
+        |}
+      """.stripMargin
+
+  @Test def emptyPrimitiveListApplyAvoidsIntermediateArray =
+    checkApplyAvoidsIntermediateArray("EmptyListOfInt"):
+      """import scala.collection.immutable.Nil
+        |class Foo {
+        |  def meth1: List[Int] = List()
+        |  def meth2: List[Int] = Nil
+        |}
+      """.stripMargin
+
+  @Test def primitiveListApplyAvoidsIntermediateArray =
+    checkApplyAvoidsIntermediateArray("ListOfInt"):
+      """import scala.collection.immutable.{ ::, Nil }
+        |class Foo {
+        |  def meth1: List[Int] = List(1, 2, 3)
+        |  def meth2: List[Int] = new ::(1, new ::(2, new ::(3, Nil)))
+        |}
+      """.stripMargin
+
   @Test def testListApplyAvoidsIntermediateArray = {
     checkApplyAvoidsIntermediateArray("List"):
       """import scala.collection.immutable.{ ::, Nil }

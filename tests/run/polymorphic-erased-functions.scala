@@ -3,8 +3,8 @@ import language.experimental.erasedDefinitions
 object Test extends App {
 
   // Types
-  type F1 = [T] => (erased T) => Int
-  type F2 = [T, U] => (T, erased U) => T
+  type F1 = [T] => (erased x: T) => Int
+  type F2 = [T, U] => (t: T, erased u: U) => T
 
   // Terms
   val t1 = [T] => (erased t: T) => 3

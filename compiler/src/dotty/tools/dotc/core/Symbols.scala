@@ -19,9 +19,7 @@ import DenotTransformers.*
 import StdNames.*
 import NameOps.*
 import NameKinds.LazyImplicitName
-import ast.tpd
-import tpd.{Tree, TreeProvider, TreeOps}
-import ast.TreeTypeMap
+import ast.*, tpd.*
 import Constants.Constant
 import Variances.Variance
 import reporting.Message
@@ -86,7 +84,7 @@ object Symbols extends SymUtils {
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.YcheckInit.value ||     // initialization check
+      ctx.settings.Whas.checkInit ||       // initialization check
       ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
@@ -112,17 +110,28 @@ object Symbols extends SymUtils {
     }
 
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
+      // Written that way so that it comes in at 32 bytes and is therefore inlineable for
+      // the JIT (reputedly, cutoff is at 35 bytes)
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
       checkedPeriod = now
-      if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
+      if lastd.validFor.contains(now) then lastd else recomputeDenot(lastd)
     }
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
-      lastDenot = newd
+      if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId then
+        lastDenot = newd
+      else
+        // We are trying to bring forward a symbol that is defined only at a later phase
+        // (typically, a nested Java class, invisible before erasure).
+        // In that case, keep lastDenot as it was and set the checked period to lastDenot's
+        // previous validity, which means we will try another bring forward when the symbol
+        // is referenced at a later phase. Otherwise we'd get stuck on NoDenotation here.
+        // See #15562 and test i15562b in ReplCompilerTests
+        checkedPeriod = lastd.validFor
       newd
     }
 
@@ -134,7 +143,7 @@ object Symbols extends SymUtils {
     final def lastKnownDenotation: SymDenotation =
       lastDenot
 
-    private[core] def defRunId: RunId =
+    private[dotc] def defRunId: RunId =
       lastDenot.validFor.runId
 
     private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
@@ -155,6 +164,10 @@ object Symbols extends SymUtils {
       */
     final def isDefinedInSource(using Context): Boolean =
       span.exists && isValidInCurrentRun && associatedFileMatches(!_.isScalaBinary)
+
+    /** Is this symbol valid in the current run, but comes from the classpath? */
+    final def isDefinedInBinary(using Context): Boolean =
+      isValidInCurrentRun && associatedFileMatches(_.isScalaBinary)
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
@@ -299,7 +312,6 @@ object Symbols extends SymUtils {
      *  With the given setup, all such calls will give implicit-not found errors
      */
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
-    type DontUseSymbolOnSymbol
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
@@ -325,20 +337,45 @@ object Symbols extends SymUtils {
 
     /** A symbol related to `sym` that is defined in source code.
      *
-     *  @see enclosingSourceSymbols
+     *  @see [[interactive.Interactive.enclosingSourceSymbols]]
      */
     @annotation.tailrec final def sourceSymbol(using Context): Symbol =
       if (!denot.exists)
         this
       else if (denot.is(ModuleVal))
         this.moduleClass.sourceSymbol // The module val always has a zero-extent position
-      else if (denot.is(Synthetic)) {
+      else if denot.is(ExportedType) then
+        denot.info.dropAlias.finalResultType.typeConstructor match
+          case tp: NamedType => tp.symbol.sourceSymbol
+          case _             => this
+      else if denot.is(ExportedTerm) then
+        val root = denot.maybeOwner match
+          case cls: ClassSymbol => cls.rootTreeContaining(name.toString)
+          case _                => EmptyTree
+        val targets = root.collectSubTrees:
+          case tree: DefDef if tree.symbol == denot.symbol => methPart(tree.rhs).tpe
+        targets.match
+          case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
+          case _                    => this
+      else if denot.is(Synthetic) then
         val linked = denot.linkedClass
         if (linked.exists && !linked.is(Synthetic))
           linked
         else
           denot.owner.sourceSymbol
-      }
+      else if (
+        denot.is(TypeParam) &&
+        denot.maybeOwner.maybeOwner.isAllOf(EnumCase) &&
+        denot.maybeOwner.isPrimaryConstructor
+      ) then
+        val enclosingEnumCase = denot.maybeOwner.maybeOwner
+        val caseTypeParam = enclosingEnumCase.typeParams.find(_.name == denot.name)
+        if caseTypeParam.exists(_.is(Synthetic)) then
+          val enumClass = enclosingEnumCase.info.firstParent.typeSymbol
+          val sourceTypeParam = enumClass.typeParams.find(_.name == denot.name)
+          sourceTypeParam.getOrElse(this)
+        else
+          caseTypeParam.getOrElse(this)
       else if (denot.isPrimaryConstructor)
         denot.owner.sourceSymbol
       else this
@@ -376,12 +413,11 @@ object Symbols extends SymUtils {
         flags: FlagSet = this.flags,
         info: Type = this.info,
         privateWithin: Symbol = this.privateWithin,
-        coord: Coord = NoCoord, // Can be `= owner.coord` once we bootstrap
-        compUnitInfo: CompilationUnitInfo | Null = null // Can be `= owner.associatedFile` once we bootstrap
+        coord: Coord = NoCoord, // Can be `= owner.coord` once we have new default args
+        compUnitInfo: CompilationUnitInfo | Null = null // Can be `= owner.compilationUnitInfo` once we have new default args
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
       val compilationUnitInfo1 = if (compilationUnitInfo == null) owner.compilationUnitInfo else compilationUnitInfo
-
 
       if isClass then
         newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, compilationUnitInfo1)
@@ -605,6 +641,32 @@ object Symbols extends SymUtils {
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
   }
 
+  /** Same as the other `newNormalizedClassSymbol` except that `parents` can be a function returning a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings and annotations can be assigned in the completer.
+   */
+  def newNormalizedClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parentTypes: Symbol => List[Type],
+      selfInfo: Type,
+      privateWithin: Symbol,
+      annotations: List[Tree],
+      coord: Coord,
+      compUnitInfo: CompilationUnitInfo | Null)(using Context): ClassSymbol = {
+    def completer = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parents = parentTypes(cls).map(_.dealias)
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        denot.info = ClassInfo(owner.thisType, cls, parents, decls, selfInfo)
+        denot.annotations = annotations.map(Annotations.Annotation(_))
+      }
+    }
+    newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
+  }
+
   def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
     newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, newScope, coord = coord)
 
@@ -674,6 +736,34 @@ object Symbols extends SymUtils {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls, TermRef(owner.thisType, module))
+      }
+    }
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => completer(module),
+        privateWithin, coord, compUnitInfo)
+  }
+
+  /** Same as `newNormalizedModuleSymbol` except that `parents` can be a function returning a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parentTypes: ClassSymbol => List[Type],
+      decls: Scope,
+      privateWithin: Symbol,
+      coord: Coord,
+      compUnitInfo: CompilationUnitInfo | Null)(using Context): TermSymbol = {
+    def completer(module: Symbol) = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parents = parentTypes(cls).map(_.dealias)
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        denot.info = ClassInfo(owner.thisType, cls, parents, decls, TermRef(owner.thisType, module))
       }
     }
     newModuleSymbol(
@@ -780,7 +870,7 @@ object Symbols extends SymUtils {
       cls: ClassSymbol,
       name: TermName = nme.WILDCARD,
       selfInfo: Type = NoType)(using Context): TermSymbol =
-    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+    newSymbol(cls, name, SelfSymFlags, selfInfo.orElse(cls.classInfo.selfType), coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
@@ -822,7 +912,8 @@ object Symbols extends SymUtils {
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
-   *  Do not copy any symbols if all attributes of all symbols stay the same.
+   *  Do not copy any symbols if all attributes of all symbols stay the same
+   *  and mapAlways is false.
    */
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
     if (originals.forall(sym =>
@@ -910,6 +1001,8 @@ object Symbols extends SymUtils {
       case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
       case _ => None
 
+  type DontUseSymbolOnSymbol
+
 // ----- Locating predefined symbols ----------------------------------------
 
   def requiredPackage(path: PreName)(using Context): TermSymbol = {
@@ -947,7 +1040,7 @@ object Symbols extends SymUtils {
    */
   def getPackageClassIfDefined(path: PreName)(using Context): Symbol =
     staticRef(path.toTypeName, isPackage = true, generateStubs = false)
-      .disambiguate(_ is PackageClass).symbol
+      .disambiguate(_.is(PackageClass)).symbol
 
   def requiredModule(path: PreName)(using Context): TermSymbol = {
     val name = path.toTermName

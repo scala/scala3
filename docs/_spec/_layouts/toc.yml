@@ -20,7 +20,7 @@
   <div id="header-main">
   <img id="scala-logo" src="public/images/scala-spiral-white.png" />
   <span id="title">Scala Language Specification</span>
-  <a id="github" href="https://github.com/lampepfl/dotty/tree/main/docs/_spec"><img src="public/images/github-logo@2x.png" alt="Edit at GitHub"></a>
+  <a id="github" href="https://github.com/scala/scala3/tree/main/docs/_spec"><img src="public/images/github-logo@2x.png" alt="Edit at GitHub"></a>
   </div>
   <div id="header-sub">Version {{ site.thisScalaVersion }}</div>
 </header>

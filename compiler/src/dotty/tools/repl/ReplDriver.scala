@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.classpath.ClassPathFactory
 import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts.*
@@ -21,6 +22,7 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.SymbolLoaders
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -31,6 +33,7 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io.*
+import dotty.tools.repl.Rendering.showUser
 import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader.*
 
@@ -38,6 +41,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
+import scala.tools.asm.ClassReader
 import scala.util.control.NonFatal
 import scala.util.Using
 
@@ -59,12 +63,14 @@ import scala.util.Using
  *  @param valIndex    the index of next value binding for free expressions
  *  @param imports     a map from object index to the list of user defined imports
  *  @param invalidObjectIndexes the set of object indexes that failed to initialize
+ *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  invalidObjectIndexes: Set[Int],
+                 quiet: Boolean,
                  context: Context):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
@@ -81,13 +87,26 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
-    rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    rootCtx.setSetting(rootCtx.settings.XcookComments, true)
+    rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     setupRootCtx(this.settings ++ settings, rootCtx)
   }
 
+  private val incompatibleOptions: Seq[String] = Seq(
+    initCtx.settings.YbestEffort.name,
+    initCtx.settings.YwithBestEffortTasty.name
+  )
+
   private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
-    setup(settings, rootCtx) match
+    val incompatible = settings.intersect(incompatibleOptions)
+    val filteredSettings =
+      if !incompatible.isEmpty then
+        inContext(rootCtx) {
+          out.println(i"Options incompatible with repl will be ignored: ${incompatible.mkString(", ")}")
+        }
+        settings.filter(!incompatible.contains(_))
+      else settings
+    setup(filteredSettings, rootCtx) match
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
@@ -100,7 +119,12 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState: State = State(0, 0, Map.empty, Set.empty, rootCtx)
+  final def initialState: State =
+    val emptyState = State(0, 0, Map.empty, Set.empty, false, rootCtx)
+    val initScript = rootCtx.settings.replInitScript.value(using rootCtx)
+    initScript.trim() match
+      case "" => emptyState
+      case script => run(script)(using emptyState)
 
   /** Reset state of repl to the initial state
    *
@@ -132,7 +156,9 @@ class ReplDriver(settings: Array[String],
    *
    *  Possible reason for unsuccessful run are raised flags in CLI like --help or --version
    */
-  final def tryRunning = if shouldStart then runUntilQuit()
+  final def tryRunning = if shouldStart then
+    if rootCtx.settings.replQuitAfterInit.value(using rootCtx) then initialState
+    else runUntilQuit()
 
   /** Run REPL with `state` until `:quit` command found
    *
@@ -149,11 +175,36 @@ class ReplDriver(settings: Array[String],
 
     /** Blockingly read a line, getting back a parse result */
     def readLine()(using state: State): ParseResult = {
-      val completer: Completer = { (_, line, candidates) =>
-        val comps = completions(line.cursor, line.line, state)
-        candidates.addAll(comps.asJava)
-      }
       given Context = state.context
+      val completer: Completer = { (lineReader, line, candidates) =>
+        def makeCandidate(label: String) = {
+          new Candidate(
+            /* value    = */ label,
+            /* displ    = */ stripBackTicks(label), // displayed value
+            /* group    = */ null,  // can be used to group completions together
+            /* descr    = */ null,  // TODO use for documentation?
+            /* suffix   = */ null,
+            /* key      = */ null,
+            /* complete = */ false  // if true adds space when completing
+          )
+        }
+        val comps = completions(line.cursor, line.line, state)
+        candidates.addAll(comps.map(_.label).distinct.map(makeCandidate).asJava)
+        val lineWord = line.word()
+        comps.filter(c => c.label == lineWord && c.symbols.nonEmpty) match
+          case Nil =>
+          case exachMatches =>
+            val terminal = lineReader.nn.getTerminal
+            lineReader.callWidget(LineReader.CLEAR)
+            terminal.writer.println()
+            exachMatches.foreach: exact =>
+              exact.symbols.foreach: sym =>
+                terminal.writer.println(SyntaxHighlighting.highlight(sym.showUser))
+            lineReader.callWidget(LineReader.REDRAW_LINE)
+            lineReader.callWidget(LineReader.REDISPLAY)
+            terminal.flush()
+      }
+
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)
@@ -176,11 +227,6 @@ class ReplDriver(settings: Array[String],
 
   final def run(input: String)(using state: State): State = runBody {
     interpret(ParseResult.complete(input))
-  }
-
-  final def runQuietly(input: String)(using State): State = runBody {
-    val parsed = ParseResult(input)
-    interpret(parsed, quiet = true)
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -230,23 +276,10 @@ class ReplDriver(settings: Array[String],
       label
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] =
-    def makeCandidate(label: String) = {
-
-      new Candidate(
-        /* value    = */ label,
-        /* displ    = */ stripBackTicks(label), // displayed value
-        /* group    = */ null,  // can be used to group completions together
-        /* descr    = */ null,  // TODO use for documentation?
-        /* suffix   = */ null,
-        /* key      = */ null,
-        /* complete = */ false  // if true adds space when completing
-      )
-    }
-
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
     if expr.startsWith(":") then
       ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => makeCandidate(command._1)
+        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
       }
     else
       given state: State = newRun(state0)
@@ -259,16 +292,15 @@ class ReplDriver(settings: Array[String],
           unit.tpdTree = tpdTree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
-          val completions = try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
-          completions.map(_.label).distinct.map(makeCandidate)
+          try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
         }
         .getOrElse(Nil)
   end completions
 
-  protected def interpret(res: ParseResult, quiet: Boolean = false)(using state: State): State = {
+  protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state, quiet)
+        compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
@@ -286,7 +318,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
-  private def compile(parsed: Parsed, istate: State, quiet: Boolean = false): State = {
+  private def compile(parsed: Parsed, istate: State): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
       case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
@@ -337,11 +369,9 @@ class ReplDriver(settings: Array[String],
               given Ordering[Diagnostic] =
                 Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              if (!quiet) {
-                (definitions ++ warnings)
-                  .sorted
-                  .foreach(printDiagnostic)
-              }
+              (if istate.quiet then warnings else definitions ++ warnings)
+                .sorted
+                .foreach(printDiagnostic)
 
               updatedState
             }
@@ -485,6 +515,65 @@ class ReplDriver(settings: Array[String],
         state
       }
 
+    case Require(path) =>
+      out.println(":require is no longer supported, but has been replaced with :jar. Please use :jar")
+      state
+
+    case JarCmd(path) =>
+      val jarFile = AbstractFile.getDirectory(path)
+      if (jarFile == null)
+        out.println(s"""Cannot add "$path" to classpath.""")
+        state
+      else
+        def flatten(f: AbstractFile): Iterator[AbstractFile] =
+          if (f.isClassContainer) f.iterator.flatMap(flatten)
+          else Iterator(f)
+
+        def tryClassLoad(classFile: AbstractFile): Option[String] = {
+          val input = classFile.input
+          try {
+            val reader = new ClassReader(input)
+            val clsName = reader.getClassName.replace('/', '.')
+            rendering.myClassLoader.loadClass(clsName)
+            Some(clsName)
+          } catch
+            case _: ClassNotFoundException => None
+          finally {
+            input.close()
+          }
+        }
+
+        try {
+          val entries = flatten(jarFile)
+
+          val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
+          if (existingClass.nonEmpty)
+            out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+          else inContext(state.context):
+            val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+            val prevOutputDir = ctx.settings.outputDir.value
+
+            // add to compiler class path
+            ctx.platform.addToClassPath(jarClassPath)
+            SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+
+            // new class loader with previous output dir and specified jar
+            val prevClassLoader = rendering.classLoader()
+            val jarClassLoader = fromURLsParallelCapable(
+              jarClassPath.asURLs, prevClassLoader)
+            rendering.myClassLoader = new AbstractFileClassLoader(
+              prevOutputDir, jarClassLoader)
+
+            out.println(s"Added '$path' to classpath.")
+        } catch {
+          case e: Throwable =>
+            out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
+        }
+        state
+
+    case KindOf(expr) =>
+      out.println(s"""The :kind command is not currently supported.""")
+      state
     case TypeOf(expr) =>
       expr match {
         case "" => out.println(s":type <expression>")
@@ -507,6 +596,10 @@ class ReplDriver(settings: Array[String],
       }
       state
 
+    case Sh(expr) =>
+      out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")
+      state
+
     case Settings(arg) => arg match
       case "" =>
         given ctx: Context = state.context
@@ -516,6 +609,8 @@ class ReplDriver(settings: Array[String],
       case _  =>
         rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
         state.copy(context = rootCtx)
+
+    case Silent => state.copy(quiet = !state.quiet)
 
     case Quit =>
       // end of the world!
@@ -533,6 +628,7 @@ class ReplDriver(settings: Array[String],
   private object ReplConsoleReporter extends ConsoleReporter.AbstractConsoleReporter {
     override def posFileStr(pos: SourcePosition) = "" // omit file paths
     override def printMessage(msg: String): Unit = out.println(msg)
+    override def echoMessage(msg: String): Unit  = printMessage(msg)
     override def flush()(using Context): Unit    = out.flush()
   }
 

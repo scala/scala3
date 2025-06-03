@@ -130,14 +130,15 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
     assertTyped(tree)
+    val typeargs1 = tree.typeargs.mapconserve(typedType(_))
     val args1 = tree.args.mapconserve(typedExpr(_))
     val patternTpe =
-      if args1.isEmpty then tree.typeOpt
+      if !typeargs1.isEmpty then QuotesAndSplices.PolyFunctionOf(typeargs1.map(_.tpe), args1.map(_.tpe), tree.typeOpt)
+      else if args1.isEmpty then tree.typeOpt
       else defn.FunctionType(args1.size).appliedTo(args1.map(_.tpe) :+ tree.typeOpt)
     val bodyCtx = spliceContext.addMode(Mode.Pattern).retractMode(Mode.QuotedPatternBits)
     val body1 = typed(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patternTpe))(using bodyCtx)
-    val args = tree.args.mapconserve(typedExpr(_))
-    untpd.cpy.SplicePattern(tree)(body1, args1).withType(tree.typeOpt)
+    untpd.cpy.SplicePattern(tree)(body1, typeargs1, args1).withType(tree.typeOpt)
 
   override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
     promote(tree)
@@ -170,13 +171,6 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def addCanThrowCapabilities(expr: untpd.Tree, cases: List[CaseDef])(using Context): untpd.Tree =
     expr
 
-  override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    try super.typedUnadapted(tree, pt, locked)
-    catch case NonFatal(ex) if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase && !ctx.run.enrichedErrorMessage =>
-      val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
-      println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
-      throw ex
-
   override def inlineExpansion(mdef: DefDef)(using Context): List[Tree] = mdef :: Nil
 
   override def inferView(from: Tree, to: Type)(using Context): Implicits.SearchResult =
@@ -189,4 +183,5 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context): Unit = ()
   override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean = true
   override protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree = promote(call)
+  override protected def migrate[T](migration: => T, disabled: => T = ()): T = disabled
 }

@@ -93,4 +93,4 @@ stricter checking.
 
 ## Reference
 
-For more information, see [Issue #2570](https://github.com/lampepfl/dotty/issues/2570) and [PR #2716](https://github.com/lampepfl/dotty/pull/2716).
+For more information, see [Issue #2570](https://github.com/scala/scala3/issues/2570) and [PR #2716](https://github.com/scala/scala3/pull/2716).

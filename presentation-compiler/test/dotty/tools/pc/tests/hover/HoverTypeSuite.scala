@@ -41,7 +41,7 @@ class HoverTypeSuite extends BaseHoverSuite:
     )
 
   // We should produce a shorter type but:
-  // https://github.com/lampepfl/dotty/issues/11683
+  // https://github.com/scala/scala3/issues/11683
   @Test def `enums` =
     check(
       """|
@@ -125,7 +125,7 @@ class HoverTypeSuite extends BaseHoverSuite:
    * As user can actually supply params to them by hand when
    * invoking the extension method, we always show them next to the
    * method itself.
-   * https://github.com/lampepfl/dotty/issues/13123
+   * https://github.com/scala/scala3/issues/13123
    */
   @Test def `extension-methods-complex` =
     check(
@@ -362,8 +362,35 @@ class HoverTypeSuite extends BaseHoverSuite:
          |object MyIntOut:
          |  extension (i: MyIntOut) def uneven = i.value % 2 == 1
          |
-         |val a = MyIntOut(1).un@@even
+         |object Test:
+         |  val a = MyIntOut(1).un@@even
          |""".stripMargin,
       """|extension (i: MyIntOut) def uneven: Boolean
          |""".stripMargin.hover,
     )
+
+  @Test def `recursive-enum-without-type` =
+    check(
+      """class Wrapper(n: Int):
+        |  extension (x: Int)
+        |    def + (y: Int) = new Wrap@@per(x) + y
+        |""".stripMargin,
+      """```scala
+        |def this(n: Int): Wrapper
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `recursive-enum-without-type-1` =
+    check(
+      """class Wrapper(n: Int):
+        |  def add(x: Int): Wrapper = ???
+        |  extension (x: Int)
+        |    def + (y: Int) = Wrap@@per(x).add(5)
+        |""".stripMargin,
+      """```scala
+        |def this(n: Int): Wrapper
+        |```
+        |""".stripMargin
+    )
+

@@ -1,0 +1,117 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO BUILD THE SCALA LAUNCHERS                   ###
+### HOW TO USE:                                                                                 ###
+###   - THSI WORKFLOW WILL PACKAGE THE ALL THE LAUNCHERS AND UPLOAD THEM TO GITHUB ARTIFACTS    ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - SEE THE WORFLOW FOR THE NAMES OF THE ARTIFACTS                                          ###
+###################################################################################################
+
+
+name: Build Scala Launchers
+run-name: Build Scala Launchers
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        type       : string
+        required   : true
+    outputs:
+      universal-id:
+        description: ID of the `universal` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.universal-id }}
+      linux-x86_64-id:
+        description: ID of the `linux x86-64` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.linux-x86_64-id }}
+      linux-aarch64-id:
+        description: ID of the `linux aarch64` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.linux-aarch64-id }}
+      mac-x86_64-id:
+        description: ID of the `mac x86-64` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.mac-x86_64-id }}
+      mac-aarch64-id:
+        description: ID of the `mac aarch64` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.mac-aarch64-id }}
+      win-x86_64-id:
+        description: ID of the `win x86-64` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.win-x86_64-id }}
+      win-x86_64-digest:
+        description: The SHA256 of the uploaded artifact (`win x86-64`)
+        value      : ${{ jobs.build.outputs.win-x86_64-digest }}
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      universal-id     : ${{ steps.universal.outputs.artifact-id }}
+      linux-x86_64-id  : ${{ steps.linux-x86_64.outputs.artifact-id }}
+      linux-aarch64-id : ${{ steps.linux-aarch64.outputs.artifact-id }}
+      mac-x86_64-id    : ${{ steps.mac-x86_64.outputs.artifact-id }}
+      mac-aarch64-id   : ${{ steps.mac-aarch64.outputs.artifact-id }}
+      win-x86_64-id    : ${{ steps.win-x86_64.outputs.artifact-id }}
+      win-x86_64-digest: ${{ steps.win-x86_64-digest.outputs.digest }}
+    env:
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          cache       : sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Build and pack the SDK (universal)
+        run : ./project/scripts/sbt dist/Universal/stage
+      - name: Build and pack the SDK (linux x86-64)
+        run : ./project/scripts/sbt dist-linux-x86_64/Universal/stage
+      - name: Build and pack the SDK (linux aarch64)
+        run : ./project/scripts/sbt dist-linux-aarch64/Universal/stage
+      - name: Build and pack the SDK (mac x86-64)
+        run : ./project/scripts/sbt dist-mac-x86_64/Universal/stage
+      - name: Build and pack the SDK (mac aarch64)
+        run : ./project/scripts/sbt dist-mac-aarch64/Universal/stage
+      - name: Build and pack the SDK (win x86-64)
+        run : ./project/scripts/sbt dist-win-x86_64/Universal/stage
+      - name: Upload zip archive to GitHub Artifact (universal)
+        uses: actions/upload-artifact@v4
+        id  : universal
+        with:
+          path: ./dist/target/universal/stage
+          name: scala3-universal
+      - name: Upload zip archive to GitHub Artifact (linux x86-64)
+        uses: actions/upload-artifact@v4
+        id  : linux-x86_64
+        with:
+          path: ./dist/linux-x86_64/target/universal/stage
+          name: scala3-x86_64-pc-linux
+      - name: Upload zip archive to GitHub Artifact (linux aarch64)
+        uses: actions/upload-artifact@v4
+        id  : linux-aarch64
+        with:
+          path: ./dist/linux-aarch64/target/universal/stage
+          name: scala3-aarch64-pc-linux
+      - name: Upload zip archive to GitHub Artifact (mac x86-64)
+        uses: actions/upload-artifact@v4
+        id  : mac-x86_64
+        with:
+          path: ./dist/mac-x86_64/target/universal/stage
+          name: scala3-x86_64-apple-darwin
+      - name: Upload zip archive to GitHub Artifact (mac aarch64)
+        uses: actions/upload-artifact@v4
+        id  : mac-aarch64
+        with:
+          path: ./dist/mac-aarch64/target/universal/stage
+          name: scala3-aarch64-apple-darwin
+      - name: Upload zip archive to GitHub Artifact (win x86-64)
+        uses: actions/upload-artifact@v4
+        id  : win-x86_64
+        with:
+          path: ./dist/win-x86_64/target/universal/stage
+          name: scala3-x86_64-pc-win32
+      - name: Compute SHA256 of the uploaded artifact (win x86-64)
+        id  : win-x86_64-digest
+        run : |
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
+          echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"

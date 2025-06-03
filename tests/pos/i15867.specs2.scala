@@ -1,5 +1,5 @@
 class Foo:
-  given Conversion[String, Data] with
+  given Conversion[String, Data]:
     def apply(str: String): Data = new Data(str)
 
   class Data(str: String):

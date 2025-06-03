@@ -4,7 +4,7 @@ object Test:
 
   trait Arrow {type Dom; type Codom}
 
-  given composeArrows[A, Arr1 <: Arrow, Arr2 <: Arrow]: Composable[Arr1 {type Dom = A}, Arr2 {type Codom = A}] with
+  given composeArrows: [A, Arr1 <: Arrow, Arr2 <: Arrow] => Composable[Arr1 {type Dom = A}, Arr2 {type Codom = A}]:
     def compose(a: Arr1 {type Dom = A}, b: Arr2 {type Codom = A}): Arrow {type Dom = b.Dom; type Codom = a.Codom} = ???
 
   object arr1 extends Arrow { type Dom = Int; type Codom = Int}

@@ -1,0 +1,94 @@
+-- [E007] Type Mismatch Error: tests/neg/wildcard-match.scala:31:13 ----------------------------------------------------
+31 |  val _: C = a1  // error
+   |             ^^
+   |             Found:    CovElem[Y]
+   |             Required: C
+   |
+   |             where:    Y is a type in method f with bounds <: Cov[C]
+   |
+   |
+   |             Note: a match type could not be fully reduced:
+   |
+   |               trying to reduce  CovElem[Y]
+   |               failed since selector Y
+   |               does not uniquely determine parameter a in
+   |                 case Cov[a] => a
+   |               The computed bounds for the parameter are:
+   |                 a <: C
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/wildcard-match.scala:34:13 ----------------------------------------------------
+34 |  val _: C = a2  // error
+   |             ^^
+   |             Found:    ContravElem[Z]
+   |             Required: C
+   |
+   |             where:    Z is a type in method f with bounds <: Contrav[C]
+   |
+   |
+   |             Note: a match type could not be fully reduced:
+   |
+   |               trying to reduce  ContravElem[Z]
+   |               failed since selector Z
+   |               does not uniquely determine parameter a in
+   |                 case Contrav[a] => a
+   |               The computed bounds for the parameter are:
+   |                 a >: C
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/wildcard-match.scala:40:19 ----------------------------------------------------
+40 |  val _: List[C] = b1  // error
+   |                   ^^
+   |                   Found:    CovToList[Y]
+   |                   Required: List[C]
+   |
+   |                   where:    Y is a type in method f with bounds <: Cov[C]
+   |
+   |
+   |                   Note: a match type could not be fully reduced:
+   |
+   |                     trying to reduce  CovToList[Y]
+   |                     failed since selector Y
+   |                     does not uniquely determine parameter a in
+   |                       case Cov[a] => List[a]
+   |                     The computed bounds for the parameter are:
+   |                       a <: C
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/wildcard-match.scala:43:19 ----------------------------------------------------
+43 |  val _: List[C] = b2  // error
+   |                   ^^
+   |                   Found:    ContravElem[Z]
+   |                   Required: List[C]
+   |
+   |                   where:    Z is a type in method f with bounds <: Contrav[C]
+   |
+   |
+   |                   Note: a match type could not be fully reduced:
+   |
+   |                     trying to reduce  ContravElem[Z]
+   |                     failed since selector Z
+   |                     does not uniquely determine parameter a in
+   |                       case Contrav[a] => a
+   |                     The computed bounds for the parameter are:
+   |                       a >: C
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E172] Type Error: tests/neg/wildcard-match.scala:61:33 -------------------------------------------------------------
+61 |  summon[tuples.length[T2] =:= 3] // error
+   |                                 ^
+   |                                 Cannot prove that shapeless.tuples.length[T2] =:= (3 : Int).
+   |
+   |                                 where:    T2 is a type in method testShapeless with bounds <: (Int, Int, Int)
+   |
+   |
+   |                                 Note: a match type could not be fully reduced:
+   |
+   |                                   trying to reduce  shapeless.tuples.length[T2]
+   |                                   trying to reduce  Tuple.Size[shapeless.tuples.to[T2]]
+   |                                   failed since selector shapeless.tuples.to[T2]
+   |                                   does not uniquely determine parameters x, xs in
+   |                                     case x *: xs => scala.compiletime.ops.int.S[Tuple.Size[xs]]
+   |                                   The computed bounds for the parameters are:
+   |                                     x <: Int
+   |                                     xs <: (Int, Int)

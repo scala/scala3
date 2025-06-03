@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
 
@@ -40,7 +40,7 @@ object AutoImports:
     case class Select(qual: SymbolIdent, name: String) extends SymbolIdent:
       def value: String = s"${qual.value}.$name"
 
-    def direct(name: String): SymbolIdent = Direct(name)
+    def direct(name: String)(using Context): SymbolIdent = Direct(name)
 
     def fullIdent(symbol: Symbol)(using Context): SymbolIdent =
       val symbols = symbol.ownersIterator.toList
@@ -70,7 +70,7 @@ object AutoImports:
       importSel: Option[ImportSel]
   ):
 
-    def name: String = ident.value
+    def name(using Context): String = ident.value
 
   object SymbolImport:
 
@@ -189,10 +189,13 @@ object AutoImports:
                 ownerImport.importSel,
               )
             else
-              (
-                SymbolIdent.direct(symbol.nameBackticked),
-                Some(ImportSel.Direct(symbol)),
-              )
+              renames(symbol) match
+                case Some(rename) => (SymbolIdent.direct(rename), None)
+                case None =>
+                  (
+                    SymbolIdent.direct(symbol.nameBackticked),
+                    Some(ImportSel.Direct(symbol)),
+                  )
           end val
 
           SymbolImport(
@@ -223,9 +226,13 @@ object AutoImports:
                 importSel
               )
             case None =>
+              val reverse = symbol.ownersIterator.toList.reverse
+              val fullName = reverse.drop(1).foldLeft(SymbolIdent.direct(reverse.head.nameBackticked)){
+                case (acc, sym) => SymbolIdent.Select(acc, sym.nameBackticked(false))
+              }
               SymbolImport(
                 symbol,
-                SymbolIdent.direct(symbol.fullNameBackticked),
+                SymbolIdent.Direct(symbol.fullNameBackticked),
                 None
               )
           end match
@@ -252,7 +259,6 @@ object AutoImports:
         val topPadding =
           if importPosition.padTop then "\n"
           else ""
-
         val formatted = imports
           .map {
             case ImportSel.Direct(sym) => importName(sym)
@@ -267,9 +273,17 @@ object AutoImports:
     end renderImports
 
     private def importName(sym: Symbol): String =
-      if indexedContext.importContext.toplevelClashes(sym) then
+      if indexedContext.toplevelClashes(sym, inImportScope = true) then
         s"_root_.${sym.fullNameBackticked(false)}"
-      else sym.fullNameBackticked(false)
+      else
+        sym.ownersIterator.zipWithIndex.foldLeft((List.empty[String], false)) { case ((acc, isDone), (sym, idx)) =>
+          if(isDone || sym.isEmptyPackage || sym.isRoot) (acc, true)
+          else indexedContext.rename(sym) match
+            // we can't import first part
+            case Some(renamed) if idx != 0 => (renamed :: acc, true)
+            case _ if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
+            case _ => (acc, false)
+        }._1.mkString(".")
   end AutoImportsGenerator
 
   private def autoImportPosition(
@@ -302,11 +316,25 @@ object AutoImports:
           }.headOption
         case _ => None
 
-    def skipUsingDirectivesOffset =
+    def firstMemberDefinitionStart(tree: Tree)(using Context): Option[Int] =
+      tree match
+        case PackageDef(_, stats) =>
+          stats.flatMap {
+            case s: PackageDef => firstMemberDefinitionStart(s)
+            case stat if stat.span.exists => Some(stat.span.start)
+            case _ => None
+          }.headOption
+        case _ => None
+
+
+    def skipUsingDirectivesOffset(firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)): Int =
+      val firstObjectLine = pos.source.offsetToLine(firstObjectPos)
+
       comments
         .takeWhile(comment =>
-          !comment.isDocComment && comment.span.end < firstObjectBody(tree)
-            .fold(0)(_.span.start)
+          val commentLine = pos.source.offsetToLine(comment.span.end)
+          val isFirstObjectComment = commentLine + 1 == firstObjectLine && !comment.raw.startsWith("//>")
+          commentLine < firstObjectLine && !isFirstObjectComment
         )
         .lastOption
         .fold(0)(_.span.end + 1)
@@ -318,7 +346,7 @@ object AutoImports:
         val (lineNumber, padTop) = lastImportStatement match
           case Some(stm) => (stm.endPos.line + 1, false)
           case None if pkg.pid.symbol.isEmptyPackage =>
-            (pos.source.offsetToLine(skipUsingDirectivesOffset), false)
+            (pos.source.offsetToLine(skipUsingDirectivesOffset()), false)
           case None =>
             val pos = pkg.pid.endPos
             val line =
@@ -330,7 +358,7 @@ object AutoImports:
         new AutoImportPosition(offset, text, padTop)
       }
 
-    def forScript(isAmmonite: Boolean): Option[AutoImportPosition] =
+    def forScript(path: String): Option[AutoImportPosition] =
       firstObjectBody(tree).map { tmpl =>
         val lastImportStatement =
           tmpl.body.takeWhile(_.isInstanceOf[Import]).lastOption
@@ -340,10 +368,11 @@ object AutoImports:
             offset
           case None =>
             val scriptOffset =
-              if isAmmonite then
-                ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
-              else
-                ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
+              if path.isAmmoniteGeneratedFile
+              then ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
+              else if path.isScalaCLIGeneratedFile
+              then ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
+              else Some(skipUsingDirectivesOffset(tmpl.span.start))
 
             scriptOffset.getOrElse {
               val tmplPoint = tmpl.self.srcPos.span.point
@@ -359,14 +388,16 @@ object AutoImports:
 
     def fileStart =
       AutoImportPosition(
-        skipUsingDirectivesOffset,
+        skipUsingDirectivesOffset(),
         0,
         padTop = false
       )
 
     val scriptPos =
-      if path.isAmmoniteGeneratedFile then forScript(isAmmonite = true)
-      else if path.isScalaCLIGeneratedFile then forScript(isAmmonite = false)
+      if path.isAmmoniteGeneratedFile ||
+         path.isScalaCLIGeneratedFile ||
+         path.isWorksheet
+      then forScript(path)
       else None
 
     scriptPos

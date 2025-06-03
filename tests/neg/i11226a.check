@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg/i11226a.scala:12:48 -----------------------------------------------------------
+12 |  def test(a: ActorRef): Unit = bus.unsubscribe(a) // error
+   |                                                ^
+   |               Found:    (a : ActorRef)
+   |               Required: Unsubscriber.this.bus.Subscriber
+   |
+   |               Note that I could not resolve reference Unsubscriber.this.bus.Subscriber.
+   |               Subscriber exists as a member of the self type ActorEventBus of trait ManagedActorClassification
+   |               but it cannot be called on a receiver whose type does not extend trait ManagedActorClassification
+   |                                
+   |
+   | longer explanation available when compiling with `-explain`

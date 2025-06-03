@@ -137,7 +137,7 @@ object Flags {
     def flagStrings(privateWithin: String = ""): Seq[String] = {
       var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))
-      	rawStrings = rawStrings :+ "private"
+        rawStrings :+= "private"
       val scopeStr = if (x.is(Local)) "this" else privateWithin
       if (scopeStr != "")
         rawStrings.filter(_ != "<local>").map {
@@ -242,7 +242,7 @@ object Flags {
   val (AccessorOrSealed @ _, Accessor @ _, Sealed @ _) = newFlags(11, "<accessor>", "sealed")
 
   /** A mutable var, an open class */
-  val (MutableOrOpen @ __, Mutable @ _, Open @ _) = newFlags(12, "mutable", "open")
+  val (MutableOrOpen @ _, Mutable @ _, Open @ _) = newFlags(12, "mutable", "open")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -363,7 +363,7 @@ object Flags {
   val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
 
   /** An export forwarder */
-  val (Exported @ _, _, _) = newFlags(41, "exported")
+  val (Exported @ _, ExportedTerm @ _, ExportedType @ _) = newFlags(41, "exported")
 
   /** Labeled with `erased` modifier (erased value or class)  */
   val (Erased @ _, _, _) = newFlags(42, "erased")
@@ -376,6 +376,9 @@ object Flags {
 
   /** Symbol cannot be found as a member during typer */
   val (Invisible @ _, _, _) = newFlags(45, "<invisible>")
+
+  /** Tracked modifier for class parameter / a class with some tracked parameters */
+  val (Tracked @ _, _, Dependent @ _) = newFlags(46, "tracked")
 
   // ------------ Flags following this one are not pickled ----------------------------------
 
@@ -452,7 +455,7 @@ object Flags {
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
 
   val TermSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Tracked
 
   /** Flags representing modifiers that can appear in trees */
   val ModifierFlags: FlagSet =
@@ -466,7 +469,7 @@ object Flags {
   val FromStartFlags: FlagSet = commonFlags(
     Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessor,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
-    OuterOrCovariant, LabelOrContravariant, CaseAccessor,
+    OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
     SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
 
@@ -532,8 +535,16 @@ object Flags {
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
-  /** Flags retained in export forwarders */
-  val RetainedExportFlags = Given | Implicit | Inline | Transparent
+  /** Flags retained in term export forwarders */
+  val RetainedExportTermFlags = Infix | Given | Implicit | Inline | Transparent | Erased | HasDefaultParams | NoDefaultParams | ExtensionMethod
+
+  /** Flags retained in parameters of term export forwarders */
+  val RetainedExportTermParamFlags = Given | Implicit | Erased | HasDefault | Inline
+
+  val MandatoryExportTermFlags = Exported | Method | Final
+
+  /** Flags retained in type export forwarders */
+  val RetainedExportTypeFlags = Infix
 
   /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
@@ -558,10 +569,12 @@ object Flags {
   val ConstructorProxyModule: FlagSet        = ConstructorProxy | Module
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter
   val DeferredInline: FlagSet                = Deferred | Inline
+  val DeferredMethod: FlagSet                = Deferred | Method
   val DeferredOrLazy: FlagSet                = Deferred | Lazy
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
+  val DeferredGivenFlags: FlagSet            = Deferred | Given | HasDefault
   val EnumValue: FlagSet                     = Enum | StableRealizable                        // A Scala enum value
   val FinalOrInline: FlagSet                 = Final | Inline
   val FinalOrModuleClass: FlagSet            = Final | ModuleClass                            // A module class or a final class
@@ -574,6 +587,7 @@ object Flags {
   val LazyGiven: FlagSet                     = Given | Lazy
   val InlineOrProxy: FlagSet                 = Inline | InlineProxy                           // An inline method or inline argument proxy */
   val InlineMethod: FlagSet                  = Inline | Method
+  val InlineImplicitMethod: FlagSet          = Implicit | InlineMethod
   val InlineParam: FlagSet                   = Inline | Param
   val InlineByNameProxy: FlagSet             = InlineProxy | Method
   val JavaEnum: FlagSet                      = JavaDefined | Enum                             // A Java enum trait
@@ -583,7 +597,6 @@ object Flags {
   val JavaInterface: FlagSet                 = JavaDefined | NoInits | Trait
   val JavaProtected: FlagSet                 = JavaDefined | Protected
   val MethodOrLazy: FlagSet                  = Lazy | Method
-  val MutableOrLazy: FlagSet                 = Lazy | Mutable
   val MethodOrLazyOrMutable: FlagSet         = Lazy | Method | Mutable
   val LiftedMethod: FlagSet                  = Lifted | Method
   val LocalParam: FlagSet                    = Local | Param

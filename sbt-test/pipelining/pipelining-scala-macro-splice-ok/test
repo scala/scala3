@@ -1,0 +1,3 @@
+# shows that it is ok to depend on a class, defined in the same project,
+# in a macro implementation. Compilation will suspend at typer.
+> m/run

@@ -53,7 +53,7 @@ object BugExp4Point2D {
 class C
 
 object Container:
-  given C with {}
+  given C()
 
 object Test:
   extension (x: String)(using C)

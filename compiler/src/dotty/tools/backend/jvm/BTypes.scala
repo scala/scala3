@@ -16,8 +16,6 @@ import scala.tools.asm
  */
 abstract class BTypes { self =>
   val frontendAccess: PostProcessorFrontendAccess
-  import frontendAccess.{frontendSynch}
-
   val int: DottyBackendInterface
   import int.given
   /**

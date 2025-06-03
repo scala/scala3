@@ -40,12 +40,12 @@ object Test extends App {
     add(lit(8), neg(add(lit(1), lit(2))))
 
   // Base operations as type classes
-  given Exp[Int] with
+  given Exp[Int]:
     def lit(i: Int): Int = i
     def neg(t: Int): Int = -t
     def add(l: Int, r: Int): Int = l + r
 
-  given Exp[String] with
+  given Exp[String]:
     def lit(i: Int): String = i.toString
     def neg(t: String): String = s"(-$t)"
     def add(l: String, r: String): String = s"($l + $r)"
@@ -65,10 +65,10 @@ object Test extends App {
   def tfm1[T: Exp : Mult] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2[T: Exp : Mult] = mul(lit(7), tf1)
 
-  given Mult[Int] with
+  given Mult[Int]:
     def mul(l: Int, r: Int): Int = l * r
 
-  given Mult[String] with
+  given Mult[String]:
     def mul(l: String, r: String): String = s"$l * $r"
 
   println(tfm1[Int])
@@ -83,7 +83,7 @@ object Test extends App {
   }
   import Tree.*
 
-  given Exp[Tree] with Mult[Tree] with
+  given Exp[Tree], Mult[Tree]:
     def lit(i: Int): Tree = Node("Lit", Leaf(i.toString))
     def neg(t: Tree): Tree = Node("Neg", t)
     def add(l: Tree, r: Tree): Tree = Node("Add", l , r)
@@ -148,7 +148,7 @@ object Test extends App {
     def value[T](using Exp[T]): T
   }
 
-  given Exp[Wrapped] with
+  given Exp[Wrapped]:
     def lit(i: Int) = new Wrapped {
       def value[T](using e: Exp[T]): T = e.lit(i)
     }
@@ -190,7 +190,7 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  given [T](using e: Exp[T]): Exp[NCtx => T] with
+  given [T] => (e: Exp[T]) => Exp[NCtx => T]:
     import NCtx.*
     def lit(i: Int) = {
       case Pos => e.lit(i)
@@ -209,7 +209,7 @@ object Test extends App {
   println(pushNeg(tf1[NCtx => String]))
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
-  given [T](using e: Mult[T]): Mult[NCtx => T] with
+  given [T] => (e: Mult[T]) => Mult[NCtx => T]:
     import NCtx.*
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))
@@ -222,7 +222,7 @@ object Test extends App {
   import IExp.*
 
   // Going from type class encoding to ADT encoding
-  given initialize: Exp[IExp] with
+  given initialize: Exp[IExp]:
     def lit(i: Int): IExp = Lit(i)
     def neg(t: IExp): IExp = Neg(t)
     def add(l: IExp, r: IExp): IExp = Add(l, r)

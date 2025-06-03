@@ -50,4 +50,4 @@ convention is that the `Context` be an explicit parameter, to track its usage.
 | ...               | and so on                              |
 
 
-[Contexts]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Contexts.scala
+[Contexts]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Contexts.scala

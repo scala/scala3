@@ -754,7 +754,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       case tp =>
         report.warning(
           s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
-            "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
+            "If possible, please file a bug on https://github.com/scala/scala3/issues")
 
         tp match {
           case tp: ThisType if tp.cls == defn.ArrayClass => ObjectRef.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
@@ -795,7 +795,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
           report.error(
             em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
                  |signature: $sig
-                 |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
+                 |if this is reproducible, please report bug at https://github.com/scala/scala3/issues
                """, sym.sourcePos)
           throw  ex
       }
@@ -823,7 +823,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
     // without it.  This is particularly bad because the availability of
     // generic information could disappear as a consequence of a seemingly
     // unrelated change.
-      ctx.base.settings.YnoGenericSig.value
+      ctx.base.settings.XnoGenericSig.value
     || sym.is(Artifact)
     || sym.isAllOf(LiftedMethod)
     || sym.is(Bridge)

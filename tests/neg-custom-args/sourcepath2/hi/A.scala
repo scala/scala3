@@ -1,5 +1,6 @@
 // Missing `package hi`
 
-class Hello { // error
+class Hello { // warn
   val x: Int = 1
 }
+// nopos-error: werror

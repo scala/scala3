@@ -1,10 +1,10 @@
 -- Warning: tests/neg-macros/quote-type-variable-no-inference-3.scala:5:22 ---------------------------------------------
 5 |    case '{ $_ : F[t, t]; () } => // warn // error
   |                      ^
-  |                      Ignored bound <: Comparable[U]
+  |                      Ignored bound <: Comparable[Any]
   |
   |                      Consider defining bounds explicitly:
-  |                        '{ type t <: Comparable[U]; ... }
+  |                        '{ type t <: Comparable[Any]; ... }
 -- Warning: tests/neg-macros/quote-type-variable-no-inference-3.scala:6:49 ---------------------------------------------
 6 |    case '{ type u <: Comparable[`u`]; $_ : F[u, u] } =>
   |                                                 ^

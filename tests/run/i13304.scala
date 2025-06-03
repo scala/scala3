@@ -1,10 +1,10 @@
 trait Zero[F[_]]:
   def zero[A]: F[A]
 
-given Zero[List] with
+given Zero[List]:
   def zero[A] = List.empty[A]
 
-given Zero[Option] with
+given Zero[Option]:
   def zero[A] = Option.empty[A]
 
 

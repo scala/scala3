@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 
 import vulpix.FileDiff
 import vulpix.TestConfiguration
-import vulpix.TestConfiguration
+import vulpix.ParallelTesting
 import reporting.TestReporter
 
 import java.io._
@@ -25,7 +25,9 @@ import java.io.File
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
-    List(s"-Xprint:$phase", "-color:never", "-classpath", TestConfiguration.basicClasspath) ::: flags
+    val outDir = ParallelTesting.defaultOutputDir + "printing" + File.pathSeparator
+    File(outDir).mkdirs()
+    List(s"-Xprint:$phase", "-color:never", "-nowarn", "-d", outDir, "-classpath", TestConfiguration.basicClasspath) ::: flags
 
   private def compileFile(path: JPath, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala")
@@ -51,7 +53,7 @@ class PrintingTest {
 
   def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
-      .filter(f => f.extension == "scala")
+      .filter(f => f.ext.isScala)
       .map { f => compileFile(f.jpath, phase) }
 
     val failed = res.filter(!_)
@@ -66,6 +68,9 @@ class PrintingTest {
 
   @Test
   def printing: Unit = testIn("tests/printing", "typer")
+
+  @Test
+  def posttyper: Unit = testIn("tests/printing/posttyper", "posttyper")
 
   @Test
   def untypedPrinting: Unit = testIn("tests/printing/untyped", "parser")

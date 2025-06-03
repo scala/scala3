@@ -43,6 +43,7 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Open extends Modifier("open", true)
   case Transparent extends Modifier("transparent", true)
   case Infix extends Modifier("infix", true)
+  case AbsOverride extends Modifier("abstract override", true)
 
 case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[TermParameterList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
@@ -60,7 +61,7 @@ enum Kind(val name: String):
   case Trait(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList])
     extends Kind("trait") with Classlike
   case Enum(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList]) extends Kind("enum") with Classlike
-  case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
+  case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind(kind.name)
   case Def(paramLists: Seq[Either[TermParameterList,TypeParameterList]])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
@@ -143,12 +144,12 @@ object Signature:
 case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
 
 case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)], sealedNodes: Set[LinkToType] = Set.empty):
-  def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
+  def vertecies: Seq[LinkToType] = edges.flatten(using (a, b) => Seq(a, b)).distinct
   def verteciesWithId: Map[LinkToType, Int] = vertecies.zipWithIndex.toMap
   def +(edge: (LinkToType, LinkToType)): HierarchyGraph = this ++ Seq(edge)
-  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = 
+  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph =
     this.copy(edges = this.edges.view.concat(edges).distinct.toSeq)
-    
+
 object HierarchyGraph:
   def empty = HierarchyGraph(Seq.empty)
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges

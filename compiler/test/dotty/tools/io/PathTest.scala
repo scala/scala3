@@ -3,7 +3,7 @@ package dotty.tools.io
 import org.junit.Test
 
 class PathTest {
-  // Ref https://github.com/lampepfl/dotty/issues/11644#issuecomment-792457275
+  // Ref https://github.com/scala/scala3/issues/11644#issuecomment-792457275
   @Test def parent(): Unit = {
     testParent(Path(""), Directory(".."))
     testParent(Path("."), Directory(".."))

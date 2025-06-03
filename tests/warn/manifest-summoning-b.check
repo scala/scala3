@@ -1,0 +1,14 @@
+-- Deprecation Warning: tests/warn/manifest-summoning-b.scala:3:34 -----------------------------------------------------
+3 |val foo = manifest[List[? <: Int]] // warn
+  |                                  ^
+  |                                  Compiler synthesis of Manifest and OptManifest is deprecated, instead
+  |                                  replace with the type `scala.reflect.ClassTag[List[? <: Int]]`.
+  |                                  Alternatively, consider using the new metaprogramming features of Scala 3,
+  |                                  see https://docs.scala-lang.org/scala3/reference/metaprogramming.html
+-- Deprecation Warning: tests/warn/manifest-summoning-b.scala:4:41 -----------------------------------------------------
+4 |val bar = optManifest[Array[? <: String]] // warn
+  |                                         ^
+  |                                        Compiler synthesis of Manifest and OptManifest is deprecated, instead
+  |                                        replace with the type `scala.reflect.ClassTag[Array[? <: String]]`.
+  |                                        Alternatively, consider using the new metaprogramming features of Scala 3,
+  |                                        see https://docs.scala-lang.org/scala3/reference/metaprogramming.html

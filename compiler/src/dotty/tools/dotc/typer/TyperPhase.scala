@@ -12,6 +12,8 @@ import parsing.{Parser => ParserPhase}
 import config.Printers.typr
 import inlines.PrepareInlineable
 import util.Stats.*
+import dotty.tools.dotc.config.Feature
+import dotty.tools.dotc.config.SourceVersion
 
 /**
  *
@@ -41,7 +43,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   def typeCheck(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     try
-      if !unit.suspended then
+      if !unit.suspended then ctx.profiler.onUnit(ctx.phase, unit):
         unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
@@ -57,7 +59,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   }
 
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
-    (unit.isJava && !ctx.settings.YjavaTasty.value) || unit.suspended
+    (unit.isJava && !ctx.settings.XjavaTasty.value) || unit.suspended
 
   override val subPhases: List[SubPhase] = List(
     SubPhase("indexing"), SubPhase("typechecking"), SubPhase("checkingJava"))
@@ -83,7 +85,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
-        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
+        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists && Feature.sourceVersion == SourceVersion.future then
           report.error(
             """To support XML literals, your project must depend on scala-xml.
               |See https://github.com/scala/scala-xml for more information.""".stripMargin,

@@ -8,7 +8,8 @@
   |
   |                                         trying to reduce  Test.M[Test.Inv[Int] & Test.Inv[String]]
   |                                         failed since selector Test.Inv[Int] & Test.Inv[String]
-  |                                         is uninhabited (there are no values of that type).
+  |                                         does not match  case Test.Inv[u] => u
+  |                                         and cannot be shown to be disjoint from it either.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/6571.scala:7:39 ---------------------------------------------------------------
@@ -21,6 +22,7 @@
   |
   |                                         trying to reduce  Test.M[Test.Inv[String] & Test.Inv[Int]]
   |                                         failed since selector Test.Inv[String] & Test.Inv[Int]
-  |                                         is uninhabited (there are no values of that type).
+  |                                         does not match  case Test.Inv[u] => u
+  |                                         and cannot be shown to be disjoint from it either.
   |
   | longer explanation available when compiling with `-explain`

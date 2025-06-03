@@ -7,6 +7,7 @@ object Test {
   implicit val ba: Bar[Int] = ???
 
   def test: Unit = {
-    implicitly[Foo[Int]]
+    val x = summon[Foo[Int]]
+    val _: Bar[Int] = x
   }
 }

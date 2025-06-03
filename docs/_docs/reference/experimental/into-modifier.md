@@ -32,10 +32,10 @@ The `into` modifier on the type of `elems` means that implicit conversions can b
 `into` also allows conversions on the results of function arguments. For instance, consider the new proposed signature of the `flatMap` method on `List[A]`:
 
 ```scala
-  def flatMap[B](f: into A => IterableOnce[B]): List[B]
+  def flatMap[B](f: A => into IterableOnce[B]): List[B]
 ```
-This allows a conversion of the actual argument to the function type `A => IterableOnce[B]`. Crucially, it also allows that conversion to be applied to
-the function result. So the following would work:
+This accepts all actual arguments `f` that, when applied to an `A`, give a result
+that is convertible to `IterableOnce[B]`. So the following would work:
 ```scala
 scala> val xs = List(1, 2, 3)
 scala> xs.flatMap(x => x.toString * x)
@@ -49,7 +49,7 @@ When applied to a vararg parameter, `into` allows a conversion on each argument 
 number of `IterableOnce[Char]` arguments, and also allows implicit conversions into `IterableOnce[Char]`:
 
 ```scala
-def concatAll(xss: into IterableOnce[Char]*): List[Char] =
+def concatAll(xss: (into IterableOnce[Char])*): List[Char] =
   xss.foldLeft(List[Char]())(_ ++ _)
 ```
 Here, the call
@@ -58,24 +58,63 @@ concatAll(List('a'), "bc", Array('d', 'e'))
 ```
 would apply two _different_ implicit conversions: the conversion from `String` to `Iterable[Char]` gets applied to the second argument and the conversion from `Array[Char]` to `Iterable[Char]` gets applied to the third argument.
 
+Note that a vararg parameter type with into modifiers needs to be put in parentheses, as is shown in the example above. This is to make the precedence clear: each element of the argument sequence is converted by itself.
+
 ## Retrofitting Scala 2 libraries
 
-A new annotation `allowConversions` has the same effect as an `into` modifier. It is defined as an `@experimental` class in package `scala.annotation`. It is intended to be used for retrofitting Scala 2 library code so that Scala 3 conversions can be applied to arguments without language imports. For instance, the definitions of
+There is also an annotation `@into` in the `scala.annotation` package that has
+the same effect as an `into` modifier. It is intended to be used for retrofitting Scala 2 library code so that Scala 3 conversions can be applied to arguments without language imports. For instance, the definitions of
 `++` and `flatMap` in the Scala 2.13 `List` class could be retrofitted as follows.
 ```scala
-  def ++ (@allowConversions elems: IterableOnce[A]): List[A]
-  def flatMap[B](@allowConversions f: A => IterableOnce[B]): List[B]
+  def ++ (elems: IterableOnce[A] @into): List[A]
+  def flatMap[B](f: A => IterableOnce[B] @into): List[B]
 ```
-For Scala 3 code, the `into` modifier is preferred. First, because it is shorter,
-and second, because it adheres to the principle that annotations should not influence
-typing and type inference in Scala.
+For Scala 3 code, the `into` modifier is preferred, because it adheres to the principle that annotations should not influence typing and type inference in Scala.
+
+## Restrictions
+
+The `into` modifier is only allowed in the types of method parameters. It can be given either for the whole type, or some result type of a top-level function type, but not anywhere else. The `into` modifier does not propagate outside the method. In particular, a partially applied method does not propagate `into` modifiers to its result.
+
+**Example:**
+
+Say we have
+```scala
+def f(x: Int)(y: into Text): Unit
+```
+then
+```scala
+f(3) : Text => Unit
+```
+Note the `into` modifier is not longer present on the type of `f(3)`. Therefore, follow-on arguments to `f(3)` do not allow implicit conversions. Generally it is not possible to
+define function types that allow implicit conversions on their arguments, but it is possible to define SAM types that allow conversions. E.g.
+```scala
+trait ConvArg:
+  def apply(x: into Text): Unit
+
+val x: ConvArg = f(3)(_)
+```
+
+Note this is similar to the way vararg parameters are handled in Scala. If we have
+```scala
+def g(x: Int)(y: Int*): Unit
+```
+then
+```scala
+g(4) : Seq[Int] => Unit
+```
+Observe that the vararg annotation also got dropped in the result type of `g(4)`.
 
 ## Syntax changes
 
 The addition to the grammar is:
 ```
-ParamType        ::=  [‘=>’] ParamValueType
-ParamValueType   ::=  [‘into‘] ExactParamType
-ExactParamType   ::=  Type [‘*’]
+ParamType         ::=  [‘=>’] ParamValueType
+ParamValueType    ::=  Type [‘*’]
+                    |  IntoType
+                    |  ‘(’ IntoType ‘)’ ‘*’
+IntoType          ::=  [‘into’] IntoTargetType
+                    |  ‘(’ IntoType ‘)’
+IntoTargetType    ::=  Type
+                    |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
 ```
-As the grammar shows, `into` can only applied to the type of a parameter; it is illegal in other positions.
+As the grammar shows, `into` can only applied in the type of a parameter; it is illegal in other positions. Also, `into` modifiers in vararg types have to be enclosed in parentheses.

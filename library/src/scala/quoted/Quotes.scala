@@ -1,7 +1,6 @@
 package scala.quoted
 
-import scala.annotation.experimental
-import scala.annotation.implicitNotFound
+import scala.annotation.{experimental, implicitNotFound, unused}
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -211,6 +210,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- MatchCase
    *               +- TypeBounds
    *               +- NoPrefix
+   *               +- FlexibleType
+   *
+   *  +- MethodTypeKind -+- Contextual
+   *                     +- Implicit
+   *                     +- Plain
    *
    *  +- Selector -+- SimpleSelector
    *               +- RenameSelector
@@ -589,8 +593,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DefDefModule { this: DefDef.type =>
       /** Create a method definition `def f[..](...)` with the signature defined in the symbol.
        *
-       *  The `rhsFn` is a function that receives references to its parameters and should return
-       *  `Some` containing the implementation of the method. Returns `None` the method has no implementation.
+       *  The `rhsFn` is a function that receives references to its parameters, and should return
+       *  `Some` containing the implementation of the method, or `None` if the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
        *  Use `Symbol.asQuotes` to create the rhs using quoted code.
@@ -666,8 +670,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ValDefModule { this: ValDef.type =>
       /** Create a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
        *
-       *  The `rhs` should return be `Some` containing the implementation of the method.
-       *  Returns `None` the method has no implementation.
+       *  The `rhs` should return `Some` containing the implementation of the method,
+       *  or `None` if the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
        *  Use `Symbol.asQuotes` to create the rhs using quoted code.
@@ -774,14 +778,47 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Term` */
     trait TermModule { this: Term.type =>
 
-      /** Returns a term that is functionally equivalent to `t`,
+     /** Returns a term that is functionally equivalent to `t`,
       *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
-      *  then it optimizes this the top most call by returning the `Some`
-      *  with the result of beta-reducing the application.
+      *  then it optimizes the top most call by returning `Some`
+      *  with the result of beta-reducing the function application.
+      *  Similarly, all outermost curried function applications will be beta-reduced, if possible.
       *  Otherwise returns `None`.
       *
-      *   To retain semantics the argument `ei` is bound as `val yi = ei` and by-name arguments to `def yi = ei`.
-      *   Some bindings may be elided as an early optimization.
+      *  To retain semantics the argument `ei` is bound as `val yi = ei` and by-name arguments to `def yi = ei`.
+      *  Some bindings may be elided as an early optimization.
+      *
+      *  Example:
+      *  ```scala sc:nocompile
+      *  ((a: Int, b: Int) => a + b).apply(x, y)
+      *  ```
+      *  will be reduced to
+      *  ```scala sc:nocompile
+      *  val a = x
+      *  val b = y
+      *  a + b
+      *  ```
+      *
+      *  Generally:
+      *  ```scala sc:nocompile
+      *  ([X1, Y1, ...] => (x1, y1, ...) => ... => [Xn, Yn, ...] => (xn, yn, ...) => f[X1, Y1, ..., Xn, Yn, ...](x1, y1, ..., xn, yn, ...))).apply[Tx1, Ty1, ...](myX1, myY1, ...)....apply[Txn, Tyn, ...](myXn, myYn, ...)
+      *  ```
+      *  will be reduced to
+      *  ```scala sc:nocompile
+      *  type X1 = Tx1
+      *  type Y1 = Ty1
+      *  ...
+      *  val x1 = myX1
+      *  val y1 = myY1
+      *  ...
+      *  type Xn = Txn
+      *  type Yn = Tyn
+      *  ...
+      *  val xn = myXn
+      *  val yn = myYn
+      *  ...
+      *  f[X1, Y1, ..., Xn, Yn, ...](x1, y1, ..., xn, yn, ...)
+      *  ```
       */
       def betaReduce(term: Term): Option[Term]
 
@@ -869,10 +906,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  If `sym` refers to a class member `foo` in class `C`,
       *  returns a tree representing `C.this.foo`.
       *
+      *  If `sym` refers to an object member `foo` in object C, itself in prefix
+      *  `pre` (which might include `.this`, if it contains a class),
+      *  returns `pre.C.foo`.
+      *
       *  If `sym` refers to a local definition `foo`, returns
       *  a tree representing `foo`.
       *
-      *  @note In both cases, the constructed tree should only
+      *  @note In all cases, the constructed tree should only
       *  be spliced into the places where such accesses make sense.
       *  For example, it is incorrect to have `C.this.foo` outside
       *  the class body of `C`, or have `foo` outside the lexical
@@ -1637,10 +1678,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *    val q: Quotes = summon[Quotes]
      *    import q.reflect._
      *  //}
-     *    val intArgs = List(Literal(Constant(1)), Literal(Constant(2)))
+     *    val intArgs = List(Literal(IntConstant(1)), Literal(IntConstant(2)))
      *    Typed(
-     *     Repeated(intArgs, TypeTree.of[Int]),
-     *     Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *      Repeated(intArgs, TypeTree.of[Int]),
+     *      Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *    )
      *  //{
      *  }
      *  //}
@@ -2442,10 +2484,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        // TODO:deprecate in 3.4 and stabilize `erasedArgs` and `hasErasedArgs`.
-        // @deprecated("Use `hasErasedArgs`","3.4")
+        @deprecated("Use `hasErasedArgs` and `erasedArgs`", "3.4")
         def isErased: Boolean
-
         /** List of `erased` flags for each parameter of the clause */
         @experimental
         def erasedArgs: List[Boolean]
@@ -2508,6 +2548,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SimpleSelector` */
     trait SimpleSelectorModule { this: SimpleSelector.type =>
+      @experimental def apply(name: String): SimpleSelector
       def unapply(x: SimpleSelector): Some[String]
     }
 
@@ -2533,6 +2574,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RenameSelector` */
     trait RenameSelectorModule { this: RenameSelector.type =>
+      @experimental def apply(fromName: String, toName: String): RenameSelector
       def unapply(x: RenameSelector): (String, String)
     }
 
@@ -2560,6 +2602,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val OmitSelector` */
     trait OmitSelectorModule { this: OmitSelector.type =>
+      @experimental def apply(name: String): OmitSelector
       def unapply(x: OmitSelector): Some[String]
     }
 
@@ -2584,6 +2627,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val GivenSelector` */
     trait GivenSelectorModule { this: GivenSelector.type =>
+      @experimental def apply(bound: Option[TypeTree]): GivenSelector
       def unapply(x: GivenSelector): Some[Option[TypeTree]]
     }
 
@@ -2603,7 +2647,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // ----- Types ----------------------------------------------------
 
     /** A type, type constructors, type bounds or NoPrefix */
-    type TypeRepr
+    type TypeRepr <: Matchable
 
     /** Module object of `type TypeRepr`  */
     val TypeRepr: TypeReprModule
@@ -3202,6 +3246,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodOrPoly` */
     given MethodOrPolyTypeTest: TypeTest[TypeRepr, MethodOrPoly]
 
+    /** Type which decides on the kind of parameter list represented by `MethodType`. */
+    enum MethodTypeKind:
+      /** Represents a parameter list without any implicitness of parameters, like (x1: X1, x2: X2, ...) */
+      case Plain
+      /** Represents a parameter list with implicit parameters, like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)`, `(using x1: X1, ..., xn: Xn)` */
+      case Implicit
+      /** Represents a parameter list of a contextual method, like `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+      case Contextual
+
     /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
     type MethodType <: MethodOrPoly
 
@@ -3214,6 +3267,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MethodType` */
     trait MethodTypeModule { this: MethodType.type =>
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+      def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
@@ -3223,13 +3277,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
       extension (self: MethodType)
-        /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        /** Is this the type of parameter clause like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Is this the type of parameter clause like `(using X1, ..., Xn)` or `(using x1: X1, x2: X2, ... )` */
+        def isContextual: Boolean
+        /** Returns a MethodTypeKind object representing the implicitness of the MethodType parameter clause. */
+        def methodTypeKind: MethodTypeKind
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        // TODO:deprecate in 3.4 and stabilize `erasedParams` and `hasErasedParams`.
-        // @deprecated("Use `hasErasedParams`","3.4")
+        @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
         def isErased: Boolean
-
         /** List of `erased` flags for each parameters of the clause */
         @experimental
         def erasedParams: List[Boolean]
@@ -3295,7 +3351,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
          */
-        @experimental
         def paramVariances: List[Flags]
       end extension
     end TypeLambdaMethods
@@ -3380,6 +3435,35 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait NoPrefixModule { this: NoPrefix.type =>
       def unapply(x: NoPrefix): true
     }
+
+    // ----- Flexible Type --------------------------------------------
+
+    /** Flexible types for explicit nulls */
+    type FlexibleType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `FlexibleType` */
+    given FlexibleTypeTypeTest: TypeTest[TypeRepr, FlexibleType]
+
+    /** Module object of `type FlexibleType`  */
+    val FlexibleType: FlexibleTypeModule
+
+    /** Methods of the module object `val FlexibleType` */
+    trait FlexibleTypeModule { this: FlexibleType.type =>
+      def apply(tp: TypeRepr): FlexibleType
+      def unapply(x: FlexibleType): Option[TypeRepr]
+    }
+
+    /** Makes extension methods on `FlexibleType` available without any imports */
+    given FlexibleTypeMethods: FlexibleTypeMethods
+
+    /** Extension methods of `FlexibleType` */
+    trait FlexibleTypeMethods:
+      extension (self: FlexibleType)
+        def underlying: TypeRepr
+        def lo: TypeRepr
+        def hi: TypeRepr
+      end extension
+    end FlexibleTypeMethods
 
     ///////////////
     // CONSTANTS //
@@ -3556,7 +3640,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val StringConstant` */
     trait StringConstantModule { this: StringConstant.type =>
-      /** Create a constant String value */
+      /** Create a constant String value
+       *
+       *  @throw `IllegalArgumentException` if the argument is `null`
+       */
       def apply(x: String): StringConstant
       /** Match String value constant and extract its value */
       def unapply(constant: StringConstant): Some[String]
@@ -3628,6 +3715,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @param tpe type of the implicit parameter
       */
       def search(tpe: TypeRepr): ImplicitSearchResult
+
+      /** Find a given instance of type `T` in the current scope provided by the current enclosing splice,
+      *  while excluding certain symbols from the initial implicit search.
+      *  Return an `ImplicitSearchResult`.
+      *
+      *  @param tpe type of the implicit parameter
+      *  @param ignored Symbols ignored during the initial implicit search
+      *
+      *  @note if an found given requires additional search for other given instances,
+      *  this additional search will NOT exclude the symbols from the `ignored` list.
+      */
+      def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
     }
 
     /** Result of a given instance search */
@@ -3719,7 +3818,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The class Symbol of a global class definition */
       def classSymbol(fullName: String): Symbol
 
-      /** Generates a new class symbol for a class with a parameterless constructor.
+      /** Generates a new class symbol for a class with a public parameterless constructor.
+       *  For more settings, look to the other newClass methods.
        *
        *  Example usage:
        *  ```
@@ -3747,7 +3847,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  }
        *  ```
        *
-       *  @param parent The owner of the class
+       *  @param owner The owner of the class
        *  @param name The name of the class
        *  @param parents The parent classes of the class. The first parent must not be a trait.
        *  @param decls The member declarations of the class provided the symbol of this class
@@ -3760,8 +3860,181 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
-      // TODO: add flags and privateWithin
-      @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
+      @experimental def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
+
+      /** Generates a new class symbol for a class with a public single term clause constructor.
+       *
+       *  Example usage:
+       *  ```
+       *  val name = "myClass"
+       *  def decls(cls: Symbol): List[Symbol] =
+       *    List(Symbol.newMethod(cls, "foo", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit])))
+       *  val parents = List(TypeTree.of[Object])
+       *  val cls = Symbol.newClass(
+       *    Symbol.spliceOwner,
+       *    name,
+       *    parents = _ => parents.map(_.tpe),
+       *    decls,
+       *    selfType = None,
+       *    clsFlags = Flags.EmptyFlags,
+       *    Symbol.noSymbol,
+       *    List(("idx", TypeRepr.of[Int]), ("str", TypeRepr.of[String]))
+       *  )
+       *
+       *  val fooSym = cls.declaredMethod("foo").head
+       *  val idxSym = cls.fieldMember("idx")
+       *  val strSym = cls.fieldMember("str")
+       *  val fooDef = DefDef(fooSym, argss =>
+       *    Some('{println(s"Foo method call with (${${Ref(idxSym).asExpr}}, ${${Ref(strSym).asExpr}})")}.asTerm)
+       *  )
+       *  val clsDef = ClassDef(cls, parents, body = List(fooDef))
+       *  val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), List('{0}.asTerm, '{string}.asTerm))
+       *
+       *  Block(List(clsDef), Apply(Select(newCls, cls.methodMember("foo")(0)), Nil)).asExprOf[Unit]
+       *  ```
+       *  construct the equivalent to
+       *  ```
+       *  '{
+       *    class myClass(idx: Int, str: String) extends Object {
+       *      def foo() =
+       *        println(s"Foo method call with $idx, $str")
+       *    }
+       *    new myClass(0, "string").foo()
+       *  }
+       *  ```
+       *  @param owner The owner of the class
+       *  @param name The name of the class
+       *  @param parents Function returning the parent classes of the class. The first parent must not be a trait.
+       *  Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
+       *  @param clsFlags extra flags with which the class symbol should be constructed.
+       *  @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol.
+       *  @param conParams constructor parameter pairs of names and types.
+       *
+       *  Parameters assigned by the constructor can be obtained via `classSymbol.memberField`.
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ClassDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
+      @experimental def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol,
+        conParams: List[(String, TypeRepr)]
+      ): Symbol
+
+      /** Generates a new class symbol with a constructor of the shape signified by a passed PolyOrMethod parameter.
+       *
+       *  Example usage:
+       *  ```
+       *  val name = "myClass"
+       *  def decls(cls: Symbol): List[Symbol] =
+       *    List(Symbol.newMethod(cls, "getParam", MethodType(Nil)(_ => Nil, _ => cls.typeMember("T").typeRef)))
+       *  val conMethodType =
+       *    (classType: TypeRepr) => PolyType(List("T"))(_ => List(TypeBounds.empty), polyType =>
+       *      MethodType(List("param"))((_: MethodType) => List(polyType.param(0)), (_: MethodType) =>
+       *        AppliedType(classType, List(polyType.param(0)))
+       *      )
+       *    )
+       *  val cls = Symbol.newClass(
+       *    Symbol.spliceOwner,
+       *    name,
+       *    parents = _ => List(TypeRepr.of[Object]),
+       *    decls,
+       *    selfType = None,
+       *    clsFlags = Flags.EmptyFlags,
+       *    clsPrivateWithin = Symbol.noSymbol,
+       *    clsAnnotations = Nil,
+       *    conMethodType,
+       *    conFlags = Flags.EmptyFlags,
+       *    conPrivateWithin = Symbol.noSymbol,
+       *    conParamFlags = List(List(Flags.EmptyFlags), List(Flags.EmptyFlags)),
+       *    conParamPrivateWithins = List(List(Symbol.noSymbol), List(Symbol.noSymbol))
+       *  )
+       *
+       *  val getParamSym = cls.declaredMethod("getParam").head
+       *  def getParamRhs(): Option[Term] =
+       *    val paramValue = This(cls).select(cls.fieldMember("param")).asExpr
+       *    Some('{ println("Calling getParam"); $paramValue }.asTerm)
+       *  val getParamDef = DefDef(getParamSym, _ => getParamRhs())
+       *
+       *  val clsDef = ClassDef(cls, List(TypeTree.of[Object]), body = List(getParamDef))
+       *  val newCls =
+       *    Apply(
+       *      Select(
+       *        Apply(
+       *          TypeApply(Select(New(TypeIdent(cls)), cls.primaryConstructor), List(TypeTree.of[String])),
+       *          List(Expr("test").asTerm)
+       *        ),
+       *        cls.methodMember("getParam").head
+       *      ),
+       *      Nil
+       *    )
+       *
+       *  Block(List(clsDef), newCls).asExpr
+       *  ```
+       *  constructs the equivalent to
+       *  ```
+       *  '{
+       *    class myClass[T](val param: T) extends Object {
+       *      def getParam: T =
+       *        println("Calling getParam")
+       *        param
+       *    }
+       *    new myClass[String]("test").getParam()
+       *  }
+       *  ```
+       *
+       * @param owner The owner of the class
+       * @param name The name of the class
+       * @param parents Function returning the parent classes of the class. The first parent must not be a trait
+       * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
+       * @param decls The member declarations of the class provided the symbol of this class
+       * @param selfType The self type of the class if it has one
+       * @param clsFlags extra flags with which the class symbol should be constructed. Can be `Private` | `Protected` | `PrivateLocal` | `Local` | `Final` | `Trait` | `Abstract` | `Open`
+       * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
+       * @param clsAnnotations annotations of the class
+       * @param conMethodType Function returning MethodOrPoly type representing the type of the constructor.
+       * Takes the result type as parameter which must be returned from the innermost MethodOrPoly and have type parameters applied if those are used.
+       * PolyType may only represent the first clause of the constructor.
+       * @param conFlags extra flags with which the constructor symbol should be constructed. Can be `Synthetic` | `Method` | `Private` | `Protected` | `PrivateLocal` | `Local`
+       * @param conPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol.
+       * @param conParamFlags extra flags with which the constructor parameter symbols should be constructed. Must match the shape of `conMethodType`.
+       * For type parameters those can be `Param` | `Deferred` | `Private` | `PrivateLocal` | `Local`.
+       * For term parameters those can be `ParamAccessor` | `Private` | `Protected` | `PrivateLocal` | `Local`
+       * @param conParamPrivateWithins the symbols within which the constructor parameters should be private. Must match the shape of `conMethodType`. Can consist of noSymbol.
+       *
+       *  Term and type parameters assigned by the constructor can be obtained via `classSymbol.memberField`/`classSymbol.memberType`.
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ClassDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
+      // Keep doc aligned with QuotesImpl's validFlags: `clsFlags` with `validClassFlags`, `conFlags` with `validClassConstructorFlags`,
+      // conParamFlags with `validClassTypeParamFlags` and `validClassTermParamFlags`
+      @experimental def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol,
+        clsAnnotations: List[Term],
+        conMethodType: TypeRepr => MethodOrPoly,
+        conFlags: Flags,
+        conPrivateWithin: Symbol,
+        conParamFlags: List[List[Flags]],
+        conParamPrivateWithins: List[List[Symbol]]
+      ): Symbol
 
       /** Generates a new module symbol with an associated module class symbol,
        *  this is equivalent to an `object` declaration in source code.
@@ -3778,7 +4051,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  def decls(cls: Symbol): List[Symbol] =
        *    List(Symbol.newMethod(cls, "run", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit]), Flags.EmptyFlags, Symbol.noSymbol))
        *
-       *  val mod = Symbol.newModule(Symbol.spliceOwner, moduleName, Flags.EmptyFlags, Flags.EmptyFlags, parents.map(_.tpe), decls, Symbol.noSymbol)
+       *  val mod = Symbol.newModule(Symbol.spliceOwner, moduleName, Flags.EmptyFlags, Flags.EmptyFlags, _ => parents.map(_.tpe), decls, Symbol.noSymbol)
        *  val cls = mod.moduleClass
        *  val runSym = cls.declaredMethod("run").head
        *
@@ -3806,7 +4079,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param name The name of the class
        *  @param modFlags extra flags with which the module symbol should be constructed
        *  @param clsFlags extra flags with which the module class symbol should be constructed
-       *  @param parents The parent classes of the class. The first parent must not be a trait.
+       *  @param parents A function that takes the symbol of the module class as input and returns the parent classes of the class. The first parent must not be a trait.
        *  @param decls A function that takes the symbol of the module class as input and return the symbols of its declared members
        *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
        *
@@ -3819,7 +4092,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @syntax markdown
        */
-      @experimental def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
+      @experimental def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
 
       /** Generates a new method symbol with the given parent, name and type.
        *
@@ -3885,6 +4158,42 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       // Keep: `flags` doc aligned with QuotesImpl's `validBindFlags`
       def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol
+
+      /** Generate a new type symbol for a type alias with the given parent, name and type
+        *
+        *  This symbol starts without an accompanying definition.
+        *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+        *  this symbol to the TypeDef constructor.
+        *
+        *  @param parent The owner of the type
+        *  @param name The name of the type
+        *  @param flags extra flags to with which symbol can be constructed. Can be `Private` | `Protected` | `Override` | `Final` | `Infix` | `Local`
+        *  @param tpe The rhs the type alias
+        *  @param privateWithin the symbol within which this new type symbol should be private. May be noSymbol.
+        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+        *        direct or indirect children of the reflection context's owner.
+        */
+      @experimental
+      // Keep: `flags` doc aligned with QuotesImpl's `validTypeAliasFlags`
+      def newTypeAlias(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr, privateWithin: Symbol): Symbol
+
+      /** Generate a new type symbol for a type bounds with the given parent, name and type
+        *
+        *  This symbol starts without an accompanying definition.
+        *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+        *  this symbol to the TypeDef constructor.
+        *
+        *  @param parent The owner of the type
+        *  @param name The name of the type
+        *  @param flags extra flags to with which symbol can be constructed. `Deferred` flag will be added. Can be `Private` | `Protected` | `Override` | `Deferred` | `Final` | `Infix` | `Local`
+        *  @param tpe The bounds of the type
+        *  @param privateWithin the symbol within which this new type symbol should be private. May be noSymbol.
+        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+        *        direct or indirect children of the reflection context's owner.
+        */
+      @experimental
+      // Keep: `flags` doc aligned with QuotesImpl's `validBoundedTypeFlags`
+      def newBoundedType(parent: Symbol, name: String, flags: Flags, tpe: TypeBounds, privateWithin: Symbol): Symbol
 
       /** Definition not available */
       def noSymbol: Symbol
@@ -3996,11 +4305,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this symbol an anonymous function? */
         def isAnonymousFunction: Boolean
 
-        /** Is this symbol an abstract type? */
+        /** Is this symbol an abstract type or a type parameter? */
         def isAbstractType: Boolean
 
         /** Is this the constructor of a class? */
         def isClassConstructor: Boolean
+
+        /** Is this the super accessor? */
+        def isSuperAccessor: Boolean
 
         /** Is this the definition of a type? */
         def isType: Boolean
@@ -4123,7 +4435,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
          *  If this is not the symbol of a type parameter the result is `Flags.EmptyFlags`.
          */
-        @experimental
         def paramVariance: Flags
 
         /** Signature of this definition */
@@ -4366,7 +4677,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *   -  ...
       *   -  Nth element is `FunctionN`
       */
-      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
+      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments", "3.4")
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
       /** Class symbol of a function class `scala.FunctionN`.
@@ -4516,7 +4827,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def JavaStatic: Flags
 
       /** Is this an annotation defined in Java */
-      @experimental def JavaAnnotation: Flags
+      def JavaAnnotation: Flags
 
       /** Is this symbol `lazy` */
       def Lazy: Flags
@@ -4826,7 +5137,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             foldTree(foldTree(foldTree(x, cond)(owner), thenp)(owner), elsep)(owner)
           case While(cond, body) =>
             foldTree(foldTree(x, cond)(owner), body)(owner)
-          case Closure(meth, tpt) =>
+          case Closure(meth, _) =>
             foldTree(x, meth)(owner)
           case Match(selector, cases) =>
             foldTrees(foldTree(x, selector)(owner), cases)(owner)
@@ -4904,7 +5215,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def traverseTree(tree: Tree)(owner: Symbol): Unit = traverseTreeChildren(tree)(owner)
 
-      def foldTree(x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
+      def foldTree(@unused x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
 
       protected def traverseTreeChildren(tree: Tree)(owner: Symbol): Unit = foldOverTree((), tree)(owner)
 

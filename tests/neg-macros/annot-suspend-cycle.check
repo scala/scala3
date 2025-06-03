@@ -1,12 +1,12 @@
--- [E129] Potential Issue Warning: tests/neg-macros/annot-suspend-cycle/Macro.scala:7:4 --------------------------------
-7 |    new Foo
-  |    ^^^^^^^
-  |    A pure expression does nothing in statement position
-  |
-  | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg-macros/annot-suspend-cycle/Macro.scala:10:6 -------------------------------
+10 |      new Foo
+   |      ^^^^^^^
+   |      A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`
 Cyclic macro dependencies in tests/neg-macros/annot-suspend-cycle/Test.scala.
 Compilation stopped since no further progress can be made.
 
 To fix this, place macros in one set of files and their callers in another.
 
-Compiling with  -Xprint-suspension   gives more information.
+Compile with -Xprint-suspension for information.

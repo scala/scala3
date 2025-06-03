@@ -7,13 +7,11 @@ trait Bar {
 }
 
 object instances {
-  given foo: Foo with {
+  given foo: Foo:
     type Out = Bar
-  }
 
-  given bar: Bar with {
+  given bar: Bar:
     type Out = Int
-  }
 }
 
 object Test {

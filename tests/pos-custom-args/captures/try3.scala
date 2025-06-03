@@ -1,8 +1,7 @@
 import language.experimental.erasedDefinitions
-import annotation.capability
 import java.io.IOException
 
-@annotation.capability class CanThrow[-E]
+class CanThrow[-E] extends caps.Capability
 
 def handle[E <: Exception, T](op: CanThrow[E] ?=> T)(handler: E => T): T =
   val x: CanThrow[E] = ???

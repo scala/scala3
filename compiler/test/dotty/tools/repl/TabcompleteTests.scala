@@ -8,12 +8,8 @@ import org.junit.Test
 /** These tests test input that has proved problematic */
 class TabcompleteTests extends ReplTest {
 
-  /** Returns the `(<instance completions>, <companion completions>)`*/
-  private def tabComplete(src: String)(implicit state: State): List[String] =
-    completions(src.length, src, state).map(_.value).sorted
-
   @Test def tabCompleteList = initially {
-    val comp = tabComplete("List.r")
+    val comp = tabComplete("List.ra")
     assertEquals(List("range"), comp.distinct)
   }
 
@@ -116,7 +112,7 @@ class TabcompleteTests extends ReplTest {
     val comp = tabComplete("(null: AnyRef).")
     assertEquals(
       List("!=", "##", "->", "==", "asInstanceOf", "ensuring", "eq", "equals", "formatted",
-          "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "synchronized", "toString", "wait", "→"),
+          "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "runtimeChecked", "synchronized", "toString", "wait", "→"),
       comp.distinct.sorted)
   }
 
@@ -126,11 +122,11 @@ class TabcompleteTests extends ReplTest {
   }
 
   @Test def moduleCompletion = initially {
-    assertEquals(List("Predef"), tabComplete("object Foo { type T = Pre"))
+    assertEquals(List("Predef"), tabComplete("object Foo { type T = Pred"))
   }
 
   @Test def i6415 = initially {
-    assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pre"))
+    assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pred"))
   }
 
   @Test def i6361 = initially {
@@ -167,6 +163,7 @@ class TabcompleteTests extends ReplTest {
         "nn",
         "notify",
         "notifyAll",
+        "runtimeChecked",
         "synchronized",
         "toString",
         "valueOf",
@@ -216,10 +213,15 @@ class TabcompleteTests extends ReplTest {
         ":exit",
         ":help",
         ":imports",
+        ":jar",
+        ":kind",
         ":load",
         ":quit",
+        ":require",
         ":reset",
         ":settings",
+        ":sh",
+        ":silent",
         ":type"
       ),
       tabComplete(":")

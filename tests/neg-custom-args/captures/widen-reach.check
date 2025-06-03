@@ -1,0 +1,27 @@
+-- Error: tests/neg-custom-args/captures/widen-reach.scala:8:18 --------------------------------------------------------
+8 |trait Bar extends Foo[IO^]: // error
+  |                  ^^^^^^^^
+  |                  Type variable T of trait Foo cannot be instantiated to IO^ since
+  |                  that type captures the root capability `cap`.
+  |
+  |                  where:    ^ refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
+9 |  val foo: IO^ -> IO^ = x => x // error
+  |                        ^^^^^^
+  |                        Found:    (x: IO^) ->? IO^{x}
+  |                        Required: (x: IO^) -> IO^²
+  |
+  |                        where:    ^  refers to the universal root capability
+  |                                  ^² refers to a fresh root capability in the type of value foo
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 -------------------------------------------------------
+13 |  val y2: IO^ -> IO^ = y1.foo      // error
+   |                       ^^^^^^
+   |                       Local reach capability x* leaks into capture scope of method test.
+   |                       To allow this, the parameter x should be declared with a @use annotation
+-- Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 -------------------------------------------------------
+14 |  val y3: IO^ -> IO^{x*} = y1.foo  // error
+   |                           ^^^^^^
+   |                           Local reach capability x* leaks into capture scope of method test.
+   |                           To allow this, the parameter x should be declared with a @use annotation

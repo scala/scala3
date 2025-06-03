@@ -11,9 +11,9 @@ def f(x: Boolean): A ?=> (c: Ctx) ?=> (Int, c.T) =
   (summon[A].x, summon[Ctx].y)
 
 @main def Test =
-  given A with
+  given A:
     val x = 22
-  given Ctx with
+  given Ctx:
     type T = String
     val x = "abc"
     val y = "def"

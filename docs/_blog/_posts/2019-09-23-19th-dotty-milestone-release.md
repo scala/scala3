@@ -160,7 +160,7 @@ For instance, `-project-logo dotty-logo.svg` will make `/images/dotty-logo.svg` 
 
 [The front page](https://dotty.epfl.ch) has been redesigned too, with a new responsive menu and improved contrast.
 
-Overall, every page has been updated with consistent settings of fonts and colors. A more detailed comparison between the new and the old design can be found [here](https://github.com/lampepfl/dotty/pull/7153).
+Overall, every page has been updated with consistent settings of fonts and colors. A more detailed comparison between the new and the old design can be found [here](https://github.com/scala/scala3/pull/7153).
 
 ## Metaprogramming Progress
 We're making steady progress on the Dotty metaprogramming capability. In our previous work, we've implemented a bunch of functions for working with expressions. For example, we have a capability to convert a list of expressions into an expression of list, or a tuple of expressions into an expression of tuple.
@@ -179,7 +179,7 @@ Also, `x.toExpr` syntax which lifts `x` into an expression is now deprecated. It
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -206,7 +206,7 @@ According to `git shortlog -sn --no-merges 0.18.1-RC1..0.19.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

@@ -1,0 +1,50 @@
+-- [E140] Cyclic Error: tests/neg/i19372.scala:3:7 ---------------------------------------------------------------------
+3 |  type AAA = List[bar.BBB] // error: cyclic
+  |       ^
+  |       illegal cyclic type reference: alias List[Test1.bar.BBB] of type AAA refers back to the type itself
+  |
+  |       The error occurred while trying to compute the signature of type AAA
+  |         which required to explore type BBB for cyclic references
+  |         which required to explore type AAA for cyclic references
+  |
+  |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+-- [E140] Cyclic Error: tests/neg/i19372.scala:9:7 ---------------------------------------------------------------------
+9 |  type A = bar.B  // error: cyclic
+  |       ^
+  |       illegal cyclic type reference: alias Test2.bar.B of type A refers back to the type itself
+  |
+  |       The error occurred while trying to compute the signature of type A
+  |         which required to explore type B for cyclic references
+  |         which required to explore type A for cyclic references
+  |
+  |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+-- [E140] Cyclic Error: tests/neg/i19372.scala:15:7 --------------------------------------------------------------------
+15 |  type AAA = List[bar.BBB] // error: cyclic
+   |       ^
+   |       illegal cyclic type reference: alias List[Test3.bar.BBB] of type AAA refers back to the type itself
+   |
+   |       The error occurred while trying to compute the signature of type AAA
+   |         which required to explore type BBB for cyclic references
+   |         which required to explore type AAA for cyclic references
+   |
+   |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+-- [E140] Cyclic Error: tests/neg/i19372.scala:21:7 --------------------------------------------------------------------
+21 |  type A = bar.B // error: cyclic
+   |       ^
+   |       illegal cyclic type reference: alias Test4.bar.B of type A refers back to the type itself
+   |
+   |       The error occurred while trying to compute the signature of type A
+   |         which required to explore type B for cyclic references
+   |         which required to explore type A for cyclic references
+   |
+   |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+-- [E140] Cyclic Error: tests/neg/i19372.scala:30:7 --------------------------------------------------------------------
+30 |  type UCharIteratorReserved = Ptr[UCharIterator] // error: cyclic
+   |       ^
+   |illegal cyclic type reference: alias Ptr[structs.UCharIterator] of type UCharIteratorReserved refers back to the type itself
+   |
+   |The error occurred while trying to compute the signature of type UCharIteratorReserved
+   |  which required to explore type UCharIterator for cyclic references
+   |  which required to explore type UCharIteratorReserved for cyclic references
+   |
+   | Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.

@@ -1,3 +1,4 @@
+//> using jvm 17 // Maximal JDK version which can be used with all Scala 3 versions, can be overriden via command line arguments '--jvm=21'
 /*
 This script will bisect a problem with the compiler based on success/failure of the validation script passed as an argument.
 It starts with a fast bisection on released nightly builds.
@@ -20,6 +21,7 @@ val usageMessage = """
   |The <validation-command> should be one of:
   |* compile <arg1> <arg2> ...
   |* run <arg1> <arg2> ...
+  |* test <arg1> <arg2> ...
   |* <custom-validation-script-path>
   |
   |The arguments for 'compile' and 'run' should be paths to the source file(s) and optionally additional options passed directly to scala-cli.
@@ -35,9 +37,9 @@ val usageMessage = """
   |* --releases <releases-range>
   |    Bisect only releases from the given range (defaults to all releases).
   |    The range format is <first>...<last>, where both <first> and <last> are optional, e.g.
-  |    * 3.1.0-RC1-bin-20210827-427d313-NIGHTLY..3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
-  |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY..
-  |    * ..3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
+  |    * 3.1.0-RC1-bin-20210827-427d313-NIGHTLY...3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
+  |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY...
+  |    * ...3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
   |    The ranges are treated as inclusive.
   |
   |* --bootstrapped
@@ -100,6 +102,7 @@ object ScriptOptions:
 enum ValidationCommand:
   case Compile(args: Seq[String])
   case Run(args: Seq[String])
+  case Test(args: Seq[String])
   case CustomValidationScript(scriptFile: File)
 
   def validationScript: File = this match
@@ -107,6 +110,8 @@ enum ValidationCommand:
       ValidationScript.tmpScalaCliScript(command = "compile", args)
     case Run(args) =>
       ValidationScript.tmpScalaCliScript(command = "run", args)
+    case Test(args) =>
+      ValidationScript.tmpScalaCliScript(command = "test", args)
     case CustomValidationScript(scriptFile) =>
       ValidationScript.copiedFrom(scriptFile)
 
@@ -114,6 +119,7 @@ object ValidationCommand:
   def fromArgs(args: Seq[String]) = args match
     case Seq("compile", commandArgs*) => Compile(commandArgs)
     case Seq("run", commandArgs*) => Run(commandArgs)
+    case Seq("test", commandArgs*) => Test(commandArgs)
     case Seq(path) => CustomValidationScript(new File(path))
 
 
@@ -124,6 +130,7 @@ object ValidationScript:
 
   def tmpScalaCliScript(command: String, args: Seq[String]): File = tmpScript(s"""
     |#!/usr/bin/env bash
+    |export JAVA_HOME=${sys.props("java.home")}
     |scala-cli ${command} -S "$$1" --server=false ${args.mkString(" ")}
     |""".stripMargin
   )
@@ -169,9 +176,13 @@ class Releases(val releases: Vector[Release])
 
 object Releases:
   lazy val allReleases: Vector[Release] =
-    val re = raw"""(?<=title=")(.+-bin-\d{8}-\w{7}-NIGHTLY)(?=/")""".r
-    val html = Source.fromURL("https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/")
-    re.findAllIn(html.mkString).map(Release.apply).toVector
+    val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
+    val xml = io.Source.fromURL(
+      "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+    )
+    re.findAllMatchIn(xml.mkString)
+      .flatMap{ m => Option(m.group(1)).map(Release.apply) }
+      .toVector
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
@@ -237,9 +248,11 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
-      |rm -r out
-      |sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal"
-      |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |rm -rf out
+      |export JAVA_HOME=${sys.props("java.home")}
+      |(sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal" \
+      |  || (echo "Failed to build compiler, skip $$scalaVersion"; git bisect skip) \
+      |) && ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin
     "git bisect start".!
     s"git bisect bad $fistBadHash".!

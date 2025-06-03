@@ -97,7 +97,7 @@ glb(A, _)                 = A                     // use first
 In the above, `|T|` means the erased type of `T`, `JArray` refers to
 the type of Java Array.
 
-See also: [`TypeErasure#erasedGlb`](https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/TypeErasure.scala#L289).
+See also: [`TypeErasure#erasedGlb`](https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/core/TypeErasure.scala#L289).
 
 ## Relationship with Compound Type (`with`)
 

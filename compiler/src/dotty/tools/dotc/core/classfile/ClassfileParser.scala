@@ -23,7 +23,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
-import dotty.tools.dotc.classpath.FileUtils.classToTasty
+import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 
 import scala.compiletime.uninitialized
 
@@ -106,13 +106,14 @@ object ClassfileParser {
         (in.nextByte.toInt: @switch) match {
           case CONSTANT_UTF8 | CONSTANT_UNICODE =>
             in.skip(in.nextChar)
-          case CONSTANT_CLASS | CONSTANT_STRING | CONSTANT_METHODTYPE =>
+          case CONSTANT_CLASS | CONSTANT_STRING | CONSTANT_METHODTYPE
+             | CONSTANT_MODULE | CONSTANT_PACKAGE =>
             in.skip(2)
           case CONSTANT_METHODHANDLE =>
             in.skip(3)
           case CONSTANT_FIELDREF | CONSTANT_METHODREF | CONSTANT_INTFMETHODREF
              | CONSTANT_NAMEANDTYPE | CONSTANT_INTEGER | CONSTANT_FLOAT
-             | CONSTANT_INVOKEDYNAMIC =>
+             | CONSTANT_INVOKEDYNAMIC | CONSTANT_DYNAMIC =>
             in.skip(4)
           case CONSTANT_LONG | CONSTANT_DOUBLE =>
             in.skip(8)
@@ -368,26 +369,20 @@ class ClassfileParser(
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
       val superType =
-        if (classRoot.symbol == defn.ComparableClass ||
-                 classRoot.symbol == defn.JavaCloneableClass ||
-                 classRoot.symbol == defn.JavaSerializableClass) {
-          // Treat these interfaces as universal traits
-          in.nextChar
+        val superClass = in.nextChar
+        // Treat these interfaces as universal traits
+        if classRoot.symbol == defn.ComparableClass
+        || classRoot.symbol == defn.JavaCloneableClass
+        || classRoot.symbol == defn.JavaSerializableClass
+        then
           defn.AnyType
-        }
         else
-          pool.getSuperClass(in.nextChar).typeRef
+          pool.getSuperClass(superClass).typeRef
       val ifaceCount = in.nextChar
-      var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
-        // Dotty deviation: was
-        //    var ifaces = for (i <- List.range(0, ifaceCount)) ...
-        // This does not typecheck because the type parameter of List is now lower-bounded by Int | Char.
-        // Consequently, no best implicit for the "Integral" evidence parameter of "range"
-        // is found. Previously, this worked because of weak conformance, which has been dropped.
-
+      val ifaces = List.fill(ifaceCount.toInt):
+        pool.getSuperClass(in.nextChar).typeRef
       superType :: ifaces
     }
-
 
     val result = unpickleOrParseInnerClasses()
     if (!result.isDefined) {
@@ -402,12 +397,13 @@ class ClassfileParser(
 
       val privateWithin = getPrivateWithin(jflags)
 
-      classRoot.setPrivateWithin(privateWithin)
-      moduleRoot.setPrivateWithin(privateWithin)
-      moduleRoot.sourceModule.setPrivateWithin(privateWithin)
+      if privateWithin.exists then
+        classRoot.setPrivateWithin(privateWithin)
+        moduleRoot.setPrivateWithin(privateWithin)
+        moduleRoot.sourceModule.setPrivateWithin(privateWithin)
 
-      for (i <- 0 until in.nextChar) parseMember(method = false)
-      for (i <- 0 until in.nextChar) parseMember(method = true)
+      for (_ <- 0 until in.nextChar) parseMember(method = false)
+      for (_ <- 0 until in.nextChar) parseMember(method = true)
 
       classRoot.registerCompanion(moduleRoot.symbol)
       moduleRoot.registerCompanion(classRoot.symbol)
@@ -1058,11 +1054,13 @@ class ClassfileParser(
   private def enterOwnInnerClasses()(using Context, DataReader): Unit = {
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
       SymbolLoaders.enterClassAndModule(
-          getOwner(jflags),
-          entry.originalName,
-          new ClassfileLoader(file),
-          classTranslation.flags(jflags),
-          getScope(jflags))
+        getOwner(jflags),
+        entry.originalName,
+        new ClassfileLoader(file),
+        classTranslation.flags(jflags),
+        getScope(jflags),
+        getPrivateWithin(jflags),
+      )
 
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
@@ -1075,7 +1073,7 @@ class ClassfileParser(
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
   // instead of ScalaSignature before 2.13.0-M2, see https://github.com/scala/scala/pull/5952
-  private val scalaUnpickleWhitelist = List(tpnme.nothingClass, tpnme.nullClass)
+  private val scalaUnpickleAllowlist = List(tpnme.nothingClass, tpnme.nullClass)
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
@@ -1142,13 +1140,13 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val hint =
-          if classfile.classToTasty.isDefined then "This is likely a bug in the compiler. Please report."
+          if classfile.hasSiblingTasty then "This is likely a bug in the compiler. Please report."
           else "This `.tasty` file is missing. Try cleaning the project to fix this issue."
         report.error(s"Loading Scala 3 binary from $classfile. It should have been loaded from `.tasty` file. $hint", NoSourcePosition)
         return None
       }
 
-      if scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)
+      if scan(tpnme.ScalaATTR) && !scalaUnpickleAllowlist.contains(classRoot.name)
         && !(classRoot.name.startsWith("Tuple") && classRoot.name.endsWith("$sp"))
         && !(classRoot.name.startsWith("Product") && classRoot.name.endsWith("$sp"))
       then
@@ -1162,7 +1160,10 @@ class ClassfileParser(
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
 
-      if (scan(tpnme.ScalaSignatureATTR) && scan(tpnme.RuntimeVisibleAnnotationATTR)) {
+      if (scan(tpnme.ScalaSignatureATTR)) {
+        if !scan(tpnme.RuntimeVisibleAnnotationATTR) then
+          report.error(em"No RuntimeVisibleAnnotations in classfile with ScalaSignature attribute: ${classRoot.fullName}")
+          return None
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
         var i = 0

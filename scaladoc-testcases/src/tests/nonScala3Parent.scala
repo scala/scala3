@@ -4,7 +4,7 @@ package nonScala3Parent
 import javax.swing.JPanel
 import javax.swing.JFrame
 
-// https://github.com/lampepfl/dotty/issues/15927
+// https://github.com/scala/scala3/issues/15927
 
 trait Foo1 extends Numeric[Any]
 trait Foo2 extends JPanel

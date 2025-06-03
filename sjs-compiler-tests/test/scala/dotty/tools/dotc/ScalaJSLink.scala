@@ -17,6 +17,10 @@ object ScalaJSLink:
     Semantics.Defaults
       .withAsInstanceOfs(CheckedBehavior.Compliant)
       .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+      .withArrayStores(CheckedBehavior.Compliant)
+      .withNegativeArraySizes(CheckedBehavior.Compliant)
+      .withNullPointers(CheckedBehavior.Compliant)
+      .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
       .withModuleInit(CheckedBehavior.Compliant)
   end compliantSemantics
 
@@ -45,7 +49,7 @@ object ScalaJSLink:
     val result = PathIRContainer
       .fromClasspath(cpEntries.toSeq.map(entry => new File(entry).toPath()))
       .map(_._1)
-      .flatMap(cache.cached _)
+      .flatMap(cache.cached)
       .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(dir), logger))
 
     val report = Await.result(result, Duration.Inf)

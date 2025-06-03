@@ -145,6 +145,17 @@ class RegressionTestScala3 {
     assertEquals(5, Issue14289.Container.b())
     assertEquals(true, Issue14289.Container.c())
   }
+
+  @Test def createArrayOfUnitIssue22226(): Unit = {
+    val a = Array.ofDim[Unit](0)
+    assertSame(classOf[Array[Unit]], a.getClass())
+
+    val b = new Array[Unit](0)
+    assertSame(classOf[Array[Unit]], b.getClass())
+
+    val c = Array.ofDim[Unit](0, 0)
+    assertSame(classOf[Array[Array[Unit]]], c.getClass())
+  }
 }
 
 object RegressionTestScala3 {

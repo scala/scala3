@@ -31,7 +31,7 @@ This is our 17th scheduled release according to our
 
 # What’s new in the 0.17.0-RC1 technology preview?
 ## New implicit scoping rules
-We aim to make the implicit scoping rules clean and intuitive. In this release, the scoping rules were refactored to facilitate this goal. As specified in the [code documentation](https://github.com/lampepfl/dotty/pull/6832/files#diff-584b631c45ba6f2d4bc5d803074b8f12R474):
+We aim to make the implicit scoping rules clean and intuitive. In this release, the scoping rules were refactored to facilitate this goal. As specified in the [code documentation](https://github.com/scala/scala3/pull/6832/files#diff-584b631c45ba6f2d4bc5d803074b8f12R474):
 
 The implicit scope of a type `tp` is the smallest set S of object references (i.e. TermRefs
 with Module symbol) such that:
@@ -48,14 +48,14 @@ with Module symbol) such that:
 - If `tp` is some other type, its implicit scope is the union of the implicit scopes of
   its parts (parts defined as in the spec).
 
-You can learn more from PR [#6832](https://github.com/lampepfl/dotty/pull/6832).
+You can learn more from PR [#6832](https://github.com/scala/scala3/pull/6832).
 
 ## Metaprogramming
 We are making steady progress developing metaprogramming features. The highlights for this release are:
 
-- Tasty Reflection's `Reflection` object moved inside `QuoteContext` object. This means that if previously to do Tasty Reflection you had to implicitly depend on `Reflection`, now you need to depend on `QuoteContext`. To know more, see [#6723](https://github.com/lampepfl/dotty/pull/6723).
-- Progress made on quoted patterns – see [#6504](https://github.com/lampepfl/dotty/pull/6504).
-- `code` string interpolator allows to obtain the code a user passes to a macro as a String. See [#6661](https://github.com/lampepfl/dotty/pull/6661). To enable this feature, do the following import: `import scala.compiletime._`.
+- Tasty Reflection's `Reflection` object moved inside `QuoteContext` object. This means that if previously to do Tasty Reflection you had to implicitly depend on `Reflection`, now you need to depend on `QuoteContext`. To know more, see [#6723](https://github.com/scala/scala3/pull/6723).
+- Progress made on quoted patterns – see [#6504](https://github.com/scala/scala3/pull/6504).
+- `code` string interpolator allows to obtain the code a user passes to a macro as a String. See [#6661](https://github.com/scala/scala3/pull/6661). To enable this feature, do the following import: `import scala.compiletime._`.
 
 ## 2.12 build removed from the CI tests
 2.12 build is removed from the test suite. The 2.12 build compiled and tested the Dotty compiler with the Scala 2.12 compiler. This means that, even though Dotty is bootstrapped (i.e. capable of compiling itself), we were not able to use any of the new Dotty features in the Dotty codebase since these features would not compile with Scala 2.12. The decision to abstain from using the new features was made to give us the time to see if something goes wrong with the bootstrap and the ability to revert to Scala 2.12 if it becomes necessary.
@@ -74,7 +74,7 @@ There were some organizational and infrastructural changes worth mentioning.
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -113,7 +113,7 @@ According to `git shortlog -sn --no-merges 0.16.0-RC3..0.17.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

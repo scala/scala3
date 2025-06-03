@@ -45,7 +45,7 @@ class ExtensionMethodParamsSignature extends SignatureTest("extensionParams", Si
 
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
-class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)
+class EnumSignatures extends SignatureTest("enumSignatures", "case" +: SignatureTest.all)
 
 class StructuralTypes extends SignatureTest("structuralTypes", SignatureTest.members)
 
@@ -54,6 +54,8 @@ class OpaqueTypes extends SignatureTest("opaqueTypes", SignatureTest.all)
 class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all)
 
 class Annotations extends SignatureTest("annotations", SignatureTest.all)
+
+class Deprecated extends SignatureTest("deprecated", SignatureTest.all)
 
 class InheritanceLoop extends SignatureTest("inheritanceLoop", SignatureTest.all)
 
@@ -120,3 +122,9 @@ class MatchTypeTuple extends SignatureTest("matchTypeTuple", SignatureTest.all)
 class InfixTypes extends SignatureTest("infixTypes", SignatureTest.all)
 
 class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)
+
+class RefinedFunctionTypes extends SignatureTest("refinedFunctionTypes", SignatureTest.all)
+
+class RightAssocExtension extends SignatureTest("rightAssocExtension", SignatureTest.all)
+
+class NamedTuples extends SignatureTest("namedTuples", SignatureTest.all)

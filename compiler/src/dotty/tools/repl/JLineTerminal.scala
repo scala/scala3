@@ -21,11 +21,16 @@ class JLineTerminal extends java.io.Closeable {
   // Logger.getLogger("org.jline").setLevel(Level.FINEST)
 
   private val terminal =
-    TerminalBuilder.builder()
-    .dumb(dumbTerminal) // fail early if not able to create a terminal
-    .build()
+    var builder = TerminalBuilder.builder()
+    if System.getenv("TERM") == "dumb" then
+      // Force dumb terminal if `TERM` is `"dumb"`.
+      // Note: the default value for the `dumb` option is `null`, which allows
+      // JLine to fall back to a dumb terminal. This is different than `true` or
+      // `false` and can't be set using the `dumb` setter.
+      // This option is used at https://github.com/jline/jline3/blob/894b5e72cde28a551079402add4caea7f5527806/terminal/src/main/java/org/jline/terminal/TerminalBuilder.java#L528.
+      builder.dumb(true)
+    builder.build()
   private val history = new DefaultHistory
-  def dumbTerminal = Option(System.getenv("TERM")) == Some("dumb")
 
   private def blue(str: String)(using Context) =
     if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET

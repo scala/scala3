@@ -184,10 +184,10 @@ trait InkuireSupport(using DocContext) extends Resources:
     else ownerNameChain(sym.owner) :+ sym.normalizedName
 
   private def viableSymbol(s: Symbol): Boolean =
-      !s.flags.is(Flags.Private) &&
-        !s.flags.is(Flags.Protected) &&
-        !s.flags.is(Flags.Override) &&
-        !s.flags.is(Flags.Synthetic)
+    !s.flags.is(Flags.Private) &&
+      !s.flags.is(Flags.Protected) &&
+      !s.flags.is(Flags.Override) &&
+      !s.flags.is(Flags.Synthetic)
 
   private def varName(t: Inkuire.TypeLike): Option[String] = t match {
     case tpe: Inkuire.Type      => Some(tpe.name.name)

@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import core.*
+import Annotations.Annotation
 import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, reporting.*
 import util.SrcPos
 import config.{ScalaVersion, NoScalaVersion, Feature, ScalaRelease}
@@ -24,51 +25,12 @@ class CrossVersionChecks extends MiniPhase:
   // warnings after the first, but I think it'd be better if we didn't have to
   // arbitrarily choose one as more important than the other.
   private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    checkDeprecated(sym, pos)
-    checkExperimentalRef(sym, pos)
+    checkRef(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
     if xMigrationValue != NoScalaVersion then
       checkMigration(sym, pos, xMigrationValue)
   end checkUndesiredProperties
-
-  /** If @deprecated is present, and the point of reference is not enclosed
-   * in either a deprecated member or a scala bridge method, issue a warning.
-   */
-  private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
-
-    /** is the owner an enum or its companion and also the owner of sym */
-    def isEnumOwner(owner: Symbol)(using Context) =
-      // pre: sym is an enumcase
-      if owner.isEnumClass then owner.companionClass eq sym.owner
-      else if owner.is(ModuleClass) && owner.companionClass.isEnumClass then owner eq sym.owner
-      else false
-
-    def isDeprecatedOrEnum(owner: Symbol)(using Context) =
-      // pre: sym is an enumcase
-      owner.isDeprecated
-      || isEnumOwner(owner)
-
-    /**Skip warnings for synthetic members of case classes during declaration and
-     * scan the chain of outer declaring scopes from the current context
-     * a deprecation warning will be skipped if one the following holds
-     * for a given declaring scope:
-     * - the symbol associated with the scope is also deprecated.
-     * - if and only if `sym` is an enum case, the scope is either
-     *   a module that declares `sym`, or the companion class of the
-     *   module that declares `sym`.
-     */
-    def skipWarning(using Context): Boolean =
-      (ctx.owner.is(Synthetic) && sym.is(CaseClass))
-        || ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
-
-    // Also check for deprecation of the companion class for synthetic methods
-    val toCheck = sym :: (if sym.isAllOf(SyntheticMethod) then sym.owner.companionClass :: Nil else Nil)
-    for sym <- toCheck; annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
-      if !skipWarning then
-        val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
-        val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
-        report.deprecationWarning(em"${sym.showLocated} is deprecated${since}${msg}", pos)
 
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
     if sym.exists && !sym.isInExperimentalScope then
@@ -107,19 +69,55 @@ class CrossVersionChecks extends MiniPhase:
     }
   }
 
+  /** ??? */
+  def checkDeprecatedInheritance(parents: List[Tree])(using Context): Unit = {
+    for parent <- parents
+        psym = parent.tpe.classSymbol
+        annot <- psym.getAnnotation(defn.DeprecatedInheritanceAnnot)
+        if !skipWarning(psym)
+    do
+      val msg = annot.argumentConstantString(0).map(msg => s": $msg").getOrElse("")
+      val since = annot.argumentConstantString(1).map(version => s" (since: $version)").getOrElse("")
+      val composed = em"inheritance from $psym is deprecated$since$msg"
+      report.deprecationWarning(composed, parent.srcPos, origin = psym.showFullName)
+  }
+
+  private def unrollError(pos: SrcPos)(using Context): Unit =
+    report.error(IllegalUnrollPlacement(None), pos)
+
+  private def checkUnrollAnnot(annotSym: Symbol, pos: SrcPos)(using Context): Unit =
+    if annotSym == defn.UnrollAnnot then
+      unrollError(pos)
+
+  private def checkUnrollMemberDef(memberDef: MemberDef)(using Context): Unit =
+    val sym = memberDef.symbol
+    if
+      sym.hasAnnotation(defn.UnrollAnnot)
+      && !(sym.isTerm && sym.is(Param))
+    then
+      val normSym = if sym.is(ModuleVal) then sym.moduleClass else sym
+      unrollError(normSym.srcPos)
+
   override def transformValDef(tree: ValDef)(using Context): ValDef =
+    checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     tree
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef =
+    checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     tree
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef =
     // TODO do we need to check checkDeprecatedOvers(tree)?
+    checkUnrollMemberDef(tree)
     checkExperimentalAnnots(tree.symbol)
+    tree
+
+  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
+    checkDeprecatedInheritance(tree.parents)
     tree
 
   override def transformIdent(tree: Ident)(using Context): Ident = {
@@ -141,24 +139,36 @@ class CrossVersionChecks extends MiniPhase:
     val tpe = tree.tpe
     tpe.foreachPart {
       case TypeRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
+        if tree.span.isSourceDerived then
+          checkDeprecatedRef(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
+        checkPreviewFeatureRef(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
+        if tree.span.isSourceDerived then
+          checkDeprecatedRef(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
+        checkPreviewFeatureRef(sym, tree.srcPos)
+      case AnnotatedType(_, annot) =>
+        checkUnrollAnnot(annot.symbol, tree.srcPos)
       case _ =>
     }
     tree
   }
 
   override def transformOther(tree: Tree)(using Context): Tree =
-    tree.foreachSubTree { // Find references in type trees and imports
-      case tree: Ident => transformIdent(tree)
-      case tree: Select => transformSelect(tree)
-      case tree: TypeTree => transformTypeTree(tree)
-      case _ =>
-    }
-    tree
+    val inPackage = ctx.owner.is(Package) || ctx.owner.isPackageObject
+    if !(inPackage && tree.isInstanceOf[ImportOrExport] && Feature.isExperimentalEnabledByImport) then
+      tree.foreachSubTree { // Find references in type trees and imports
+        case tree: Ident => transformIdent(tree)
+        case tree: Select => transformSelect(tree)
+        case tree: TypeTree => transformTypeTree(tree)
+        case _ =>
+      }
+    tree match
+      case Annotated(_, annot) =>
+        checkUnrollAnnot(annot.tpe.typeSymbol, tree.srcPos)
+        tree
+      case tree => tree
 
 end CrossVersionChecks
 
@@ -166,9 +176,92 @@ object CrossVersionChecks:
   val name: String = "crossVersionChecks"
   val description: String = "check issues related to deprecated and experimental"
 
+  /** Check that a reference to an experimental definition with symbol `sym` meets cross-version constraints
+   *  for `@deprecated`, `@experimental` and `@preview`.
+   */
+  def checkRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    checkDeprecatedRef(sym, pos)
+    checkExperimentalRef(sym, pos)
+    checkPreviewFeatureRef(sym, pos)
+
   /** Check that a reference to an experimental definition with symbol `sym` is only
    *  used in an experimental scope
    */
-  def checkExperimentalRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+  private[CrossVersionChecks] def checkExperimentalRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
     if sym.isExperimental && !ctx.owner.isInExperimentalScope then
       Feature.checkExperimentalDef(sym, pos)
+
+  /** Check that a reference to a preview definition with symbol `sym` is only
+   *  used in a preview mode.
+   */
+  private[CrossVersionChecks] def checkPreviewFeatureRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    if sym.isPreview && !ctx.owner.isInPreviewScope then
+      Feature.checkPreviewDef(sym, pos)
+
+  /** If @deprecated is present, and the point of reference is not enclosed
+   *  in either a deprecated member or a scala bridge method, issue a warning.
+   *
+   *  Also check for deprecation of the companion class for synthetic methods in the companion module.
+   */
+  private[CrossVersionChecks] def checkDeprecatedRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    def warn(annotee: Symbol, annot: Annotation) =
+      val message = annot.argumentConstantString(0).filter(!_.isEmpty).map(": " + _).getOrElse("")
+      val since = annot.argumentConstantString(1).filter(!_.isEmpty).map(" since " + _).getOrElse("")
+      val composed = em"${annotee.showLocated} is deprecated${since}${message}"
+      report.deprecationWarning(composed, pos, origin = annotee.showFullName)
+    sym.getAnnotation(defn.DeprecatedAnnot) match
+      case Some(annot) => if !skipWarning(sym) then warn(sym, annot)
+      case _ =>
+        if sym.isAllOf(SyntheticMethod) then
+          val companion = sym.owner.companionClass
+          if companion.is(CaseClass) then
+            for annot <- companion.getAnnotation(defn.DeprecatedAnnot) if !skipWarning(sym) do
+              warn(companion, annot)
+
+  /** Decide whether the deprecation of `sym` should be ignored in this context.
+   *
+   *  The warning is skipped if any symbol in the context owner chain is deprecated,
+   *  that is, an enclosing scope is associated with a deprecated symbol.
+   *
+   *  Further exclusions are needed for enums and case classes,
+   *  since they typically need to refer to deprecated members
+   *  even if the enclosing enum or case class is not deprecated.
+   *
+   *  If and only if `sym` is an enum case, the warning is skipped
+   *  if an enclosing scope is either a module that declares `sym`,
+   *  or the companion class of the module that declares `sym`.
+   *
+   *  For a deprecated case class or case class element,
+   *  the warning is skipped for synthetic sites where the enclosing
+   *  class (or its companion) is either the deprecated case class
+   *  or the case class of the deprecated element.
+   */
+  private def skipWarning(sym: Symbol)(using Context): Boolean =
+
+    // is the owner an enum or its companion and also the owner of sym
+    def isEnumOwner(owner: Symbol)(using Context) =
+      // pre: sym is an enumcase
+      if owner.isEnumClass then owner.companionClass eq sym.owner
+      else if owner.is(ModuleClass) && owner.companionClass.isEnumClass then owner eq sym.owner
+      else false
+
+    def isDeprecatedOrEnum(owner: Symbol)(using Context) =
+      // pre: sym is an enumcase
+      owner.isDeprecated || isEnumOwner(owner)
+
+    def siteIsEnclosedByDeprecatedElement =
+      ctx.owner.ownersIterator.exists:
+        if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated
+
+    def siteIsSyntheticCaseClassMember =
+      val owner = ctx.owner
+      def symIsCaseOrMember =
+        val enclosing = owner.enclosingClass
+        val companion = enclosing.companionClass
+        // deprecated sym is either enclosing case class or a sibling member
+        def checkSym(k: Symbol) = sym == k || sym.owner == k
+        (enclosing.is(CaseClass) || companion.is(CaseClass)) && (checkSym(enclosing) || checkSym(companion))
+      owner.is(Synthetic) && symIsCaseOrMember
+
+    siteIsSyntheticCaseClassMember || siteIsEnclosedByDeprecatedElement
+  end skipWarning

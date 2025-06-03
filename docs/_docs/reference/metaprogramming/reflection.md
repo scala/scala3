@@ -82,7 +82,8 @@ def macroImpl()(quotes: Quotes): Expr[Unit] =
   import quotes.reflect.*
   val pos = Position.ofMacroExpansion
 
-  val path = pos.sourceFile.jpath.toString
+  val jpath = pos.sourceFile.getJPath.getOrElse(report.errorAndAbort("virtual file not supported", pos))
+  val path = pos.sourceFile.path // fallback for a virtual file
   val start = pos.start
   val end = pos.end
   val startLine = pos.startLine

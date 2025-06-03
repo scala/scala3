@@ -26,71 +26,6 @@ $ jdb -attach 5005 -sourcepath tests/debug/
 
 You can run `help` for commands that supported by JDB.
 
-## Debug Automatically with Expect
-
-### 1. Annotate the source code with debug information.
-
-Following file (`tests/debug/while.scala`) is an example of annotated source code:
-
-```scala
-object Test {
-
-  def main(args: Array[String]): Unit = {
-    var a = 1 + 2
-    a = a + 3
-    a = 4 + 5 // [break] [step: while]
-
-    while (a * 8 < 100) { // [step: a += 1]
-      a += 1              // [step: while] [cont: print]
-    }
-
-    print(a) // [break] [cont]
-  }
-}
-```
-
-The debugging information is annotated as comments to the code in brackets:
-
-```scala
-val x = f(3) // [break] [next: line=5]
-val y = 5
-```
-
-1. A JDB command must be wrapped in brackets, like `[step]`. All JDB commands can be used.
-2. To check output of JDB for a command, use `[cmd: expect]`.
-3. If `expect` is wrapped in double quotes, regex is supported.
-4. Break commands are collected and set globally.
-5. Other commands will be send to jdb in the order they appear in the source file
-
-Note that JDB uses line number starts from 1.
-
-### 2. Generate Expect File
-
-Now we can run the following command to generate an expect file:
-
-```shell
-compiler/test/debug/Gen tests/debug/while.scala > robot
-```
-
-### 3. Run the Test
-
-First, compile the file `tests/debug/while.scala`:
-
-```shell
-$ scalac tests/debug/while.scala
-```
-
-Second, run the compiled class with debugging enabled:
-
-```shell
-$ scala -d Test
-```
-
-Finally, run the expect script:
-
-```shell
-expect robot
-```
 ## Other tips
 ### Show for human readable output
 
@@ -152,7 +87,7 @@ To print out the trees after all phases:
 scalac -Xprint:all ../issues/Playground.scala
 ```
 
-To find out the list of all the phases and their names, check out [this](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
+To find out the list of all the phases and their names, check out [this](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
 
 ## Printing out stack traces of compile time errors
 You can use the flag `-Ydebug-error` to get the stack trace of all the compile-time errors. Consider the following file:
@@ -207,7 +142,7 @@ val YshowVarBounds    = BooleanSetting("-Yshow-var-bounds"   , "Print type varia
 val YtestPickler      = BooleanSetting("-Ytest-pickler"      , "self-test for pickling functionality; should be used with -Ystop-after:pickler")
 ```
 
-They are defined in [ScalaSettings.scala](https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala). E.g. `YprintPos` is defined as:
+They are defined in [ScalaSettings.scala](https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala). E.g. `YprintPos` is defined as:
 
 ```scala
 val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree positions.")
@@ -244,7 +179,7 @@ package <empty>@<Playground.scala:1> {
 
 ### Figuring out an object creation site
 #### Via ID
-Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
+Every [Positioned](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```shell
 scalac -Xprint:typer -Yshow-tree-ids  ../issues/Playground.scala
@@ -355,7 +290,7 @@ if (tree.show == """println("Hello World")""") {
 }
 ```
 
-In other words, you have a reference to the object and want to know were it was created. To do so, go to the class definition of that object. In our case, `tree` is a [`Tree`](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Trees.scala#L52). Now, create a new `val` member of that type:
+In other words, you have a reference to the object and want to know were it was created. To do so, go to the class definition of that object. In our case, `tree` is a [`Tree`](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Trees.scala#L52). Now, create a new `val` member of that type:
 
 ```scala
 val tracer = Thread.currentThread.getStackTrace.mkString("\n")
@@ -380,7 +315,7 @@ Dotty has a lot of debug calls scattered throughout the code, most of which are 
 These do not follow any particular system and so probably it will be easier to go with `println` most of the times instead.
 
 #### Printers
-Defined in [Printers.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Printers.scala) as a set of variables, each responsible for its own domain. To enable them, replace `noPrinter` with `default`. [Example](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2226) from the code:
+Defined in [Printers.scala](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Printers.scala) as a set of variables, each responsible for its own domain. To enable them, replace `noPrinter` with `default`. [Example](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2226) from the code:
 
 ```scala
 typr.println(i"make contextual function $tree / $pt ---> $ifun")
@@ -389,13 +324,13 @@ typr.println(i"make contextual function $tree / $pt ---> $ifun")
 `typr` is a printer.
 
 #### Tracing
-Defined in [trace.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/trace.scala). [Example](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2232) from the code:
+Defined in [trace.scala](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/trace.scala). [Example](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2232) from the code:
 
 ```scala
 trace(i"typing $tree", typr, show = true) { // ...
 ```
 
-To enable globally, change [tracingEnabled](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Config.scala#L164) to `true` (will recompile a lot of code).
+To enable globally, change [tracingEnabled](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Config.scala#L164) to `true` (will recompile a lot of code).
 
 You also need to set the printer referenced in the call (in the example, `typr`) to `default` as explained in the section on printers.
 
@@ -406,4 +341,4 @@ trace.force(i"typing $tree", typr, show = true) { // ...
 ```
 
 #### Reporter
-Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run scalac with `-Ylog:typer` option.
+Defined in [Reporter.scala](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run scalac with `-Ylog:typer` option.

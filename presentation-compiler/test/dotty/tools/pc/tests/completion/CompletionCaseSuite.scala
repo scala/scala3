@@ -37,7 +37,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |class Cat extends Animal
         |class Dog extends Animal
         |object Elephant extends Animal
-        |class HasFeet[A, B](e: T, f: B) extends Animal
+        |class HasFeet[A, B](e: A, f: B) extends Animal
         |class HasMouth[T](e: T) extends Animal
         |case class HasWings[T](e: T) extends Animal
         |case object Seal extends Animal
@@ -146,14 +146,12 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  // TODO: `Left` has conflicting name in Scope, we should fix it so the result is the same as for scala 2
-  // Issue: https://github.com/scalameta/metals/issues/4368
   @Test def `sealed-conflict` =
     check(
       """
         |object A {
         |  val e: Either[Int, String] = ???
-        |  type Left = String
+        |  val Left = 123
         |  e match {
         |    case@@
         |  }
@@ -261,7 +259,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """|case None => scala
          |case Some(value) => scala
-         |case (exhaustive) Option (2 cases)
+         |case (exhaustive) Option[Int] (2 cases)
          |""".stripMargin
     )
 
@@ -303,7 +301,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """|case None => scala
          |case Some(value) => scala
-         |case (exhaustive) Option (2 cases)
+         |case (exhaustive) Option[Int] (2 cases)
          |""".stripMargin
     )
 
@@ -317,7 +315,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """|case None => scala
          |case Some(value) => scala
-         |case (exhaustive) Option (2 cases)
+         |case (exhaustive) Option[Int] (2 cases)
          |""".stripMargin
     )
 
@@ -531,7 +529,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `private-member` =
+  @Test def `private-member1` =
     check(
       """
         |package example
@@ -542,7 +540,9 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |    ca@@
         |  }
         |}""".stripMargin,
-      ""
+      """
+        |case
+        |""".stripMargin
     )
 
   @Test def `private-member-2` =
@@ -722,3 +722,91 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |""".stripMargin,
       "case (Int, Int) => scala",
     )
+
+  @Test def `keyword-only` =
+    check(
+      """
+        |sealed trait Alpha
+        |object A {
+        |  List.empty[Alpha].groupBy{
+        |    ca@@
+        |  }
+        |}
+        |""".stripMargin,
+      "case",
+    )
+
+  @Test def `union-type` =
+    check(
+     """
+       |case class Foo(a: Int)
+       |case class Bar(b: Int)
+       |
+       |object O {
+       |  val x: Foo | Bar = ???
+       |  val y  = List(x).map{ ca@@ }
+       |}""".stripMargin,
+     """|case Bar(b) => test
+        |case Foo(a) => test
+        |case (exhaustive) Foo | Bar (2 cases)
+        |""".stripMargin
+    )
+
+
+  @Test def `union-type-edit` =
+    checkEdit(
+      """
+        |case class Foo(a: Int)
+        |case class Bar(b: Int)
+        |
+        |object O {
+        |  val x: Foo | Bar = ???
+        |  val y  = List(x).map{ca@@ }
+        |}""".stripMargin,
+      s"""|case class Foo(a: Int)
+          |case class Bar(b: Int)
+          |
+          |object O {
+          |  val x: Foo | Bar = ???
+          |  val y  = List(x).map{
+          |\tcase Foo(a) => $$0
+          |\tcase Bar(b) =>
+          | }
+          |}
+          |""".stripMargin,
+      filter = _.contains("exhaustive")
+    )
+
+  @Test def summonFrom =
+    check(
+      """
+        |object A {
+        |  import scala.compiletime.summonFrom
+        |  class A
+        |
+        |  inline def f: Any = summonFrom {
+        |    case x@@: A => ???  // error: ambiguous givens
+        |  }
+        |}
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def summonFrom2 =
+    check(
+      """
+        |object A {
+        |  import scala.compiletime.summonFrom
+        |
+        |  class A
+        |  given a1: A = new A
+        |  given a2: A = new A
+        |
+        |  inline def f: Any = summonFrom {
+        |    case x@@: A => ???  // error: ambiguous givens
+        |  }
+        |}
+        |""".stripMargin,
+      ""
+    )
+

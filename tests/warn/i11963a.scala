@@ -1,0 +1,4 @@
+
+
+open trait Foo // warn
+

@@ -100,7 +100,7 @@ We can implement a `ToExpr` using a `given` definition that will add the definit
 In the following example we show how to implement a `ToExpr[Option[T]]` for any liftable type `T.
 
 ```scala
-given OptionToExpr[T: Type: ToExpr]: ToExpr[Option[T]] with
+given OptionToExpr: [T: {Type, ToExpr}] => ToExpr[Option[T]]:
   def apply(opt: Option[T])(using Quotes): Expr[Option[T]] =
     opt match
       case Some(x) => '{ Some[T]( ${Expr(x)} ) }
@@ -420,7 +420,7 @@ These value extraction sub-patterns can be polymorphic using an instance of `Fro
 In the following example, we show the implementation of `OptionFromExpr` which internally uses the `FromExpr[T]` to extract the value using the `Expr(x)` pattern.
 
 ```scala
-given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with
+given OptionFromExpr: [T: {Type, FromExpr}] => FromExpr[Option[T]]:
   def unapply(x: Expr[Option[T]])(using Quotes): Option[Option[T]] =
     x match
       case '{ Some( ${Expr(x)} ) } => Some(Some(x))
@@ -452,10 +452,10 @@ The lambda arguments will replace the variables that might have been extruded.
 
 ```scala
 '{ ((x: Int) => x + 1).apply(2) } match
-  case '{ ((y: Int) => $f(y)).apply($z: Int) } =>
+  case '{ ((y: Int) => $f(y): Int).apply($z: Int) } =>
     // f may contain references to `x` (replaced by `$y`)
-    // f = (y: Expr[Int]) => '{ $y + 1 }
-    f(z) // generates '{ 2 + 1 }
+    // f = '{ (y: Int) => $y + 1 }
+    Expr.betaReduce('{ $f($z)}) // generates '{ 2 + 1 }
 ```
 
 

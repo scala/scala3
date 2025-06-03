@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package plugins
 
-import scala.language.unsafeNulls
-
 import core.*
 import Contexts.*
 import Decorators.em
@@ -40,20 +38,19 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => report.warning(e.getMessage.nn)
-      case e: Exception              => report.inform(e.getMessage.nn)
+      case e: MissingPluginException => report.warning(e.getMessage)
+      case e: Exception              => report.inform(e.getMessage)
     })
 
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] = uninitialized
+  private var _roughPluginsList: List[Plugin] | Null = null
   protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
-      _roughPluginsList
     }
-    else _roughPluginsList
+    _roughPluginsList.nn
 
   /** Load all available plugins. Skips plugins that
    *  either have the same name as another one, or which
@@ -99,13 +96,12 @@ trait Plugins {
     plugs
   }
 
-  private var _plugins: List[Plugin] = uninitialized
+  private var _plugins: List[Plugin] | Null = null
   def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
-      _plugins
     }
-    else _plugins
+    _plugins.nn
 
   /** A description of all the plugins that are loaded */
   def pluginDescriptions(using Context): String =
@@ -125,11 +121,11 @@ trait Plugins {
     }
 
     // schedule plugins according to ordering constraints
-    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.init(options(plug)) }
+    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.initialize(options(plug)) }
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
-    if Properties.experimental && !ctx.settings.YnoExperimental.value then
+    if Properties.researchPluginEnabled then
       plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
         (plug, plan) => plug.init(options(plug), plan)
       }

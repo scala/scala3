@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import test.MyMacro
 
 trait Command {

@@ -42,5 +42,20 @@ def f[X <: Box[C], Y <: Cov[C], Z <: Contrav[C]] =
   def b2: ContravElem[Z] = ???
   val _: List[C] = b2  // error
 
+// found in shapeless
 
+object shapeless:
+  trait Monoidal:
+    type to[_] <: Tuple
+    type length[m] = Tuple.Size[to[m]]
 
+  object tuples extends Monoidal:
+    type to[t] = t & Tuple
+end shapeless
+
+def testShapeless[T2 <: (Int, Int, Int)](): Unit =
+  import shapeless.*
+
+  type T1 = (Int, Int, Int)
+  summon[tuples.length[T1] =:= 3] // OK
+  summon[tuples.length[T2] =:= 3] // error

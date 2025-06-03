@@ -1,3 +1,5 @@
+//> using options -Yno-flexible-types
+
 import scala.util.matching.Regex
 
 object Test extends App {

@@ -80,9 +80,12 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         signatureRenderer.renderLink(stripQuotes(text), dri)
       case Annotation.UnresolvedParameter(_, value) => stripQuotes(value)
 
+    // named arguments might be used, so we can't always rely on the order of the parameters
     val (named, unnamed) = a.params.partition(_.name.nonEmpty)
-    val message = named.find(_.name.get == "message")
-    val since = named.find(_.name.get == "since")
+    val message: Option[Annotation.AnnotationParameter] =
+      named.find(_.name.get == "message").fold(unnamed.lift(0))(Some(_))
+    val since: Option[Annotation.AnnotationParameter] =
+      named.find(_.name.get == "since").fold(unnamed.lift(1))(Some(_))
 
     val content = (
       Seq(
@@ -323,6 +326,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val (allInherited, allDefined) = nonExperimental.partition(isInherited)
       val (depDefined, defined) = allDefined.partition(isDeprecated)
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
+      val (abstractInherited, concreteInherited) = inherited.partition(isAbstract)
       val normalizedName = name.toLowerCase
       val definedWithGroup = if Set("methods", "fields").contains(normalizedName) then
           val (abstr, concr) = defined.partition(isAbstract)
@@ -335,7 +339,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       definedWithGroup ++ List(
         actualGroup(s"Deprecated ${normalizedName}", depDefined),
-        actualGroup(s"Inherited ${normalizedName}", inherited),
+        actualGroup(s"Inherited ${normalizedName}", concreteInherited),
+        actualGroup(s"Inherited and Abstract ${normalizedName}", abstractInherited),
         actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited),
         actualGroup(name = s"Experimental ${normalizedName}", experimental)
       )

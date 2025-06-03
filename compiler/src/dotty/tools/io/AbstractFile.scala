@@ -97,11 +97,16 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns the path of this abstract file in a canonical form. */
   def canonicalPath: String = if (jpath == null) path else jpath.normalize.toString
 
-  /** Checks extension case insensitively. TODO: change to enum */
-  def hasExtension(other: String): Boolean = extension == other.toLowerCase
+  /** Checks extension case insensitively. */
+  @deprecated("prefer queries on ext")
+  def hasExtension(other: String): Boolean = ext.toLowerCase.equalsIgnoreCase(other)
 
-  /** Returns the extension of this abstract file. TODO: store as an enum to avoid costly comparisons */
-  val extension: String = Path.extension(name)
+  /** Returns the extension of this abstract file. */
+  val ext: FileExtension = Path.fileExtension(name)
+
+  /** Returns the extension of this abstract file as a String. */
+  @deprecated("use ext instead.")
+  def extension: String = ext.toLowerCase
 
   /** The absolute file, if this is a relative file. */
   def absolute: AbstractFile
@@ -110,7 +115,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def container : AbstractFile
 
   /** Returns the underlying File if any and null otherwise. */
-  def file: JFile = try {
+  def file: JFile | Null = try {
     if (jpath == null) null
     else jpath.toFile
   } catch {
@@ -118,7 +123,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns the underlying Path if any and null otherwise. */
-  def jpath: JPath
+  def jpath: JPath | Null
 
   /** An underlying source, if known.  Mostly, a zip/jar file. */
   def underlyingSource: Option[AbstractFile] = None
@@ -129,13 +134,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Does this abstract file represent something which can contain classfiles? */
-  def isClassContainer: Boolean = isDirectory || (jpath != null && (extension == "jar" || extension == "zip"))
-
-  /** Create a file on disk, if one does not exist already. */
-  def create(): Unit
-
-  /** Delete the underlying file or directory (recursively). */
-  def delete(): Unit
+  def isClassContainer: Boolean = isDirectory || (jpath != null && ext.isJarOrZip)
 
   /** Is this abstract file a directory? */
   def isDirectory: Boolean
@@ -197,12 +196,12 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns all abstract subfiles of this abstract directory. */
-  def iterator(): Iterator[AbstractFile]
+  def iterator: Iterator[AbstractFile]
 
   /** Drill down through subdirs looking for the target, as in lookupName.
    *  Ths target name is the last of parts.
    */
-  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile =
+  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile | Null =
     var file: AbstractFile = this
     var i = 0
     val n = parts.length - 1
@@ -257,6 +256,9 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
    */
   final def resolveSibling(name: String): AbstractFile | Null =
     container.lookupName(name, directory = false)
+
+  final def resolveSiblingWithExtension(extension: FileExtension): AbstractFile | Null =
+    resolveSibling(Path.fileName(name) + "." + extension)
 
   private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile =
     lookupName(name, isDir) match {

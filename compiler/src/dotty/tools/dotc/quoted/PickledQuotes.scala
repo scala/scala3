@@ -217,19 +217,19 @@ object PickledQuotes {
   /** Pickle tree into it's TASTY bytes s*/
   private def pickle(tree: Tree)(using Context): Array[Byte] = {
     quotePickling.println(i"**** pickling quote of\n$tree")
-    val pickler = new TastyPickler(defn.RootClass)
+    val pickler = new TastyPickler(defn.RootClass, isBestEffortTasty = false)
     val treePkl = new TreePickler(pickler, Attributes.empty)
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
       val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
-      PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference,
+      PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
         ctx.compilationUnit.source, tree :: Nil, positionWarnings)
       positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()
-    quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never")}")
+    quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
     pickled
   }
 
@@ -241,7 +241,9 @@ object PickledQuotes {
         treeOwner(tree) match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
-            TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            // Then replace the symbol owner with the one pointed by the quote context.
+            treeCpy.changeNonLocalOwners(ctx.owner)
           case _ =>
             tree
 
@@ -266,10 +268,10 @@ object PickledQuotes {
 
         inContext(unpicklingContext) {
 
-          quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
+          quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
 
           val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-          val unpickler = new DottyUnpickler(NoAbstractFile, bytes, mode)
+          val unpickler = new DottyUnpickler(NoAbstractFile, bytes, isBestEffortTasty = false, mode)
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree

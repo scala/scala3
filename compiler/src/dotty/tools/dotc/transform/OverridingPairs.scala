@@ -8,7 +8,7 @@ import NameKinds.DefaultGetterName
 import NullOpsDecorator.*
 import collection.immutable.BitSet
 import scala.annotation.tailrec
-import cc.isCaptureChecking
+import cc.{isCaptureChecking, CCState}
 
 import scala.compiletime.uninitialized
 
@@ -34,7 +34,9 @@ object OverridingPairs:
      */
     protected def exclude(sym: Symbol): Boolean =
       !sym.memberCanMatchInheritedSymbols
-      || isCaptureChecking && sym.is(Recheck.ResetPrivate)
+      || isCaptureChecking && atPhase(ctx.phase.prev)(sym.is(Private))
+        // for capture checking we drop the private flag of certain parameter accessors
+        // but these still need no overriding checks
 
     /** The parents of base that are checked when deciding whether an overriding
      *  pair has already been treated in a parent class.
@@ -208,8 +210,7 @@ object OverridingPairs:
    *  @param isSubType  A function to be used for checking subtype relationships
    *                    between term fields.
    */
-  def isOverridingPair(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false,
-                       isSubType: (Type, Type) => Context ?=> Boolean = (tp1, tp2) => tp1 frozen_<:< tp2)(using Context): Boolean =
+  def isOverridingPair(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false)(using Context): Boolean =
     if member.isType then // intersection of bounds to refined types must be nonempty
       memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi)
       && (
@@ -223,11 +224,8 @@ object OverridingPairs:
             }
       )
     else
-      // releaxed override check for explicit nulls if one of the symbols is Java defined,
-      // force `Null` to be a subtype of non-primitive value types during override checking.
-      val relaxedOverriding = ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined))
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-      || memberTp.overrides(otherTp, relaxedOverriding,
-            member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack, isSubType = isSubType)
+      ||
+      memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
 
 end OverridingPairs

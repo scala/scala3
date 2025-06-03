@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/14271
+// https://github.com/scala/scala3/issues/14271
 class Bound[T]
 class MyClass[T <: Bound[T]]
 

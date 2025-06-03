@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/given-loop-prevention.scala:10:36 ------------------------------------------------------
+10 |  given List[Foo] = List(summon[Foo]) // error
+   |                                    ^
+   |                       No given instance of type Foo was found for parameter x of method summon in object Predef

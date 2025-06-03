@@ -1,23 +1,23 @@
 -- [E008] Not Found Error: tests/neg/i10901.scala:45:38 ----------------------------------------------------------------
 45 |    val pos1: Point2D[Int,Double] = x º y       // error
    |                                    ^^^
-   |       value º is not a member of object BugExp4Point2D.IntT.
-   |       An extension method was tried, but could not be fully constructed:
+   |          value º is not a member of object BugExp4Point2D.IntT.
+   |          An extension method was tried, but could not be fully constructed:
    |
-   |           º(x)
+   |              º(x)
    |
-   |           failed with:
+   |              failed with:
    |
-   |               Ambiguous overload. The overloaded alternatives of method º in object dsl with types
-   |                [T1, T2]
-   |                 (x: BugExp4Point2D.ColumnType[T1])
-   |                   (y: BugExp4Point2D.ColumnType[T2])
-   |                     (implicit evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
-   |                [T1, T2]
-   |                 (x: T1)
-   |                   (y: BugExp4Point2D.ColumnType[T2])
-   |                     (implicit evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
-   |               both match arguments ((x : BugExp4Point2D.IntT.type))((y : BugExp4Point2D.DoubleT.type))
+   |                  Ambiguous overload. The overloaded alternatives of method º in object dsl with types
+   |                   [T1, T2]
+   |                    (x: BugExp4Point2D.ColumnType[T1])
+   |                      (y: BugExp4Point2D.ColumnType[T2])
+   |                        (using evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |                   [T1, T2]
+   |                    (x: T1)
+   |                      (y: BugExp4Point2D.ColumnType[T2])
+   |                        (using evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |                  both match arguments ((x : BugExp4Point2D.IntT.type))((y : BugExp4Point2D.DoubleT.type))
 -- [E008] Not Found Error: tests/neg/i10901.scala:48:38 ----------------------------------------------------------------
 48 |    val pos4: Point2D[Int,Double] = x º 201.1   // error
    |                                    ^^^
@@ -31,8 +31,8 @@
    |        Ambiguous overload. The overloaded alternatives of method º in object dsl with types
    |         [T1, T2]
    |          (x: BugExp4Point2D.ColumnType[T1])
-   |            (y: T2)(implicit evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
-   |         [T1, T2](x: T1)(y: T2)(implicit evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |            (y: T2)(using evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |         [T1, T2](x: T1)(y: T2)(using evidence$1: Numeric[T1], evidence$2: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
    |        both match arguments ((x : BugExp4Point2D.IntT.type))((201.1d : Double))
 -- [E008] Not Found Error: tests/neg/i10901.scala:62:16 ----------------------------------------------------------------
 62 |  val y = "abc".foo  // error

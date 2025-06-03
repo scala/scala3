@@ -1,7 +1,6 @@
-import annotation.capability
+import caps.{Capability, SharedCapability}
 
-@capability class Cap
-def f1(c: Cap): () ->{c} c.type = () => c // ok
+def f1(c: Capability): () ->{c} c.type = () => c // ok
 
 def f2: Int =
   val g: Boolean => Int = ???
@@ -15,15 +14,18 @@ def f3: Int =
   x
 
 def foo() =
-  val x: Cap = ???
-  val y: Cap = x
-  val x2: () ->{x} Cap = ???
-  val y2: () ->{x} Cap = x2
+  val x: SharedCapability = ???
+  val y: Capability = x
+  val x2: () ->{x} Capability = ???
+  val y2: () ->{x} Capability = x2
 
-  val z1: () => Cap = f1(x)
+  val z1: () => Capability = f1(x)
   def h[X](a: X)(b: X) = a
 
-  val z2 =
-    if x == null then () => x else () => Cap()
+  val z2: (y: Unit) ->{x} Capability^ =
+    if x == null then (y: Unit) => x else (y: Unit) => new Capability() {}
+  // z2's type cannot be inferred, see neg test
+  //val z3 =
+  //  if x == null then (y: Unit) => x else (y: Unit) => new Capability() {}
   val _ = x
 

@@ -11,6 +11,10 @@ import DependencyContext._
 import java.{util => ju}
 import ju.Optional
 
+class TestCallbackNoInc extends TestCallback {
+  override def enabled(): Boolean = false
+}
+
 class TestCallback extends AnalysisCallback2 {
   case class TestUsedName(name: String, scopes: ju.EnumSet[UseScope])
 

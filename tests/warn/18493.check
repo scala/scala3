@@ -1,0 +1,8 @@
+-- [E030] Match case Unreachable Warning: tests/warn/18493.scala:6:9 ---------------------------------------------------
+6 |    case "abc" => // warn
+  |         ^^^^^
+  |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/18493.scala:12:9 --------------------------------------------------
+12 |    case "abc" => // warn
+   |         ^^^^^
+   |         Unreachable case

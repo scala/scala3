@@ -12,6 +12,7 @@ import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
+import transform.Splicer
 
 trait TypeAssigner {
   import tpd.*
@@ -51,7 +52,7 @@ trait TypeAssigner {
     else sym.info
 
   private def toRepeated(tree: Tree, from: ClassSymbol)(using Context): Tree =
-    Typed(tree, TypeTree(tree.tpe.widen.translateToRepeated(from)))
+    Typed(tree, TypeTree(tree.tpe.widen.translateToRepeated(from), inferred = true))
 
   def seqToRepeated(tree: Tree)(using Context): Tree = toRepeated(tree, defn.SeqClass)
 
@@ -85,7 +86,7 @@ trait TypeAssigner {
       defn.FromJavaObjectType
     else tpe match
       case tpe: NamedType =>
-        val tpe1 = TypeOps.makePackageObjPrefixExplicit(tpe)
+        val tpe1 = tpe.makePackageObjPrefixExplicit
         if tpe1 ne tpe then
           accessibleType(tpe1, superAccess)
         else
@@ -107,8 +108,10 @@ trait TypeAssigner {
     val tpe1 = accessibleType(tpe, superAccess)
     if tpe1.exists then tpe1
     else tpe match
-      case tpe: NamedType => inaccessibleErrorType(tpe, superAccess, pos)
-      case NoType => tpe
+      case tpe: NamedType =>
+        if tpe.termSymbol.hasPublicInBinary && tpd.enclosingInlineds.nonEmpty then tpe
+        else inaccessibleErrorType(tpe, superAccess, pos)
+      case _ => tpe
 
   /** Return a potentially skolemized version of `qualTpe` to be used
    *  as a prefix when selecting `name`.
@@ -123,8 +126,8 @@ trait TypeAssigner {
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
-    val qualType0 = qual1.tpe.widenIfUnstable
     val qualType =
+      val qualType0 = qual1.tpe.widenIfUnstable
       if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
         // constructors are selected on type constructor, type arguments are passed afterwards
         errorType(em"$qualType0 takes type parameters", qual1.srcPos)
@@ -154,11 +157,14 @@ trait TypeAssigner {
         val pre = maybeSkolemizePrefix(qualType, name)
         val mbr =
           if ctx.isJava then
-            ctx.javaFindMember(name, pre)
+            // don't look in the companion class here if qual is a module,
+            // we use backtracking to instead change the qual to the companion class
+            // if this fails.
+            ctx.javaFindMember(name, pre, lookInCompanion = false)
           else
             qualType.findMember(name, pre)
 
-        if reallyExists(mbr) then qualType.select(name, mbr)
+        if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
   end selectionType
@@ -194,7 +200,7 @@ trait TypeAssigner {
 
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
-   *   - typed child trees it needs to access to cpmpute that type,
+   *   - typed child trees it needs to access to compute that type,
    *   - any further information it needs to access to compute that type.
    */
   def assignType(tree: untpd.Ident, tp: Type)(using Context): Ident =
@@ -256,7 +262,7 @@ trait TypeAssigner {
           else if (ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {
             val ps = cls.classInfo.parents
-            if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
+            if ps.isEmpty then defn.AnyType else ps.reduceLeft(AndType(_, _))
           }
         SuperType(cls.thisType, owntype)
 
@@ -296,7 +302,12 @@ trait TypeAssigner {
           if fntpe.isResultDependent then safeSubstMethodParams(fntpe, args.tpes)
           else fntpe.resultType // fast path optimization
         else
-          errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+          val erroringPhase =
+            if Splicer.inMacroExpansion then i"${ctx.phase} (while expanding macro)"
+            else ctx.phase.prev.toString
+          errorType(em"wrong number of arguments at $erroringPhase for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+      case err: ErrorType =>
+        err
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsMsg(fn, ""), tree.srcPos)
@@ -353,20 +364,21 @@ trait TypeAssigner {
                 resultType1)
             }
           }
+          else if !args.hasSameLengthAs(paramNames) then
+            wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           else {
             // Make sure arguments don't contain the type `pt` itself.
-            // make a copy of the argument if that's the case.
+            // Make a copy of `pt` if that's the case.
             // This is done to compensate for the fact that normally every
             // reference to a polytype would have to be a fresh copy of that type,
             // but we want to avoid that because it would increase compilation cost.
             // See pos/i6682a.scala for a test case where the defensive copying matters.
-            val ensureFresh = new TypeMap with CaptureSet.IdempotentCaptRefMap:
-              def apply(tp: Type) = mapOver(
-                if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
-                else tp)
-            val argTypes = args.tpes.mapConserve(ensureFresh)
-            if (argTypes.hasSameLengthAs(paramNames)) pt.instantiate(argTypes)
-            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
+            val needsFresh = new ExistsAccumulator(_ eq pt, StopAt.None, forceLazy = false)
+            val argTypes = args.tpes
+            val pt1 = if argTypes.exists(needsFresh(false, _)) then
+              pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
+            else pt
+            pt1.instantiate(argTypes)
           }
         }
       case err: ErrorType =>
@@ -421,13 +433,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val getParams = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
-          def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(using Context) = t match {
-            case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
-            case _ => foldOver(ps, t)
-          }
-        }
-        val params1 = getParams(new mutable.ListBuffer[TypeSymbol](), pat).toList
+        val params1 = pat.bindTypeSymbols
         val params2 = pat.tpe match
           case AppliedType(tycon, args) =>
             val tparams = tycon.typeParamSymbols
@@ -512,9 +518,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree, alias: Tree)(using Context): TypeBoundsTree =
     tree.withType(
       if !alias.isEmpty then alias.tpe
-      else if lo eq hi then
-        if lo.tpe.isMatch then MatchAlias(lo.tpe)
-        else TypeAlias(lo.tpe)
+      else if lo eq hi then AliasingBounds(lo.tpe)
       else TypeBounds(lo.tpe, hi.tpe))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(using Context): Bind =
@@ -525,6 +529,12 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)
+
+  def assignType(tree: untpd.Splice, expr: Tree)(using Context): Splice =
+    val tpe = expr.tpe // Quotes ?=> Expr[T]
+      .baseType(defn.FunctionSymbol(1, isContextual = true)).argTypes.last // Expr[T]
+      .baseType(defn.QuotedExprClass).argTypes.head // T
+    tree.withType(tpe)
 
   def assignType(tree: untpd.QuotePattern, proto: Type)(using Context): QuotePattern =
     tree.withType(proto)
@@ -563,5 +573,3 @@ object TypeAssigner extends TypeAssigner:
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
     case _ => if ctx.erasedTypes then defn.SeqType else defn.SeqType.appliedTo(elemType)
-
-

@@ -2,12 +2,12 @@
 -- Error: tests/neg-macros/annot-empty-result/Test_2.scala:5:2 ---------------------------------------------------------
 5 |  @nilAnnot // error
   |  ^^^^^^^^^
-  |  Unexpected `Nil` returned by `(new nilAnnot()).transform(..)` during macro expansion
+  |  Transformed tree for method f2 was not return by `(new nilAnnot()).transform(..)` during macro expansion
 -- Error: tests/neg-macros/annot-empty-result/Test_2.scala:9:4 ---------------------------------------------------------
 9 |    @nilAnnot // error
   |    ^^^^^^^^^
-  |    Unexpected `Nil` returned by `(new nilAnnot()).transform(..)` during macro expansion
+  |    Transformed tree for method f3 was not return by `(new nilAnnot()).transform(..)` during macro expansion
 -- Error: tests/neg-macros/annot-empty-result/Test_2.scala:1:0 ---------------------------------------------------------
 1 |@nilAnnot // error
   |^^^^^^^^^
-  |Unexpected `Nil` returned by `(new nilAnnot()).transform(..)` during macro expansion
+  |Transformed tree for method f1 was not return by `(new nilAnnot()).transform(..)` during macro expansion

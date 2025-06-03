@@ -17,6 +17,9 @@ import java.net.URI
 class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val initialChunkSize = 5
   val resultsChunkSize = 20
+
+  val querySearch = Option(URLSearchParams(window.location.search).get("search")).filter(_.nonEmpty)
+
   def pathToRoot() = window.document.documentElement.getAttribute("data-pathToRoot")
   extension (p: PageEntry)
     def toHTML(boldChars: Set[Int]) =
@@ -148,7 +151,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
             val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
             val loadMoreElement = createLoadMoreElement
 
-            def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
+            def loadMoreResults(entries: List[HTMLElement]): Unit = {
               loadMoreElement.onclick = (event: Event) => {
                 entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
                 val nextElems = entries.drop(resultsChunkSize)
@@ -192,7 +195,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     }
   }
 
-  def createLoadingAnimation: raw.HTMLElement =
+  def createLoadingAnimation: HTMLElement =
     div(cls := "loading-wrapper")(
       div(cls := "loading")
     )
@@ -262,7 +265,8 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
 
   private val inputElem: html.Input =
-    input(cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
+    val initialValue = querySearch.getOrElse("")
+    input(cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything", value := initialValue).tap { element =>
       element.addEventListener("input", { e =>
         clearTimeout(timeoutHandle)
         val inputValue = e.target.asInstanceOf[html.Input].value
@@ -346,7 +350,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     val selectedElement = resultsDiv.querySelector("[selected]")
     if selectedElement != null then {
       selectedElement.removeAttribute("selected")
-      def recur(elem: raw.Element): raw.Element = {
+      def recur(elem: Element): Element = {
         val prev = elem.previousElementSibling
         if prev == null then null
         else {
@@ -366,7 +370,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
   }
   private def handleArrowDown() = {
     val selectedElement = resultsDiv.querySelector("[selected]")
-    def recur(elem: raw.Element): raw.Element = {
+    def recur(elem: Element): Element = {
       val next = elem.nextElementSibling
       if next == null then null
       else {
@@ -453,3 +457,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
   }
 
   inputElem.dispatchEvent(new Event("input"))
+  if (querySearch.isDefined && !document.body.contains(rootDiv)) {
+    document.body.appendChild(rootDiv)
+    inputElem.focus()
+  }

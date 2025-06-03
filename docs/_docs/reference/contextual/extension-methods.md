@@ -225,7 +225,7 @@ object List:
   extension [T](xs: List[List[T]])
     def flatten: List[T] = xs.foldLeft(List.empty[T])(_ ++ _)
 
-  given [T: Ordering]: Ordering[List[T]] with
+  given [T: Ordering] => Ordering[List[T]]:
     extension (xs: List[T])
       def < (ys: List[T]): Boolean = ...
 end List

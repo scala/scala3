@@ -11,7 +11,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
-  type +[X <: String, Y <: String] <: String
+  infix type +[X <: String, Y <: String] <: String
 
   /** Length of a `String` singleton type.
    *  ```scala

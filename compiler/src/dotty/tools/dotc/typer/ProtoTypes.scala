@@ -11,24 +11,25 @@ import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators.*
 import Uniques.*
+import Flags.{Method, Transparent}
 import inlines.Inlines
+import config.{Feature, SourceVersion}
 import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
+import util.Spans.{NoSpan, Span}
 import TypeComparer.necessarySubType
-import dotty.tools.dotc.core.Flags.Transparent
-import dotty.tools.dotc.config.{ Feature, SourceVersion }
+import reporting.*
 
 import scala.annotation.internal.sharable
-import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
   import tpd.*
 
   /** A trait defining an `isCompatible` method. */
-  trait Compatibility {
+  trait Compatibility:
 
     /** Is there an implicit conversion from `tp` to `pt`? */
     def viewExists(tp: Type, pt: Type)(using Context): Boolean
@@ -83,6 +84,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
+    trace(i"constrainResult($mt, $pt)", typr):
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
@@ -108,32 +110,53 @@ object ProtoTypes {
       if !res then ctx.typerState.constraint = savedConstraint
       res
 
-    /** Constrain result with special case if `meth` is a transparent inlineable method in an inlineable context.
-     *  In that case, we should always succeed and not constrain type parameters in the expected type,
-     *  because the actual return type can be a subtype of the currently known return type.
-     *  However, we should constrain parameters of the declared return type. This distinction is
-     *  achieved by replacing expected type parameters with wildcards.
+    /** Constrain result with two special cases:
+     *   1. If `meth` is a transparent inlineable method in an inlineable context,
+     *      we should always succeed and not constrain type parameters in the expected type,
+     *      because the actual return type can be a subtype of the currently known return type.
+     *      However, we should constrain parameters of the declared return type. This distinction is
+     *      achieved by replacing expected type parameters with wildcards.
+     *   2. When constraining the result of a primitive value operation against
+     *      a precise typevar, don't lower-bound the typevar with a non-singleton type.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
-      if (Inlines.isInlineable(meth)) {
-        // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
-        if (Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`)) {
-          if (meth.is(Transparent)) {
-            constrainResult(mt, wildApprox(pt))
-            // do not constrain the result type of transparent inline methods
-            true
-          } else {
-            constrainResult(mt, pt)
-          }
-        } else {
-          // Best-effort to fix https://github.com/lampepfl/dotty/issues/9685 in the 3.3.x series
-          // while preserving source compatibility as much as possible
-          val methodMatchedType = constrainResult(mt, wildApprox(pt))
-          meth.is(Transparent) || methodMatchedType
-        }
+
+      def constFoldException(pt: Type): Boolean = pt.dealias match
+        case tvar: TypeVar =>
+          tvar.isPrecise
+          && meth.is(Method) && meth.owner.isPrimitiveValueClass
+          && mt.resultType.isPrimitiveValueType && !mt.resultType.isSingleton
+        case tparam: TypeParamRef =>
+          constFoldException(ctx.typerState.constraint.typeVarOfParam(tparam))
+        case _ =>
+          false
+
+      constFoldException(pt) || {
+        if Inlines.isInlineable(meth) then
+          // Stricter behavisour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          // unless their return type is a MatchType. In this case there's no reason
+          // not to constrain type variables in the expected type. For transparent inlines
+          // we do not want to constrain type variables in the expected type since the
+          // actual return type might be smaller after instantiation. For inlines returning
+          // MatchTypes we do not want to constrain because the MatchType might be more
+          // specific after instantiation. TODO: Should we also use Wildcards for non-inline
+          // methods returning MatchTypes?
+          if Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`) then
+            if meth.is(Transparent) || mt.resultType.isMatchAlias then
+              constrainResult(mt, wildApprox(pt))
+              // do not constrain the result type of transparent inline methods
+              true
+            else
+              constrainResult(mt, pt)
+          else
+            // Best-effort to fix https://github.com/scala/scala3/issues/9685 in the 3.3.x series
+            // while preserving source compatibility as much as possible
+            constrainResult(mt, wildApprox(pt)) || meth.is(Transparent)
+        else constrainResult(mt, pt)
       }
-      else constrainResult(mt, pt)
-  }
+
+    end constrainResult
+  end Compatibility
 
   object NoViewsAllowed extends Compatibility {
     override def viewExists(tp: Type, pt: Type)(using Context): Boolean = false
@@ -301,6 +324,8 @@ object ProtoTypes {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name, nameSpan)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true, nameSpan)
 
+  class WildcardSelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
    *    [].?: ?
@@ -309,9 +334,9 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object AnySelectionProto extends WildcardSelectionProto
 
-  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object SingletonTypeProto extends WildcardSelectionProto
 
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name, nameSpan: Span) extends SelectionProto(name, WildcardType, NoViewsAllowed, true, nameSpan)
@@ -402,19 +427,28 @@ object ProtoTypes {
      *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
      *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
      */
-    def hasInnerErrors(t: Tree)(using Context): Boolean = t match
-      case Typed(expr, tpe) => hasInnerErrors(expr)
-      case closureDef(mdef) => hasInnerErrors(mdef.rhs)
+    def hasInnerErrors(t: Tree, argType: Type)(using Context): Boolean = t match
+      case Typed(expr, tpe) => hasInnerErrors(expr, argType)
+      case closureDef(mdef) => hasInnerErrors(mdef.rhs, argType)
       case _ =>
         t.existsSubTree { t1 =>
-          if t1.typeOpt.isError && t1.span.toSynthetic != t.span.toSynthetic then
+          if t1.typeOpt.isError
+            && t.span.toSynthetic != t1.span.toSynthetic
+            && t.typeOpt != t1.typeOpt then
             typr.println(i"error subtree $t1 of $t with ${t1.typeOpt}, spans = ${t1.span}, ${t.span}")
-            true
+            t1.typeOpt match
+              case errorType: ErrorType if errorType.msg.isInstanceOf[TypeMismatchMsg] =>
+                // if error is caused by an argument type mismatch,
+                // then return false to try to find an extension.
+                // see i20335.scala for test case.
+                val typeMismtachMsg = errorType.msg.asInstanceOf[TypeMismatchMsg]
+                argType != typeMismtachMsg.expected
+              case _ => true
           else
             false
         }
 
-    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean, argType: Type)(using Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null)
         untpd.functionWithUnknownParamType(arg) match {
@@ -432,7 +466,7 @@ object ProtoTypes {
             targ = typerFn(arg)
             // TODO: investigate why flow typing is not working on `targ`
             if ctx.reporter.hasUnreportedErrors then
-              if hasInnerErrors(targ.nn) then
+              if hasInnerErrors(targ.nn, argType) then
                 state.errorArgs += arg
             else
               state.typedArg = state.typedArg.updated(arg, targ.nn)
@@ -460,7 +494,7 @@ object ProtoTypes {
           val protoTyperState = ctx.typerState
           val oldConstraint = protoTyperState.constraint
           val args1 = args.mapWithIndexConserve((arg, idx) =>
-            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false, NoType))
           val newConstraint = protoTyperState.constraint
 
           if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
@@ -502,12 +536,13 @@ object ProtoTypes {
     def typedArg(arg: untpd.Tree, formal: Type)(using Context): Tree = {
       val wideFormal = formal.widenExpr
       val argCtx =
-        if wideFormal eq formal then ctx
-        else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
+        if wideFormal eq formal then ctx.retractMode(Mode.InAnnotation)
+        else ctx.retractMode(Mode.InAnnotation).withNotNullInfos(ctx.notNullInfos.retractMutables)
       val locked = ctx.typerState.ownedVars
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
-        force = true)
+        force = true,
+        wideFormal)
       val targ1 = typer.adapt(targ, wideFormal, locked)
       if wideFormal eq formal then targ1
       else checkNoWildcardCaptureForCBN(targ1)
@@ -714,6 +749,20 @@ object ProtoTypes {
       case FunProto((arg: untpd.TypedSplice) :: Nil, _) => arg.isExtensionReceiver
       case _ => false
 
+  /** An extractor for Singleton and Precise witness types.
+   *
+   *       Singleton { type Self = T }     returns Some(T, true)
+   *       Precise { type Self = T }       returns Some(T, false)
+   */
+  object PreciseConstrained:
+    def unapply(tp: Type)(using Context): Option[(Type, Boolean)] = tp.dealias match
+      case RefinedType(parent, tpnme.Self, TypeAlias(tp)) =>
+        val tsym = parent.typeSymbol
+        if tsym == defn.SingletonClass then Some((tp, true))
+        else if tsym == defn.PreciseClass then Some((tp, false))
+        else None
+      case _ => None
+
   /** Add all parameters of given type lambda `tl` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.
@@ -726,26 +775,43 @@ object ProtoTypes {
     tl: TypeLambda, owningTree: untpd.Tree,
     alwaysAddTypeVars: Boolean,
     nestingLevel: Int = ctx.nestingLevel
-  ): (TypeLambda, List[TypeVar]) = {
+  ): (TypeLambda, List[TypeVar]) =
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
       assert(!ctx.typerState.isCommittable || addTypeVars,
         s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
       // hk type lambdas can be added to constraints without typevars during match reduction
+    val added = state.constraint.ensureFresh(tl)
 
-    def newTypeVars(tl: TypeLambda): List[TypeVar] =
-      for paramRef <- tl.paramRefs
-      yield
-        val tvar = TypeVar(paramRef, state, nestingLevel)
+    def preciseConstrainedRefs(tp: Type, singletonOnly: Boolean): Set[TypeParamRef] = tp match
+      case tp: MethodType if tp.isContextualMethod =>
+        val ownBounds =
+          for
+            case PreciseConstrained(ref: TypeParamRef, singleton) <- tp.paramInfos
+            if !singletonOnly || singleton
+          yield ref
+        ownBounds.toSet ++ preciseConstrainedRefs(tp.resType, singletonOnly)
+      case tp: LambdaType =>
+        preciseConstrainedRefs(tp.resType, singletonOnly)
+      case _ =>
+        Set.empty
+
+    def newTypeVars: List[TypeVar] =
+      val preciseRefs = preciseConstrainedRefs(added, singletonOnly = false)
+      for paramRef <- added.paramRefs yield
+        val tvar = TypeVar(paramRef, state, nestingLevel, precise = preciseRefs.contains(paramRef))
         state.ownedVars += tvar
         tvar
 
-    val added = state.constraint.ensureFresh(tl)
-    val tvars = if addTypeVars then newTypeVars(added) else Nil
+    val tvars = if addTypeVars then newTypeVars else Nil
     TypeComparer.addToConstraint(added, tvars)
+    val singletonRefs = preciseConstrainedRefs(added, singletonOnly = true)
+    for paramRef <- added.paramRefs do
+      // Constrain all type parameters [T: Singleton] to T <: Singleton
+      if singletonRefs.contains(paramRef) then paramRef <:< defn.SingletonType
     (added, tvars)
-  }
+  end constrained
 
   def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeVar]) =
     constrained(tl, owningTree,
@@ -959,6 +1025,15 @@ object ProtoTypes {
         paramInfos = tl.paramInfos.mapConserve(wildApprox(_, theMap, seen, internal1).bounds),
         resType = wildApprox(tl.resType, theMap, seen, internal1)
       )
+    case tp @ AnnotatedType(parent, _) =>
+      // This case avoids approximating types in the annotation tree, which can
+      // cause the type assigner to fail.
+      // See #22893 and tests/pos/annot-default-arg-22874.scala.
+      val parentApprox = wildApprox(parent, theMap, seen, internal)
+      if tp.isRefining then
+        WildcardType(TypeBounds.upper(parentApprox))
+      else
+        parentApprox
     case _ =>
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen, internal))
         .mapOver(tp)

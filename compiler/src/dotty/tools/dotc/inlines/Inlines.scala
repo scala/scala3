@@ -5,12 +5,16 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.{tpnme, nme}
+import NameOps.*
 import typer.*
 import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos}
+import dotty.tools.dotc.transform.*
+import dotty.tools.dotc.transform.MegaPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
@@ -18,6 +22,8 @@ import staging.StagingLevel
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
+import dotty.tools.dotc.core.Periods.PhaseId
+import dotty.tools.dotc.util.chaining.*
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -39,6 +45,11 @@ object Inlines:
   def bodyToInline(sym: SymDenotation)(using Context): Tree =
     if hasBodyToInline(sym) then
       sym.getAnnotation(defn.BodyAnnot).get.tree
+        .tap: body =>
+          for annot <- sym.getAnnotation(defn.NowarnAnnot) do
+            val argPos = annot.argument(0).getOrElse(annot.tree).sourcePos
+            val conf = annot.argumentConstantString(0).getOrElse("")
+            ctx.run.nn.suppressions.registerNowarn(annot.tree.sourcePos, body.span)(conf, argPos)
     else
       EmptyTree
 
@@ -54,6 +65,16 @@ object Inlines:
   def needsInlining(tree: Tree)(using Context): Boolean = tree match {
     case Block(_, expr) => needsInlining(expr)
     case _ =>
+      def isUnapplyExpressionWithDummy: Boolean =
+        // The first step of typing an `unapply` consists in typing the call
+        // with a dummy argument (see Applications.typedUnApply). We delay the
+        // inlining of this call.
+        def rec(tree: Tree): Boolean = tree match
+          case Apply(_, ProtoTypes.dummyTreeOfType(_) :: Nil) => true
+          case Apply(fn, _) => rec(fn)
+          case _ => false
+        tree.symbol.name.isUnapplyName && rec(tree)
+
       isInlineable(tree.symbol)
       && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
       && StagingLevel.level == 0
@@ -64,12 +85,12 @@ object Inlines:
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
       && !ctx.mode.is(Mode.NoInline)
+      && !isUnapplyExpressionWithDummy
   }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
     || ctx.mode.is(Mode.ForceInline)
-    || ctx.settings.YforceInlineWhileTyping.value
 
   /** Try to inline a call to an inline method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -89,7 +110,7 @@ object Inlines:
     if ctx.isAfterTyper then
       // During typer we wait with cross version checks until PostTyper, in order
       // not to provoke cyclic references. See i16116 for a test case.
-      CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+      CrossVersionChecks.checkRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
@@ -172,10 +193,10 @@ object Inlines:
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
    *  inline depth is exceeded.
    *
-   *  @param unapp   The tree of the pattern to inline
+   *  @param fun The function of an Unapply node
    *  @return   An `Unapply` with a `fun` containing the inlined call to the unapply
    */
-  def inlinedUnapply(unapp: tpd.UnApply)(using Context): Tree =
+  def inlinedUnapplyFun(fun: tpd.Tree)(using Context): Tree =
     // We cannot inline the unapply directly, since the pattern matcher relies on unapply applications
     // as signposts what to do. On the other hand, we can do the inlining only in typer, not afterwards.
     // So the trick is to create a "wrapper" unapply in an anonymous class that has the inlined unapply
@@ -189,7 +210,6 @@ object Inlines:
     // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
     // the call to the `unapply`.
 
-    val fun = unapp.fun
     val sym = fun.symbol
 
     val newUnapply = AnonClass(ctx.owner, List(defn.ObjectType), sym.coord) { cls =>
@@ -199,7 +219,7 @@ object Inlines:
       val unapplyInfo = fun.tpe.widen
       val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
 
-      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss).withSpan(unapp.span))
+      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss).withSpan(fun.span))
 
       if sym.is(Transparent) then
         // Inline the body and refine the type of the unapply method
@@ -214,9 +234,8 @@ object Inlines:
         List(unapply)
     }
 
-    val newFun = newUnapply.select(sym.name).withSpan(unapp.span)
-    cpy.UnApply(unapp)(fun = newFun)
-  end inlinedUnapply
+    newUnapply.select(sym.name).withSpan(fun.span)
+  end inlinedUnapplyFun
 
   /** For a retained inline method, another method that keeps track of
    *  the body that is kept at runtime. For instance, an inline method
@@ -299,6 +318,20 @@ object Inlines:
     (new Reposition).transform(tree)
   end reposition
 
+  /** Leave only a call trace consisting of
+   *  - a reference to the top-level class from which the call was inlined,
+   *  - the call's position
+   *  in the call field of an Inlined node.
+   *  The trace has enough info to completely reconstruct positions.
+   *  Note: For macros it returns a Select and for other inline methods it returns an Ident (this distinction is only temporary to be able to run YCheckPositions)
+   */
+  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
+    assert(ctx.source == pos.source)
+    val topLevelCls = callSym.topLevelClass
+    if (callSym.is(Macro)) ref(topLevelCls.owner).select(topLevelCls.name)(using ctx.withOwner(topLevelCls.owner)).withSpan(pos.span)
+    else Ident(topLevelCls.typeRef).withSpan(pos.span)
+  }
+
   private object Intrinsics:
     import dotty.tools.dotc.reporting.Diagnostic.Error
     private enum ErrorKind:
@@ -319,21 +352,89 @@ object Inlines:
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
         else codeArg1
 
+      // We should not be rewriting tested strings
+      val noRewriteSettings = ctx.settings.rewrite.updateIn(ctx.settingsState.reinitializedCopy(), None)
+
+      class MegaPhaseWithCustomPhaseId(miniPhases: Array[MiniPhase], startId: PhaseId, endId: PhaseId)
+        extends MegaPhase(miniPhases) {
+        override def start: Int = startId
+        override def end: Int = endId
+      }
+
+      // Let's reconstruct necessary transform MegaPhases, without anything
+      // that could cause problems here (like `CrossVersionChecks`).
+      // The individiual lists here should line up with Compiler.scala, i.e
+      // separate chunks there should also be kept separate here.
+      // For now we create a single MegaPhase, since there does not seem to
+      // be any important checks later (e.g. ForwardDepChecks could be applicable here,
+      // but the equivalent is also not run in the scala 2's `ctx.typechecks`,
+      // so let's leave it out for now).
+      lazy val reconstructedTransformPhases =
+        val transformPhases: List[List[(Class[?], () => MiniPhase)]] = List(
+          List(
+            (classOf[InlineVals], () => new InlineVals),
+            (classOf[ElimRepeated], () => new ElimRepeated),
+            (classOf[RefChecks], () => new RefChecks),
+          ),
+        )
+
+        transformPhases.flatMap( (megaPhaseList: List[(Class[?], () => MiniPhase)]) =>
+          val (newMegaPhasePhases, phaseIds) =
+            megaPhaseList.flatMap {
+              case (filteredPhaseClass, miniphaseConstructor) =>
+                ctx.base.phases
+                  .find(phase => filteredPhaseClass.isInstance(phase))
+                  .map(phase => (miniphaseConstructor(), phase.id))
+            }
+            .unzip
+          if newMegaPhasePhases.isEmpty then None
+          else Some(MegaPhaseWithCustomPhaseId(newMegaPhasePhases.toArray, phaseIds.head, phaseIds.last))
+        )
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
-          val source2 = SourceFile.virtual("tasty-reflect", code)
-          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
-            val tree2 = new Parser(source2).block()
-            if ctx.reporter.allErrors.nonEmpty then
+          val unitName = "tasty-reflect"
+          val source2 = SourceFile.virtual(unitName, code)
+          def compilationUnits(untpdTree: untpd.Tree, tpdTree: Tree): List[CompilationUnit] =
+            val compilationUnit = CompilationUnit(unitName, code)
+            compilationUnit.tpdTree = tpdTree
+            compilationUnit.untpdTree = untpdTree
+            List(compilationUnit)
+          // We need a dummy owner, as the actual one does not have a computed denotation yet,
+          // but might be inspected in a transform phase, leading to cyclic errors
+          val dummyOwner = newSymbol(ctx.owner, "$dummySymbol$".toTermName, Private, defn.AnyType, NoSymbol)
+          val newContext =
+            ctx.fresh
+            .setSettings(noRewriteSettings)
+            .setNewTyperState()
+            .setTyper(new Typer(ctx.nestingLevel + 1))
+            .setSource(source2)
+            .withOwner(dummyOwner)
+
+          inContext(newContext) {
+            def noErrors = ctx.reporter.allErrors.isEmpty
+            val untpdTree = new Parser(source2).block()
+            if !noErrors then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
             else
-              val tree3 = ctx.typer.typed(tree2)
+              val tpdTree1 = ctx.typer.typed(untpdTree)
               ctx.base.postTyperPhase match
-                case postTyper: PostTyper if ctx.reporter.allErrors.isEmpty =>
-                  val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
-                  ctx.base.inliningPhase match
-                    case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
-                      atPhase(inlining) { inlining.newTransformer.transform(tree4) }
+                case postTyper: PostTyper if noErrors =>
+                  val tpdTree2 =
+                    atPhase(postTyper) { postTyper.runOn(compilationUnits(untpdTree, tpdTree1)).head.tpdTree }
+                  ctx.base.setRootTreePhase match
+                    case setRootTree if noErrors => // might be noPhase, if -Yretain-trees is not used
+                      val tpdTree3 =
+                        atPhase(setRootTree)(setRootTree.runOn(compilationUnits(untpdTree, tpdTree2)).head.tpdTree)
+                      ctx.base.inliningPhase match
+                        case inlining: Inlining if noErrors =>
+                          val tpdTree4 = atPhase(inlining) { inlining.newTransformer.transform(tpdTree3) }
+                          if noErrors && reconstructedTransformPhases.nonEmpty then
+                            var transformTree = tpdTree4
+                            for phase <- reconstructedTransformPhases do
+                              if noErrors then
+                                transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
+                        case _ =>
                     case _ =>
                 case _ =>
               ctx.reporter.allErrors.map((ErrorKind.Typer, _))
@@ -406,6 +507,7 @@ object Inlines:
           val constVal = tryConstValue(tpe)
           if constVal.isEmpty then
             val msg = NotConstant("cannot take constValue", tpe)
+            report.error(msg, callTypeArgs.head.srcPos)
             ref(defn.Predef_undefined).withSpan(callTypeArgs.head.span).withType(ErrorType(msg))
           else
             constVal
@@ -429,6 +531,8 @@ object Inlines:
             unrollTupleTypes(tail).map(head :: _)
           case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
             Some(Nil)
+          case tpe: AppliedType if tpe.isMatchAlias =>
+            unrollTupleTypes(tpe.tryNormalize)
           case _ =>
             None
 
@@ -467,14 +571,14 @@ object Inlines:
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      val res = tpd.Inlined(call, bindings, expansion)
+      val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies then res
+      if !hasOpaqueProxies then inlined
       else
         val target =
-          if inlinedMethod.is(Transparent) then call.tpe & res.tpe
+          if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
           else call.tpe
-        res.ensureConforms(target)
+        inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is

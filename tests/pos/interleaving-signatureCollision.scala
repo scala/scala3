@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 import scala.annotation.targetName
 
 object signatureCollision:

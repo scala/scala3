@@ -6,7 +6,7 @@ authorImg: images/martin.jpg
 date: 2016-05-05
 ---
 
-I have been working recently on making equality tests using `==` and `!=` safer in Scala. This has led to a [Language Enhancement Proposal](https://github.com/lampepfl/dotty/issues/1247) which I summarize in this blog.
+I have been working recently on making equality tests using `==` and `!=` safer in Scala. This has led to a [Language Enhancement Proposal](https://github.com/scala/scala3/issues/1247) which I summarize in this blog.
 
 ## Why Change Equality?
 
@@ -77,7 +77,7 @@ Given a set of `Eq` instances, the idea is that the Scala compiler will check ev
 
 So this means we still keep universal equality as it is in Scala now - we don't have a choice here anyway, because of backwards compatibility. But we render it safe by checking that for each comparison the corresponding `Eq` instance exists.
 
-What about types for which no `Eq` instance exists? To maintain backwards compatibility, we allow comparisons of such types as well, by means of a fall-back `eqAny` instance. But we do not allow comparisons between types that have an `Eq` instance and types that have none.  Details are explained in the [proposal](https://github.com/lampepfl/dotty/issues/1247).
+What about types for which no `Eq` instance exists? To maintain backwards compatibility, we allow comparisons of such types as well, by means of a fall-back `eqAny` instance. But we do not allow comparisons between types that have an `Eq` instance and types that have none.  Details are explained in the [proposal](https://github.com/scala/scala3/issues/1247).
 
 ## Properties
 

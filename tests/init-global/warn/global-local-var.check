@@ -1,0 +1,12 @@
+-- Warning: tests/init-global/warn/global-local-var.scala:10:6 ---------------------------------------------------------
+10 |    B.a + 10 + sum // warn
+   |    ^^^
+   |    Access uninitialized field value a. Calling trace:
+   |    ├── object B {	[ global-local-var.scala:14 ]
+   |    │   ^
+   |    ├── val a: Int = A(4).foo()	[ global-local-var.scala:15 ]
+   |    │                ^^^^^^^^^^
+   |    ├── def foo(): Int = {	[ global-local-var.scala:2 ]
+   |    │   ^
+   |    └── B.a + 10 + sum // warn	[ global-local-var.scala:10 ]
+   |        ^^^

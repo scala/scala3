@@ -31,6 +31,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           case _ => Nil
       case _ => Nil)
       :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
+      :+ (Attr("data-rawLocation") := rawLocation(page.link.dri).mkString("/"))
+      :+ (Attr("data-dynamicSideMenu") := ctx.args.dynamicSideMenu.toString)
 
     val htmlTag = html(attrs*)(
       head((mkHead(page) :+ docHead)*),
@@ -46,7 +48,34 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
   override def render(): Unit =
     val renderedResources = renderResources()
+    if ctx.args.dynamicSideMenu then serializeSideMenu()
     super.render()
+
+  private def serializeSideMenu() =
+    import com.fasterxml.jackson.databind.*
+    import com.fasterxml.jackson.databind.node.ObjectNode
+    import com.fasterxml.jackson.databind.node.TextNode
+    val mapper = new ObjectMapper();
+
+    def serializePage(page: Page): ObjectNode =
+      import scala.jdk.CollectionConverters.SeqHasAsJava
+      val children = mapper.createArrayNode().addAll(page.children.filterNot(_.hidden).map(serializePage).asJava)
+      val location = mapper.createArrayNode().addAll(rawLocation(page.link.dri).map(TextNode(_)).asJava)
+      val obj = mapper.createObjectNode()
+      obj.set("name", new TextNode(page.link.name))
+      obj.set("location", location)
+      obj.set("kind", page.content match
+        case m: Member if m.needsOwnPage => new TextNode(m.kind.name)
+        case _ => null
+      )
+      obj.set("children", children)
+      obj
+
+    val rootNode = mapper.createObjectNode()
+    rootNode.set("docs", rootDocsPage.map(serializePage).orNull)
+    rootNode.set("api", rootApiPage.map(serializePage).orNull)
+    val jsonString = mapper.writer().writeValueAsString(rootNode);
+    renderResource(Resource.Text("dynamicSideMenu.json", jsonString))
 
   private def renderResources(): Seq[String] =
     import scala.util.Using
@@ -218,7 +247,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )).dropRight(1)
       div(cls := "breadcrumbs container")(innerTags*)
 
-    val (apiNavOpt, docsNavOpt): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) = buildNavigation(link)
+    val dynamicSideMenu = ctx.args.dynamicSideMenu
+    val (apiNavOpt, docsNavOpt) = if dynamicSideMenu then (None, None) else buildNavigation(link)
 
     def textFooter: String =
       args.projectFooter.getOrElse("")
@@ -266,7 +296,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       ),
       span(id := "mobile-sidebar-toggle", cls := "floating-button"),
       div(id := "leftColumn", cls := "body-small")(
-        Seq(
+        if dynamicSideMenu then Nil else Seq(
           div(cls:= "switcher-container")(
             docsNavOpt match {
               case Some(isDocsActive, docsNav) =>

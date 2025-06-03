@@ -1,0 +1,6 @@
+-- Warning: tests/warn/uninitialized-3.4.scala:5:15 --------------------------------------------------------------------
+5 |  var a: Int = _ // warn
+  |               ^
+  |               `= _` has been deprecated; use `= uninitialized` instead.
+  |               `uninitialized` can be imported with `scala.compiletime.uninitialized`.
+  |               This construct can be rewritten automatically under -rewrite -source 3.4-migration.

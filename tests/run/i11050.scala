@@ -107,18 +107,20 @@ trait Show[-T]:
   def show(x: T): String
 
 object Show:
-  given Show[Int]    with { def show(x: Int)    = s"$x"     }
-  given Show[Char]   with { def show(x: Char)   = s"'$x'"   }
-  given Show[String] with { def show(x: String) = s"$"$x$"" }
+  given Show[Int]    { def show(x: Int)    = s"$x"     }
+  given Show[Char]   { def show(x: Char)   = s"'$x'"   }
+  given Show[String] { def show(x: String) = s"$"$x$"" }
 
   inline def show[T](x: T): String = summonInline[Show[T]].show(x)
 
-  transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
-    def show(x: T): String = inline ev match {
-      case m: Mirror.ProductOf[T] => showProduct(x.asInstanceOf[Product], m)
-      case m: Mirror.SumOf[T]     => showCases[m.MirroredElemTypes](0)(x, m.ordinal(x))
+  transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] =
+    class InlinedShow extends Show[T] { // provide name to anonymous class
+      def show(x: T): String = inline ev match {
+        case m: Mirror.ProductOf[T] => showProduct(x.asInstanceOf[Product], m)
+        case m: Mirror.SumOf[T]     => showCases[m.MirroredElemTypes](0)(x, m.ordinal(x))
+      }
     }
-  }
+    new InlinedShow
 
   transparent inline def showProduct[T](x: Product, m: Mirror.ProductOf[T]): String =
     constValue[m.MirroredLabel] + showElems[m.MirroredElemTypes, m.MirroredElemLabels](0, Nil)(x)

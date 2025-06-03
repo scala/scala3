@@ -1,4 +1,4 @@
-// Test that constructors have a non-nullab.e return type.
+// Test that constructors have a non-nullable return type.
 
 class Foo {
   val x: java.lang.String = new java.lang.String()

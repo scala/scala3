@@ -1,0 +1,6 @@
+-- Error: tests/neg/context-bounds-migration-3.5.scala:9:2 -------------------------------------------------------------
+9 |  foo(C[Int]()) // error
+  |  ^^^
+  |  Context bounds will map to context parameters.
+  |  A `using` clause is needed to pass explicit arguments to them.
+  |  This code can be rewritten automatically under -rewrite -source 3.4-migration.

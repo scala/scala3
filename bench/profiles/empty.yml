@@ -1,19 +1,19 @@
 charts:
 
     - name: "empty class"
-      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/empty-class.scala
+      url: https://github.com/scala/scala3/blob/main/tests/bench/empty-class.scala
       lines:
         - key: empty-class
           label: bootstrapped
 
     - name: "empty object"
-      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/empty-object.scala
+      url: https://github.com/scala/scala3/blob/main/tests/bench/empty-object.scala
       lines:
         - key: empty-object
           label: bootstrapped
 
     - name: "empty file"
-      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/empty-file.scala
+      url: https://github.com/scala/scala3/blob/main/tests/bench/empty-file.scala
       lines:
         - key: empty-file
           label: bootstrapped
@@ -30,4 +30,4 @@ scripts:
         - measure $PROG_HOME/dotty/tests/bench/empty-file.scala
 
 config:
-    pr_base_url: "https://github.com/lampepfl/dotty/pull/"
+    pr_base_url: "https://github.com/scala/scala3/pull/"

@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/8300
+// https://github.com/scala/scala3/issues/8300
 
 type Bar[X] = X match {
   case List[a] => List[Tuple1[a]]

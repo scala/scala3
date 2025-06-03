@@ -107,7 +107,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def forwardTo: Tree = t
   }
   case class Tuple(trees: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree {
-    override def isTerm: Boolean = trees.isEmpty || trees.head.isTerm
+    override def isTerm: Boolean = trees.isEmpty || stripNamedArg(trees.head).isTerm
     override def isType: Boolean = !isTerm
   }
   case class Throw(expr: Tree)(implicit @constructorOnly src: SourceFile) extends TermTree
@@ -118,7 +118,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class ExtMethods(paramss: List[ParamClause], methods: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
-  case class Into(tpt: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
+  case class ContextBoundTypeTree(tycon: Tree, paramName: TypeName, ownName: TermName)(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -182,7 +182,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   /** An enum to control checking or filtering of patterns in GenFrom trees */
   enum GenCheckMode {
-    case Ignore       // neither filter nor check since filtering was done before
+    case Ignore       // neither filter nor check since pattern is trivially irrefutable
+    case Filtered     // neither filter nor check since filtering was done before
     case Check        // check that pattern is irrefutable
     case CheckAndFilter // both check and filter (transitional period starting with 3.2)
     case FilterNow    // filter out non-matching elements if we are not in 3.2 or later
@@ -204,6 +205,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Protected()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Protected)
 
     case class Var()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
+
+    case class Mut()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
     case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
 
@@ -230,6 +233,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Transparent()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Transparent)
 
     case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
+
+    case class Tracked()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Tracked)
 
     /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
@@ -329,6 +334,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
+    def isMutableVar: Boolean = is(Mutable) && mods.exists(_.isInstanceOf[Mod.Var])
   }
 
   @sharable val EmptyModifiers: Modifiers = Modifiers()
@@ -412,7 +418,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Quote(body: Tree, tags: List[Tree])(implicit src: SourceFile): Quote = new Quote(body, tags)
   def Splice(expr: Tree)(implicit src: SourceFile): Splice = new Splice(expr)
   def QuotePattern(bindings: List[Tree], body: Tree, quotes: Tree)(implicit src: SourceFile): QuotePattern = new QuotePattern(bindings, body, quotes)
-  def SplicePattern(body: Tree, args: List[Tree])(implicit src: SourceFile): SplicePattern = new SplicePattern(body, args)
+  def SplicePattern(body: Tree, typeargs: List[Tree], args: List[Tree])(implicit src: SourceFile): SplicePattern = new SplicePattern(body, typeargs, args)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
   def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)
@@ -492,7 +498,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def InferredTypeTree(tpe: Type)(using Context): TypedSplice =
     TypedSplice(new InferredTypeTree().withTypeUnchecked(tpe))
 
-  def unitLiteral(implicit src: SourceFile): Literal = Literal(Constant(())).withAttachment(SyntheticUnit, ())
+  def unitLiteral(implicit src: SourceFile): Literal =
+    Literal(Constant(()))
+
+  def syntheticUnitLiteral(implicit src: SourceFile): Literal =
+    unitLiteral.withAttachment(SyntheticUnit, ())
 
   def ref(tp: NamedType)(using Context): Tree =
     TypedSplice(tpd.ref(tp))
@@ -510,16 +520,18 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaRuntimeDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.runtime), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
-  def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
+
+  def capsInternalDot(name: Name)(using SourceFile): Select =
+    Select(Select(scalaDot(nme.caps), nme.internal), name)
 
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
-  def captureRootIn(using Context): Select =
-    Select(scalaDot(nme.caps), nme.capIn)
-
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
+
+  def makeCapsOf(tp: RefTree)(using Context): Tree =
+    TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
@@ -530,15 +542,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeSelfDef(name: TermName, tpt: Tree)(using Context): ValDef =
     ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
-  def makeTupleOrParens(ts: List[Tree])(using Context): Tree = ts match {
+  def makeTupleOrParens(ts: List[Tree])(using Context): Tree = ts match
+    case (t: NamedArg) :: Nil => Tuple(t :: Nil)
     case t :: Nil => Parens(t)
     case _ => Tuple(ts)
-  }
 
-  def makeTuple(ts: List[Tree])(using Context): Tree = ts match {
+  def makeTuple(ts: List[Tree])(using Context): Tree = ts match
+    case (t: NamedArg) :: Nil => Tuple(t :: Nil)
     case t :: Nil => t
     case _ => Tuple(ts)
-  }
 
   def makeAndType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
     AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
@@ -552,6 +564,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeSyntheticParameter(n: Int = 1, tpt: Tree | Null = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
+
+  def isInto(t: Tree)(using Context): Boolean = t match
+    case PrefixOp(Ident(tpnme.into), _) => true
+    case Function(_, res) => isInto(res)
+    case Parens(t) => isInto(t)
+    case _ => false
 
   def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
     params match
@@ -610,7 +628,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
     def Function(tree: Tree)(args: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
-      case _ => finalize(tree, untpd.Function(args, body)(tree.source))
+      case _ =>
+        val tree1 = tree match
+          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods, tree.erasedParams)(using tree.source)
+          case _ => untpd.Function(args, body)(using tree.source)
+        finalize(tree, tree1)
     }
     def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
@@ -667,9 +689,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def ExtMethods(tree: Tree)(paramss: List[ParamClause], methods: List[Tree])(using Context): Tree = tree match
       case tree: ExtMethods if (paramss eq tree.paramss) && (methods == tree.methods) => tree
       case _ => finalize(tree, untpd.ExtMethods(paramss, methods)(tree.source))
-    def Into(tree: Tree)(tpt: Tree)(using Context): Tree = tree match
-      case tree: Into if tpt eq tree.tpt => tree
-      case _ => finalize(tree, untpd.Into(tpt)(tree.source))
+    def ContextBoundTypeTree(tree: Tree)(tycon: Tree, paramName: TypeName, ownName: TermName)(using Context): Tree = tree match
+      case tree: ContextBoundTypeTree if (tycon eq tree.tycon) && paramName == tree.paramName && ownName == tree.ownName => tree
+      case _ => finalize(tree, untpd.ContextBoundTypeTree(tycon, paramName, ownName)(tree.source))
     def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(using Context): Tree = tree match {
       case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree
       case _ => finalize(tree, untpd.ImportSelector(imported, renamed, bound)(tree.source))
@@ -735,8 +757,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
       case ExtMethods(paramss, methods) =>
         cpy.ExtMethods(tree)(transformParamss(paramss), transformSub(methods))
-      case Into(tpt) =>
-        cpy.Into(tree)(transform(tpt))
+      case ContextBoundTypeTree(tycon, paramName, ownName) =>
+        cpy.ContextBoundTypeTree(tree)(transform(tycon), paramName, ownName)
       case ImportSelector(imported, renamed, bound) =>
         cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
@@ -792,8 +814,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(this(x, pats), tpt), rhs)
       case ExtMethods(paramss, methods) =>
         this(paramss.foldLeft(x)(apply), methods)
-      case Into(tpt) =>
-        this(x, tpt)
+      case ContextBoundTypeTree(tycon, paramName, ownName) =>
+        this(x, tycon)
       case ImportSelector(imported, renamed, bound) =>
         this(this(this(x, imported), renamed), bound)
       case Number(_, _) =>

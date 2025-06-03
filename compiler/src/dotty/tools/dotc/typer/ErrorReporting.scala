@@ -85,7 +85,7 @@ object ErrorReporting {
     /** An explanatory note to be added to error messages
      *  when there's a problem with abstract var defs */
     def abstractVarMessage(sym: Symbol): String =
-      if (sym.underlyingSymbol.is(Mutable))
+      if sym.underlyingSymbol.isMutableVarOrAccessor then
         "\n(Note that variables need to be initialized to be defined)"
       else ""
 
@@ -110,7 +110,11 @@ object ErrorReporting {
             case tp => i" and expected result type $tp"
           }
           i"(${tp.typedArgs().tpes}%, %)$result"
-        s"arguments ${argStr(tp)}"
+        def hasNames = tp.args.exists:
+          case tree: untpd.Tuple => tree.trees.exists(_.isInstanceOf[NamedArg])
+          case _ => false
+        val addendum = if hasNames then " (a named tuple)" else ""
+        s"arguments ${argStr(tp)}$addendum"
       case _ =>
         i"expected type $tp"
     }
@@ -290,7 +294,7 @@ object ErrorReporting {
 
   def dependentMsg =
     """Term-dependent types are experimental,
-      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
+      |they must be enabled with a `experimental.modularity` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
 }

@@ -24,9 +24,9 @@
    |                            ^^^^^
    |                            A try without catch or finally is equivalent to putting
    |                            its body in a block; no exceptions are handled.
-Matching filters for @nowarn or -Wconf:
-  - id=E2
-  - name=EmptyCatchAndFinallyBlock
+   |Matching filters for @nowarn or -Wconf:
+   |  - id=E2
+   |  - name=EmptyCatchAndFinallyBlock
    |
    | longer explanation available when compiling with `-explain`
 -- [E129] Potential Issue Warning: tests/neg/nowarn.scala:15:11 --------------------------------------------------------

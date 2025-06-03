@@ -17,7 +17,7 @@ import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
-import transform.MacroAnnotations
+import transform.MacroAnnotations.isMacroAnnotation
 
 class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
@@ -28,13 +28,16 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.file.name.endsWith(".java")
+  def isJava: Boolean = source.file.ext.isJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
-  def typedAsJava = isJava || {
-    val infoNN = info
-    infoNN != null && infoNN.tastyInfo.exists(_.attributes.isJava)
-  }
+  def typedAsJava =
+    val ext = source.file.ext
+    ext.isJavaOrTasty && (ext.isJava || tastyInfo.exists(_.attributes.isJava))
+
+  def tastyInfo: Option[TastyInfo] =
+    val local = info
+    if local == null then None else local.tastyInfo
 
 
   /** The source version for this unit, as determined by a language import */
@@ -55,6 +58,9 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var needsInlining: Boolean = false
 
   var hasMacroAnnotations: Boolean = false
+
+  def hasUnrollDefs: Boolean = unrolledClasses.nonEmpty
+  var unrolledClasses: Set[Symbol] = Set.empty
 
   /** Set to `true` if inliner added anonymous mirrors that need to be completed */
   var needsMirrorSupport: Boolean = false
@@ -84,22 +90,26 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   val depRecorder: sbt.DependencyRecorder = sbt.DependencyRecorder()
 
-  /** Suspends the compilation unit by thowing a SuspendException
+  /** Suspends the compilation unit by throwing a SuspendException
    *  and recording the suspended compilation unit
    */
-  def suspend()(using Context): Nothing =
+  def suspend(hint: => String)(using Context): Nothing =
     assert(isSuspendable)
     // Clear references to symbols that may become stale. No need to call
     // `depRecorder.sendToZinc()` since all compilation phases will be rerun
     // when this unit is unsuspended.
     depRecorder.clear()
     if !suspended then
-      if (ctx.settings.XprintSuspension.value)
-        report.echo(i"suspended: $this")
       suspended = true
-      ctx.run.nn.suspendedUnits += this
-      if ctx.phase == Phases.inliningPhase then
+      val currRun = ctx.run.nn
+      currRun.suspendedUnits += this
+      val isInliningPhase = ctx.phase == Phases.inliningPhase
+      if ctx.settings.XprintSuspension.value then
+        currRun.suspendedHints += (this -> (hint, isInliningPhase))
+      if isInliningPhase then
         suspendedAtInliningPhase = true
+      else
+        currRun.suspendedAtTyperPhase = true
     throw CompilationUnit.SuspendException()
 
   private var myAssignmentSpans: Map[Int, List[Span]] | Null = null
@@ -117,7 +127,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   override def isJava: Boolean = false
 
-  override def suspend()(using Context): Nothing =
+  override def suspend(hint: => String)(using Context): Nothing =
     throw CompilationUnit.SuspendException()
 
   override def assignmentSpans(using Context): Map[Int, List[Span]] = Map.empty
@@ -146,6 +156,14 @@ object CompilationUnit {
       unit1.hasMacroAnnotations = force.containsMacroAnnotation
     }
     unit1
+  }
+
+  /** Create a compilation unit corresponding to an in-memory String.
+   *  Used for `compiletime.testing.typeChecks`.
+   */
+  def apply(name: String, source: String): CompilationUnit = {
+    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+    new CompilationUnit(src, null)
   }
 
   /** Create a compilation unit corresponding to `source`.
@@ -190,7 +208,7 @@ object CompilationUnit {
             case _ =>
         case _ =>
       for annot <- tree.symbol.annotations do
-        if MacroAnnotations.isMacroAnnotation(annot) then
+        if annot.isMacroAnnotation then
           ctx.compilationUnit.hasMacroAnnotations = true
       traverseChildren(tree)
     }

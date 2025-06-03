@@ -9,7 +9,7 @@ import scala.annotation.*
  */
 object LazyVals {
   @nowarn
-  private[this] val unsafe: sun.misc.Unsafe = {
+  private val unsafe: sun.misc.Unsafe = {
     def throwInitializationException() =
       throw new ExceptionInInitializerError(
         new IllegalStateException("Can't find instance of sun.misc.Unsafe")
@@ -26,7 +26,7 @@ object LazyVals {
   }
 
   private val base: Int = {
-    val processors = java.lang.Runtime.getRuntime.nn.availableProcessors()
+    val processors = java.lang.Runtime.getRuntime.availableProcessors()
     8 * processors * processors
   }
 
@@ -52,13 +52,29 @@ object LazyVals {
    * Used to indicate the state of a lazy val that is being
    * evaluated and of which other threads await the result.
    */
-  final class Waiting extends CountDownLatch(1) with LazyValControlState
+  final class Waiting extends CountDownLatch(1) with LazyValControlState {
+    /* #20856 If not fully evaluated yet, serialize as if not-evaluat*ing* yet.
+     * This strategy ensures the "serializability" condition of parallel
+     * programs--not to be confused with the data being `java.io.Serializable`.
+     * Indeed, if thread A is evaluating the lazy val while thread B attempts
+     * to serialize its owner object, there is also an alternative schedule
+     * where thread B serializes the owner object *before* A starts evaluating
+     * the lazy val. Therefore, forcing B to see the non-evaluating state is
+     * correct.
+     */
+    private def writeReplace(): Any = null
+  }
 
   /**
    * Used to indicate the state of a lazy val that is currently being
    * evaluated with no other thread awaiting its result.
    */
-  object Evaluating extends LazyValControlState
+  object Evaluating extends LazyValControlState {
+    /* #20856 If not fully evaluated yet, serialize as if not-evaluat*ing* yet.
+     * See longer comment in `Waiting.writeReplace()`.
+     */
+    private def writeReplace(): Any = null
+  }
 
   /**
    * Used to indicate the state of a lazy val that has been evaluated to
@@ -80,13 +96,13 @@ object LazyVals {
       println(s"CAS($t, $offset, $e, $v, $ord)")
     val mask = ~(LAZY_VAL_MASK << ord * BITS_PER_LAZY_VAL)
     val n = (e & mask) | (v.toLong << (ord * BITS_PER_LAZY_VAL))
-    unsafe.compareAndSwapLong(t, offset, e, n)
+    unsafe.compareAndSwapLong(t, offset, e, n): @nowarn("cat=deprecation")
   }
 
   def objCAS(t: Object, offset: Long, exp: Object, n: Object): Boolean = {
     if (debug)
       println(s"objCAS($t, $exp, $n)")
-    unsafe.compareAndSwapObject(t, offset, exp, n)
+    unsafe.compareAndSwapObject(t, offset, exp, n): @nowarn("cat=deprecation")
   }
 
   def setFlag(t: Object, offset: Long, v: Int, ord: Int): Unit = {
@@ -131,7 +147,7 @@ object LazyVals {
   def get(t: Object, off: Long): Long = {
     if (debug)
       println(s"get($t, $off)")
-    unsafe.getLongVolatile(t, off)
+    unsafe.getLongVolatile(t, off): @nowarn("cat=deprecation")
   }
 
   // kept for backward compatibility

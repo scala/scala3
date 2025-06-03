@@ -34,12 +34,6 @@ extends AbstractFile {
   override def input: InputStream = sys.error("directories cannot be read")
   override def output: OutputStream = sys.error("directories cannot be written")
 
-  /** Does this abstract file denote an existing file? */
-  def create(): Unit = { unsupported() }
-
-  /** Delete the underlying file or directory (recursively). */
-  def delete(): Unit = { unsupported() }
-
   /** Returns an abstract file with the given name. It does not
    *  check that it exists.
    */
@@ -49,7 +43,7 @@ extends AbstractFile {
 
   // the toList is so that the directory may continue to be
   // modified while its elements are iterated
-  def iterator(): Iterator[AbstractFile] = files.values.toList.iterator
+  def iterator: Iterator[AbstractFile] = files.values.toList.iterator
 
   override def lookupName(name: String, directory: Boolean): AbstractFile =
     (files get name filter (_.isDirectory == directory)).orNull

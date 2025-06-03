@@ -2,11 +2,13 @@ package dotty.tools.pc.printer
 
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
+import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
@@ -23,12 +25,10 @@ import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.printing.Texts.Text
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.ImportSel
-import dotty.tools.pc.AutoImports.ImportSel.Direct
-import dotty.tools.pc.AutoImports.ImportSel.Rename
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.Params
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.TextEdit
 
@@ -36,7 +36,7 @@ import org.eclipse.lsp4j.TextEdit
  * A type printer that shortens types by replacing fully qualified names with shortened versions.
  *
  * The printer supports symbol renames found in scope and will use the rename if it is available.
- * It also handlse custom renames as specified in the `renameConfigMap` parameter.
+ * It also handle custom renames as specified in the `renameConfigMap` parameter.
  */
 class ShortenedTypePrinter(
     symbolSearch: SymbolSearch,
@@ -45,7 +45,7 @@ class ShortenedTypePrinter(
     isTextEdit: Boolean = false,
     renameConfigMap: Map[Symbol, String] = Map.empty
 )(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
-  private val missingImports: mutable.Set[ImportSel] = mutable.Set.empty
+  private val missingImports: mutable.Set[ImportSel] = mutable.LinkedHashSet.empty
   private val defaultWidth = 1000
 
   private val methodFlags =
@@ -62,6 +62,21 @@ class ShortenedTypePrinter(
       AbsOverride,
       Lazy
     )
+
+  private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
+
+  override def nameString(name: Name): String =
+    val nameStr = super.nameString(name)
+    if (nameStr.nonEmpty) KeywordWrapper.Scala3Keywords.backtickWrap(nameStr)
+    else nameStr
+
+  def getUsedRenames: Map[Symbol, String] =
+    foundRenames.toMap.filter { case (k, v) => k.showName != v }
+
+  def getUsedRenamesInfo(using Context): List[String] =
+    foundRenames.map { (from, to) =>
+      s"type $to = ${from.showName}"
+    }.toList
 
   def expressionType(tpw: Type)(using Context): Option[String] =
     tpw match
@@ -117,10 +132,17 @@ class ShortenedTypePrinter(
 
     prefixIterator.flatMap { owner =>
       val prefixAfterRename = ownersAfterRename(owner)
+      val ownerRename = indexedCtx.rename(owner)
+      ownerRename.foreach(rename => foundRenames += owner -> rename)
       val currentRenamesSearchResult =
-        indexedCtx.rename(owner).map(Found(owner, _, prefixAfterRename))
+      ownerRename.map(rename => Found(owner, rename, prefixAfterRename))
       lazy val configRenamesSearchResult =
-        renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
+        renameConfigMap.get(owner).flatMap{rename =>
+          // if the rename is taken, we don't want to use it
+          indexedCtx.findSymbolInLocalScope(rename) match
+            case Some(symbols) => None
+            case None => Some(Missing(owner, rename, prefixAfterRename))
+        }
       currentRenamesSearchResult orElse configRenamesSearchResult
     }.nextOption
 
@@ -133,40 +155,35 @@ class ShortenedTypePrinter(
   private def optionalRootPrefix(sym: Symbol): Text =
     // If the symbol has toplevel clash we need to prepend `_root_.` to the symbol to disambiguate
     // it from the local symbol. It is only required when we are computing text for text edit.
-    if isTextEdit && indexedCtx.toplevelClashes(sym) then
+    if isTextEdit && indexedCtx.toplevelClashes(sym, inImportScope = false) then
       Str("_root_.")
     else
       Text()
 
   private def findRename(tp: NamedType): Option[Text] =
     val maybePrefixRename = findPrefixRename(tp.symbol.maybeOwner)
+    maybePrefixRename.map {
+      case res: Found => res.toPrefixText
+      case res: Missing =>
+        val importSel =
+          if res.owner.name.decoded == res.rename then
+            ImportSel.Direct(res.owner)
+          else ImportSel.Rename(res.owner, res.rename)
 
-    if maybePrefixRename.exists(importRename => indexedCtx.findSymbol(importRename.rename).isDefined) then
-      Some(super.toTextPrefixOf(tp))
-    else
-      maybePrefixRename.map {
-        case res: Found => res.toPrefixText
-        case res: Missing =>
-          val importSel =
-            if res.owner.name.toString == res.rename then
-              ImportSel.Direct(res.owner)
-            else ImportSel.Rename(res.owner, res.rename)
-
-          missingImports += importSel
-          res.toPrefixText
-      }
-
+        missingImports += importSel
+        res.toPrefixText
+    }
 
   override def toTextPrefixOf(tp: NamedType): Text = controlled {
     val maybeRenamedPrefix: Option[Text] = findRename(tp)
-    val trimmedPrefix: Text =
+    def trimmedPrefix: Text =
       if !tp.designator.isInstanceOf[Symbol] && tp.typeSymbol == NoSymbol then
-        maybeRenamedPrefix.getOrElse(super.toTextPrefixOf(tp))
+        super.toTextPrefixOf(tp)
       else
-        indexedCtx.lookupSym(tp.symbol) match
+        indexedCtx.lookupSym(tp.symbol, Some(tp.prefix)) match
+          case _ if indexedCtx.rename(tp.symbol).isDefined => Text()
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
-            maybeRenamedPrefix.getOrElse:
               missingImports += ImportSel.Direct(tp.symbol)
               Text()
           // the symbol is in scope, we can omit the prefix
@@ -176,12 +193,14 @@ class ShortenedTypePrinter(
             maybeRenamedPrefix.getOrElse(super.toTextPrefixOf(tp))
           case _ => super.toTextPrefixOf(tp)
 
-    optionalRootPrefix(tp.symbol) ~ trimmedPrefix
+    optionalRootPrefix(tp.symbol) ~ maybeRenamedPrefix.getOrElse(trimmedPrefix)
   }
 
   override protected def selectionString(tp: NamedType): String =
     indexedCtx.rename(tp.symbol) match
-      case Some(value) => value
+      case Some(value) =>
+        foundRenames += tp.symbol -> value
+        value
       case None => super.selectionString(tp)
 
   override def toText(tp: Type): Text =
@@ -195,7 +214,9 @@ class ShortenedTypePrinter(
       case ConstantType(const) => toText(const)
       case _ => toTextRef(tp) ~ ".type"
 
-  def tpe(tpe: Type): String = toText(tpe).mkString(defaultWidth, false)
+  def tpe(tpe: Type): String =
+    val dealiased = if (tpe.isNamedTupleType) tpe.deepDealiasAndSimplify else tpe
+    toText(dealiased).mkString(defaultWidth, false)
 
   def hoverSymbol(sym: Symbol, info: Type)(using Context): String =
     val typeSymbol = info.typeSymbol
@@ -239,9 +260,10 @@ class ShortenedTypePrinter(
     lazy val effectiveOwner = sym.effectiveOwner
     sym.isType && (effectiveOwner == defn.ScalaPackageClass || effectiveOwner == defn.ScalaPredefModuleClass)
 
-  def completionSymbol(sym: Symbol): String =
-    val info = sym.info.widenTermRefExpr
+  def completionSymbol(denotation: Denotation): String =
+    val info = denotation.info.widenTermRefExpr
     val typeSymbol = info.typeSymbol
+    val sym = denotation.symbol
 
     lazy val typeEffectiveOwner =
       if typeSymbol != NoSymbol then " " + fullNameString(typeSymbol.effectiveOwner)
@@ -280,7 +302,7 @@ class ShortenedTypePrinter(
     val (methodParams, extParams) = splitExtensionParamss(gsym)
     val paramss = methodParams ++ extParams
     lazy val implicitParams: List[Symbol] =
-      paramss.flatMap(params => params.filter(p => p.is(Flags.Implicit)))
+      paramss.flatMap(params => params.filter(p => p.isOneOf(Flags.GivenOrImplicit)))
 
     lazy val implicitEvidenceParams: Set[Symbol] =
       implicitParams
@@ -329,7 +351,9 @@ class ShortenedTypePrinter(
     val paramLabelss = label(methodParams)
     val extLabelss = label(extParams)
 
-    val returnType = tpe(gtpe.finalResultType)
+    val retType = gtpe.finalResultType
+    val simplified = if (retType.typeSymbol.isAliasType) retType else retType.deepDealiasAndSimplify
+    val returnType = tpe(simplified)
     def extensionSignatureString =
       val extensionSignature = paramssString(extLabelss, extParams)
       if extParams.nonEmpty then
@@ -403,7 +427,9 @@ class ShortenedTypePrinter(
     if gsym.is(Flags.ExtensionMethod) then
       val filteredParams =
         if gsym.name.isRightAssocOperatorName then
-          val (leadingTyParamss, rest1) = paramss.span(isTypeParamClause)
+          val (leadingTyParamss, rest1) = paramss match
+            case fst :: tail if isTypeParamClause(fst) => (List(fst), tail)
+            case other => (List(), other)
           val (leadingUsing, rest2) = rest1.span(isUsingClause)
           val (rightTyParamss, rest3) = rest2.span(isTypeParamClause)
           val (rightParamss, rest4) = rest3.splitAt(1)
@@ -492,7 +518,7 @@ class ShortenedTypePrinter(
         case head :: Nil => s": $head"
         case many => many.mkString(": ", ": ", "")
       s"$keywordName$paramTypeString$bounds"
-    else if param.is(Flags.Given) && param.name.toString.contains('$') then
+    else if param.isAllOf(Given | Param) && param.name.startsWith("x$") then
       // For Anonymous Context Parameters
       // print only type string
       // e.g. "using Ord[T]" instead of "using x$0: Ord[T]"
@@ -511,7 +537,8 @@ class ShortenedTypePrinter(
         else if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.ResolveLater && isDefaultParam
         then " = ..."
         else "" // includeDefaultParam == Never or !isDefaultParam
-      s"$keywordName: ${paramTypeString}$default"
+      val inline = if(param.is(Flags.Inline)) "inline " else ""
+      s"$inline$keywordName: ${paramTypeString}$default"
     end if
   end paramLabel
 

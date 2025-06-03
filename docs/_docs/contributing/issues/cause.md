@@ -116,7 +116,7 @@ def myInfo: Type = myInfo_debug,
 def myInfo_=(x: Type) = { tracer = Thread.currentThread.getStackTrace.mkString("\n"); myInfo_debug = x }
 ```
 
-[Printers]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/config/Printers.scala
-[Denotation]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Denotations.scala
-[PostTyper]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/PostTyper.scala
-[ScalaSettings]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
+[Printers]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/config/Printers.scala
+[Denotation]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Denotations.scala
+[PostTyper]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/transform/PostTyper.scala
+[ScalaSettings]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala

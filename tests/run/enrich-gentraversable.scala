@@ -3,6 +3,7 @@ import scala.language.postfixOps
 
 object Test extends App {
   import scala.collection.generic.IsIterable
+  import scala.collection.generic.IsSeq.seqViewIsSeq
   import scala.collection.{BuildFrom, Iterable, IterableOps, View}
   import scala.collection.immutable.TreeMap
 

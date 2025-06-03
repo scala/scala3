@@ -1,0 +1,40 @@
+-- [E158] Reference Warning: tests/warn/i4008.scala:7:56 ---------------------------------------------------------------
+7 |@annotation.implicitNotFound("An implicit ShouldWarn1[${B}] is not in scope") // warn
+  |                                                        ^
+  |                                    Invalid reference to a type variable `B` found in the annotation argument.
+  |                                    The variable does not occur as a parameter in the scope of type `ShouldWarn1`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:11:56 --------------------------------------------------------------
+11 |@annotation.implicitNotFound("An implicit ShouldWarn2[${A}] is not in scope") // warn
+   |                                                        ^
+   |                                  Invalid reference to a type variable `A` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn2`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:15:56 --------------------------------------------------------------
+15 |@annotation.implicitNotFound("An implicit ShouldWarn3[${A},${B}] is not in scope") // warn
+   |                                                        ^
+   |                                  Invalid reference to a type variable `A` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn3`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:19:56 --------------------------------------------------------------
+19 |@annotation.implicitNotFound("An implicit ShouldWarn4[${A},${B}] is not in scope") // warn // warn
+   |                                                        ^
+   |                                  Invalid reference to a type variable `A` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn4`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:19:61 --------------------------------------------------------------
+19 |@annotation.implicitNotFound("An implicit ShouldWarn4[${A},${B}] is not in scope") // warn // warn
+   |                                                             ^
+   |                                  Invalid reference to a type variable `B` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn4`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:23:61 --------------------------------------------------------------
+23 |@annotation.implicitNotFound("An implicit ShouldWarn5[${C},${Abc}] is not in scope") // warn
+   |                                                             ^
+   |                                  Invalid reference to a type variable `Abc` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn5`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:46:54 --------------------------------------------------------------
+46 |class C[A](using @annotation.implicitNotFound("No C[${B}] found") c: Class[A]) // warn
+   |                                                      ^
+   |                              Invalid reference to a type variable `B` found in the annotation argument.
+   |                              The variable does not occur as a parameter in the scope of the constructor of `C`.
+-- [E158] Reference Warning: tests/warn/i4008.scala:48:62 --------------------------------------------------------------
+48 |def someMethod1[A](using @annotation.implicitNotFound("No C[${B}] found") sc: C[A]) = 0 // warn
+   |                                                              ^
+   |                                Invalid reference to a type variable `B` found in the annotation argument.
+   |                                The variable does not occur as a parameter in the scope of method `someMethod1`.

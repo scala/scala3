@@ -56,7 +56,7 @@ class TreeTypeMap(
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
    */
-  private val mapOwnerThis = new TypeMap with cc.CaptureSet.IdempotentCaptRefMap {
+  private val mapOwnerThis = new TypeMap {
     private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
       case Nil => tp
       case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
@@ -69,7 +69,12 @@ class TreeTypeMap(
   }
 
   def mapType(tp: Type): Type =
-    mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
+    val substMap = new TypeMap():
+      def apply(tp: Type): Type = tp match
+        case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+        case tp => tp.substSym(substFrom, substTo)
+    mapOwnerThis(substMap(typeMap(tp)))
+  end mapType
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
     if (prevStats.isEmpty) assert(newStats.isEmpty)

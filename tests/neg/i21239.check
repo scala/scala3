@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i21239.scala:14:18 ------------------------------------------------------------
+14 |    def get2: V = get // error
+   |                  ^^^
+   |                  Found:    AnyRef
+   |                  Required: V
+   |
+   | longer explanation available when compiling with `-explain`

@@ -5,11 +5,14 @@
   |                            Required: [T] => (x$1: T) => Unit
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:4:37 ---------------------------------
-4 |def t1b: [T] => (erased T) => Unit = [T] => (t: T) => () // error
-  |                                     ^^^^^^^^^^^^^^^^^^^
-  |                                     Found:    [T] => (t: T) => Unit
-  |                                     Required: [T] => (erased x$1: T) => Unit
+-- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:4:40 ---------------------------------
+4 |def t1b: [T] => (erased t: T) => Unit = [T] => (t: T) => () // error
+  |                                        ^^^^^^^^^^^^^^^^^^^
+  |                                        Found:    [T] => (t: T) => Unit
+  |                                        Required: [T] => (erased t²: T) => Unit
+  |
+  |                                        where:    t  is a reference to a value parameter
+  |                                                  t² is a reference to a value parameter
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:6:36 ---------------------------------
@@ -19,10 +22,15 @@
   |                                    Required: [T, U] => (x$1: T, x$2: U) => Unit
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:7:43 ---------------------------------
-7 |def t2b: [T, U] => (T, erased U) => Unit = [T, U] => (t: T, u: U) => () // error
-  |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                                           Found:    [T, U] => (t: T, u: U) => Unit
-  |                                           Required: [T, U] => (x$1: T, erased x$2: U) => Unit
+-- [E007] Type Mismatch Error: tests/neg/polymorphic-erased-functions-types.scala:7:49 ---------------------------------
+7 |def t2b: [T, U] => (t: T, erased u: U) => Unit = [T, U] => (t: T, u: U) => () // error
+  |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                                                 Found:    [T, U] => (t: T, u: U) => Unit
+  |                                                 Required: [T, U] => (t²: T, erased u²: U) => Unit
+  |
+  |                                                 where:    t  is a reference to a value parameter
+  |                                                           t² is a reference to a value parameter
+  |                                                           u  is a reference to a value parameter
+  |                                                           u² is a reference to a value parameter
   |
   | longer explanation available when compiling with `-explain`

@@ -1,0 +1,4 @@
+-- Error: tests/neg/i13580.scala:9:7 -----------------------------------------------------------------------------------
+9 |given (using tracked val w: IntWidth) => IntCandidate: // error
+  |       ^^^^^
+  |       `using` is already implied here, should not be given explicitly
