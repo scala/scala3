@@ -116,6 +116,10 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
          |}""".stripMargin,
       List[String](
         """|object Main extends App {
+           |  def func(>>region>>a<<region<<: Int, b: Int) =
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
            |  def func(>>region>>a: Int<<region<<, b: Int) =
            |    a + b
            |}""".stripMargin,
@@ -137,6 +141,10 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
          |    a + b
          |}""".stripMargin,
       List[String](
+        """|object Main extends App {
+           |  val func = (>>region>>a<<region<<: Int, b: Int) =>
+           |    a + b
+           |}""".stripMargin,
         """|object Main extends App {
            |  val func = (>>region>>a: Int<<region<<, b: Int) =>
            |    a + b
@@ -160,6 +168,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
     check(
       "object Main extends App { def foo[Type@@ <: T1, B](hi: Int, b: Int, c:Int) = ??? }",
       List(
+        "object Main extends App { def foo[>>region>>Type<<region<< <: T1, B](hi: Int, b: Int, c:Int) = ??? }",
         "object Main extends App { def foo[>>region>>Type <: T1<<region<<, B](hi: Int, b: Int, c:Int) = ??? }",
         "object Main extends App { def foo[>>region>>Type <: T1, B<<region<<](hi: Int, b: Int, c:Int) = ??? }",
         "object Main extends App { >>region>>def foo[Type <: T1, B](hi: Int, b: Int, c:Int) = ???<<region<< }"
@@ -192,6 +201,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
     check(
       "val hello = (aaa: Int, bb@@b: Int, ccc: Int) => ???",
       List(
+        "val hello = (aaa: Int, >>region>>bbb<<region<<: Int, ccc: Int) => ???",
         "val hello = (aaa: Int, >>region>>bbb: Int<<region<<, ccc: Int) => ???",
         "val hello = (>>region>>aaa: Int, bbb: Int, ccc: Int<<region<<) => ???",
         "val hello = >>region>>(aaa: Int, bbb: Int, ccc: Int) => ???<<region<<",
@@ -203,6 +213,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
     check(
       "def hello(aaa: Int, bb@@b: Int, ccc: Int) = ???",
       List(
+        "def hello(aaa: Int, >>region>>bbb<<region<<: Int, ccc: Int) = ???",
         "def hello(aaa: Int, >>region>>bbb: Int<<region<<, ccc: Int) = ???",
         "def hello(>>region>>aaa: Int, bbb: Int, ccc: Int<<region<<) = ???",
         ">>region>>def hello(aaa: Int, bbb: Int, ccc: Int) = ???<<region<<",
@@ -250,5 +261,23 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "def hello = List(>>region>>222<<region<<)",
         "def hello = >>region>>List(222)<<region<<",
         ">>region>>def hello = List(222)<<region<<",
+      )
+    )
+
+  @Test def `constructor-argument` =
+    check(
+      "class Foo(val ar@@g: Int)",
+      List(
+        """class Foo(val >>region>>arg<<region<<: Int)""",
+        """class Foo(>>region>>val arg: Int<<region<<)""",
+      )
+    )
+
+  @Test def `object-backticked` =
+    check(
+      "object `Foo B@@ar Baz` extends SomeTrait",
+      List(
+        """object `>>region>>Foo Bar Baz<<region<<` extends SomeTrait""",
+        """>>region>>object `Foo Bar Baz` extends SomeTrait<<region<<""",
       )
     )
