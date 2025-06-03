@@ -60,7 +60,7 @@ class CollectNullableFields extends MiniPhase {
     val sym = tree.symbol
     val isNullablePrivateField =
       sym.isField &&
-      !sym.is(Lazy) &&
+      !sym.isOneOf(Lazy | Erased) &&
       !sym.owner.is(Trait) &&
       sym.initial.isAllOf(PrivateLocal) &&
       // We need `isNullableClassAfterErasure` and not `isNullable` because
