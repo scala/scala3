@@ -196,7 +196,8 @@ class TailRec extends MiniPhase {
         def isInfiniteRecCall(tree: Tree): Boolean = {
           def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
-            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => tailArgOrPureExpr(rhs)
+            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) =>
+              tailArgOrPureExpr(rhs) || varForRewrittenThis.exists(_ == lhs.symbol && rhs.tpe.isStable)
             case Assign(lhs: Ident, rhs: Ident) => lhs.symbol == rhs.symbol
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
@@ -344,6 +345,9 @@ class TailRec extends MiniPhase {
                 assignParamPairs
               case prefix: This if prefix.symbol == enclosingClass =>
                 // Avoid assigning `this = this`
+                assignParamPairs
+              case prefix if prefix.symbol.is(Module) && prefix.symbol.moduleClass == enclosingClass =>
+                // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
