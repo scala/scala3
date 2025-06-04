@@ -324,7 +324,7 @@ object NamerOps:
    */
   def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
     val name = param.name.toTermName
-    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam | StableRealizable | Synthetic
+    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
     val dummy = newSymbol(param.owner, name, flags, param.typeRef)
     typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
     ctx.enter(dummy)

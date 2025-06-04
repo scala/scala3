@@ -2533,7 +2533,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): Tree = {
     val ref1 = typedExpr(tree.ref, SingletonTypeProto)
-    if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.is(Flags.CaptureParam) then
+    if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.isDummyCaptureParam then
       // When a dummy term capture variable is found, it is replaced with
       // the corresponding type references (stored in the underling types).
       return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)

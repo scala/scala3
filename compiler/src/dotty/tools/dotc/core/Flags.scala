@@ -433,10 +433,12 @@ object Flags {
   /** A denotation that is valid in all run-ids */
   val (Permanent @ _, _, _) = newFlags(61, "<permanent>")
 
-  /** Symbol is a constructor proxy (either companion, or apply method) */
+  /** A phantom symbol made up by the compiler to achieve special typing rules.
+   *  Phantom symbols cannot be used as regular values, and will be erased after erasure phase.
+   *  - For constructor proxies (companion or apply method).
+   *  - For dummy capture parameters in capture sets (variables or fields).
+   */
   val (PhantomSymbol @ _, _, _) = newFlags(62, "<phantom symbol>") // (could be merged with Lifted)
-
-  val CaptureParam = PhantomSymbol
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
@@ -569,6 +571,7 @@ object Flags {
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
   val EffectivelyErased                      = PhantomSymbol | Erased
   val ConstructorProxyModule: FlagSet        = PhantomSymbol | Module
+  val CaptureParam: FlagSet                  = PhantomSymbol | StableRealizable | Synthetic
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter
   val DeferredInline: FlagSet                = Deferred | Inline
   val DeferredMethod: FlagSet                = Deferred | Method
