@@ -60,10 +60,13 @@ package example {
             Int @qualified[Int]((x3: Int) => x3 < 10)
          = ???
         val x4:
-          Int @qualified[Int]((x4: Int) => x4 > 0) &
-            Int @qualified[Int]((x4: Int) => x4 < 10)
+          (Int @qualified[Int]((x4: Int) => x4 > 0) & Int) @qualified[
+            Int @qualified[Int]((x4: Int) => x4 > 0) & Int]((
+            x4: Int @qualified[Int]((x4: Int) => x4 > 0) & Int) => x4 < 10)
          = ???
-        val x5: Int & String @qualified[String]((x5: String) => false) = ???
+        val x5:
+          (Int & String) @qualified[Int & String]((x5: Int & String) => false)
+           = ???
         val x6:
           (Int @qualified[Int]((x6: Int) => x6 > 0) & Int) @qualified[
             Int @qualified[Int]((x6: Int) => x6 > 0) & Int]((
