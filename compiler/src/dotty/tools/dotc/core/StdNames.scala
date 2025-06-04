@@ -532,6 +532,7 @@ object StdNames {
     val isEmpty: N              = "isEmpty"
     val isInstanceOf_ : N       = "isInstanceOf"
     val isInstanceOfPM: N       = "$isInstanceOf$"
+    val isSameLabelAs : N       = "isSameLabelAs"
     val java: N                 = "java"
     val key: N                  = "key"
     val label: N                = "label"
