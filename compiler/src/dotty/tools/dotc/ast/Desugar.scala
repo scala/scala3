@@ -8,7 +8,7 @@ import Symbols.*, StdNames.*, Trees.*, ContextOps.*
 import Decorators.*
 import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import typer.{Namer, Checking}
+import typer.{Namer, Checking, ErrorReporting}
 import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
@@ -214,9 +214,10 @@ object desugar {
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val valName = normalizeName(vdef, tpt).asTermName
+    val tpt1 = qualifiedType(tpt, valName)
     var mods1 = vdef.mods
 
-    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(mods1)
+    val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = tpt1).withMods(mods1)
 
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
@@ -2382,6 +2383,10 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
+      case QualifiedTypeTree(parent, None, qualifier) =>
+        ErrorReporting.errorTree(parent, em"missing parameter name in qualified type", tree.srcPos)
+      case QualifiedTypeTree(parent, Some(paramName), qualifier) =>
+        qualifiedType(parent, paramName, qualifier, tree.span)
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
@@ -2560,4 +2565,23 @@ object desugar {
     collect(tree)
     buf.toList
   }
+
+  /** If `tree` is a `QualifiedTypeTree`, then desugars it using `paramName` as
+   *  the qualified parameter name. Otherwise, returns `tree` unchanged.
+   */
+  def qualifiedType(tree: Tree, paramName: TermName)(using Context): Tree = tree match
+    case QualifiedTypeTree(parent, None, qualifier) => qualifiedType(parent, paramName, qualifier, tree.span)
+    case _ => tree
+
+  /** Returns the annotated type used to represent the qualified type with the
+   *  given components:
+   *  `parent @qualified[parent]((paramName: parent) => qualifier)`.
+   */
+  def qualifiedType(parent: Tree, paramName: TermName, qualifier: Tree, span: Span)(using Context): Tree =
+    val param = makeParameter(paramName, parent, EmptyModifiers) // paramName: parent
+    val predicate = WildcardFunction(List(param), qualifier) // (paramName: parent) => qualifier
+    val qualifiedAnnot = scalaAnnotationDot(nme.qualified)
+    val annot = Apply(TypeApply(qualifiedAnnot, List(parent)), predicate).withSpan(span) // @qualified[parent](predicate)
+    Annotated(parent, annot).withSpan(span) // parent @qualified[parent](predicate)
+
 }
