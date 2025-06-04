@@ -214,7 +214,7 @@ object desugar {
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val valName = normalizeName(vdef, tpt).asTermName
-    val tpt1 = qualifiedType(tpt, valName)
+    val tpt1 = desugarQualifiedTypes(tpt, valName)
     var mods1 = vdef.mods
 
     val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = tpt1).withMods(mods1)
@@ -2566,12 +2566,31 @@ object desugar {
     buf.toList
   }
 
-  /** If `tree` is a `QualifiedTypeTree`, then desugars it using `paramName` as
-   *  the qualified parameter name. Otherwise, returns `tree` unchanged.
+  /** Desugar subtrees that are `QualifiedTypeTree`s using `outerParamName` as
+   *  the qualified parameter name.
    */
-  def qualifiedType(tree: Tree, paramName: TermName)(using Context): Tree = tree match
-    case QualifiedTypeTree(parent, None, qualifier) => qualifiedType(parent, paramName, qualifier, tree.span)
-    case _ => tree
+  private def desugarQualifiedTypes(tpt: Tree, outerParamName: TermName)(using Context): Tree =
+    def transform(tree: Tree): Tree =
+      tree match
+        case QualifiedTypeTree(parent, None, qualifier) =>
+          qualifiedType(transform(parent), outerParamName, qualifier, tree.span)
+        case QualifiedTypeTree(parent, paramName, qualifier) =>
+          cpy.QualifiedTypeTree(tree)(transform(parent), paramName, qualifier)
+        case TypeApply(fn, args) =>
+          cpy.TypeApply(tree)(transform(fn), args)
+        case AppliedTypeTree(fn, args) =>
+          cpy.AppliedTypeTree(tree)(transform(fn), args)
+        case InfixOp(left, op, right) =>
+          cpy.InfixOp(tree)(transform(left), op, transform(right))
+        case Parens(arg) =>
+          cpy.Parens(tree)(transform(arg))
+        case _ =>
+          tree
+
+    if Feature.qualifiedTypesEnabled then
+      transform(tpt)
+    else
+      tpt
 
   /** Returns the annotated type used to represent the qualified type with the
    *  given components:
