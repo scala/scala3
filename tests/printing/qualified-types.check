@@ -79,7 +79,32 @@ package example {
             Int @qualified[Int]((x8: Int) => x8 > 0)]((
             x8: Int @qualified[Int]((x8: Int) => x8 > 0)) => x7 < 10)
          = ???
-        ()
+        val x9: Any = 42
+        x9 match
+          {
+            case y @ _:Int @qualified[Int]((y: Int) => y > 0) =>
+              println(
+                _root_.scala.StringContext.apply(
+                  [""," is Int with x > 0" : String]*).s([y : Any]*)
+              )
+            case _ =>
+              ()
+          }
+        x9 match
+          {
+            case
+              Tuple2.unapply[Any, Any](
+                y @ _:Int @qualified[Int]((y: Int) => y > 0),
+                z @ _:Int @qualified[Int]((z: Int) => z > 0)):(Any, Any)
+             =>
+              println(
+                _root_.scala.StringContext.apply(
+                  [""," is Int with y > 0 and "," is Int with z > 0" : String]*)
+                  .s([y,z : Any]*)
+              )
+            case _ =>
+              ()
+          }
       }
     def bar(x: Int @qualified[Int]((x: Int) => x > 0)): Nothing = ???
     def secondGreater1(x: Int, y: Int)(z: Int @qualified[Int]((w: Int) => x > y)
