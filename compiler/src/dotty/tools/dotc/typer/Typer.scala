@@ -649,7 +649,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      */
     def checkNotShadowed(ownType: Type): Type =
       ownType match
-        case ownType: TermRef if ownType.symbol.is(PhantomSymbol) && !ctx.mode.is(Mode.InCaptureSet) =>
+        case ownType: TermRef
+          if ownType.symbol.is(PhantomSymbol)
+            && !(ctx.mode.is(Mode.InCaptureSet) && ownType.symbol.isDummyCaptureParam) =>
           findRef(name, pt, EmptyFlags, PhantomSymbol, tree.srcPos) match
             case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
               pt match

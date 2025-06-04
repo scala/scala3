@@ -90,6 +90,9 @@ class SymUtils:
     def isContextBoundCompanion(using Context): Boolean =
       self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
 
+    def isDummyCaptureParam(using Context): Boolean =
+      self.is(Synthetic) && self.is(CaptureParam) && !(self.isClass || self.is(Method))
+
     /** Is this a case class for which a product mirror is generated?
     *  Excluded are value classes, abstract classes and case classes with more than one
     *  parameter section.

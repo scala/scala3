@@ -1,0 +1,12 @@
+-- [E195] Type Error: tests/neg-custom-args/captures/check-dummy-symbol.scala:6:21 -------------------------------------
+6 |def f(a: A): a.C = a.C // error
+  |                   ^^^
+  |                   dummy term capture parameter value C cannot be used as a value
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E195] Type Error: tests/neg-custom-args/captures/check-dummy-symbol.scala:7:15 -------------------------------------
+7 |def g[C^]: C = C // error
+  |               ^
+  |               dummy term capture parameter value C cannot be used as a value
+  |
+  | longer explanation available when compiling with `-explain`
