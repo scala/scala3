@@ -87,6 +87,10 @@ object Typer {
   /** Tree adaptation lost fidelity; this attachment preserves the original tree. */
   val AdaptedTree = new Property.StickyKey[tpd.Tree]
 
+  /** An attachment on a tree that was originally private local
+   */
+  val OriginallyPrivateLocal = new Property.Key[Unit]
+
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
    */
@@ -3039,6 +3043,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
+    // This is probably too late. Do this in Namer?
+    if mdef.isInstanceOf[ValDef] && sym.isAllOf(PrivateLocal) then
+      mdef.putAttachment(OriginallyPrivateLocal, ())
     mdef.ensureHasSym(sym)
     mdef.setDefTree
 

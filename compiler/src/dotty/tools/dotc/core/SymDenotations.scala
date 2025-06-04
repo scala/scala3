@@ -935,6 +935,9 @@ object SymDenotations {
              || isAccessPrivilegedThisType(pre)
              || canBeLocal(name, flags)
                 && {
+                  !symbol.defTree.hasAttachment(typer.Typer.OriginallyPrivateLocal)
+                }
+                && {
                   resetFlag(Local)
                   true
                 }
@@ -2658,8 +2661,6 @@ object SymDenotations {
    *  This holds for all symbols except
    *   - constructors, since they can never be referred to as members of their
    *     own, fully elaborated `this`.
-   *   - parameters and parameter accessors, since their Local status is already
-   *     determined by whether they have a `val` or `var` or not.
    */
   def canBeLocal(name: Name, flags: FlagSet)(using Context) =
     !name.isConstructorName
