@@ -853,6 +853,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(GlobalPrec)("^{" ~ Text(refs.map(toText), ", ") ~ "}" ~ toText(parent))
       case UseRef(ref, initially) =>
         toText(ref) ~~ (Str("initially") `provided` initially)
+      case QualifiedTypeTree(parent, paramName, predicate) =>
+        paramName match
+          case Some(name) => "{" ~ toText(name) ~  ": " ~ toText(parent) ~ " with " ~ toText(predicate) ~ "}"
+          case None => toText(parent) ~ " with " ~ toText(predicate)
       case ContextBoundTypeTree(tycon, pname, ownName) =>
         toText(pname) ~ " : " ~ toText(tycon) ~ (" as " ~ toText(ownName) `provided` !ownName.isEmpty)
       case _ =>
