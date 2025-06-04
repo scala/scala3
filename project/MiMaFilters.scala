@@ -19,7 +19,13 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$"),
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
-    ))
+        // qualified types related
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$qualifiedTypes$"),
+      )
+    )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // In general we should never have backwards incompatible changes in the library.

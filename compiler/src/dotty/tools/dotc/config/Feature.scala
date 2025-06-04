@@ -34,6 +34,7 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val separationChecking = experimental("separationChecking")
+  val qualifiedTypes = experimental("qualifiedTypes")
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
@@ -73,6 +74,7 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
+    (qualifiedTypes, "Enable experimental qualified types"),
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
@@ -177,6 +179,10 @@ object Feature:
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
     else ccEnabled
+
+   /** Is qualifiedTypes enabled for this compilation unit? */
+  def qualifiedTypesEnabled(using Context) =
+    enabledBySetting(qualifiedTypes)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

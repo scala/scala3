@@ -592,6 +592,7 @@ object StdNames {
     val productElementName: N   = "productElementName"
     val productIterator: N      = "productIterator"
     val productPrefix: N        = "productPrefix"
+    val qualified : N           = "qualified"
     val quotes : N              = "quotes"
     val raw_ : N                = "raw"
     val reachCapability: N      = "reachCapability"
