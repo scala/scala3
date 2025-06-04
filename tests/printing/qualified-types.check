@@ -20,6 +20,7 @@ package example {
           res:Boolean
         }
       )
+    type UninhabitedInt = Int @qualified[Int]((_: Int) => false)
     type Nested =
       Int @qualified[Int]((x: Int) =>
         {

@@ -2383,10 +2383,8 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
-      case QualifiedTypeTree(parent, None, qualifier) =>
-        ErrorReporting.errorTree(parent, em"missing parameter name in qualified type", tree.srcPos)
-      case QualifiedTypeTree(parent, Some(paramName), qualifier) =>
-        qualifiedType(parent, paramName, qualifier, tree.span)
+      case QualifiedTypeTree(parent, paramName, qualifier) =>
+        qualifiedType(parent, paramName.getOrElse(nme.WILDCARD), qualifier, tree.span)
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
