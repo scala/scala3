@@ -5,4 +5,4 @@ trait A
 extension (a: A^{cap.rd})
   def await = ()
 
-def awaitA[C <: {cap.rd}](a: A^{C}) = a.await
+def awaitA[C^ <: {cap.rd}](a: A^{C}) = a.await

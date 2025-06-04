@@ -30,7 +30,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
   "scala.annotation.retainsCap",
-  "scala.annotation.retainsArg",
   "scala.Pure",
   "scala.caps.CapSet",
   "scala.caps.Capability",

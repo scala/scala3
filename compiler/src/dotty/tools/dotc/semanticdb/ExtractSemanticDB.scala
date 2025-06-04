@@ -262,7 +262,7 @@ object ExtractSemanticDB:
 
     private def excludeSymbol(sym: Symbol)(using Context): Boolean =
       !sym.exists
-      || sym.is(ConstructorProxy)
+      || sym.is(PhantomSymbol)
       || sym.name.isWildcard
       || excludeQual(sym)
 
