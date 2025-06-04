@@ -1,0 +1,98 @@
+[[syntax trees at end of                     typer]] // tests/printing/qualified-types.scala
+package example {
+  class Foo() extends Object() {
+    val x: Int @qualified[Int]((x: Int) => x > 0) = 1
+  }
+  trait A() extends Object {}
+  final lazy module val qualified-types$package: example.qualified-types$package
+     = new example.qualified-types$package()
+  final module class qualified-types$package() extends Object() {
+    this: example.qualified-types$package.type =>
+    type Neg = Int @qualified[Int]((x: Int) => x < 0)
+    type Pos = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos2 = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos3 = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos4 = Int @qualified[Int]((x: Int) => x > 0)
+    type Pos5 =
+      Int @qualified[Int]((x: Int) =>
+        {
+          val res: Boolean = x > 0
+          res:Boolean
+        }
+      )
+    type Nested =
+      Int @qualified[Int]((x: Int) =>
+        {
+          val y: Int @qualified[Int]((z: Int) => z > 0) = ???
+          x > y
+        }
+      )
+    type Intersection = Int & Int @qualified[Int]((x: Int) => x > 0)
+    type ValRefinement =
+      Object
+        {
+          val x: Int @qualified[Int]((x: Int) => x > 0)
+        }
+    def id[T >: Nothing <: Any](x: T): T = x
+    def test(): Unit =
+      {
+        val x: example.Pos = 1
+        val x2: Int @qualified[Int]((x: Int) => x > 0) = 1
+        val x3: Int @qualified[Int]((x: Int) => x > 0) = 1
+        val x4: Int @qualified[Int]((x: Int) => x > 0) = 1
+        val x5: Int @qualified[Int]((x5: Int) => x > 0) = 1
+        val x6: Int =
+          example.id[Int @qualified[Int]((x: Int) => x < 0)](1) +
+            example.id[example.Neg](-1)
+        ()
+      }
+    def bar(x: Int @qualified[Int]((x: Int) => x > 0)): Nothing = ???
+    def secondGreater1(x: Int, y: Int)(z: Int @qualified[Int]((w: Int) => x > y)
+      ): Nothing = ???
+    def secondGreater2(x: Int, y: Int)(z: Int @qualified[Int]((z: Int) => x > y)
+      ): Nothing = ???
+    final lazy module given val given_A: example.given_A = new example.given_A()
+    final module class given_A() extends Object(), example.A {
+      this: example.given_A.type =>
+      val b: Boolean = false
+      example.id[Boolean](true)
+    }
+    type T1 =
+      Object
+        {
+          val x: Int
+        }
+    type T2 =
+      Object
+        {
+          val x: Int
+        }
+    type T3 =
+      Object
+        {
+          type T = Int
+        }
+    type T4 =
+      Object
+        {
+          def x: Int
+        }
+    type T5 =
+      Object
+        {
+          def x: Int
+          def x_=(x$1: Int): _root_.scala.Unit
+        }
+    type T6 =
+      Object
+        {
+          val x: Int
+        }
+    type T7 =
+      Object
+        {
+          val x: Int
+        }
+  }
+}
+
