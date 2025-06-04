@@ -15,6 +15,8 @@ type Pos5 = {x: Int with
   res
 }
 
+type UninhabitedInt = Int with false
+
 type Nested = {x: Int with { val y: {z: Int with z > 0} = ??? ; x > y }}
 type Intersection = Int & {x: Int with x > 0}
 type ValRefinement = {val x: Int with x > 0}
