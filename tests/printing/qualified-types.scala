@@ -49,6 +49,17 @@ def implicitArgumentName() =
   val x7: (Int with x7 > 0) with x6 < 10 = ???
   val x8: ((Int with x8 > 0) with x7 < 10) = ???
 
+  val x9: Any = 42
+  x9 match
+    case y: Int with y > 0 =>
+      println(s"$y is positive")
+    case _ => ()
+
+  (42, 42) match
+    case (y: Int with y > 0, z: Int with z > 0) =>
+      println(s"$y and $z are both positive")
+    case _ => ()
+
 def bar(x: Int with x > 0) = ???
 def secondGreater1(x: Int, y: Int)(z: {w: Int with x > y}) = ???
 def secondGreater2(x: Int, y: Int)(z: Int with x > y) = ???
