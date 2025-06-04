@@ -202,6 +202,12 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace"),
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace$Sync"),
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$TailUpdater"),
+
+        // qualified types related
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$qualifiedTypes$"),
       ),
     )
 
