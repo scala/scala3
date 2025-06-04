@@ -234,6 +234,14 @@ object desugar {
     else vdef1
   end valDef
 
+  def caseDef(cdef: CaseDef)(using Context): CaseDef =
+    if Feature.qualifiedTypesEnabled then
+      val CaseDef(pat, guard, body) = cdef
+      val pat1 = DesugarQualifiedTypesInPatternMap().transform(pat)
+      cpy.CaseDef(cdef)(pat1, guard, body)
+    else
+      cdef
+
   def mapParamss(paramss: List[ParamClause])
                 (mapTypeParam: TypeDef => TypeDef)
                 (mapTermParam: ValDef => ValDef)(using Context): List[ParamClause] =
@@ -2589,6 +2597,14 @@ object desugar {
       transform(tpt)
     else
       tpt
+
+  private class DesugarQualifiedTypesInPatternMap extends UntypedTreeMap:
+    override def transform(tree: Tree)(using Context): Tree =
+      tree match
+        case Typed(ident @ Ident(name: TermName), tpt) =>
+          cpy.Typed(tree)(ident, desugarQualifiedTypes(tpt, name))
+        case _ =>
+          super.transform(tree)
 
   /** Returns the annotated type used to represent the qualified type with the
    *  given components:
