@@ -79,7 +79,31 @@ package example {
             Int @qualified[Int]((x8: Int) => x8 > 0)]((
             x8: Int @qualified[Int]((x8: Int) => x8 > 0)) => x7 < 10)
          = ???
-        ()
+        val x9: Any = 42
+        x9 match
+          {
+            case y @ _:Int @qualified[Int]((y: Int) => y > 0) =>
+              println(
+                _root_.scala.StringContext.apply([""," is positive" : String]*).
+                  s([y : Any]*)
+              )
+            case _ =>
+              ()
+          }
+        Tuple2.apply[Int, Int](42, 42) match
+          {
+            case
+              Tuple2.unapply[Int, Int](
+                y @ _:Int @qualified[Int]((y: Int) => y > 0),
+                z @ _:Int @qualified[Int]((z: Int) => z > 0))
+             =>
+              println(
+                _root_.scala.StringContext.apply(
+                  [""," and "," are both positive" : String]*).s([y,z : Any]*)
+              )
+            case _ =>
+              ()
+          }
       }
     def bar(x: Int @qualified[Int]((x: Int) => x > 0)): Nothing = ???
     def secondGreater1(x: Int, y: Int)(z: Int @qualified[Int]((w: Int) => x > y)
