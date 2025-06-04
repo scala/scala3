@@ -32,6 +32,9 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.SharedCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
+
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$qualifiedTypes$"),
       ),
 
       // Additions since last LTS
