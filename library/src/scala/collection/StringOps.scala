@@ -722,7 +722,7 @@ final class StringOps(private val s: String) extends AnyVal {
     * This method does not convert characters outside the Basic Multilingual Plane (BMP).
     */
   def capitalize: String =
-    if (s == null || s.length == 0 || !s.charAt(0).isLower) s
+    if (s == null || s.length == 0 || !s.charAt(0).isLower) s.nn
     else updated(0, s.charAt(0).toUpper)
 
   /** Returns this string with the given `prefix` stripped. If this string does not

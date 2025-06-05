@@ -317,12 +317,12 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     private[this] val bdr = new MapBuilderImpl[K, (Int, V)]
     private[this] var ong = Ordering.empty[K]
     private[this] var ord = 0
-    private[this] var aliased: TreeSeqMap[K, V] = _
+    private[this] var aliased: TreeSeqMap[K, V] | Null = null
 
     override def addOne(elem: (K, V)): this.type = addOne(elem._1, elem._2)
     def addOne(key: K, value: V): this.type = {
       if (aliased ne null) {
-        aliased = aliased.updated(key, value)
+        aliased = aliased.nn.updated(key, value)
       } else {
         bdr.getOrElse(key, null) match {
           case (o, v) =>
@@ -352,7 +352,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       if (aliased eq null) {
         aliased = new TreeSeqMap(ong, bdr.result(), ord, orderedBy)
       }
-      aliased
+      aliased.nn
     }
   }
 
@@ -570,8 +570,8 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
         else Bin(p, m, l, r.append(ordinal, value))
     }
 
-    @inline private[collection] final def appendInPlace[S >: T](ordinal: Int, value: S): Ordering[S] = appendInPlace1(null, ordinal, value)
-    private[collection] final def appendInPlace1[S >: T](parent: Bin[S], ordinal: Int, value: S): Ordering[S] = this match {
+    @inline private[collection] final def appendInPlace[S >: T](ordinal: Int, value: S): Ordering[S] = appendInPlace1(null: Bin[S] | Null, ordinal, value)
+    private[collection] final def appendInPlace1[S >: T](parent: Bin[S] | Null, ordinal: Int, value: S): Ordering[S] = this match {
       case Zero =>
         Tip(ordinal, value)
       case Tip(o, _) if o >= ordinal =>
@@ -579,14 +579,14 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       case Tip(o, _) if parent == null =>
         join(ordinal, Tip(ordinal, value), o, this)
       case Tip(o, _) =>
-        parent.right = join(ordinal, Tip(ordinal, value), o, this)
-        parent
+        parent.nn.right = join(ordinal, Tip(ordinal, value), o, this)
+        parent.nn
       case b @ Bin(p, m, _, r) =>
         if (!hasMatch(ordinal, p, m)) {
           val b2 = join(ordinal, Tip(ordinal, value), p, this)
           if (parent != null) {
-            parent.right = b2
-            parent
+            parent.nn.right = b2
+            parent.nn
           } else b2
         } else if (zero(ordinal, m)) throw new IllegalArgumentException(s"Append called with ordinal out of range: $ordinal is not greater than current max ordinal ${this.ordinal}")
         else {

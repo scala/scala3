@@ -362,22 +362,22 @@ abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
   private[this] var elems: Set[A] = Set.empty
   private[this] var switchedToHashSetBuilder: Boolean = false
-  private[this] var hashSetBuilder: HashSetBuilder[A] = _
+  private[this] var hashSetBuilder: HashSetBuilder[A] | Null = _
 
   override def clear(): Unit = {
     elems = Set.empty
     if (hashSetBuilder != null) {
-      hashSetBuilder.clear()
+      hashSetBuilder.nn.clear()
     }
     switchedToHashSetBuilder = false
   }
 
   override def result(): Set[A] =
-    if (switchedToHashSetBuilder) hashSetBuilder.result() else elems
+    if (switchedToHashSetBuilder) hashSetBuilder.nn.result() else elems
 
   def addOne(elem: A) = {
     if (switchedToHashSetBuilder) {
-      hashSetBuilder.addOne(elem)
+      hashSetBuilder.nn.addOne(elem)
     } else if (elems.size < 4) {
       elems = elems + elem
     } else {
@@ -389,8 +389,8 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
         if (hashSetBuilder == null) {
           hashSetBuilder = new HashSetBuilder
         }
-        elems.asInstanceOf[Set4[A]].buildTo(hashSetBuilder)
-        hashSetBuilder.addOne(elem)
+        elems.asInstanceOf[Set4[A]].buildTo(hashSetBuilder.nn)
+        hashSetBuilder.nn.addOne(elem)
       }
     }
 
@@ -399,7 +399,7 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
 
   override def addAll(xs: IterableOnce[A]): this.type =
     if (switchedToHashSetBuilder) {
-      hashSetBuilder.addAll(xs)
+      hashSetBuilder.nn.addAll(xs)
       this
     } else {
       super.addAll(xs)

@@ -157,13 +157,13 @@ object Source {
   def createBufferedSource(
     inputStream: InputStream,
     bufferSize: Int = DefaultBufSize,
-    reset: () => Source = null,
-    close: () => Unit = null
+    reset: (() => Source) | Null = null,
+    close: (() => Unit) | Null = null
   )(implicit codec: Codec): BufferedSource = {
     // workaround for default arguments being unable to refer to other parameters
     val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(codec) else reset
 
-    new BufferedSource(inputStream, bufferSize)(codec) withReset resetFn withClose close
+    new BufferedSource(inputStream, bufferSize)(codec) withReset resetFn withClose (if (close == null) () => () else close.nn)
   }
 
   def fromInputStream(is: InputStream, enc: String): BufferedSource =
@@ -343,8 +343,8 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, "warning! " + msg, out)
   }
 
-  private[this] var resetFunction: () => Source = null
-  private[this] var closeFunction: () => Unit = null
+  private[this] var resetFunction: (() => Source) | Null = null
+  private[this] var closeFunction: (() => Unit) | Null = null
   private[this] var positioner: Positioner = RelaxedPositioner
 
   def withReset(f: () => Source): this.type = {
@@ -371,11 +371,11 @@ abstract class Source extends Iterator[Char] with Closeable {
 
   /** The close() method closes the underlying resource. */
   def close(): Unit = {
-    if (closeFunction != null) closeFunction()
+    if (closeFunction != null) closeFunction.nn()
   }
 
   /** The reset() method creates a fresh copy of this Source. */
   def reset(): Source =
-    if (resetFunction != null) resetFunction()
+    if (resetFunction != null) resetFunction.nn()
     else throw new UnsupportedOperationException("Source's reset() method was not set.")
 }

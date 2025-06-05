@@ -12,7 +12,7 @@
 
 package scala.ref
 
-class SoftReference[+T <: AnyRef](value : T, queue : ReferenceQueue[T]) extends ReferenceWrapper[T] {
+class SoftReference[+T <: AnyRef](value : T, queue : ReferenceQueue[T] | Null) extends ReferenceWrapper[T] {
   def this(value : T) = this(value, null)
 
   val underlying: java.lang.ref.SoftReference[_ <: T] =
@@ -31,5 +31,5 @@ object SoftReference {
   def unapply[T <: AnyRef](sr: SoftReference[T]): Option[T] = Option(sr.underlying.get)
 }
 
-private class SoftReferenceWithWrapper[T <: AnyRef](value: T, queue: ReferenceQueue[T], val wrapper: SoftReference[T])
-  extends java.lang.ref.SoftReference[T](value, if (queue == null) null else queue.underlying.asInstanceOf[java.lang.ref.ReferenceQueue[T]]) with ReferenceWithWrapper[T]
+private class SoftReferenceWithWrapper[T <: AnyRef](value: T, queue: ReferenceQueue[T] | Null, val wrapper: SoftReference[T])
+  extends java.lang.ref.SoftReference[T](value, if (queue == null) null else queue.nn.underlying.asInstanceOf[java.lang.ref.ReferenceQueue[T]]) with ReferenceWithWrapper[T]

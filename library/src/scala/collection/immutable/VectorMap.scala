@@ -69,29 +69,29 @@ final class VectorMap[K, +V] private (
   }
 
   @tailrec
-  private def nextValidField(slot: Int): (Int, K) = {
-    if (slot >= fields.size) (-1, null.asInstanceOf[K])
+  private def nextValidField(slot: Int): (Int, K | Null) = {
+    if (slot >= fields.size) (-1, null)
     else fields(slot) match {
       case Tombstone(distance) => nextValidField(slot + distance)
-      case k /*: K | Null */   => (slot, k.asInstanceOf[K])
+      case k /*: K | Null */   => (slot, k.asInstanceOf[K | Null])
     }
   }
 
   def iterator: Iterator[(K, V)] = new AbstractIterator[(K, V)] {
     private[this] val fieldsLength = fields.length
     private[this] var slot = -1
-    private[this] var key: K = null.asInstanceOf[K]
+    private[this] var key: K | Null = null
 
     private[this] def advance(): Unit = {
       val nextSlot = slot + 1
       if (nextSlot >= fieldsLength) {
         slot = fieldsLength
-        key = null.asInstanceOf[K]
+        key = null
       } else {
         nextValidField(nextSlot) match {
           case (-1, _) =>
             slot = fieldsLength
-            key = null.asInstanceOf[K]
+            key = null
           case (s, k) =>
             slot = s
             key = k
@@ -106,7 +106,7 @@ final class VectorMap[K, +V] private (
     override def next(): (K, V) =
       if (!hasNext) Iterator.empty.next()
       else {
-        val result = (key, underlying(key)._2)
+        val result = (key.nn, underlying(key.nn)._2)
         advance()
         result
       }
@@ -191,7 +191,7 @@ final class VectorMap[K, +V] private (
   override def tail: VectorMap[K, V] = {
     if (isEmpty) throw new UnsupportedOperationException("empty.tail")
     val (slot, key) = nextValidField(0)
-    new VectorMap(fields.drop(slot + 1), underlying - key, dropped + slot + 1)
+    new VectorMap(fields.drop(slot + 1), underlying - key.nn, dropped + slot + 1)
   }
 
   override def init: VectorMap[K, V] = {
@@ -244,7 +244,7 @@ object VectorMap extends MapFactory[VectorMap] {
 private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K, V), VectorMap[K, V]] {
   private[this] val vectorBuilder = new VectorBuilder[K]
   private[this] val mapBuilder = new MapBuilderImpl[K, (Int, V)]
-  private[this] var aliased: VectorMap[K, V] = _
+  private[this] var aliased: VectorMap[K, V] | Null = _
 
   override def clear(): Unit = {
     vectorBuilder.clear()
@@ -256,11 +256,11 @@ private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K
     if (aliased eq null) {
       aliased = new VectorMap(vectorBuilder.result(), mapBuilder.result())
     }
-    aliased
+    aliased.nn
   }
   def addOne(key: K, value: V): this.type = {
     if (aliased ne null) {
-      aliased = aliased.updated(key, value)
+      aliased = aliased.nn.updated(key, value)
     } else {
       mapBuilder.getOrElse(key, null) match {
         case (slot, _) =>

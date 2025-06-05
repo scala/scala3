@@ -661,26 +661,26 @@ abstract class AbstractMap[K, +V] extends scala.collection.AbstractMap[K, V] wit
 private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, V), Map[K, V]] {
   private[this] var elems: Map[K, V] = Map.empty
   private[this] var switchedToHashMapBuilder: Boolean = false
-  private[this] var hashMapBuilder: HashMapBuilder[K, V] = _
+  private[this] var hashMapBuilder: HashMapBuilder[K, V] | Null = _
 
   private[immutable] def getOrElse[V0 >: V](key: K, value: V0): V0 =
-    if (hashMapBuilder ne null) hashMapBuilder.getOrElse(key, value)
+    if (hashMapBuilder ne null) hashMapBuilder.nn.getOrElse(key, value)
     else elems.getOrElse(key, value)
 
   override def clear(): Unit = {
     elems = Map.empty
     if (hashMapBuilder != null) {
-      hashMapBuilder.clear()
+      hashMapBuilder.nn.clear()
     }
     switchedToHashMapBuilder = false
   }
 
   override def result(): Map[K, V] =
-    if (switchedToHashMapBuilder) hashMapBuilder.result() else elems
+    if (switchedToHashMapBuilder) hashMapBuilder.nn.result() else elems
 
   def addOne(key: K, value: V): this.type = {
     if (switchedToHashMapBuilder) {
-      hashMapBuilder.addOne(key, value)
+      hashMapBuilder.nn.addOne(key, value)
     } else if (elems.size < 4) {
       elems = elems.updated(key, value)
     } else {
@@ -692,8 +692,8 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
         if (hashMapBuilder == null) {
           hashMapBuilder = new HashMapBuilder
         }
-        elems.asInstanceOf[Map4[K, V]].buildTo(hashMapBuilder)
-        hashMapBuilder.addOne(key, value)
+        elems.asInstanceOf[Map4[K, V]].buildTo(hashMapBuilder.nn)
+        hashMapBuilder.nn.addOne(key, value)
       }
     }
 
@@ -704,7 +704,7 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
 
   override def addAll(xs: IterableOnce[(K, V)]): this.type =
     if (switchedToHashMapBuilder) {
-      hashMapBuilder.addAll(xs)
+      hashMapBuilder.nn.addAll(xs)
       this
     } else {
       super.addAll(xs)

@@ -128,26 +128,24 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
 
   def iterator: Iterator[T] = new AbstractIterator[T] {
     var pos: Int = -1
-    var node: Unrolled[T] = headptr
+    var node: Unrolled[T] | Null = headptr
     scan()
 
     private def scan(): Unit = {
       pos += 1
-      while (pos >= node.size) {
+      while (node != null && pos >= node.size) {
         pos = 0
         node = node.next
-        if (node eq null) return
       }
     }
-    def hasNext = node ne null
+    def hasNext = node != null
     def next() = if (hasNext) {
-      val r = node.array(pos)
+      val r = node.nn.array(pos)
       scan()
       r
     } else Iterator.empty.next()
   }
 
-  // this should be faster than the iterator
   override def foreach[U](f: T => U) = headptr.foreach(f)
 
   def result() = this
@@ -261,12 +259,16 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
   private[collection] val unrolledlength = 32
 
   /** Unrolled buffer node.
-    */
-  class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
+    */ class Unrolled[T: ClassTag] private[collection] (
+    var size: Int, 
+    var array: Array[T], 
+    var next: Unrolled[T] | Null, 
+    val buff: UnrolledBuffer[T] | Null
+  ) {
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)
     private[collection] def this(b: UnrolledBuffer[T]) = this(0, new Array[T](unrolledlength), null, b)
 
-    private def nextlength = if (buff eq null) unrolledlength else buff.calcNextLength(array.length)
+    private def nextlength = if (buff == null) unrolledlength else buff.nn.calcNextLength(array.length)
 
     // adds and returns itself or the new unrolled if full
     @tailrec final def append(elem: T): Unrolled[T] = if (size < array.length) {
@@ -275,12 +277,12 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       this
     } else {
       next = new Unrolled[T](0, new Array[T](nextlength), null, buff)
-      next append elem
+      next.nn.append(elem)
     }
     def foreach[U](f: T => U): Unit = {
-      var unrolled = this
+      var unrolled: Unrolled[T] | Null = this
       var i = 0
-      while (unrolled ne null) {
+      while (unrolled != null) {
         val chunkarr = unrolled.array
         val chunksz = unrolled.size
         while (i < chunksz) {
@@ -293,9 +295,9 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       }
     }
     def mapInPlace(f: T => T): Unit = {
-      var unrolled = this
+      var unrolled: Unrolled[T] | Null = this
       var i = 0
-      while (unrolled ne null) {
+      while (unrolled != null) {
         val chunkarr = unrolled.array
         val chunksz = unrolled.size
         while (i < chunksz) {
@@ -346,7 +348,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
         size -= 1
         if (tryMergeWithNext()) buffer.lastPtr = this
         r
-      } else next.remove(idx - size, buffer)
+      } else next.nn.remove(idx - size, buffer)
 
     @tailrec final def subtractOne(elem: T, buffer: UnrolledBuffer[T]): Boolean = {
       var i = 0
@@ -357,7 +359,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
         }
         i += 1
       }
-      if(next ne null) next.subtractOne(elem, buffer) else false
+      if(next ne null) next.nn.subtractOne(elem, buffer) else false
     }
 
     // shifts left elements after `leftb` (overwrites `leftb`)
@@ -369,11 +371,11 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       }
       nullout(i, i + 1)
     }
-    protected def tryMergeWithNext() = if (next != null && (size + next.size) < (array.length * waterline / waterlineDenom)) {
+    protected def tryMergeWithNext() = if (next != null && (size + next.nn.size) < (array.length * waterline / waterlineDenom)) {
       // copy the next array, then discard the next node
-      Array.copy(next.array, 0, array, size, next.size)
-      size = size + next.size
-      next = next.next
+      Array.copy(next.nn.array, 0, array, size, next.nn.size)
+      size = size + next.nn.size
+      next = next.nn.next
       if (next eq null) true else false // checks if last node was thrown out
     } else false
 
@@ -381,7 +383,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       if (idx < size) {
         // divide this node at the appropriate position and insert all into head
         // update new next
-        val newnextnode = new Unrolled[T](0, new Array(array.length), null, buff)
+        val newnextnode = new Unrolled[T](0, new Array(array.length), null, buff.nn)
         Array.copy(array, idx, newnextnode.array, 0, size - idx)
         newnextnode.size = size - idx
         newnextnode.next = next
@@ -414,7 +416,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
         }
         appended
       }
-      else next.insertAll(idx - size, t, buffer)
+      else next.nn.insertAll(idx - size, t, buffer)
     }
 
     private def nullout(from: Int, until: Int): Unit = {
@@ -443,5 +445,5 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 // Todo -- revisit whether inheritance is the best way to achieve this functionality
 private[collection] class DoublingUnrolledBuffer[T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(t) {
   override def calcNextLength(sz: Int) = if (sz < 10000) sz * 2 else sz
-  override protected def newUnrolled = new UnrolledBuffer.Unrolled[T](0, new Array[T](4), null, this)
+  override protected def newUnrolled = new UnrolledBuffer.Unrolled[T](0, new Array[T](4), null.asInstanceOf[Unrolled[T] | Null], this)
 }

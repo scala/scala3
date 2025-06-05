@@ -16,9 +16,9 @@ import java.util.concurrent.{ Semaphore, ForkJoinPool, ForkJoinWorkerThread, Cal
 import java.util.Collection
 import scala.concurrent.{ BlockContext, ExecutionContext, CanAwait, ExecutionContextExecutor, ExecutionContextExecutorService }
 
-private[scala] class ExecutionContextImpl private[impl] (final val executor: Executor, final val reporter: Throwable => Unit) extends ExecutionContextExecutor {
-  require(executor ne null, "Executor must not be null")
-  override final def execute(runnable: Runnable): Unit = executor execute runnable
+private[scala] class ExecutionContextImpl private[impl] (final val executor: Executor | Null, final val reporter: Throwable => Unit) extends ExecutionContextExecutor {
+  // require(executor ne null, "Executor must not be null")
+  override final def execute(runnable: Runnable): Unit = executor.nn execute runnable
   override final def reportFailure(t: Throwable): Unit = reporter(t)
 }
 
@@ -28,7 +28,7 @@ private[concurrent] object ExecutionContextImpl {
     final val daemonic: Boolean,
     final val maxBlockers: Int,
     final val prefix: String,
-    final val uncaught: Thread.UncaughtExceptionHandler) extends ThreadFactory with ForkJoinPool.ForkJoinWorkerThreadFactory {
+    final val uncaught: Thread.UncaughtExceptionHandler | Null) extends ThreadFactory with ForkJoinPool.ForkJoinWorkerThreadFactory {
 
     require(prefix ne null, "DefaultThreadFactory.prefix must be non null")
     require(maxBlockers >= 0, "DefaultThreadFactory.maxBlockers must be greater-or-equal-to 0")
@@ -53,7 +53,7 @@ private[concurrent] object ExecutionContextImpl {
             try {
               val b: ForkJoinPool.ManagedBlocker with (() => T) =
                 new ForkJoinPool.ManagedBlocker with (() => T) {
-                  private[this] final var result: T = null.asInstanceOf[T]
+                  private[this] final var result: T = _
                   private[this] final var done: Boolean = false
                   final override def block(): Boolean = {
                     if (!done) {
@@ -108,13 +108,13 @@ private[concurrent] object ExecutionContextImpl {
     }
   }
 
-  def fromExecutor(e: Executor, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor =
+  def fromExecutor(e: Executor | Null, reporter: Throwable => Unit = ExecutionContext.defaultReporter): ExecutionContextExecutor =
     e match {
       case null => createDefaultExecutorService(reporter)
       case some => new ExecutionContextImpl(some, reporter)
     }
 
-  def fromExecutorService(es: ExecutorService, reporter: Throwable => Unit = ExecutionContext.defaultReporter):
+  def fromExecutorService(es: ExecutorService | Null, reporter: Throwable => Unit = ExecutionContext.defaultReporter):
     ExecutionContextExecutorService = es match {
       case null => createDefaultExecutorService(reporter)
       case some =>

@@ -261,7 +261,7 @@ sealed abstract class List[+A]
   final override def collect[B](pf: PartialFunction[A, B]): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
-      var h: ::[B] = null
+      var h: ::[B] | Null = null
       var x: Any = null
       // Special case for first element
       while (h eq null) {
@@ -288,8 +288,8 @@ sealed abstract class List[+A]
 
   final override def flatMap[B](f: A => IterableOnce[B]): List[B] = {
     var rest = this
-    var h: ::[B] = null
-    var t: ::[B] = null
+    var h: ::[B] | Null = null
+    var t: ::[B] | Null = null
     while (rest ne Nil) {
       val it = f(rest.head).iterator
       while (it.hasNext) {
@@ -495,7 +495,7 @@ sealed abstract class List[+A]
         }
       }
     }
-    val result = loop(null, null, this, this)
+    val result = loop(null: List[B] | Null, null: ::[B] | Null, this, this).nn
     releaseFence()
     result
   }

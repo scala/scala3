@@ -53,9 +53,9 @@ private[scala] trait PropertiesTrait {
 
   def propIsSet(name: String)                   = System.getProperty(name) != null
   def propIsSetTo(name: String, value: String)  = propOrNull(name) == value
-  def propOrElse(name: String, alt: => String)  = Option(System.getProperty(name)).getOrElse(alt)
-  def propOrEmpty(name: String)                 = propOrElse(name, "")
-  def propOrNull(name: String)                  = propOrElse(name, null)
+  def propOrElse(name: String, alt: => String | Null)  = Option(System.getProperty(name)).getOrElse(alt)
+  def propOrEmpty(name: String)                 = propOrElse(name, "").asInstanceOf[String]
+  def propOrNull(name: String): String | Null   = propOrElse(name, null)
   def propOrNone(name: String)                  = Option(propOrNull(name))
   def propOrFalse(name: String)                 = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
   def setProp(name: String, value: String)      = System.setProperty(name, value)

@@ -78,65 +78,65 @@ import scala.language.implicitConversions
 @deprecated("Use `scala.jdk.CollectionConverters` instead", "2.13.0")
 object JavaConverters extends AsJavaConverters with AsScalaConverters {
   @deprecated("Use `asJava` instead", "2.13.0")
-  def asJavaIterator[A](i: Iterator[A]): ju.Iterator[A] = asJava(i)
+  def asJavaIterator[A](i: Iterator[A] | Null): ju.Iterator[A] | Null = asJava(i)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def asJavaIterable[A](i: Iterable[A]): jl.Iterable[A] = asJava(i)
+  def asJavaIterable[A](i: Iterable[A] | Null): jl.Iterable[A] | Null = asJava(i)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def bufferAsJavaList[A](b: mutable.Buffer[A]): ju.List[A] = asJava(b)
+  def bufferAsJavaList[A](b: mutable.Buffer[A] | Null): ju.List[A] | Null = asJava(b)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def mutableSeqAsJavaList[A](s: mutable.Seq[A]): ju.List[A] = asJava(s)
+  def mutableSeqAsJavaList[A](s: mutable.Seq[A] | Null): ju.List[A] | Null = asJava(s)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def seqAsJavaList[A](s: Seq[A]): ju.List[A] = asJava(s)
+  def seqAsJavaList[A](s: Seq[A] | Null): ju.List[A] | Null = asJava(s)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def mutableSetAsJavaSet[A](s: mutable.Set[A]): ju.Set[A] = asJava(s)
+  def mutableSetAsJavaSet[A](s: mutable.Set[A] | Null): ju.Set[A] | Null = asJava(s)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def setAsJavaSet[A](s: Set[A]): ju.Set[A] = asJava(s)
+  def setAsJavaSet[A](s: Set[A] | Null): ju.Set[A] | Null = asJava(s)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def mutableMapAsJavaMap[K, V](m: mutable.Map[K, V]): ju.Map[K, V] = asJava(m)
+  def mutableMapAsJavaMap[K, V](m: mutable.Map[K, V] | Null): ju.Map[K, V] | Null = asJava(m)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def mapAsJavaMap[K, V](m: Map[K, V]): ju.Map[K, V] = asJava(m)
+  def mapAsJavaMap[K, V](m: Map[K, V] | Null): ju.Map[K, V] | Null = asJava(m)
 
   @deprecated("Use `asJava` instead", "2.13.0")
-  def mapAsJavaConcurrentMap[K, V](m: concurrent.Map[K, V]): juc.ConcurrentMap[K, V] = asJava(m)
+  def mapAsJavaConcurrentMap[K, V](m: concurrent.Map[K, V] | Null): juc.ConcurrentMap[K, V] | Null = asJava(m)
 
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def asScalaIterator[A](i: ju.Iterator[A]): Iterator[A] = asScala(i)
+  def asScalaIterator[A](i: ju.Iterator[A] | Null): Iterator[A] | Null = asScala(i)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def enumerationAsScalaIterator[A](i: ju.Enumeration[A]): Iterator[A] = asScala(i)
+  def enumerationAsScalaIterator[A](i: ju.Enumeration[A] | Null): Iterator[A] | Null = asScala(i)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def iterableAsScalaIterable[A](i: jl.Iterable[A]): Iterable[A] = asScala(i)
+  def iterableAsScalaIterable[A](i: jl.Iterable[A] | Null): Iterable[A] | Null = asScala(i)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def collectionAsScalaIterable[A](i: ju.Collection[A]): Iterable[A] = asScala(i)
+  def collectionAsScalaIterable[A](i: ju.Collection[A] | Null): Iterable[A] | Null = asScala(i)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def asScalaBuffer[A](l: ju.List[A]): mutable.Buffer[A] = asScala(l)
+  def asScalaBuffer[A](l: ju.List[A] | Null): mutable.Buffer[A] | Null = asScala(l)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def asScalaSet[A](s: ju.Set[A]): mutable.Set[A] = asScala(s)
+  def asScalaSet[A](s: ju.Set[A] | Null): mutable.Set[A] | Null = asScala(s)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def mapAsScalaMap[A, B](m: ju.Map[A, B]): mutable.Map[A, B] = asScala(m)
+  def mapAsScalaMap[A, B](m: ju.Map[A, B] | Null): mutable.Map[A, B] | Null = asScala(m)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def mapAsScalaConcurrentMap[A, B](m: juc.ConcurrentMap[A, B]): concurrent.Map[A, B] = asScala(m)
+  def mapAsScalaConcurrentMap[A, B](m: juc.ConcurrentMap[A, B] | Null): concurrent.Map[A, B] | Null = asScala(m)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def dictionaryAsScalaMap[A, B](p: ju.Dictionary[A, B]): mutable.Map[A, B] = asScala(p)
+  def dictionaryAsScalaMap[A, B](p: ju.Dictionary[A, B] | Null): mutable.Map[A, B] | Null = asScala(p)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def propertiesAsScalaMap(p: ju.Properties): mutable.Map[String, String] = asScala(p)
+  def propertiesAsScalaMap(p: ju.Properties | Null): mutable.Map[String, String] | Null = asScala(p)
 
   // Deprecated implicit conversions for code that directly imports them
 
@@ -304,32 +304,32 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
 
 
   /** Generic class containing the `asJava` converter method */
-  class AsJava[A](op: => A) {
+  class AsJava[A](op: => A | Null) {
     /** Converts a Scala collection to the corresponding Java collection */
-    def asJava: A = op
+    def asJava: A | Null = op
   }
 
   /** Generic class containing the `asScala` converter method */
-  class AsScala[A](op: => A) {
+  class AsScala[A](op: => A | Null) {
     /** Converts a Java collection to the corresponding Scala collection */
-    def asScala: A = op
+    def asScala: A | Null = op
   }
 
   /** Generic class containing the `asJavaCollection` converter method */
-  class AsJavaCollection[A](i: Iterable[A]) {
+  class AsJavaCollection[A](i: Iterable[A] | Null) {
     /** Converts a Scala `Iterable` to a Java `Collection` */
-    def asJavaCollection: ju.Collection[A] = JavaConverters.asJavaCollection(i)
+    def asJavaCollection: ju.Collection[A] | Null = JavaConverters.asJavaCollection(i)
   }
 
   /** Generic class containing the `asJavaEnumeration` converter method */
-  class AsJavaEnumeration[A](i: Iterator[A]) {
+  class AsJavaEnumeration[A](i: Iterator[A] | Null) {
     /** Converts a Scala `Iterator` to a Java `Enumeration` */
-    def asJavaEnumeration: ju.Enumeration[A] = JavaConverters.asJavaEnumeration(i)
+    def asJavaEnumeration: ju.Enumeration[A] | Null = JavaConverters.asJavaEnumeration(i)
   }
 
   /** Generic class containing the `asJavaDictionary` converter method */
-  class AsJavaDictionary[K, V](m : mutable.Map[K, V]) {
+  class AsJavaDictionary[K, V](m : mutable.Map[K, V] | Null) {
     /** Converts a Scala `Map` to a Java `Dictionary` */
-    def asJavaDictionary: ju.Dictionary[K, V] = JavaConverters.asJavaDictionary(m)
+    def asJavaDictionary: ju.Dictionary[K, V] | Null = JavaConverters.asJavaDictionary(m)
   }
 }

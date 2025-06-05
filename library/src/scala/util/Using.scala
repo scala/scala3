@@ -197,7 +197,7 @@ object Using {
     }
 
     private def manage[A](op: Manager => A): A = {
-      var toThrow: Throwable = null
+      var toThrow: Throwable | Null = null
       try {
         op(this)
       } catch {
@@ -207,7 +207,7 @@ object Using {
       } finally {
         closed = true
         var rs = resources
-        resources = null // allow GC, in case something is holding a reference to `this`
+        resources = null.asInstanceOf // allow GC, in case something is holding a reference to `this`
         while (rs.nonEmpty) {
           val resource = rs.head
           rs = rs.tail
@@ -291,7 +291,7 @@ object Using {
   def resource[R, A](resource: R)(body: R => A)(implicit releasable: Releasable[R]): A = {
     if (resource == null) throw new NullPointerException("null resource")
 
-    var toThrow: Throwable = null
+    var toThrow: Throwable | Null = null
     try {
       body(resource)
     } catch {

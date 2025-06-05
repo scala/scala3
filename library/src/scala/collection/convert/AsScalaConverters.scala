@@ -37,10 +37,10 @@ trait AsScalaConverters {
    * @param i The Java `Iterator` to be converted.
    * @return  A Scala `Iterator` view of the argument.
    */
-  def asScala[A](i: ju.Iterator[A]): Iterator[A] = i match {
+  def asScala[A](i: ju.Iterator[A] | Null): Iterator[A] | Null = i match {
     case null                            => null
     case wrapper: IteratorWrapper[A @uc] => wrapper.underlying
-    case _                               => new JIteratorWrapper(i)
+    case _                               => new JIteratorWrapper(i.nn)
   }
 
   /**
@@ -55,10 +55,10 @@ trait AsScalaConverters {
    * @param e The Java `Enumeration` to be converted.
    * @return  A Scala `Iterator` view of the argument.
    */
-  def asScala[A](e: ju.Enumeration[A]): Iterator[A] = e match {
+  def asScala[A](e: ju.Enumeration[A] | Null): Iterator[A] | Null = e match {
     case null                            => null
     case wrapper: IteratorWrapper[A @uc] => wrapper.underlying
-    case _                               => new JEnumerationWrapper(e)
+    case _                               => new JEnumerationWrapper(e.nn)
   }
 
   /**
@@ -73,10 +73,10 @@ trait AsScalaConverters {
    * @param i The Java `Iterable` to be converted.
    * @return  A Scala `Iterable` view of the argument.
    */
-  def asScala[A](i: jl.Iterable[A]): Iterable[A] = i match {
+  def asScala[A](i: jl.Iterable[A] | Null): Iterable[A] | Null = i match {
     case null                            => null
     case wrapper: IterableWrapper[A @uc] => wrapper.underlying
-    case _                               => new JIterableWrapper(i)
+    case _                               => new JIterableWrapper(i.nn)
   }
 
   /**
@@ -88,10 +88,10 @@ trait AsScalaConverters {
    * @param c The Java `Collection` to be converted.
    * @return  A Scala `Iterable` view of the argument.
    */
-  def asScala[A](c: ju.Collection[A]): Iterable[A] = c match {
+  def asScala[A](c: ju.Collection[A] | Null): Iterable[A] | Null = c match {
     case null                            => null
     case wrapper: IterableWrapper[A @uc] => wrapper.underlying
-    case _                               => new JCollectionWrapper(c)
+    case _                               => new JCollectionWrapper(c.nn)
   }
 
   /**
@@ -106,10 +106,10 @@ trait AsScalaConverters {
    * @param l The Java `List` to be converted.
    * @return A Scala mutable `Buffer` view of the argument.
    */
-  def asScala[A](l: ju.List[A]): mutable.Buffer[A] = l match {
+  def asScala[A](l: ju.List[A] | Null): mutable.Buffer[A] | Null = l match {
     case null                                 => null
     case wrapper: MutableBufferWrapper[A @uc] => wrapper.underlying
-    case _                                    => new JListWrapper(l)
+    case _                                    => new JListWrapper(l.nn)
   }
 
   /**
@@ -124,10 +124,10 @@ trait AsScalaConverters {
    * @param s The Java `Set` to be converted.
    * @return  A Scala mutable `Set` view of the argument.
    */
-  def asScala[A](s: ju.Set[A]): mutable.Set[A] = s match {
+  def asScala[A](s: ju.Set[A] | Null): mutable.Set[A] | Null = s match {
     case null                              => null
     case wrapper: MutableSetWrapper[A @uc] => wrapper.underlying
-    case _                                 => new JSetWrapper(s)
+    case _                                 => new JSetWrapper(s.nn)
   }
 
   /**
@@ -147,10 +147,10 @@ trait AsScalaConverters {
    * @param m The Java `Map` to be converted.
    * @return  A Scala mutable `Map` view of the argument.
    */
-  def asScala[K, V](m: ju.Map[K, V]): mutable.Map[K, V] = m match {
+  def asScala[K, V](m: ju.Map[K, V] | Null): mutable.Map[K, V] | Null = m match {
     case null                                     => null
     case wrapper: MutableMapWrapper[K @uc, V @uc] => wrapper.underlying
-    case _                                        => new JMapWrapper(m)
+    case _                                        => new JMapWrapper(m.nn)
   }
 
   /**
@@ -166,10 +166,10 @@ trait AsScalaConverters {
    * @param m The Java `ConcurrentMap` to be converted.
    * @return  A Scala mutable `ConcurrentMap` view of the argument.
    */
-  def asScala[K, V](m: juc.ConcurrentMap[K, V]): concurrent.Map[K, V] = m match {
+  def asScala[K, V](m: juc.ConcurrentMap[K, V] | Null): concurrent.Map[K, V] | Null = m match {
     case null                                        => null
     case wrapper: ConcurrentMapWrapper[K @uc, V @uc] => wrapper.underlyingConcurrentMap
-    case _                                           => new JConcurrentMapWrapper(m)
+    case _                                           => new JConcurrentMapWrapper(m.nn)
   }
 
     /**
@@ -184,10 +184,10 @@ trait AsScalaConverters {
    * @param d The Java `Dictionary` to be converted.
    * @return  A Scala mutable `Map` view of the argument.
    */
-  def asScala[K, V](d: ju.Dictionary[K, V]): mutable.Map[K, V] = d match {
+  def asScala[K, V](d: ju.Dictionary[K, V] | Null): mutable.Map[K, V] | Null = d match {
     case null                                     => null
     case wrapper: DictionaryWrapper[K @uc, V @uc] => wrapper.underlying
-    case _                                        => new JDictionaryWrapper(d)
+    case _                                        => new JDictionaryWrapper(d.nn)
   }
 
   /**
@@ -200,8 +200,8 @@ trait AsScalaConverters {
    * @param p The Java `Properties` to be converted.
    * @return  A Scala mutable `Map[String, String]` view of the argument.
    */
-  def asScala(p: ju.Properties): mutable.Map[String, String] = p match {
+  def asScala(p: ju.Properties | Null): mutable.Map[String, String] | Null = p match {
     case null => null
-    case _    => new JPropertiesWrapper(p)
+    case _    => new JPropertiesWrapper(p.nn)
   }
 }

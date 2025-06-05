@@ -33,7 +33,7 @@ import scala.collection.{IterableFactoryDefaults, IterableOnce, SeqFactory, Stri
  *  @define willNotTerminateInf
  */
 @migration("Stack is now based on an ArrayDeque instead of a linked list", "2.13.0")
-class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
+class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   extends ArrayDeque[A](array, start, end)
     with IndexedSeqOps[A, Stack, Stack[A]]
     with StrictOptimizedSeqOps[A, Stack, Stack[A]]
@@ -43,7 +43,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
     with DefaultSerializable {
 
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) =
-    this(ArrayDeque.alloc(initialSize), start = 0, end = 0)
+    this(ArrayDeque.alloc[AnyRef | Null](initialSize), start = 0, end = 0)
 
   override def iterableFactory: SeqFactory[Stack] = Stack
 
@@ -120,7 +120,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
     bf.result()
   }
 
-  override protected def ofArray(array: Array[AnyRef], end: Int): Stack[A] =
+  override protected def ofArray(array: Array[AnyRef | Null], end: Int): Stack[A] =
     new Stack(array, start = 0, end)
 
 }

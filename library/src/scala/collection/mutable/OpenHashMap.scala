@@ -69,7 +69,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     with DefaultSerializable {
 
   import OpenHashMap.OpenEntry
-  private type Entry = OpenEntry[Key, Value]
+  private type Entry = OpenEntry[Key, Value] | Null
 
   /** A default constructor creates a hashmap with initial size `8`.
     */
@@ -115,8 +115,8 @@ class OpenHashMap[Key, Value](initialSize : Int)
     table = new Array[Entry](newSize)
     mask = newSize - 1
     oldTable.foreach( entry =>
-      if (entry != null && entry.value != None)
-        table(findIndex(entry.key, entry.hash)) = entry )
+      if (entry != null && entry.nn.value != None)
+        table(findIndex(entry.nn.key, entry.nn.hash)) = entry )
     deleted = 0
   }
 
@@ -134,10 +134,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
 
     var entry = table(index)
     while (entry != null) {
-      if (entry.hash == hash && entry.key == key && entry.value != None)
+      if (entry.nn.hash == hash && entry.nn.key == key && entry.nn.value != None)
         return index
 
-      if (firstDeletedIndex == -1 && entry.value == None)
+      if (firstDeletedIndex == -1 && entry.nn.value == None)
         firstDeletedIndex = index
 
       j += 1
@@ -170,15 +170,15 @@ class OpenHashMap[Key, Value](initialSize : Int)
       size += 1
       None
     } else {
-      val res = entry.value
-      if (entry.value == None) {
-        entry.key = key
-        entry.hash = hash
+      val res = entry.nn.value
+      if (entry.nn.value == None) {
+        entry.nn.key = key
+        entry.nn.hash = hash
         size += 1
         deleted -= 1
         modCount += 1
       }
-      entry.value = Some(value)
+      entry.nn.value = Some(value)
       res
     }
   }
@@ -186,9 +186,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
   /** Delete the hash table slot contained in the given entry. */
   @`inline`
   private[this] def deleteSlot(entry: Entry) = {
-    entry.key = null.asInstanceOf[Key]
-    entry.hash = 0
-    entry.value = None
+    assert(entry != null)
+    entry.nn.key = null.asInstanceOf[Key]
+    entry.nn.hash = 0
+    entry.nn.value = None
 
     size -= 1
     deleted += 1
@@ -196,8 +197,8 @@ class OpenHashMap[Key, Value](initialSize : Int)
 
   override def remove(key : Key): Option[Value] = {
     val entry = table(findIndex(key, hashOf(key)))
-    if (entry != null && entry.value != None) {
-      val res = entry.value
+    if (entry != null && entry.nn.value != None) {
+      val res = entry.nn.value
       deleteSlot(entry)
       res
     } else None
@@ -209,9 +210,9 @@ class OpenHashMap[Key, Value](initialSize : Int)
     var entry = table(index)
     var j = 0
     while(entry != null){
-      if (entry.hash == hash &&
-        entry.key == key){
-        return entry.value
+      if (entry.nn.hash == hash &&
+        entry.nn.key == key){
+        return entry.nn.value
       }
 
       j += 1
@@ -227,14 +228,14 @@ class OpenHashMap[Key, Value](initialSize : Int)
     *  @return   the iterator
     */
   def iterator: Iterator[(Key, Value)] = new OpenHashMapIterator[(Key, Value)] {
-    override protected def nextResult(node: Entry): (Key, Value) = (node.key, node.value.get)
+    override protected def nextResult(node: Entry): (Key, Value) = (node.nn.key, node.nn.value.get)
   }
 
   override def keysIterator: Iterator[Key] = new OpenHashMapIterator[Key] {
-    override protected def nextResult(node: Entry): Key = node.key
+    override protected def nextResult(node: Entry): Key = node.nn.key
   }
   override def valuesIterator: Iterator[Value] = new OpenHashMapIterator[Value] {
-    override protected def nextResult(node: Entry): Value = node.value.get
+    override protected def nextResult(node: Entry): Value = node.nn.value.get
   }
 
   private abstract class OpenHashMapIterator[A] extends AbstractIterator[A] {
@@ -243,14 +244,14 @@ class OpenHashMap[Key, Value](initialSize : Int)
 
     private[this] def advance(): Unit = {
       if (initialModCount != modCount) throw new ConcurrentModificationException
-      while((index <= mask) && (table(index) == null || table(index).value == None)) index+=1
+      while((index <= mask) && (table(index) == null || table(index).nn.value == None)) index+=1
     }
 
     def hasNext = {advance(); index <= mask }
 
     def next() = {
       advance()
-      val result = table(index)
+      val result = table(index).nn
       index += 1
       nextResult(result)
     }
@@ -259,7 +260,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
 
   override def clone() = {
     val it = new OpenHashMap[Key, Value]
-    foreachUndeletedEntry(entry => it.put(entry.key, entry.hash, entry.value.get))
+    foreachUndeletedEntry(entry => it.put(entry.nn.key, entry.nn.hash, entry.nn.value.get))
     it
   }
 
@@ -277,28 +278,28 @@ class OpenHashMap[Key, Value](initialSize : Int)
     val startModCount = modCount
     foreachUndeletedEntry(entry => {
       if (modCount != startModCount) throw new ConcurrentModificationException
-      f((entry.key, entry.value.get))}
+      f((entry.nn.key, entry.nn.value.get))}
     )
   }
   override def foreachEntry[U](f : (Key, Value) => U): Unit = {
     val startModCount = modCount
     foreachUndeletedEntry(entry => {
       if (modCount != startModCount) throw new ConcurrentModificationException
-      f(entry.key, entry.value.get)}
+      f(entry.nn.key, entry.nn.value.get)}
     )
   }
 
   private[this] def foreachUndeletedEntry(f : Entry => Unit): Unit = {
-    table.foreach(entry => if (entry != null && entry.value != None) f(entry))
+    table.foreach(entry => if (entry != null && entry.nn.value != None) f(entry))
   }
 
   override def mapValuesInPlace(f : (Key, Value) => Value): this.type = {
-    foreachUndeletedEntry(entry => entry.value = Some(f(entry.key, entry.value.get)))
+    foreachUndeletedEntry(entry => entry.nn.value = Some(f(entry.nn.key, entry.nn.value.get)))
     this
   }
 
   override def filterInPlace(f : (Key, Value) => Boolean): this.type = {
-    foreachUndeletedEntry(entry => if (!f(entry.key, entry.value.get)) deleteSlot(entry))
+    foreachUndeletedEntry(entry => if (entry != null && !f(entry.nn.key, entry.nn.value.get)) deleteSlot(entry))
     this
   }
 

@@ -197,7 +197,7 @@ object ExecutionContext {
    *
    * @return the global [[ExecutionContext]]
    */
-  final lazy val global: ExecutionContextExecutor = impl.ExecutionContextImpl.fromExecutor(null: Executor)
+  final lazy val global: ExecutionContextExecutor = impl.ExecutionContextImpl.fromExecutor(null: Executor | Null)
 
   /**
    * WARNING: Only ever execute logic which will quickly return control to the caller.
@@ -253,7 +253,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService, reporter: Throwable => Unit): ExecutionContextExecutorService =
+  def fromExecutorService(e: ExecutorService | Null, reporter: Throwable => Unit): ExecutionContextExecutorService =
     impl.ExecutionContextImpl.fromExecutorService(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `ExecutorService` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -269,7 +269,7 @@ object ExecutionContext {
    *  @param e the `ExecutorService` to use. If `null`, a new `ExecutorService` is created with [[scala.concurrent.ExecutionContext$.global default configuration]].
    *  @return  the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService): ExecutionContextExecutorService = fromExecutorService(e, defaultReporter)
+  def fromExecutorService(e: ExecutorService | Null): ExecutionContextExecutorService = fromExecutorService(e, defaultReporter)
 
   /** Creates an `ExecutionContext` from the given `Executor`.
    *
@@ -277,7 +277,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor, reporter: Throwable => Unit): ExecutionContextExecutor =
+  def fromExecutor(e: Executor | Null, reporter: Throwable => Unit): ExecutionContextExecutor =
     impl.ExecutionContextImpl.fromExecutor(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `Executor` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -285,7 +285,7 @@ object ExecutionContext {
    *  @param e the `Executor` to use. If `null`, a new `Executor` is created with [[scala.concurrent.ExecutionContext$.global default configuration]].
    *  @return  the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor): ExecutionContextExecutor = fromExecutor(e, defaultReporter)
+  def fromExecutor(e: Executor | Null): ExecutionContextExecutor = fromExecutor(e, defaultReporter)
 
   /** The default reporter simply prints the stack trace of the `Throwable` to [[java.lang.System#err System.err]].
    *

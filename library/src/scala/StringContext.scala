@@ -290,7 +290,7 @@ object StringContext {
     }
 
     // Matched all of pattern to all of name. Success.
-    Some(collection.immutable.ArraySeq.unsafeWrapArray(
+    Option.fromNullable(collection.immutable.ArraySeq.unsafeWrapArray(
       Array.tabulate(patternChunks.length - 1)(n => input.slice(matchStarts(n), matchEnds(n)))
     ))
   }

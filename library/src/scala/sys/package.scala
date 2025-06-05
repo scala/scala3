@@ -64,7 +64,7 @@ package object sys {
    *
    *  @return   a Map containing the system environment variables.
    */
-  def env: Map[String, String] = Map.from(System.getenv().asScala).withDefault { v =>
+  def env: Map[String, String] = Map.from(System.getenv().nn.asScala).withDefault { v =>
     val s = System.getenv(v)
     if (s == null) throw new NoSuchElementException(v)
     s
@@ -92,6 +92,6 @@ package object sys {
     val tarray = new Array[Thread](num)
     val got    = Thread.enumerate(tarray)
 
-    ArraySeq.unsafeWrapArray(tarray).take(got)
+    ArraySeq.unsafeWrapArray(tarray).nn.take(got)
   }
 }

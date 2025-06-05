@@ -410,7 +410,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
-  def trySplit(): IntStepper =
+  def trySplit(): IntStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1

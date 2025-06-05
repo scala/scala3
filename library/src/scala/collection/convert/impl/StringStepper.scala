@@ -46,7 +46,7 @@ extends IntStepper with EfficientSplit {
     }
     else Stepper.throwNSEE()
   }
-  def trySplit(): CodePointStringStepper =
+  def trySplit(): CodePointStringStepper | Null =
     if (iN - 3 > i0) {
       var half = (i0 + iN) >>> 1
       if (isLowSurrogate(underlying.charAt(half))) half -= 1

@@ -192,12 +192,12 @@ object ListMap extends MapFactory[ListMap] {
 
       if (found) {
         if (isDifferent) {
-          var newHead: ListMap.Node[K, V1] = null
-          var prev: ListMap.Node[K, V1] = null
+          var newHead: ListMap.Node[K, V1] | Null = null
+          var prev: ListMap.Node[K, V1] | Null = null
           var curr: ListMap[K, V1] = this
           var i = 0
           while (i < index) {
-            val temp = new ListMap.Node(curr.key, curr.value, null)
+            val temp = new ListMap.Node[K, V1](curr.key, curr.value, null.asInstanceOf[ListMap[K, V1]])
             if (prev ne null) {
               prev._init = temp
             }
@@ -208,17 +208,17 @@ object ListMap extends MapFactory[ListMap] {
             }
             i += 1
           }
-          val newNode = new ListMap.Node(curr.key, v, curr.init)
+          val newNode = new ListMap.Node[K, V1](curr.key, v, curr.init)
           if (prev ne null) {
             prev._init = newNode
           }
           releaseFence()
-          if (newHead eq null) newNode else newHead
+          if (newHead eq null) newNode else newHead.nn
         } else {
           this
         }
       } else {
-        new ListMap.Node(k, v, this)
+        new ListMap.Node[K, V1](k, v, this)
       }
     }
 

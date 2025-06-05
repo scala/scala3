@@ -325,7 +325,7 @@ private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulato
       ans
     }
 
-  def trySplit(): AnyStepper[A] =
+  def trySplit(): AnyStepper[A] | Null =
     if (N <= 1) null
     else {
       val half = N >> 1
