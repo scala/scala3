@@ -546,7 +546,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if subCaptures(refs1, tp2.captureSet) && sameBoxed(tp1, tp2, refs1)
+          else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
           then
             val tp2a =
@@ -673,12 +673,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1 @ CapturingType(parent1, refs1), info2: Type)
               if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                subCaptures(refs1, info2.captureSet) && sameBoxed(info1, info2, refs1)
+                compareCaptures(info1, refs1, info2, info2.captureSet)
                   && isSubInfo(parent1, info2)
               case (info1: Type, CapturingType(parent2, refs2))
               if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2)) && sameBoxed(info1, info2, refs1)
+                (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
                   && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
@@ -877,8 +877,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ =>
                   false
               singletonOK
-              || subCaptures(refs1, refs2)
-                  && sameBoxed(tp1, tp2, refs1)
+              || compareCaptures(tp1, refs1, tp2, refs2)
                   && (recur(tp1.widen.stripCapturing, parent2)
                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
                         // this alternative is needed in case the right hand side is a
@@ -2891,13 +2890,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       println(i"fail while subCaptures $refs1 <:< $refs2")
       throw ex
 
-  /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
-   *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
-   *  In the latter case, boxing status does not matter.
+  /**
+   *  - Compare capture sets using subCaptures. If the lower type derives from Mutable and the
+   *    upper type does not, make the lower set read-only.
+   *  - Test whether the boxing status of tp1 and tp2 the same, or alternatively,
+   *    whether the capture set `refs1` of `tp1` is subcapture of the empty set?
+   *    In the latter case, boxing status does not matter.
    */
-  protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
-    (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs1.subCaptures(CaptureSet.empty, makeVarState())
+  protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type, refs2: CaptureSet): Boolean =
+    val refs1Adapted =
+      if tp1.derivesFromMutable && !tp2.derivesFromMutable
+      then refs1.readOnly
+      else refs1
+    subCaptures(refs1Adapted, refs2)
+    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
+        || refs1.subCaptures(CaptureSet.empty, makeVarState())
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
