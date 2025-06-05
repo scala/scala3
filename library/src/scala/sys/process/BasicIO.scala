@@ -194,7 +194,7 @@ object BasicIO {
   /** Calls `processLine` with the result of `readLine` until the latter returns
    *  `null` or the current thread is interrupted.
    */
-  def processLinesFully(processLine: String => Unit)(readLine: () => String): Unit = {
+  def processLinesFully(processLine: String => Unit)(readLine: () => String | Null): Unit = {
     def working = !Thread.currentThread.isInterrupted
     def halting = { Thread.currentThread.interrupt(); null }
     @tailrec

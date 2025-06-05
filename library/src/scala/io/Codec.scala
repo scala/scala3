@@ -38,10 +38,10 @@ class Codec(val charSet: Charset) {
 
   // these variables allow configuring the Codec object, and then
   // all decoders and encoders retrieved from it will use these settings.
-  private[this] var _onMalformedInput: Action         = null
-  private[this] var _onUnmappableCharacter: Action    = null
-  private[this] var _encodingReplacement: Array[Byte] = null
-  private[this] var _decodingReplacement: String      = null
+  private[this] var _onMalformedInput: Action | Null         = null
+  private[this] var _onUnmappableCharacter: Action | Null    = null
+  private[this] var _encodingReplacement: Array[Byte] | Null = null
+  private[this] var _decodingReplacement: String | Null      = null
   private[this] var _onCodingException: Handler       = e => throw e
 
   /** The name of the Codec. */
@@ -57,16 +57,16 @@ class Codec(val charSet: Charset) {
   def name = charSet.name
   def encoder: CharsetEncoder = {
     val enc = charSet.newEncoder()
-    if (_onMalformedInput ne null) enc onMalformedInput _onMalformedInput
-    if (_onUnmappableCharacter ne null) enc onUnmappableCharacter _onUnmappableCharacter
-    if (_encodingReplacement ne null) enc replaceWith _encodingReplacement
+    if (_onMalformedInput ne null) enc onMalformedInput _onMalformedInput.nn
+    if (_onUnmappableCharacter ne null) enc onUnmappableCharacter _onUnmappableCharacter.nn
+    if (_encodingReplacement ne null) enc replaceWith _encodingReplacement.nn
     enc
   }
   def decoder: CharsetDecoder = {
     val dec = charSet.newDecoder()
-    if (_onMalformedInput ne null) dec onMalformedInput _onMalformedInput
-    if (_onUnmappableCharacter ne null) dec onUnmappableCharacter _onUnmappableCharacter
-    if (_decodingReplacement ne null) dec replaceWith _decodingReplacement
+    if (_onMalformedInput ne null) dec onMalformedInput _onMalformedInput.nn
+    if (_onUnmappableCharacter ne null) dec onUnmappableCharacter _onUnmappableCharacter.nn
+    if (_decodingReplacement ne null) dec replaceWith _decodingReplacement.nn
     dec
   }
 

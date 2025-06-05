@@ -105,7 +105,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   private val vmap: mutable.Map[Int, Value] = new mutable.HashMap
 
   /** The cache listing all values of this enumeration. */
-  @transient private var vset: ValueSet = null
+  @transient private var vset: ValueSet | Null = null
   @transient @volatile private var vsetDefined = false
 
   /** The mapping from the integer used to identify values to their
@@ -119,17 +119,17 @@ abstract class Enumeration (initial: Int) extends Serializable {
       vset = (ValueSet.newBuilder ++= vmap.values).result()
       vsetDefined = true
     }
-    vset
+    vset.nn
   }
 
   /** The integer to use to identify the next created value. */
   protected var nextId: Int = initial
 
   /** The string to use to name the next created value. */
-  protected var nextName: Iterator[String] = _
+  protected var nextName: Iterator[String] | Null = _
 
-  private def nextNameOrNull =
-    if (nextName != null && nextName.hasNext) nextName.next() else null
+  private def nextNameOrNull: String | Null =
+    if (nextName != null && nextName.nn.hasNext) nextName.nn.next() else null
 
   /** The highest integer amongst those used to identify values in this
     * enumeration. */
@@ -175,7 +175,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  @param name A human-readable name for that value.
    *  @return  Fresh value called `name`.
    */
-  protected final def Value(name: String): Value = Value(nextId, name)
+  protected final def Value(name: String | Null): Value = Value(nextId, name)
 
   /** Creates a fresh value, part of this enumeration, called `name`
    *  and identified by the integer `i`.
@@ -185,10 +185,10 @@ abstract class Enumeration (initial: Int) extends Serializable {
    * @param name A human-readable name for that value.
    * @return     Fresh value with the provided identifier `i` and name `name`.
    */
-  protected final def Value(i: Int, name: String): Value = new Val(i, name)
+  protected final def Value(i: Int, name: String | Null): Value = new Val(i, name)
 
   private def populateNameMap(): Unit = {
-    @tailrec def getFields(clazz: Class[_], acc: Array[JField]): Array[JField] = {
+    @tailrec def getFields(clazz: Class[?] | Null, acc: Array[JField]): Array[JField] = {
       if (clazz == null)
         acc
       else
@@ -246,7 +246,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
    *  identification behaviour.
    */
   @SerialVersionUID(0 - 3501153230598116017L)
-  protected class Val(i: Int, name: String) extends Value with Serializable {
+  protected class Val(i: Int, name: String | Null) extends Value with Serializable {
     def this(i: Int)       = this(i, nextNameOrNull)
     def this(name: String) = this(nextId, name)
     def this()             = this(nextId)
@@ -259,13 +259,13 @@ abstract class Enumeration (initial: Int) extends Serializable {
     if (i < bottomId) bottomId = i
     def id: Int = i
     override def toString(): String =
-      if (name != null) name
+      if (name != null) name.nn
       else try thisenum.nameOf(i)
       catch { case _: NoSuchElementException => "<Invalid enum: no field for #" + i + ">" }
 
     protected def readResolve(): AnyRef = {
       val enumeration = thisenum.readResolve().asInstanceOf[Enumeration]
-      if (enumeration.vmap == null) this
+      if (enumeration.vmap eq null) this
       else enumeration.vmap(i)
     }
   }

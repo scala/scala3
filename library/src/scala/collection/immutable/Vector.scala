@@ -361,7 +361,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
   protected[this] def slice0(lo: Int, hi: Int): Vector[Nothing] = this
 
   protected[immutable] def vectorSliceCount: Int = 0
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = null
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] | Null = null
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int = 0
 
   override def equals(o: Any): Boolean = {
@@ -429,12 +429,12 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
   override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
-      case data1b => new Vector1(data1b)
+      case data1b => new Vector1(data1b.nn)
     }
 
   override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
     val data1b = append1IfSpace(prefix1, suffix)
-    if(data1b ne null) new Vector1(data1b)
+    if(data1b ne null) new Vector1(data1b.nn)
     else super.appendedAll0(suffix, k)
   }
 }
@@ -525,8 +525,8 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
-        val diff = prefix1b.length - prefix1.length
-        copy(prefix1 = prefix1b,
+        val diff = prefix1b.nn.length - prefix1.length
+        copy(prefix1 = prefix1b.nn,
              len1    = len1 + diff,
              length0 = length0 + diff,
         )
@@ -534,7 +534,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
 
   override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
-    if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
+    if(suffix1b ne null) copy(suffix1 = suffix1b.nn, length0 = length0-suffix1.length+suffix1b.nn.length)
     else super.appendedAll0(suffix, k)
   }
 }
@@ -647,8 +647,8 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
-        val diff = prefix1b.length - prefix1.length
-        copy(prefix1 = prefix1b,
+        val diff = prefix1b.nn.length - prefix1.length
+        copy(prefix1 = prefix1b.nn,
              len1    = len1 + diff,
              len12   = len12 + diff,
              length0 = length0 + diff,
@@ -657,7 +657,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
 
   override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
-    if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
+    if(suffix1b ne null) copy(suffix1 = suffix1b.nn, length0 = length0-suffix1.length+suffix1b.nn.length)
     else super.appendedAll0(suffix, k)
   }
 }
@@ -1167,7 +1167,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
 private final class VectorSliceBuilder(lo: Int, hi: Int) {
   //println(s"***** VectorSliceBuilder($lo, $hi)")
 
-  private[this] val slices = new Array[Array[AnyRef]](11)
+  private[this] val slices = new Array[Array[AnyRef] | Null](11)
   private[this] var len, pos, maxDim = 0
 
   @inline private[this] def prefixIdx(n: Int) = n-1
@@ -1611,8 +1611,8 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       lenRest -= offset - newOffset
       offset = newOffset
     }
-    var a: Array[AnyRef] = null // the array we modify
-    var aParent: Array[AnyRef] = null // a's parent, so aParent(0) == a
+    var a: Array[AnyRef] | Null = null // the array we modify
+    var aParent: Array[AnyRef] | Null = null // a's parent, so aParent(0) == a
     if (depth >= 6) {
       a = a6.asInstanceOf[Array[AnyRef]]
       val i = offset >>> BITS5
@@ -1656,43 +1656,43 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       if (a == null) a = a3.asInstanceOf[Array[AnyRef]]
       val i = (offset >>> BITS2) & MASK
       if (depth == 3) {
-        if (i > 0) System.arraycopy(a, i, a, 0, WIDTH - i)
+        if (i > 0) System.arraycopy(a.nn, i, a.nn, 0, WIDTH - i)
         a3 = a.asInstanceOf[Arr3]
         shrinkOffsetIfToLarge(WIDTH2)
         if ((lenRest >>> BITS2) == 0) depth = 2
       } else {
-        if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        if (i > 0) a = copyOfRange(a.nn, i, WIDTH)
+        aParent.nn(0) = a
       }
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 2) {
       if (a == null) a = a2.asInstanceOf[Array[AnyRef]]
       val i = (offset >>> BITS) & MASK
       if (depth == 2) {
-        if (i > 0) System.arraycopy(a, i, a, 0, WIDTH - i)
+        if (i > 0) System.arraycopy(a.nn, i, a.nn, 0, WIDTH - i)
         a2 = a.asInstanceOf[Arr2]
         shrinkOffsetIfToLarge(WIDTH)
         if ((lenRest >>> BITS) == 0) depth = 1
       } else {
-        if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        if (i > 0) a = copyOfRange(a.nn, i, WIDTH)
+        aParent.nn(0) = a
       }
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 1) {
       if (a == null) a = a1.asInstanceOf[Array[AnyRef]]
       val i = offset & MASK
       if (depth == 1) {
-        if (i > 0) System.arraycopy(a, i, a, 0, WIDTH - i)
+        if (i > 0) System.arraycopy(a.nn, i, a.nn, 0, WIDTH - i)
         a1 = a.asInstanceOf[Arr1]
         len1 -= offset
         offset = 0
       } else {
-        if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        if (i > 0) a = copyOfRange(a.nn, i, WIDTH)
+        aParent.nn(0) = a
       }
     }
     prefixIsRightAligned = false
@@ -2186,7 +2186,7 @@ private object VectorStatics {
     ac.asInstanceOf[Array[T]]
   }
 
-  final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[_]): Arr1 = xs match {
+  final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[_]): Arr1 | Null = xs match {
     case it: Iterable[_] =>
       if(it.sizeCompare(WIDTH-prefix1.length) <= 0) {
         it.size match {
@@ -2211,7 +2211,7 @@ private object VectorStatics {
       } else null
   }
 
-  final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[_]): Arr1 = xs match {
+  final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[_]): Arr1 | Null = xs match {
     case it: Iterable[_] =>
       if(it.sizeCompare(WIDTH-suffix1.length) <= 0) {
         it.size match {

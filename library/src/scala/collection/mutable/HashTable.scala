@@ -60,7 +60,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
 
   /** The array keeping track of the number of elements in 32 element blocks.
    */
-  protected var sizemap: Array[Int] = null
+  protected var sizemap: Array[Int] | Null = null
 
   protected var seedvalue: Int = tableSizeSeed
 
@@ -78,7 +78,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
 
   private def lastPopulatedIndex = {
     var idx = table.length - 1
-    while (table(idx) == null && idx > 0)
+    while ((table(idx) eq null) && idx > 0)
       idx -= 1
 
     idx
@@ -135,7 +135,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
 
   protected[collection] final def findEntry0(key: A, h: Int): Entry = {
     var e = table(h).asInstanceOf[Entry]
-    while (e != null && !elemEquals(e.key, key)) e = e.next
+    while ((e ne null) && !elemEquals(e.key, key)) e = e.next
     e
   }
 
@@ -182,7 +182,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
    */
   private[collection] final def removeEntry0(key: A, h: Int) : Entry = {
     var e = table(h).asInstanceOf[Entry]
-    if (e != null) {
+    if (e ne null) {
       if (elemEquals(e.key, key)) {
         table(h) = e.next
         tableSize = tableSize - 1
@@ -191,11 +191,11 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
         return e
       } else {
         var e1 = e.next
-        while (e1 != null && !elemEquals(e1.key, key)) {
+        while ((e1 ne null) && !elemEquals(e1.key, key)) {
           e = e1
           e1 = e1.next
         }
-        if (e1 != null) {
+        if (e1 ne null) {
           e.next = e1.next
           tableSize = tableSize - 1
           nnSizeMapRemove(h)
@@ -214,11 +214,11 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
     var idx       = lastPopulatedIndex
     var es        = iterTable(idx)
 
-    def hasNext = es != null
+    def hasNext = es ne null
     def next() = {
       val res = es
       es = es.next
-      while (es == null && idx > 0) {
+      while ((es eq null) && idx > 0) {
         idx = idx - 1
         es = iterTable(idx)
       }
@@ -232,12 +232,12 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
     var idx       = lastPopulatedIndex
     var es        = iterTable(idx)
 
-    while (es != null) {
+    while (es ne null) {
       val next = es.next // Cache next in case f removes es.
       f(es.asInstanceOf[Entry])
       es = next
 
-      while (es == null && idx > 0) {
+      while ((es eq null) && idx > 0) {
         idx -= 1
         es = iterTable(idx)
       }
@@ -248,7 +248,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
    */
   def clearTable(): Unit = {
     var i = table.length - 1
-    while (i >= 0) { table(i) = null; i = i - 1 }
+    while (i >= 0) { table(i) = null.asInstanceOf[HashEntry[A, Entry]]; i = i - 1 }
     tableSize = 0
     nnSizeMapReset(0)
   }
@@ -260,7 +260,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
     var i = oldTable.length - 1
     while (i >= 0) {
       var e = oldTable(i)
-      while (e != null) {
+      while (e ne null) {
         val h = index(elemHashCode(e.key))
         val e1 = e.next
         e.next = table(h).asInstanceOf[Entry]
@@ -293,17 +293,17 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
    * there.
    */
   protected final def nnSizeMapAdd(h: Int) = if (sizemap ne null) {
-    sizemap(h >> sizeMapBucketBitSize) += 1
+    sizemap.nn(h >> sizeMapBucketBitSize) += 1
   }
 
   protected final def nnSizeMapRemove(h: Int) = if (sizemap ne null) {
-    sizemap(h >> sizeMapBucketBitSize) -= 1
+    sizemap.nn(h >> sizeMapBucketBitSize) -= 1
   }
 
   protected final def nnSizeMapReset(tableLength: Int) = if (sizemap ne null) {
     val nsize = calcSizeMapSize(tableLength)
-    if (sizemap.length != nsize) sizemap = new Array[Int](nsize)
-    else java.util.Arrays.fill(sizemap, 0)
+    if (sizemap.nn.length != nsize) sizemap = new Array[Int](nsize)
+    else java.util.Arrays.fill(sizemap.nn, 0)
   }
 
   private[collection] final def totalSizeMapBuckets = if (sizeMapBucketSize < table.length) 1 else table.length / sizeMapBucketSize
@@ -336,14 +336,14 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
         }
         tableidx += 1
       }
-      sizemap(bucketidx) = currbucketsize
+      sizemap.nn(bucketidx) = currbucketsize
       tableuntil += sizeMapBucketSize
       bucketidx += 1
     }
   }
 
   private[collection] def printSizeMap() = {
-    println(sizemap.to(collection.immutable.List))
+    println(sizemap.nn.to(collection.immutable.List))
   }
 
   protected final def sizeMapDisable() = sizemap = null

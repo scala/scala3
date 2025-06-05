@@ -47,7 +47,7 @@ class LinkedHashMap[K, V]
   // stepper / keyStepper / valueStepper are not overridden to use XTableStepper because that stepper
   // would not return the elements in insertion order
 
-  private[collection] type Entry = LinkedHashMap.LinkedEntry[K, V]
+  private[collection] type Entry = LinkedHashMap.LinkedEntry[K, V] | Null
 
   private[collection] def _firstEntry: Entry = firstEntry
 
@@ -67,19 +67,19 @@ class LinkedHashMap[K, V]
   private[this] var contentSize = 0
 
   override def last: (K, V) =
-    if (size > 0) (lastEntry.key, lastEntry.value)
+    if (size > 0) (lastEntry.nn.key, lastEntry.nn.value)
     else throw new NoSuchElementException("Cannot call .last on empty LinkedHashMap")
 
   override def lastOption: Option[(K, V)] =
-    if (size > 0) Some((lastEntry.key, lastEntry.value))
+    if (size > 0) Some((lastEntry.nn.key, lastEntry.nn.value))
     else None
 
   override def head: (K, V) =
-    if (size > 0) (firstEntry.key, firstEntry.value)
+    if (size > 0) (firstEntry.nn.key, firstEntry.nn.value)
     else throw new NoSuchElementException("Cannot call .head on empty LinkedHashMap")
 
   override def headOption: Option[(K, V)] =
-    if (size > 0) Some((firstEntry.key, firstEntry.value))
+    if (size > 0) Some((firstEntry.nn.key, firstEntry.nn.value))
     else None
 
   override def size = contentSize
@@ -288,9 +288,9 @@ class LinkedHashMap[K, V]
         case (None, None) => // do nothing
 
         case (Some(_), None) =>
-          if (previousEntry != null) previousEntry.next = foundEntry.next
-          else table(indexedHash) = foundEntry.next
-          deleteEntry(foundEntry)
+          if (previousEntry != null) previousEntry.nn.next = foundEntry.nn.next
+          else table(indexedHash) = foundEntry.nn.next
+          deleteEntry(foundEntry.nn)
           contentSize -= 1
 
         case (None, Some(value)) =>
@@ -318,7 +318,7 @@ class LinkedHashMap[K, V]
     var cur = firstEntry
     while (cur ne null) {
       f((cur.key, cur.value))
-      cur = cur.later
+      cur = cur.later.nn
     }
   }
 
@@ -326,7 +326,7 @@ class LinkedHashMap[K, V]
     var cur = firstEntry
     while (cur ne null) {
       f(cur.key, cur.value)
-      cur = cur.later
+      cur = cur.later.nn
     }
   }
 
@@ -350,7 +350,7 @@ class LinkedHashMap[K, V]
     val e = new Entry(key, hash, value)
     if (firstEntry eq null) firstEntry = e
     else {
-      lastEntry.later = e
+      lastEntry.nn.later = e
       e.earlier = lastEntry
     }
     lastEntry = e
@@ -360,9 +360,9 @@ class LinkedHashMap[K, V]
   /** Delete the entry from the LinkedHashMap, set the `earlier` and `later` pointers correctly */
   private[this] def deleteEntry(e: Entry): Unit = {
     if (e.earlier eq null) firstEntry = e.later
-    else e.earlier.later = e.later
+    else e.earlier.nn.later = e.later
     if (e.later eq null) lastEntry = e.earlier
-    else e.later.earlier = e.earlier
+    else e.later.nn.earlier = e.earlier
     e.earlier = null
     e.later = null
     e.next = null
@@ -375,7 +375,7 @@ class LinkedHashMap[K, V]
     put0(key, value, getOld, hash, idx)
   }
 
-  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] = {
+  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] | Null = {
     table(idx) match {
       case null =>
         table(idx) = createNewEntry(key, hash, value)
@@ -389,15 +389,15 @@ class LinkedHashMap[K, V]
             return if (getOld) Some(old) else null
           }
           prev = n
-          n = n.next
+          n = n.next.nn
         }
         val nnode = createNewEntry(key, hash, value)
         if (prev eq null) {
           nnode.next = old
           table(idx) = nnode
         } else {
-          nnode.next = prev.next
-          prev.next = nnode
+          nnode.next = prev.nn.next
+          prev.nn.next = nnode
         }
     }
     contentSize += 1
@@ -427,7 +427,7 @@ class LinkedHashMap[K, V]
             var lastHigh = preHigh
             var n = old
             while (n ne null) {
-              val next = n.next
+              val next = n.next.nn
               if ((n.hash & oldlen) == 0) { // keep low
                 lastLow.next = n
                 lastLow = n
@@ -490,15 +490,15 @@ object LinkedHashMap extends MapFactory[LinkedHashMap] {
   /** Class for the linked hash map entry, used internally.
     */
   private[mutable] final class LinkedEntry[K, V](val key: K, val hash: Int, var value: V) {
-    var earlier: LinkedEntry[K, V] = null
-    var later: LinkedEntry[K, V] = null
-    var next: LinkedEntry[K, V] = null
+    var earlier: LinkedEntry[K, V] | Null = null
+    var later: LinkedEntry[K, V] | Null = null
+    var next: LinkedEntry[K, V] | Null = null
 
     @tailrec
-    final def findEntry(k: K, h: Int): LinkedEntry[K, V] =
+    final def findEntry(k: K, h: Int): LinkedEntry[K, V] | Null =
       if (h == hash && k == key) this
       else if ((next eq null) || (hash > h)) null
-      else next.findEntry(k, h)
+      else next.nn.findEntry(k, h)
   }
 
   /** The default load factor for the hash table */

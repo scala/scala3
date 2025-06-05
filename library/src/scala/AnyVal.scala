@@ -54,5 +54,5 @@ package scala
  * explained in greater detail in the [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Classes and Universal Traits]].
  */
 abstract class AnyVal extends Any {
-  def getClass(): Class[_ <: AnyVal] = null
+  def getClass(): Class[_ <: AnyVal] = null.asInstanceOf
 }

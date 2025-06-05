@@ -405,7 +405,7 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
-  def trySplit(): LongStepper =
+  def trySplit(): LongStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1

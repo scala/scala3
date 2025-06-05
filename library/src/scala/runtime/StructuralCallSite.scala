@@ -30,7 +30,7 @@ final class StructuralCallSite private (callType: MethodType) {
     cache
   }
 
-  def find(receiver: Class[_]): Method = get.find(receiver)
+  def find(receiver: Class[_]): Method = get.find(receiver).nn
 
   def add(receiver: Class[_], m: Method): Method = {
     cache = new SoftReference(get.add(receiver, m))

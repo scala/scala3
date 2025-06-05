@@ -27,7 +27,7 @@ private[scala] trait StdIn {
    *
    * @return the string read from the terminal or null if the end of stream was reached.
    */
-  def readLine(): String = in.readLine()
+  def readLine(): String | Null = in.readLine()
 
   /** Print and flush formatted text to the default output, and read a full line from the default input.
    *  Returns `null` if the end of the input stream has been reached.
@@ -36,7 +36,7 @@ private[scala] trait StdIn {
    *  @param args the parameters used to instantiate the format, as in `printf`.
    *  @return the string read from the default input
    */
-  def readLine(text: String, args: Any*): String = {
+  def readLine(text: String, args: Any*): String | Null = {
     printf(text, args: _*)
     out.flush()
     readLine()

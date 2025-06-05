@@ -90,14 +90,14 @@ private[concurrent] object BatchingExecutorStatics {
  *
  */
 private[concurrent] trait BatchingExecutor extends Executor {
-  private[this] final val _tasksLocal = new ThreadLocal[AnyRef]()
+  private[this] final val _tasksLocal = new ThreadLocal[AnyRef | Null]()
 
   /*
    * Batch implements a LIFO queue (stack) and is used as a trampolining Runnable.
    * In order to conserve allocations, the first element in the batch is stored "unboxed" in
    * the `first` field. Subsequent Runnables are stored in the array called `other`.
   */
-  private[this] sealed abstract class AbstractBatch protected (protected final var first: Runnable, protected final var other: Array[Runnable], protected final var size: Int) {
+  private[this] sealed abstract class AbstractBatch protected (protected final var first: Runnable | Null, protected final var other: Array[Runnable], protected final var size: Int) {
 
     private[this] final def ensureCapacity(curSize: Int): Array[Runnable] = {
       val curOther = this.other
@@ -128,7 +128,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
         (this.size: @switch) match {
           case 0 =>
           case 1 =>
-            val next = this.first
+            val next = this.first.nn
             this.first = null
             this.size = 0
             next.run()
@@ -136,14 +136,14 @@ private[concurrent] trait BatchingExecutor extends Executor {
           case sz =>
             val o = this.other
             val next = o(sz - 2)
-            o(sz - 2) = null
+            o(sz - 2) = null.asInstanceOf[Runnable] // Explicit cast to Runnable
             this.size = sz - 1
             next.run()
             runN(n - 1)
           }
   }
 
-  private[this] final class AsyncBatch private(_first: Runnable, _other: Array[Runnable], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable) {
+  private[this] final class AsyncBatch private(_first: Runnable | Null, _other: Array[Runnable], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable | Null) {
     private[this] final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
 
     final def this(runnable: Runnable) = this(runnable, BatchingExecutorStatics.emptyBatchArray, 1)
@@ -158,7 +158,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */
-    override final def apply(prevBlockContext: BlockContext): Throwable = try {
+    override final def apply(prevBlockContext: BlockContext): Throwable | Null = try {
       parentBlockContext = prevBlockContext
       runN(BatchingExecutorStatics.runLimit)
       null
@@ -174,12 +174,12 @@ private[concurrent] trait BatchingExecutor extends Executor {
      * Only attempt to resubmit when there are `Runnables` left to process.
      * Note that `cause` can be `null`.
      */
-    private[this] final def resubmit(cause: Throwable): Throwable =
+    private[this] final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {
           case inner: Throwable =>
             if (NonFatal(inner)) {
-              val e = new ExecutionException("Non-fatal error occurred and resubmission failed, see suppressed exception.", cause)
+              val e = new ExecutionException("Non-fatal error occurred and resubmission failed, see suppressed exception.", cause.nn)
               e.addSuppressed(inner)
               e
             } else inner
@@ -234,7 +234,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
    */
   protected final def submitAsyncBatched(runnable: Runnable): Unit = {
     val b = _tasksLocal.get
-    if (b.isInstanceOf[AsyncBatch]) b.asInstanceOf[AsyncBatch].push(runnable)
+    if (b != null && b.isInstanceOf[AsyncBatch]) b.asInstanceOf[AsyncBatch].push(runnable)
     else submitForExecution(new AsyncBatch(runnable))
   }
 
@@ -246,7 +246,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     Objects.requireNonNull(runnable, "runnable is null")
     val tl = _tasksLocal
     val b = tl.get
-    if (b.isInstanceOf[SyncBatch]) b.asInstanceOf[SyncBatch].push(runnable)
+    if (b != null && b.isInstanceOf[SyncBatch]) b.asInstanceOf[SyncBatch].push(runnable)
     else {
       val i = if (b ne null) b.asInstanceOf[java.lang.Integer].intValue else 0
       if (i < BatchingExecutorStatics.syncPreBatchDepth) {

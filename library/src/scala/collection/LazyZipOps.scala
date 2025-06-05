@@ -70,19 +70,19 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
       def iterator: AbstractIterator[(El1, El2)] = new AbstractIterator[(El1, El2)] {
         private[this] val elems1 = coll1.iterator
         private[this] val elems2 = coll2.iterator
-        private[this] var _current: (El1, El2) = _
+        private[this] var _current: (El1, El2) | Null = null
         private def current = {
-          while ((_current eq null) && elems1.hasNext && elems2.hasNext) {
+          while ((_current == null) && elems1.hasNext && elems2.hasNext) {
             val e1 = elems1.next()
             val e2 = elems2.next()
             if (p(e1, e2)) _current = (e1, e2)
           }
           _current
         }
-        def hasNext = current ne null
+        def hasNext = current != null
         def next() = {
           val c = current
-          if (c ne null) {
+          if (c != null) {
             _current = null
             c
           } else Iterator.empty.next()
@@ -336,7 +336,7 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
         private[this] val elems2 = coll2.iterator
         private[this] val elems3 = coll3.iterator
         private[this] val elems4 = coll4.iterator
-        private[this] var _current: (El1, El2, El3, El4) = _
+        private[this] var _current: (El1, El2, El3, El4) | Null = null
         private def current = {
           while ((_current eq null) && elems1.hasNext && elems2.hasNext && elems3.hasNext && elems4.hasNext) {
             val e1 = elems1.next()
@@ -352,7 +352,7 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
           val c = current
           if (c ne null) {
             _current = null
-            c
+            c.nn
           } else Iterator.empty.next()
         }
       }

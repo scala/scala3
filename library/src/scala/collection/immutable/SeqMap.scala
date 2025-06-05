@@ -238,22 +238,22 @@ object SeqMap extends MapFactory[SeqMap] {
   private final class SeqMapBuilderImpl[K, V] extends ReusableBuilder[(K, V), SeqMap[K, V]] {
     private[this] var elems: SeqMap[K, V] = SeqMap.empty
     private[this] var switchedToVectorMapBuilder: Boolean = false
-    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] = _
+    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] | Null = null 
 
     override def clear(): Unit = {
       elems = SeqMap.empty
       if (vectorMapBuilder != null) {
-        vectorMapBuilder.clear()
+        vectorMapBuilder.nn.clear()
       }
       switchedToVectorMapBuilder = false
     }
 
     override def result(): SeqMap[K, V] =
-      if (switchedToVectorMapBuilder) vectorMapBuilder.result() else elems
+      if (switchedToVectorMapBuilder) vectorMapBuilder.nn.result() else elems
 
     def addOne(elem: (K, V)) = {
       if (switchedToVectorMapBuilder) {
-        vectorMapBuilder.addOne(elem)
+        vectorMapBuilder.nn.addOne(elem)
       } else if (elems.size < 4) {
         elems = elems + elem
       } else {
@@ -265,8 +265,8 @@ object SeqMap extends MapFactory[SeqMap] {
           if (vectorMapBuilder == null) {
             vectorMapBuilder = new VectorMapBuilder
           }
-          elems.asInstanceOf[SeqMap4[K, V]].buildTo(vectorMapBuilder)
-          vectorMapBuilder.addOne(elem)
+          elems.asInstanceOf[SeqMap4[K, V]].buildTo(vectorMapBuilder.nn)
+          vectorMapBuilder.nn.addOne(elem)
         }
       }
 
@@ -275,7 +275,7 @@ object SeqMap extends MapFactory[SeqMap] {
 
     override def addAll(xs: IterableOnce[(K, V)]): this.type =
       if (switchedToVectorMapBuilder) {
-        vectorMapBuilder.addAll(xs)
+        vectorMapBuilder.nn.addAll(xs)
         this
       } else {
         super.addAll(xs)

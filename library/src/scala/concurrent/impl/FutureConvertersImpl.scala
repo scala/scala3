@@ -48,9 +48,11 @@ private[scala] object FutureConvertersImpl {
 
     override def thenCompose[U](fn: JFunction[_ >: T, _ <: CompletionStage[U]]): CompletableFuture[U] = thenComposeAsync(fn)
 
-    override def whenComplete(fn: BiConsumer[_ >: T, _ >: Throwable]): CompletableFuture[T] = whenCompleteAsync(fn)
+    override def whenComplete(fn: BiConsumer[_ >: T, _ >: Throwable | Null]): CompletableFuture[T] = whenCompleteAsync(fn)
 
-    override def handle[U](fn: BiFunction[_ >: T, Throwable, _ <: U]): CompletableFuture[U] = handleAsync(fn)
+    override def handle[U](fn: BiFunction[_ >: T, Throwable | Null, _ <: U] | Null): CompletableFuture[U] = 
+      if (fn == null) handleAsync(null)
+      else handleAsync(fn)
 
     override def exceptionally(fn: JFunction[Throwable, _ <: T]): CompletableFuture[T] = {
       val cf = new CompletableFuture[T]
@@ -91,11 +93,10 @@ private[scala] object FutureConvertersImpl {
     override def toString(): String = super[CompletableFuture].toString
   }
 
-  final class P[T](val wrapped: CompletionStage[T]) extends DefaultPromise[T] with BiFunction[T, Throwable, Unit] {
-    override def apply(v: T, e: Throwable): Unit = {
+  final class P[T](val wrapped: CompletionStage[T]) extends DefaultPromise[T] with BiFunction[T, Throwable | Null, Unit] {
+    override def apply(v: T, e: Throwable | Null): Unit = {
       if (e == null) success(v)
       else failure(e)
     }
   }
 }
-

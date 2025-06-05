@@ -23,15 +23,15 @@ private[convert] abstract class VectorStepperBase[Sub >: Null, Semi <: Sub](
 )
 extends IndexedStepperBase[Sub, Semi](_i0, _iN) {
   protected var index: Int = 32  // Force an advanceData on the first element
-  protected var leaves: Array[AnyRef] = null
+  protected var leaves: Array[AnyRef] | Null = null
   protected var index1: Int = 32 // Force advanceData to defer to initTo on the first element
-  protected var twigs: Array[AnyRef] = null
+  protected var twigs: Array[AnyRef] | Null = null
 
   protected final def advanceData(iX: Int): Unit = {
     index1 += 1
     if (index1 >= 32) initTo(iX)
     else {
-      leaves = twigs(index1).asInstanceOf[Array[AnyRef]]
+      leaves = twigs.nn(index1).asInstanceOf[Array[AnyRef]]
       index = 0
     }
   }
@@ -42,7 +42,7 @@ extends IndexedStepperBase[Sub, Semi](_i0, _iN) {
     case 1 =>
       twigs = trunk
       index1 = iX >>> 5
-      leaves = twigs(index1).asInstanceOf[Array[AnyRef]]
+      leaves = twigs.nn(index1).asInstanceOf[Array[AnyRef]]
       index = iX & 0x1F
     case _ =>
       var n = displayN
@@ -53,7 +53,7 @@ extends IndexedStepperBase[Sub, Semi](_i0, _iN) {
       }
       twigs = dataN((iX >>> 10) & 0x1F).asInstanceOf[Array[AnyRef]]
       index1 = (iX >> 5) & 0x1F
-      leaves = twigs(index1).asInstanceOf[Array[AnyRef]]
+      leaves = twigs.nn(index1).asInstanceOf[Array[AnyRef]]
       index = iX & 0x1F
   }
 }
@@ -65,7 +65,7 @@ with AnyStepper[A] {
     index += 1
     if (index >= 32) advanceData(i0)
     i0 += 1
-    leaves(index).asInstanceOf[A]
+    leaves.nn(index).asInstanceOf[A]
   } else Stepper.throwNSEE()
   def semiclone(half: Int): AnyVectorStepper[A] = {
     val ans = new AnyVectorStepper[A](i0, half, displayN, trunk)
@@ -83,7 +83,7 @@ with DoubleStepper {
     index += 1
     if (index >= 32) advanceData(i0)
     i0 += 1
-    leaves(index).asInstanceOf[Double]
+    leaves.nn(index).asInstanceOf[Double]
   } else Stepper.throwNSEE()
   def semiclone(half: Int): DoubleVectorStepper = {
     val ans = new DoubleVectorStepper(i0, half, displayN, trunk)
@@ -101,7 +101,7 @@ with IntStepper {
     index += 1
     if (index >= 32) advanceData(i0)
     i0 += 1
-    leaves(index).asInstanceOf[Int]
+    leaves.nn(index).asInstanceOf[Int]
   } else Stepper.throwNSEE()
   def semiclone(half: Int): IntVectorStepper = {
     val ans = new IntVectorStepper(i0, half, displayN, trunk)
@@ -119,7 +119,7 @@ with LongStepper {
     index += 1
     if (index >= 32) advanceData(i0)
     i0 += 1
-    leaves(index).asInstanceOf[Long]
+    leaves.nn(index).asInstanceOf[Long]
   } else Stepper.throwNSEE()
   def semiclone(half: Int): LongVectorStepper = {
     val ans = new LongVectorStepper(i0, half, displayN, trunk)

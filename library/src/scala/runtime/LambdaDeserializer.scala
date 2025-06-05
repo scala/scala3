@@ -38,26 +38,27 @@ object LambdaDeserializer {
    * @param lookup      The factory for method handles. Must have access to the implementation method, the
    *                    functional interface class, and `java.io.Serializable`.
    * @param cache       A cache used to avoid spinning up a class for each deserialization of a given lambda. May be `null`
+   * @param targetMethodMap  A map of method handles for the target methods
    * @param serialized  The lambda to deserialize. Note that this is typically created by the `readResolve`
    *                    member of the anonymous class created by `LambdaMetaFactory`.
    * @return            An instance of the functional interface
    */
-  def deserializeLambda(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle],
-                        targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef = {
+  def deserializeLambda(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle] | Null,
+                        targetMethodMap: java.util.Map[String, MethodHandle] | Null, serialized: SerializedLambda): AnyRef = {
     val result = deserializeLambdaOrNull(lookup, cache, targetMethodMap, serialized)
     if (result == null) throw new IllegalArgumentException("Illegal lambda deserialization")
     else result
   }
 
-  def deserializeLambdaOrNull(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle],
-                              targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef = {
+  def deserializeLambdaOrNull(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle] | Null,
+                              targetMethodMap: java.util.Map[String, MethodHandle] | Null, serialized: SerializedLambda): AnyRef | Null = {
     assert(targetMethodMap != null)
     def slashDot(name: String) = name.replaceAll("/", ".")
     val loader = lookup.lookupClass().getClassLoader
     val implClass = loader.loadClass(slashDot(serialized.getImplClass))
     val key = LambdaDeserialize.nameAndDescriptorKey(serialized.getImplMethodName, serialized.getImplMethodSignature)
 
-    def makeCallSite: CallSite = {
+    def makeCallSite: CallSite | Null = {
       import serialized._
       def parseDescriptor(s: String) =
         MethodType.fromMethodDescriptorString(s, loader)
@@ -89,8 +90,8 @@ object LambdaDeserializer {
       }
 
       // Lookup the implementation method
-      val implMethod: MethodHandle = if (targetMethodMap.containsKey(key)) {
-        targetMethodMap.get(key)
+      val implMethod: MethodHandle = if (targetMethodMap.nn.containsKey(key)) {
+        targetMethodMap.nn.get(key)
       } else {
         return null
       }
@@ -111,13 +112,13 @@ object LambdaDeserializer {
       val callSite = makeCallSite
       if (callSite == null) return null
       callSite.getTarget
-    } else cache.synchronized{
-      cache.get(key) match {
+    } else cache.nn.synchronized {
+      cache.nn.get(key) match {
         case null =>
           val callSite = makeCallSite
           if (callSite == null) return null
           val temp = callSite.getTarget
-          cache.put(key, temp)
+          cache.nn.put(key, temp)
           temp
         case target => target
       }

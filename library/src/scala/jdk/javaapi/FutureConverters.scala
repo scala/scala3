@@ -72,7 +72,7 @@ object FutureConverters {
       case f: Future[T @unchecked] => f
       case _ =>
         val p = new P[T](cs)
-        val completedCF = cs match {
+        val completedCF: CompletableFuture[T] | Null = cs match {
           case cf0: CompletableFuture[T @unchecked] =>
             // drop `MinimalStage` (scala/bug#12918)
             val cf = cf0.toCompletableFuture
@@ -80,7 +80,7 @@ object FutureConverters {
           case _ => null
         }
         if (completedCF != null)
-          p.tryComplete(Success(completedCF.join()))
+          p.tryComplete(Success(completedCF.nn.join()))
         else
           cs.handle(p)
         p.future

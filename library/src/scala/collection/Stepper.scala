@@ -51,7 +51,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     *
     * See method `trySplit` in [[java.util.Spliterator]].
     */
-  def trySplit(): Stepper[A]
+  def trySplit(): Stepper[A] | Null
 
   /** Returns an estimate of the number of elements of this Stepper, or [[Long.MaxValue]]. See
     * method `estimateSize` in [[java.util.Spliterator]].
@@ -108,7 +108,7 @@ object Stepper {
     def nextStep(): Double = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): DoubleStepper = {
+    def trySplit(): DoubleStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingDoubleStepper(s)
     }
@@ -119,7 +119,7 @@ object Stepper {
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingIntStepper(s)
     }
@@ -130,7 +130,7 @@ object Stepper {
     def nextStep(): Long = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): LongStepper = {
+    def trySplit(): LongStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingLongStepper(s)
     }
@@ -141,7 +141,7 @@ object Stepper {
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingByteStepper(s)
     }
@@ -152,7 +152,7 @@ object Stepper {
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingCharStepper(s)
     }
@@ -163,7 +163,7 @@ object Stepper {
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingShortStepper(s)
     }
@@ -174,7 +174,7 @@ object Stepper {
     def nextStep(): Double = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): DoubleStepper = {
+    def trySplit(): DoubleStepper | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingFloatStepper(s)
     }
@@ -183,7 +183,7 @@ object Stepper {
 
 /** A Stepper for arbitrary element types. See [[Stepper]]. */
 trait AnyStepper[+A] extends Stepper[A] {
-  def trySplit(): AnyStepper[A]
+  def trySplit(): AnyStepper[A] | Null
 
   def spliterator[B >: A]: Spliterator[B] = new AnyStepper.AnyStepperSpliterator(this)
 
@@ -197,9 +197,9 @@ object AnyStepper {
   class AnyStepperSpliterator[A](s: AnyStepper[A]) extends Spliterator[A] {
     def tryAdvance(c: Consumer[_ >: A]): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
-    def trySplit(): Spliterator[A] = {
+    def trySplit(): Spliterator[A] | Null = {
       val sp = s.trySplit()
-      if (sp == null) null else sp.spliterator
+      if (sp == null) null else sp.nn.spliterator
     }
     def estimateSize(): Long = s.estimateSize
     def characteristics(): Int = s.characteristics
@@ -222,7 +222,7 @@ object AnyStepper {
     def nextStep(): Double = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): AnyStepper[Double] = {
+    def trySplit(): AnyStepper[Double] | Null = {
       val s = st.trySplit()
       if (s == null) null else new BoxedDoubleStepper(s)
     }
@@ -233,7 +233,7 @@ object AnyStepper {
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): AnyStepper[Int] = {
+    def trySplit(): AnyStepper[Int] | Null = {
       val s = st.trySplit()
       if (s == null) null else new BoxedIntStepper(s)
     }
@@ -244,7 +244,7 @@ object AnyStepper {
     def nextStep(): Long = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): AnyStepper[Long] = {
+    def trySplit(): AnyStepper[Long] | Null = {
       val s = st.trySplit()
       if (s == null) null else new BoxedLongStepper(s)
     }
@@ -253,7 +253,7 @@ object AnyStepper {
 
 /** A Stepper for Ints. See [[Stepper]]. */
 trait IntStepper extends Stepper[Int] {
-  def trySplit(): IntStepper
+  def trySplit(): IntStepper | Null
 
   def spliterator[B >: Int]: Spliterator.OfInt = new IntStepper.IntStepperSpliterator(this)
 
@@ -272,7 +272,7 @@ object IntStepper {
       case _ => if (s.hasStep) { c.accept(jl.Integer.valueOf(s.nextStep())); true } else false
     }
     // override required for dotty#6152
-    override def trySplit(): Spliterator.OfInt = {
+    override def trySplit(): Spliterator.OfInt | Null = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }
@@ -291,7 +291,7 @@ object IntStepper {
 
 /** A Stepper for Doubles. See [[Stepper]]. */
 trait DoubleStepper extends Stepper[Double] {
-  def trySplit(): DoubleStepper
+  def trySplit(): DoubleStepper | Null
 
   def spliterator[B >: Double]: Spliterator.OfDouble = new DoubleStepper.DoubleStepperSpliterator(this)
 
@@ -311,7 +311,7 @@ object DoubleStepper {
       case _ => if (s.hasStep) { c.accept(java.lang.Double.valueOf(s.nextStep())); true } else false
     }
     // override required for dotty#6152
-    override def trySplit(): Spliterator.OfDouble = {
+    override def trySplit(): Spliterator.OfDouble | Null = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }
@@ -330,7 +330,7 @@ object DoubleStepper {
 
 /** A Stepper for Longs. See [[Stepper]]. */
 trait LongStepper extends Stepper[Long] {
-  def trySplit(): LongStepper
+  def trySplit(): LongStepper | Null
 
   def spliterator[B >: Long]: Spliterator.OfLong = new LongStepper.LongStepperSpliterator(this)
 
@@ -350,7 +350,7 @@ object LongStepper {
       case _ => if (s.hasStep) { c.accept(java.lang.Long.valueOf(s.nextStep())); true } else false
     }
     // override required for dotty#6152
-    override def trySplit(): Spliterator.OfLong = {
+    override def trySplit(): Spliterator.OfLong | Null = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }

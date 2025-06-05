@@ -84,7 +84,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractIterable[A]
       with StrictOptimizedIterableOps[A, Iterable, Iterable[A]]
       with Serializable {
-    def iterator = underlying.iterator.asScala
+    def iterator = underlying.iterator.asScala.nn
     override def iterableFactory: mutable.ArrayBuffer.type = mutable.ArrayBuffer
     override def isEmpty: Boolean = !underlying.iterator().hasNext
     override def equals(other: Any): Boolean = other match {
@@ -99,7 +99,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractIterable[A]
       with StrictOptimizedIterableOps[A, Iterable, Iterable[A]]
       with Serializable {
-    def iterator = underlying.iterator.asScala
+    def iterator = underlying.iterator.asScala.nn
     override def size = underlying.size
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
@@ -144,7 +144,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def length = underlying.size
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
-    override def iterator: Iterator[A] = underlying.iterator.asScala
+    override def iterator: Iterator[A] = underlying.iterator.asScala.nn
     def apply(i: Int) = underlying.get(i)
     def update(i: Int, elem: A) = underlying.set(i, elem)
     def prepend(elem: A) = { underlying.subList(0, 0) add elem; this }
@@ -221,7 +221,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def size: Int = underlying.size
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
-    def iterator: Iterator[A] = underlying.iterator.asScala
+    def iterator: Iterator[A] = underlying.iterator.asScala.nn
 
     def contains(elem: A): Boolean = underlying.contains(elem)
 
@@ -521,8 +521,8 @@ private[collection] object JavaCollectionWrappers extends Serializable {
   class DictionaryWrapper[K, V](val underlying: mutable.Map[K, V]) extends ju.Dictionary[K, V] with Serializable {
     def size: Int = underlying.size
     def isEmpty: Boolean = underlying.isEmpty
-    def keys: ju.Enumeration[K] = underlying.keysIterator.asJavaEnumeration
-    def elements: ju.Enumeration[V] = underlying.valuesIterator.asJavaEnumeration
+    def keys: ju.Enumeration[K] = underlying.keysIterator.asJavaEnumeration.nn
+    def elements: ju.Enumeration[V] = underlying.valuesIterator.asJavaEnumeration.nn
     def get(key: AnyRef) = try {
       underlying get key.asInstanceOf[K] match {
         case None => null.asInstanceOf[V]
@@ -568,7 +568,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def update(k: K, v: V): Unit = { underlying.put(k, v) }
 
     override def remove(k: K): Option[V] = Option(underlying remove k)
-    def iterator = underlying.keys.asScala map (k => (k, underlying get k))
+    def iterator = underlying.keys.asScala.nn map (k => (k, underlying get k))
 
     override def clear() = iterator.foreach(entry => underlying.remove(entry._1))
 
@@ -633,3 +633,4 @@ private[collection] object JavaCollectionWrappers extends Serializable {
   /** Thrown when certain Map operations attempt to put a null value. */
   private val PutNull = new ControlThrowable {}
 }
+

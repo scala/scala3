@@ -31,8 +31,8 @@ private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends P
     else set("" + newValue)
     old
   }
-  def get: String | Null =
-    if (isSet) underlying.getOrElse(key, "")
+  def get: String =
+    if (isSet) underlying.getOrElse(key, "").nn
     else ""
 
   def clear(): Unit = underlying -= key

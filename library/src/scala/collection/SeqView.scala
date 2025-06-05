@@ -45,7 +45,7 @@ object SeqView {
   /** A `SeqOps` whose collection type and collection type constructor are unknown */
   private type SomeSeqOps[+A] = SeqOps[A, AnyConstr, _]
 
-  /** A view that doesn’t apply any transformation to an underlying sequence */
+  /** A view that doesn't apply any transformation to an underlying sequence */
   @SerialVersionUID(3L)
   class Id[+A](underlying: SomeSeqOps[A]) extends AbstractSeqView[A] {
     def apply(idx: Int): A = underlying.apply(idx)
@@ -129,7 +129,7 @@ object SeqView {
   }
 
   @SerialVersionUID(3L)
-  class Sorted[A, B >: A] private (private[this] var underlying: SomeSeqOps[A],
+  class Sorted[A, B >: A] private (private[this] var underlying: SomeSeqOps[A] | Null,
                                    private[this] val len: Int,
                                    ord: Ordering[B])
     extends SeqView[A] {
@@ -164,10 +164,10 @@ object SeqView {
       val res = {
         val len = this.len
         if (len == 0) Nil
-        else if (len == 1) List(underlying.head)
+        else if (len == 1) List(underlying.nn.head)
         else {
           val arr = new Array[Any](len) // Array[Any] =:= Array[AnyRef]
-          @annotation.unused val copied = underlying.copyToArray(arr)
+          @annotation.unused val copied = underlying.nn.copyToArray(arr)
           //assert(copied == len)
           java.util.Arrays.sort(arr.asInstanceOf[Array[AnyRef]], ord.asInstanceOf[Ordering[AnyRef]])
           // casting the Array[AnyRef] to Array[A] and creating an ArraySeq from it
@@ -178,7 +178,7 @@ object SeqView {
           //     contains items of another type, we'd get a CCE anyway)
           //   - the cast doesn't actually do anything in the runtime because the
           //     type of A is not known and Array[_] is Array[AnyRef]
-          immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[A]])
+          immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[A]]).nn
         }
       }
       evaluated = true
@@ -188,7 +188,7 @@ object SeqView {
 
     private[this] def elems: SomeSeqOps[A] = {
       val orig = underlying
-      if (evaluated) _sorted else orig
+      if (evaluated) _sorted else orig.nn
     }
 
     def apply(i: Int): A = _sorted.apply(i)

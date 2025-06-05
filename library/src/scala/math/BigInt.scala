@@ -26,7 +26,7 @@ object BigInt {
 
   private[this] val minCached = -1024
   private[this] val maxCached = 1024
-  private[this] val cache = new Array[BigInt](maxCached - minCached + 1)
+  private[this] val cache = new Array[BigInt | Null](maxCached - minCached + 1)
 
   private[this] def getCached(i: Int): BigInt = {
     val offset = i - minCached
@@ -123,7 +123,7 @@ object BigInt {
 
   /** Implicit conversion from `java.math.BigInteger` to `scala.BigInt`.
    */
-  implicit def javaBigInteger2bigInt(x: BigInteger): BigInt = if (x eq null) null else apply(x)
+  implicit def javaBigInteger2bigInt(x: BigInteger | Null): BigInt | Null = if (x eq null) null else apply(x)
 
   // this method is adapted from Google Guava's version at
   //   https://github.com/google/guava/blob/master/guava/src/com/google/common/math/LongMath.java
@@ -176,7 +176,7 @@ object BigInt {
  *
  * It wraps `java.math.BigInteger`, with optimization for small values that can be encoded in a `Long`.
  */
-final class BigInt private (private var _bigInteger: BigInteger, private val _long: Long)
+final class BigInt private (private var _bigInteger: BigInteger | Null, private val _long: Long)
   extends ScalaNumber
     with ScalaNumericConversions
     with Serializable
@@ -288,15 +288,15 @@ final class BigInt private (private var _bigInteger: BigInteger, private val _lo
     if (this.longEncoding)
       that.longEncoding && (this._long == that._long)
     else
-      !that.longEncoding && (this._bigInteger == that._bigInteger)
+      !that.longEncoding && (this._bigInteger == that._bigInteger.nn)
 
   /** Compares this BigInt with the specified BigInt
    */
   def compare(that: BigInt): Int =
     if (this.longEncoding) {
-      if (that.longEncoding) java.lang.Long.compare(this._long, that._long) else -that._bigInteger.signum()
+      if (that.longEncoding) java.lang.Long.compare(this._long, that._long) else -that._bigInteger.nn.signum()
     } else {
-      if (that.longEncoding) _bigInteger.signum() else this._bigInteger.compareTo(that._bigInteger)
+      if (that.longEncoding) _bigInteger.nn.signum() else this._bigInteger.nn.compareTo(that._bigInteger.nn)
     }
 
   /** Addition of BigInts

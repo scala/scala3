@@ -337,7 +337,7 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
   override def newBuilder: DoubleAccumulator = new DoubleAccumulator
 
   class SerializationProxy[A](@transient private val acc: DoubleAccumulator) extends Serializable {
-    @transient private var result: DoubleAccumulator = _
+    @transient private var result: DoubleAccumulator | Null = _
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -359,7 +359,7 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
       result = res
     }
 
-    private def readResolve(): AnyRef = result
+    private def readResolve(): AnyRef = result.nn
   }
 }
 
@@ -405,7 +405,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
-  def trySplit(): DoubleStepper =
+  def trySplit(): DoubleStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1

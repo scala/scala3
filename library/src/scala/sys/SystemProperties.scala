@@ -40,7 +40,7 @@ extends mutable.AbstractMap[String, String | Null] {
 
   override def isEmpty: Boolean = iterator.isEmpty
   def names: Iterator[String] = wrapAccess (
-    System.getProperties().stringPropertyNames().asScala.iterator
+    System.getProperties().stringPropertyNames().asScala.nn.iterator
   ) getOrElse Iterator.empty
 
   def get(key: String): Option[String] =

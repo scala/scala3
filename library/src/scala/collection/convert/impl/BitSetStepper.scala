@@ -18,7 +18,7 @@ import scala.collection.{BitSetOps, IntStepper, Stepper}
 
 
 private[collection] final class BitSetStepper(
-  private var underlying: BitSetOps[_], 
+  private var underlying: BitSetOps[_] | Null, 
   private var cache0: Long, private var cache1: Long, 
   _i0: Int, _iN: Int,
   private var cacheIndex: Int
@@ -47,15 +47,15 @@ with IntStepper {
           findNext()
         }
       }
-      else if (underlying eq null) { 
+      else if (underlying == null) { 
         i0 = iN
         found = false
         found
       }
       else {
         cacheIndex = ix
-        cache0 = underlying.word(cacheIndex)
-        cache1 = if ((iN - 1) >> LogWL == ix) -1L else underlying.word(cacheIndex+1)
+        cache0 = underlying.nn.word(cacheIndex)
+        cache1 = if ((iN - 1) >> LogWL == ix) -1L else underlying.nn.word(cacheIndex+1)
         findNext()
       }
     }
@@ -78,8 +78,8 @@ with IntStepper {
       // Advance old stepper to breakpoint
       val ixOld0 = half       >> LogWL
       if (ixOld0 > cacheIndex + 1) {
-        cache0 = underlying.word(ixOld0)
-        cache1 = if (((iN - 1) >> LogWL) == ixOld0) -1L else underlying.word(ixOld0+1)
+        cache0 = underlying.nn.word(ixOld0)
+        cache1 = if (((iN - 1) >> LogWL) == ixOld0) -1L else underlying.nn.word(ixOld0+1)
         cacheIndex = ixOld0
         i0 = half
         found = false

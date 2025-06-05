@@ -249,7 +249,7 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
       chars charAt (self nextInt chars.length)
     }
 
-    LazyList continually nextAlphaNum
+    LazyList.continually(nextAlphaNum)
   }
 
 }
