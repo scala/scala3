@@ -22,11 +22,18 @@ private val Captures: Key[CaptureSet] = Key()
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhase.id
 
-/** Are we at checkCaptures or Setup phase? */
+/** Are we in the CheckCaptures or Setup phase? */
 def isCaptureCheckingOrSetup(using Context): Boolean =
-  val ccId = Phases.checkCapturesPhase.id
-  val ctxId = ctx.phaseId
-  ctxId == ccId || ctxId == ccId - 1
+  val ccPhase = Phases.checkCapturesPhase
+  ccPhase.exists
+  && {
+    val ccId = ccPhase.id
+    val ctxId = ctx.phaseId
+    ctxId == ccId
+    || ctxId == ccId - 1 && ccState.iterationId > 0
+      // Note: just checking phase id is not enough since Setup would
+      // also be the phase after pattern matcher.
+  }
 
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.

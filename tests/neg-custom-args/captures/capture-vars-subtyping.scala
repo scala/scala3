@@ -1,4 +1,5 @@
 import language.experimental.captureChecking
+import language.`3.7` // no separation checking, TODO enable
 import caps.*
 
 def test[C^] =

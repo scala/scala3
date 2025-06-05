@@ -39,7 +39,7 @@
    |             ^^^^
    |             Separation failure: Illegal access to {cap1} which is hidden by the previous definition
    |             of value ref2 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |             This type hides capabilities  {cap1}
+   |             This type hides capabilities  {LazyRef.this.elem, cap1}
    |
    |             where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:26:9 ------------------------------------------------------------
@@ -47,7 +47,7 @@
    |         ^^^^
    |         Separation failure: Illegal access to {cap1} which is hidden by the previous definition
    |         of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |         This type hides capabilities  {ref2*, cap1}
+   |         This type hides capabilities  {LazyRef.this.elem, ref2*, cap1}
    |
    |         where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:26:17 -----------------------------------------------------------
@@ -55,7 +55,7 @@
    |                 ^^^^
    |                 Separation failure: Illegal access to {cap2} which is hidden by the previous definition
    |                 of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |                 This type hides capabilities  {ref2*, cap1}
+   |                 This type hides capabilities  {LazyRef.this.elem, ref2*, cap1}
    |
    |                 where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:27:11 -----------------------------------------------------------
@@ -63,7 +63,7 @@
    |           ^^^^
    |           Separation failure: Illegal access to {cap1, ref1} which is hidden by the previous definition
    |           of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |           This type hides capabilities  {ref2*, cap1}
+   |           This type hides capabilities  {LazyRef.this.elem, ref2*, cap1}
    |
    |           where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:28:11 -----------------------------------------------------------
@@ -71,7 +71,7 @@
    |           ^^^^
    |           Separation failure: Illegal access to {cap1, cap2, ref1} which is hidden by the previous definition
    |           of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |           This type hides capabilities  {ref2*, cap1}
+   |           This type hides capabilities  {LazyRef.this.elem, ref2*, cap1}
    |
    |           where:    => refers to a fresh root capability in the type of value elem
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
@@ -79,6 +79,6 @@
    |         ^
    |         Separation failure: Illegal access to {cap2} which is hidden by the previous definition
    |         of value ref3 with type LazyRef[Int]{val elem: () => Int}^{cap2, ref1}.
-   |         This type hides capabilities  {ref2*, cap1}
+   |         This type hides capabilities  {LazyRef.this.elem, ref2*, cap1}
    |
    |         where:    => refers to a fresh root capability in the type of value elem

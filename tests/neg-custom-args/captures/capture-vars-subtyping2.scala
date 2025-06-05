@@ -25,7 +25,8 @@ trait BoundsTest:
     val ec2: CapSet^{C} = e
     val eb: B = e
     val eb2: CapSet^{B} = e
-    val ea: A = e
+    locally:
+      val ea: A = e
     val ea2: CapSet^{A} = e
     val ex: X = e            // error
     val ex2: CapSet^{X} = e // error

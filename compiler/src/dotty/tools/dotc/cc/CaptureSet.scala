@@ -1360,6 +1360,8 @@ object CaptureSet:
           else empty
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
+        case tp @ AnnotatedType(parent, ann) if ann.symbol.isRetains =>
+          recur(parent) ++ ann.tree.toCaptureSet
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType)                             // add capture set of result

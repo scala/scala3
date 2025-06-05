@@ -1584,7 +1584,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       case actual @ CapturingType(parent, refs)
       if parent.derivesFrom(defn.Caps_Mutable)
           && expected.isValueType
-          && !expected.isMutableType
+          && !expected.derivesFromMutable
           && !expected.isSingleton
           && !expected.isBoxedCapturing =>
         actual.derivedCapturingType(parent, refs.readOnly)
@@ -1761,6 +1761,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
+      ccState.start()
       setup.setupUnit(unit.tpdTree, this)
       collectCapturedMutVars.traverse(unit.tpdTree)
 
