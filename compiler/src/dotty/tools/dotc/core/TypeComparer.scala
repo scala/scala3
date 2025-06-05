@@ -53,6 +53,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     maxErrorLevel = -1
     errorNotes = Nil
+    logSize = 0
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -61,6 +62,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private var maxErrorLevel: Int = -1
   protected var errorNotes: List[(Int, ErrorNote)] = Nil
+
+  private val undoLog = mutable.ArrayBuffer[() => Unit]()
+  private var logSize = 0
 
   private var needsGc = false
 
@@ -1579,15 +1583,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       && tp1.derivesFrom(defn.Caps_CapSet)
       && tp2.derivesFrom(defn.Caps_CapSet)
 
+    def rollBack(prevSize: Int): Unit =
+      var i = prevSize
+      while i < undoLog.size do
+        undoLog(i)()
+        i += 1
+      undoLog.takeInPlace(prevSize)
+
     // begin recur
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
     else
       val savedCstr = constraint
       val savedGadt = ctx.gadt
+      val savedLogSize = logSize
       inline def restore() =
         state.constraint = savedCstr
         ctx.gadtState.restore(savedGadt)
+        if undoLog.size != savedLogSize then
+          rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
         val result = inNestedLevel:
@@ -2885,6 +2899,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
     || refs1.subCaptures(CaptureSet.empty, makeVarState())
 
+  protected def logUndoAction(action: () => Unit) =
+    undoLog += action
+
   // ----------- Diagnostics --------------------------------------------------
 
   /** A hook for showing subtype traces. Overridden in ExplainingTypeComparer */
@@ -3503,6 +3520,9 @@ object TypeComparer {
 
   def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): Boolean =
     comparing(_.subCaptures(refs1, refs2, vs))
+
+  def logUndoAction(action: () => Unit)(using Context): Unit =
+    comparer.logUndoAction(action)
 
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
     comparer.inNestedLevel(op)
