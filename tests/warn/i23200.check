@@ -1,0 +1,8 @@
+-- [E198] Unused Symbol Warning: tests/warn/i23200.scala:8:8 -----------------------------------------------------------
+8 |    var x: Int = 42 // warn
+  |        ^
+  |        unset private variable, consider using an immutable val instead
+-- [E198] Unused Symbol Warning: tests/warn/i23200.scala:40:6 ----------------------------------------------------------
+40 |  var x: Int = 42 // warn local var
+   |      ^
+   |      unset local variable, consider using an immutable val instead
