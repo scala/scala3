@@ -50,6 +50,18 @@ object NullOpsDecorator:
       val stripped = self.stripNull()
       stripped ne self
     }
+
+    def admitsNull(using Context): Boolean = {
+      val widened = self.widenDealias
+      widened.isNullType || widened.isAny || (widened match
+        case OrType(l, r) => r.admitsNull || l.admitsNull
+        case AndType(l, r) => r.admitsNull && l.admitsNull
+        case TypeBounds(lo, hi) => lo.admitsNull
+        case FlexibleType(lo, hi) => true
+        case tp: TypeProxy => tp.underlying.admitsNull
+        case _ => false
+      )
+    }
   end extension
 
   import ast.tpd.*
