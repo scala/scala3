@@ -1,0 +1,103 @@
+-- [E002] Syntax Warning: tests/warn/nowarn.scala:88:25 ----------------------------------------------------------------
+88 |    @nowarn("v") def f = try 1 // warn: try without catch/finally
+   |                         ^^^^^
+   |                         A try without catch or finally is equivalent to putting
+   |                         its body in a block; no exceptions are handled.
+   |Matching filters for @nowarn or -Wconf:
+   |  - id=E2
+   |  - name=EmptyCatchAndFinallyBlock
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/warn/nowarn.scala:35:14 -------------------------------------------------------
+35 |  val t7b = { 0; 1 } // warn: discard pure
+   |              ^
+   |              A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E190] Potential Issue Warning: tests/warn/nowarn.scala:41:18 -------------------------------------------------------
+41 |    def f: Unit = 1 // warn: discard non-Unit
+   |                  ^
+   |                  Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/warn/nowarn.scala:60:6 --------------------------------------------------------
+60 |      123 // warn: discard pure
+   |      ^^^
+   |      A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E190] Potential Issue Warning: tests/warn/nowarn.scala:71:4 --------------------------------------------------------
+71 |    123 // warn: discard non-Unit
+   |    ^^^
+   |    Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E190] Potential Issue Warning: tests/warn/nowarn.scala:79:4 --------------------------------------------------------
+79 |    123 // warn: discard non-Unit
+   |    ^^^
+   |    Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/warn/nowarn.scala:94:14 -------------------------------------------------------
+94 |    def g = { 1; 2 } // warn: discard pure
+   |              ^
+   |              A pure expression does nothing in statement position
+   |Matching filters for @nowarn or -Wconf:
+   |  - id=E129
+   |  - name=PureExpressionInStatementPosition
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/warn/nowarn.scala:123:20 ------------------------------------------------------
+123 |  @nodep def t4 = { 1; 2 } // warn // warn: unused @nowarn
+    |                    ^
+    |                    A pure expression does nothing in statement position
+    |
+    | longer explanation available when compiling with `-explain`
+-- Deprecation Warning: tests/warn/nowarn.scala:84:8 -------------------------------------------------------------------
+84 |    a + dep // warn: deprecated
+   |        ^^^
+   |        method dep in class C is deprecated since 1.2.3: message
+-- Deprecation Warning: tests/warn/nowarn.scala:119:25 -----------------------------------------------------------------
+119 |  @purr def t2 = new C().dep  // warn // warn: unused @nowarn
+    |                 ^^^^^^^^^^^
+    |                 method dep in class C is deprecated since 1.2.3: message
+-- Warning: tests/warn/nowarn.scala:13:2 -------------------------------------------------------------------------------
+13 |  @nowarn def t0 = { 0: @nowarn; 1 }     // warn: outer @nowarn unused
+   |  ^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:14:28 ------------------------------------------------------------------------------
+14 |  @nowarn def t1 = { 0: Int @nowarn; 1 } // warn: inner @nowarn unused, it covers the type, not the expression
+   |                            ^^^^^^^
+   |                            @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:15:2 -------------------------------------------------------------------------------
+15 |  @nowarn @ann(dep) def t2 = 0          // warn: deprecation warning, @nowarn unused
+   |  ^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:23:2 -------------------------------------------------------------------------------
+23 |  @nowarn class I1a { // warn: unused @nowarn
+   |  ^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:28:2 -------------------------------------------------------------------------------
+28 |  @nowarn class I1b { // warn: unused @nowarn
+   |  ^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:45:2 -------------------------------------------------------------------------------
+45 |  @nowarn object I3a { // warn: supresses nothing
+   |  ^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:69:3 -------------------------------------------------------------------------------
+69 |  @nowarn("msg=something else") // warn: unused
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:95:5 -------------------------------------------------------------------------------
+95 |    @nowarn("v") def unused = 0 // warn: unused @nowarn
+   |    ^^^^^^^^^^^^
+   |    @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:119:2 ------------------------------------------------------------------------------
+119 |  @purr def t2 = new C().dep  // warn // warn: unused @nowarn
+    |  ^^^^^
+    |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn.scala:123:2 ------------------------------------------------------------------------------
+123 |  @nodep def t4 = { 1; 2 } // warn // warn: unused @nowarn
+    |  ^^^^^^
+    |  @nowarn annotation does not suppress any warnings
