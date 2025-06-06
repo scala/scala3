@@ -62,7 +62,7 @@ object CompletionPos:
     CompletionPos(
       start,
       identEnd,
-      query.nn,
+      query,
       sourcePos,
       offsetParams.uri.nn,
       wasCursorApplied,

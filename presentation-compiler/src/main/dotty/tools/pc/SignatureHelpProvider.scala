@@ -84,7 +84,7 @@ object SignatureHelpProvider:
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
-                  paramDoc.nn.displayName()
+                  paramDoc.displayName()
                 else head.name
               head.copy(name = newName.nn, doc = Some(paramDoc.docstring.nn)) :: rest
             case _ => head :: rest
