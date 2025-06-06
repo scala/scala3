@@ -165,12 +165,11 @@ object SepCheck:
   extension (refs: Refs)
 
     /** The footprint of a set of references `refs` the smallest set `F` such that
-     *   1. if includeMax is false then no maximal capability is in `F`
-     *   2. all capabilities in `refs` satisfying (1) are in `F`
-     *   3. if `f in F` then the footprint of `f`'s info is also in `F`.
+     *   1. all capabilities in `refs` satisfying (1) are in `F`
+     *   2. if `f in F` then the footprint of `f`'s info is also in `F`.
      */
-    private def footprint(includeMax: Boolean = false)(using Context): Refs =
-      def retain(ref: Capability) = includeMax || !ref.isTerminalCapability
+    private def footprint(using Context): Refs =
+      def retain(ref: Capability) = !ref.isTerminalCapability
       def recur(elems: Refs, newElems: List[Capability]): Refs = newElems match
         case newElem :: newElems1 =>
           val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
@@ -326,15 +325,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         i"$other"
 
   def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
-    val hiddenFootprint = hiddenSet.footprint()
-    val clashFootprint = clashSet.footprint()
+    val hiddenFootprint = hiddenSet.footprint
+    val clashFootprint = clashSet.footprint
     // The overlap of footprints, or, of this empty the set of shared peaks.
     // We prefer footprint overlap since it tends to be more informative.
     val overlap = hiddenFootprint.overlapWith(clashFootprint)
     if !overlap.isEmpty then i"${CaptureSet(overlap)}"
     else
-      val sharedPeaks = hiddenSet.footprint(includeMax = true).sharedWith:
-        clashSet.footprint(includeMax = true)
+      val sharedPeaks = hiddenSet.peaks.sharedWith(clashSet.peaks)
       assert(!sharedPeaks.isEmpty, i"no overlap for $hiddenSet vs $clashSet")
       sharedPeaksStr(sharedPeaks)
 
@@ -386,9 +384,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           |Some of these overlap with the captures of the ${clashArgStr.trim}$clashTypeStr.
           |
           |  Hidden set of current argument        : ${CaptureSet(hiddenSet)}
-          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.footprint())}
+          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.footprint)}
           |  Capture set of $clashArgStr        : ${CaptureSet(clashSet)}
-          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.footprint())}
+          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.footprint)}
           |  The two sets overlap at               : ${overlapStr(hiddenSet, clashSet)}""",
       polyArg.srcPos)
 
@@ -679,7 +677,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val captured = genPart.deepCaptureSet.elems
       val hiddenSet = captured.hiddenSet.pruned
       val clashSet = otherPart.deepCaptureSet.elems
-      val deepClashSet = (clashSet.footprint() ++ clashSet.hiddenSet).pruned
+      val deepClashSet = (clashSet.footprint ++ clashSet.hiddenSet).pruned
       report.error(
         em"""Separation failure in ${role.description} $tpe.
             |One part,  $genPart, hides capabilities  ${CaptureSet(hiddenSet)}.
@@ -782,11 +780,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.hiddenSet.footprint().deduct(refs.footprint())
+          val toCheck = refs.hiddenSet.footprint.deduct(refs.footprint)
           checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
       case TypeRole.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
-          val capts = captures(arg).footprint()
+          val capts = captures(arg).footprint
           checkConsumedRefs(capts, tpe, role, i"argument to @consume parameter with type ${arg.nuType} refers to", pos)
       case _ =>
 
@@ -881,7 +879,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
     if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
       checkType(tree.tpt, tree.symbol)
-      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint()}")
+      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint}")
       pushDef(tree, captures(tree.tpt).hiddenSet.deductSymRefs(tree.symbol))
 
   def inSection[T](op: => T)(using Context): T =
@@ -894,6 +892,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))
 
+  /** Should separatiion checking be disabled for the body of this method?
+   */
+  def skippable(sym: Symbol)(using Context): Boolean =
+    sym.isInlineMethod
+      // We currently skip inline method bodies since these seem to generan
+      // spurious recheck completions. Test case is i20237.scala
+
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
     if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
@@ -902,7 +907,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsumeParam =>
           traverseChildren(tree)
           checkConsumedRefs(
-              captures(qual).footprint(), qual.nuType,
+              captures(qual).footprint, qual.nuType,
               TypeRole.Qualifier(qual, tree.symbol),
               i"call prefix of @consume ${tree.symbol} refers to", qual.srcPos)
         case tree: GenericApply =>
@@ -916,15 +921,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseChildren(tree)
           checkValOrDefDef(tree)
         case tree: DefDef =>
-          if tree.symbol.isInlineMethod then
-            // We currently skip inline method since these seem to generate
-            // spurious recheck completions. Test case is i20237.scala
-            capt.println(i"skipping sep check of inline def ${tree.symbol}")
-          else inSection:
-            consumed.segment:
-              for params <- tree.paramss; case param: ValDef <- params do
-                pushDef(param, emptyRefs)
-              traverseChildren(tree)
+          if skippable(tree.symbol) then
+            capt.println(i"skipping sep check of ${tree.symbol}")
+          else
+            inSection:
+              consumed.segment:
+                for params <- tree.paramss; case param: ValDef <- params do
+                  pushDef(param, emptyRefs)
+                traverseChildren(tree)
           checkValOrDefDef(tree)
         case If(cond, thenp, elsep) =>
           traverse(cond)

@@ -4,7 +4,7 @@
    |                   Separation failure in method mkCounter's result type Pair[box Ref^, box Ref^²].
    |                   One part,  box Ref^, hides capabilities  {cap}.
    |                   Another part,  box Ref^²,  captures capabilities  {cap}.
-   |                   The two sets overlap at  cap of value c.
+   |                   The two sets overlap at  cap of method mkCounter.
    |
    |                   where:    ^   refers to a fresh root capability in the result type of method mkCounter
    |                             ^²  refers to a fresh root capability in the result type of method mkCounter

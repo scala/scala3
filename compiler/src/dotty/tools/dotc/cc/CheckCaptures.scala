@@ -1231,7 +1231,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       val saved = curEnv
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
-          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner, level = ccState.currentLevel), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.Boxed,
+            CaptureSet.Var(curEnv.owner, level = ccState.currentLevel), curEnv)
         case _ =>
       val res =
         try
@@ -1575,6 +1576,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           && !expected.isSingleton
           && !expected.isBoxedCapturing =>
         actual.derivedCapturingType(parent, refs.readOnly)
+          .showing(i"improv ro $actual vs $expected = $result", capt)
       case _ =>
         actual
 
