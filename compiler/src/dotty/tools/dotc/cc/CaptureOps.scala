@@ -495,6 +495,7 @@ extension (sym: Symbol)
    */
   def isUseParam(using Context): Boolean =
     sym.hasAnnotation(defn.UseAnnot)
+    || sym.info.hasAnnotation(defn.UseAnnot)
     || sym.is(TypeParam)
         && sym.owner.rawParamss.nestedExists: param =>
             param.is(TermParam) && param.hasAnnotation(defn.UseAnnot)

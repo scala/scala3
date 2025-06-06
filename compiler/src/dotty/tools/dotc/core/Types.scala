@@ -4234,6 +4234,8 @@ object Types extends TypeUtils {
         paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
       if param.is(Erased) then
         paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
+      if param.isUseParam then
+        paramType = addAnnotation(paramType, defn.UseAnnot, param)
       paramType
 
     def adaptParamInfo(param: Symbol)(using Context): Type =
