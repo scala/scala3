@@ -716,7 +716,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
           val param = meth.paramNamed(pname)
           def copyAnnot(tp: Type, cls: ClassSymbol) = param.getAnnotation(cls) match
-            case Some(ann) => AnnotatedType(tp, ann)
+            case Some(ann) if !tp.hasAnnotation(cls) => AnnotatedType(tp, ann)
             case _ => tp
           copyAnnot(copyAnnot(formal, defn.UseAnnot), defn.ConsumeAnnot)
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
@@ -1616,7 +1616,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       if noWiden(actual, expected) then
         actual
       else
-        val improvedVAR = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
+        // since they obscures the capturing type.
+        val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
+        val improvedVAR = improveCaptures(widened, actual)
         val improved = improveReadOnly(improvedVAR, expected)
         val adapted = adaptBoxed(
             improved.withReachCaptures(actual), expected, tree,
