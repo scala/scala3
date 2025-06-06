@@ -716,7 +716,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
           val param = meth.paramNamed(pname)
           def copyAnnot(tp: Type, cls: ClassSymbol) = param.getAnnotation(cls) match
-            case Some(ann) => AnnotatedType(tp, ann)
+            case Some(ann) if !tp.hasAnnotation(cls) => AnnotatedType(tp, ann)
             case _ => tp
           copyAnnot(copyAnnot(formal, defn.UseAnnot), defn.ConsumeAnnot)
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
@@ -789,6 +789,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
+            && funType.paramInfos.isEmpty
             && qualCaptures.mightSubcapture(refs)
             && argCaptures.forall(_.mightSubcapture(refs)) =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
@@ -845,10 +846,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             initCs ++ FreshCap(Origin.NewCapability(core)).readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
+          val paramSym = cls.primaryConstructor.paramNamed(getterName)
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
             refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
-            allCaptures ++= argType.captureSet
+            if paramSym.isUseParam then
+              allCaptures ++= argType.deepCaptureSet
+            else
+              allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
@@ -1616,7 +1621,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       if noWiden(actual, expected) then
         actual
       else
-        val improvedVAR = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
+        // since they obscures the capturing type.
+        val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
+        val improvedVAR = improveCaptures(widened, actual)
         val improved = improveReadOnly(improvedVAR, expected)
         val adapted = adaptBoxed(
             improved.withReachCaptures(actual), expected, tree,

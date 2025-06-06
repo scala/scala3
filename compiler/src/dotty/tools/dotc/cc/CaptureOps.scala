@@ -369,6 +369,7 @@ extension (tp: Type)
       val tp1 = narrowCaps(tp)
       if narrowCaps.change then
         capt.println(i"narrow $tp of $ref to $tp1")
+        //println(i"reach refinement $tp at $ref to $tp1 (${ctx.compilationUnit})")
         tp1
       else
         tp
@@ -394,6 +395,9 @@ extension (tp: Type)
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
     RefinedType(tp, name,
       AnnotatedType(rinfo, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan)))
+
+  def dropUseAndConsumeAnnots(using Context): Type =
+    tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)
 
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
@@ -490,17 +494,23 @@ extension (sym: Symbol)
   def hasTrackedParts(using Context): Boolean =
     !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
-  /** `sym` is annotated @use or it is a type parameter with a matching
+  /** `sym` itself or its info is annotated @use or it is a type parameter with a matching
    *  @use-annotated term parameter that contains `sym` in its deep capture set.
    */
   def isUseParam(using Context): Boolean =
     sym.hasAnnotation(defn.UseAnnot)
+    || sym.info.hasAnnotation(defn.UseAnnot)
     || sym.is(TypeParam)
         && sym.owner.rawParamss.nestedExists: param =>
             param.is(TermParam) && param.hasAnnotation(defn.UseAnnot)
             && param.info.deepCaptureSet.elems.exists:
                 case c: TypeRef => c.symbol == sym
                 case _ => false
+
+  /** `sym` or its info is annotated with `@consume`. */
+  def isConsumeParam(using Context): Boolean =
+    sym.hasAnnotation(defn.ConsumeAnnot)
+    || sym.info.hasAnnotation(defn.ConsumeAnnot)
 
   def isUpdateMethod(using Context): Boolean =
     sym.isAllOf(Mutable | Method, butNot = Accessor)
