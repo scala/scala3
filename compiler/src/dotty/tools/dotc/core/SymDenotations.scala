@@ -2586,7 +2586,7 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                report.warning(em"""${ambiguousFilesMsg(conflicting.nn)}
+                report.warning(em"""${ambiguousFilesMsg(conflicting)}
                                    |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
