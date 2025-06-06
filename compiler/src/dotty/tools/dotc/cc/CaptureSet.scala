@@ -930,11 +930,15 @@ object CaptureSet:
     deps += cs2
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
-      val present =
+      val inIntersection =
         if origin eq cs1 then cs2.accountsFor(elem)
         else if origin eq cs2 then cs1.accountsFor(elem)
         else true
-      !present || accountsFor(elem) || addNewElem(elem)
+      !inIntersection
+      || accountsFor(elem)
+      || addNewElem(elem)
+        && ((origin eq cs1) || cs1.tryInclude(elem, this))
+        && ((origin eq cs2) || cs2.tryInclude(elem, this))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if (origin eq cs1) || (origin eq cs2) then
