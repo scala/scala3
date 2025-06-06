@@ -3557,7 +3557,11 @@ object Parsers {
 
       def paramMods() =
         if in.token == IMPLICIT then
-          addParamMod(() => Mod.Implicit())
+          addParamMod(() =>
+            if ctx.settings.YimplicitToGiven.value then
+              patch(Span(in.lastOffset - 8, in.lastOffset), "using")
+            Mod.Implicit()
+          )
         else if isIdent(nme.using) then
           if initialMods.is(Given) then
             syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
