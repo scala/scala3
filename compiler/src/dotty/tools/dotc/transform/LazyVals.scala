@@ -477,12 +477,12 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         newSymbol(claz, offsetName(info.defs.size), Synthetic, defn.LongType).enteredAfter(this)
       case None =>
         newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
-    offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.nn.span))
+    offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.span))
     val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
-    val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
+    val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(fieldTree))
     val offsetInfo = appendOffsetDefs.getOrElseUpdate(claz, new OffsetInfo(Nil))
     offsetInfo.defs = offsetTree :: offsetInfo.defs
-    val offset = ref(offsetSymbol.nn)
+    val offset = ref(offsetSymbol)
 
     val swapOver =
         This(claz)
@@ -617,23 +617,23 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
              .symbol.asTerm
         else { // need to create a new flag
           offsetSymbol = newSymbol(claz, offsetById, Synthetic, defn.LongType).enteredAfter(this)
-          offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.nn.span))
+          offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.span))
           val flagName = LazyBitMapName.fresh(id.toString.toTermName)
           val flagSymbol = newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
           flag = ValDef(flagSymbol, Literal(Constant(0L)))
           val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
-          val offsetTree = ValDef(offsetSymbol.nn, getOffsetStatic.appliedTo(fieldTree))
+          val offsetTree = ValDef(offsetSymbol, getOffsetStatic.appliedTo(fieldTree))
           info.defs = offsetTree :: info.defs
         }
 
       case None =>
         offsetSymbol = newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
-        offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.nn.span))
+        offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.span))
         val flagName = LazyBitMapName.fresh("0".toTermName)
         val flagSymbol = newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
         val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
-        val offsetTree = ValDef(offsetSymbol.nn, getOffsetStatic.appliedTo(fieldTree))
+        val offsetTree = ValDef(offsetSymbol, getOffsetStatic.appliedTo(fieldTree))
         appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree), ord))
     }
 
@@ -641,7 +641,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags, tpe, coord = x.symbol.coord).enteredAfter(this)
     val containerTree = ValDef(containerSymbol, defaultValue(tpe))
 
-    val offset =  ref(offsetSymbol.nn)
+    val offset =  ref(offsetSymbol)
     val getFlag = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.get)
     val setFlag = Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.setFlag)
     val wait =    Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.wait4Notification)

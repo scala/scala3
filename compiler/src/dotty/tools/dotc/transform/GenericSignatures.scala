@@ -262,7 +262,7 @@ object GenericSignatures {
             typeParamSig(sym.name.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
-            jsig(defn.specialErasure(sym).nn.typeRef)
+            jsig(defn.specialErasure(sym).typeRef)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
             jsig(defn.BoxedUnitClass.typeRef)
           else if (sym == defn.NothingClass)

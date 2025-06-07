@@ -63,7 +63,7 @@ object Formatting {
 
     class ShowImplicits4:
       given [X: Show]: Show[X | Null] with
-        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
+        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x))
 
     class ShowImplicits3 extends ShowImplicits4:
       given Show[Product] = ShowAny

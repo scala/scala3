@@ -466,13 +466,13 @@ object ProtoTypes {
             targ = typerFn(arg)
             // TODO: investigate why flow typing is not working on `targ`
             if ctx.reporter.hasUnreportedErrors then
-              if hasInnerErrors(targ.nn, argType) then
+              if hasInnerErrors(targ, argType) then
                 state.errorArgs += arg
             else
-              state.typedArg = state.typedArg.updated(arg, targ.nn)
+              state.typedArg = state.typedArg.updated(arg, targ)
               state.errorArgs -= arg
         }
-      targ.nn
+      targ
     }
 
     /** The typed arguments. This takes any arguments already typed using
