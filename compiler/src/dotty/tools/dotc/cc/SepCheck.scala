@@ -620,7 +620,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
               report.error(em"""Separation failure: $descr non-local $refSym""", pos)
             else if refSym.is(TermParam)
-              && !refSym.hasAnnotation(defn.ConsumeAnnot)
+              && !refSym.isConsumeParam
               && currentOwner.isContainedIn(refSym.owner)
             then
               badParams += refSym
@@ -899,7 +899,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
-        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.hasAnnotation(defn.ConsumeAnnot) =>
+        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsumeParam =>
           traverseChildren(tree)
           checkConsumedRefs(
               captures(qual).footprint(), qual.nuType,
