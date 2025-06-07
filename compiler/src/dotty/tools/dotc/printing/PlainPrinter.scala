@@ -134,6 +134,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def argText(arg: Type, isErased: Boolean = false): Text =
     keywordText("erased ").provided(isErased)
+    ~ specialAnnotText(defn.UseAnnot, arg)
+    ~ specialAnnotText(defn.ConsumeAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -376,13 +378,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     try "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
     finally elideCapabilityCaps = saved
 
+  /** Print the annotation that are meant to be on the parameter symbol but was moved
+   * to parameter types. Examples are `@use` and `@consume`. */
+  protected def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
+    Str(s"@${sym.name} ").provided(tp.hasAnnotation(sym))
+
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
-      def maybeAnnotsText(sym: ClassSymbol): Text =
-        Str(s"@${sym.name} ").provided(ref.underlying.hasAnnotation(sym))
       keywordText("erased ").provided(erased)
-        ~ maybeAnnotsText(defn.UseAnnot) ~ maybeAnnotsText(defn.ConsumeAnnot)
+        ~ specialAnnotText(defn.UseAnnot, ref.underlying)
+        ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
   }
