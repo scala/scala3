@@ -1117,7 +1117,7 @@ class Definitions {
 
   // Set of annotations that are not printed in types except under -Yprint-debug
   @tu lazy val SilentAnnots: Set[Symbol] =
-    Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot, SilentIntoAnnot)
+    Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to

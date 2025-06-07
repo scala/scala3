@@ -379,7 +379,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
-      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
+      def maybeAnnotsText(sym: ClassSymbol): Text =
+        Str(s"@${sym.name} ").provided(ref.underlying.hasAnnotation(sym))
+      keywordText("erased ").provided(erased)
+        ~ maybeAnnotsText(defn.UseAnnot) ~ maybeAnnotsText(defn.ConsumeAnnot)
+        ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
   }
 
