@@ -55,7 +55,7 @@ object ccConfig:
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
 
   /** Not used currently. Handy for trying out new features */
-  def newScheme(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+  def newScheme(using ctx: Context): Boolean =
+    ctx.settings.XdropComments.value
 
 end ccConfig

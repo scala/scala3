@@ -17,6 +17,7 @@ import scala.annotation.switch
 import config.{Config, Feature}
 import ast.tpd
 import cc.*
+import CaptureSet.Mutability
 import Capabilities.*
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -173,7 +174,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
         else "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
-           //     ~ Str("?").provided(!cs.isConst)
+           ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
+           ~ Str("?").provided(ccVerbose && !cs.isConst)
+           ~ Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem(ref: Type): Text = ref match

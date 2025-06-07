@@ -44,11 +44,23 @@ import Capabilities.*
  */
 sealed abstract class CaptureSet extends Showable:
   import CaptureSet.*
+  import Mutability.*
 
   /** The elements of this capture set. For capture variables,
    *  the elements known so far.
    */
   def elems: Refs
+
+  protected var myMut : Mutability = Ignored
+
+  /** The access kind of this CaptureSet. */
+  def mutability(using Context): Mutability = myMut
+
+  def mutability_=(x: Mutability): Unit =
+    myMut = x
+
+  /** Mark this capture set as belonging to a Mutable type. */
+  def setMutable()(using Context): Unit
 
   /** Is this capture set constant (i.e. not an unsolved capture variable)?
    *  Solved capture variables count as constant.
@@ -127,6 +139,13 @@ sealed abstract class CaptureSet extends Showable:
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
+  /** Similar to isExlusive, but also includes capture set variables
+   *  with unknown status.
+   */
+  final def maybeExclusive(using Context): Boolean = reporting.trace(i"mabe exclusive $this"):
+    if isConst then elems.exists(_.maybeExclusive)
+    else mutability != ReadOnly
+
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
 
   def failWith(fail: TypeComparer.ErrorNote)(using Context): false =
@@ -164,6 +183,9 @@ sealed abstract class CaptureSet extends Showable:
       // through this method.
       newElems.forall(tryInclude(_, origin))
 
+  protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+    if mutability == Mutable then toReader() else true
+
   /** Add an element to this capture set, assuming it is not already accounted for,
    *  and omitting any mapping or filtering.
    *
@@ -187,6 +209,8 @@ sealed abstract class CaptureSet extends Showable:
    *  to the underlying capture set.
    */
   protected def addThisElem(elem: Capability)(using Context, VarState): Boolean
+
+  protected def toReader()(using Context): Boolean
 
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
     elems.exists(_.maxSubsumes(elem, canAddHidden = true))
@@ -258,7 +282,12 @@ sealed abstract class CaptureSet extends Showable:
 
   /** The subcapturing test, using a given VarState */
   final def subCaptures(that: CaptureSet)(using ctx: Context, vs: VarState = VarState()): Boolean =
-    if that.tryInclude(elems, this) then
+    val this1 = this.adaptMutability(that)
+    if this1 == null then false
+    else if this1 ne this then
+      capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
+      this1.subCaptures(that, vs)
+    else if that.tryInclude(elems, this) then
       addDependent(that)
     else
       varState.rollBack()
@@ -270,6 +299,14 @@ sealed abstract class CaptureSet extends Showable:
   def =:= (that: CaptureSet)(using Context): Boolean =
        this.subCaptures(that, VarState.Separate)
     && that.subCaptures(this, VarState.Separate)
+
+  def adaptMutability(that: CaptureSet)(using Context): CaptureSet | Null =
+    val m1 = this.mutability
+    val m2 = that.mutability
+    if m1 == Mutable && m2 == Reader then this.readOnly
+    else if m1 == Reader && m2 == Mutable then
+      if that.toReader() then this else null
+    else this
 
   /** The smallest capture set (via <:<) that is a superset of both
    *  `this` and `that`
@@ -372,7 +409,10 @@ sealed abstract class CaptureSet extends Showable:
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
-  def readOnly(using Context): CaptureSet = map(ReadOnlyMap())
+  def readOnly(using Context): CaptureSet =
+    val res = map(ReadOnlyMap())
+    if mutability != Ignored then res.mutability = Reader
+    res
 
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
@@ -445,6 +485,25 @@ object CaptureSet:
   type Vars = SimpleIdentitySet[Var]
   type Deps = SimpleIdentitySet[CaptureSet]
 
+  enum Mutability:
+    case Mutable, Reader, Ignored
+
+    def | (that: Mutability): Mutability =
+      if this == that then this
+      else if this == Ignored || that == Ignored then Ignored
+      else if this == Reader || that == Reader then Reader
+      else Mutable
+
+    def & (that: Mutability): Mutability =
+      if this == that then this
+      else if this == Ignored then that
+      else if that == Ignored then this
+      else if this == Reader then that
+      else this
+
+  end Mutability
+  import Mutability.*
+
   /** If set to `true`, capture stack traces that tell us where sets are created */
   private final val debugSets = false
 
@@ -496,6 +555,8 @@ object CaptureSet:
         false
       }
 
+    def toReader()(using Context) = false
+
     def addDependent(cs: CaptureSet)(using Context, VarState) = true
 
     def upperApprox(origin: CaptureSet)(using Context): CaptureSet = this
@@ -505,6 +566,17 @@ object CaptureSet:
     def level = undefinedLevel
 
     def owner = NoSymbol
+
+    private var isComplete = true
+
+    def setMutable()(using Context): Unit =
+      isComplete = false // delay computation of Mutability status
+
+    override def mutability(using Context): Mutability =
+      if !isComplete then
+        myMut = if maybeExclusive then Mutable else Reader
+        isComplete = true
+      myMut
 
     override def toString = elems.toString
   end Const
@@ -524,6 +596,7 @@ object CaptureSet:
   object Fluid extends Const(emptyRefs):
     override def isAlwaysEmpty(using Context) = false
     override def addThisElem(elem: Capability)(using Context, VarState) = true
+    override def toReader()(using Context) = true
     override def accountsFor(x: Capability)(using Context)(using VarState): Boolean = true
     override def mightAccountFor(x: Capability)(using Context): Boolean = true
     override def toString = "<fluid>"
@@ -562,6 +635,9 @@ object CaptureSet:
      *  are propagated to these dependent sets.)
      */
     var deps: Deps = SimpleIdentitySet.empty
+
+    def setMutable()(using Context): Unit =
+      mutability = Mutable
 
     def isConst(using Context) = solved >= ccState.iterationId
     def isAlwaysEmpty(using Context) = isConst && elems.isEmpty
@@ -639,6 +715,13 @@ object CaptureSet:
           TypeComparer.updateErrorNotes:
             case note: IncludeFailure => note.addToTrace(this)
         res
+
+    final def toReader()(using Context) =
+      if isConst then false // TODO add error note when failing?
+      else
+        mutability = Reader
+        TypeComparer.logUndoAction(() => mutability = Mutable)
+        deps.forall(_.mutableToReader(this))
 
     private def isPartOf(binder: Type)(using Context): Boolean =
       val find = new TypeAccumulator[Boolean]:
@@ -744,6 +827,8 @@ object CaptureSet:
     def markSolved(provisional: Boolean)(using Context): Unit =
       solved = if provisional then ccState.iterationId else Int.MaxValue
       deps.foreach(_.propagateSolved(provisional))
+      if mutability == Mutable && !maybeExclusive then mutability = Reader
+
 
     var skippedMaps: Set[TypeMap] = Set.empty
 
@@ -803,7 +888,13 @@ object CaptureSet:
     /** The variable from which this variable is derived */
     def source: Var
 
+    mutability = source.mutability
+
     addAsDependentTo(source)
+
+    override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+      super.mutableToReader(origin)
+      && ((origin eq source) || source.mutableToReader(this))
 
     override def propagateSolved(provisional: Boolean)(using Context) =
       if source.isConst && !isConst then markSolved(provisional)
@@ -904,6 +995,7 @@ object CaptureSet:
   extends Var(initialElems = cs1.elems ++ cs2.elems):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
+    mutability = cs1.mutability | cs2.mutability
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
@@ -918,6 +1010,15 @@ object CaptureSet:
           else res
         else res
 
+    override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+      super.mutableToReader(origin)
+      && {
+        if (origin eq cs1) || (origin eq cs2) then true
+        else if cs1.isConst && cs1.mutability == Mutable then cs2.mutableToReader(this)
+        else if cs2.isConst && cs2.mutability == Mutable then cs1.mutableToReader(this)
+        else true
+      }
+
     override def propagateSolved(provisional: Boolean)(using Context) =
       if cs1.isConst && cs2.isConst && !isConst then markSolved(provisional)
   end Union
@@ -928,6 +1029,7 @@ object CaptureSet:
     addAsDependentTo(cs2)
     deps += cs1
     deps += cs2
+    mutability = cs1.mutability & cs2.mutability
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       val inIntersection =
@@ -939,6 +1041,11 @@ object CaptureSet:
       || addNewElem(elem)
         && ((origin eq cs1) || cs1.tryInclude(elem, this))
         && ((origin eq cs2) || cs2.tryInclude(elem, this))
+
+    override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
+      super.mutableToReader(origin)
+      && ((origin eq cs1) || cs1.mutableToReader(this))
+      && ((origin eq cs2) || cs2.mutableToReader(this))
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if (origin eq cs1) || (origin eq cs2) then

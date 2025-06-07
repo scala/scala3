@@ -39,6 +39,7 @@ object CapturingType:
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
+        if parent.derivesFromMutable then refs.setMutable()
         AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 
   /** An extractor for CapturingTypes. Capturing types are recognized if
@@ -83,5 +84,10 @@ object CapturingType:
     ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined
 
 end CapturingType
+
+object CapturingOrRetainsType:
+   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
+    if ctx.mode.is(Mode.IgnoreCaptures) then None
+    else CapturingType.decomposeCapturingType(tp, alsoRetains = true)
 
 
