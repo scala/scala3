@@ -52,8 +52,7 @@ object NullOpsDecorator:
     }
 
     def admitsNull(using Context): Boolean = {
-      val widened = self.widenDealias
-      widened.isNullType || widened.isAny || (widened match
+      self.isNullType || self.isAny || (self match
         case OrType(l, r) => r.admitsNull || l.admitsNull
         case AndType(l, r) => r.admitsNull && l.admitsNull
         case TypeBounds(lo, hi) => lo.admitsNull
