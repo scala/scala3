@@ -708,19 +708,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** Hook for massaging a function before it is applied. Copies all @use and @consume
-     *  annotations on method parameter symbols to the corresponding paramInfo types.
-     */
-    override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
-      val paramInfosWithUses =
-        funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
-          val param = meth.paramNamed(pname)
-          def copyAnnot(tp: Type, cls: ClassSymbol) = param.getAnnotation(cls) match
-            case Some(ann) if !tp.hasAnnotation(cls) => AnnotatedType(tp, ann)
-            case _ => tp
-          copyAnnot(copyAnnot(formal, defn.UseAnnot), defn.ConsumeAnnot)
-      funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
-
     /** Recheck applications, with special handling of unsafeAssumePure.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
