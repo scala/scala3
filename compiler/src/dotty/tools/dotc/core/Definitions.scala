@@ -123,7 +123,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      ref(captureRoot.termRef) :: Nil)
+                      captureRoot.termRef)
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -1004,9 +1004,6 @@ class Definitions {
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
-    @tu lazy val Caps_reachCapability: TermSymbol = CapsInternalModule.requiredMethod("reachCapability")
-    @tu lazy val Caps_readOnlyCapability: TermSymbol = CapsInternalModule.requiredMethod("readOnlyCapability")
-    @tu lazy val Caps_capsOf: TermSymbol = CapsInternalModule.requiredMethod("capsOf")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
@@ -1096,7 +1093,6 @@ class Definitions {
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
-  @tu lazy val RetainsArgAnnot: ClassSymbol = requiredClass("scala.annotation.retainsArg")
   @tu lazy val PublicInBinaryAnnot: ClassSymbol = requiredClass("scala.annotation.publicInBinary")
   @tu lazy val WitnessNamesAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WitnessNames")
 
@@ -1332,8 +1328,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refs) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refs)
+      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
+        RetainingType(apply(tp1), refSet)
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
@@ -1561,11 +1557,6 @@ class Definitions {
    */
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
-
-  @tu lazy val capabilityQualifierAnnots: Set[Symbol] =
-    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot, MaybeCapabilityAnnot)
-  @tu lazy val capabilityWrapperAnnots: Set[Symbol] =
-    capabilityQualifierAnnots + RootCapabilityAnnot
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))

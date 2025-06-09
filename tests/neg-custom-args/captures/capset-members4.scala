@@ -8,7 +8,7 @@ def test =
   def onlyWithZ[C^](using c: Contains[C, z.type]) = ???
 
   trait Foo:
-    type C >: {z,x} <: {x,y,z}
+    type C^ >: {z,x} <: {x,y,z}
 
   val foo: Foo = ???
   onlyWithZ[{foo.C}]

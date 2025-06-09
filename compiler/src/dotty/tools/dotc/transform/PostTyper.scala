@@ -196,7 +196,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try
+        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet) else ctx
+        transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
 
@@ -346,8 +349,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(ConstructorProxy) then
-        unusable(ConstructorProxyNotValue(_))
+      if tree.symbol.is(PhantomSymbol) then
+        if tree.symbol.isDummyCaptureParam then
+          unusable(DummyCaptureParamNotValue(_))
+        else
+          unusable(ConstructorProxyNotValue(_))
       else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
       else
@@ -704,7 +710,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ =>
       if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
       else tp
-    case _ if sym.is(ConstructorProxy) => NoType
     case _ => tp
 
   private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =

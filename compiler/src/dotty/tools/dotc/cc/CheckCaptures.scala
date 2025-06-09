@@ -100,25 +100,24 @@ object CheckCaptures:
    *  This check is performed at Typer.
    */
   def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
-    def check(elem: Tree, pos: SrcPos): Unit = elem.tpe match
+    def check(elem: Type, pos: SrcPos): Unit = elem match
       case ref: Capability =>
         if !ref.isTrackableRef && !ref.isCapRef then
           report.error(em"$elem cannot be tracked since it is not a parameter or local value", pos)
       case tpe =>
         report.error(em"$elem: $tpe is not a legal element of a capture set", pos)
-    for elem <- ann.retainedElems do
+    for elem <- ann.retainedSet.retainedElementsRaw do
       elem match
-        case CapsOfApply(arg) =>
-          def isLegalCapsOfArg =
-            arg.symbol.isType && arg.symbol.info.derivesFrom(defn.Caps_CapSet)
-          if !isLegalCapsOfArg then
-            report.error(
-              em"""$arg is not a legal prefix for `^` here,
-                  |is must be a type parameter or abstract type with a caps.CapSet upper bound.""",
-              elem.srcPos)
-        case ReachCapabilityApply(arg) => check(arg, elem.srcPos)
-        case ReadOnlyCapabilityApply(arg) => check(arg, elem.srcPos)
-        case _ => check(elem, elem.srcPos)
+        case ref: TypeRef =>
+          val refSym = ref.symbol
+          if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
+            report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
+        case ReachCapability(ref) =>
+          check(ref, ann.srcPos)
+        case ReadOnlyCapability(ref) =>
+          check(ref, ann.srcPos)
+        case _ =>
+          check(elem, ann.srcPos)
 
   /** Under the sealed policy, report an error if some part of `tp` contains the
    *  root capability in its capture set or if it refers to a type parameter that

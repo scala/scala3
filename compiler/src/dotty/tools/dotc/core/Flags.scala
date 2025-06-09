@@ -433,8 +433,12 @@ object Flags {
   /** A denotation that is valid in all run-ids */
   val (Permanent @ _, _, _) = newFlags(61, "<permanent>")
 
-  /** Symbol is a constructor proxy (either companion, or apply method) */
-  val (ConstructorProxy @ _, _, _) = newFlags(62, "<constructor proxy>") // (could be merged with Lifted)
+  /** A phantom symbol made up by the compiler to achieve special typing rules.
+   *  Phantom symbols cannot be used as regular values, and will be erased after erasure phase.
+   *  - For constructor proxies (companion or apply method).
+   *  - For dummy capture parameters in capture sets (variables or fields).
+   */
+  val (PhantomSymbol @ _, _, _) = newFlags(62, "<phantom symbol>") // (could be merged with Lifted)
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
@@ -471,7 +475,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
-    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
+    SuperParamAliasOrScala2x, Inline, Macro, PhantomSymbol, Invisible)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -525,7 +529,7 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible | Erased
+    Lifted | MixedIn | Specialized | PhantomSymbol | Invisible | Erased
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
@@ -565,8 +569,9 @@ object Flags {
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
-  val EffectivelyErased                      = ConstructorProxy | Erased
-  val ConstructorProxyModule: FlagSet        = ConstructorProxy | Module
+  val EffectivelyErased                      = PhantomSymbol | Erased
+  val ConstructorProxyModule: FlagSet        = PhantomSymbol | Module
+  val CaptureParam: FlagSet                  = PhantomSymbol | StableRealizable | Synthetic
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter
   val DeferredInline: FlagSet                = Deferred | Inline
   val DeferredMethod: FlagSet                = Deferred | Method
@@ -579,7 +584,7 @@ object Flags {
   val FinalOrInline: FlagSet                 = Final | Inline
   val FinalOrModuleClass: FlagSet            = Final | ModuleClass                            // A module class or a final class
   val EffectivelyFinalFlags: FlagSet         = Final | Private
-  val ExcludedForwarder: Flags.FlagSet       = Specialized | Lifted | Protected | JavaStatic | Private | Macro | ConstructorProxy
+  val ExcludedForwarder: Flags.FlagSet       = Specialized | Lifted | Protected | JavaStatic | Private | Macro | PhantomSymbol
   val FinalOrSealed: FlagSet                 = Final | Sealed
   val GivenOrImplicit: FlagSet               = Given | Implicit
   val GivenOrImplicitVal: FlagSet            = GivenOrImplicit.toTermFlags

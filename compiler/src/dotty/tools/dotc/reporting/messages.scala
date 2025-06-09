@@ -3277,7 +3277,7 @@ extends SyntaxMsg(VolatileOnValID):
   protected def explain(using Context): String = ""
 
 class ConstructorProxyNotValue(sym: Symbol)(using Context)
-extends TypeMsg(ConstructorProxyNotValueID):
+extends TypeMsg(PhantomSymbolNotValueID):
   protected def msg(using Context): String =
     i"constructor proxy $sym cannot be used as a value"
   protected def explain(using Context): String =
@@ -3292,7 +3292,7 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |but not as a stand-alone value."""
 
 class ContextBoundCompanionNotValue(sym: Symbol)(using Context)
-extends TypeMsg(ConstructorProxyNotValueID):
+extends TypeMsg(PhantomSymbolNotValueID):
   protected def msg(using Context): String =
     i"context bound companion $sym cannot be used as a value"
   protected def explain(using Context): String =
@@ -3310,6 +3310,22 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |the selection `A.unit`, which works because the compiler created a context bound
        |companion value with the (term-)name `A`. However, these context bound companions
        |are not values themselves, they can only be referred to in selections."""
+
+class DummyCaptureParamNotValue(sym: Symbol)(using Context)
+extends TypeMsg(PhantomSymbolNotValueID):
+  protected def msg(using Context): String =
+    i"dummy term capture parameter $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A term capture parameter is a symbol made up by the compiler to represent a reference
+       |to a real capture parameter in capture sets. For instance, in
+       |
+       |   class A:
+       |     type C^
+       |
+       |there is just a type `A` declared but not a value `A`. Nevertheless, one can write
+       |the selection `(a: A).C` and use a a value, which works because the compiler created a
+       |term capture parameter for `C`. However, these term capture parameters are not real values,
+       |they can only be referred in capture sets."""
 
 class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
 extends Message(UnusedSymbolID):
@@ -3518,7 +3534,7 @@ final class OnlyFullyDependentAppliedConstructorType()(using Context)
   override protected def explain(using Context): String = ""
 
 final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
-  override protected def msg(using Context): String = 
+  override protected def msg(using Context): String =
     i"Context bounds are not allowed in this position"
 
   override protected def explain(using Context): String = ""

@@ -1,17 +1,17 @@
 // No longer valid
 class C
-type Cap = C @retains(caps.cap)
-type Top = Any @retains(caps.cap)
+type Cap = C @retains[caps.cap.type]
+type Top = Any @retains[caps.cap.type]
 
-type T = (x: Cap) => List[String @retains(x)] => Unit // error
-val x: (x: Cap) => Array[String @retains(x)] = ??? // error
+type T = (x: Cap) => List[String @retains[x.type]] => Unit // error
+val x: (x: Cap) => Array[String @retains[x.type]] = ??? // error
 val y = x
 
 def test: Unit =
   def f(x: Cap) = // ok
-    val g = (xs: List[String @retains(x)]) => ()
+    val g = (xs: List[String @retains[x.type]]) => ()
     g
-  def f2(x: Cap)(xs: List[String @retains(x)]) = ()
+  def f2(x: Cap)(xs: List[String @retains[x.type]]) = ()
   val x = f // error
   val x2 = f2 // error
   val y = f(C()) // ok

@@ -114,10 +114,10 @@ object NamerOps:
   private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
 
   /** The flags of a constructor companion */
-  private val ConstructorCompanionFlags = Synthetic | ConstructorProxy
+  private val ConstructorCompanionFlags = Synthetic | PhantomSymbol
 
   /** The flags of an `apply` method that serves as a constructor proxy */
-  val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
+  val ApplyProxyFlags = Synthetic | PhantomSymbol | Inline | Method
 
   /** If this is a reference to a class and the reference has a stable prefix, the reference
    *  otherwise NoType
@@ -217,7 +217,7 @@ object NamerOps:
             underlyingStableClassRef(mbr.info.loBound): @unchecked match
               case ref: TypeRef =>
                 val proxy = ref.symbol.registeredCompanion
-                if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then
+                if proxy.is(PhantomSymbol) && !memberExists(cls, mbr.name.toTermName) then
                   typeConstructorCompanion(mbr, ref.prefix, proxy).entered
 
     if cls.is(Module)
@@ -316,10 +316,24 @@ object NamerOps:
               case ast.tpd.WitnessNamesAnnot(witnessNames) =>
                 addContextBoundCompanionFor(sym, witnessNames, Nil)
 
+  /** Add a dummy term symbol for a type def that has capture parameter flag.
+   *  The dummy symbol has the same name as the original type symbol and is stable.
+   *  The underlying info stores the corresponding type reference.
+   *
+   *  @param param the original type symbol of the capture parameter
+   */
+  def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
+    val name = param.name.toTermName
+    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
+    val dummy = newSymbol(param.owner, name, flags, param.typeRef)
+    typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
+    ctx.enter(dummy)
+
   /** if `sym` is a term parameter or parameter accessor, map all occurrences of
    *  `into[T]` in its type to `T @$into`.
    */
   extension (tp: Type)
     def suppressIntoIfParam(sym: Symbol)(using Context): Type =
       if sym.isOneOf(TermParamOrAccessor) then TypeOps.suppressInto(tp) else tp
+
 end NamerOps

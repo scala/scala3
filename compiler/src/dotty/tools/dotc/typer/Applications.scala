@@ -1117,9 +1117,7 @@ trait Applications extends Compatibility {
             val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
-            // println(i"typedApply: $funRef, ${tree.args}, ${funRef.symbol.maybeOwner.isRetains}")
-            val applyCtx = if funRef.symbol.maybeOwner.isRetains then ctx.addMode(Mode.InCaptureSet) else ctx
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)(using applyCtx)
+            val app = ApplyTo(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(
               widenEnumCase(
                 postProcessByNameArgs(funRef, app).computeNullable(),
@@ -2112,8 +2110,8 @@ trait Applications extends Compatibility {
             else 0
     end compareWithTypes
 
-    if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
-    else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
+    if alt1.symbol.is(PhantomSymbol) && !alt2.symbol.is(PhantomSymbol) then -1
+    else if alt2.symbol.is(PhantomSymbol) && !alt1.symbol.is(PhantomSymbol) then 1
     else
       val fullType1 = widenGiven(alt1.widen, alt1)
       val fullType2 = widenGiven(alt2.widen, alt2)

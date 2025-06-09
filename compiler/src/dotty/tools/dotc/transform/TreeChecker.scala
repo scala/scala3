@@ -63,7 +63,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     if (prev.exists)
-      assert(cur.exists || prev.is(ConstructorProxy), i"companion disappeared from $symd")
+      assert(cur.exists || prev.is(PhantomSymbol), i"companion disappeared from $symd")
   }
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
@@ -387,7 +387,7 @@ object TreeChecker {
     }
 
     def isSymWithoutDef(sym: Symbol)(using Context): Boolean =
-      sym.is(ConstructorProxy) || sym.isContextBoundCompanion
+      sym.is(PhantomSymbol) || sym.isContextBoundCompanion
 
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed

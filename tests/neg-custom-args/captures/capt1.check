@@ -54,8 +54,8 @@
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
-38 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
-   |             ^^^^^^^^^^^^^^^^^^^^^^^
+38 |  val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |             Type variable X of method h cannot be instantiated to box () ->{x} C^ since
    |             the part C^ of that type captures the root capability `cap`.
    |
