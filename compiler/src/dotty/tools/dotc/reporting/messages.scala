@@ -357,7 +357,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     ++ addenda.dropWhile(_.isEmpty).headOption.getOrElse(importSuggestions)
 
   override def explain(using Context) =
-    val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
+    val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
     treeStr + "\n" + super.explain
 
 end TypeMismatch
