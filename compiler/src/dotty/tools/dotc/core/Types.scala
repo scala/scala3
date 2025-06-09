@@ -382,6 +382,17 @@ object Types extends TypeUtils {
       case _ => false
     }
 
+    /** Is it possible that `null` is a value of this type? */
+    def admitsNull(using Context): Boolean =
+      isNullType || isAny || (this match
+        case OrType(l, r) => r.admitsNull || l.admitsNull
+        case AndType(l, r) => r.admitsNull && l.admitsNull
+        case TypeBounds(lo, hi) => lo.admitsNull
+        case FlexibleType(lo, hi) => true
+        case tp: TypeProxy => tp.underlying.admitsNull
+        case _ => false
+      )
+
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
