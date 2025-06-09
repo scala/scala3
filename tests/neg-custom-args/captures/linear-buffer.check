@@ -1,6 +1,6 @@
--- Error: tests/neg-custom-args/captures/linear-buffer.scala:5:24 ------------------------------------------------------
-5 |  mut def append(x: T): BadBuffer[T]^ = this // error
-  |                        ^^^^^^^^^^^^^
+-- Error: tests/neg-custom-args/captures/linear-buffer.scala:5:27 ------------------------------------------------------
+5 |  update def append(x: T): BadBuffer[T]^ = this // error
+  |                           ^^^^^^^^^^^^^
   |      Separation failure: method append's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
   |      The access must be in a @consume method to allow this.
 -- Error: tests/neg-custom-args/captures/linear-buffer.scala:7:13 ------------------------------------------------------

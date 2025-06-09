@@ -553,7 +553,6 @@ object StdNames {
     val maybeCapability: N      = "maybeCapability"
     val mirror : N              = "mirror"
     val moduleClass : N         = "moduleClass"
-    val mut: N                  = "mut"
     val name: N                 = "name"
     val nameDollar: N           = "$name"
     val ne: N                   = "ne"
