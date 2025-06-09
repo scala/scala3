@@ -1,8 +1,6 @@
 package dotty.tools.dotc.profile
 
 import scala.annotation.*
-import scala.language.unsafeNulls
-
 import java.io.{FileWriter, PrintWriter}
 import java.nio.file.Paths
 import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}

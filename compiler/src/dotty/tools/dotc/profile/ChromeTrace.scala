@@ -13,8 +13,6 @@
 
 package dotty.tools.dotc.profile
 
-import scala.language.unsafeNulls
-
 import java.io.Closeable
 import java.lang.management.ManagementFactory
 import java.nio.file.{Files, Path}

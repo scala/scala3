@@ -1,7 +1,5 @@
 package dotty.tools.scripting
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin

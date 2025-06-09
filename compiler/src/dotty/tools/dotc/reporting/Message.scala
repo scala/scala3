@@ -11,7 +11,6 @@ import config.SourceVersion
 import cc.CaptureSet
 import cc.Capabilities.*
 
-import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
 
 /** ## Tips for error message generation
@@ -177,7 +176,7 @@ object Message:
         case sym: Symbol =>
           val info =
             if (ctx.gadt.contains(sym))
-              sym.info & ctx.gadt.fullBounds(sym)
+              sym.info & ctx.gadt.fullBounds(sym).nn
             else
               sym.info
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
@@ -267,7 +266,7 @@ object Message:
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
 
-    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet): Text =
+    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       info match
         case info: LambdaType =>
           seen.openLambda(info)
