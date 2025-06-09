@@ -2,7 +2,7 @@
 
 object MatchTest2 {
   def f6(s: String | Null): String = s match {
-    case s2 => s2.nn
+    case s2 => "string"
     case null => "other" // warn
     case s3 => s3 // warn
   }
@@ -11,6 +11,6 @@ object MatchTest2 {
     case null => "other"
     case null => "other" // warn
     case s3: String => s3
-    case s4 => s4.nn // warn
+    case s4 => s4 // warn
   }
 }
