@@ -707,19 +707,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** Hook for massaging a function before it is applied. Copies all @use and @consume
-     *  annotations on method parameter symbols to the corresponding paramInfo types.
-     */
-    override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
-      val paramInfosWithUses =
-        funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
-          val param = meth.paramNamed(pname)
-          def copyAnnot(tp: Type, cls: ClassSymbol) = param.getAnnotation(cls) match
-            case Some(ann) => AnnotatedType(tp, ann)
-            case _ => tp
-          copyAnnot(copyAnnot(formal, defn.UseAnnot), defn.ConsumeAnnot)
-      funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
-
     /** Recheck applications, with special handling of unsafeAssumePure.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
@@ -747,7 +734,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal = $result", capt)
       if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
-        // The @use and/or @consume annotation is added to `formal` by `prepareFunction`
+        // The @use and/or @consume annotation is added to `formal` when creating methods types.
+        // See [[MethodTypeCompanion.adaptParamInfo]].
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
       if formal.containsCap then
@@ -1615,7 +1603,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       if noWiden(actual, expected) then
         actual
       else
-        val improvedVAR = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
+        // since they obscures the capturing type.
+        val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
+        val improvedVAR = improveCaptures(widened, actual)
         val improved = improveReadOnly(improvedVAR, expected)
         val adapted = adaptBoxed(
             improved.withReachCaptures(actual), expected, tree,
