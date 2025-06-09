@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:8:4 --------------------------------------------------
+8 |  a.set(42)  // error
+  |  ^^^^^
+  |  cannot call update method set from (a : Ref),
+  |  since its capture set {a} is read-only
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ro-mut-conformance.scala:10:21 ---------------------------
+10 |  val t: Ref^{cap} = a  // error
+   |                     ^
+   |                     Found:    (a : Ref)
+   |                     Required: Ref^
+   |
+   |                     where:    ^ refers to a fresh root capability in the type of value t
+   |
+   | longer explanation available when compiling with `-explain`

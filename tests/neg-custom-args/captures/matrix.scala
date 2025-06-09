@@ -24,7 +24,10 @@ def mul1(x: Matrix^{cap.rd}, y: Matrix^{cap.rd}, z: Matrix^): Unit = ???
 def Test(c: Object^): Unit =
   val m1 = Matrix(10, 10)
   val m2 = Matrix(10, 10)
+  mul(m1, m2, m2) // error: will fail separation checking
   mul(m1, m1, m2) // should be ok
+
+  mul1(m1, m2, m2) // error: will fail separation checking
   mul(m1, m1, m2) // should be ok
 
   def f2(): Matrix^ = Matrix(10, 10)

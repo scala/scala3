@@ -136,6 +136,8 @@ sealed abstract class CaptureSet extends Showable:
   final def isReadOnly(using Context): Boolean =
     elems.forall(_.isReadOnly)
 
+  final def isAlwaysReadOnly(using Context): Boolean = isConst && isReadOnly
+
   final def isExclusive(using Context): Boolean =
     elems.exists(_.isExclusive)
 
@@ -1385,8 +1387,8 @@ object CaptureSet:
     def apply(t: Type) = mapOver(t)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
-      case next: Inverse if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
-      case next: NarrowingCapabilityMap if next.getClass == getClass => assert(false)
+      case next: Inverse if next.inverse.getClass == getClass => Some(IdentityTypeMap)
+      case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
       case _ => None
 
     class Inverse extends BiTypeMap:
@@ -1395,8 +1397,8 @@ object CaptureSet:
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
       override def fuse(next: BiTypeMap)(using Context) = next match
-        case next: NarrowingCapabilityMap if next.inverse.getClass == getClass => assert(false); Some(IdentityTypeMap)
-        case next: NarrowingCapabilityMap if next.getClass == getClass => assert(false)
+        case next: NarrowingCapabilityMap if next.inverse.getClass == getClass => Some(IdentityTypeMap)
+        case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
         case _ => None
 
     lazy val inverse = Inverse()

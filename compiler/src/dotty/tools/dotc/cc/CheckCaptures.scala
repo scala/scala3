@@ -1568,17 +1568,81 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  to narrow to the read-only set, since that set can be propagated
      *  by the type variable instantiation.
      */
-    private def improveReadOnly(actual: Type, expected: Type)(using Context): Type = actual match
-      case actual @ CapturingType(parent, refs)
-      if parent.derivesFrom(defn.Caps_Mutable)
-          && expected.isValueType
-          && !expected.derivesFromMutable
-          && !expected.isSingleton
-          && !expected.isBoxedCapturing =>
-        actual.derivedCapturingType(parent, refs.readOnly)
-          .showing(i"improv ro $actual vs $expected = $result", capt)
+    private def improveReadOnly(actual: Type, expected: Type)(using Context): Type = reporting.trace(i"improv ro $actual vs $expected"):
+      actual.dealiasKeepAnnots match
+      case actual @ CapturingType(parent, refs) =>
+        val parent1 = improveReadOnly(parent, expected)
+        val refs1 =
+          if parent1.derivesFrom(defn.Caps_Mutable)
+              && expected.isValueType
+              && (!expected.derivesFromMutable || expected.captureSet.isAlwaysReadOnly)
+              && !expected.isSingleton
+              && actual.isBoxedCapturing == expected.isBoxedCapturing
+          then refs.readOnly
+          else refs
+        actual.derivedCapturingType(parent1, refs1)
+      case actual @ FunctionOrMethod(aargs, ares) =>
+        expected.dealias.stripCapturing match
+          case FunctionOrMethod(eargs, eres) =>
+            actual.derivedFunctionOrMethod(aargs, improveReadOnly(ares, eres))
+          case _ =>
+            actual
+      case actual @ AppliedType(atycon, aargs) =>
+        def improveArgs(aargs: List[Type], eargs: List[Type], formals: List[ParamInfo]): List[Type] =
+          aargs match
+            case aargs @ (aarg :: aargs1) =>
+              val aarg1 =
+                if formals.head.paramVariance.is(Covariant)
+                then improveReadOnly(aarg, eargs.head)
+                else aarg
+              aargs.derivedCons(aarg1, improveArgs(aargs1, eargs.tail, formals.tail))
+            case Nil =>
+              aargs
+        val expected1 = expected.dealias.stripCapturing
+        val esym = expected1.typeSymbol
+        expected1 match
+          case AppliedType(etycon, eargs) =>
+            if atycon.typeSymbol == esym then
+              actual.derivedAppliedType(atycon,
+                improveArgs(aargs, eargs, etycon.typeParams))
+            else if esym.isClass then
+              // This case is tricky: Try to lift actual to the base type with class `esym`,
+              // improve the resulting arguments, and figure out if anything can be
+              // deduced from that for the original arguments.
+              actual.baseType(esym) match
+                case base @ AppliedType(_, bargs) =>
+                  // If any of the base type arguments can be improved, check
+                  // whether they are the same as an original argument, and in this
+                  // case improve the original argument.
+                  val iargs = improveArgs(bargs, eargs, etycon.typeParams)
+                  if iargs ne bargs then
+                    val updates =
+                      for
+                        (barg, iarg) <- bargs.lazyZip(iargs)
+                        if barg ne iarg
+                        aarg <- aargs.find(_ eq barg)
+                      yield (aarg, iarg)
+                    if updates.nonEmpty then AppliedType(atycon, aargs.map(updates.toMap))
+                    else actual
+                  else actual
+                case _ => actual
+            else actual
+          case _ =>
+            actual
+      case actual @ RefinedType(aparent, aname, ainfo) =>
+        expected.dealias.stripCapturing match
+          case RefinedType(eparent, ename, einfo) if aname == ename =>
+            actual.derivedRefinedType(
+              improveReadOnly(aparent, eparent),
+              aname,
+              improveReadOnly(ainfo, einfo))
+          case _ =>
+            actual
+      case actual @ AnnotatedType(parent, ann) =>
+        actual.derivedAnnotatedType(improveReadOnly(parent, expected), ann)
       case _ =>
         actual
+    end improveReadOnly
 
     /* Currently not needed since it forms part of `adapt`
     private def improve(actual: Type, prefix: Type)(using Context): Type =
