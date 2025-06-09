@@ -382,7 +382,7 @@ object Types extends TypeUtils {
       case _ => false
     }
 
-    /** Is it possible that `null` is a value of this type? */
+    /** Is `null` a value of this type? */
     def admitsNull(using Context): Boolean =
       isNullType || isAny || (this match
         case OrType(l, r) => r.admitsNull || l.admitsNull
