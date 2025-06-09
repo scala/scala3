@@ -603,6 +603,10 @@ object Capabilities:
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
+    /** The type representing this capability.
+     *  Note this method does not distinguish different `RootCapability` instances,
+     *  and should only be used for printing or phases not related to CC.
+     */
     def toType(using Context): Type = this match
       case c: RootCapability => defn.captureRoot.termRef
       case c: CoreCapability => c

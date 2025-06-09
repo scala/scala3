@@ -203,7 +203,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         )
       isUniversal
       || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !ccVerbose
-    case (ref: TermRef) :: Nil => ref.symbol == defn.captureRoot
+    case ref :: Nil => ref.isCapRef
     case _ => false
 
   protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
@@ -312,7 +312,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
             ann.tree.retainedSet.retainedElementsRaw match
-              case (ref: TermRef) :: Nil if ref.symbol == defn.captureRoot => Str("=>")
+              case ref :: Nil if ref.isCapRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
