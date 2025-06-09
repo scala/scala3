@@ -16,3 +16,6 @@ def f8(s: String): String = s.trim().nn // OK because the .nn could be useful as
 def f9(s: String|Null): String =
   if(s == null) "default"
   else s.nn // warn
+
+def f10(x: String|Null): ((String|Null) @deprecated) = x.nn // warn
+def f10b(x: String|Null): (String|Null) = x.nn // warn
