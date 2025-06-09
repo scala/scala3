@@ -497,8 +497,7 @@ extension (sym: Symbol)
    *  @use-annotated term parameter that contains `sym` in its deep capture set.
    */
   def isUseParam(using Context): Boolean =
-    sym.hasAnnotation(defn.UseAnnot)
-    || sym.info.hasAnnotation(defn.UseAnnot)
+    sym.info.hasAnnotation(defn.UseAnnot)
     || sym.is(TypeParam)
         && sym.owner.rawParamss.nestedExists: param =>
             param.is(TermParam) && param.hasAnnotation(defn.UseAnnot)
@@ -508,8 +507,7 @@ extension (sym: Symbol)
 
   /** `sym` or its info is annotated with `@consume`. */
   def isConsumeParam(using Context): Boolean =
-    sym.hasAnnotation(defn.ConsumeAnnot)
-    || sym.info.hasAnnotation(defn.ConsumeAnnot)
+    sym.info.hasAnnotation(defn.ConsumeAnnot)
 
   def isUpdateMethod(using Context): Boolean =
     sym.isAllOf(Mutable | Method, butNot = Accessor)
