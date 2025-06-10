@@ -252,11 +252,16 @@ object SymDenotations {
     final def filterAnnotations(p: Annotation => Boolean)(using Context): Unit =
       annotations = annotations.filterConserve(p)
 
-    def annotationsCarrying(meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
-      annotations.filterConserve(_.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf))
+    def annotationsCarrying(meta: Set[Symbol],
+        orNoneOf: Set[Symbol] = Set.empty,
+        andAlso: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
+      annotations.filterConserve: annot =>
+        annot.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf)
+        || andAlso.contains(annot.symbol)
 
-    def keepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Unit =
-      updateAnnotationsAfter(phase, annotationsCarrying(meta, orNoneOf = orNoneOf))
+    def keepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol],
+        orNoneOf: Set[Symbol] = Set.empty, andAlso: Set[Symbol] = Set.empty)(using Context): Unit =
+      updateAnnotationsAfter(phase, annotationsCarrying(meta, orNoneOf, andAlso))
 
     def updateAnnotationsAfter(phase: DenotTransformer, annots: List[Annotation])(using Context): Unit =
       if annots ne annotations then

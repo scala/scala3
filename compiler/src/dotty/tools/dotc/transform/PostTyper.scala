@@ -255,10 +255,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
               unusing.foreach(sym.addAnnotation)
             else if sym.is(ParamAccessor) then
-              // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
-              val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
-              for publicInBinaryAnnot <- publicInBinaryAnnotOpt do sym.addAnnotation(publicInBinaryAnnot)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot),
+                andAlso = defn.NonBeanParamAccessorAnnots)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value &&
