@@ -11,6 +11,6 @@
    |         ^^^^
    |         Unreachable case
 -- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/flow-match.scala:14:9 ------------------------------
-14 |    case s4 => s4.nn // warn
+14 |    case s4 => s4 // warn
    |         ^^
    |         Unreachable case

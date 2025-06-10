@@ -373,14 +373,25 @@ object Types extends TypeUtils {
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
       case tp: FlexibleType => false
-      case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
+      case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
       case tp: AppliedType => tp.superType.isNotNull
-      case tp: TypeBounds => tp.lo.isNotNull
+      case tp: TypeBounds => tp.hi.isNotNull
       case tp: TypeProxy => tp.underlying.isNotNull
       case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
       case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
       case _ => false
     }
+
+    /** Is `null` a value of this type? */
+    def admitsNull(using Context): Boolean =
+      isNullType || isAny || (this match
+        case OrType(l, r) => r.admitsNull || l.admitsNull
+        case AndType(l, r) => r.admitsNull && l.admitsNull
+        case TypeBounds(lo, hi) => lo.admitsNull
+        case FlexibleType(lo, hi) => true
+        case tp: TypeProxy => tp.underlying.admitsNull
+        case _ => false
+      )
 
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
