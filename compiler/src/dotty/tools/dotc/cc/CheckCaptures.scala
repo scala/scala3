@@ -1106,7 +1106,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       try
         // Setup environment to reflect the new owner.
         val envForOwner: Map[Symbol, Env] = curEnv.outersIterator
-          .takeWhile(e => !capturedVars(e.owner).isAlwaysEmpty) // no refs can leak beyond this point
           .map(e => (e.owner, e))
           .toMap
         def restoreEnvFor(sym: Symbol): Env =
@@ -1142,8 +1141,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
       val saved = curEnv
-      if localSet ne CaptureSet.empty then
-        curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
+      curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
