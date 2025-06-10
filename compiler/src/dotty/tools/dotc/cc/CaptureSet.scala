@@ -512,16 +512,12 @@ object CaptureSet:
   val emptyRefs: Refs = SimpleIdentitySet.empty
 
   /** The empty capture set `{}` */
+  @sharable // sharable since the set is empty, so setMutable is a no-op
   val empty: CaptureSet.Const = Const(emptyRefs)
 
   /** The universal capture set `{cap}` */
   def universal(using Context): Const =
     Const(SimpleIdentitySet(GlobalCap))
-
-  /** The same as {cap.rd} but generated implicitly for
-   * references of Capability subtypes
-   */
-  val csImpliedByCapability = Const(SimpleIdentitySet(GlobalCap.readOnly))
 
   def fresh(origin: Origin)(using Context): Const =
     FreshCap(origin).singletonCaptureSet
@@ -572,7 +568,8 @@ object CaptureSet:
     private var isComplete = true
 
     def setMutable()(using Context): Unit =
-      isComplete = false // delay computation of Mutability status
+      if !elems.isEmpty then
+        isComplete = false // delay computation of Mutability status
 
     override def mutability(using Context): Mutability =
       if !isComplete then
@@ -589,12 +586,17 @@ object CaptureSet:
       then i" under-approximating the result of mapping $ref to $mapped"
       else ""
 
+  /* The same as {cap.rd} but generated implicitly for references of Capability subtypes.
+   */
+  case class CSImpliedByCapability() extends Const(SimpleIdentitySet(GlobalCap.readOnly))
+
   /** A special capture set that gets added to the types of symbols that were not
    *  themselves capture checked, in order to admit arbitrary corresponding capture
    *  sets in subcapturing comparisons. Similar to platform types for explicit
    *  nulls, this provides more lenient checking against compilation units that
    *  were not yet compiled with capture checking on.
    */
+  @sharable // sharable since the set is empty, so setMutable is a no-op
   object Fluid extends Const(emptyRefs):
     override def isAlwaysEmpty(using Context) = false
     override def addThisElem(elem: Capability)(using Context, VarState) = true
