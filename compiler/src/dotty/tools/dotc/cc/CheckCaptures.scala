@@ -59,9 +59,6 @@ object CheckCaptures:
 
     def isOutermost = outer0 == null
 
-    /** If an environment is open it tracks free references */
-    def isOpen(using Context) = !captured.isAlwaysEmpty && kind != EnvKind.Boxed
-
     def outersIterator: Iterator[Env] = new:
       private var cur = Env.this
       def hasNext = !cur.isOutermost
@@ -528,7 +525,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
 
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
-        if env.isOpen && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
+        if env.kind != EnvKind.Boxed && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
           // should be included.
           val included = cs.filter: c =>
@@ -556,7 +553,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         def isRetained(ref: Capability): Boolean = ref.pathRoot match
           case root: ThisType => ctx.owner.isContainedIn(root.cls)
           case _ => true
-        if sym.exists && curEnv.isOpen then
+        if sym.exists && curEnv.kind != EnvKind.Boxed then
           markFree(capturedVars(sym).filter(isRetained), tree)
 
     /** If `tp` (possibly after widening singletons) is an ExprType
