@@ -726,11 +726,14 @@ trait Applications extends Compatibility {
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
             addArg(typedArg(arg, formal), formal)
-            if methodType.isParamDependent && typeOfArg(arg).exists then
-              // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
-            else
-              formals1
+            if methodType.looksParamDependent
+                  // need to handle also false dependencies since we generate TypeTrees from
+                  // formal parameters in makeVarArg. These are not de-aliased, so they might contain
+                  // stray parameter references. Test case is i23266.scala.
+                && typeOfArg(arg).exists
+                  // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            else formals1
 
           def missingArg(n: Int): Unit =
             fail(MissingArgument(methodType.paramNames(n), methString))
