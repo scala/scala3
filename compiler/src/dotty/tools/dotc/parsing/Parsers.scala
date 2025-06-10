@@ -3291,7 +3291,7 @@ object Parsers {
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
           case nme.erased if in.erasedEnabled => Mod.Erased()
-          case nme.mut if Feature.ccEnabled => Mod.Mut()
+          case nme.update if Feature.ccEnabled => Mod.Update()
         }
     }
 
@@ -4712,7 +4712,7 @@ object Parsers {
           Nil
         tree match
           case tree: MemberDef
-          if !(tree.mods.flags & ModifierFlags).isEmpty && !tree.mods.isMutableVar => // vars are OK, mut defs are not
+          if !(tree.mods.flags & ModifierFlags).isEmpty && !tree.mods.isMutableVar => // vars are OK, update defs are not
             fail(em"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}")
           case tree: DefDef if tree.termParamss.nestedExists(!_.rhs.isEmpty) =>
             fail(em"refinement cannot have default arguments")
