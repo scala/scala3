@@ -542,7 +542,6 @@ extends SyntaxMsg(RepeatedModifierID) {
   }
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     List(
       CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
         description = None,
@@ -887,7 +886,6 @@ extends Message(PatternMatchExhaustivityID) {
         |"""
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     val endPos = tree.cases.lastOption.map(_.endPos)
       .getOrElse(tree.selector.endPos)
     val startColumn = tree.cases.lastOption
@@ -910,7 +908,6 @@ extends Message(PatternMatchExhaustivityID) {
 
 
   private def indent(text:String, margin: Int): String = {
-    import scala.language.unsafeNulls
     " " * margin + text
   }
 }
@@ -1991,7 +1988,6 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
         |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
     List(
       CodeAction(title = "Rewrite to function value",
@@ -2021,7 +2017,6 @@ class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
   }
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     List(
       CodeAction(title = "Insert ()",
         description = None,

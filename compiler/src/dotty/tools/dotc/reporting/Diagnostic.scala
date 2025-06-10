@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.config.Settings.Setting
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
