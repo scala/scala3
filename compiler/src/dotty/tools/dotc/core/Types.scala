@@ -6048,7 +6048,8 @@ object Types extends TypeUtils {
     end samParent
 
     def samClass(tp: Type)(using Context): Symbol = tp match
-      case tp @ ClassInfo(_, cls, _, _, _) =>
+      case tp: ClassInfo =>
+        val cls = tp.cls
         def takesNoArgs(tp: Type) =
           !tp.classSymbol.primaryConstructor.exists
               // e.g. `ContextFunctionN` does not have constructors
