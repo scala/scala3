@@ -7,7 +7,7 @@ trait Rdr[T]:
 class Ref[T](init: T) extends Rdr[T], Mutable:
   private var current = init
   def get: T = current
-  mut def put(x: T): Unit = current = x
+  update def put(x: T): Unit = current = x
 
 case class Pair[+A, +B](x: A, y: B)
 class Swap[+A, +B](x: A, y: B) extends Pair[B, A](y, x)

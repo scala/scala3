@@ -7,7 +7,7 @@ trait Rdr[T]:
 class Ref[T](init: T) extends Rdr[T], Mutable:
   private var current = init
   def get: T = current
-  mut def put(x: T): Unit = current = x
+  update def put(x: T): Unit = current = x
 
 abstract class IMatrix:
   def apply(i: Int, j: Int): Double
@@ -15,7 +15,7 @@ abstract class IMatrix:
 class Matrix(nrows: Int, ncols: Int) extends IMatrix, Mutable:
   val arr = Array.fill(nrows, ncols)(0.0)
   def apply(i: Int, j: Int): Double = arr(i)(j)
-  mut def update(i: Int, j: Int, x: Double): Unit = arr(i)(j) = x
+  update def update(i: Int, j: Int, x: Double): Unit = arr(i)(j) = x
 
 
 def mul(x: Matrix, y: Matrix, z: Matrix^): Unit = ???
