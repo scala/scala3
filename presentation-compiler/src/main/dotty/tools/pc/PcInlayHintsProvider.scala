@@ -17,6 +17,7 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -29,6 +30,7 @@ import dotty.tools.dotc.util.Spans.Span
 import org.eclipse.lsp4j.InlayHint
 import org.eclipse.lsp4j.InlayHintKind
 import org.eclipse.{lsp4j as l}
+import dotty.tools.dotc.core.NameOps.fieldName
 
 class PcInlayHintsProvider(
     driver: InteractiveDriver,
@@ -116,8 +118,8 @@ class PcInlayHintsProvider(
               InlayHintKind.Type,
             )
             .addDefinition(adjustedPos.start)
-      case ByNameParameters(byNameParams) =>
-        def adjustByNameParameterPos(pos: SourcePosition): SourcePosition =
+      case NamedParameters(_) | ByNameParameters(_) =>
+        def adjustBlockParameterPosOpt(pos: SourcePosition): Option[SourcePosition] =
           val adjusted = adjustPos(pos)
           val start = text.indexWhere(!_.isWhitespace, adjusted.start)
           val end = text.lastIndexWhere(!_.isWhitespace, adjusted.end - 1)
@@ -126,16 +128,51 @@ class PcInlayHintsProvider(
           val endsWithBrace = text.lift(end).contains('}')
 
           if startsWithBrace && endsWithBrace then
-            adjusted.withStart(start + 1)
+            Some(adjusted.withStart(start + 1))
           else
-            adjusted
+            None
 
-        byNameParams.foldLeft(inlayHints) {
-          case (ih, pos) => 
-            val adjusted = adjustByNameParameterPos(pos)
+        def adjustParameterPos(pos: SourcePosition): SourcePosition =
+          adjustBlockParameterPosOpt(pos) match
+            case Some(adjusted) => adjusted
+            case None => adjustPos(pos)
+        
+        def isNamedParameter(pos: SourcePosition): Boolean =
+          val adjusted = adjustPos(pos)
+          val start = text.indexWhere(!_.isWhitespace, adjusted.start)
+          val end = text.lastIndexWhere(!_.isWhitespace, adjusted.end - 1)
+          text.slice(start, end).contains('=')
+
+        val namedParams = NamedParameters.unapply(tree).getOrElse(Nil).collect {
+          // We don't want to show parameter names for block parameters or named parameters
+          case (name, pos) if adjustBlockParameterPosOpt(pos).isEmpty && !isNamedParameter(pos) => (name, pos)
+        }
+        val byNameParams = ByNameParameters.unapply(tree).getOrElse(Nil)
+
+        val namedAndByNameInlayHints = 
+          namedParams.collect { 
+            case (name, pos) if byNameParams.contains(pos) =>
+              (name.toString() + " = => ", adjustParameterPos(pos))
+          }
+        
+        val namedInlayHints = 
+          namedParams.collect { 
+            case (name, pos) if !byNameParams.contains(pos) =>
+              (name.toString() + " = ", adjustParameterPos(pos))
+          }
+        
+        val namedParamsPos = namedParams.map(_._2)
+        val byNameInlayHints = 
+          byNameParams.collect {
+          case pos if !namedParamsPos.contains(pos) => 
+            ("=> ", adjustParameterPos(pos))
+        }
+
+        (namedAndByNameInlayHints ++ namedInlayHints ++ byNameInlayHints).foldLeft(inlayHints) {
+          case (ih, (labelStr, pos)) => 
             ih.add(
-              adjusted.startPos.toLsp,
-              List(LabelPart("=> ")),
+              pos.startPos.toLsp,
+              List(LabelPart(labelStr)),
               InlayHintKind.Parameter
             )
         }
@@ -414,16 +451,11 @@ end InferredType
 
 object ByNameParameters:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[List[SourcePosition]] =
-    def shouldSkipSelect(sel: Select) = 
-      isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply
-
-    if (params.byNameParameters()){
+    if (params.byNameParameters()) {
       tree match
-        case Apply(TypeApply(sel: Select, _), _) if shouldSkipSelect(sel) => 
-          None 
-        case Apply(sel: Select, _) if shouldSkipSelect(sel) => 
+        case FlattenApplies(sel: Select, args) if SkipRules.shouldSkipSelect(sel, args) =>
           None
-        case Apply(fun, args) =>
+        case Apply(fun, args) if !SkipRules.shouldSkipInfix(fun, args) =>
           val funTp = fun.typeOpt.widenTermRefExpr
           val params = funTp.paramInfoss.flatten
           Some(
@@ -436,3 +468,51 @@ object ByNameParameters:
         case _ => None
     } else None
 end ByNameParameters
+
+object NamedParameters:
+  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[List[(Name, SourcePosition)]] = 
+    def isRealApply(tree: Tree) =
+      !tree.symbol.isOneOf(Flags.GivenOrImplicit) && !tree.span.isZeroExtent
+    if (params.namedParameters()){
+      tree match
+        case FlattenApplies(sel: Select, args) if SkipRules.shouldSkipSelect(sel, args) =>
+          None
+        case Apply(fun, args) if isRealApply(fun) && !SkipRules.shouldSkipInfix(fun, args) => 
+          val funTp = fun.typeOpt.widenTermRefExpr
+          val params = funTp.paramNamess.flatten
+          Some(
+            args
+            .zip(params)
+            .collect {
+              case (arg, param) if !arg.span.isZeroExtent => (param.fieldName, arg.sourcePos)
+            }
+          )
+        case _ => None
+    } else None
+end NamedParameters
+
+private object SkipRules:
+  def shouldSkipSelect(sel: Select, args: List[Tree])(using Context): Boolean =
+    isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply || sel.isInfix
+  
+  def shouldSkipInfix(fun: Tree, args: List[Tree])(using Context): Boolean =
+    val source = fun.source
+    if args.isEmpty then false
+    else 
+      val isInfixExtensionMethod = 
+        !(fun.span.end until args.head.span.start)
+        .map(source.apply)
+        .contains('.')
+      isInfixExtensionMethod && fun.symbol.is(Flags.ExtensionMethod)
+    
+private object FlattenApplies:
+  /*
+   * Extractor that strips away a (possibly nested) chain of `Apply` / `TypeApply`
+   * wrappers and returns the underlying function tree.
+   */
+  def unapply(tree: Tree): (Tree, List[Tree]) =
+    tree match
+      case Apply(FlattenApplies(fun, argss), args)        => (fun, argss ++: args)
+      case TypeApply(FlattenApplies(fun, argss), args)    => (fun, argss ++: args)
+      case t                                              => (t, Nil)
+end FlattenApplies
