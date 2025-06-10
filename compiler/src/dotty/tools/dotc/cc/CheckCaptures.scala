@@ -463,7 +463,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def checkUseDeclared(c: Capability, env: Env, lastEnv: Env | Null) =
         if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
           assert(ccConfig.deferredReaches) // access is from a nested closure under deferredReaches, so it's OK
-        else c.pathRoot match
+        else c.paramPathRoot match
           case ref: NamedType if !ref.symbol.isUseParam =>
             val what = if ref.isType then "Capture set parameter" else "Local reach capability"
             report.error(

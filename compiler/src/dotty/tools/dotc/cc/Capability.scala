@@ -375,15 +375,18 @@ object Capabilities:
       case tp1: FreshCap => tp1.ccOwner
       case _ => NoSymbol
 
-    final def isParamPath(using Context): Boolean = this match
+    final def paramPathRoot(using Context): Type = core match
       case tp1: NamedType =>
         tp1.prefix match
           case _: ThisType | NoPrefix =>
-            tp1.symbol.is(Param) || tp1.symbol.is(ParamAccessor)
-          case prefix: CoreCapability => prefix.isParamPath
-          case _ => false
-      case _: ParamRef => true
-      case _ => false
+            if tp1.symbol.is(Param) || tp1.symbol.is(ParamAccessor) then tp1
+            else NoType
+          case prefix: CoreCapability => prefix.paramPathRoot
+          case _ => NoType
+      case tp1: ParamRef => tp1
+      case _ => NoType
+
+    final def isParamPath(using Context): Boolean = paramPathRoot.exists
 
     final def ccOwner(using Context): Symbol = this match
       case self: ThisType => self.cls
