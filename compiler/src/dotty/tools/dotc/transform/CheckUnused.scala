@@ -582,11 +582,11 @@ object CheckUnused:
                   warnAt(pos)(UnusedSymbol.privateMembers)
         else if ctx.settings.WunusedHas.explicits
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
-          && !(sym.owner.is(ExtensionMethod) && {
-            m.paramSymss.dropWhile(_.exists(_.isTypeParam)) match
-            case (h :: Nil) :: Nil => h == sym // param is the extended receiver
+          && !(sym.owner.is(ExtensionMethod) &&
+            m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
+            case (h :: Nil) :: _ => h == sym // param is the extended receiver
             case _ => false
-          })
+          )
           && !sym.name.isInstanceOf[DerivedName]
           && !ctx.platform.isMainMethod(m)
         then
