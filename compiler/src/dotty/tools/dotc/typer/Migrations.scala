@@ -134,10 +134,7 @@ trait Migrations:
     if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty then
       // The application can only be rewritten if it uses parentheses syntax.
       // See issue #22927 and related tests.
-      val hasParentheses =
-        ctx.source.content
-          .slice(tree.span.end, pt.args.head.span.start)
-          .exists(_ == '(')
+      val hasParentheses = checkParentheses(tree, pt)
       val rewriteMsg =
         if hasParentheses then
           Message.rewriteNotice("This code", mversion.patchFrom)
@@ -159,7 +156,68 @@ trait Migrations:
         mversion
       )
       if hasParentheses && mversion.needsPatch then
-        patch(Span(pt.args.head.span.start), "using ")
+        patchImplicitParams(tree, pt)
   end implicitParams
+
+  private def checkParentheses(tree: Tree, pt: FunProto)(using Context): Boolean =
+    ctx.source.content
+      .slice(tree.span.end, pt.args.head.span.start)
+      .exists(_ == '(')
+
+  private def patchImplicitParams(tree: Tree, pt: FunProto)(using Context): Unit =
+    patch(Span(pt.args.head.span.start), "using ")
+
+  object ImplicitToGiven:
+    def valDef(vdef: ValDef)(using Context): Unit =
+      if ctx.settings.YimplicitToGiven.value
+        && vdef.symbol.is(Implicit)
+        && !vdef.symbol.isParamOrAccessor
+      then
+        val implicitSpan =
+          vdef.mods.mods.collectFirst {
+            case mod: untpd.Mod.Implicit => mod.span
+          }.get
+        patch(
+          Span(implicitSpan.start, implicitSpan.end + 1),
+          ""
+        )
+        patch(
+          Span(vdef.mods.mods.last.span.end + 1, vdef.namePos.span.start), "given "
+        )
+
+    def defDef(ddef: DefDef)(using Context): Unit =
+      if
+        ctx.settings.YimplicitToGiven.value
+        && ddef.symbol.is(Implicit)
+        && !ddef.symbol.isParamOrAccessor
+        && !ddef.symbol.isOldStyleImplicitConversion()
+      then
+        val implicitSpan =
+          ddef.mods.mods.collectFirst {
+            case mod: untpd.Mod.Implicit => mod.span
+          }.get
+        patch(
+          Span(implicitSpan.start, implicitSpan.end + 1), ""
+        )
+        patch(
+          Span(ddef.mods.mods.last.span.end + 1, ddef.namePos.span.start), "given "
+        )
+        ddef.tpt match
+          case refinedType: untpd.RefinedTypeTree =>
+            patch(refinedType.span.startPos, "(")
+            patch(refinedType.span.endPos, ")")
+          case _ =>
+
+    def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
+      if
+        ctx.settings.YimplicitToGiven.value
+        && !mv.ExplicitContextBoundArgument.needsPatch // let's not needlessly repeat the patch
+        && tp.companion == ImplicitMethodType
+        && pt.applyKind != ApplyKind.Using
+        && pt.args.nonEmpty
+        && checkParentheses(tree, pt)
+      then
+          patchImplicitParams(tree, pt)
+
 
 end Migrations

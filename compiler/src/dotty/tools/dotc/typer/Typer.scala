@@ -53,6 +53,7 @@ import transform.CheckUnused.OriginalName
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.dotc.ast.untpd.Mod
 
 object Typer {
 
@@ -2917,6 +2918,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(vdef1, sym)
     vdef1.setDefTree
+
+    migrate(ImplicitToGiven.valDef(vdef1))
+
     val nnInfo = rhs1.notNullInfo
     vdef1.withNotNullInfo(if sym.is(Lazy) then nnInfo.retractedInfo else nnInfo)
   }
@@ -3028,6 +3032,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         )
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
+
+    migrate(ImplicitToGiven.defDef(ddef2))
 
     postProcessInfo(ddef2, sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
@@ -4263,6 +4269,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
         if matchingApply(wtp, pt) then
+          migrate(ImplicitToGiven.implicitParams(tree, wtp, pt))
           migrate(contextBoundParams(tree, wtp, pt))
           migrate(implicitParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)

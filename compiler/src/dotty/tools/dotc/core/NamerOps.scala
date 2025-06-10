@@ -8,6 +8,8 @@ import ContextOps.enter
 import TypeApplications.EtaExpansion
 import collection.mutable
 import config.Printers.typr
+import rewrites.Rewrites.patch
+import util.Spans.Span
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -59,12 +61,19 @@ object NamerOps:
    *  This is done by adding a () in front of a leading old style implicit parameter,
    *  or by adding a () as last -- or only -- parameter list if the constructor has
    *  only using clauses as parameters.
+   *
+   * implicitRewritePosition, if included, will point to where `()` should be added if rewriting
+   * with -Yimplicit-to-given
    */
-  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
+  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): List[List[Symbol]] =
     if !isConstructor then paramss
     else paramss match
-      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) =>
+        implicitRewritePosition match
+          case Some(position) if ctx.settings.YimplicitToGiven.value => patch(position, "()")
+          case _ => ()
+        Nil :: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
