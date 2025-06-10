@@ -202,6 +202,10 @@ trait Migrations:
         patch(
           Span(ddef.mods.mods.last.span.end + 1, ddef.namePos.span.start), "given "
         )
+        // remove empty parentheses
+        patch(
+          Span(ddef.namePos.span.end, ddef.tpt.span.start), ": "
+        )
         ddef.tpt match
           case refinedType: untpd.RefinedTypeTree =>
             patch(refinedType.span.startPos, "(")
