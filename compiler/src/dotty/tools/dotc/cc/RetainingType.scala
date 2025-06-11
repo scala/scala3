@@ -8,7 +8,8 @@ import ast.tpd.*
 import Annotations.Annotation
 import Decorators.i
 
-/** A builder and extractor for annotated types with @retains or @retainsByName annotations.
+/** A builder and extractor for annotated types with @retains or @retainsByName annotations
+ *  excluding CapturingTypes.
  */
 object RetainingType:
 
@@ -21,11 +22,8 @@ object RetainingType:
     val sym = tp.annot.symbol
     if sym.isRetainsLike then
       tp.annot match
-        case _: CaptureAnnotation =>
-          assert(ctx.mode.is(Mode.IgnoreCaptures), s"bad retains $tp at ${ctx.phase}")
-          None
-        case ann =>
-          Some((tp.parent, ann.tree.retainedSet))
+        case _: CaptureAnnotation => None
+        case ann => Some((tp.parent, ann.tree.retainedSet))
     else
       None
 end RetainingType

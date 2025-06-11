@@ -330,6 +330,12 @@ object Capabilities:
     final def isExclusive(using Context): Boolean =
       !isReadOnly && (isTerminalCapability || captureSetOfInfo.isExclusive)
 
+    /** Similar to isExlusive, but also includes capabilties with capture
+     *  set variables in their info whose status is still open.
+     */
+    final def maybeExclusive(using Context): Boolean =
+      !isReadOnly && (isTerminalCapability || captureSetOfInfo.maybeExclusive)
+
     final def isWellformed(using Context): Boolean = this match
       case self: CoreCapability => self.isTrackableRef
       case _ => true

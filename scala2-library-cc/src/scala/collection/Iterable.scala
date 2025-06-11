@@ -17,6 +17,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.Builder
 import scala.collection.View.{LeftPartitionMapped, RightPartitionMapped}
 import language.experimental.captureChecking
+import scala.caps.unsafe.unsafeAssumePure
 
 /** Base trait for generic collections.
   *
@@ -302,7 +303,8 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
     * this.sizeIs > size     // this.sizeCompare(size) > 0
     * }}}
     */
-  @inline final def sizeIs: IterableOps.SizeCompareOps^{this} = new IterableOps.SizeCompareOps(this)
+  @inline final def sizeIs: IterableOps.SizeCompareOps^{this} = new IterableOps.SizeCompareOps(this.unsafeAssumePure)
+    // CC Problem: unsafeAssumePure needed since we had to change the argument signatire of SizeCompareOps
 
   /** Compares the size of this $coll to the size of another `Iterable`.
     *
@@ -866,8 +868,15 @@ object IterableOps {
     * These operations are implemented in terms of
     * [[scala.collection.IterableOps.sizeCompare(Int) `sizeCompare(Int)`]].
     */
-  final class SizeCompareOps private[collection](val it: IterableOps[_, AnyConstr, _]^) extends AnyVal {
-    this: SizeCompareOps^{it} =>
+  final class SizeCompareOps private[collection](val it: IterableOps[_, AnyConstr, _]/*^*/) extends AnyVal {
+    this: SizeCompareOps/*^*/ =>
+    // CC Problem: if we add the logically needed `^`s to the `it` parameter and the
+    // self type, separation checking fails in the compiler-generated equals$extends
+    // method of the value class. There seems to be something wrong how pattern
+    // matching interacts with separation checking. A minimized test case
+    // is pending/pos-custom-args/captures/SizeCompareOps-redux.scala.
+    // Without the `^`s, the `sizeIs` method needs an unsafeAssumePure.
+
     /** Tests if the size of the collection is less than some value. */
     @inline def <(size: Int): Boolean = it.sizeCompare(size) < 0
     /** Tests if the size of the collection is less than or equal to some value. */

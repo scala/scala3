@@ -367,7 +367,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
       case tp @ CapturingType(parent, refs)
-      if (refs eq CaptureSet.csImpliedByCapability) && !tp.isBoxedCapturing =>
+      if refs.isInstanceOf[CaptureSet.CSImpliedByCapability] && !tp.isBoxedCapturing =>
         parent
       case tp: AliasingBounds =>
         tp.derivedAlias(stripImpliedCaptureSet(tp.alias))
@@ -422,7 +422,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
         tp
 
-      /** Map references to capability classes C to C^,
+      /** Map references to capability classes C to C^{cap.rd},
        *  normalize captures and map to dependent functions.
        */
       def defaultApply(t: Type) =
@@ -430,7 +430,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           && !t.isSingleton
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
-        then CapturingType(t, CaptureSet.csImpliedByCapability, boxed = false)
+        then CapturingType(t, CaptureSet.CSImpliedByCapability(), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
@@ -618,6 +618,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             traverse(body)
           catches.foreach(traverse)
           traverse(finalizer)
+        case tree: New =>
         case _ =>
           traverseChildren(tree)
       postProcess(tree)

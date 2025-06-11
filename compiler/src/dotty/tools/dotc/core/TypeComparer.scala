@@ -53,6 +53,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     maxErrorLevel = -1
     errorNotes = Nil
+    logSize = 0
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -61,6 +62,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private var maxErrorLevel: Int = -1
   protected var errorNotes: List[(Int, ErrorNote)] = Nil
+
+  private val undoLog = mutable.ArrayBuffer[() => Unit]()
+  private var logSize = 0
 
   private var needsGc = false
 
@@ -542,7 +546,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if subCaptures(refs1, tp2.captureSet) && sameBoxed(tp1, tp2, refs1)
+          else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
           then
             val tp2a =
@@ -669,12 +673,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1 @ CapturingType(parent1, refs1), info2: Type)
               if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                subCaptures(refs1, info2.captureSet) && sameBoxed(info1, info2, refs1)
+                compareCaptures(info1, refs1, info2, info2.captureSet)
                   && isSubInfo(parent1, info2)
               case (info1: Type, CapturingType(parent2, refs2))
               if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2)) && sameBoxed(info1, info2, refs1)
+                (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
                   && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
@@ -873,8 +877,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ =>
                   false
               singletonOK
-              || subCaptures(refs1, refs2)
-                  && sameBoxed(tp1, tp2, refs1)
+              || compareCaptures(tp1, refs1, tp2, refs2)
                   && (recur(tp1.widen.stripCapturing, parent2)
                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
                         // this alternative is needed in case the right hand side is a
@@ -1010,7 +1013,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if isCaptureCheckingOrSetup then
             tp1
               .match
-                case tp1: Capability if tp1.isTracked =>
+                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
                   CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
                 case _ =>
                   tp1w
@@ -1579,15 +1582,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       && tp1.derivesFrom(defn.Caps_CapSet)
       && tp2.derivesFrom(defn.Caps_CapSet)
 
+    def rollBack(prevSize: Int): Unit =
+      var i = prevSize
+      while i < undoLog.size do
+        undoLog(i)()
+        i += 1
+      undoLog.takeInPlace(prevSize)
+
     // begin recur
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
     else
       val savedCstr = constraint
       val savedGadt = ctx.gadt
+      val savedLogSize = logSize
       inline def restore() =
         state.constraint = savedCstr
         ctx.gadtState.restore(savedGadt)
+        if undoLog.size != savedLogSize then
+          rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
         val result = inNestedLevel:
@@ -2110,7 +2123,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    * since `T >: Int` is subsumed by both alternatives in the first match clause.
    *
    * However, the following should not:
-   * 
+   *
    *   def foo[T](e: Expr[T]): T = e match
    *     case I1(_) | B(_) => 42
    *
@@ -2877,13 +2890,30 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       println(i"fail while subCaptures $refs1 <:< $refs2")
       throw ex
 
-  /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
-   *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
-   *  In the latter case, boxing status does not matter.
+  /**
+   *  - Compare capture sets using subCaptures. If the lower type derives from Mutable and the
+   *    upper type does not, make the lower set read-only.
+   *  - Test whether the boxing status of tp1 and tp2 the same, or alternatively,
+   *    whether the capture set `refs1` of `tp1` is subcapture of the empty set?
+   *    In the latter case, boxing status does not matter.
    */
-  protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
-    (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs1.subCaptures(CaptureSet.empty, makeVarState())
+  protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type, refs2: CaptureSet): Boolean =
+    val refs1Adapted =
+      if tp1.derivesFromMutable && !tp2.derivesFromMutable
+      then refs1.readOnly
+      else refs1
+    val subc = subCaptures(refs1Adapted, refs2)
+    if !subc then
+      errorNotes match
+        case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) :: rest =>
+          errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
+        case _ =>
+    subc
+    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
+        || refs1.subCaptures(CaptureSet.empty, makeVarState())
+
+  protected def logUndoAction(action: () => Unit) =
+    undoLog += action
 
   // ----------- Diagnostics --------------------------------------------------
 
@@ -3503,6 +3533,9 @@ object TypeComparer {
 
   def subCaptures(refs1: CaptureSet, refs2: CaptureSet, vs: CaptureSet.VarState)(using Context): Boolean =
     comparing(_.subCaptures(refs1, refs2, vs))
+
+  def logUndoAction(action: () => Unit)(using Context): Unit =
+    comparer.logUndoAction(action)
 
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
     comparer.inNestedLevel(op)
