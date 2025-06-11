@@ -695,6 +695,18 @@ object CaptureSet:
           assert(elem.subsumes(elem1),
             i"Skipped map ${tm.getClass} maps newly added $elem to $elem1 in $this")
 
+    protected def includeElem(elem: Capability)(using Context): Unit =
+      if !elems.contains(elem) then
+        elems += elem
+        TypeComparer.logUndoAction: () =>
+          elems -= elem
+
+    def includeDep(cs: CaptureSet)(using Context): Unit =
+      if !deps.contains(cs) then
+        deps += cs
+        TypeComparer.logUndoAction: () =>
+          deps -= cs
+
     final def addThisElem(elem: Capability)(using Context, VarState): Boolean =
       if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
@@ -704,7 +716,7 @@ object CaptureSet:
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        elems += elem
+        includeElem(elem)
         if isBadRoot(rootLimit, elem) then
           rootAddedHandler()
         newElemAddedHandler(elem)
@@ -772,7 +784,7 @@ object CaptureSet:
       (cs eq this)
       || cs.isUniversal
       || isConst
-      || recordDepsState() && { deps += cs; true }
+      || recordDepsState() && { includeDep(cs); true }
 
     override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
       rootLimit = upto
@@ -1126,7 +1138,7 @@ object CaptureSet:
       if alias ne this then alias.add(elem)
       else
         def addToElems() =
-          elems += elem
+          includeElem(elem)
           deps.foreach: dep =>
             assert(dep != this)
             vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
@@ -1142,7 +1154,7 @@ object CaptureSet:
                 deps = SimpleIdentitySet(elem.hiddenSet)
               else
                 addToElems()
-                elem.hiddenSet.deps += this
+                elem.hiddenSet.includeDep(this)
           case _ =>
             addToElems()
 

@@ -53,7 +53,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     maxErrorLevel = -1
     errorNotes = Nil
-    logSize = 0
+    undoLog.clear()
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -63,8 +63,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var maxErrorLevel: Int = -1
   protected var errorNotes: List[(Int, ErrorNote)] = Nil
 
-  private val undoLog = mutable.ArrayBuffer[() => Unit]()
-  private var logSize = 0
+  val undoLog = mutable.ArrayBuffer[() => Unit]()
 
   private var needsGc = false
 
@@ -1588,6 +1587,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         undoLog(i)()
         i += 1
       undoLog.takeInPlace(prevSize)
+      assert(undoLog.size == prevSize)
 
     // begin recur
     if tp2 eq NoType then false
@@ -1595,11 +1595,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else
       val savedCstr = constraint
       val savedGadt = ctx.gadt
-      val savedLogSize = logSize
+      val savedLogSize = undoLog.size
       inline def restore() =
         state.constraint = savedCstr
         ctx.gadtState.restore(savedGadt)
         if undoLog.size != savedLogSize then
+          //println(i"ROLLBACK $tp1 <:< $tp2")
           rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
