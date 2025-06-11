@@ -24,3 +24,7 @@ class K(k: Int)(s: String = "*"*k):
 
 class KU(using k: Int)(s: String = "*"*k):
   override val toString = s
+
+class KK(s: String):
+  def this(k: Int)(s: String = "*"*k) = this(s)
+  override val toString = s
