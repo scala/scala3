@@ -31,6 +31,7 @@ import scala.util.boundary, boundary.break
 import dotty.tools.dotc.transform.Specialization
 import dotty.tools.dotc.transform.DesugarSpecializedTraits
 import scala.util.control.NonFatal
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 /** Provides methods to compare types.
  */
@@ -934,6 +935,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                           // capturing type that contains the lhs as an alternative of a union type.
                       )
         compareCapturing || fourthTry
+      case QualifiedType(parent2, qualifier2) =>
+        QualifiedTypes.typeImplies(tp1, qualifier2) && recur(tp1, parent2)
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
