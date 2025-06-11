@@ -18,6 +18,8 @@ import config.Printers.{ transforms => debug }
 import patmat.Typ
 import dotty.tools.dotc.util.SrcPos
 
+import qualified_types.QualifiedType
+
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
  *  Any remaining type tests
@@ -324,7 +326,7 @@ object TypeTestsCasts {
          *  The transform happens before erasure of `testType`, thus cannot be merged
          *  with `transformIsInstanceOf`, which depends on erased type of `testType`.
          */
-        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
+        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealiasKeepRefiningAnnots match {
           case tref: TermRef if tref.symbol == defn.EmptyTupleModule =>
             ref(defn.RuntimeTuples_isInstanceOfEmptyTuple).appliedTo(expr)
           case _: SingletonType =>
@@ -353,6 +355,12 @@ object TypeTestsCasts {
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
+          case QualifiedType(parent, closureDef(qualifierDef)) =>
+            evalOnce(expr): e =>
+              // e.isInstanceOf[baseType] && qualifier(e.asInstanceOf[baseType])
+              val arg = e.asInstance(parent)
+              val qualifierTest = BetaReduce.reduceApplication(qualifierDef, List(List(arg))).get
+              transformTypeTest(e, parent, flagUnrelated).and(qualifierTest)
           case _ =>
             val testWidened = testType.widen
             defn.untestableClasses.find(testWidened.isRef(_)) match
