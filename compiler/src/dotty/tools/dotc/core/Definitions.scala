@@ -1107,7 +1107,7 @@ class Definitions {
   @tu lazy val NonBeanMetaAnnots: Set[Symbol] =
     Set(FieldMetaAnnot, GetterMetaAnnot, ParamMetaAnnot, SetterMetaAnnot, CompanionClassMetaAnnot, CompanionMethodMetaAnnot)
   @tu lazy val NonBeanParamAccessorAnnots: Set[Symbol] =
-    Set(PublicInBinaryAnnot)
+    Set(PublicInBinaryAnnot, UseAnnot, ConsumeAnnot)
   @tu lazy val MetaAnnots: Set[Symbol] =
     NonBeanMetaAnnots + BeanGetterMetaAnnot + BeanSetterMetaAnnot
 

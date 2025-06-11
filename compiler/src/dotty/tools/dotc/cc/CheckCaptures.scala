@@ -59,9 +59,6 @@ object CheckCaptures:
 
     def isOutermost = outer0 == null
 
-    /** If an environment is open it tracks free references */
-    def isOpen(using Context) = !captured.isAlwaysEmpty && kind != EnvKind.Boxed
-
     def outersIterator: Iterator[Env] = new:
       private var cur = Env.this
       def hasNext = !cur.isOutermost
@@ -466,7 +463,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def checkUseDeclared(c: Capability, env: Env, lastEnv: Env | Null) =
         if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
           assert(ccConfig.deferredReaches) // access is from a nested closure under deferredReaches, so it's OK
-        else c.pathRoot match
+        else c.paramPathRoot match
           case ref: NamedType if !ref.symbol.isUseParam =>
             val what = if ref.isType then "Capture set parameter" else "Local reach capability"
             report.error(
@@ -528,7 +525,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
 
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
-        if env.isOpen && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
+        if env.kind != EnvKind.Boxed && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
           // should be included.
           val included = cs.filter: c =>
@@ -556,7 +553,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         def isRetained(ref: Capability): Boolean = ref.pathRoot match
           case root: ThisType => ctx.owner.isContainedIn(root.cls)
           case _ => true
-        if sym.exists && curEnv.isOpen then
+        if sym.exists && curEnv.kind != EnvKind.Boxed then
           markFree(capturedVars(sym).filter(isRetained), tree)
 
     /** If `tp` (possibly after widening singletons) is an ExprType
@@ -1106,7 +1103,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       try
         // Setup environment to reflect the new owner.
         val envForOwner: Map[Symbol, Env] = curEnv.outersIterator
-          .takeWhile(e => !capturedVars(e.owner).isAlwaysEmpty) // no refs can leak beyond this point
           .map(e => (e.owner, e))
           .toMap
         def restoreEnvFor(sym: Symbol): Env =
@@ -1142,8 +1138,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
       val saved = curEnv
-      if localSet ne CaptureSet.empty then
-        curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
+      curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
