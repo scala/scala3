@@ -573,7 +573,7 @@ object Erasure {
     }
 
     override def promote(tree: untpd.Tree)(using Context): tree.ThisTree[Type] = {
-      assert(tree.hasType)
+      assert(tree.hasType, i"promote called on tree without type: ${tree.show}")
       val erasedTp = erasedType(tree)
       report.log(s"promoting ${tree.show}: ${erasedTp.showWithUnderlying()}")
       tree.withType(erasedTp)
