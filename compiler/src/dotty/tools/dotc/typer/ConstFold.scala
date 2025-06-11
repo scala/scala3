@@ -61,17 +61,6 @@ object ConstFold:
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
 
-  private object ConstantTree:
-    def unapply(tree: Tree)(using Context): Option[Constant] =
-      tree match
-        case Inlined(_, Nil, expr) => unapply(expr)
-        case Typed(expr, _) => unapply(expr)
-        case Literal(c) if c.tag == Constants.NullTag => Some(c)
-        case _ =>
-          tree.tpe.widenTermRefExpr.normalized.simplified match
-            case ConstantType(c) => Some(c)
-            case _ => None
-
   extension [T <: Tree](tree: T)(using Context)
     private def withFoldedType(c: Constant | Null): T =
       if c == null then tree else tree.withType(ConstantType(c)).asInstanceOf[T]

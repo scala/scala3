@@ -51,6 +51,7 @@ import NullOpsDecorator.*
 import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
+import qualified_types.QualifiedTypes
 import transform.CheckUnused.withOriginalName
 
 import scala.annotation.{unchecked as _, *}
@@ -5056,7 +5057,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return readapt(tree.cast(captured))
 
       // drop type if prototype is Unit
-      if pt.isRef(defn.UnitClass) then
+      if pt.isRef(defn.UnitClass, false) then
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
@@ -5099,6 +5100,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case OrNull(wtp1) => return readapt(tree.cast(wtp1))
               case _ =>
           case _ =>
+
+      // Try to adapt to a qualified type
+      val adapted = QualifiedTypes.adapt(tree, pt)
+      if !adapted.isEmpty then
+        return readapt(adapted)
 
       def recover(failure: SearchFailureType) =
         if canDefineFurther(wtp) || canDefineFurther(pt) then readapt(tree)
