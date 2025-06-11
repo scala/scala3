@@ -18,3 +18,9 @@ class C:
   def copyFoo(foo: Foo, bar: String)(a: String = foo.a, b: Int = foo.b)(c: String = bar): Foo = Foo(a, b) // warn c
   def copyUsing(using foo: Foo, bar: String)(a: String = foo.a, b: Int = foo.b)(c: String = bar): Foo = // warn c
     Foo(a, b)
+
+class K(k: Int)(s: String = "*"*k):
+  override val toString = s
+
+class KU(using k: Int)(s: String = "*"*k):
+  override val toString = s
