@@ -1,4 +1,4 @@
-//> using options -Wunused:explicits
+//> using options -Wunused:explicits,implicits
 
 // An external class that doesn't get its own `copy` method.
 class Foo(val a: String, val b: Int)
@@ -12,4 +12,9 @@ extension (self: Foo)
 //
 // Example 2: implement `copyFoo` with parameter groups.
 //
-def copyFoo(foo: Foo)(a: String = foo.a, b: Int = foo.b): Foo = Foo(a, b) // warn
+def copyFoo(foo: Foo)(a: String = foo.a, b: Int = foo.b): Foo = Foo(a, b)
+
+class C:
+  def copyFoo(foo: Foo, bar: String)(a: String = foo.a, b: Int = foo.b)(c: String = bar): Foo = Foo(a, b) // warn c
+  def copyUsing(using foo: Foo, bar: String)(a: String = foo.a, b: Int = foo.b)(c: String = bar): Foo = // warn c
+    Foo(a, b)
