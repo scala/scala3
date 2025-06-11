@@ -59,12 +59,7 @@ class InlinePatterns extends MiniPhase:
       case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
         template.body match
           case List(ddef @ DefDef(`name`, _, _, _)) =>
-            val bindings = new ListBuffer[DefTree]()
-            BetaReduce.reduceApplication(ddef, argss, bindings) match
-              case Some(expansion1) =>
-                val bindings1 = bindings.result()
-                seq(bindings1, expansion1)
-              case None => tree
+            BetaReduce.reduceApplication(ddef, argss).getOrElse(tree)
           case _ => tree
       case _ => tree
 
