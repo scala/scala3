@@ -568,7 +568,7 @@ object CheckUnused:
 
     // does the param have an alias in a default arg method that is used?
     def usedByDefaultGetter(param: Symbol, meth: Symbol): Boolean =
-      val cls = if meth.isPrimaryConstructor then meth.enclosingClass.companionModule else meth.enclosingClass
+      val cls = if meth.isConstructor then meth.enclosingClass.companionModule else meth.enclosingClass
       val MethName = meth.name
       cls.info.decls.exists: d =>
         d.name match
