@@ -1,0 +1,8 @@
+-1 is none of the above
+1 is Pos
+2 is {v: Int with v == 2}
+"" is none of the above
+"Do it please" is PoliteString
+"do it already" is NonEmptyString
+false is none of the above
+null is none of the above
