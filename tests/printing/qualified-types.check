@@ -43,7 +43,7 @@ package example {
         val x4: Int @qualified[Int]((x: Int) => x > 0) = 1
         val x5: Int @qualified[Int]((x5: Int) => x > 0) = 1
         val x6: Int =
-          example.id[Int @qualified[Int]((x: Int) => x < 0)](1) +
+          example.id[Int @qualified[Int]((x: Int) => x < 0)](-1) +
             example.id[example.Neg](-1)
         ()
       }
@@ -87,8 +87,8 @@ package example {
           {
             case y @ _:Int @qualified[Int]((y: Int) => y > 0) =>
               println(
-                _root_.scala.StringContext.apply(
-                  [""," is Int with x > 0" : String]*).s([y : Any]*)
+                _root_.scala.StringContext.apply([""," is positive" : String]*).
+                  s([y : Any]*)
               )
             case _ =>
               ()
@@ -102,8 +102,7 @@ package example {
              =>
               println(
                 _root_.scala.StringContext.apply(
-                  [""," is Int with y > 0 and "," is Int with z > 0" : String]*)
-                  .s([y,z : Any]*)
+                  [""," and "," are both positive" : String]*).s([y,z : Any]*)
               )
             case _ =>
               ()

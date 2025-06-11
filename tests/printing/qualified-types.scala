@@ -33,11 +33,11 @@ def test() =
     x > 0
   } = 1
   val x5: Int with x > 0 = 1
-  val x6: Int = id[{x: Int with x < 0}](1) + id[Neg](-1)
+  val x6: Int = id[{x: Int with x < 0}](-1) + id[Neg](-1)
 
 // `val x: Int with x > 0` is desugared to `val x: {x: Int with x > 0}`: if the
-// name of a qaulifier argument is not specified, it assumed the same as the
-// parent `val` definition.
+// name of a qualifier argument is not specified, it is assumed to be the same
+// as the parent `val` definition.
 def implicitArgumentName() =
   val x0: (Int with x0 > 0) | (String with x0 == "foo") = ???
   val x1: Int with x1 > 0 = ???
@@ -52,12 +52,12 @@ def implicitArgumentName() =
   val x9: Any = 42
   x9 match
     case y: Int with y > 0 =>
-      println(s"$y is Int with x > 0")
+      println(s"$y is positive")
     case _ => ()
 
   x9 match
     case (y: Int with y > 0, z: Int with z > 0) =>
-      println(s"$y is Int with y > 0 and $z is Int with z > 0")
+      println(s"$y and $z are both positive")
     case _ => ()
 
 def bar(x: Int with x > 0) = ???
