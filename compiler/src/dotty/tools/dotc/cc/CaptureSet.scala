@@ -1325,6 +1325,9 @@ object CaptureSet:
       && {
         if eqResultSnapshot == null then eqResultSnapshot = eqResultMap
         eqResultMap = eqResultMap.updated(c1, c2).updated(c2, c1)
+        TypeComparer.logUndoAction: () =>
+          eqResultMap.remove(c1)
+          eqResultMap.remove(c2)
         true
       }
 
