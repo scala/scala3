@@ -27,6 +27,7 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import scala.util.boundary, boundary.break
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 /** Provides methods to compare types.
  */
@@ -884,6 +885,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
         compareCapturing || fourthTry
+      case QualifiedType(parent2, qualifier2) =>
+        QualifiedTypes.typeImplies(tp1, qualifier2) && recur(tp1, parent2)
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
@@ -2110,7 +2113,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    * since `T >: Int` is subsumed by both alternatives in the first match clause.
    *
    * However, the following should not:
-   * 
+   *
    *   def foo[T](e: Expr[T]): T = e match
    *     case I1(_) | B(_) => 42
    *
