@@ -553,7 +553,7 @@ object CaptureSet:
         false
       }
 
-    def toReader()(using Context) = false
+    def toReader()(using Context) = failWith(MutAdaptFailure(this))
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = true
 
@@ -721,7 +721,7 @@ object CaptureSet:
         res
 
     final def toReader()(using Context) =
-      if isConst then false // TODO add error note when failing?
+      if isConst then failWith(MutAdaptFailure(this))
       else
         mutability = Reader
         TypeComparer.logUndoAction(() => mutability = Mutable)
@@ -1205,6 +1205,7 @@ object CaptureSet:
    */
   case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote
 
+  /** Failure indicating that `elem` cannot be included in `cs` */
   case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends ErrorNote, Showable:
     private var myTrace: List[CaptureSet] = cs :: Nil
 
@@ -1223,6 +1224,14 @@ object CaptureSet:
           then i"$elem cannot be included in $trace"
           else i"$elem cannot be included in $cs"
   end IncludeFailure
+
+  /** Failure indicating that a read-only capture set of a mutable type cannot be
+   *  widened to an exclusive set.
+   *  @param  cs    the exclusive set in question
+   *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
+   *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
+   */
+  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends ErrorNote
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails

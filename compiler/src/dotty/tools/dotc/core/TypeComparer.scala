@@ -2902,7 +2902,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       if tp1.derivesFromMutable && !tp2.derivesFromMutable
       then refs1.readOnly
       else refs1
-    subCaptures(refs1Adapted, refs2)
+    val subc = subCaptures(refs1Adapted, refs2)
+    if !subc then
+      errorNotes match
+        case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) :: rest =>
+          errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
+        case _ =>
+    subc
     && (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
         || refs1.subCaptures(CaptureSet.empty, makeVarState())
 

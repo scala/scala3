@@ -25,6 +25,7 @@ import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
 import Annotations.Annotation
 import Capabilities.*
+import dotty.tools.dotc.cc.CaptureSet.MutAdaptFailure
 
 /** The capture checker */
 object CheckCaptures:
@@ -1265,7 +1266,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
       val printableNotes = notes.filter:
         case IncludeFailure(_, _, true) => true
-        case _: ExistentialSubsumesFailure => true
+        case _: ExistentialSubsumesFailure | _: MutAdaptFailure => true
         case _ => false
       if printableNotes.isEmpty then NothingToAdd
       else new Addenda:
@@ -1287,6 +1288,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                 else " since that capability is not a SharedCapability"
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
+            case MutAdaptFailure(cs, lo, hi) =>
+              def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
+              i"""$cs is an exclusive capture set ${ofType(hi)},
+                 |it cannot subsume a read-only capture set ${ofType(lo)}."""
           i"""
              |Note that ${msg.toString}"""
 
