@@ -44,6 +44,7 @@ import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
 import transform.Recheck.currentRechecker
 
+import qualified_types.QualifiedType
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 import scala.util.control.NonFatal
@@ -59,7 +60,7 @@ object Types extends TypeUtils {
    *  The principal subclasses and sub-objects are as follows:
    *
    *  ```none
-   *  Type -+- ProxyType --+- NamedType ----+--- TypeRef
+   *  Type -+- TypeProxy --+- NamedType ----+--- TypeRef
    *        |              |                 \
    *        |              +- SingletonType-+-+- TermRef
    *        |              |                |
@@ -192,9 +193,10 @@ object Types extends TypeUtils {
 
     /** Is this type a (possibly refined, applied, aliased or annotated) type reference
      *  to the given type symbol?
-     *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
+     *  @param sym  The symbol to compare to. It must be a class symbol or abstract type.
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
+     *  @param skipRefined  If true, skip refinements, annotated types and applied types.
      */
     def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = this match {
       case this1: TypeRef =>
@@ -212,7 +214,7 @@ object Types extends TypeUtils {
         else this1.underlying.isRef(sym, skipRefined)
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
-      case this1: AnnotatedType =>
+      case this1: AnnotatedType if (!this1.isRefining || skipRefined) =>
         this1.parent.isRef(sym, skipRefined)
       case _ => false
     }
@@ -1613,6 +1615,7 @@ object Types extends TypeUtils {
         def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
           tp match {
             case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+            case QualifiedType(_, _) => tp
             case _ => mapOver(tp)
           }
       }
@@ -2147,7 +2150,7 @@ object Types extends TypeUtils {
     /** Is `this` isomorphic to `that`, assuming pairs of matching binders `bs`?
      *  It is assumed that `this.ne(that)`.
      */
-    protected def iso(that: Any, bs: BinderPairs): Boolean = this.equals(that)
+    def iso(that: Any, bs: BinderPairs): Boolean = this.equals(that)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -3541,7 +3544,7 @@ object Types extends TypeUtils {
 
     override def computeHash(bs: Binders): Int = doHash(bs, tp1, tp2)
 
-    override protected def iso(that: Any, bs: BinderPairs) = that match
+    override def iso(that: Any, bs: BinderPairs) = that match
       case that: AndType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
       case _ => false
   }
@@ -3686,7 +3689,7 @@ object Types extends TypeUtils {
     override def computeHash(bs: Binders): Int =
       doHash(bs, if isSoft then 0 else 1, tp1, tp2)
 
-    override protected def iso(that: Any, bs: BinderPairs) = that match
+    override def iso(that: Any, bs: BinderPairs) = that match
       case that: OrType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs) && isSoft == that.isSoft
       case _ => false
   }
@@ -5004,7 +5007,7 @@ object Types extends TypeUtils {
      *  anymore, or NoType if the variable can still be further constrained or a provisional
      *  instance type in the constraint can be retracted.
      */
-    private[core] def permanentInst = inst
+    def permanentInst = inst
     private[core] def setPermanentInst(tp: Type): Unit =
       inst = tp
       owningState match
