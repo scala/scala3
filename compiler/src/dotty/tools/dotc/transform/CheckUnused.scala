@@ -573,7 +573,10 @@ object CheckUnused:
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor) && !infos.refs(alias.symbol) then
+            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits then
                   warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
@@ -603,7 +606,7 @@ object CheckUnused:
 
     // does the param have an alias in a default arg method that is used?
     def usedByDefaultGetter(param: Symbol, meth: Symbol): Boolean =
-      val cls = meth.enclosingClass
+      val cls = if meth.isPrimaryConstructor then meth.enclosingClass.companionModule else meth.enclosingClass
       val MethName = meth.name
       cls.info.decls.exists: d =>
         d.name match
@@ -640,7 +643,10 @@ object CheckUnused:
             val checking =
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
-            if checking && !infos.refs(alias.symbol) then
+            if checking
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
         else if !usedByDefaultGetter(sym, m) then
           warnAt(pos)(UnusedSymbol.implicitParams(sym))
