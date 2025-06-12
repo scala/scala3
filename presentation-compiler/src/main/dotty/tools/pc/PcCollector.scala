@@ -319,21 +319,24 @@ object EndMarker:
       implicit ct: Context
   ): Option[SourcePosition] =
     val name = df.name.toString().stripSuffix("$")
-    val endMarkerLine =
-      sourceText.slice(df.span.start, df.span.end).split('\n').last
-    val index = endMarkerLine.length() - name.length()
-    if index < 0 then None
-    else
-      val (possiblyEndMarker, possiblyEndMarkerName) =
-        endMarkerLine.splitAt(index)
-      Option.when(
-        possiblyEndMarkerName == name &&
-          endMarkerRegex.matches(possiblyEndMarker)
-      )(
-        pos
-          .withStart(df.span.end - name.length())
-          .withEnd(df.span.end)
-      )
+    val lines = sourceText.slice(df.span.start, df.span.end).split('\n')
+
+    if lines.nonEmpty then
+      val endMarkerLine = lines.last
+      val index = endMarkerLine.length() - name.length()
+      if index < 0 then None
+      else
+        val (possiblyEndMarker, possiblyEndMarkerName) =
+          endMarkerLine.splitAt(index)
+        Option.when(
+          possiblyEndMarkerName == name &&
+            endMarkerRegex.matches(possiblyEndMarker)
+        )(
+          pos
+            .withStart(df.span.end - name.length())
+            .withEnd(df.span.end)
+        )
+    else None
   end getPosition
 end EndMarker
 
