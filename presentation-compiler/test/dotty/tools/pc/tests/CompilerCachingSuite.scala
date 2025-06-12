@@ -84,6 +84,22 @@ class CompilerCachingSuite extends BasePCSuite:
     checkCompilationCount(4)
 
   @Test
+  def `dot-compilation-does-not-corrupt-cache`: Unit =
+    val contextPreCompilation = getContext()
+
+    val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = 1.", 14, EmptyCancelToken)
+    presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
+    val contextPostFirst = getContext()
+    assert(contextPreCompilation != contextPostFirst)
+    checkCompilationCount(4)
+
+    presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
+    val contextPostSecond = getContext()
+    assert(contextPreCompilation != contextPostFirst)
+    assert(contextPostSecond == contextPostFirst)
+    checkCompilationCount(4)
+
+  @Test
   def `compilation-for-same-snippet-is-cached`: Unit =
     val contextPreCompilation = getContext()
 
