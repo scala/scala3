@@ -30,9 +30,6 @@ private class QualifierNormalizer extends TreeMap:
         method.symbol match
           case d.Int_+      => normalizeIntSum(tree)
           case d.Int_*      => normalizeIntProduct(tree)
-          case d.Int_==     => normalizeEquality(tree)
-          case d.Any_==     => normalizeEquality(tree)
-          case d.Boolean_== => normalizeEquality(tree)
           case _            => super.transform(tree)
       case _ => super.transform(tree)
 
@@ -129,15 +126,3 @@ private class QualifierNormalizer extends TreeMap:
         getAllArguments(expr, op)
       case _ =>
         List(transform(tree))
-
-  private def normalizeEquality(tree: Tree)(using Context): Tree =
-    tree match
-      case Apply(select @ Select(lhs, name), List(rhs)) =>
-        val lhsNormalized = transform(lhs)
-        val rhsNormalized = transform(rhs)
-        if QualifierStructuralComparer.hash(lhsNormalized) > QualifierStructuralComparer.hash(rhsNormalized) then
-          cpy.Apply(tree)(cpy.Select(select)(rhsNormalized, name), List(lhsNormalized))
-        else
-          cpy.Apply(tree)(cpy.Select(select)(lhsNormalized, name), List(rhsNormalized))
-      case _ =>
-        throw new IllegalArgumentException("Unexpected tree passed to normalizeEquality: " + tree)
