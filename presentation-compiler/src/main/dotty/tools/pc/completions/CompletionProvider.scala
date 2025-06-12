@@ -176,9 +176,10 @@ class CompletionProvider(
     val text = params.text().nn
     val offset = params.offset()
     val query = Completion.naiveCompletionPrefix(text, offset)
-
-    if offset > 0 && text.charAt(offset - 1).isUnicodeIdentifierPart
-      && !CompletionProvider.allKeywords.contains(query) then false -> text
+    def isValidLastChar =
+      val lastChar = text.charAt(offset - 1)
+      lastChar.isUnicodeIdentifierPart || lastChar == '.'
+    if offset > 0 && isValidLastChar && !CompletionProvider.allKeywords.contains(query) then false -> text
     else
       val isStartMultilineComment =
 
