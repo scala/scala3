@@ -24,8 +24,8 @@ def test: Unit =
 
   summon[{v: Int with v == id(x)} <:< {v: Int with v == id(x2)}]
   summon[{v: Int with v == id(x2)} <:< {v: Int with v == id(x)}]
-  //summon[{v: Int with v == id(y)} <:< {v: Int with v == id(x + 1)}] // TODO(mbovel): needs normaliazion of type hashes
-  //summon[{v: Int with v == id(x + 1)} <:< {v: Int with v == id(y)}] // TODO(mbovel): needs normaliazion of type hashes
+  summon[{v: Int with v == id(y)} <:< {v: Int with v == id(x + 1)}]
+  summon[{v: Int with v == id(x + 1)} <:< {v: Int with v == id(y)}]
 
   summon[{v: Int with v == y + 2} <:< {v: Int with v == x + 1 + 2}]
   summon[{v: Int with v == x + 1 + 2} <:< {v: Int with v == y + 2}]
@@ -45,8 +45,8 @@ def test: Unit =
 
     summon[{v: Int with v == id(x)} <:< {v: Int with v == id(x2)}]
     summon[{v: Int with v == id(x2)} <:< {v: Int with v == id(x)}]
-    //summon[{v: Int with v == id(y)} <:< {v: Int with v == id(x + 1)}] // TODO(mbovel): needs normaliazion of type hashes
-    //summon[{v: Int with v == id(x + 1)} <:< {v: Int with v == id(y)}] // TODO(mbovel): needs normaliazion of type hashes
+    summon[{v: Int with v == id(y)} <:< {v: Int with v == id(x + 1)}]
+    summon[{v: Int with v == id(x + 1)} <:< {v: Int with v == id(y)}]
 
     summon[{v: Int with v == y + 2} <:< {v: Int with v == x + 1 + 2}]
     summon[{v: Int with v == x + 1 + 2} <:< {v: Int with v == y + 2}]
