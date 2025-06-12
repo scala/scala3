@@ -73,7 +73,7 @@ object TestConfiguration {
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
-    defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+    defaultOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =
@@ -89,7 +89,7 @@ object TestConfiguration {
     "-Yprint-pos-syms"
   )
   val picklingWithCompilerOptions =
-    picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+    picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
   val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
 
