@@ -3,17 +3,17 @@ package dotty.tools.dotc.qualified_types
 import scala.util.hashing.MurmurHash3 as hashing
 
 import dotty.tools.dotc.ast.tpd.{closureDef, Apply, Block, DefDef, Ident, Literal, New, Select, Tree, TreeOps, TypeApply, Typed, TypeTree}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.i
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Types.{MethodType, TermRef, Type, TypeVar}
+import dotty.tools.dotc.core.Types.{MethodType, NamedType, TermRef, Type, TypeVar}
 import dotty.tools.dotc.core.Symbols.defn
 
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.config.Printers
 
 private abstract class QualifierComparer:
-  private def typeIso(tp1: Type, tp2: Type) =
+  protected def typeIso(tp1: Type, tp2: Type) =
     val tp1stripped = stripPermanentTypeVar(tp1)
     val tp2stripped = stripPermanentTypeVar(tp2)
     tp1stripped.equals(tp2stripped)
@@ -91,6 +91,16 @@ private[qualified_types] object QualifierStructuralComparer extends QualifierCom
     override def hashCode: Int = hash(tree)
 
 private[qualified_types] final class QualifierAlphaComparer(using Context) extends QualifierComparer:
+  override protected def typeIso(tp1: Type, tp2: Type): Boolean =
+    def normalizeType(tp: Type): Type =
+      tp match
+        case tp: TypeVar if tp.isPermanentlyInstantiated => tp.permanentInst
+        case tp: NamedType =>
+          if tp.symbol.isStatic then tp.symbol.termRef
+          else normalizeType(tp.prefix).select(tp.symbol)
+        case tp => tp
+    super.typeIso(normalizeType(tp1), normalizeType(tp2))
+
   override def iso(tree1: Tree, tree2: Tree): Boolean =
     trace(i"iso $tree1 ; $tree2"):
       (tree1, tree2) match
