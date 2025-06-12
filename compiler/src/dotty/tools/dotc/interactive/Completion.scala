@@ -335,7 +335,7 @@ object Completion:
       (sym.companionClass.exists && sym.companionClass.is(Enum))
 
     sym.exists &&
-    !sym.isAbsent() &&
+    !sym.isAbsent(canForce = false) &&
     !sym.isPrimaryConstructor &&
     sym.sourceSymbol.exists &&
     (!sym.is(Package) || sym.is(ModuleClass)) &&
