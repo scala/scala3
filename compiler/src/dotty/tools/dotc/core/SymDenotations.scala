@@ -344,8 +344,13 @@ object SymDenotations {
 
       def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
         case info: LambdaType =>
-          val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
-            newSymbol(symbol, pname, SyntheticParam, ptype))
+          val commonFlags =
+            if info.isContextualMethod then Given | SyntheticParam
+            else if info.isImplicitMethod then Implicit | SyntheticParam
+            else SyntheticParam
+          val params = info.paramNames.lazyZip(info.paramInfos).map: (pname, ptype) =>
+            val flags = if ptype.hasAnnotation(defn.ErasedParamAnnot) then commonFlags | Erased else commonFlags
+            newSymbol(symbol, pname, flags, ptype)
           val prefs = params.map(_.namedType)
           for param <- params do
             param.info = param.info.substParams(info, prefs)
