@@ -178,12 +178,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Try to include all element in `refs` to this capture set. */
   protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): Boolean =
-    TypeComparer.inNestedLevel:
-      // Run in nested level so that a error notes for a failure here can be
-      // cancelled in case the whole comparison succeeds.
-      // We do this here because all nested tryInclude and subCaptures calls go
-      // through this method.
-      newElems.forall(tryInclude(_, origin))
+    newElems.forall(tryInclude(_, origin))
 
   protected def mutableToReader(origin: CaptureSet)(using Context): Boolean =
     if mutability == Mutable then toReader() else true
@@ -284,16 +279,14 @@ sealed abstract class CaptureSet extends Showable:
 
   /** The subcapturing test, using a given VarState */
   final def subCaptures(that: CaptureSet)(using ctx: Context, vs: VarState = VarState()): Boolean =
-    val this1 = this.adaptMutability(that)
-    if this1 == null then false
-    else if this1 ne this then
-      capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
-      this1.subCaptures(that, vs)
-    else if that.tryInclude(elems, this) then
-      addDependent(that)
-    else
-      varState.rollBack()
-      false
+    TypeComparer.inNestedLevel:
+      val this1 = this.adaptMutability(that)
+      if this1 == null then false
+      else if this1 ne this then
+        capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
+        this1.subCaptures(that, vs)
+      else
+        that.tryInclude(elems, this) && addDependent(that)
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -662,30 +655,6 @@ object CaptureSet:
 
     var description: String = ""
 
-    /** Record current elements in given VarState provided it does not yet
-     *  contain an entry for this variable.
-     */
-    private def recordElemsState()(using VarState): Boolean =
-      varState.getElems(this) match
-        case None => varState.putElems(this, elems)
-        case _ => true
-
-    /** Record current dependent sets in given VarState provided it does not yet
-     *  contain an entry for this variable.
-     */
-    private[CaptureSet] def recordDepsState()(using VarState): Boolean =
-      varState.getDeps(this) match
-        case None => varState.putDeps(this, deps)
-        case _ => true
-
-    /** Reset elements to what was recorded in `state` */
-    def resetElems()(using state: VarState): Unit =
-      elems = state.elems(this)
-
-    /** Reset dependent sets to what was recorded in `state` */
-    def resetDeps()(using state: VarState): Unit =
-      deps = state.deps(this)
-
     /** Check that all maps recorded in skippedMaps map `elem` to itself
      *  or something subsumed by it.
      */
@@ -708,7 +677,7 @@ object CaptureSet:
           deps -= cs
 
     final def addThisElem(elem: Capability)(using Context, VarState): Boolean =
-      if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
+      if isConst || !varState.canRecord then // Fail if variable is solved or given VarState is frozen
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
         failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
@@ -784,7 +753,7 @@ object CaptureSet:
       (cs eq this)
       || cs.isUniversal
       || isConst
-      || recordDepsState() && { includeDep(cs); true }
+      || varState.canRecord && { includeDep(cs); true }
 
     override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
       rootLimit = upto
@@ -1250,41 +1219,15 @@ object CaptureSet:
    */
   class VarState:
 
-    /** A map from captureset variables to their elements at the time of the snapshot. */
-    private val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
-
-    /** A map from captureset variables to their dependent sets at the time of the snapshot. */
-    private val depsMap: util.EqHashMap[Var, Deps] = new util.EqHashMap
-
     /** A map from ResultCap values to other ResultCap values. If two result values
      *  `a` and `b` are unified, then `eqResultMap(a) = b` and `eqResultMap(b) = a`.
      */
     private var eqResultMap: util.SimpleIdentityMap[ResultCap, ResultCap] = util.SimpleIdentityMap.empty
 
-    /** A snapshot of the `eqResultMap` value at the start of a VarState transaction */
-    private var eqResultSnapshot: util.SimpleIdentityMap[ResultCap, ResultCap] | Null = null
-
-    /** The recorded elements of `v` (it's required that a recording was made) */
-    def elems(v: Var): Refs = elemsMap(v)
-
-    /** Optionally the recorded elements of `v`, None if nothing was recorded for `v` */
-    def getElems(v: Var): Option[Refs] = elemsMap.get(v)
-
     /** Record elements, return whether this was allowed.
      *  By default, recording is allowed in regular but not in frozen states.
      */
-    def putElems(v: Var, elems: Refs): Boolean = { elemsMap(v) = elems; true }
-
-    /** The recorded dependent sets of `v` (it's required that a recording was made) */
-    def deps(v: Var): Deps = depsMap(v)
-
-    /** Optionally the recorded dependent sets of `v`, None if nothing was recorded for `v` */
-    def getDeps(v: Var): Option[Deps] = depsMap.get(v)
-
-    /** Record dependent sets, return whether this was allowed.
-     *  By default, recording is allowed in regular but not in frozen states.
-     */
-    def putDeps(v: Var, deps: Deps): Boolean = { depsMap(v) = deps; true }
+    def canRecord: Boolean = true
 
     /** Does this state allow additions of elements to capture set variables? */
     def isOpen = true
@@ -1295,11 +1238,6 @@ object CaptureSet:
      *  but the special state VarState.Separate overrides this.
      */
     def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean =
-      elemsMap.get(hidden) match
-        case None =>
-          elemsMap(hidden) = hidden.elems
-          depsMap(hidden) = hidden.deps
-        case _ =>
       hidden.add(elem)(using ctx, this)
       true
 
@@ -1323,19 +1261,12 @@ object CaptureSet:
       && eqResultMap(c1) == null
       && eqResultMap(c2) == null
       && {
-        if eqResultSnapshot == null then eqResultSnapshot = eqResultMap
         eqResultMap = eqResultMap.updated(c1, c2).updated(c2, c1)
         TypeComparer.logUndoAction: () =>
           eqResultMap.remove(c1)
           eqResultMap.remove(c2)
         true
       }
-
-    /** Roll back global state to what was recorded in this VarState */
-    def rollBack(): Unit =
-      elemsMap.keysIterator.foreach(_.resetElems()(using this))
-      depsMap.keysIterator.foreach(_.resetDeps()(using this))
-      if eqResultSnapshot != null then eqResultMap = eqResultSnapshot.nn
 
     private var seen: util.EqHashSet[Capability] = new util.EqHashSet
 
@@ -1356,8 +1287,7 @@ object CaptureSet:
      *  subsume arbitary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
-      override def putElems(v: Var, refs: Refs) = false
-      override def putDeps(v: Var, deps: Deps) = false
+      override def canRecord = false
       override def isOpen = false
       override def toString = "closed varState"
 
@@ -1381,13 +1311,10 @@ object CaptureSet:
      */
     def HardSeparate(using Context): Separating = ccState.HardSeparate
 
-    /** A special state that turns off recording of elements. Used only
+    /** A special state that turns off recording of hidden elements. Used only
      *  in `addSub` to prevent cycles in recordings. Instantiated in ccState.Unrecorded.
      */
     class Unrecorded extends VarState:
-      override def putElems(v: Var, refs: Refs) = true
-      override def putDeps(v: Var, deps: Deps) = true
-      override def rollBack(): Unit = ()
       override def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean = true
       override def toString = "unrecorded varState"
 
