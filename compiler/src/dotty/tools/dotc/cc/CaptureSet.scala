@@ -1311,11 +1311,21 @@ object CaptureSet:
      */
     def HardSeparate(using Context): Separating = ccState.HardSeparate
 
-    /** A special state that turns off recording of hidden elements. Used only
-     *  in `addSub` to prevent cycles in recordings. Instantiated in ccState.Unrecorded.
-     */
-    class Unrecorded extends VarState:
+    /** A mixin trait that overrides the addHidden and unify operations to
+     *  not depend in state. */
+    trait Stateless extends VarState:
+
+      /** Allow adding hidden elements, but don't store them */
       override def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean = true
+
+      /** Don't allow to unify result caps */
+      override def unify(c1: ResultCap, c2: ResultCap)(using Context): Boolean = false
+    end Stateless
+
+    /** An open state that turns off recording of hidden elements (but allows
+     *  adding them). Used in `addAsDependentTo`. Instantiated in ccState.Unrecorded.
+     */
+    class Unrecorded extends VarState, Stateless:
       override def toString = "unrecorded varState"
 
     def Unrecorded(using Context): Unrecorded = ccState.Unrecorded
@@ -1323,8 +1333,7 @@ object CaptureSet:
     /** A closed state that turns off recording of hidden elements (but allows
      *  adding them). Used in `mightAccountFor`. Instantiated in ccState.ClosedUnrecorded.
      */
-    class ClosedUnrecorded extends Closed:
-      override def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean = true
+    class ClosedUnrecorded extends Closed, Stateless:
       override def toString = "closed unrecorded varState"
 
     def ClosedUnrecorded(using Context): ClosedUnrecorded = ccState.ClosedUnrecorded
