@@ -228,6 +228,10 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |""".stripMargin
     )
 
+  /**
+   * For optimization, we don't show any completions here as it would bring
+   * every extension method into the completion list.
+   */
   @Test def `simple-empty` =
     check(
       """|package example
@@ -238,11 +242,13 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |
          |def main = 100.@@
          |""".stripMargin,
-      """|incr: Int (extension)
-         |""".stripMargin,
+      "",
       filter = _.contains("(extension)")
     )
 
+  /**
+   * Some as above, but for implicit completions.
+   */
   @Test def `simple-empty-old` =
     check(
       """|package example
@@ -253,8 +259,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |
          |def main = 100.@@
          |""".stripMargin,
-      """|testOps(b: Int): String (implicit)
-         |""".stripMargin,
+      "",
       filter = _.contains("(implicit)")
     )
 
