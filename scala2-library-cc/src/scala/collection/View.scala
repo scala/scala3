@@ -309,8 +309,8 @@ object View extends IterableFactory[View] {
 
   /** A view that flatmaps elements of the underlying collection. */
   @SerialVersionUID(3L)
-  class FlatMap[A, B](underlying: SomeIterableOps[A]^, f: A => IterableOnce[B]^) extends AbstractView[B] {
-    def iterator: Iterator[B]^{underlying, f} = underlying.iterator.flatMap(f)
+  class FlatMap[A, B](underlying: SomeIterableOps[A]^, @caps.use f: A => IterableOnce[B]^) extends AbstractView[B] {
+    def iterator: Iterator[B]^{underlying, f*} = underlying.iterator.flatMap(f)
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
     override def isEmpty: Boolean = iterator.isEmpty
   }

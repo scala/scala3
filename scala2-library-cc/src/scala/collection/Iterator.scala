@@ -588,8 +588,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def next() = f(self.next())
   }
 
-  def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new AbstractIterator[B] {
-    private[this] var cur: Iterator[B]^{f} = Iterator.empty
+  def flatMap[B](@caps.use f: A => IterableOnce[B]^): Iterator[B]^{this, f*} = new AbstractIterator[B] {
+    private[this] var cur: Iterator[B]^{f*} = Iterator.empty
     /** Trillium logic boolean: -1 = unknown, 0 = false, 1 = true */
     private[this] var _hasNext: Int = -1
 
@@ -623,7 +623,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     }
   }
 
-  def flatten[B](implicit ev: A -> IterableOnce[B]): Iterator[B]^{this} =
+  def flatten[B](implicit ev: A -> IterableOnce[B]): Iterator[B]^{this, ev*} =
     flatMap[B](ev)
 
   def concat[B >: A](xs: => IterableOnce[B]^): Iterator[B]^{this, xs} = new Iterator.ConcatIterator[B](self).concat(xs)
@@ -982,7 +982,7 @@ object Iterator extends IterableFactory[Iterator] {
   /** Creates a target $coll from an existing source collection
     *
     * @param source Source collection
-    * @tparam A the type of the collection’s elements
+    * @tparam A the type of the collection's elements
     * @return a new $coll with the elements of `source`
     */
   override def from[A](source: IterableOnce[A]^): Iterator[A]^{source} = source.iterator
@@ -1003,7 +1003,7 @@ object Iterator extends IterableFactory[Iterator] {
 
   /**
     * @return A builder for $Coll objects.
-    * @tparam A the type of the ${coll}’s elements
+    * @tparam A the type of the ${coll}'s elements
     */
   def newBuilder[A]: Builder[A, Iterator[A]] =
     new ImmutableBuilder[A, Iterator[A]](empty[A]) {
