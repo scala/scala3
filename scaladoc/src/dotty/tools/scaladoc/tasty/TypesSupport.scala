@@ -114,6 +114,8 @@ trait TypesSupport:
         inner(tpe) :+ plain("*")
       case AnnotatedType(tpe, _) =>
         inner(tpe)
+      case FlexibleType(tpe) =>
+        inner(tpe)
       case tl @ TypeLambda(params, paramBounds, AppliedType(tpe, args))
         if paramBounds.map(inner).forall(_.isEmpty) && params.zip(args.map(inner).flatten.map(_.name)).forall(_ == _) =>
         inner(tpe)
