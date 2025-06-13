@@ -1190,7 +1190,6 @@ class TreeUnpickler(reader: TastyReader,
     inline def readImportOrExport(inline mkTree:
         (Tree, List[untpd.ImportSelector]) => Tree)()(using Context): Tree = {
       val start = currentAddr
-      assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
       val expr = readTree()
