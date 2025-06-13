@@ -131,8 +131,11 @@ object Applications {
     else productSelectorTypes(tp, NoSourcePosition)
 
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
-    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
-    sels.takeWhile(_.exists).toList
+    if tp.isError then
+      Nil
+    else
+      val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
+      sels.takeWhile(_.exists).toList
   }
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
