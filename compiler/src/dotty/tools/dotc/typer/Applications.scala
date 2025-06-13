@@ -131,8 +131,11 @@ object Applications {
     else productSelectorTypes(tp, NoSourcePosition)
 
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
-    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
-    sels.takeWhile(_.exists).toList
+    if tp.isError then
+      Nil
+    else
+      val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
+      sels.takeWhile(_.exists).toList
   }
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
@@ -218,7 +221,7 @@ object Applications {
       val isProduct = args match
         case x :: xs => x.isInstanceOf[untpd.NamedArg] || xs.nonEmpty
         case _ => false
-      if isProduct && !tp.derivesFrom(defn.SeqClass) && !tp.isError then
+      if isProduct && !tp.derivesFrom(defn.SeqClass) then
         productUnapplySelectors(tp).getOrElse:
           // There are unapplys with return types which have `get` and `_1, ..., _n`
           // as members, but which are not subtypes of Product. So `productUnapplySelectors`
