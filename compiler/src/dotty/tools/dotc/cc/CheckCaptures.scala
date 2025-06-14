@@ -1067,6 +1067,16 @@ class CheckCaptures extends Recheck, SymTransformer:
                                           // too annoying. This is a hole since a defualt getter's result type
                                           // might leak into a type variable.
 
+      def fail(tree: Tree, expected: Type, addenda: Addenda): Unit =
+        def maybeResult = if sym.is(Method) then " result" else ""
+        report.error(
+          em"""$sym needs an explicit$maybeResult type because the inferred type does not conform to
+              |the type that is externally visible in other compilation units.
+              |
+              | Inferred type          : ${tree.tpe}
+              | Externally visible type: $expected""",
+          tree.srcPos)
+
       def addenda(expected: Type) = new Addenda:
         override def toAdd(using Context) =
           def result = if tree.isInstanceOf[ValDef] then"" else " result"
@@ -1083,7 +1093,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val expected = tpt.tpe.dropAllRetains
           todoAtPostCheck += { () =>
             withCapAsRoot:
-              checkConformsExpr(tp, expected, tree.rhs, addenda(expected))
+              testAdapted(tp, expected, tree.rhs, addenda(expected))(fail)
               // The check that inferred <: expected is done after recheck so that it
               // does not interfere with normal rechecking by constraining capture set variables.
           }
