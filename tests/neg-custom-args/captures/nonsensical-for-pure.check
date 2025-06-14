@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/nonsensical-for-pure.scala:1:7 ------------------------------------------------
+1 |val x: Int^ = 2  // error
+  |       ^^^^
+  |       Int is a pure type, it makes no sense to add a capture set to it

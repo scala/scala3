@@ -1,7 +1,7 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:3:13 ----------------------------------------
-3 |  val x = Foo(m)   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:4:13 ----------------------------------------
+4 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m: (Bar.this.m² : String^)}^{Bar.this.m²}
+  |          Found:    Foo{val m: (Bar.this.m² : STR^)}^{Bar.this.m²}
   |          Required: Foo
   |
   |          where:    ^  refers to a fresh root capability in the type of value m²
@@ -12,14 +12,14 @@
   |          Note that the expected type Foo
   |          is the previously inferred type of value x
   |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Bar.this.m : String^)}^{Bar.this.m}
+  |          The new inferred type Foo{val m: (Bar.this.m : STR^)}^{Bar.this.m}
   |          must conform to this type.
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:5:13 ----------------------------------------
-5 |  val x = Foo(m)   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:6:13 ----------------------------------------
+6 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m: (Baz.this.m² : String^)}^{Baz.this.m²}
+  |          Found:    Foo{val m: (Baz.this.m² : STR^)}^{Baz.this.m²}
   |          Required: Foo
   |
   |          where:    ^  refers to a fresh root capability in the type of value m²
@@ -30,14 +30,14 @@
   |          Note that the expected type Foo
   |          is the previously inferred type of value x
   |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Baz.this.m : String^)}^{Baz.this.m}
+  |          The new inferred type Foo{val m: (Baz.this.m : STR^)}^{Baz.this.m}
   |          must conform to this type.
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:7:13 ----------------------------------------
-7 |  val x = Foo(m)   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:8:13 ----------------------------------------
+8 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m: (Bar1.this.m² : String^)}^{Bar1.this.m²}
+  |          Found:    Foo{val m: (Bar1.this.m² : STR^)}^{Bar1.this.m²}
   |          Required: Foo
   |
   |          where:    ^  refers to a fresh root capability in the type of value m²
@@ -48,25 +48,25 @@
   |          Note that the expected type Foo
   |          is the previously inferred type of value x
   |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Bar1.this.m : String^)}^{Bar1.this.m}
+  |          The new inferred type Foo{val m: (Bar1.this.m : STR^)}^{Bar1.this.m}
   |          must conform to this type.
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:9:13 ----------------------------------------
-9 |  val x = Foo(m)   // error
-  |          ^^^^^^
-  |          Found:    Foo{val m: (Baz2.this.m² : String^)}^{Baz2.this.m²}
-  |          Required: Foo
-  |
-  |          where:    ^  refers to a fresh root capability in the type of value m²
-  |                    m  is a value in class Foo
-  |                    m² is a value in trait Baz2
-  |
-  |
-  |          Note that the expected type Foo
-  |          is the previously inferred type of value x
-  |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: (Baz2.this.m : String^)}^{Baz2.this.m}
-  |          must conform to this type.
-  |
-  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:10:13 ---------------------------------------
+10 |  val x = Foo(m)   // error
+   |          ^^^^^^
+   |          Found:    Foo{val m: (Baz2.this.m² : STR^)}^{Baz2.this.m²}
+   |          Required: Foo
+   |
+   |          where:    ^  refers to a fresh root capability in the type of value m²
+   |                    m  is a value in class Foo
+   |                    m² is a value in trait Baz2
+   |
+   |
+   |          Note that the expected type Foo
+   |          is the previously inferred type of value x
+   |          which is also the type seen in separately compiled sources.
+   |          The new inferred type Foo{val m: (Baz2.this.m : STR^)}^{Baz2.this.m}
+   |          must conform to this type.
+   |
+   | longer explanation available when compiling with `-explain`
