@@ -3534,4 +3534,8 @@ final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContext
 
   override protected def explain(using Context): String = ""
 
-end IllegalContextBounds
+final class NamedPatternNotApplicable(selectorType: Type)(using Context) extends PatternMatchMsg(NamedPatternNotApplicableID):
+  override protected def msg(using Context): String =
+    i"Named patterns cannot be used with $selectorType, because it is not a named tuple or case class"
+
+  override protected def explain(using Context): String = ""

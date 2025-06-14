@@ -207,10 +207,10 @@ object Applications {
         case List(defn.NamedTuple(_, _))=>
           // if the product types list is a singleton named tuple, autotupling might be applied, so don't fail eagerly
           tryEither[Option[List[untpd.Tree]]]
-            (Some(desugar.adaptPatternArgs(elems, pt)))
+            (Some(desugar.adaptPatternArgs(elems, pt, pos)))
             ((_, _) => None)
         case pts =>
-          Some(desugar.adaptPatternArgs(elems, pt))
+          Some(desugar.adaptPatternArgs(elems, pt, pos))
 
     private def getUnapplySelectors(tp: Type)(using Context): List[Type] =
       // We treat patterns as product elements if
