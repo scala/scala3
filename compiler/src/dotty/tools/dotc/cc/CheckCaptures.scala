@@ -1322,6 +1322,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
+      testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
+
+    inline def testAdapted(actual: Type, expected: Type, tree: Tree, addenda: Addenda)
+        (fail: (Tree, Type, Addenda) => Unit)(using Context): Type =
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val actualBoxed = adapt(actual, expected1, tree)
       //println(i"check conforms $actualBoxed <<< $expected1")
@@ -1332,18 +1336,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
         case TypeComparer.CompareResult.Fail(notes) =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          err.typeMismatch(tree.withType(actualBoxed), expected1,
-              addApproxAddenda(
-                  addenda ++ errorNotes(notes),
-                  expected1))
+          fail(tree.withType(actualBoxed), expected1,
+            addApproxAddenda(addenda ++ errorNotes(notes), expected1))
           actual
         case /*OK*/ _ =>
           if debugSuccesses then tree match
-              case Ident(_) =>
-                println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
-              case _ =>
+            case Ident(_) =>
+              println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
+            case _ =>
           actualBoxed
-    end checkConformsExpr
+    end testAdapted
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
