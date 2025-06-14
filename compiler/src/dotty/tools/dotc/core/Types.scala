@@ -1657,19 +1657,17 @@ object Types extends TypeUtils {
         NoType
     }
 
-    /** The iterator of underlying types as long as type is a TypeProxy.
-     *  Useful for diagnostics
+    /** The iterator of underlying types staring with `this` and followed by
+     *  repeatedly applying `f` as long as type is a TypeProxy. Useful for diagnostics.
      */
-    def underlyingIterator(using Context): Iterator[Type] = new Iterator[Type] {
+    def iterate(f: TypeProxy => Type): Iterator[Type] = new Iterator[Type]:
       var current = Type.this
       var hasNext = true
-      def next() = {
+      def next() =
         val res = current
         hasNext = current.isInstanceOf[TypeProxy]
-        if (hasNext) current = current.asInstanceOf[TypeProxy].underlying
+        if hasNext then current = f(current.asInstanceOf[TypeProxy])
         res
-      }
-    }
 
     /** A prefix-less refined this or a termRef to a new skolem symbol
      *  that has the given type as info.
