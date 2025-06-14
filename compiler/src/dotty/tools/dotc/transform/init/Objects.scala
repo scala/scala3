@@ -287,11 +287,19 @@ class Objects(using Context @constructorOnly):
     def toScopeSet: ScopeSet = ScopeSet(values.asInstanceOf[Set[Scope]])
 
   case class ScopeSet(scopes: Set[Scope]):
-    assert(scopes.forall(_.isRef) || scopes.forall(_.isEnv), "All scopes should have the same type!")
+    def isRefSet = scopes.forall(_.isRef)
+
+    def isEnvSet = scopes.forall(_.isEnv)
 
     def show(using Context) = scopes.map(_.show).mkString("[", ",", "]")
 
-    def toValueSet: ValueSet = ValueSet(scopes.asInstanceOf[Set[ValueElement]])
+    def toValueSet: ValueSet =
+      assert(isRefSet, "Cannot convert scopeSet " + this.show + "to ValueSet!")
+      ValueSet(scopes.asInstanceOf[Set[ValueElement]])
+
+    def partitionByClass(target: ClassSymbol): (ScopeSet, ScopeSet) =
+      val (matchSet, unmatchSet) = scopes.partition(s => s.isRef && s.asRef.klass == target)
+      (ScopeSet(matchSet), ScopeSet(unmatchSet))
 
     def lookupSymbol(sym: Symbol)(using Heap.MutableData) = scopes.map(_.valValue(sym)).join
 
@@ -727,6 +735,11 @@ class Objects(using Context @constructorOnly):
           case ValueSet(values) => values.map(v => v.filterClass(klass)).join
           case fun: Fun =>
             if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
+
+  extension (thisV: ThisValue)
+    def toValueSet: ValueSet = thisV match
+      case ref: Ref => ValueSet(Set(ref))
+      case vs: ValueSet => vs
 
   given Join[ScopeSet] with
     extension (a: ScopeSet)
@@ -1377,7 +1390,7 @@ class Objects(using Context @constructorOnly):
           case OuterSelectName(_, _) =>
             val current = qualifier.tpe.classSymbol
             val target = expr.tpe.widenSingleton.classSymbol.asClass
-            withTrace(trace2) { resolveThis(target, qual) }
+            withTrace(trace2) { resolveThis(target, qual.asInstanceOf[ThisValue]) }
           case _ =>
             withTrace(trace2) { select(qual, expr.symbol, receiver = qualifier.tpe) }
 
@@ -1929,17 +1942,12 @@ class Objects(using Context @constructorOnly):
   def resolveThisRecur(target: ClassSymbol, scopeSet: ScopeSet): Contextual[ValueSet] =
     if scopeSet == Env.NoEnv then
       Bottom
+    else if scopeSet.isRefSet then
+      val (matchSet, unmatchSet) = scopeSet.partitionByClass(target)
+      val resolveUnmatchSet = resolveThisRecur(target, unmatchSet.outers)
+      matchSet.toValueSet.join(resolveUnmatchSet).asInstanceOf[ValueSet]
     else
-      val head = scopeSet.scopes.head
-      if head.isInstanceOf[Ref] then
-        val klass = head.asInstanceOf[Ref].klass
-        assert(scopeSet.scopes.forall(_.asInstanceOf[Ref].klass == klass), "Multiple possible outer class?")
-        if klass == target then
-          scopeSet.toValueSet
-        else
-          resolveThisRecur(target, scopeSet.outers)
-      else
-        resolveThisRecur(target, scopeSet.outers)
+      resolveThisRecur(target, scopeSet.outers)
 
   /** Resolve C.this that appear in `D.this`
    *
@@ -1950,7 +1958,7 @@ class Objects(using Context @constructorOnly):
    * Object access elision happens when the object access is used as a prefix
    * in `new o.C` and `C` does not need an outer.
    */
-  def resolveThis(target: ClassSymbol, thisV: Value, elideObjectAccess: Boolean = false): Contextual[ValueSet] = log("resolveThis target = " + target.show + ", this = " + thisV.show, printer, (_: Value).show) {
+  def resolveThis(target: ClassSymbol, thisV: ThisValue, elideObjectAccess: Boolean = false): Contextual[ValueSet] = log("resolveThis target = " + target.show + ", this = " + thisV.show, printer, (_: Value).show) {
     if target.is(Flags.Package) then
       val error = "[Internal error] target cannot be packages, target = " + target + Trace.show
       report.warning(error, Trace.position)
@@ -1960,7 +1968,7 @@ class Objects(using Context @constructorOnly):
       if elideObjectAccess then ValueSet(Set(res))
       else ValueSet(Set(accessObject(target)))
     else
-      thisV match
+      val resolveResult = thisV match
         case Bottom => Bottom
         case ref: Ref =>
           resolveThisRecur(target, ScopeSet(Set(ref)))
@@ -1969,6 +1977,11 @@ class Objects(using Context @constructorOnly):
         case _ =>
           report.warning("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + Trace.show, Trace.position)
           Bottom
+      if resolveResult == Bottom && thisV.filterClass(target) == thisV then
+        // `target` is not an outer class, but a parent class
+        thisV.toValueSet
+      else
+        resolveResult
   }
 
   /** Compute the outer value that corresponds to `tref.prefix`
