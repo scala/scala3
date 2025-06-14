@@ -1059,10 +1059,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
         sym.isLocalToCompilationUnit      // Symbols that can't be seen outside the compilation unit can always have inferred types
-        || sym.privateWithin == defn.EmptyPackageClass
-                                          // We make an exception for private symbols in a toplevel file in the empty package
+        || ctx.owner.enclosingPackageClass.isEmptyPackage
+                                          // We make an exception for symbols in the empty package.
                                           // these could theoretically be accessed from other files in the empty package, but
-                                          // it would be too annoying to require explicit types.
+                                          // usually it would be too annoying to require explicit types.
         || sym.name.is(DefaultGetterName) // Default getters are exempted since otherwise it would be
                                           // too annoying. This is a hole since a defualt getter's result type
                                           // might leak into a type variable.

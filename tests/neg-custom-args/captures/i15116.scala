@@ -1,3 +1,4 @@
+package test
 class STR
 class Foo(m: STR^)
 class Bar(val m: STR^):
