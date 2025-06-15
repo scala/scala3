@@ -1,15 +1,15 @@
 -- Error: tests/neg-custom-args/captures/try.scala:23:28 ---------------------------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                            ^^^^^^^^^^^^^^^^^^^
-   |                            Type variable R of method handle cannot be instantiated to box CT[Exception]^ since
+   |                            Type variable R of method handle cannot be instantiated to CT[Exception]^ since
    |                            that type captures the root capability `cap`.
    |
    |                            where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                                                 ^
-   |Found:    (x: CT[Exception]^) ->? box CT[Exception]^{x}
-   |Required: (x: CT[Exception]^) => box CT[Exception]^²
+   |Found:    (x: CT[Exception]^) ->? CT[Exception]^{x}
+   |Required: CT[Exception]^ => CT[Exception]^²
    |
    |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
@@ -22,7 +22,7 @@
 29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^
    |Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
-   |Required: (x: CT[Exception]^) => () -> Nothing
+   |Required: CT[Exception]^ => () -> Nothing
    |
    |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
@@ -33,8 +33,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:35:18 ------------------------------------------
 35 |  val xx = handle {  // error
    |                  ^
-   |Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |Required: (x: CT[Exception]^) => box () ->? Int
+   |Found:    (x: CT[Exception]^) ->? () ->{x} Int
+   |Required: CT[Exception]^ => () ->? Int
    |
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
@@ -51,8 +51,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:47:31 ------------------------------------------
 47 |val global: () -> Int = handle { // error
    |                               ^
-   |Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |Required: (x: CT[Exception]^) => box () ->? Int
+   |Found:    (x: CT[Exception]^) ->? () ->{x} Int
+   |Required: CT[Exception]^ => () ->? Int
    |
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability

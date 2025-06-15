@@ -1059,13 +1059,23 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
         sym.isLocalToCompilationUnit      // Symbols that can't be seen outside the compilation unit can always have inferred types
-        || sym.privateWithin == defn.EmptyPackageClass
-                                          // We make an exception for private symbols in a toplevel file in the empty package
+        || ctx.owner.enclosingPackageClass.isEmptyPackage
+                                          // We make an exception for symbols in the empty package.
                                           // these could theoretically be accessed from other files in the empty package, but
-                                          // it would be too annoying to require explicit types.
+                                          // usually it would be too annoying to require explicit types.
         || sym.name.is(DefaultGetterName) // Default getters are exempted since otherwise it would be
                                           // too annoying. This is a hole since a defualt getter's result type
                                           // might leak into a type variable.
+
+      def fail(tree: Tree, expected: Type, addenda: Addenda): Unit =
+        def maybeResult = if sym.is(Method) then " result" else ""
+        report.error(
+          em"""$sym needs an explicit$maybeResult type because the inferred type does not conform to
+              |the type that is externally visible in other compilation units.
+              |
+              | Inferred type          : ${tree.tpe}
+              | Externally visible type: $expected""",
+          tree.srcPos)
 
       def addenda(expected: Type) = new Addenda:
         override def toAdd(using Context) =
@@ -1083,7 +1093,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val expected = tpt.tpe.dropAllRetains
           todoAtPostCheck += { () =>
             withCapAsRoot:
-              checkConformsExpr(tp, expected, tree.rhs, addenda(expected))
+              testAdapted(tp, expected, tree.rhs, addenda(expected))(fail)
               // The check that inferred <: expected is done after recheck so that it
               // does not interfere with normal rechecking by constraining capture set variables.
           }
@@ -1322,7 +1332,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
+      testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
+
+    inline def testAdapted(actual: Type, expected: Type, tree: Tree, addenda: Addenda)
+        (fail: (Tree, Type, Addenda) => Unit)(using Context): Type =
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
+      val falseDeps = expected1 ne expected
       val actualBoxed = adapt(actual, expected1, tree)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
@@ -1332,26 +1347,23 @@ class CheckCaptures extends Recheck, SymTransformer:
       TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
         case TypeComparer.CompareResult.Fail(notes) =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          err.typeMismatch(tree.withType(actualBoxed), expected1,
-              addApproxAddenda(
-                  addenda ++ errorNotes(notes),
-                  expected1))
+          if falseDeps then expected1 = unalignFunction(expected1)
+          fail(tree.withType(actualBoxed), expected1,
+            addApproxAddenda(addenda ++ errorNotes(notes), expected1))
           actual
         case /*OK*/ _ =>
           if debugSuccesses then tree match
-              case Ident(_) =>
-                println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
-              case _ =>
+            case Ident(_) =>
+              println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
+            case _ =>
           actualBoxed
-    end checkConformsExpr
+    end testAdapted
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
       def recur(expected: Type): Type = expected.dealias match
-        case expected0 @ CapturingType(eparent, refs) =>
-          val eparent1 = recur(eparent)
-          if eparent1 eq eparent then expected
-          else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
+        case expected @ CapturingType(eparent, refs) =>
+          expected.derivedCapturingType(recur(eparent), refs)
         case expected @ defn.FunctionOf(args, resultType, isContextual)
         if defn.isNonRefinedFunction(expected) =>
           actual match
@@ -1368,6 +1380,14 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ => expected
         case _ => expected
       recur(expected)
+
+    private def unalignFunction(tp: Type)(using Context): Type = tp match
+      case tp @ CapturingType(parent, refs) =>
+        tp.derivedCapturingType(unalignFunction(parent), refs)
+      case defn.RefinedFunctionOf(mt) =>
+        mt.toFunctionType(alwaysDependent = false)
+      case _ =>
+        tp
 
     /** For the expected type, implement the rule outlined in #14390:
      *   - when checking an expression `a: Ta^Ca` against an expected type `Te^Ce`,

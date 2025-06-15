@@ -40,15 +40,15 @@
 -- Error: tests/neg-custom-args/captures/capt1.scala:36:16 -------------------------------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |             ^^^^^^^^^
-   |             Type variable X of method h cannot be instantiated to () -> box C^ since
-   |             the part box C^ of that type captures the root capability `cap`.
+   |             Type variable X of method h cannot be instantiated to () -> C^ since
+   |             the part C^ of that type captures the root capability `cap`.
    |
    |             where:    ^ refers to the universal root capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                        ^^^^^^^
-   |Found:    () ->{x} box C^{x}
-   |Required: () -> box C^
+   |Found:    () ->{x} C^{x}
+   |Required: () -> C^
    |
    |where:    ^ refers to a fresh root capability created in value z2 when checking argument to parameter a of method h
    |
@@ -56,7 +56,7 @@
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
 38 |  val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |             Type variable X of method h cannot be instantiated to box () ->{x} C^ since
+   |             Type variable X of method h cannot be instantiated to () ->{x} C^ since
    |             the part C^ of that type captures the root capability `cap`.
    |
    |             where:    ^ refers to the universal root capability

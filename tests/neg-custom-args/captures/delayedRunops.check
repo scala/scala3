@@ -11,4 +11,4 @@
 -- Error: tests/neg-custom-args/captures/delayedRunops.scala:22:16 -----------------------------------------------------
 22 |      val ops1: List[() => Unit] = ops // error
    |                ^^^^^^^^^^^^^^^^
-   |                Separation failure: value ops1's type List[box () => Unit] hides non-local parameter ops
+   |                Separation failure: value ops1's type List[() => Unit] hides non-local parameter ops

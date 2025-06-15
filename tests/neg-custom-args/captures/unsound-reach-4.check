@@ -9,7 +9,7 @@
 20 |  val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).
    |                             ^^^^^^^
    |                             Found:    Bar^?
-   |                             Required: Foo[box File^]
+   |                             Required: Foo[File^]
    |
    |                             where:    ^ refers to a fresh root capability in the type of value backdoor
    |
@@ -17,7 +17,7 @@
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------
 17 |  def use(@consume x: F): File^ = x // error @consume override
    |      ^
-   |      error overriding method use in trait Foo of type (x: File^): box File^;
+   |      error overriding method use in trait Foo of type (x: File^): File^;
    |        method use of type (@consume x: File^): File^² has incompatible type
    |
    |      where:    ^  refers to the universal root capability

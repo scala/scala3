@@ -280,9 +280,9 @@ extension (tp: Type)
     case tp: (TypeRef | AppliedType) =>
       val sym = tp.typeSymbol
       if sym.isClass then sym.isPureClass
-      else tp.superType.isAlwaysPure
+      else !tp.superType.isAny && tp.superType.isAlwaysPure
     case tp: TypeProxy =>
-      tp.superType.isAlwaysPure
+      !tp.superType.isAny && tp.superType.isAlwaysPure
     case tp: AndType =>
       tp.tp1.isAlwaysPure || tp.tp2.isAlwaysPure
     case tp: OrType =>

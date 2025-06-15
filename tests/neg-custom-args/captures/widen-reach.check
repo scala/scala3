@@ -9,7 +9,7 @@
 9 |  val foo: IO^ -> IO^ = x => x // error
   |                        ^^^^^^
   |                        Found:    (x: IO^) ->? IO^{x}
-  |                        Required: (x: IO^) -> IO^²
+  |                        Required: IO^ -> IO^²
   |
   |                        where:    ^  refers to the universal root capability
   |                                  ^² refers to a fresh root capability in the type of value foo

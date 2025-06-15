@@ -1,9 +1,11 @@
-class Foo(m: String^)
-class Bar(val m: String^):
+package test
+class STR
+class Foo(m: STR^)
+class Bar(val m: STR^):
   val x = Foo(m)   // error
-trait Baz(val m: String^):
+trait Baz(val m: STR^):
   val x = Foo(m)   // error
-class Bar1(m: String^):
+class Bar1(m: STR^):
   val x = Foo(m)   // error
-trait Baz2(m: String^):
+trait Baz2(m: STR^):
   val x = Foo(m)   // error
