@@ -131,7 +131,7 @@ trait Migrations:
   /** Report implicit parameter lists and rewrite implicit parameter list to contextual params */
   def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
     val mversion = mv.ImplicitParamsWithoutUsing
-    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty then
+    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty && pt.args.head.span.exists then
       // The application can only be rewritten if it uses parentheses syntax.
       // See issue #22927 and related tests.
       val hasParentheses = checkParentheses(tree, pt)
@@ -160,8 +160,10 @@ trait Migrations:
   end implicitParams
 
   private def checkParentheses(tree: Tree, pt: FunProto)(using Context): Boolean =
-    ctx.source.content
-      .slice(tree.span.end, pt.args.head.span.start)
+    val ptSpan = pt.args.head.span
+    ptSpan.exists
+    && ctx.source.content
+      .slice(tree.span.end, ptSpan.start)
       .exists(_ == '(')
 
   private def patchImplicitParams(tree: Tree, pt: FunProto)(using Context): Unit =
