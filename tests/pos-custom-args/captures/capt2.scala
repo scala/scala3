@@ -3,7 +3,7 @@ class C
 type Cap = C @retains[caps.cap.type]
 
 def test1() =
-  val y: String^ = ""
+  val y: C^ = C()
   def x: Object @retains[y.type] = y
 
 def test2() =

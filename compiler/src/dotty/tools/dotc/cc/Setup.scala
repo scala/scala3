@@ -406,19 +406,26 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
 
-      /** Check that types extending SharedCapability don't have a `cap` in their capture set.
-       *  TODO This is not enough.
-       *  We need to also track that we cannot get exclusive capabilities in paths
-       *  where some prefix derives from SharedCapability. Also, can we just
-       *  exclude `cap`, or do we have to extend this to all exclusive capabilties?
-       *  The problem is that we know what is exclusive in general only after capture
-       *  checking, not before.
+      /** 1. Check that parents of capturing types are not pure.
+       *  2. Check that types extending SharedCapability don't have a `cap` in their capture set.
+       *     TODO This is not enough.
+       *     We need to also track that we cannot get exclusive capabilities in paths
+       *     where some prefix derives from SharedCapability. Also, can we just
+       *     exclude `cap`, or do we have to extend this to all exclusive capabilties?
+       *     The problem is that we know what is exclusive in general only after capture
+       *     checking, not before.
        */
-      def checkSharedOK(tp: Type): tp.type =
+      def checkRetainsOK(tp: Type): tp.type =
         tp match
-          case CapturingType(parent, refs)
-          if refs.isUniversal && parent.derivesFromSharedCapability =>
-            fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
+          case CapturingType(parent, refs) =>
+            if parent.isAlwaysPure && !tptToCheck.span.isZeroExtent then
+              // If tptToCheck is zero-extent it could be copied from an overridden
+              // method's result type. In that case, there's no point requiring
+              // an explicit result type in the override, the inherited capture set
+              // will be ignored anyway.
+              fail(em"$parent is a pure type, it makes no sense to add a capture set to it")
+            else if refs.isUniversal && parent.derivesFromSharedCapability then
+              fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
           case _ =>
         tp
 
@@ -436,7 +443,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def innerApply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
-            checkSharedOK:
+            checkRetainsOK:
               t.derivedCapturingType(stripImpliedCaptureSet(this(parent)), refs)
           case t @ AnnotatedType(parent, ann) =>
             val parent1 = this(parent)
@@ -445,7 +452,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               if !tptToCheck.isEmpty then
                 checkWellformedLater(parent2, ann.tree, tptToCheck)
               try
-                checkSharedOK:
+                checkRetainsOK:
                   CapturingType(parent2, ann.tree.toCaptureSet)
               catch case ex: IllegalCaptureRef =>
                 if !tptToCheck.isEmpty then
