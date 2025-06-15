@@ -282,7 +282,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp @ CapturingType(parent, refs) =>
-        val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
+        val boxText: Text = Str("box ") provided tp.isBoxed && ccVerbose
         if elideCapabilityCaps
             && parent.derivesFrom(defn.Caps_Capability)
             && refs.containsTerminalCapability
