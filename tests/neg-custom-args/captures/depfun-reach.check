@@ -2,7 +2,7 @@
 12 |    List(() => op.foreach((f,g) => { f(); g() })) // error (???)
    |                           ^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (box () ->? Unit, box () ->? Unit)^?) ->? Unit
-   |Required: (x$1: (box () ->{op*} Unit, box () ->{op*} Unit)) => Unit
+   |Required: ((box () ->{op*} Unit, box () ->{op*} Unit)) => Unit
    |
    |where:    => refers to a fresh root capability created in anonymous function of type (): Unit when checking argument to parameter op of method foreach
    |

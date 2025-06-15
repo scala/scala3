@@ -2,7 +2,7 @@
 22 |  usingFile: f => // error
    |             ^
    |Found:    (f: File^?) ->? Unit
-   |Required: (f: File^) => Unit
+   |Required: File^ => Unit
    |
    |where:    => refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
    |          ^  refers to the universal root capability
@@ -13,7 +13,7 @@
 32 |  usingFile: f => // error
    |             ^
    |Found:    (f: File^?) ->? Unit
-   |Required: (f: File^) => Unit
+   |Required: File^ => Unit
    |
    |where:    => refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
    |          ^  refers to the universal root capability
@@ -59,7 +59,7 @@
 59 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
    |                           Found:    (x: File^) ->? File^{x}
-   |                           Required: (x: File^) -> File^²
+   |                           Required: File^ -> File^²
    |
    |                           where:    ^  refers to the universal root capability
    |                                     ^² refers to a fresh root capability in the type of value id
@@ -82,7 +82,7 @@
 70 |  val leaked = usingFile[File^{id*}]: f => // error
    |                                      ^
    |Found:    (f: File^?) ->? box File^{id*}
-   |Required: (f: File^) => box File^{id*}
+   |Required: File^ => box File^{id*}
    |
    |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
    |          ^  refers to the universal root capability
@@ -99,7 +99,7 @@
 91 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (box A^ ->? A^?, box A^ ->? A^?)^?) ->? box A^? ->? A^?
-   |Required: (x$1: (box A ->{ps*} A, box A ->{ps*} A)) => box A^? ->? A^?
+   |Required: ((box A ->{ps*} A, box A ->{ps*} A)) => box A^? ->? A^?
    |
    |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
    |          ^  refers to the universal root capability

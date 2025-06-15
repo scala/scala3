@@ -2,7 +2,7 @@
 8 |  x.value(cap => cap.use())  // error, was OK
   |          ^^^^^^^^^^^^^^^^
   |          Found:    (cap: box Cap^?) => Int
-  |          Required: (cap: box Cap^) =>² Int
+  |          Required: box Cap^ =>² Int
   |
   |          where:    =>  refers to the universal root capability
   |                    =>² refers to a fresh root capability created in method test1
@@ -13,13 +13,13 @@
 15 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
    |          Found:    (cap: box Cap^{io}) ->{io} Int
-   |          Required: (cap: box Cap^{io}) -> Int
+   |          Required: box Cap^{io} -> Int
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:29:10 ------------------------------
 29 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
    |          Found:    (cap: box Cap^?) ->{io, fs} Int
-   |          Required: (cap: box Cap^{io, fs}) ->{io} Int
+   |          Required: box Cap^{io, fs} ->{io} Int
    |
    | longer explanation available when compiling with `-explain`

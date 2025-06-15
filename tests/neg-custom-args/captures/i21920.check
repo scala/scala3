@@ -2,7 +2,7 @@
 34 |  val cell: Cell[File] = File.open(f => Cell(() => Seq(f))) // error
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (f: File^?) ->? box Cell[box File^?]{val head: () ->? IterableOnce[box File^?]^?}^?
-   |Required: (f: File^) => box Cell[box File^?]{val head: () ->? IterableOnce[box File^?]^?}^?
+   |Required: File^ => box Cell[box File^?]{val head: () ->? IterableOnce[box File^?]^?}^?
    |
    |where:    => refers to a fresh root capability created in value cell when checking argument to parameter f of method open
    |          ^  refers to the universal root capability

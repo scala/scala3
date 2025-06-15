@@ -50,7 +50,7 @@
 44 |    io => () => io.use()  // error
    |    ^^^^^^^^^^^^^^^^^^^^
    |    Found:    (io: Capp^) ->? () ->{io} Unit
-   |    Required: (io: Capp^) -> () -> Unit
+   |    Required: Capp^ -> () -> Unit
    |
    |    where:    ^ refers to the universal root capability
    |

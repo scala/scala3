@@ -16,7 +16,7 @@
 15 |  val a = usingIO[IO^](x => x) // error // error
    |                       ^^^^^^
    |Found:    (x: IO^) ->? box IO^{x}
-   |Required: (x: IO^) => box IO^²
+   |Required: IO^ => box IO^²
    |
    |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
    |          ^  refers to the universal root capability
@@ -48,7 +48,7 @@
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
    |                                                                   ^^^^^^
    |                                              Found:    (x: Boxed[box IO^]^?) ->? Boxed[box IO^{x*}]^?
-   |                                              Required: (x: Boxed[box IO^]) -> Boxed[box IO^²]
+   |                                              Required: Boxed[box IO^] -> Boxed[box IO^²]
    |
    |                                              where:    ^  refers to the universal root capability
    |                                                        ^² refers to a fresh root capability created in value x²

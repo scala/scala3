@@ -9,6 +9,6 @@
 22 |    r.setV(g) // error
    |           ^
    |           Found:    (x: String) ->{cap3} String
-   |           Required: (x: String) -> String
+   |           Required: String -> String
    |
    | longer explanation available when compiling with `-explain`

@@ -9,7 +9,7 @@
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                                                 ^
    |Found:    (x: CT[Exception]^) ->? box CT[Exception]^{x}
-   |Required: (x: CT[Exception]^) => box CT[Exception]^²
+   |Required: CT[Exception]^ => box CT[Exception]^²
    |
    |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
@@ -22,7 +22,7 @@
 29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^
    |Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
-   |Required: (x: CT[Exception]^) => () -> Nothing
+   |Required: CT[Exception]^ => () -> Nothing
    |
    |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
@@ -34,7 +34,7 @@
 35 |  val xx = handle {  // error
    |                  ^
    |Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |Required: (x: CT[Exception]^) => box () ->? Int
+   |Required: CT[Exception]^ => box () ->? Int
    |
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
@@ -52,7 +52,7 @@
 47 |val global: () -> Int = handle { // error
    |                               ^
    |Found:    (x: CT[Exception]^) ->? box () ->{x} Int
-   |Required: (x: CT[Exception]^) => box () ->? Int
+   |Required: CT[Exception]^ => box () ->? Int
    |
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
