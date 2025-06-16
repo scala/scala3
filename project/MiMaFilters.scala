@@ -19,6 +19,10 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$namedTupleOrdering"),
       ),
 
       // Additions since last LTS
