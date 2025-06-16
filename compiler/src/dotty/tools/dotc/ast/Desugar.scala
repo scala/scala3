@@ -1489,13 +1489,18 @@ object desugar {
         case _ => -1
       }
 
+      val nonWildcardVars = pat match {
+        case Tuple(pats) => pats.filterNot(isWildcardPattern).length
+        case _ => -1
+      }
+
       val isMatchingTuple: Tree => Boolean = {
         case Tuple(es) => varTuplePatternArity == es.length && !hasNamedArg(es)
         case _ => false
       }
 
       // We can only optimize `val pat = if (...) e1 else e2` if:
-      // - `e1` and `e2` are both tuples of arity N
+      // - `e1` and `e2` are both literal tuples of arity N
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
@@ -1504,7 +1509,7 @@ object desugar {
         case _ => false
 
       val vars =
-        if (tupleOptimizable) // include `_`
+        if varTuplePatternArity > 0 && nonWildcardVars > 1 then // include `_`
           pat match
             case Tuple(pats) => pats.map { case id: Ident => id -> TypeTree() }
         else
@@ -1522,7 +1527,7 @@ object desugar {
         if tupleOptimizable then rhs
         else
           val caseDef =
-            if varTuplePatternArity >= 0 && ids.length > 1 then
+            if varTuplePatternArity > 0 && ids.length > 1 then
               // If the pattern contains only simple variables or wildcards,
               // we don't need to create a new tuple.
               // If there is only one variable (ids.length == 1),
