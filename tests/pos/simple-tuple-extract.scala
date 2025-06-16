@@ -1,34 +1,37 @@
 
 class Test:
-  def f1: (Int, Int, Int) = (1, 2, 3)
-  def f2: (x: Int, y: Int) = (3, 4)
+  def f1: (Int, String, AnyRef) = (1, "2", "3")
+  def f2: (x: Int, y: String) = (0, "y")
 
   def test1 =
     val (a, b, c) = f1
     // Desugared to:
-    // val $2$: (Int, Int, Int) =
-    //   this.f1:(Int, Int, Int) @unchecked match
+    // val $2$: (Int, String, AnyRef) =
+    //   this.f1:(Int, String, AnyRef) @unchecked match
     //     {
-    //       case $1$ @ Tuple3.unapply[Int, Int, Int](_, _, _) =>
-    //         $1$:(Int, Int, Int)
+    //       case $1$ @ Tuple3.unapply[Int, String, Object](_, _, _) =>
+    //         $1$:(Int, String, AnyRef)
     //     }
     // val a: Int = $2$._1
-    // val b: Int = $2$._2
-    // val c: Int = $2$._3
-    a + b + c
+    // val b: String = $2$._2
+    // val c: AnyRef = $2$._3
+    a + b.length() + c.toString.length()
 
   def test2 =
-    val (_, d, e) = f1
-    e + e
+    val (_, b, c) = f1
+    b.length() + c.toString.length()
+
+    val (a2, _, c2) = f1
+    a2 + c2.toString.length()
 
   def test3 =
-    val (_, f, _) = f1
-    f + f
+    val (_, b, _) = f1
+    b.length() + 1
 
   def test4 =
     val (x, y) = f2
-    x + y
+    x + y.length()
 
   def test5 =
-    val (_, a) = f2
-    a + a
+    val (_, b) = f2
+    b.length() + 1
