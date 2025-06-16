@@ -1762,18 +1762,18 @@ object desugar {
   def adaptPatternArgs(elems: List[Tree], pt: Type, pos: SrcPos)(using Context): List[Tree] =
 
     def reorderedNamedArgs(wildcardSpan: Span): List[untpd.Tree] =
-      val isCaseClass = pt.classSymbol.is(CaseClass) && !defn.isTupleClass(pt.classSymbol)
-      if !pt.isNamedTupleType && !isCaseClass then
+      inline def isCaseClass = pt.classSymbol.is(CaseClass) && !defn.isTupleClass(pt.classSymbol)
+      if !isCaseClass && !pt.isNamedTupleType then
         report.error(NamedPatternNotApplicable(pt), pos)
         Nil
       else
         var selNames = pt.namedTupleElementTypes(false).map(_(0))
-        if selNames.isEmpty && isCaseClass then
+        if isCaseClass && selNames.isEmpty then
           selNames = pt.classSymbol.caseAccessors.map(_.name.asTermName)
         val nameToIdx = selNames.zipWithIndex.toMap
         val reordered = Array.fill[untpd.Tree](selNames.length):
           untpd.Ident(nme.WILDCARD).withSpan(wildcardSpan)
-        for case arg@NamedArg(name: TermName, _) <- elems do
+        for case arg @ NamedArg(name: TermName, _) <- elems do
           nameToIdx.get(name) match
             case Some(idx) =>
               if reordered(idx).isInstanceOf[Ident] then
