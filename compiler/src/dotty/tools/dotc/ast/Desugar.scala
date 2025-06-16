@@ -1483,14 +1483,14 @@ object desugar {
               |please bind to an identifier and use an alias given.""", bind)
         false
 
-      def isTuplePattern(arity: Int): Boolean = pat match {
-        case Tuple(pats) if pats.size == arity =>
-          pats.forall(isVarPattern)
-        case _ => false
+      // The arity of the tuple pattern if it only contains simple variables or wildcards.
+      val varTuplePatternArity = pat match {
+        case Tuple(pats) if pats.forall(isVarPattern) => pats.length
+        case _ => -1
       }
 
       val isMatchingTuple: Tree => Boolean = {
-        case Tuple(es) => isTuplePattern(es.length) && !hasNamedArg(es)
+        case Tuple(es) => varTuplePatternArity == es.length && !hasNamedArg(es)
         case _ => false
       }
 
@@ -1519,10 +1519,28 @@ object desugar {
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val matchExpr =
-        if (tupleOptimizable) rhs
+        if tupleOptimizable then rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
+          val caseDef =
+            if varTuplePatternArity >= 0 && ids.length > 1 then
+              // If the pattern contains only simple variables or wildcards,
+              // we don't need to create a new tuple.
+              // If there is only one variable (ids.length == 1),
+              // `makeTuple` will optimize it to `Ident(named)`,
+              // so we don't need to handle that case here.
+              val tmpTuple = UniqueName.fresh()
+              // Replace all variables with wildcards in the pattern
+              val pat1 = pat match
+                case Tuple(pats) =>
+                  Tuple(pats.map(pat => Ident(nme.WILDCARD).withSpan(pat.span)))
+              CaseDef(
+                Bind(tmpTuple, pat1),
+                EmptyTree,
+                Ident(tmpTuple).withAttachment(ForArtifact, ())
+              )
+            else CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
