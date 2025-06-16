@@ -21,7 +21,6 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
         ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$namedTupleOrdering"),
 
 		// cc related
