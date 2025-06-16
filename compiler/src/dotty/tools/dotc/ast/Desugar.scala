@@ -1557,8 +1557,6 @@ object desugar {
 
       val ids = for ((named, tpt) <- vars) yield Ident(named.name)
 
-      // println(s"fullTupleOptimizable = $fullTupleOptimizable, partialTupleOptimizable = $partialTupleOptimizable, ids = $ids")
-
       val matchExpr =
         if fullTupleOptimizable then rhs
         else
