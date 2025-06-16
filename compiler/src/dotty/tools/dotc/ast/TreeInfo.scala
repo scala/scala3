@@ -207,17 +207,6 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _  => false
   }
 
-  /** Is tree a wildcard pattern? Not including `x @ _` */
-  def isWildcardPattern(pat: Tree): Boolean = unsplice(pat) match {
-    case x: Ident => x.name == nme.WILDCARD && !isBackquoted(x)
-    case _  => false
-  }
-
-  def isTypedVarPattern(pat: Tree): Boolean = unsplice(pat) match {
-    case Typed(id: Ident, _) if id.name.isVarPattern && !isBackquoted(id) => true
-    case _ => false
-  }
-
   /** The first constructor definition in `stats` */
   def firstConstructor(stats: List[Tree]): Tree = stats match {
     case (meth: DefDef) :: _ if meth.name.isConstructorName => meth
@@ -416,8 +405,6 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
-
-  
 
   /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`
    *  represented as an untyped or typed tree.

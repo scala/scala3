@@ -17,6 +17,9 @@ class Test:
     // val c: AnyRef = $2$._3
     a + b.length() + c.toString.length()
 
+    // This pattern will not be optimized:
+    // val (a1, b1, c1: String) = f1
+
   def test2 =
     val (_, b, c) = f1
     b.length() + c.toString.length()
