@@ -104,19 +104,26 @@ object ImplicitNullInterop {
     def needsNull(tp: Type): Boolean =
       if outermostLevelAlreadyNullable then false
       else tp match
+        case tp: TypeRef if !tp.hasSimpleKind => false
         case tp: TypeRef if
           // We don't modify value types because they're non-nullable even in Java.
           tp.symbol.isValueClass
           // We don't modify unit types.
           || tp.isRef(defn.UnitClass)
           // We don't modify `Any` because it's already nullable.
-          || tp.isRef(defn.AnyClass)
-          // We don't nullify Java varargs at the top level.
-          // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
-          // then its Scala signature will be `def setNames(names: (String|Null)*): Unit`.
-          // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
-          // and not a `null` array.
-          || !ctx.flexibleTypes && tp.isRef(defn.RepeatedParamClass) => false
+          || tp.isRef(defn.AnyClass) => false
+        case _ => true
+
+    // We don't nullify Java varargs at the top level.
+    // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
+    // then its Scala signature will be `def setNames(names: (String|Null)*): Unit`.
+    // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
+    // and not a `null` array.
+    def tyconNeedsNull(tp: Type): Boolean =
+      if outermostLevelAlreadyNullable then false
+      else tp match
+        case tp: TypeRef
+          if !ctx.flexibleTypes && tp.isRef(defn.RepeatedParamClass) => false
         case _ => true
 
     override def apply(tp: Type): Type = tp match {
@@ -130,7 +137,7 @@ object ImplicitNullInterop {
         val targs2 = targs map this
         outermostLevelAlreadyNullable = oldOutermostNullable
         val appTp2 = derivedAppliedType(appTp, tycon, targs2)
-        if needsNull(tycon) then nullify(appTp2) else appTp2
+        if tyconNeedsNull(tycon) then nullify(appTp2) else appTp2
       case ptp: PolyType =>
         derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
       case mtp: MethodType =>
