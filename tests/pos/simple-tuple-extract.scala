@@ -24,6 +24,9 @@ class Test:
     val (a2, _, c2) = f1
     a2 + c2.toString.length()
 
+    val (a3, _, _) = f1
+    a3 + 1
+
   def test3 =
     val (_, b, _) = f1
     b.length() + 1
