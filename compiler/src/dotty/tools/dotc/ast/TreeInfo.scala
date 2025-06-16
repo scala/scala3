@@ -207,6 +207,12 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _  => false
   }
 
+  /** Is tree a wildcard pattern? Not including `x @ _` */
+  def isWildcardPattern(pat: Tree): Boolean = unsplice(pat) match {
+    case x: Ident => x.name == nme.WILDCARD && !isBackquoted(x)
+    case _  => false
+  }
+
   /** The first constructor definition in `stats` */
   def firstConstructor(stats: List[Tree]): Tree = stats match {
     case (meth: DefDef) :: _ if meth.name.isConstructorName => meth

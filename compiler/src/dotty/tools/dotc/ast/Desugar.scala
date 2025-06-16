@@ -1483,19 +1483,24 @@ object desugar {
               |please bind to an identifier and use an alias given.""", bind)
         false
 
-      def isTuplePattern(arity: Int): Boolean = pat match {
-        case Tuple(pats) if pats.size == arity =>
-          pats.forall(isVarPattern)
-        case _ => false
+      // The arity of the tuple pattern if it only contains simple variables or wildcards.
+      val varTuplePatternArity = pat match {
+        case Tuple(pats) if pats.forall(isVarPattern) => pats.length
+        case _ => -1
+      }
+
+      val nonWildcardVars = pat match {
+        case Tuple(pats) => pats.filterNot(isWildcardPattern).length
+        case _ => -1
       }
 
       val isMatchingTuple: Tree => Boolean = {
-        case Tuple(es) => isTuplePattern(es.length) && !hasNamedArg(es)
+        case Tuple(es) => varTuplePatternArity == es.length && !hasNamedArg(es)
         case _ => false
       }
 
       // We can only optimize `val pat = if (...) e1 else e2` if:
-      // - `e1` and `e2` are both tuples of arity N
+      // - `e1` and `e2` are both literal tuples of arity N
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
@@ -1504,7 +1509,7 @@ object desugar {
         case _ => false
 
       val vars =
-        if (tupleOptimizable) // include `_`
+        if varTuplePatternArity > 0 && nonWildcardVars > 1 then // include `_`
           pat match
             case Tuple(pats) => pats.map { case id: Ident => id -> TypeTree() }
         else
@@ -1519,10 +1524,28 @@ object desugar {
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val matchExpr =
-        if (tupleOptimizable) rhs
+        if tupleOptimizable then rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
+          val caseDef =
+            if varTuplePatternArity > 0 && ids.length > 1 then
+              // If the pattern contains only simple variables or wildcards,
+              // we don't need to create a new tuple.
+              // If there is only one variable (ids.length == 1),
+              // `makeTuple` will optimize it to `Ident(named)`,
+              // so we don't need to handle that case here.
+              val tmpTuple = UniqueName.fresh()
+              // Replace all variables with wildcards in the pattern
+              val pat1 = pat match
+                case Tuple(pats) =>
+                  Tuple(pats.map(pat => Ident(nme.WILDCARD).withSpan(pat.span)))
+              CaseDef(
+                Bind(tmpTuple, pat1),
+                EmptyTree,
+                Ident(tmpTuple).withAttachment(ForArtifact, ())
+              )
+            else CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
