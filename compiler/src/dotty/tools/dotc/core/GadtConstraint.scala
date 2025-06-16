@@ -33,6 +33,18 @@ class GadtConstraint private (
     reverseMapping = reverseMapping.updated(tv.origin, sym),
   )
 
+  def replace(param: TypeParamRef, tp: Type)(using Context) =
+    var constr = constraint
+    for
+      poly <- constraint.domainLambdas
+      paramRef <- poly.paramRefs
+    do
+      val entry0 = constr.entry(paramRef)
+      val entry1 = entry0.substParam(param, tp)
+      if entry1 ne entry0 then
+        constr = constr.updateEntry(paramRef, entry1)
+    withConstraint(constr)
+
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
@@ -244,6 +256,9 @@ sealed trait GadtState {
     if constraint ne saved then gadt = gadt.withWasConstrained
     result
   }
+
+  def replace(param: TypeParamRef, tp: Type)(using Context) =
+    gadt = gadt.replace(param, tp)
 
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type = {

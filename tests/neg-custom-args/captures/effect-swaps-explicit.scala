@@ -14,7 +14,7 @@ end boundary
 
 import boundary.{Label, break}
 
-trait Async extends caps.Capability
+trait Async extends caps.SharedCapability
 object Async:
   def blocking[T](body: Async ?=> T): T = ???
 
@@ -65,12 +65,12 @@ def test[T, E](using Async) =
           fr.await.ok
 
     def fail4[T, E](fr: Future[Result[T, E]]^) =
-        Result.make: //lbl ?=> // error, escaping label from Result
-          Future: fut ?=>
+        Result.make: //lbl ?=>
+          Future: fut ?=> // error, type mismatch
             fr.await.ok
 
     def fail5[T, E](fr: Future[Result[T, E]]^) =
-        Result.make[Future[T], E]: lbl ?=>
-          Future: fut ?=> // error: type mismatch
+        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
+          Future: fut ?=>
             fr.await.ok
 

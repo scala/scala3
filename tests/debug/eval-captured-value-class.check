@@ -1,0 +1,23 @@
+break Test$ 14
+eval new A("foo")
+result fo
+eval m("bar")
+result ba
+
+break Test$A$1 9
+eval size
+result 2
+eval size.value
+result 2
+eval new A("foo")
+result fo
+
+break Test$ 12
+eval size
+result 2
+eval size.value
+result 2
+eval new A("foo")
+result fo
+eval m("bar")
+result ba

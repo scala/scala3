@@ -1,4 +1,4 @@
-//> using options  -Wunused:all
+//> using options -Wunused:all -Ystop-after:checkUnusedPostInlining
 
 import collection.mutable.{Map => MutMap} // warn
 import collection.mutable.Set // warn
@@ -17,10 +17,12 @@ class A {
   private def c2 = 2 // OK
   def c3 = c2
 
-  def d1(using x:Int): Int = default_int // ok
-  def d2(using x:Int): Int = x // OK
+  def d1(using x: Int): Int = default_int // warn param
+  def d2(using x: Int): Int = x // OK
+  def d3(using Int): Int = summon[Int] // OK
+  def d4(using Int): Int = default_int // warn
 
-  def e1(x: Int) = default_int // ok
+  def e1(x: Int) = default_int // warn param
   def e2(x: Int) = x // OK
   def f =
     val x = 1 // warn
@@ -29,11 +31,15 @@ class A {
     def g = 4 // OK
     y + g
 
-  // todo : uncomment once patvars is fixed
-  // def g(x: Int): Int = x match
-  //   case x:1 => 0 // ?error
-  //   case x:2 => x // ?OK
-  //   case _ => 1 // ?OK
+  def g(x: Int): Int = x match
+    case x: 1 => 0 // no warn same name as selector (for shadowing or unused)
+    case x: 2 => x // OK
+    case _    => 1 // OK
+
+  def h(x: Int): Int = x match
+    case y: 1 => 0 // warn unused despite trivial type and RHS
+    case y: 2 => y // OK
+    case _    => 1 // OK
 }
 
 /* ---- CHECK scala.annotation.unused ---- */
@@ -44,7 +50,7 @@ package foo.test.scala.annotation:
   val default_int = 12
 
   def a1(a: Int) = a // OK
-  def a2(a: Int) = default_int // ok
+  def a2(a: Int) = default_int // warn
 
   def a3(@unused a: Int) = default_int //OK
 
@@ -82,8 +88,8 @@ package foo.test.i16678:
   def run =
     println(foo(number => number.toString, value = 5)) // OK
     println(foo(number => "<number>", value = 5)) // warn
-    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = number => number.toString, value = 5)) // OK
+    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = _.toString, value = 5)) // OK
 
 package foo.test.possibleclasses:
@@ -91,7 +97,7 @@ package foo.test.possibleclasses:
     k: Int, // OK
     private val y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int,
+    s: Int, // warn
     val t: Int, // OK
     private val z: Int // warn
   )
@@ -130,22 +136,22 @@ package foo.test.possibleclasses:
 package foo.test.possibleclasses.withvar:
   case class AllCaseClass(
     k: Int, // OK
-    private var y: Int // OK /* Kept as it can be taken from pattern */
+    private var y: Int // warn unset
   )(
-    s: Int,
-    var t: Int, // OK
-    private var z: Int // warn
+    s: Int, // warn
+    var ttt: Int, // OK
+    private var zzz: Int // warn
   )
 
   case class AllCaseUsed(
     k: Int, // OK
-    private var y: Int // OK
+    private var y: Int // warn unset
   )(
     s: Int, // OK
-    var t: Int, // OK global scope can be set somewhere else
-    private var z: Int // warn not set
+    var tt: Int, // OK global scope can be set somewhere else
+    private var zz: Int // warn not set
   ) {
-    def a = k + y + s + t + z
+    def a = k + y + s + tt + zz
   }
 
   class AllClass(
@@ -199,14 +205,14 @@ package foo.test.i16877:
 package foo.test.i16926:
   def hello(): Unit =
     for {
-      i <- (0 to 10).toList
+      i <- (0 to 10).toList // warn patvar
       (a, b) = "hello" -> "world" // OK
     } yield println(s"$a $b")
 
 package foo.test.i16925:
   def hello =
     for {
-      i <- 1 to 2 if true
+      i <- 1 to 2 if true // OK
       _ = println(i) // OK
     } yield ()
 
@@ -247,7 +253,7 @@ package foo.test.i16679a:
       import scala.deriving.Mirror
       object CaseClassByStringName:
         inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassByStringName[A] =
-          new CaseClassByStringName[A]: // warn
+          new CaseClassByStringName[A]:
             def name: String = A.toString
 
   object secondPackage:
@@ -263,7 +269,7 @@ package foo.test.i16679b:
     object CaseClassName:
       import scala.deriving.Mirror
       inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassName[A] =
-        new CaseClassName[A]: // warn
+        new CaseClassName[A]:
           def name: String = A.toString
 
   object Foo:
@@ -279,7 +285,7 @@ package foo.test.i17156:
   package a:
     trait Foo[A]
     object Foo:
-      inline def derived[T]: Foo[T] = new Foo{} // warn
+      inline def derived[T]: Foo[T] = new Foo {}
 
   package b:
     import a.Foo
@@ -313,3 +319,52 @@ package foo.test.i17117:
       val test = t1.test
     }
   }
+
+// manual testing of cached look-ups
+package deeply:
+  object Deep:
+    def f(): Unit =
+      def g(): Unit =
+        def h(): Unit =
+          println(Deep)
+          println(Deep)
+          println(Deep)
+        h()
+      g()
+    override def toString = "man, that is deep!"
+/* result cache saves before context traversal and import/member look-up
+CHK object Deep
+recur * 10 = context depth is 10 between reference and definition
+CHK method println
+recur = was 19 at predef where max root is 21
+CHK object Deep
+recur = cached result
+CHK method println
+recur
+CHK object Deep
+recur
+*/
+
+package constructors:
+  class C private (i: Int): // warn param
+    def this() = this(27)
+    private def this(s: String) = this(s.toInt) // warn ctor
+    def c = new C(42)
+    private def f(i: Int) = i // warn overloaded member
+    private def f(s: String) = s
+    def g = f("hello") // use one of overloaded member
+
+  class D private (i: Int):
+    private def this() = this(42) // no warn used by companion
+    def d = i
+  object D:
+    def apply(): D = new D()
+
+package reversed: // reverse-engineered
+  class C:
+    def c: scala.Int = 42 // Int marked used; lint does not look up <empty>.scala
+  class D:
+    def d: Int = 27 // Int is found in root import scala.*
+  class E:
+    import scala.* // no warn because root import (which is cached! by previous lookup) is lower precedence
+    def e: Int = 27

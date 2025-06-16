@@ -1,0 +1,9 @@
+-- [E008] Not Found Error: tests/neg/22145e.scala:11:4 -----------------------------------------------------------------
+11 |  2.f() // error
+   |  ^^^
+   |  value f is not a member of Int, but could be made available as an extension method.
+   |
+   |  The following import might fix the problem:
+   |
+   |    import foo.O2.Ext.f
+   |

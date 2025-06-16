@@ -4,7 +4,7 @@ package completions
 import java.util as ju
 
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
@@ -191,7 +191,7 @@ object OverrideCompletions:
               template :: path
             case path => path
 
-        val indexedContext = IndexedContext(
+        val indexedContext = IndexedContext(pos)(using
           Interactive.contextOfPath(path)(using newctx)
         )
         import indexedContext.ctx

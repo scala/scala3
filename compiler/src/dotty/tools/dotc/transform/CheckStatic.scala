@@ -52,7 +52,7 @@ class CheckStatic extends MiniPhase {
           report.error(MissingCompanionForStatic(defn.symbol), defn.srcPos)
         else if (clashes.exists)
           report.error(MemberWithSameNameAsStatic(), defn.srcPos)
-        else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait))
+        else if (defn.symbol.isMutableVarOrAccessor && companion.is(Flags.Trait))
           report.error(TraitCompanionWithMutableStatic(), defn.srcPos)
         else if (defn.symbol.is(Flags.Lazy))
           report.error(LazyStaticField(), defn.srcPos)

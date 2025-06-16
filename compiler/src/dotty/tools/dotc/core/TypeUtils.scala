@@ -53,6 +53,11 @@ class TypeUtils:
       case ps => ps.reduceLeft(AndType(_, _))
     }
 
+    def widenSkolems(using Context): Type =
+      val widenSkolemsMap = new TypeMap:
+        def apply(tp: Type) = mapOver(tp.widenSkolem)
+      widenSkolemsMap(self)
+
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
      */
     def tupleElementTypes(using Context): Option[List[Type]] =
@@ -68,7 +73,7 @@ class TypeUtils:
     def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[List[Type]] =
       def recur(tp: Type, bound: Int): Option[List[Type]] =
         if bound < 0 then Some(Nil)
-        else (if normalize then tp.normalized else tp).dealias match
+        else (if normalize then tp.dealias.normalized else tp).dealias match
           case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
             recur(tl, bound - 1).map(hd :: _)
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
@@ -128,22 +133,19 @@ class TypeUtils:
         case None => throw new AssertionError("not a tuple")
 
     def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
+      def extractNamesTypes(nmes: Type, vals: Type): List[(TermName, Type)] =
+        val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
+          case ConstantType(Constant(str: String)) => str.toTermName
+          case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
+        val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
+        names.zip(values)
+
       (if normalize then self.normalized else self).dealias match
         // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
-        case AppliedType(tycon, nmes :: vals :: Nil) if !derived && tycon.typeSymbol == defn.NamedTupleTypeRef.symbol =>
-          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
-            case ConstantType(Constant(str: String)) => str.toTermName
-            case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
-          val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
-          names.zip(values)
+        case defn.NamedTupleDirect(nmes, vals) => extractNamesTypes(nmes, vals)
         case t if !derived => Nil
         // default cause, used for post-typing
-        case defn.NamedTuple(nmes, vals) =>
-          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
-            case ConstantType(Constant(str: String)) => str.toTermName
-            case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
-          val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
-          names.zip(values)
+        case defn.NamedTuple(nmes, vals) => extractNamesTypes(nmes, vals)
         case t =>
           Nil
 

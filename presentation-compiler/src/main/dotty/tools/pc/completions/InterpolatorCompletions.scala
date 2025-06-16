@@ -1,7 +1,7 @@
 package dotty.tools.pc.completions
 
 import scala.collection.mutable.ListBuffer
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.internal.pc.InterpolationSplice
 import scala.meta.pc.PresentationCompilerConfig

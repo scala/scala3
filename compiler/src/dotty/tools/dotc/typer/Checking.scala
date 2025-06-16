@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike}
+import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
 
 import collection.mutable
 import reporting.*
@@ -596,7 +596,7 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail(em"Traits cannot have secondary constructors$addendum")
-    checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
+    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor)
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -605,8 +605,12 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
+      fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
     checkApplicable(Erased,
-      !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
+      !sym.is(Lazy, butNot = Given)
+      && !sym.isMutableVarOrAccessor
+      && (!sym.isType || sym.isClass))
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
@@ -627,10 +631,11 @@ object Checking {
    */
   def checkWellFormedModule(mdef: untpd.ModuleDef)(using Context) =
     val mods = mdef.mods
-    def flagSourcePos(flag: FlagSet) =
-      mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    def flagSourcePos(flag: Flag) = untpd.flagSourcePos(mdef, flag)
     if mods.is(Open) then
       report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
+    if mods.is(Into) then
+      report.error(ModifierNotAllowedForDefinition(Into), flagSourcePos(Open))
     if mods.is(Abstract) then
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
@@ -739,7 +744,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -752,6 +757,14 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
+    inline def checkParentIsNotAnyValAlias(): Unit =
+      cdef.rhs match {
+        case impl: Template =>
+          val parent = impl.parents.head
+          if parent.symbol.isAliasType && parent.typeOpt.dealias =:= defn.AnyValType then
+            report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parent.symbol), cdef.srcPos)
+        case _ => ()
+      }
     // We don't check synthesised enum anonymous classes that are generated from
     // enum extending a value class type (AnyVal or an alias of it)
     // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
@@ -766,6 +779,9 @@ object Checking {
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
+
+      checkParentIsNotAnyValAlias()
+
       if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
         report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
@@ -774,6 +790,8 @@ object Checking {
         }
         clParamAccessors match {
           case param :: params =>
+            if (defn.isContextFunctionType(param.info))
+              report.error("value classes are not allowed for context function types", param.srcPos)
             if (param.is(Mutable))
               report.error(ValueClassParameterMayNotBeAVar(clazz, param), param.srcPos)
             if (param.info.isInstanceOf[ExprType])
@@ -803,24 +821,6 @@ object Checking {
           if p2.is(Inline) then "Cannot override inline parameter with a non-inline parameter"
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
-
-  def checkValue(tree: Tree)(using Context): Unit =
-    val sym = tree.tpe.termSymbol
-    if sym.isNoValue && !ctx.isJava then
-      report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
-
-  /** Check that `tree` refers to a value, unless `tree` is selected or applied
-   *  (singleton types x.type don't count as selections).
-   */
-  def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
-    tree match
-      case tree: RefTree if tree.name.isTermName =>
-        proto match
-          case _: SelectionProto if proto ne SingletonTypeProto => // no value check
-          case _: FunOrPolyProto => // no value check
-          case _ => checkValue(tree)
-      case _ =>
-    tree
 
   /** Check that experimental language imports in `trees`
    *  are done only in experimental scopes. For top-level
@@ -1054,6 +1054,8 @@ trait Checking {
             pats.forall(recur(_, pt))
           case Typed(arg, tpt) =>
             check(pat, pt) && recur(arg, pt)
+          case NamedArg(name, pat) =>
+            recur(pat, pt)
           case Ident(nme.WILDCARD) =>
             true
           case pat: QuotePattern =>
@@ -1156,7 +1158,7 @@ trait Checking {
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
-       && !expected.isInto
+       && !expected.isConversionTargetType
     then
       def conv = methPart(tree) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
@@ -1244,6 +1246,10 @@ trait Checking {
   /** A hook to exclude selected symbols from double declaration check */
   def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean = false
 
+  def matchesSameStatic(decl: Symbol, other: Symbol)(using Context): Boolean =
+    def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+    decl.matches(other) && !staticNonStaticPair
+
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
@@ -1255,8 +1261,7 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
-        if (decl.matches(other) && !javaFieldMethodPair && !staticNonStaticPair) {
+        if (matchesSameStatic(decl, other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
@@ -1314,8 +1319,8 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
-    Checking.checkDerivedValueClass(clazz, stats)
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit =
+    Checking.checkDerivedValueClass(cdef, clazz, stats)
 
   /** Check that case classes are not inherited by case classes.
    */
@@ -1696,7 +1701,7 @@ trait NoChecking extends ReChecking {
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp

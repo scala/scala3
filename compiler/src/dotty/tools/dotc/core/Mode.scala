@@ -91,6 +91,14 @@ object Mode {
    */
   val ImplicitExploration: Mode = newMode(12, "ImplicitExploration")
 
+  /** We are currently inside a capture set.
+   *  A term name could be a capture variable, so we need to
+   *  check that it is valid to use as type name.
+   *  Since this mode is only used during annotation typing,
+   *  we can reuse the value of `ImplicitExploration` to save bits.
+   */
+  val InCaptureSet: Mode = ImplicitExploration
+
   /** We are currently unpickling Scala2 info */
   val Scala2Unpickling: Mode = newMode(13, "Scala2Unpickling")
 
@@ -124,6 +132,9 @@ object Mode {
 
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
+
+  /** We are resolving a SELECT name from TASTy */
+  val ResolveFromTASTy: Mode = newMode(18, "ResolveFromTASTy")
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
@@ -162,6 +173,36 @@ object Mode {
    *  This mode forces expansion of inline calls in those positions even during typing.
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
+
+  /** Are we typing the argument of an annotation?
+   *
+   *  This mode is used through [[Applications.isAnnotConstr]] to avoid lifting
+   *  arguments of annotation constructors. This mode is disabled in nested
+   *  applications (from [[ProtoTypes.typedArg]]) and in "explicit" annotation
+   *  constructors applications (annotation classes constructed with `new`).
+   *
+   *  In the following example:
+   *
+   *  ```scala
+   *  @annot(y = new annot(y = Array("World"), x = 1), x = 2)
+   *  ```
+   *
+   *  the mode will be set when typing `@annot(...)` but not when typing
+   *  `new annot(...)`, such that the arguments of the former are not lifted but
+   *  the arguments of the later can be:
+   *
+   *  ```scala
+   *  @annot(x = 2, y = {
+   *    val y$3: Array[String] =
+   *      Array.apply[String](["World" : String]*)(
+   *        scala.reflect.ClassTag.apply[String](classOf[String]))
+   *    new annot(x = 1, y = y$3)
+   *  })
+   *  ```
+   *
+   *  See #22035, #22526, #22553 and `dependent-annot-default-args.scala`.
+   */
+  val InAnnotation: Mode = newMode(30, "InAnnotation")
 
   /** Skip inlining of methods. */
   val NoInline: Mode = newMode(31, "NoInline")

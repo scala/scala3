@@ -43,5 +43,4 @@ It is declared `abstract` and `final`, so it can be neither instantiated nor ext
 
 `AnyKind` plays a special role in Scala's subtype system: It is a supertype of all other types no matter what their kind is. It is also assumed to be kind-compatible with all other types. Furthermore, `AnyKind` is treated as a higher-kinded type (so it cannot be used as a type of values), but at the same time it has no type parameters (so it cannot be instantiated).
 
-**Note:** This feature is considered experimental but stable and it can be disabled under compiler flag
-(i.e. `-Yno-kind-polymorphism`).
+**Note:** This feature is now stable. The compiler flag `-Yno-kind-polymorphism` is deprecated as of 3.7.0, has no effect (is ignored), and will be removed in a future version.

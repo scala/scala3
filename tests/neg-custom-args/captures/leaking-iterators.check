@@ -1,4 +1,16 @@
--- Error: tests/neg-custom-args/captures/leaking-iterators.scala:56:2 --------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaking-iterators.scala:56:16 ----------------------------
 56 |  usingLogFile: log => // error
-   |  ^^^^^^^^^^^^
-   |  local reference log leaks into outer capture set of type parameter R of method usingLogFile in package cctest
+   |                ^
+   |Found:    (log: java.io.FileOutputStream^) ->? box cctest.Iterator[Int]^{log}
+   |Required: (log: java.io.FileOutputStream^) => box cctest.Iterator[Int]^?
+   |
+   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the universal root capability
+   |
+   |Note that reference log.type
+   |cannot be included in outer capture set ?
+57 |    xs.iterator.map: x =>
+58 |      log.write(x)
+59 |      x * x
+   |
+   | longer explanation available when compiling with `-explain`

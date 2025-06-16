@@ -883,6 +883,179 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
         |""".stripMargin
     )
 
+  @Test def `operator-val` =
+    checkEdit(
+      """|object A {
+         |  val <<!>> = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  val ! : Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-def` =
+    checkEdit(
+      """|object A {
+         |  def <<!>> = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def ! : Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-def-param` =
+    checkEdit(
+      """|object A {
+         |  def <<!>>[T] = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def ![T]: Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-def-type-param` =
+    checkEdit(
+      """|object A {
+         |  def <<!>>(x: Int) = 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def !(x: Int): Int = 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-for` =
+    checkEdit(
+      """|object A {
+         |  def foo = for(<<!>> <- List(1)) yield !
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def foo = for(! : Int <- List(1)) yield !
+         |}
+         |""".stripMargin
+    )
+  @Test def `operator-lambda` =
+    checkEdit(
+      """|object A {
+         |  val foo: Int => Int = (<<!>>) => ! + 1
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  val foo: Int => Int = (! : Int) => ! + 1
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `operator-ident` =
+    checkEdit(
+      """|object A {
+         |  def foo =
+         |    val ! = 1
+         |    <<!>>
+         |}
+         |""".stripMargin,
+      """|object A {
+         |  def foo =
+         |    val ! = 1
+         |    ! : Int
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuples` =
+    checkEdit(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def <<test>> =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test: (path : String, num : Int, line : Int) =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin
+    )
+
+  @Test def `enums` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val <<d>> =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val d: EnumerationValue.Day.Value =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin
+    )
+
+  @Test def `enums2` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val <<b>> =
+         |    if (true) True
+         |    else False
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val b: Value =
+         |    if (true) True
+         |    else False
+         |""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String

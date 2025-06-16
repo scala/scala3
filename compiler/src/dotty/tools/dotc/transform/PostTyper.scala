@@ -21,6 +21,7 @@ import reporting.*
 import NameKinds.WildcardParamName
 import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -100,7 +101,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   private var compilingScala2StdLib = false
   override def initContext(ctx: FreshContext): Unit =
     initContextCalled = true
-    compilingScala2StdLib = ctx.settings.YcompileScala2Library.value(using ctx)
+    compilingScala2StdLib = Feature.shouldBehaveAsScala2(using ctx)
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -119,7 +120,30 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var inJavaAnnot: Boolean = false
 
+    private val seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] = new util.EqHashMap[Symbol, Boolean]
+
     private var noCheckNews: Set[New] = Set()
+
+    def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
+      seenUnrolledMethods.getOrElseUpdate(method, {
+        val isCtor = method.isConstructor
+        if
+          method.name.is(DefaultGetterName)
+        then
+          false // not an error, but not an expandable unrolled method
+        else if
+            method.isLocal
+          || !method.isEffectivelyFinal
+          || isCtor && method.owner.is(Trait)
+          || method.owner.companionClass.is(CaseClass)
+            && (method.name == nme.apply || method.name == nme.fromProduct)
+          || method.owner.is(CaseClass) && method.name == nme.copy
+        then
+          report.error(IllegalUnrollPlacement(Some(method)), origin)
+          false
+        else
+          true
+      })
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews
@@ -172,7 +196,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try
+        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet) else ctx
+        transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
 
@@ -199,6 +226,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       tree
     }
 
+    private def registerIfUnrolledParam(sym: Symbol)(using Context): Unit =
+      if sym.hasAnnotation(defn.UnrollAnnot) && isValidUnrolledMethod(sym.owner, sym.sourcePos) then
+        val cls = sym.enclosingClass
+        val additions = Array(cls, cls.linkedClass).filter(_ != NoSymbol)
+        ctx.compilationUnit.unrolledClasses ++= additions
+
     private def processValOrDefDef(tree: Tree)(using Context): tree.type =
       val sym = tree.symbol
       tree match
@@ -215,7 +248,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                     ++ sym.annotations)
           else
             if sym.is(Param) then
+              registerIfUnrolledParam(sym)
+              // @unused is getter/setter but we want it on ordinary method params
+              // @param should be consulted only for fields
+              val unusing = sym.getAnnotation(defn.UnusedAnnot)
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              unusing.foreach(sym.addAnnotation)
             else if sym.is(ParamAccessor) then
               // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
               val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)
@@ -223,7 +261,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               for publicInBinaryAnnot <- publicInBinaryAnnotOpt do sym.addAnnotation(publicInBinaryAnnot)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
-          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
+          if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value &&
+             sym != defn.StringContext_raw &&
+             sym != defn.StringContext_f &&
+             sym != defn.StringContext_s then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
                // This should be removed on Scala 3.x
@@ -308,8 +349,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(ConstructorProxy) then
-        unusable(ConstructorProxyNotValue(_))
+      if tree.symbol.is(PhantomSymbol) then
+        if tree.symbol.isDummyCaptureParam then
+          unusable(DummyCaptureParamNotValue(_))
+        else
+          unusable(ConstructorProxyNotValue(_))
       else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
       else

@@ -110,9 +110,8 @@ class CoverageTests:
     if run then
       val path = if isDirectory then inputFile.toString else inputFile.getParent.toString
       val test = compileDir(path, options)
-      test.checkFilePaths.foreach { checkFilePath =>
-        assert(checkFilePath.exists, s"Expected checkfile for $path $checkFilePath does not exist.")
-      }
+      test.checkFiles.foreach: checkFile =>
+        assert(checkFile.exists, s"Expected checkfile for $path $checkFile does not exist.")
       test.checkRuns()
     else
       val test =

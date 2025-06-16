@@ -1,15 +1,12 @@
 package dotty.tools.dotc
 
-import reporting.*
-import Diagnostic.*
-import util.{SourcePosition, NoSourcePosition, SrcPos}
-import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.*
-import config.SourceVersion
 import ast.*
-import config.Feature.sourceVersion
+import core.*, Contexts.*, Flags.*, Symbols.*, Decorators.*
+import config.Feature.sourceVersion, config.{MigrationVersion, SourceVersion}
+import reporting.*, Diagnostic.*
+import util.{SourcePosition, NoSourcePosition, SrcPos}
+
 import java.lang.System.currentTimeMillis
-import dotty.tools.dotc.config.MigrationVersion
 
 object report:
 
@@ -24,7 +21,7 @@ object report:
     ctx.reporter.report(warning)
 
   def deprecationWarning(msg: Message, pos: SrcPos, origin: String = "")(using Context): Unit =
-    issueWarning(new DeprecationWarning(msg, pos.sourcePos, origin))
+    issueWarning(DeprecationWarning(msg, addInlineds(pos), origin))
 
   def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
@@ -55,6 +52,9 @@ object report:
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
   end featureWarning
 
+  def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
+    issueWarning(LintWarning(msg, addInlineds(pos), origin))
+
   def warning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new Warning(msg, addInlineds(pos)))
 
@@ -84,8 +84,8 @@ object report:
   def bestEffortError(ex: Throwable, msg: String)(using Context): Unit =
     val stackTrace =
       Option(ex.getStackTrace()).map { st =>
-        if st.nn.isEmpty then ""
-        else s"Stack trace: \n ${st.nn.mkString("\n ")}".stripMargin
+        if st.isEmpty then ""
+        else s"Stack trace: \n ${st.mkString("\n ")}".stripMargin
       }.getOrElse("")
     // Build tools and dotty's test framework may check precisely for
     // "Unsuccessful best-effort compilation." error text.
@@ -138,7 +138,9 @@ object report:
 
   private def addInlineds(pos: SrcPos)(using Context): SourcePosition =
     def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match
-      case inlined :: inlineds1 => pos.withOuter(recur(inlined.sourcePos, inlineds1))
+      case inlined :: inlineds =>
+        val outer = recur(inlined.sourcePos, inlineds)
+        pos.withOuter(outer)
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
 

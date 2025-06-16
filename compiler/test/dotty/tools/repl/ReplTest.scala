@@ -98,10 +98,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         FileDiff.dump(checkFile.toPath.toString, actualOutput)
         println(s"Wrote updated script file to $checkFile")
       else
-        println("expected =========>")
-        println(expectedOutput.mkString(EOL))
-        println("actual ===========>")
-        println(actualOutput.mkString(EOL))
+        println(dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
 
         fail(s"Error in script $name, expected output did not match actual")
     end if

@@ -538,7 +538,7 @@ object SymDenotations {
       // doesn't find them it will invalidate whatever referenced them, so
       // any reference to a fake companion will lead to extra recompilations.
       // Instead, use the class name since it's guaranteed to exist at runtime.
-      val clsFlatName = if isOneOf(JavaDefined | ConstructorProxy) then flatName.stripModuleClassSuffix else flatName
+      val clsFlatName = if isOneOf(JavaDefined | PhantomSymbol) then flatName.stripModuleClassSuffix else flatName
       builder.append(clsFlatName.mangledString)
       builder.toString
 
@@ -617,7 +617,7 @@ object SymDenotations {
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
         (myInfo `eq` NoType)
-        || is(Invisible) && ctx.isTyper
+        || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
@@ -685,7 +685,7 @@ object SymDenotations {
       isAbstractOrAliasType && !isAbstractOrParamType
 
     /** Is this symbol an abstract or alias type? */
-    final def isAbstractOrAliasType: Boolean = isType & !isClass
+    final def isAbstractOrAliasType: Boolean = isType && !isClass
 
     /** Is this symbol an abstract type or type parameter? */
     final def isAbstractOrParamType(using Context): Boolean = this.isOneOf(DeferredOrTypeParam)
@@ -786,9 +786,14 @@ object SymDenotations {
       *
       * However, a stable member might not yet be initialized (if it is an object or anyhow lazy).
       * So the first call to a stable member might fail and/or produce side effects.
+      *
+      * Note, (f: => T) is treated as a stable TermRef only in Capture Sets.
       */
     final def isStableMember(using Context): Boolean = {
-      def isUnstableValue = isOneOf(UnstableValueFlags) || info.isInstanceOf[ExprType] || isAllOf(InlineParam)
+      def isUnstableValue =
+        isOneOf(UnstableValueFlags)
+        || !ctx.mode.is(Mode.InCaptureSet) && info.isInstanceOf[ExprType]
+        || isAllOf(InlineParam)
       isType || is(StableRealizable) || exists && !isUnstableValue
     }
 
@@ -805,6 +810,13 @@ object SymDenotations {
      */
     final def isRealMethod(using Context): Boolean =
       this.is(Method, butNot = Accessor) && !isAnonymousFunction
+
+    /** A mutable variable (not a getter or setter for it) */
+    final def isMutableVar(using Context): Boolean = is(Mutable, butNot = Method)
+
+    /** A mutable variable or its getter or setter */
+    final def isMutableVarOrAccessor(using Context): Boolean =
+      is(Mutable) && (!is(Method) || is(Accessor))
 
     /** Is this a getter? */
     final def isGetter(using Context): Boolean =
@@ -1134,7 +1146,7 @@ object SymDenotations {
     final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
       private var current = symbol
       def hasNext = current.exists
-      def next: Symbol = {
+      def next(): Symbol = {
         val result = current
         current = current.owner
         result
@@ -1230,6 +1242,15 @@ object SymDenotations {
       if (this.is(Method)) symbol
       else if (this.isClass) primaryConstructor
       else if (this.exists) owner.enclosingMethod
+      else NoSymbol
+
+    /** The closest enclosing method or static symbol containing this definition.
+     *  A local dummy owner is mapped to the primary constructor of the class.
+     */
+    final def enclosingMethodOrStatic(using Context): Symbol =
+      if this.is(Method) || this.hasAnnotation(defn.ScalaStaticAnnot) then symbol
+      else if this.isClass then primaryConstructor
+      else if this.exists then owner.enclosingMethodOrStatic
       else NoSymbol
 
     /** The closest enclosing extension method containing this definition,
@@ -1402,7 +1423,7 @@ object SymDenotations {
     final def nextOverriddenSymbol(using Context): Symbol = {
       val overridden = allOverriddenSymbols
       if (overridden.hasNext)
-        overridden.next
+        overridden.next()
       else
         NoSymbol
     }
@@ -1480,10 +1501,10 @@ object SymDenotations {
       val candidates = owner.info.decls.lookupAll(name)
       def test(sym: Symbol): Symbol =
         if (sym == symbol || sym.signature == signature) sym
-        else if (candidates.hasNext) test(candidates.next)
+        else if (candidates.hasNext) test(candidates.next())
         else NoSymbol
       if (candidates.hasNext) {
-        val sym = candidates.next
+        val sym = candidates.next()
         if (candidates.hasNext) test(sym) else sym
       }
       else NoSymbol
@@ -1937,7 +1958,7 @@ object SymDenotations {
       case _ => NoSymbol
 
     /** The explicitly given self type (self types of modules are assumed to be
-     *  explcitly given here).
+     *  explicitly given here).
      */
     def givenSelfType(using Context): Type = classInfo.selfInfo match {
       case tp: Type => tp
@@ -1950,7 +1971,6 @@ object SymDenotations {
 
     /** The this-type depends on the kind of class:
      *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
-     *  - for a module class `m`: A term ref to m's source module.
      *  - for all other classes `c` with owner `o`: ThisType(TypeRef(o.thisType, c))
      */
     override def thisType(using Context): Type = {
@@ -2905,9 +2925,8 @@ object SymDenotations {
     private var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
-      import scala.language.unsafeNulls
       if (dependent != null) {
-        val it = dependent.keySet.iterator()
+        val it = dependent.nn.keySet.iterator()
         while (it.hasNext()) it.next().invalidate()
       }
       dependent = null

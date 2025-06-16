@@ -21,6 +21,8 @@ import NameKinds.ContextBoundParamName
 import rewrites.Rewrites.patch
 import util.Spans.Span
 import rewrites.Rewrites
+import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+import dotty.tools.dotc.util.SourcePosition
 
 /** A utility trait containing source-dependent deprecation messages
  *  and migrations.
@@ -125,5 +127,39 @@ trait Migrations:
       if mversion.needsPatch && pt.args.nonEmpty then
         patch(Span(pt.args.head.span.start), "using ")
   end contextBoundParams
+
+  /** Report implicit parameter lists and rewrite implicit parameter list to contextual params */
+  def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
+    val mversion = mv.ImplicitParamsWithoutUsing
+    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty then
+      // The application can only be rewritten if it uses parentheses syntax.
+      // See issue #22927 and related tests.
+      val hasParentheses =
+        ctx.source.content
+          .slice(tree.span.end, pt.args.head.span.start)
+          .exists(_ == '(')
+      val rewriteMsg =
+        if hasParentheses then
+          Message.rewriteNotice("This code", mversion.patchFrom)
+        else ""
+      val message =
+        em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
+            |To disable the warning, please use the following option:
+            |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
+            |"""
+      val codeAction = CodeAction(
+        title = "Add `using` clause",
+        description = None,
+        patches = List(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
+      )
+      val withActions = message.withActions(codeAction)
+      report.errorOrMigrationWarning(
+        withActions,
+        pt.args.head.srcPos,
+        mversion
+      )
+      if hasParentheses && mversion.needsPatch then
+        patch(Span(pt.args.head.span.start), "using ")
+  end implicitParams
 
 end Migrations

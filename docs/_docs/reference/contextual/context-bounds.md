@@ -47,7 +47,7 @@ Since the context parameter now has a name, it can be referred
 to in the body of `reduce`. An example is the `m.unit` reference in the definition above.
 
 If the context bound does not carry an `as` clause, the generated witness parameter gets a compiler-synthesized name. However, a [currently experimental
-language extension](../experimental/default-names-context-bounds.md) would in this case give the context parameter the same name as the bound type parameter.
+language extension](../experimental/typeclasses.md#better-default-names-for-context-bounds) would in this case give the context parameter the same name as the bound type parameter.
 
 Named context bounds were introduced in Scala 3.6.
 

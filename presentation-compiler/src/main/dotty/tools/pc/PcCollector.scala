@@ -63,7 +63,8 @@ trait PcCollector[T]:
           o.span.exists && o.span.point == named.symbol.owner.span.point
         )
 
-    def soughtOrOverride(sym: Symbol) =
+    def soughtOrOverride(sym0: Symbol) =
+      val sym = if sym0.is(Flags.Exported) then sym0.sourceSymbol else sym0
       sought(sym) || sym.allOverriddenSymbols.exists(sought(_))
 
     def soughtTreeFilter(tree: Tree): Boolean =
@@ -76,7 +77,7 @@ trait PcCollector[T]:
         case df: NamedDefTree
             if soughtOrOverride(df.symbol) && !df.symbol.isSetter =>
           true
-        case imp: Import if owners(imp.expr.symbol) => true
+        case imp: ImportOrExport if owners(imp.expr.symbol) => true
         case _ => false
 
     def soughtFilter(f: Symbol => Boolean): Boolean =
@@ -115,11 +116,13 @@ trait PcCollector[T]:
          */
         case ident: Ident if ident.isCorrectSpan && filter(ident) =>
           // symbols will differ for params in different ext methods, but source pos will be the same
-          if soughtFilter(_.sourcePos == ident.symbol.sourcePos)
+          val symbol = if ident.symbol.is(Flags.Exported) then ident.symbol.sourceSymbol else ident.symbol
+          if soughtFilter(_.sourcePos == symbol.sourcePos)
           then
             occurrences + collect(
               ident,
-              ident.sourcePos
+              ident.sourcePos,
+              Some(symbol)
             )
           else occurrences
         /**
@@ -160,7 +163,7 @@ trait PcCollector[T]:
           def collectEndMarker =
             EndMarker.getPosition(df, pos, sourceText).map:
               collect(EndMarker(df.symbol), _)
-          val annots = collectTrees(df.mods.annotations)
+          val annots = collectTrees(df.symbol.annotations.map(_.tree))
           val traverser =
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
@@ -215,8 +218,8 @@ trait PcCollector[T]:
          * @<<JsonNotification>>("")
          * def params() = ???
          */
-        case mdf: MemberDef if mdf.mods.annotations.nonEmpty =>
-          val trees = collectTrees(mdf.mods.annotations)
+        case mdf: MemberDef if mdf.symbol.annotations.nonEmpty =>
+          val trees = collectTrees(mdf.symbol.annotations.map(_.tree))
           val traverser =
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
@@ -228,7 +231,7 @@ trait PcCollector[T]:
          * For traversing import selectors:
          * import scala.util.<<Try>>
          */
-        case imp: Import if filter(imp) =>
+        case imp: ImportOrExport if filter(imp) =>
           imp.selectors
             .collect {
               case sel: ImportSelector
@@ -315,7 +318,7 @@ object EndMarker:
   def getPosition(df: NamedDefTree, pos: SourcePosition, sourceText: String)(
       implicit ct: Context
   ): Option[SourcePosition] =
-    val name = df.name.toString()
+    val name = df.name.toString().stripSuffix("$")
     val endMarkerLine =
       sourceText.slice(df.span.start, df.span.end).split('\n').last
     val index = endMarkerLine.length() - name.length()

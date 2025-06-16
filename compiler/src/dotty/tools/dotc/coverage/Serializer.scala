@@ -3,7 +3,6 @@ package coverage
 
 import java.nio.file.{Path, Paths, Files}
 import java.io.Writer
-import scala.language.unsafeNulls
 import scala.collection.mutable.StringBuilder
 
 /**

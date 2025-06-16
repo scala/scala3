@@ -6,10 +6,13 @@ import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys.*
 import sbt.*
+import sbt.nio.FileStamper
+import sbt.nio.Keys.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
 import com.gradle.develocity.agent.sbt.DevelocityPlugin.autoImport._
+import com.gradle.develocity.agent.sbt.api.experimental.buildcache
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.MappingsHelper.directory
 import com.typesafe.sbt.packager.universal.UniversalPlugin
@@ -20,9 +23,10 @@ import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
+import dotty.tools.sbtplugin.ScalaLibraryPlugin
+
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
-import xerial.sbt.Sonatype.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
@@ -98,7 +102,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.6.4-RC1"
+  val referenceVersion = "3.7.1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -109,7 +113,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.7.0"
+  val developedVersion = "3.7.2"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -129,14 +133,14 @@ object Build {
    *  Simplified rules, given 3.$minor.$patch = $developedVersion
    *    - Major version is always 28
    *    - TASTY minor version:
-   *      - in main (NIGHTLY): {if $patch == 0 then $minor else ${minor + 1}}
+   *      - in main (NIGHTLY): {if $patch == 0 || ${referenceVersion.matches(raw"3.$minor.0-RC\d")} then $minor else ${minor + 1}}
    *      - in release branch is always equal to $minor
    *    - TASTY experimental version:
    *      - in main (NIGHTLY) is always experimental
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimetnal
    */
-  val expectedTastyVersion = "28.7-experimental-1"
+  val expectedTastyVersion = "28.8-experimental-1"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
@@ -171,9 +175,8 @@ object Build {
    *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
-   *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
-  val mimaPreviousDottyVersion = "3.6.2"
+  val mimaPreviousDottyVersion = "3.7.0"
 
   /** LTS version against which we check binary compatibility.
    *
@@ -184,9 +187,9 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.5.4"
+  val scalaCliLauncherVersion = "1.8.0"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.18"
+  val coursierJarVersion = "2.1.24"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -278,6 +281,8 @@ object Build {
 
   val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
+  val extraDevelocityCacheInputFiles = taskKey[Seq[Path]]("Extra input files for caching")
+
   lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
@@ -292,7 +297,9 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Xfatal-warnings",                         // -Werror in modern usage
+      "-Werror",
+      //"-Wunused:all",
+      //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
       "-language:implicitConversions",
     ),
@@ -337,24 +344,30 @@ object Build {
           buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
-            .tag(if (isInsideCI) "CI" else "Local")
+            .withTag(if (isInsideCI) "CI" else "Local")
             .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
             .withValues(buildScan.values ++ GithubEnv.develocityValues)
             .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
         )
         .withBuildCache(
           buildCache
-            .withLocal(buildCache.local.withEnabled(false))
-            .withRemote(buildCache.remote.withEnabled(false))
+            .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
+            .withRemote(buildCache.remote.withEnabled(true).withStoreEnabled(isInsideCI))
+            .withRequireClean(!isInsideCI)
         )
-        .withTestRetryConfiguration(
-          config.testRetryConfiguration
+        .withTestRetry(
+          config.testRetry
             .withFlakyTestPolicy(FlakyTestPolicy.Fail)
             .withMaxRetries(if (isInsideCI) 1 else 0)
             .withMaxFailures(10)
             .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
         )
-    }
+    },
+    // Deactivate Develocity's test caching because it caches all tests or nothing.
+    // Also at the moment, it does not take compilation files as inputs.
+    Test / develocityBuildCacheClient := None,
+    extraDevelocityCacheInputFiles := Seq.empty,
+    extraDevelocityCacheInputFiles / outputFileStamper := FileStamper.Hash,
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -383,20 +396,13 @@ object Build {
       for {
         username <- sys.env.get("SONATYPE_USER")
         password <- sys.env.get("SONATYPE_PW")
-      } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
+      } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
     PgpKeys.useGpgPinentry := true,
 
-    javaOptions ++= {
-      val ciOptions = // propagate if this is a CI build
-        sys.props.get("dotty.drone.mem") match {
-          case Some(prop) => List("-Xmx" + prop)
-          case _ => List()
-        }
-      // Do not cut off the bottom of large stack traces (default is 1024)
-      "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions ::: ciOptions
-    },
+    // Do not cut off the bottom of large stack traces (default is 1024)
+    javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions,
 
     excludeLintKeys ++= Set(
       // We set these settings in `commonSettings`, if a project
@@ -435,7 +441,17 @@ object Build {
     Compile / packageBin / packageOptions +=
       Package.ManifestAttributes(
         "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
-      )
+      ),
+
+    // add extraDevelocityCacheInputFiles in cache key components
+    Compile / compile / buildcache.develocityTaskCacheKeyComponents +=
+      (Compile / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
+    Test / test / buildcache.develocityTaskCacheKeyComponents +=
+      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
+    Test / testOnly / buildcache.develocityInputTaskCacheKeyComponents +=
+      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue,
+    Test / testQuick / buildcache.develocityInputTaskCacheKeyComponents +=
+      (Test / extraDevelocityCacheInputFiles / outputFileStamps).taskValue
   )
 
   // Settings used for projects compiled only with Java
@@ -518,7 +534,7 @@ object Build {
     "scala2-library-tasty"
   )
 
-  val enableBspAllProjects = false
+  val enableBspAllProjects = sys.env.get("ENABLE_BSP_ALL_PROJECTS").map(_.toBoolean).getOrElse(false)
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
@@ -602,7 +618,10 @@ object Build {
       assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
       docScalaInstance
     },
-    Compile / doc / scalacOptions ++= scalacOptionsDocSettings()
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
+    // force recompilation of bootstrapped modules when the compiler changes
+    Compile / extraDevelocityCacheInputFiles ++=
+      (`scala3-compiler` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
   )
 
   lazy val commonBenchmarkSettings = Seq(
@@ -769,11 +788,11 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.7.1-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.27.1",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.27.1",
-        "org.jline" % "jline-terminal-jni" % "3.27.1", // needed for Windows
+        "org.jline" % "jline-reader" % "3.29.0",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
@@ -1013,10 +1032,6 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
-
-      // Develocity's Build Cache does not work with our compilation tests
-      // at the moment: it does not take compilation files as inputs.
-      Test / develocityBuildCacheClient := None,
   )
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
@@ -1115,7 +1130,7 @@ object Build {
     libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
-      "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
+      "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       "-Yexplicit-nulls",
     ),
     (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
@@ -1205,9 +1220,9 @@ object Build {
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
    */
   lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
+    enablePlugins(ScalaLibraryPlugin).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(moduleName := "scala2-library")
     // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
@@ -1219,11 +1234,10 @@ object Build {
   lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions += "-Ycheck:all",
+      scalacOptions ++= Seq("-source", "3.8"), // for separation checking
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
@@ -1233,8 +1247,8 @@ object Build {
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
-      scalacOptions += "-Yscala2Unpickler:never",
-      scalacOptions -= "-Xfatal-warnings",
+      scalacOptions += "-Yscala2-unpickler:never",
+      scalacOptions += "-Werror:false",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -1483,7 +1497,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.4.2"
+    val mtagsVersion = "1.5.3"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -1497,6 +1511,10 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
+      publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
+        `scala3-compiler-bootstrapped` / publishLocal,
+        `scala3-library-bootstrapped` / publishLocal,
+      ).value,
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       Compile / sourceGenerators += Def.task {
         val s = streams.value
@@ -1601,7 +1619,7 @@ object Build {
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
       bspEnabled := false,
-      scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
+      scalacOptions --= Seq("-Werror", "-deprecation"),
 
       // Required to run Scala.js tests.
       Test / fork := false,
@@ -1669,7 +1687,6 @@ object Build {
             "compliantNullPointers" -> (sems.nullPointers == CheckedBehavior.Compliant),
             "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
-            "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
@@ -2175,7 +2192,11 @@ object Build {
   lazy val publishSettings = Seq(
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
-    publishTo := sonatypePublishToBundle.value,
+    publishTo := {
+      val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+      if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+      else localStaging.value
+    },
     publishConfiguration ~= (_.withOverwrite(true)),
     publishLocalConfiguration ~= (_.withOverwrite(true)),
     projectID ~= {id =>
@@ -2511,11 +2532,14 @@ object Build {
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {
-    lazy val (scalaMinor, scalaPatch, scalaIsRC) = baseVersion.split("\\.|-").take(4) match {
-      case Array("3", minor, patch)    => (minor.toInt, patch.toInt, false)
-      case Array("3", minor, patch, _) => (minor.toInt, patch.toInt, true)
+    case class ScalaVersion(minor: Int, patch: Int, isRC: Boolean)
+    def parseScalaVersion(version: String): ScalaVersion = version.split("\\.|-").take(4) match {
+      case Array("3", minor, patch)    => ScalaVersion(minor.toInt, patch.toInt, false)
+      case Array("3", minor, patch, _) => ScalaVersion(minor.toInt, patch.toInt, true)
       case other => sys.error(s"Invalid Scala base version string: $baseVersion")
     }
+    lazy val version = parseScalaVersion(baseVersion)
+    lazy val referenceV = parseScalaVersion(referenceVersion)
     lazy val (tastyMinor, tastyIsExperimental) = expectedTastyVersion.split("\\.|-").take(4) match {
       case Array("28", minor)                    => (minor.toInt, false)
       case Array("28", minor, "experimental", _) => (minor.toInt, true)
@@ -2524,13 +2548,22 @@ object Build {
 
     if(isNightly) {
       assert(tastyIsExperimental, "TASTY needs to be experimental in nightly builds")
-      val expectedTastyMinor = if(scalaPatch == 0) scalaMinor else scalaMinor + 1
+      val expectedTastyMinor = version.patch match {
+        case 0 => version.minor
+        case 1 if referenceV.patch == 0 && referenceV.isRC =>
+          // Special case for a period when reference version is a new unstable minor
+          // Needed for non_bootstrapped tests requiring either stable tasty or the same experimental version produced by both reference and bootstrapped compiler
+          assert(version.minor == referenceV.minor, "Expected reference and base version to use the same minor")
+          version.minor
+        case _ => version.minor + 1
+      }
       assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
     }
 
     if(isRelease) {
-      assert(scalaMinor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
-      if (scalaIsRC && scalaPatch == 0)
+      assert(version.minor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
+      assert(!referenceV.isRC, "Stable release needs to use stable compiler version")
+      if (version.isRC && version.patch == 0)
         assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
       else
         assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")

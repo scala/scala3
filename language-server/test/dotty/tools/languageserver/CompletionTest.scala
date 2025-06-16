@@ -32,7 +32,9 @@ class CompletionTest {
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "Conversion"))
+      .completion(
+        ("Conversion", Class, "Conversion"),
+        ("Conversion", Module, "Conversion"))
   }
 
   @Test def implicitSearchCrash: Unit =
@@ -1725,8 +1727,7 @@ class CompletionTest {
      .completion(m6, Set())
 
   @Test def namedTupleCompletion: Unit =
-    code"""|import scala.language.experimental.namedTuples
-           |
+    code"""|
            |val person: (name: String, city: String) =
            |  (name = "Jamie", city = "Lausanne")
            |

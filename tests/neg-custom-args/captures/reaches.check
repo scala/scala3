@@ -1,61 +1,107 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:11 --------------------------------------
-22 |    cur = (() => f.write()) :: Nil // error
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
-   |           Found:    List[box () ->{f} Unit]
-   |           Required: List[box () ->{xs*} Unit]
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:13 --------------------------------------
+22 |  usingFile: f => // error
+   |             ^
+   |Found:    (f: File^?) ->? Unit
+   |Required: (f: File^) => Unit
+   |
+   |where:    => refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
+23 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:33:7 ---------------------------------------
-33 |      (() => f.write()) :: Nil // error
-   |       ^^^^^^^^^^^^^^^^^^^^^^^
-   |       Found:    List[box () ->{f} Unit]
-   |       Required: box List[box () ->{xs*} Unit]^?
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:32:13 --------------------------------------
+32 |  usingFile: f => // error
+   |             ^
+   |Found:    (f: File^?) ->? Unit
+   |Required: (f: File^) => Unit
    |
-   |       Note that reference (f : File^), defined in method $anonfun
-   |       cannot be included in outer capture set {xs*} of value cur
+   |where:    => refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
+33 |    cur.set:
+34 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:36:6 ------------------------------------------------------------
-36 |  var cur: List[Proc] = xs   // error
-   |      ^
-   |      Mutable variable cur cannot have type List[box () => Unit] since
-   |      the part box () => Unit of that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/reaches.scala:43:16 -----------------------------------------------------------
-43 |  val cur = Ref[List[Proc]](xs) // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:44:16 -----------------------------------------------------------
+44 |  val cur = Ref[List[Proc]](xs) // error
    |                ^^^^^^^^^^
    |                Type variable T of constructor Ref cannot be instantiated to List[box () => Unit] since
    |                the part box () => Unit of that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/reaches.scala:53:51 -----------------------------------------------------------
-53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+   |
+   |                where:    => refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:46:35 --------------------------------------
+46 |    val next: () => Unit = cur.get.head // error
+   |                           ^^^^^^^^^^^^
+   |                           Found:    () => Unit
+   |                           Required: () =>² Unit
+   |
+   |                           where:    =>  refers to the universal root capability
+   |                                     =>² refers to a fresh root capability in the type of value next
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:48:20 --------------------------------------
+48 |    cur.set(cur.get.tail: List[Proc]) // error
+   |            ^^^^^^^^^^^^
+   |            Found:    List[box () => Unit]
+   |            Required: List[box () =>² Unit]
+   |
+   |            where:    =>  refers to the universal root capability
+   |                      =>² refers to a fresh root capability created in method runAll3
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/reaches.scala:54:51 -----------------------------------------------------------
+54 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |                                                   ^
    |                                Type variable A of constructor Id cannot be instantiated to box () => Unit since
    |                                that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/reaches.scala:55:6 ------------------------------------------------------------
-55 |    id(() => f.write()) // error
-   |    ^^^^^^^^^^^^^^^^^^^
-   |    Local reach capability id* leaks into capture scope of method test
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:27 --------------------------------------
-62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
-   |                         ^^^^^
-   |                         Found:    File^{f}
-   |                         Required: File^{id*}
+   |
+   |                                where:    => refers to the universal root capability
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:27 --------------------------------------
+59 |  val id: File^ -> File^ = x => x // error
+   |                           ^^^^^^
+   |                           Found:    (x: File^) ->? File^{x}
+   |                           Required: (x: File^) -> File^²
+   |
+   |                           where:    ^  refers to the universal root capability
+   |                                     ^² refers to a fresh root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:79:10 -----------------------------------------------------------
-79 |  ps.map((x, y) => compose1(x, y)) // error // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:32 --------------------------------------
+67 |  val id: (x: File^) -> File^ = x => x // error
+   |                                ^^^^^^
+   |                  Found:    (x: File^) ->? File^{x}
+   |                  Required: (x: File^) -> File^²
+   |
+   |                  where:    ^  refers to the universal root capability
+   |                            ^² refers to a root capability associated with the result type of (x: File^): File^²
+   |
+   |                  Note that the existential capture root in File^
+   |                  cannot subsume the capability x.type since that capability is not a SharedCapability
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
+70 |  val leaked = usingFile[File^{id*}]: f => // error
+   |                                      ^
+   |Found:    (f: File^?) ->? box File^{id*}
+   |Required: (f: File^) => box File^{id*}
+   |
+   |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
+   |          ^  refers to the universal root capability
+71 |    val f1: File^{id*} = id(f)
+72 |    f1
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/reaches.scala:88:10 -----------------------------------------------------------
+88 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^
    |          Local reach capability ps* leaks into capture scope of method mapCompose.
    |          To allow this, the parameter ps should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/reaches.scala:79:13 -----------------------------------------------------------
-79 |  ps.map((x, y) => compose1(x, y)) // error // error
-   |             ^
-   |             Local reach capability ps* leaks into capture scope of method mapCompose.
-   |             To allow this, the parameter ps should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/reaches.scala:61:31 -----------------------------------------------------------
-61 |  val leaked = usingFile[File^{id*}]: f => // error
-   |                               ^^^
-   |                               id* cannot be tracked since its deep capture set is empty
--- Error: tests/neg-custom-args/captures/reaches.scala:62:18 -----------------------------------------------------------
-62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
-   |                  ^^^
-   |                  id* cannot be tracked since its deep capture set is empty
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:91:10 --------------------------------------
+91 |  ps.map((x, y) => compose1(x, y)) // error
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (x$1: (box A^ ->? A^?, box A^ ->? A^?)^?) ->? box A^? ->? A^?
+   |Required: (x$1: (box A ->{ps*} A, box A ->{ps*} A)) => box A^? ->? A^?
+   |
+   |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
+   |          ^  refers to the universal root capability
+   |
+   | longer explanation available when compiling with `-explain`

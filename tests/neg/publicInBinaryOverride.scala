@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.annotation.publicInBinary
 
 class A:

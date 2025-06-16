@@ -9,6 +9,8 @@ import Annotations.Annotation
 import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
+import config.Feature
+import util.SrcPos
 
 import Decorators.*
 import Constants.Constant
@@ -264,6 +266,19 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _                            => false
   }
 
+  /** Expression was written `e: Unit` to quell warnings. Looks into adapted tree. */
+  def isAscribedToUnit(tree: Tree): Boolean =
+    import typer.Typer.AscribedToUnit
+       tree.hasAttachment(AscribedToUnit)
+    || {
+      def loop(tree: Tree): Boolean = tree match
+        case Apply(fn, _)     => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case TypeApply(fn, _) => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case Block(_, expr)   => expr.hasAttachment(AscribedToUnit) || loop(expr)
+        case _                => false
+      loop(tree)
+    }
+
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
     catchesAllOf(cdef, defn.ThrowableType)
@@ -466,6 +481,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef if Feature.shouldBehaveAsScala2 =>
+      if (tree.isClassDef) EmptyFlags else NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
     case tree: DefDef =>
       if tree.unforcedRhs == EmptyTree
@@ -477,6 +494,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
         NoInitsInterface
       else if tree.mods.is(Given) && tree.paramss.isEmpty then
         EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
+      else if Feature.shouldBehaveAsScala2 then
+        EmptyFlags
       else
         NoInits
     case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
@@ -518,6 +537,10 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
+
+  /** The position of the modifier associated with given flag in this definition. */
+  def flagSourcePos(mdef: DefTree, flag: FlagSet): SrcPos =
+    mdef.mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
@@ -755,7 +778,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def isVariableOrGetter(tree: Tree)(using Context): Boolean = {
     def sym = tree.symbol
-    def isVar = sym.is(Mutable)
+    def isVar = sym.isMutableVarOrAccessor
     def isGetter =
       mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 

@@ -1,6 +1,7 @@
 import caps.cap
 import caps.use
 
+
 class Unit
 object u extends Unit
 
@@ -13,7 +14,7 @@ def test =
   def wrapper[T](x: T): Wrapper[T] = Wrapper:
     [X] => (op: T ->{cap} X) => op(x)
 
-  def strictMap[A <: Top,  B <: Top](mx: Wrapper[A])(f: A ->{cap} B): Wrapper[B] =
+  def strictMap[A <: Top,  B <: Top](mx: Wrapper[A])(f: A ->{cap, mx*} B): Wrapper[B] =
     mx.value((x: A) => wrapper(f(x)))
 
   def force[A](thunk: Unit ->{cap} A): A = thunk(u)

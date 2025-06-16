@@ -1,0 +1,36 @@
+break example.A$ 8
+eval a1
+result a1
+eval this.a2
+result a2
+eval A.a3
+result a3
+eval B
+result example.A.B
+eval this.B.b1
+result b1
+eval A.B.b2
+error value b2 cannot be accessed
+eval B.b3
+result b3
+eval C.c1
+result c1
+eval D.d1
+result d1
+eval E
+result example.E
+eval E.e1
+result e1
+
+// eval static fields from private object
+break example.A$B$ 16
+eval b1
+result b1
+eval b2
+error Cannot access local val b2 in method <init> as field
+eval a2
+result a2
+eval C.c1
+result c1
+eval E.e1
+result e1

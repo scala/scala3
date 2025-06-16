@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package quoted
 
-import scala.language.unsafeNulls
-
 import scala.collection.mutable
 import scala.reflect.ClassTag
 

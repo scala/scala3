@@ -51,7 +51,7 @@ object Trace:
       val line =
         if pos.source.exists then
           val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-          val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
+          val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
           i"$code\t$loc"
         else
           tree match
@@ -59,7 +59,7 @@ object Trace:
               // The definition can be huge, avoid printing the whole definition.
               defDef.symbol.showFullName
             case _ =>
-              tree.show.split(System.lineSeparator(), 2).nn.head.nn
+              tree.show.split(System.lineSeparator(), 2).head
 
       val positionMarkerLine =
         if pos.exists && pos.source.exists then
@@ -86,7 +86,7 @@ object Trace:
    */
   private def positionMarker(pos: SourcePosition): String =
     val trimmed = pos.source.lineContent(pos.start).takeWhile(c => c.isWhitespace).length
-    val padding = pos.startColumnPadding.substring(trimmed).nn
+    val padding = pos.startColumnPadding.substring(trimmed)
     val carets =
       if (pos.startLine == pos.endLine)
         "^" * math.max(1, pos.endColumn - pos.startColumn)

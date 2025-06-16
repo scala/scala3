@@ -487,6 +487,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(sym: Symbol)(using Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
+  // Like `ref`, but avoids wrapping innermost module class references with This(),
+  // instead mapping those to objects, so that the resulting trees can be used in
+  // largest scope possible (method added for macros)
+  def generalisedRef(sym: Symbol)(using Context): Tree =
+    // Removes ThisType from inner module classes, replacing those with references to objects
+    def simplifyThisTypePrefix(tpe: Type)(using Context): Type =
+      tpe match
+        case ThisType(tref @ TypeRef(prefix, _)) if tref.symbol.flags.is(Module) =>
+          TermRef(simplifyThisTypePrefix(prefix), tref.symbol.companionModule)
+        case TypeRef(prefix, designator) =>
+          TypeRef(simplifyThisTypePrefix(prefix), designator)
+        case _ =>
+          tpe
+    ref(NamedType(simplifyThisTypePrefix(sym.owner.thisType), sym.name, sym.denot))
+
   private def followOuterLinks(t: Tree)(using Context) = t match {
     case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
       // after erasure outer paths should be respected
@@ -826,14 +841,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
   }
-
-  // This is a more fault-tolerant copier that does not cause errors when
-  // function types in applications are undefined.
-  // This was called `Inliner.InlineCopier` before 3.6.3.
-  class ConservativeTreeCopier() extends TypedTreeCopier:
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
-      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
-      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
 
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError
 
@@ -1536,7 +1543,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * @param selectorPredicate A test to find the selector to use.
    * @return The symbols imported.
    */
-  def importedSymbols(imp: Import,
+  def importedSymbols(imp: ImportOrExport,
                       selectorPredicate: untpd.ImportSelector => Boolean = util.common.alwaysTrue)
                      (using Context): List[Symbol] =
     imp.selectors.find(selectorPredicate) match

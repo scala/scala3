@@ -1,0 +1,11 @@
+scala>:jar path/does/not/exist
+Cannot add "path/does/not/exist" to classpath.
+
+scala>:jar sbt-test/source-dependencies/canon/actual/a.jar
+Added 'sbt-test/source-dependencies/canon/actual/a.jar' to classpath.
+
+scala>:jar sbt-test/source-dependencies/canon/actual/a.jar
+The path 'sbt-test/source-dependencies/canon/actual/a.jar' cannot be loaded, it contains a classfile that already exists on the classpath: sbt-test/source-dependencies/canon/actual/a.jar(A.class)
+
+scala>:require sbt-test/source-dependencies/canon/actual/a.jar
+:require is no longer supported, but has been replaced with :jar. Please use :jar

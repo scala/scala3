@@ -1,10 +1,15 @@
-import language.experimental.namedTuples
 
-type Person = (name: String, age: Int)
+package foo
 
-trait A:
-  type T
+package object bar:
+  opaque type O[X] >: X = X
 
-class B:
-  type U =:= A { type T = U }
+class Test:
+  import bar.O
+
+  val x = "abc"
+  val y: O[String] = x
+  //val z: String = y
+
+
 

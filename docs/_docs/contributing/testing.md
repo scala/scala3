@@ -41,6 +41,8 @@ of the `tests/` directory. A small selection of test categories include:
 - `tests/pos` – tests that should compile: pass if compiles successfully.
 - `tests/neg` – should not compile: pass if fails compilation. Useful, e.g., to test an expected compiler error.
 - `tests/run` – these tests not only compile but are also run. Must include at least a `@main def Test = ...`.
+- `tests/debug` – these tests are compiled but also debugged. As for `tests/run` they must include at least a `@main def Test = ...`
+  See [Debug Tests](#debug-tests).
 
 ### Naming and Running a Test Case
 
@@ -203,6 +205,136 @@ Modify the lists in [compiler/test/dotc] to enable or disable tests from `.tasty
 ```bash
 $ sbt
 > testCompilation --from-tasty
+```
+
+## Debug Tests
+
+Debug tests are a variant of compilation tests located in `compiler/tests/debug`.
+Similar to `tests/run`, each test case is executed.
+However, instead of verifying the program's output, a debugger is attached to the running program to validate a predefined debug scenario.
+
+The debug scenario is specified in the `.check` file associated with each test case.
+It consists of a sequence of debug steps that describe the debugger interactions and outcomes.
+
+**Example debug scenario**:
+```
+// Pause on a breakpoint in class Test$ on line 5
+break Test$ 5
+
+// Stepping in should go to line 10
+step 10
+
+// Next should go to line 11
+next 11
+
+// Evaluating the expression x should return 42
+eval x
+result 42
+```
+
+To run all the debug tests:
+```
+sbt 'scala3-compiler/testOnly dotty.tools.debug.DebugTests'
+```
+
+### Debug Steps
+
+#### Breakpoint
+
+Syntax:
+
+```
+break ${runtime class} ${line number}
+```
+
+Examples:
+
+```
+break Test$ 5
+break example.A 10
+break example.A$B$1 12
+```
+
+A breakpoint is defined by a fully-qualified class name and a source line.
+
+All breakpoints of a debug scenario are configured before the program starts.
+
+When the program pauses on a breakpoint, we check the class name and source line of the current frame.
+
+### Step in
+
+Syntax:
+```
+step ${expected line number or method name}
+```
+
+Examples:
+```
+step 10
+step println
+```
+
+A `step` request expects the program to enter into the called method or go to the next instruction.
+After a step request, we check that the source line (or method name) of the current frame matches the expected one.
+
+Typically we use a source line when we stay in the same source file and a method name when we step in a library or JDK class.
+
+### Next
+
+A `next` request behaves similarly to `step` but jumps over a method call and stops on the next instruction.
+
+Syntax:
+```
+next ${expected line number or method name}
+```
+
+Examples:
+```
+next 10
+next println
+```
+
+### Evaluation
+
+Syntax:
+```
+eval ${expression}
+result ${expected output}
+
+// or in case an error is expected
+eval ${expression}
+error ${expected message}
+```
+
+It also supports multi-line expressions and multi-line error messages.
+
+Examples:
+```
+eval fibonacci(2)
+result 55
+
+eval
+  def square(x: Int): Int =
+    x * x
+  square(2)
+result 4
+
+eval foo
+error
+  <expression>:1:0
+  1 |foo
+    |^^^
+    | Not found: foo
+```
+
+An `eval` request verifies that an expression can be evaluated by the `ExpressionCompiler` during a debugging session.
+A `result` assertion checks the evaluation produced the expected output, while an `error` assertion checks the compilation failed with the expected error message.
+
+When the evaluation throws an exception, the exception is returned as a result, not an error.
+
+```
+eval throw new Exception("foo")
+result java.lang.Exception: foo
 ```
 
 ## Unit Tests

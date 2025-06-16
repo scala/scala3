@@ -46,7 +46,7 @@ jobs:
           - platform: WINDOWS_64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
     steps:
-      - uses: sdkman/sdkman-release-action@1f2d4209b4f5a38721d4ae20014ea8e1689d869e
+      - uses: sdkman/sdkman-release-action@2800d4359ae097a99afea7e0370f0c6e726182a4
         with:
           CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
           CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}

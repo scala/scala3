@@ -34,6 +34,9 @@ object Trees {
 
   val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Property key for marking capture-set variables and members */
+  val CaptureVar: Property.StickyKey[Unit] = Property.StickyKey()
+
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
    *  Untyped trees have type `Tree[Untyped]`.
@@ -461,8 +464,11 @@ object Trees {
         else if qualifier.span.exists && qualifier.span.start > span.point then // right associative
           val realName = name.stripModuleClassSuffix.lastPart
           Span(span.start, span.start + realName.length, point)
-        else
-          Span(point, span.end, point)
+        else if span.pointMayBeIncorrect then
+          val realName = name.stripModuleClassSuffix.lastPart
+          val probablyPoint = span.end - realName.length
+          Span(probablyPoint, span.end, probablyPoint)
+        else Span(point, span.end, point)
       else span
   }
 
@@ -738,11 +744,11 @@ object Trees {
   }
 
   /** A tree representing a quote pattern `'{ type binding1; ...; body }` or `'[ type binding1; ...; body ]`.
-   *  `QuotePattern`s are created the type checker when typing an `untpd.Quote` in a pattern context.
+   *  `QuotePattern`s are created by the type checker when typing an `untpd.Quote` in a pattern context.
    *
    *  `QuotePattern`s are checked are encoded into `unapply`s  in the `staging` phase.
    *
-   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the oreder in
+   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the order in
    *   which they are defined in the source.
    *
    *   @param  bindings  Type variable definitions (`Bind` tree)

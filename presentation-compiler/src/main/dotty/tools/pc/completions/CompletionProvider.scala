@@ -4,7 +4,7 @@ package completions
 import java.nio.file.Path
 
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -99,15 +99,15 @@ class CompletionProvider(
              *  4|     $1$.sliding@@[Int](size, step)
              *
              */
-            if qual.symbol.is(Flags.Synthetic) && qual.symbol.name.isInstanceOf[DerivedName] =>
+            if qual.symbol.is(Flags.Synthetic) && qual.span.isZeroExtent && qual.symbol.name.isInstanceOf[DerivedName] =>
               qual.symbol.defTree match
-                case valdef: ValDef => Select(valdef.rhs, name) :: tail
+                case valdef: ValDef if !valdef.rhs.isEmpty => Select(valdef.rhs, name) :: tail
                 case _ => tpdPath0
           case _ => tpdPath0
 
 
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(locatedCtx)
+        val indexedCtx = IndexedContext(pos)(using locatedCtx)
 
         val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
 
@@ -222,7 +222,6 @@ class CompletionProvider(
       if config.isDetailIncludedInLabel then completion.labelWithDescription(printer)
       else completion.label
     val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
-
     lazy val isInStringInterpolation =
       path match
         // s"My name is $name"
@@ -248,10 +247,17 @@ class CompletionProvider(
         range: Option[LspRange] = None
     ): CompletionItem =
       val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
-      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
+      val trimmedNewText = {
+        var nt = newText
+        if (completionPos.hasLeadingBacktick) nt = nt.stripPrefix("`")
+        if (completionPos.hasTrailingBacktick) nt = nt.stripSuffix("`")
+        nt
+      }
+
+      val editRange = if trimmedNewText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
-      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(newText))
+      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(trimmedNewText))
 
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")

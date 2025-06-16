@@ -19,7 +19,7 @@ class Coverage:
 
   def addStatement(stmt: Statement): Unit = statementsById(stmt.id) = stmt
 
-  def removeStatementsFromFile(sourcePath: Path) =
+  def removeStatementsFromFile(sourcePath: Path | Null) =
     val removedIds = statements.filter(_.location.sourcePath == sourcePath).map(_.id.toLong)
     removedIds.foreach(statementsById.remove)
 

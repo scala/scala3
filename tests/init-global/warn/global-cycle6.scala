@@ -11,7 +11,7 @@ object B {
 }
 
 object O {
-  object A {
+  object A { // warn
     val n: Int = B.m
     class Inner {
       val x: Int = 4

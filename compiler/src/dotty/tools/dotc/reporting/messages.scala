@@ -23,7 +23,7 @@ import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
-import printing.Formatting.hl
+import Formatting.{hl, delay}
 import ast.Trees.*
 import ast.untpd
 import ast.tpd
@@ -37,6 +37,7 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
+import Message.Disambiguation
 
 /**  Messages
   *  ========
@@ -61,7 +62,7 @@ trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
     super.msgPostscript ++ matchReductionAddendum(tps*)
 
-abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
   def kind = MessageKind.TypeMismatch
   def explain(using Context) = err.whyNoMatchStr(found, expected)
@@ -92,7 +93,7 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
 
   protected def debugInfo =
     if ctx.settings.YdebugCyclic.value then
-      "\n\nStacktrace:" ++ ex.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+      "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
   protected def context: String = ex.optTrace match
@@ -1172,6 +1173,7 @@ class OverrideError(
     member: Symbol, other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
+  withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
       (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
@@ -1181,8 +1183,8 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
             |(Note that ${err.infoStringWithLocation(other, base)} is abstract,
             |and is therefore overridden by concrete ${err.infoStringWithLocation(member, base)})"""
         else ""
-    i"""error overriding ${err.infoStringWithLocation(other, base)};
-        |  ${err.infoString(member, base, showLocation = member.owner != base.typeSymbol)} $core$addendum"""
+    i"""error overriding ${delay(err.infoStringWithLocation(other, base))};
+        |  ${delay(err.infoString(member, base, showLocation = member.owner != base.typeSymbol))} $core$addendum"""
   override def canExplain =
     memberTp.exists && otherTp.exists
   def explain(using Context) =
@@ -1694,7 +1696,7 @@ class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
 
   def msg(using Context) = i"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
   def explain(using Context) =
-    if sym.is(Mutable) then "Note that variables need to be initialized to be defined."
+    if sym.isMutableVarOrAccessor then "Note that variables need to be initialized to be defined."
     else ""
 }
 
@@ -1810,6 +1812,12 @@ class ValueClassNeedsOneValParam(valueClass: Symbol)(using Context)
 class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(using Context)
   extends SyntaxMsg(ValueClassParameterMayNotBeCallByNameID) {
   def msg(using Context) = s"Value class parameter `${param.name}` may not be call-by-name"
+  def explain(using Context) = ""
+}
+
+class ValueClassCannotExtendAliasOfAnyVal(valueClass: Symbol, alias: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A value class cannot extend a type alias ($alias) of ${hl("AnyVal")}"""
   def explain(using Context) = ""
 }
 
@@ -2317,7 +2325,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -2421,12 +2429,14 @@ class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends 
 }
 
 class NotAnExtractor(tree: untpd.Tree)(using Context) extends PatternMatchMsg(NotAnExtractorID) {
-  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
+  def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an ${hl("unapply")} or ${hl("unapplySeq")} method with the appropriate signature"
   def explain(using Context) =
-    i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
+    i"""|An ${hl("unapply")} method should be in an ${hl("object")}, take a single explicit term parameter, and:
         |  - If it is just a test, return a ${hl("Boolean")}. For example ${hl("case even()")}
         |  - If it returns a single sub-value of type T, return an ${hl("Option[T]")}
         |  - If it returns several sub-values T1,...,Tn, group them in an optional tuple ${hl("Option[(T1,...,Tn)]")}
+        |
+        |Additionaly, ${hl("unapply")} or ${hl("unapplySeq")} methods cannot take type parameters after their explicit term parameter.
         |
         |Sometimes, the number of sub-values isn't fixed and we would like to return a sequence.
         |For this reason, you can also define patterns through ${hl("unapplySeq")} which returns ${hl("Option[Seq[T]]")}.
@@ -2513,6 +2523,17 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
        |it should not be defined as an extension.
        |
        |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
+
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""The receiver cannot be omitted when an extension method is invoked as a selection.
+       |A default argument for that parameter would never be used in that case.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
+       |it should not be defined as an extension."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -3121,7 +3142,7 @@ extends ReferenceMsg(CannotBeAccessedID):
       case _ =>
         i"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
-    val whyNot = new StringBuffer
+    val whyNot = new StringBuilder
     for alt <- alts do
       val cls = alt.owner.enclosingSubClass
       val owner = if cls.exists then cls else alt.owner
@@ -3129,10 +3150,10 @@ extends ReferenceMsg(CannotBeAccessedID):
         if alt.is(Protected) then
           if alt.privateWithin.exists && alt.privateWithin != owner then
             if owner.is(Final) then alt.privateWithin.showLocated
-            else alt.privateWithin.showLocated + ", or " + owner.showLocated + " or one of its subclasses"
+            else s"${alt.privateWithin.showLocated}, or ${owner.showLocated} or one of its subclasses"
           else
             if owner.is(Final) then owner.showLocated
-            else owner.showLocated + " or one of its subclasses"
+            else s"${owner.showLocated} or one of its subclasses"
         else
           alt.privateWithin.orElse(owner).showLocated
       val accessMod = if alt.is(Protected) then "protected" else "private"
@@ -3256,7 +3277,7 @@ extends SyntaxMsg(VolatileOnValID):
   protected def explain(using Context): String = ""
 
 class ConstructorProxyNotValue(sym: Symbol)(using Context)
-extends TypeMsg(ConstructorProxyNotValueID):
+extends TypeMsg(PhantomSymbolNotValueID):
   protected def msg(using Context): String =
     i"constructor proxy $sym cannot be used as a value"
   protected def explain(using Context): String =
@@ -3271,7 +3292,7 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |but not as a stand-alone value."""
 
 class ContextBoundCompanionNotValue(sym: Symbol)(using Context)
-extends TypeMsg(ConstructorProxyNotValueID):
+extends TypeMsg(PhantomSymbolNotValueID):
   protected def msg(using Context): String =
     i"context bound companion $sym cannot be used as a value"
   protected def explain(using Context): String =
@@ -3290,22 +3311,46 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |companion value with the (term-)name `A`. However, these context bound companions
        |are not values themselves, they can only be referred to in selections."""
 
-class UnusedSymbol(errorText: String)(using Context)
-extends Message(UnusedSymbolID) {
+class DummyCaptureParamNotValue(sym: Symbol)(using Context)
+extends TypeMsg(PhantomSymbolNotValueID):
+  protected def msg(using Context): String =
+    i"dummy term capture parameter $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A term capture parameter is a symbol made up by the compiler to represent a reference
+       |to a real capture parameter in capture sets. For instance, in
+       |
+       |   class A:
+       |     type C^
+       |
+       |there is just a type `A` declared but not a value `A`. Nevertheless, one can write
+       |the selection `(a: A).C` and use a a value, which works because the compiler created a
+       |term capture parameter for `C`. However, these term capture parameters are not real values,
+       |they can only be referred in capture sets."""
+
+class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
+extends Message(UnusedSymbolID):
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
-}
+  override def actions(using Context) = this.actions
 
-object UnusedSymbol {
-    def imports(using Context): UnusedSymbol = new UnusedSymbol(i"unused import")
-    def localDefs(using Context): UnusedSymbol = new UnusedSymbol(i"unused local definition")
-    def explicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused explicit parameter")
-    def implicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused implicit parameter")
-    def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
-    def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
-}
+object UnusedSymbol:
+  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
+  def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
+  def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
+    UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
+  def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
+  def unsetLocals(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol =
+    UnusedSymbol(i"unset private variable, consider using an immutable val instead")
+  private def paramAddendum(sym: Symbol)(using Context): String =
+    if sym.denot.owner.is(ExtensionMethod) then i" in extension ${sym.denot.owner}"
+    else ""
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
@@ -3334,14 +3379,14 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
 
   private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
 
-  override protected def msg(using Context): String = 
+  override protected def msg(using Context): String =
     i"Reference to $tpe within quotes requires a given ${witness} in scope"
 
   override protected def explain(using Context): String =
-    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope.
         |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
-        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
-        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code.
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression.
         |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
         |"""
 
@@ -3349,7 +3394,7 @@ end QuotedTypeMissing
 
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
-    i"""Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+    i"""Deprecated syntax: since 3.7 this is interpreted as a named tuple with one element,
       |not as an assignment.
       |
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
@@ -3359,9 +3404,9 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
 
 class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
   def msg(using Context) =
-    i"""Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
        |To avoid this warning, either remove the argument names or use dotted selection."""
-        + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+        + Message.rewriteNotice("This", version = SourceVersion.`3.7-migration`)
 
   def explain(using Context) = ""
 
@@ -3408,3 +3453,90 @@ final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxM
 
     def explain(using Context) = ""
 end EnumMayNotBeValueClasses
+
+class IllegalUnrollPlacement(origin: Option[Symbol])(using Context)
+extends DeclarationMsg(IllegalUnrollPlacementID):
+  def msg(using Context) = origin match
+    case None => "@unroll is only allowed on a method parameter"
+    case Some(method) =>
+      val isCtor = method.isConstructor
+      def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
+      val prefix = s"Cannot unroll parameters of $what"
+      if method.isLocal then
+        i"$prefix because it is a local method"
+      else if !method.isEffectivelyFinal then
+        i"$prefix because it can be overridden"
+      else if isCtor && method.owner.is(Trait) then
+        i"implementation restriction: $prefix"
+      else if method.owner.companionClass.is(CaseClass) then
+        i"$prefix of a case class companion object: please annotate the class constructor instead"
+      else
+        assert(method.owner.is(CaseClass))
+        i"$prefix of a case class: please annotate the class constructor instead"
+
+  def explain(using Context) = ""
+end IllegalUnrollPlacement
+
+class BadFormatInterpolation(errorText: String)(using Context) extends Message(FormatInterpolationErrorID):
+  def kind = MessageKind.Interpolation
+  protected def msg(using Context) = errorText
+  protected def explain(using Context) = ""
+
+class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotPartialFunctionID):
+  protected def msg(using Context) =
+    "match expression in result of block will not be used to synthesize partial function"
+  protected def explain(using Context) =
+    i"""A `PartialFunction` can be synthesized from a function literal if its body is just a pattern match.
+       |
+       |For example, `collect` takes a `PartialFunction`.
+       |  (1 to 10).collect(i => i match { case n if n % 2 == 0 => n })
+       |is equivalent to using a "pattern-matching anonymous function" directly:
+       |  (1 to 10).collect { case n if n % 2 == 0 => n }
+       |Compare an operation that requires a `Function1` instead:
+       |  (1 to 10).map { case n if n % 2 == 0 => n case n => n + 1 }
+       |
+       |As a convenience, the "selector expression" of the match can be an arbitrary expression:
+       |  List("1", "two", "3").collect(x => Try(x.toInt) match { case Success(i) => i })
+       |In this example, `isDefinedAt` evaluates the selector expression and any guard expressions
+       |in the pattern match in order to report whether an input is in the domain of the function.
+       |
+       |However, blocks of statements are not supported by this idiom:
+       |  List("1", "two", "3").collect: x =>
+       |    val maybe = Try(x.toInt) // statements preceding the match
+       |    maybe match
+       |    case Success(i) if i % 2 == 0 => i // throws MatchError on cases not covered
+       |
+       |This restriction is enforced to simplify the evaluation semantics of the partial function.
+       |Otherwise, it might not be clear what is computed by `isDefinedAt`.
+       |
+       |Efficient operations will use `applyOrElse` to avoid computing the match twice,
+       |but the `apply` body would be executed "per element" in the example."""
+
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    val act = i"$tpt(${args.map(_.show).mkString(", ")})"
+    i"""|Applied constructor type $act has no effect.
+        |The resulting type of $act is the same as its base type, namely: $tpe""".stripMargin
+
+  override protected def explain(using Context): String =
+    i"""|Applied constructor types are used to ascribe specialized types of constructor applications.
+        |To benefit from this feature, the constructor in question has to have a more specific type than the class itself.
+        |
+        |If you want to track a precise type of any of the class parameters, make sure to mark the parameter as `tracked`.
+        |Otherwise, you can safely remove the argument list from the type.
+        |"""
+
+final class OnlyFullyDependentAppliedConstructorType()(using Context)
+  extends TypeMsg(OnlyFullyDependentAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    i"Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked"
+
+  override protected def explain(using Context): String = ""
+
+final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
+  override protected def msg(using Context): String =
+    i"Context bounds are not allowed in this position"
+
+  override protected def explain(using Context): String = ""
+
+end IllegalContextBounds

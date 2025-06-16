@@ -16,7 +16,7 @@ object Macros {
       name,
       Flags.Implicit,
       Flags.EmptyFlags,
-      List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
+      _ => List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
       _ => Nil,
       Symbol.noSymbol
     )

@@ -14,7 +14,7 @@ import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 
 import java.io.File.separator
 import java.net.URI
@@ -229,8 +229,7 @@ object SourceFile {
    *  It relies on SourceFile#virtual implementation to create the virtual file.
    */
   def virtual(uri: URI, content: String): SourceFile =
-    val path = Paths.get(uri).toString
-    SourceFile.virtual(path, content)
+    SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
 
   /** Returns the relative path of `source` within the `reference` path
    *
@@ -276,12 +275,11 @@ object SourceFile {
 
   def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // so cope with failure; also deal with path prefix "Not a directory".
+    // so cope with failure.
     val chars =
       try new String(file.toByteArray, codec.charSet).toCharArray
       catch
-        case _: NoSuchFileException => Array.empty[Char]
-        case fse: FileSystemException if fse.getMessage.endsWith("Not a directory") => Array.empty[Char]
+        case _: FileSystemException => Array.empty[Char]
 
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)

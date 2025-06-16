@@ -47,9 +47,10 @@ object JSPrimitives {
   inline val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
   inline val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
-  inline val THROW = DEBUGGER + 1
+  inline val THROW = DEBUGGER + 1  // <special-ops>.throw
+  inline val NEW_ARRAY = THROW + 1 // scala.runtime.Arrays.newArray
 
-  inline val UNION_FROM = THROW + 1                       // js.|.from
+  inline val UNION_FROM = NEW_ARRAY + 1                   // js.|.from
   inline val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
 
   inline val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
@@ -135,6 +136,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
     addPrimitive(defn.throwMethod, THROW)
+    addPrimitive(defn.newArrayMethod, NEW_ARRAY)
 
     addPrimitive(jsdefn.PseudoUnion_from, UNION_FROM)
     addPrimitive(jsdefn.PseudoUnion_fromTypeConstructor, UNION_FROM_TYPE_CONSTRUCTOR)

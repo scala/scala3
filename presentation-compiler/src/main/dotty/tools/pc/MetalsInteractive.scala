@@ -100,9 +100,9 @@ object MetalsInteractive:
       pos: SourcePosition,
       indexed: IndexedContext,
       skipCheckOnName: Boolean = false
-  ): List[Symbol] =
+  )(using Context): List[Symbol] =
     enclosingSymbolsWithExpressionType(path, pos, indexed, skipCheckOnName)
-      .map(_._1)
+      .map(_._1.sourceSymbol)
 
   /**
    * Returns the list of tuple enclosing symbol and
@@ -135,7 +135,7 @@ object MetalsInteractive:
           (sym, sym.info, None)
         )
 
-      case (imp: Import) :: _ =>
+      case (imp: ImportOrExport) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
           (sym, sym.info, None)
         )
@@ -206,7 +206,7 @@ object MetalsInteractive:
       // Handle select on named tuples
       case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
         if fun.symbol.exists && fun.symbol.name == nme.apply &&
-            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
+            fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
           t.tpe.dealias match
             case AppliedType(_, args) => args.get(i)
@@ -217,17 +217,19 @@ object MetalsInteractive:
         val tpe = getIndex(t2).getOrElse(NoType)
         List((ddef.symbol, tpe, Some(name)))
 
+      case head :: (sel @ Select(_, name)) :: _
+        if head.sourcePos.encloses(sel.sourcePos) && (name == StdNames.nme.apply || name == StdNames.nme.unapply) =>
+          val optObjectSymbol = List(head.symbol).filter(sym => !(sym.is(Synthetic) && sym.is(Module)))
+          val classSymbol = head.symbol.companionClass
+          val optApplySymbol = List(sel.symbol).filter(sym => !sym.is(Synthetic))
+          val symbols = optObjectSymbol ++ (classSymbol :: optApplySymbol)
+          symbols.collect:
+            case sym if sym.exists => (sym, sym.info, None)
+
       case path @ head :: tail =>
         if head.symbol.is(Exported) then
           val sym = head.symbol.sourceSymbol
           List((sym, sym.info, None))
-        else if head.symbol.is(Synthetic) then
-          enclosingSymbolsWithExpressionType(
-            tail,
-            pos,
-            indexed,
-            skipCheckOnName
-          )
         else if head.symbol != NoSymbol then
           if skipCheckOnName ||
             MetalsInteractive.isOnName(
@@ -236,6 +238,13 @@ object MetalsInteractive:
               indexed.ctx.source
             )
           then List((head.symbol, head.typeOpt, None))
+          else if head.symbol.is(Synthetic) then
+            enclosingSymbolsWithExpressionType(
+              tail,
+              pos,
+              indexed,
+              skipCheckOnName
+            )
           /* Type tree for List(1) has an Int type variable, which has span
            * but doesn't exist in code.
            * https://github.com/scala/scala3/issues/15937

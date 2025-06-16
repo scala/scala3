@@ -13,7 +13,7 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j as l
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
@@ -37,7 +37,7 @@ object SignatureHelpProvider:
         val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx)
 
         val localizedContext = Interactive.contextOfPath(path)(using driver.currentCtx)
-        val indexedContext = IndexedContext(driver.currentCtx)
+        val indexedContext = IndexedContext(pos)(using driver.currentCtx)
 
         given Context = localizedContext.fresh
           .setCompilationUnit(unit)

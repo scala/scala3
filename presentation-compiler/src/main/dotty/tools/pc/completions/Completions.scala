@@ -5,7 +5,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.collection.mutable
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
 import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering, CompletionFuzzy}
 import scala.meta.pc.*
@@ -569,6 +569,7 @@ class Completions(
         then
           indexedContext.lookupSym(sym) match
             case IndexedContext.Result.InScope => false
+            case IndexedContext.Result.Missing if indexedContext.rename(sym).isDefined => false
             case _ if completionMode.is(Mode.ImportOrExport) =>
               visit(
                 CompletionValue.Workspace(

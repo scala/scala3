@@ -667,7 +667,11 @@ class TreeUnpickler(reader: TastyReader,
         }
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
-      val annots = annotFns.map(_(annotOwner))
+      var annots = annotFns.map(_(annotOwner))
+      if annots.exists(_.symbol == defn.SilentIntoAnnot) then
+        // Temporary measure until we can change TastyFormat to include an INTO tag
+        sym.setFlag(Into)
+        annots = annots.filterNot(_.symbol == defn.SilentIntoAnnot)
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
@@ -940,7 +944,7 @@ class TreeUnpickler(reader: TastyReader,
           DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
-          sym.info = tpt.tpe
+          sym.info = tpt.tpe.suppressIntoIfParam(sym)
           nullify(sym)
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
@@ -989,7 +993,7 @@ class TreeUnpickler(reader: TastyReader,
         case PARAM =>
           val tpt = readTpt()(using localCtx)
           assert(nothingButMods(end))
-          sym.info = tpt.tpe
+          sym.info = tpt.tpe.suppressIntoIfParam(sym)
           nullify(sym)
           ValDef(tpt)
       }
@@ -1577,7 +1581,7 @@ class TreeUnpickler(reader: TastyReader,
                *  - sbt-test/tasty-compat/remove-override
                *  - sbt-test/tasty-compat/move-method
                */
-              def lookupInSuper =
+              def lookupInSuper(using Context) =
                 val cls = ownerTpe.classSymbol
                 if cls.exists then
                   cls.asClass.classDenot
@@ -1586,13 +1590,17 @@ class TreeUnpickler(reader: TastyReader,
                 else
                   NoDenotation
 
-              val denot =
+
+              def searchDenot(using Context): Denotation =
                 if owner.is(JavaAnnotation) && name == nme.CONSTRUCTOR then
                   // #19951 Fix up to read TASTy produced before 3.5.0 -- ignore the signature
                   ownerTpe.nonPrivateDecl(name).asSeenFrom(prefix)
                 else
                   val d = ownerTpe.decl(name).atSignature(sig, target)
                   (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
+
+              val denot = inContext(ctx.addMode(Mode.ResolveFromTASTy)):
+                searchDenot // able to resolve Invisible members
 
               makeSelect(qual, name, denot)
             case REPEATED =>

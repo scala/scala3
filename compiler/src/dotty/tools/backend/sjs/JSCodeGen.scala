@@ -26,7 +26,7 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.report
 
 import dotty.tools.sjs.ir
-import dotty.tools.sjs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
+import dotty.tools.sjs.ir.{ClassKind, Position, Trees => js, Types => jstpe, WellKnownNames => jswkn}
 import dotty.tools.sjs.ir.Names.{ClassName, LocalName, MethodName, SimpleMethodName}
 import dotty.tools.sjs.ir.OriginalName
 import dotty.tools.sjs.ir.OriginalName.NoOriginalName
@@ -133,7 +133,7 @@ class JSCodeGen()(using genCtx: Context) {
   def currentThisType: jstpe.Type = {
     currentThisTypeNullable match {
       case tpe @ jstpe.ClassType(cls, _) =>
-        jstpe.BoxedClassToPrimType.getOrElse(cls, tpe.toNonNullable)
+        jswkn.BoxedClassToPrimType.getOrElse(cls, tpe.toNonNullable)
       case tpe @ jstpe.AnyType =>
         // We are in a JS class, in which even `this` is nullable
         tpe
@@ -424,7 +424,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       val staticInitializerStats = reflectInit ::: staticModuleInit
       if (staticInitializerStats.nonEmpty)
-        List(genStaticConstructorWithStats(ir.Names.StaticInitializerName, js.Block(staticInitializerStats)))
+        List(genStaticConstructorWithStats(jswkn.StaticInitializerName, js.Block(staticInitializerStats)))
       else
         Nil
     }
@@ -453,7 +453,7 @@ class JSCodeGen()(using genCtx: Context) {
                 originalName,
                 ClassKind.Class,
                 None,
-                Some(js.ClassIdent(ir.Names.ObjectClass)),
+                Some(js.ClassIdent(jswkn.ObjectClass)),
                 Nil,
                 None,
                 None,
@@ -574,7 +574,7 @@ class JSCodeGen()(using genCtx: Context) {
 
         if (staticFields.nonEmpty) {
           generatedMethods +=
-            genStaticConstructorWithStats(ir.Names.ClassInitializerName, genLoadModule(companionModuleClass))
+            genStaticConstructorWithStats(jswkn.ClassInitializerName, genLoadModule(companionModuleClass))
         }
 
         (staticFields, staticExports)
@@ -1000,7 +1000,7 @@ class JSCodeGen()(using genCtx: Context) {
     val fqcnArg = js.StringLiteral(sym.fullName.toString)
     val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
     val loadModuleFunArg =
-      js.Closure(arrow = true, Nil, Nil, None, genLoadModule(sym), Nil)
+      js.Closure(js.ClosureFlags.arrow, Nil, Nil, None, jstpe.AnyType, genLoadModule(sym), Nil)
 
     val stat = genApplyMethod(
         genLoadModule(jsdefn.ReflectModule),
@@ -1035,7 +1035,7 @@ class JSCodeGen()(using genCtx: Context) {
 
           val paramTypesArray = js.JSArrayConstr(parameterTypes)
 
-          val newInstanceFun = js.Closure(arrow = true, Nil, formalParams, None, {
+          val newInstanceFun = js.Closure(js.ClosureFlags.arrow, Nil, formalParams, None, jstpe.AnyType, {
             js.New(encodeClassName(sym), encodeMethodSym(ctor), actualParams)
           }, Nil)
 
@@ -1557,7 +1557,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       def jsParams = params.map(genParamDef(_))
 
-      if (primitives.isPrimitive(sym)) {
+      if (primitives.isPrimitive(sym) && sym != defn.newArrayMethod) {
         None
       } else if (sym.is(Deferred) && currentClassSym.isNonNativeJSClass) {
         // scala-js/#4409: Do not emit abstract methods in non-native JS classes
@@ -2389,7 +2389,7 @@ class JSCodeGen()(using genCtx: Context) {
     // Make new class def with static members
     val newClassDef = {
       implicit val pos = originalClassDef.pos
-      val parent = js.ClassIdent(jsNames.ObjectClass)
+      val parent = js.ClassIdent(jswkn.ObjectClass)
       js.ClassDef(originalClassDef.name, originalClassDef.originalName,
           ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
           jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
@@ -2427,7 +2427,7 @@ class JSCodeGen()(using genCtx: Context) {
       js.VarRef(selfIdent.name)(jstpe.AnyType)
 
     def memberLambda(params: List[js.ParamDef], restParam: Option[js.ParamDef], body: js.Tree)(implicit pos: ir.Position): js.Closure =
-      js.Closure(arrow = false, captureParams = Nil, params, restParam, body, captureValues = Nil)
+      js.Closure(js.ClosureFlags.function, captureParams = Nil, params, restParam, jstpe.AnyType, body, captureValues = Nil)
 
     val fieldDefinitions = jsFieldDefs.toList.map { fdef =>
       implicit val pos = fdef.pos
@@ -2539,7 +2539,8 @@ class JSCodeGen()(using genCtx: Context) {
       beforeSuper ::: superCall ::: afterSuper
     }
 
-    val closure = js.Closure(arrow = true, jsClassCaptures, Nil, None,
+    // Wrap everything in a lambda, for namespacing
+    val closure = js.Closure(js.ClosureFlags.arrow, jsClassCaptures, Nil, None, jstpe.AnyType,
         js.Block(inlinedCtorStats, selfRef), jsSuperClassValue :: args)
     js.JSFunctionApply(closure, Nil)
   }
@@ -2569,6 +2570,8 @@ class JSCodeGen()(using genCtx: Context) {
       genCoercion(tree, receiver, code)
     else if (code == JSPrimitives.THROW)
       genThrow(tree, args)
+    else if (code == JSPrimitives.NEW_ARRAY)
+      genNewArray(tree, args)
     else if (JSPrimitives.isJSPrimitive(code))
       genJSPrimitive(tree, args, code, isStat)
     else
@@ -3038,6 +3041,24 @@ class JSCodeGen()(using genCtx: Context) {
     }
   }
 
+  /** Gen a call to the special `newArray` method. */
+  private def genNewArray(tree: Apply, args: List[Tree]): js.Tree = {
+    implicit val pos: SourcePosition = tree.sourcePos
+
+    val List(elemClazz, Literal(arrayClassConstant), dimsArray: JavaSeqLiteral) = args: @unchecked
+
+    dimsArray.elems match {
+      case singleDim :: Nil =>
+        // Use a js.NewArray
+        val arrayTypeRef = toTypeRef(arrayClassConstant.typeValue).asInstanceOf[jstpe.ArrayTypeRef]
+        js.NewArray(arrayTypeRef, genExpr(singleDim))
+      case _ =>
+        // Delegate to jlr.Array.newInstance
+        js.ApplyStatic(js.ApplyFlags.empty, JLRArrayClassName, js.MethodIdent(JLRArrayNewInstanceMethodName),
+            List(genExpr(elemClazz), genJavaSeqLiteral(dimsArray)))(jstpe.AnyType)
+    }
+  }
+
   /** Gen a "normal" apply (to a true method).
    *
    *  But even these are further refined into:
@@ -3330,7 +3351,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     // Sanity check: we can handle Ints and Strings (including `null`s), but nothing else
     genSelector.tpe match {
-      case jstpe.IntType | jstpe.ClassType(jsNames.BoxedStringClass, _) | jstpe.NullType | jstpe.NothingType =>
+      case jstpe.IntType | jstpe.ClassType(jswkn.BoxedStringClass, _) | jstpe.NullType | jstpe.NothingType =>
         // ok
       case _ =>
         abortMatch(s"Invalid selector type ${genSelector.tpe}")
@@ -3494,6 +3515,8 @@ class JSCodeGen()(using genCtx: Context) {
         atPhase(elimRepeatedPhase)(samMethod.info.paramInfoss.flatten.exists(_.isRepeatedParam))
       }
     }
+    val isFunctionXXL =
+      funInterfaceSym.name == tpnme.FunctionXXL && funInterfaceSym.owner == defn.ScalaRuntimePackageClass
 
     val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
     val formalParamTypes = sym.info.paramInfoss.flatten.drop(envSize)
@@ -3503,8 +3526,11 @@ class JSCodeGen()(using genCtx: Context) {
 
     val formalAndActualParams = formalParamNames.lazyZip(formalParamTypes).lazyZip(formalParamRepeateds).map {
       (name, tpe, repeated) =>
+        val formalTpe =
+          if (isFunctionXXL) jstpe.ArrayType(ObjectArrayTypeRef, nullable = true)
+          else jstpe.AnyType
         val formalParam = js.ParamDef(freshLocalIdent(name),
-            OriginalName(name.toString), jstpe.AnyType, mutable = false)
+            OriginalName(name.toString), formalTpe, mutable = false)
         val actualParam =
           if (repeated) genJSArrayToVarArgs(formalParam.ref)(tree.sourcePos)
           else unbox(formalParam.ref, tpe)
@@ -3539,10 +3565,11 @@ class JSCodeGen()(using genCtx: Context) {
     if (isThisFunction) {
       val thisParam :: otherParams = formalParams: @unchecked
       js.Closure(
-          arrow = false,
+          js.ClosureFlags.function,
           formalCaptures,
           otherParams,
           restParam,
+          jstpe.AnyType,
           js.Block(
               js.VarDef(thisParam.name, thisParam.originalName,
                   thisParam.ptpe, mutable = false,
@@ -3550,23 +3577,32 @@ class JSCodeGen()(using genCtx: Context) {
               genBody),
           actualCaptures)
     } else {
-      val closure = js.Closure(arrow = true, formalCaptures, formalParams, restParam, genBody, actualCaptures)
+      val closure = js.Closure(js.ClosureFlags.typed, formalCaptures,
+          formalParams, restParam, jstpe.AnyType, genBody, actualCaptures)
 
       if (!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym)) {
         val formalCount = formalParams.size
-        val cls = ClassName("scala.scalajs.runtime.AnonFunction" + formalCount)
-        val ctorName = MethodName.constructor(
-            jstpe.ClassRef(ClassName("scala.scalajs.js.Function" + formalCount)) :: Nil)
-        js.New(cls, js.MethodIdent(ctorName), List(closure))
-      } else if (funInterfaceSym.name == tpnme.FunctionXXL && funInterfaceSym.owner == defn.ScalaRuntimePackageClass) {
-        val cls = ClassName("scala.scalajs.runtime.AnonFunctionXXL")
-        val ctorName = MethodName.constructor(
-            jstpe.ClassRef(ClassName("scala.scalajs.js.Function1")) :: Nil)
-        js.New(cls, js.MethodIdent(ctorName), List(closure))
+        val descriptor = js.NewLambda.Descriptor(
+          superClass = encodeClassName(defn.AbstractFunctionClass(formalCount)),
+          interfaces = Nil,
+          methodName = MethodName(applySimpleMethodName, List.fill(formalCount)(jswkn.ObjectRef), jswkn.ObjectRef),
+          paramTypes = List.fill(formalCount)(jstpe.AnyType),
+          resultType = jstpe.AnyType
+        )
+        js.NewLambda(descriptor, closure)(encodeClassType(defn.FunctionSymbol(formalCount)).toNonNullable)
+      } else if (isFunctionXXL) {
+        val descriptor = js.NewLambda.Descriptor(
+          superClass = jswkn.ObjectClass,
+          interfaces = List(encodeClassName(defn.FunctionXXLClass)),
+          methodName = MethodName(applySimpleMethodName, List(ObjectArrayTypeRef), jswkn.ObjectRef),
+          paramTypes = List(jstpe.ArrayType(ObjectArrayTypeRef, nullable = true)),
+          resultType = jstpe.AnyType
+        )
+        js.NewLambda(descriptor, closure)(encodeClassType(funInterfaceSym).toNonNullable)
       } else {
         assert(funInterfaceSym.isJSType,
             s"Invalid functional interface $funInterfaceSym reached the back-end")
-        closure
+        closure.copy(flags = js.ClosureFlags.arrow)
       }
     }
   }
@@ -3679,8 +3715,8 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private def genThrowClassCastException()(implicit pos: Position): js.Tree = {
-    js.UnaryOp(js.UnaryOp.Throw, js.New(jsNames.ClassCastExceptionClass,
-        js.MethodIdent(jsNames.NoArgConstructorName), Nil))
+    js.UnaryOp(js.UnaryOp.Throw, js.New(jswkn.ClassCastExceptionClass,
+        js.MethodIdent(jswkn.NoArgConstructorName), Nil))
   }
 
   /** Gen JS code for an isInstanceOf test (for reference types only) */
@@ -3967,7 +4003,7 @@ class JSCodeGen()(using genCtx: Context) {
           case arg: js.JSGlobalRef => js.JSTypeOfGlobalRef(arg)
           case _                   => js.JSUnaryOp(js.JSUnaryOp.typeof, arg)
         }
-        js.AsInstanceOf(typeofExpr, jstpe.ClassType(jsNames.BoxedStringClass, nullable = true))
+        js.AsInstanceOf(typeofExpr, jstpe.ClassType(jswkn.BoxedStringClass, nullable = true))
 
       case STRICT_EQ =>
         // js.special.strictEquals(arg1, arg2)
@@ -4215,7 +4251,7 @@ class JSCodeGen()(using genCtx: Context) {
                   "literal classOf[T] expressions (typically compiler-generated). " +
                   "Other uses are not supported in Scala.js.",
                   otherTree.sourcePos)
-              (jstpe.AnyType, jstpe.ClassRef(jsNames.ObjectClass))
+              (jstpe.AnyType, jstpe.ClassRef(jswkn.ObjectClass))
           }
 
           // Gen the actual args, downcasting them to the formal param types
@@ -4846,17 +4882,21 @@ class JSCodeGen()(using genCtx: Context) {
 
 object JSCodeGen {
 
-  private val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
+  private val JLRArrayClassName = ClassName("java.lang.reflect.Array")
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
   private val JavaScriptExceptionClassName = ClassName("scala.scalajs.js.JavaScriptException")
 
-  private val ObjectClassRef = jstpe.ClassRef(ir.Names.ObjectClass)
+  private val ObjectArrayTypeRef = jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)
 
+  private val applySimpleMethodName = SimpleMethodName("apply")
   private val newSimpleMethodName = SimpleMethodName("new")
 
-  private val selectedValueMethodName = MethodName("selectedValue", Nil, ObjectClassRef)
+  private val selectedValueMethodName = MethodName("selectedValue", Nil, jswkn.ObjectRef)
 
-  private val ObjectArgConstructorName = MethodName.constructor(List(ObjectClassRef))
+  private val JLRArrayNewInstanceMethodName =
+    MethodName("newInstance", List(jstpe.ClassRef(jswkn.ClassClass), jstpe.ArrayTypeRef(jstpe.IntRef, 1)), jswkn.ObjectRef)
+
+  private val ObjectArgConstructorName = MethodName.constructor(List(jswkn.ObjectRef))
 
   private val thisOriginalName = OriginalName("this")
 

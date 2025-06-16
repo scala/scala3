@@ -41,6 +41,7 @@ def Test =
   val y6: A^ => IFun[C^] = ???
   val _: A^ => (x: C^) => C = y6 // error
 
-  val z1: A^ => Array[C^] = ??? // error
+  val z1: A^ => Array[C^] = ??? // ok
 
+  val z2: (x: A^) => Array[C^] = ??? // error
 

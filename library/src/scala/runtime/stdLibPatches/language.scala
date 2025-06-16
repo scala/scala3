@@ -97,6 +97,7 @@ object language:
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
+    @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
     object namedTuples
 
     /** Experimental support for new features for better modularity, including
@@ -139,7 +140,13 @@ object language:
      * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
+    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stablised and can be enabled using `-preview` flag", since = "3.7")
     object betterFors
+
+    /** Experimental support for package object values
+     */
+    @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
+    object packageObjectValues
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -214,6 +221,12 @@ object language:
 
   @compileTimeOnly("`future-migration` can only be used at compile time in import statements")
   object `future-migration`
+
+  /** Set source version to 2.13. Effectively, this doesn't change the source language,
+   * but rather adapts the generated code as if it was compiled with Scala 2.13
+   */
+  @compileTimeOnly("`2.13` can only be used at compile time in import statements")
+  private[scala] object `2.13`
 
   /** Set source version to 3.0-migration.
     *

@@ -23,7 +23,9 @@ case class CompletionPos(
   query: String,
   originalCursorPosition: SourcePosition,
   sourceUri: URI,
-  withCURSOR: Boolean
+  withCURSOR: Boolean,
+  hasLeadingBacktick: Boolean,
+  hasTrailingBacktick: Boolean
 ):
   def queryEnd: Int = originalCursorPosition.point
   def stripSuffixEditRange: l.Range = new l.Range(originalCursorPosition.offsetToPos(queryStart), originalCursorPosition.offsetToPos(identEnd))
@@ -38,16 +40,35 @@ object CompletionPos:
       adjustedPath: List[Tree],
       wasCursorApplied: Boolean
   )(using Context): CompletionPos =
-    val identEnd = adjustedPath match
+    def hasBacktickAt(offset: Int): Boolean =
+      sourcePos.source.content().lift(offset).contains('`')
+
+    val (identEnd, hasTrailingBacktick) = adjustedPath match
       case (refTree: RefTree) :: _ if refTree.name.toString.contains(Cursor.value) =>
-        refTree.span.end - Cursor.value.length
-      case (refTree: RefTree) :: _  => refTree.span.end
-      case _ => sourcePos.end
+        val refTreeEnd = refTree.span.end
+        val hasTrailingBacktick = hasBacktickAt(refTreeEnd - 1)
+        val identEnd = refTreeEnd - Cursor.value.length
+        (if hasTrailingBacktick then identEnd - 1 else identEnd, hasTrailingBacktick)
+      case (refTree: RefTree) :: _  =>
+        val refTreeEnd = refTree.span.end
+        val hasTrailingBacktick = hasBacktickAt(refTreeEnd - 1)
+        (if hasTrailingBacktick then refTreeEnd - 1 else refTreeEnd, hasTrailingBacktick)
+      case _ => (sourcePos.end, false)
 
     val query = Completion.completionPrefix(adjustedPath, sourcePos)
     val start = sourcePos.end - query.length()
+    val hasLeadingBacktick = hasBacktickAt(start - 1)
 
-    CompletionPos(start, identEnd, query.nn, sourcePos, offsetParams.uri.nn, wasCursorApplied)
+    CompletionPos(
+      start,
+      identEnd,
+      query.nn,
+      sourcePos,
+      offsetParams.uri.nn,
+      wasCursorApplied,
+      hasLeadingBacktick,
+      hasTrailingBacktick
+    )
 
   /**
    * Infer the indentation by counting the number of spaces in the given line.

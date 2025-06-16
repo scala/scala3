@@ -3,7 +3,7 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.annotation.tailrec
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -75,7 +75,7 @@ final class InferredTypeProvider(
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
     given locatedCtx: Context = driver.localContext(params)
-    val indexedCtx = IndexedContext(locatedCtx)
+    val indexedCtx = IndexedContext(pos)(using locatedCtx)
     val autoImportsGen = AutoImports.generator(
       pos,
       sourceText,
@@ -94,14 +94,14 @@ final class InferredTypeProvider(
         tpe match
           case tref: TypeRef =>
             indexedCtx.lookupSym(
-              tref.currentSymbol
+              tref.currentSymbol,
+              Some(tref.prefix)
             ) == IndexedContext.Result.InScope
           case AppliedType(tycon, args) =>
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
-      if isInScope(tpe)
-      then tpe
-      else tpe.deepDealias
+      if isInScope(tpe) then tpe
+      else tpe.deepDealiasAndSimplify
 
     val printer = ShortenedTypePrinter(
       symbolSearch,
@@ -112,8 +112,8 @@ final class InferredTypeProvider(
     def imports: List[TextEdit] =
       printer.imports(autoImportsGen)
 
-    def printType(tpe: Type): String =
-      printer.tpe(tpe)
+    def printTypeAscription(tpe: Type, spaceBefore: Boolean = false): String =
+      (if spaceBefore then " : " else ": ") + printer.tpe(tpe)
 
     path.headOption match
       /* `val a = 1` or `var b = 2`
@@ -124,7 +124,7 @@ final class InferredTypeProvider(
        *     turns into
        * `.map((a: Int) => a + a)`
        */
-      case Some(vl @ ValDef(sym, tpt, rhs)) =>
+      case Some(vl @ ValDef(name, tpt, rhs)) =>
         val isParam = path match
           case head :: next :: _ if next.symbol.isAnonymousFunction => true
           case head :: (b @ Block(stats, expr)) :: next :: _
@@ -136,9 +136,10 @@ final class InferredTypeProvider(
           val endPos =
             findNamePos(sourceText, vl, keywordOffset).endPos.toLsp
           adjustOpt.foreach(adjust => endPos.setEnd(adjust.adjustedEndPos))
+          val spaceBefore = name.isOperatorName
           new TextEdit(
             endPos,
-            ": " + printType(optDealias(tpt.typeOpt)) + {
+            printTypeAscription(optDealias(tpt.typeOpt), spaceBefore) + {
               if withParens then ")" else ""
             }
           )
@@ -197,7 +198,7 @@ final class InferredTypeProvider(
        *     turns into
        * `def a[T](param : Int): Int = param`
        */
-      case Some(df @ DefDef(name, _, tpt, rhs)) =>
+      case Some(df @ DefDef(name, paramss, tpt, rhs)) =>
         def typeNameEdit =
           /* NOTE: In Scala 3.1.3, `List((1,2)).map((<<a>>,b) => ...)`
            * turns into `List((1,2)).map((:Inta,b) => ...)`,
@@ -208,10 +209,12 @@ final class InferredTypeProvider(
             if tpt.endPos.end > df.namePos.end then tpt.endPos.toLsp
             else df.namePos.endPos.toLsp
 
+          val spaceBefore = name.isOperatorName && paramss.isEmpty
+
           adjustOpt.foreach(adjust => end.setEnd(adjust.adjustedEndPos))
           new TextEdit(
             end,
-            ": " + printType(optDealias(tpt.typeOpt))
+            printTypeAscription(optDealias(tpt.typeOpt), spaceBefore)
           )
         end typeNameEdit
 
@@ -239,9 +242,10 @@ final class InferredTypeProvider(
        */
       case Some(bind @ Bind(name, body)) =>
         def baseEdit(withParens: Boolean) =
+          val spaceBefore = name.isOperatorName
           new TextEdit(
             bind.endPos.toLsp,
-            ": " + printType(optDealias(body.typeOpt)) + {
+            printTypeAscription(optDealias(body.typeOpt), spaceBefore) + {
               if withParens then ")" else ""
             }
           )
@@ -272,9 +276,10 @@ final class InferredTypeProvider(
        * `for(t: Int <- 0 to 10)`
        */
       case Some(i @ Ident(name)) =>
+        val spaceBefore = name.isOperatorName
         val typeNameEdit = new TextEdit(
           i.endPos.toLsp,
-          ": " + printType(optDealias(i.typeOpt.widen))
+          printTypeAscription(optDealias(i.typeOpt.widen), spaceBefore)
         )
         typeNameEdit :: imports
 

@@ -8,10 +8,21 @@ import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
 import reporting.Message
-import util.DiffUtil
+import util.{DiffUtil, SimpleIdentitySet}
 import Highlighting.*
 
 object Formatting {
+
+  /** Essentially, a function Context => T, which can be created with `delay` */
+  abstract class Delay[T]:
+    def apply(c: Context): T
+
+  /** Delay a Context => T computation so that it is generated from the embedded
+   *  context of a string formatter instead of the enclosing context. This is needed
+   *  to make disambiguation work for such embedded computatons.
+   */
+  def delay[T](fn: Context ?=> T): Delay[T] = new Delay[T]:
+    def apply(c: Context) = fn(using c)
 
   object ShownDef:
     /** Represents a value that has been "shown" and can be consumed by StringFormatter.
@@ -76,6 +87,9 @@ object Formatting {
       given [X: Show]: Show[Seq[X]] with
         def show(x: Seq[X]) = CtxShow(x.map(toStr))
 
+      given [X: Show]: Show[Delay[X]] = new Show:
+        def show(x: Delay[X]) = CtxShow(c ?=> x(c))
+
       given Show[Seq[Nothing]] with
         def show(x: Seq[Nothing]) = CtxShow(x)
 
@@ -86,6 +100,9 @@ object Formatting {
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
         def show(x: H *: T) =
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
+
+      given [X <: AnyRef: Show]: Show[SimpleIdentitySet[X]] with
+        def show(x: SimpleIdentitySet[X]) = summon[Show[List[X]]].show(x.toList)
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
@@ -127,6 +144,7 @@ object Formatting {
       given Show[Class[?]]                            = ShowAny
       given Show[Throwable]                           = ShowAny
       given Show[StringBuffer]                        = ShowAny
+      given Show[StringBuilder]                       = ShowAny
       given Show[CompilationUnit]                     = ShowAny
       given Show[Phases.Phase]                        = ShowAny
       given Show[TyperState]                          = ShowAny

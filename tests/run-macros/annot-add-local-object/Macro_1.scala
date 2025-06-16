@@ -14,7 +14,7 @@ class addClass extends MacroAnnotation:
         def decls(cls: Symbol): List[Symbol] =
           List(Symbol.newMethod(cls, "run", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit]), Flags.EmptyFlags, Symbol.noSymbol))
 
-        val mod = Symbol.newModule(Symbol.spliceOwner, "Baz", Flags.EmptyFlags, Flags.EmptyFlags, parents.map(_.tpe), decls, Symbol.noSymbol)
+        val mod = Symbol.newModule(Symbol.spliceOwner, "Baz", Flags.EmptyFlags, Flags.EmptyFlags, _ => parents.map(_.tpe), decls, Symbol.noSymbol)
         val cls = mod.moduleClass
 
         val runSym = cls.declaredMethod("run").head

@@ -720,8 +720,7 @@ class HoverTermSuite extends BaseHoverSuite:
 
   @Test def `named-tuples`: Unit =
     check(
-      """import scala.language.experimental.namedTuples
-        |
+      """
         |val foo = (name = "Bob", age = 42, height = 1.9d)
         |val foo_name = foo.na@@me
         |""".stripMargin,
@@ -730,9 +729,7 @@ class HoverTermSuite extends BaseHoverSuite:
 
   @Test def `named-tuples2`: Unit =
     check(
-      """|import scala.language.experimental.namedTuples
-         |
-         |import NamedTuple.*
+      """|import NamedTuple.*
          |
          |class NamedTupleSelectable extends Selectable {
          |  type Fields <: AnyNamedTuple
@@ -746,4 +743,75 @@ class HoverTermSuite extends BaseHoverSuite:
          |val person_name = person.na@@me
          |""".stripMargin,
       "name: String".hover
+    )
+
+
+  @Test def `named-tuples3`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est
+         |""".stripMargin,
+      "def test: (path : String, num : Int, line : Int)".hover
+    )
+
+
+  @Test def `named-tuples4`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test =
+         |  hel@@lo ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      "def hello: (path : String, num : Int)".hover
+    )
+
+  @Test def `named-tuples5`: Unit =
+    check(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test(x: (path: String, num: Int)) =
+         |  x ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = t@@est(hello)
+         |""".stripMargin,
+      "def test(x: (path : String, num : Int)): (path : String, num : Int, line : Int)".hover
+    )
+
+  @Test def `value-of`: Unit =
+    check(
+      """|enum Foo(val key: String) {
+         |  case Bar extends Foo("b")
+         |  case Baz extends Foo("z")
+         |}
+         |
+         |object Foo {
+         |  def parse(key: String) = Foo.va@@lueOf("b")
+         |
+         |""".stripMargin,
+         "def valueOf($name: String): Foo".hover
+    )
+
+  @Test def `i7460` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.foo.sub@@string(2, 4)
+         |""".stripMargin,
+         "def substring(x$0: Int, x$1: Int): String".hover
+    )
+
+  @Test def `i7460-2` =
+    check(
+      """|package tests.macros
+         |def m = Macros7460.bar.sub@@string(2, 4)
+         |""".stripMargin,
+         "def substring(x$0: Int, x$1: Int): String".hover
     )

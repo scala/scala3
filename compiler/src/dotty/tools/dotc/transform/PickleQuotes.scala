@@ -139,7 +139,7 @@ class PickleQuotes extends MacroTransform {
 
       /** Get the holeContents of the transformed tree */
       def getContents() =
-        val res = holeContents.result
+        val res = holeContents.result()
         holeContents.clear()
         res
     end HoleContentExtractor

@@ -169,7 +169,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef) = cd0 match {
+    def genPlainClass(cd0: TypeDef) = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
 
@@ -818,7 +818,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       methSymbol  = dd.symbol
       jMethodName = methSymbol.javaSimpleName
-      returnType  = asmMethodType(dd.symbol).returnType
+      returnType  = asmMethodType(methSymbol).returnType
       isMethSymStaticCtor = methSymbol.isStaticConstructor
 
       resetMethodBookkeeping(dd)
@@ -915,7 +915,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             for (p <- params) { emitLocalVarScope(p.symbol, veryFirstProgramPoint, onePastLastProgramPoint, force = true) }
           }
 
-          if (isMethSymStaticCtor) { appendToStaticCtor(dd) }
+          if (isMethSymStaticCtor) { appendToStaticCtor() }
         } // end of emitNormalMethodBody()
 
         lineNumber(rhs)
@@ -936,7 +936,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      *
      *  TODO document, explain interplay with `fabricateStaticInitAndroid()`
      */
-    private def appendToStaticCtor(dd: DefDef): Unit = {
+    private def appendToStaticCtor(): Unit = {
 
       def insertBefore(
             location: asm.tree.AbstractInsnNode,

@@ -24,7 +24,7 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
         val sendMessage = (pos: SourcePosition, msg: String) =>
           client.publishOutput(WorksheetRunOutput(params.textDocument, range(pos).get, msg))
 
-        runWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
+        runWorksheet(driver, uri, sendMessage, cancelChecker)(using driver.currentCtx)
         cancelChecker.checkCanceled()
         WorksheetRunResult(success = true)
       } catch {

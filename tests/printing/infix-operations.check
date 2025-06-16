@@ -1,0 +1,37 @@
+[[syntax trees at end of                     typer]] // tests/printing/infix-operations.scala
+package <empty> {
+  class C(a: Int) extends Object() {
+    private[this] val a: Int
+    def foo(b: Int): C = this
+    def +(b: Int): C = this
+  }
+  final lazy module val infix-operations$package: infix-operations$package =
+    new infix-operations$package()
+  final module class infix-operations$package() extends Object() {
+    this: infix-operations$package.type =>
+    @main def main: Unit =
+      {
+        val v1: Int = 1 + 2 + 3
+        val v2: Int = 1 + (2 + 3)
+        val v3: Int = 1 + 2 * 3
+        val v4: Int = (1 + 2) * 3
+        val v5: Int = (1 + 2):Int
+        val v6: Int = (1 + 2):Int
+        val v7: Boolean = (1 < 2):Boolean
+        val v8: Boolean = (1 < 2):Boolean
+        val c: C = new C(2)
+        val v9: C = c.foo(3)
+        val v10: C = c + 3
+        ()
+      }
+  }
+  final class main() extends Object() {
+    <static> def main(args: Array[String]): Unit =
+      try main catch
+        {
+          case error @ _:scala.util.CommandLineParser.ParseError =>
+            scala.util.CommandLineParser.showError(error)
+        }
+  }
+}
+

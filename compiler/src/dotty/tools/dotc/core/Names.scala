@@ -393,7 +393,7 @@ object Names {
             // because asserts are caught in exception handlers which might
             // cause other failures. In that case the first, important failure
             // is lost.
-            System.err.nn.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
             Thread.dumpStack()
             assert(false)
           }
@@ -404,8 +404,8 @@ object Names {
      *  from GenBCode or it also contains one of the allowed methods below.
      */
     private def toStringOK = {
-      val trace: Array[StackTraceElement] = Thread.currentThread.nn.getStackTrace.asInstanceOf[Array[StackTraceElement]]
-      !trace.exists(_.getClassName.nn.endsWith("GenBCode")) ||
+      val trace: Array[StackTraceElement] = Thread.currentThread.getStackTrace.asInstanceOf[Array[StackTraceElement]]
+      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
       trace.exists(elem =>
           List(
               "mangledString",

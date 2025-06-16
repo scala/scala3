@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/cap-paramlists6.scala:10:71 ---------------------------------------------------
+10 |  val baz  = () => [C^, D^ <: {C}, E^ <: {C,x}, F^ >: {x,y} <: {C,E} : Ctx, // error
+   |                                                                       ^^^
+   |                                                               Capture variable `F` cannot have a context bound.
+-- Error: tests/neg-custom-args/captures/cap-paramlists6.scala:11:51 ---------------------------------------------------
+11 |                    G >: {} <: {}, H >: {} <: {} : Ctx] => (x: Int) => 1 // error
+   |                                                   ^^^
+   |                                                   Capture variable `H` cannot have a context bound.
