@@ -3407,7 +3407,7 @@ object Types extends TypeUtils {
 
   object FlexibleType {
     def apply(tp: Type)(using Context): FlexibleType =
-      // assert(tp.isValueType, s"Should not flexify ${tp}")
+      assert(tp.isValueType, s"Should not flexify ${tp}")
       tp match {
       case ft: FlexibleType => ft
       case _ =>

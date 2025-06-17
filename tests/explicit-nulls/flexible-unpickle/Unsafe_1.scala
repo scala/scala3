@@ -11,9 +11,11 @@ class Unsafe_1 {
   def bar2[T >: String | Null](s: T): T = {
     ???
   }
-  def bar3[T <: Int => Int](g: T): T = g
+  def bar3[T <: Function1[String,String]](g: T): T = g
+  def bar4[HK[_]](i: String): HK[String] = ???
 }
 
 object Foo {
   def bar = "bar!"
+  def id[T](t: T): T = t
 }

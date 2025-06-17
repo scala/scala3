@@ -60,7 +60,6 @@ object TestSources {
     if Properties.usingScalaLibraryTasty then loadList(negExplicitNullsScala2LibraryTastyExcludelistFile)
     else Nil
 
-
   // patmat tests lists
 
   def patmatExhaustivityScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/patmat-exhaustivity-scala2-library-tasty.excludelist"
