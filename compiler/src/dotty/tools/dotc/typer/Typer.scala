@@ -2816,6 +2816,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if isStableIdentifierOrLiteral || isNamedTuplePattern then pt
             else if isWildcardStarArg(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
+                    || pt.isNothingType
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
                                          // and implicit scopes.
                                          // run/t2755.scala fails to compile if this subtype test is omitted
