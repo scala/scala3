@@ -11,7 +11,8 @@ class A(val x: Int) {
     }
   }
 }
-class AA(x: Int) extends A(x) {
+class AA(y: Int) extends A(y+1) {
+  class E {}
   def foo = {
     val a = if true then new A(42) else new AA(46)
     println("a = " + a.hashCode())
@@ -19,7 +20,11 @@ class AA(x: Int) extends A(x) {
       println("AA.this = " + AA.this.hashCode()) // Main.aa
       println("AA.this.x = " + x) // C --> outer AA --> parent A (44)
       override def fooz2 = x // 44
+      val z = fooz // (A.this.x)
+      println("z = " + z)
+
     }
+    class B extends AA.this.E {}
     val c: C = new C
     println("c = " + c.hashCode())
     val d = new c.D // outer: C (`c`)
