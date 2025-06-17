@@ -369,6 +369,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term =
+        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValFlags) 
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs, flags)(using ctx.withOwner(owner))
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
+        Block(List(vdef), body(ref))
+
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
@@ -2863,7 +2869,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
-      private inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
+      private[QuotesImpl] inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
         xCheckMacroAssert(
           flags <= valid,
           s"Received invalid flags. Expected flags ${flags.show} to only contain a subset of ${valid.show}."
