@@ -657,14 +657,13 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |object O{
          |  val <<foo>> = A.Foo(new A.`x-x`)
          |}""".stripMargin,
-      """|import A.Foo
-         |import A.`x-x`
+      """|import A.`x-x`
          |object A{
          |  class `x-x`
          |  case class Foo[A](i: A)
          |}
          |object O{
-         |  val foo: Foo[`x-x`] = A.Foo(new A.`x-x`)
+         |  val foo: A.Foo[`x-x`] = A.Foo(new A.`x-x`)
          |}
          |""".stripMargin
     )
