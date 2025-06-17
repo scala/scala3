@@ -320,7 +320,7 @@ object ExtractSemanticDB:
                 registerDefinition(tree.symbol, selectSpan(tree), Set.empty, tree.source)
               case tree => registerDefinition(tree.symbol, tree.span, Set.empty, tree.source)
         case tree: NamedDefTree =>
-          if !tree.symbol.isAllOf(ModuleValCreationFlags) then
+          if tree.symbol.exists && !tree.symbol.isAllOf(ModuleValCreationFlags) then
             tree match {
               case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
                 tree.rhs match
@@ -379,7 +379,7 @@ object ExtractSemanticDB:
             traverseAnnotsOfDefinition(ctorSym)
             ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-        case tree: Apply =>
+        case tree: Apply if tree.fun.symbol.exists =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
           synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
