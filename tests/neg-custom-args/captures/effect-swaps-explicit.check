@@ -17,21 +17,21 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:69:10 ------------------------
 69 |          Future: fut ?=> // error, type mismatch
    |          ^
-   |Found:    (contextual$9: boundary.Label[Result[Future[T^?]^?, E^?]^?]^) ?->{fr, async} Future[T^?]^{fr, contextual$9}
-   |Required: (boundary.Label[Result[Future[T^?]^{fr, async}, E^?]]^) ?=> Future[T^?]^{fr, async}
+   |Found:    (contextual$9: boundary.Label[Result[Future[T^?]^?, E^?]^?]^?) ?->{fr, async} Future[T^?]^{fr, contextual$9}
+   |Required: (boundary.Label[Result[Future[T^?]^?, E^?]]^) ?=> Future[T^?]^?
    |
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
    |
    |Note that reference contextual$9.type
-   |cannot be included in outer capture set {fr, async}
+   |cannot be included in outer capture set ?
 70 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:73:35 ------------------------
 73 |        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
    |                                   ^
-   |Found:    (lbl: boundary.Label[Result[Future[T^?]^?, E^?]^?]^) ?->{fr, async} Future[T^?]^{fr, lbl}
+   |Found:    (lbl: boundary.Label[Result[Future[T^?]^?, E^?]^?]^?) ?->{fr, async} Future[T^?]^{fr, lbl}
    |Required: (boundary.Label[Result[Future[T], E]]^) ?=> Future[T]
    |
    |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
