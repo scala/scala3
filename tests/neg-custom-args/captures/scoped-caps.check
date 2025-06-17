@@ -87,7 +87,7 @@
 27 |  val _: S -> B^ = x => j(x)       // error
    |                   ^^^^^^^^^
    |                   Found:    (x: S^{cap.rd}) ->? B^{x}
-   |                   Required: (x: S^{cap.rd}) -> B^
+   |                   Required: S^{cap.rd} -> B^
    |
    |                   where:    ^   refers to a fresh root capability in the type of value _$14
    |                             cap is the universal root capability

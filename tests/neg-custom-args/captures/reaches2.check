@@ -13,7 +13,7 @@
    |                            ^
    |Separation failure: argument of type  A ->{x} A
    |to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |corresponds to capture-polymorphic formal parameter f of type  box A^? => box A^?
+   |corresponds to capture-polymorphic formal parameter f of type  A^? => A^?
    |and hides capabilities  {x}.
    |Some of these overlap with the captures of the second argument with type  A ->{y} A.
    |
@@ -23,4 +23,4 @@
    |  Footprint set of second argument      : {y, ps*}
    |  The two sets overlap at               : {ps*}
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (x$1: (box A^? ->{ps*} A^?, box A^? ->{ps*} A^?)^?): A^? ->{ps*} A^? when checking argument to parameter f of method compose1
+   |where:    => refers to a fresh root capability created in anonymous function of type (x$1: (A^? ->{ps*} A^?, A^? ->{ps*} A^?)^?): A^? ->{ps*} A^? when checking argument to parameter f of method compose1

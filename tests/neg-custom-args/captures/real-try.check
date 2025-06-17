@@ -43,8 +43,8 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:32:10 ----------------------------------------------------------
 32 |  val b = try // error
    |          ^
-   |          The result of `try` cannot have type Cell[box () ->{cap.rd} Unit]^? since
-   |          the part box () ->{cap.rd} Unit of that type captures the root capability `cap`.
+   |          The result of `try` cannot have type Cell[() ->{cap.rd} Unit]^? since
+   |          the part () ->{cap.rd} Unit of that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
    |
    |          where:    cap is a fresh root capability in the type of given instance canThrow$4

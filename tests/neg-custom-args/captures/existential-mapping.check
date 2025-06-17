@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/existential-mapping.scala:46:10 -----------------------------------------------
 46 |  val z2: (x: A^) => Array[C^] = ??? // error
    |          ^^^^^^^^^^^^^^^^^^^^
-   |          Array[box C^] captures the root capability `cap` in invariant position.
+   |          Array[C^] captures the root capability `cap` in invariant position.
    |          This capability cannot be converted to an existential in the result type of a function.
    |
    |          where:    ^ refers to the universal root capability

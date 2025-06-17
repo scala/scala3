@@ -1,14 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |                     ^^^^^^^^^^^^^^^^
-   |Found:    (lcap: scala.caps.Capability^{cap.rd}) ?->? Cap^{lcap} ->? box Id[box Cap^{cap².rd}]^?
-   |Required: (lcap: scala.caps.Capability^{cap.rd}) ?-> Cap^{lcap} => box Id[box Cap^?]^?
+   |Found:    (lcap: scala.caps.Capability^{cap.rd}) ?->? Cap^{lcap} ->? Id[Cap^{cap².rd}]^?
+   |Required: (lcap: scala.caps.Capability^{cap.rd}) ?-> Cap^{lcap} => Id[Cap^?]^?
    |
-   |where:    =>   refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^{cap.rd}): Cap^{lcap} => box Id[box Cap^?]^?
+   |where:    =>   refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^{cap.rd}): Cap^{lcap} => Id[Cap^?]^?
    |          cap  is the universal root capability
-   |          cap² is a root capability associated with the result type of (x$0: Cap^{lcap}): box Id[box Cap^{cap².rd}]^?
+   |          cap² is a root capability associated with the result type of (x$0: Cap^{lcap}): Id[Cap^{cap².rd}]^?
    |
-   |Note that reference <cap of (x$0: Cap^{lcap}): box Id[box Cap^{cap.rd}]^?>.rd
+   |Note that reference <cap of (x$0: Cap^{lcap}): Id[Cap^{cap.rd}]^?>.rd
    |cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`

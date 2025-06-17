@@ -1,9 +1,9 @@
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:15:10 ---------------------------------------------------------
 15 |  val r1: Pair[Ref^, Ref^] = mkPair(r0) // error: overlap at r0
    |          ^^^^^^^^^^^^^^^^
-   |          Separation failure in value r1's type Pair[box Ref^, box Ref^²].
-   |          One part,  box Ref^, hides capabilities  {r0}.
-   |          Another part,  box Ref^²,  captures capabilities  {r0}.
+   |          Separation failure in value r1's type Pair[Ref^, Ref^²].
+   |          One part,  Ref^, hides capabilities  {r0}.
+   |          Another part,  Ref^²,  captures capabilities  {r0}.
    |          The two sets overlap at  {r0}.
    |
    |          where:    ^  refers to a fresh root capability in the type of value r1
@@ -11,9 +11,9 @@
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:13:9 ----------------------------------------------------------
 13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
    |         ^^^^^^^^^^^^^^^^
-   |         Separation failure in method bad's result type Pair[box Ref^, box Ref^²].
-   |         One part,  box Ref^, hides capabilities  {cap, cap², r1*, r0}.
-   |         Another part,  box Ref^²,  captures capabilities  {cap, cap², r1*, r0}.
+   |         Separation failure in method bad's result type Pair[Ref^, Ref^²].
+   |         One part,  Ref^, hides capabilities  {cap, cap², r1*, r0}.
+   |         Another part,  Ref^²,  captures capabilities  {cap, cap², r1*, r0}.
    |         The two sets overlap at  {r1*, r0}.
    |
    |         where:    ^    refers to a fresh root capability in the result type of method bad
@@ -23,9 +23,9 @@
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:43:18 ---------------------------------------------------------
 43 |  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
    |                  ^^^^^^^^^^^^^^^^
-   |                  Separation failure in value sameToPair's type Pair[box Ref^, box Ref^²].
-   |                  One part,  box Ref^, hides capabilities  {fstSame}.
-   |                  Another part,  box Ref^²,  captures capabilities  {sndSame}.
+   |                  Separation failure in value sameToPair's type Pair[Ref^, Ref^²].
+   |                  One part,  Ref^, hides capabilities  {fstSame}.
+   |                  Another part,  Ref^²,  captures capabilities  {sndSame}.
    |                  The two sets overlap at  cap of value same.
    |
    |                  where:    ^  refers to a fresh root capability in the type of value sameToPair

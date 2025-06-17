@@ -1,21 +1,24 @@
 import annotation.retains
+import caps.consume
 class C
 type Cap = C @retains[caps.cap.type]
 
-type T = (x: Cap) -> String @retains[x.type]
+type T = (x: Cap) -> STR @retains[x.type]
 
 type ID[X] = X
 
-val aa: ((x: Cap) -> String @retains[x.type]) = (x: Cap) => ""
+class STR(s: String)
 
-def f(y: Cap, z: Cap): String @retains[caps.cap.type] =
-  val a: ((x: Cap) -> String @retains[x.type]) = (x: Cap) => ""
+val aa: ((x: Cap) -> STR @retains[x.type]) = (x: Cap) => STR("")
+
+def f(@consume y: Cap, z: Cap): STR @retains[caps.cap.type] =
+  val a: ((x: Cap) -> STR @retains[x.type]) = (x: Cap) => STR("")
   val b = a(y)
-  val c: String @retains[y.type] = b
+  val c: STR @retains[y.type] = b
   def g(): C @retains[y.type | z.type] = ???
   val d = a(g())
 
-  val ac: ((x: Cap) -> ID[String @retains[x.type] -> String @retains[x.type]]) = ???
-  val bc: String^{y} -> String^{y} = ac(y)
-  val dc: String -> String^{y, z} = ac(g())
+  val ac: ((x: Cap) -> ID[STR @retains[x.type] -> STR @retains[x.type]]) = ???
+  val bc: STR^{y} -> STR^{y} = ac(y)
+  val dc: STR -> STR^{y, z} = ac(g())
   c
