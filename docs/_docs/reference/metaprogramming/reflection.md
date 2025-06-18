@@ -42,7 +42,7 @@ We can access the underlying typed AST of an `Expr` using the `asTerm` extension
 ```
 
 Similarly, you can change a `Term` back into an `Expr` with `.asExpr` (returning `Expr[Any]`)
-or `.asExprOf[T]` (returning `Expr[T]`, with an exception being thrown at runtime if the type does not conform).
+or `.asExprOf[T]` (returning `Expr[T]`, with an exception being thrown at macro-expansion time if the type does not conform).
 
 ## Constructing and Analysing trees
 
@@ -88,9 +88,9 @@ The above is represented in the quotes reflect API by a `Block` (a subtype of `T
 You can see the whole hierarchy between different types of Trees in
 [`reflectModule` documentation](https://scala-lang.org/api/3.3_LTS/scala/quoted/Quotes$reflectModule.html#`).
 
-You can also easily check the shape of code by printing out quoted code transformed into a Term:
+You can also check the shape of code by printing out quoted code transformed into a Term:
 ```scala
-  println( `{ scalaCode }.asTerm )
+  println( '{ scalaCode }.asTerm )
 ```
 Bear in mind this will always produce a Term. E.g.:
 ```scala
@@ -139,7 +139,7 @@ Bear in mind that extractors and constructors for the same trees might be compri
 has `(Symbol, Option[Term])` arguments and `unapply` has `(String, TypeTree, Option[Term])` (if we want to obtain the symbol directly, we can call `.symbol` on the `ValDef`).
 
 ### Symbols
-To construct definition `Trees` we might have to create or use a `Symbol`. Symbols represent the „named” parts of the code, the declarations we can reference elsewhere later. Let’s try to create `val name: Int = 0` from scratch.
+To construct definition `Trees` we might have to create or use a `Symbol`. Symbols represent the "named" parts of the code, the declarations we can reference elsewhere later. Let’s try to create `val name: Int = 0` from scratch.
 To create a val like this, we need to first create a `Symbol` that matches the intended `Tree` type, so for a `ValDef` we would use the `Symbol.newVal` method:
 ```scala
   import quotes.reflect._
@@ -249,7 +249,7 @@ and methods on instances of `Select` would be found in `SelectMethods`.
 
 ### Positions
 
-The `Position` in the `quotes.reflect._` provides an `ofMacroExpansion` value. It corresponds
+The `Position` in the `quotes.reflect.*` provides an `ofMacroExpansion` value. It corresponds
 to the expansion site for macros. The macro authors can obtain various information
 about that expansion site. The example below shows how we can obtain position
 information such as the start line, the end line or even the source code at the
