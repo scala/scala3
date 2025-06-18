@@ -1689,7 +1689,7 @@ trait Applications extends Compatibility {
           if selType <:< unapplyArgType then
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             fullyDefinedType(unapplyArgType, "pattern selector", tree.srcPos)
-            if selType.isNothingType then unapplyArgType
+            if selType.isBottomType then unapplyArgType
             else selType.dropAnnot(defn.UncheckedAnnot) // need to drop @unchecked. Just because the selector is @unchecked, the pattern isn't.
           else
             if !ctx.mode.is(Mode.InTypeTest) then
@@ -1712,7 +1712,7 @@ trait Applications extends Compatibility {
         val unapplyPatterns = UnapplyArgs(unapplyApp.tpe, unapplyFn, unadaptedArgs, tree.srcPos)
           .typedPatterns(qual, this)
         val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
-        if (ownType.stripped eq selType.stripped) || selType.isNothingType || ownType.isError then result
+        if (ownType.stripped eq selType.stripped) || selType.isBottomType || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)

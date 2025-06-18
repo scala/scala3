@@ -2816,7 +2816,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if isStableIdentifierOrLiteral || isNamedTuplePattern then pt
             else if isWildcardStarArg(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
-                    || pt.isNothingType
+                    || pt.isBottomType
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
                                          // and implicit scopes.
                                          // run/t2755.scala fails to compile if this subtype test is omitted
@@ -3556,7 +3556,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
     val tree1 = desugar.tuple(tree, pt).withAttachmentsFrom(tree)
     checkDeprecatedAssignmentSyntax(tree)
-    if tree1 ne tree then typed(tree1, pt)
+    if tree1 ne tree then
+      val t = typed(tree1, pt)
+      // println(i"typedTuple: ${t} , ${t.tpe}")
+      t
     else
       val arity = tree.trees.length
       val pts = pt.stripNamedTuple.tupleElementTypes match
