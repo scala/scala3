@@ -27,8 +27,3 @@
    |                                                    =>² refers to a fresh root capability in the type of value b
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/depfun-reach.scala:18:17 ------------------------------------------------------
-18 |               : (xs: List[(X, () ->{io} Unit)]) => List[() ->{} Unit] = // error
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Separation failure: method foo's result type (xs: List[(X, () ->{io} Unit)]) => List[() -> Unit] hides parameter op.
-   |The parameter needs to be annotated with @consume to allow this.
