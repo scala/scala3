@@ -98,24 +98,23 @@ object CheckCaptures:
    *  This check is performed at Typer.
    */
   def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
-    def check(elem: Type, pos: SrcPos): Unit = elem match
-      case ref: Capability =>
+    def check(elem: Type): Unit = elem match
+      case ref: TypeRef =>
+        val refSym = ref.symbol
+        if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
+          report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
+      case ref: CoreCapability =>
         if !ref.isTrackableRef && !ref.isCapRef then
-          report.error(em"$elem cannot be tracked since it is not a parameter or local value", pos)
+          report.error(em"$elem cannot be tracked since it is not a parameter or local value", ann.srcPos)
+      case ReachCapability(ref) =>
+        check(ref)
+        if ref.isCapRef then
+          report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
+      case ReadOnlyCapability(ref) =>
+        check(ref)
       case tpe =>
-        report.error(em"$elem: $tpe is not a legal element of a capture set", pos)
-    for elem <- ann.retainedSet.retainedElementsRaw do
-      elem match
-        case ref: TypeRef =>
-          val refSym = ref.symbol
-          if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
-            report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
-        case ReachCapability(ref) =>
-          check(ref, ann.srcPos)
-        case ReadOnlyCapability(ref) =>
-          check(ref, ann.srcPos)
-        case _ =>
-          check(elem, ann.srcPos)
+        report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
+    ann.retainedSet.retainedElementsRaw.foreach(check)
 
   /** Under the sealed policy, report an error if some part of `tp` contains the
    *  root capability in its capture set or if it refers to a type parameter that
