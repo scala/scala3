@@ -286,7 +286,7 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
+  final override def flatMap[B](@caps.use f: A => IterableOnce[B]^): List[B] = {
     var rest = this
     var h: ::[B] = null
     var t: ::[B] = null

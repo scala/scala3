@@ -482,27 +482,28 @@ object Capabilities:
         case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
         case _ => false
 
+      def trySubpath(y: TermRef): Boolean =
+        y.prefix.match
+          case ypre: Capability =>
+            this.subsumes(ypre)
+            || this.match
+                case x @ TermRef(xpre: Capability, _) if x.symbol == y.symbol =>
+                  // To show `{x.f} <:< {y.f}`, it is important to prove `x` and `y`
+                  // are equvalent, which means `x =:= y` in terms of subtyping,
+                  // not just `{x} =:= {y}` in terms of subcapturing.
+                  // It is possible to construct two singleton types `x` and `y`,
+                  // which subsume each other, but are not equal references.
+                  // See `tests/neg-custom-args/captures/path-prefix.scala` for example.
+                  withMode(Mode.IgnoreCaptures):
+                    TypeComparer.isSameRef(xpre, ypre)
+                case _ =>
+                  false
+          case _ => false
+
       try (this eq y)
       || maxSubsumes(y, canAddHidden = !vs.isOpen)
       || y.match
-        case y: TermRef =>
-            y.prefix.match
-              case ypre: Capability =>
-                this.subsumes(ypre)
-                || this.match
-                    case x @ TermRef(xpre: Capability, _) if x.symbol == y.symbol =>
-                      // To show `{x.f} <:< {y.f}`, it is important to prove `x` and `y`
-                      // are equvalent, which means `x =:= y` in terms of subtyping,
-                      // not just `{x} =:= {y}` in terms of subcapturing.
-                      // It is possible to construct two singleton types `x` and `y`,
-                      // which subsume each other, but are not equal references.
-                      // See `tests/neg-custom-args/captures/path-prefix.scala` for example.
-                      withMode(Mode.IgnoreCaptures):
-                        TypeComparer.isSameRef(xpre, ypre)
-                    case _ =>
-                      false
-              case _ => false
-          || viaInfo(y.info)(subsumingRefs(this, _))
+        case y: TermRef => trySubpath(y) || viaInfo(y.info)(subsumingRefs(this, _))
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
@@ -516,6 +517,15 @@ object Capabilities:
               this.subsumes(hi)
             case _ =>
               y.captureSetOfInfo.elems.forall(this.subsumes)
+        case Reach(y1: TermRef) =>
+          val sym = y1.symbol
+          def isUseClassParam: Boolean =
+            sym.owner match
+              case classSym: ClassSymbol =>
+                val paramSym = classSym.primaryConstructor.paramNamed(sym.name)
+                paramSym.isUseParam
+              case _ => false
+          isUseClassParam && trySubpath(y1)
         case _ => false
       || this.match
           case Reach(x1) => x1.subsumes(y.stripReach)

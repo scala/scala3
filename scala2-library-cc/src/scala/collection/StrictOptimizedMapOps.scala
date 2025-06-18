@@ -29,7 +29,7 @@ trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C
   override def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
     strictOptimizedMap(mapFactory.newBuilder, f)
 
-  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
+  override def flatMap[K2, V2](@caps.use f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
     strictOptimizedFlatMap(mapFactory.newBuilder, f)
 
   override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CC[K, V2] =
