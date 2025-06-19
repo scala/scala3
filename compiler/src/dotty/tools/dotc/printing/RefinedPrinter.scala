@@ -994,8 +994,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def valDefToText[T <: Untyped](tree: ValDef[T]): Text = {
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
-        valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
-        withEnclosingDef(tree) { rhsValDef(tree) }
+        valDefText(nameIdText(tree))
+        ~ optAscription(tree.tpt)
+        ~ withEnclosingDef(tree) { rhsValDef(tree) }
     }
   }
 
@@ -1170,6 +1171,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
     var flagsText = toTextFlags(sym, flags)
+    if sym.isUpdateMethod then flagsText ~~= keywordStr("update")
     val annotTexts =
       if sym.exists then
         sym.annotationsUNSAFE.filterNot(ann => dropAnnotForModText(ann.symbol)).map(toText)
