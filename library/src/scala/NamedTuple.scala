@@ -128,6 +128,10 @@ object NamedTuple:
   /** The empty named tuple */
   val Empty: Empty = EmptyTuple
 
+  /** The ordering instance for named tuples */
+  given namedTupleOrdering: [N <: Tuple, V <: Tuple] => (ord: Ordering[V]) => Ordering[NamedTuple[N, V]]:
+    def compare(x: NamedTuple[N, V], y: NamedTuple[N, V]): Int =
+      ord.compare(x.toTuple, y.toTuple)
 end NamedTuple
 
 /** Separate from NamedTuple object so that we can match on the opaque type NamedTuple. */
