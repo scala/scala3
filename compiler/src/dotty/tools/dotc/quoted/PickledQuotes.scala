@@ -111,12 +111,18 @@ object PickledQuotes {
                 case ExprHole.V2(evalHole) =>
                   evalHole.nn.apply(idx, reifyExprHoleV2Args(args), QuotesImpl())
 
+              val sourceReassigner = new TreeMapWithImplicits {
+                def transform(innerTree: tpd.Tree) = {
+                  if innerTree.source == ctx.source then innerTree
+                  else innerTree.cloneIn(ctx.source).withSpan(tree.span)
+                }
+              }
+
               val filled = PickledQuotes.quotedExprToTree(quotedExpr)
 
               // We need to make sure a hole is created with the source file of the surrounding context, even if
               // it filled with contents a different source file.
-              if filled.source == ctx.source then filled
-              else filled.cloneIn(ctx.source).withSpan(tree.span)
+              sourceReassigner.transform(filled)
             else
               // For backwards compatibility with 3.0.x and 3.1.x
               // In 3.2.0+ all these holes are handled by `spliceTypes` before we call `spliceTerms`.
