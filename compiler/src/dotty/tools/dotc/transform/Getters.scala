@@ -90,7 +90,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
     d1
   }
 
-  private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic | PhantomSymbol
+  private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic | PhantomSymbol | Erased
 
   val newSetters = util.HashSet[Symbol]()
 
