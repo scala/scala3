@@ -408,7 +408,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case app: Apply =>
           val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
           if (methType.hasErasedParams)
-            for (arg, isErased) <- app.args.lazyZip(methType.erasedParams) do
+            for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
               if isErased then
                 if methType.isResultDependent then
                   Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
@@ -475,7 +475,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
-          checkErasedDef(tree)
+          //checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
@@ -483,7 +483,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
-          checkErasedDef(tree)
+          //checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))

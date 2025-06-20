@@ -1769,7 +1769,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (mt.isParamDependent)
         report.error(em"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       // Restart typechecking if there are erased classes that we want to mark erased
-      if mt.erasedParams.zip(mt.paramInfos.map(_.isErasedClass)).exists((paramErased, classErased) => classErased && !paramErased) then
+      if mt.paramErasureStatuses.zip(mt.paramInfos.map(_.isErasedClass)).exists((paramErased, classErased) => classErased && !paramErased) then
         val newParams = params3.zipWithConserve(mt.paramInfos.map(_.isErasedClass)) { (arg, isErasedClass) =>
           if isErasedClass then arg.withAddedFlags(Erased) else arg
         }
@@ -3809,7 +3809,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     val erasedParams = pt match {
-      case defn.PolyFunctionOf(mt: MethodType) => mt.erasedParams
+      case defn.PolyFunctionOf(mt: MethodType) => mt.paramErasureStatuses
       case _ => paramTypes.map(_ => false)
     }
 
