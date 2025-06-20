@@ -70,7 +70,7 @@ class SyntheticsExtractor:
             ) =>
           s.Synthetic(
             range(tree.span, tree.source),
-            s.ApplyTree(
+            s.ApplyContextTree(
               tree.fun.toSemanticOriginal,
               tree.args.map(_.toSemanticTree)
             )
