@@ -2774,6 +2774,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if !isFullyDefined(pt, ForceDegree.all) then
       return errorTree(tree, em"expected type of $tree is not fully defined")
     val body1 = typed(tree.body, pt)
+
+    // When we pattern match a named tuple, both the named tuple pattern and the
+    // regular tuple pattern are desugared to a regular tuple unapply.
+    // If the pattern (body) is a named tuple pattern, we give the binding
+    // a named tuple type using pt; otherwise we give it the regular tuple type.
+    // For example, in `case x @ (a = 1, b = 2)`, the type of `x` will be `(a: Int, b: Int)`;
+    // in `case x @ (a, b)`, the type of `x` will be `(Int, Int)`.
+    def isNamedTuplePattern =
+      ctx.mode.is(Mode.Pattern)
+      && pt.dealias.isNamedTupleType
+      && tree.body.match
+          case untpd.Tuple((_: NamedArg) :: _) => true
+          case _ => false
+
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
       if fn.symbol.exists && (fn.symbol.owner.derivesFrom(defn.TypeTestClass) || fn.symbol.owner == defn.ClassTagClass) && !body1.tpe.isError =>
@@ -2799,8 +2813,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             body1.isInstanceOf[RefTree] && !isWildcardArg(body1)
             || body1.isInstanceOf[Literal]
           val symTp =
-            if isStableIdentifierOrLiteral || pt.dealias.isNamedTupleType then pt
-              // need to combine tuple element types with expected named type
+            if isStableIdentifierOrLiteral || isNamedTuplePattern then pt
             else if isWildcardStarArg(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
