@@ -490,8 +490,8 @@ object CollectionStrawMan5 {
       override def knownLength = underlying.knownLength
     }
 
-    case class FlatMap[A, B](underlying: Iterable[A]^, f: A => IterableOnce[B]^) extends View[B] {
-      this: FlatMap[A, B]^{underlying, f} =>
+    case class FlatMap[A, B](underlying: Iterable[A]^, @caps.use f: A => IterableOnce[B]^) extends View[B] {
+      this: FlatMap[A, B]^{underlying, f*} =>
       def iterator: Iterator[B]^{this} = underlying.iterator.flatMap(f)
     }
 
@@ -566,8 +566,8 @@ object CollectionStrawMan5 {
       def next() = f(self.next())
     }
 
-    def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new Iterator[B] {
-      private var myCurrent: Iterator[B]^{this, f} = Iterator.empty
+    def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f*} = new Iterator[B] {
+      private var myCurrent: Iterator[B]^{this, f*} = Iterator.empty
       private def current = {
         while (!myCurrent.hasNext && self.hasNext)
           myCurrent = f(self.next()).iterator

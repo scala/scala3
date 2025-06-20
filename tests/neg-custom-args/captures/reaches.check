@@ -78,16 +78,13 @@
    |                  cannot subsume the capability x.type since that capability is not a SharedCapability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
-70 |  val leaked = usingFile[File^{id*}]: f => // error
-   |                                      ^
-   |Found:    (f: File^?) ->? box File^{id*}
-   |Required: (f: File^) => box File^{id*}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:71:27 --------------------------------------
+71 |    val f1: File^{id*} = id(f)  // error
+   |                         ^^^^^
+   |Found:    File^
+   |Required: File^{id*}
    |
-   |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
-   |          ^  refers to the universal root capability
-71 |    val f1: File^{id*} = id(f)
-72 |    f1
+   |where:    ^ refers to a fresh root capability created in value f1 when instantiating method apply's type (x: File^²): File^³
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:88:10 -----------------------------------------------------------

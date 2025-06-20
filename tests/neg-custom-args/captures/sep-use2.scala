@@ -9,7 +9,7 @@ def test1(@consume c: Object^, f: (x: Object^) => Object^) =
     f(cc)  // ok
   val x3: Object^ =
     f(cc) // ok
-  val x4: Object^ = // error
+  val x4: Object^ =
     { f(c) } // error
 
 def test2(@consume c: Object^, f: (x: Object^) ->{c} Object^) =

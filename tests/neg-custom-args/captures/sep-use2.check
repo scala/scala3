@@ -10,11 +10,6 @@
    |        This type hides capabilities  {c}
    |
    |        where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:12:10 ----------------------------------------------------------
-12 |  val x4: Object^ = // error
-   |          ^^^^^^^
-   |          Separation failure: value x4's type Object^ hides parameter f.
-   |          The parameter needs to be annotated with @consume to allow this.
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:16:10 ----------------------------------------------------------
 16 |  def cc: Object^ = c // error
    |          ^^^^^^^
