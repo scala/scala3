@@ -1867,6 +1867,8 @@ object Types extends TypeUtils {
         t
       case t @ SAMType(_, _) =>
         t
+      case ft: FlexibleType =>
+        ft.underlying.findFunctionType
       case _ =>
         NoType
 
@@ -3405,7 +3407,7 @@ object Types extends TypeUtils {
     override def underlying(using Context): Type = hi
 
     def derivedFlexibleType(hi: Type)(using Context): Type =
-      if hi eq this.hi then this else FlexibleType(hi)
+      if hi eq this.hi then this else FlexibleType.make(hi)
 
     override def computeHash(bs: Binders): Int = doHash(bs, hi)
 
@@ -3413,7 +3415,9 @@ object Types extends TypeUtils {
   }
 
   object FlexibleType {
-    def apply(tp: Type)(using Context): FlexibleType = tp match {
+    def apply(tp: Type)(using Context): FlexibleType =
+      assert(tp.isValueType, s"Should not flexify ${tp}")
+      tp match {
       case ft: FlexibleType => ft
       case _ =>
         // val tp1 = tp.stripNull()
@@ -3433,6 +3437,15 @@ object Types extends TypeUtils {
         // rule.
         FlexibleType(OrNull(tp), tp)
     }
+
+    def make(tp: Type)(using Context): Type =
+      tp match
+        case _: FlexibleType => tp
+        case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
+        case wt: WildcardType => wt.optBounds match
+          case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
+          case _ => wt
+        case other => FlexibleType(tp)
   }
 
   // --- AndType/OrType ---------------------------------------------------------------
