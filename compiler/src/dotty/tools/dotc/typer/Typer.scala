@@ -2774,6 +2774,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if !isFullyDefined(pt, ForceDegree.all) then
       return errorTree(tree, em"expected type of $tree is not fully defined")
     val body1 = typed(tree.body, pt)
+
+    // If the body is a named tuple pattern, we need to use pt for symbol type,
+    // because the desugared body is a regular tuple unapply.
+    def isNamedTuplePattern =
+      ctx.mode.is(Mode.Pattern)
+      && pt.dealias.isNamedTupleType
+      && tree.body.match
+          case untpd.Tuple((_: NamedArg) :: _) => true
+          case _ => false
+
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
       if fn.symbol.exists && (fn.symbol.owner.derivesFrom(defn.TypeTestClass) || fn.symbol.owner == defn.ClassTagClass) && !body1.tpe.isError =>
@@ -2799,10 +2809,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             body1.isInstanceOf[RefTree] && !isWildcardArg(body1)
             || body1.isInstanceOf[Literal]
           val symTp =
-            if isStableIdentifierOrLiteral || pt.dealias.isNamedTupleType then pt
-              // need to combine tuple element types with expected named type
+            if isStableIdentifierOrLiteral || isNamedTuplePattern then pt
             else if isWildcardStarArg(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
+                    || pt.isBottomType
                     || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
                                          // and implicit scopes.
                                          // run/t2755.scala fails to compile if this subtype test is omitted
@@ -3542,7 +3552,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
     val tree1 = desugar.tuple(tree, pt).withAttachmentsFrom(tree)
     checkDeprecatedAssignmentSyntax(tree)
-    if tree1 ne tree then typed(tree1, pt)
+    if tree1 ne tree then
+      val t = typed(tree1, pt)
+      // println(i"typedTuple: ${t} , ${t.tpe}")
+      t
     else
       val arity = tree.trees.length
       val pts = pt.stripNamedTuple.tupleElementTypes match
