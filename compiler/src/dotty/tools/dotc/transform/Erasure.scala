@@ -583,6 +583,17 @@ object Erasure {
       checkNotErasedClass(tree)
     end checkNotErased
 
+    def checkPureErased(tree: untpd.Tree, isArgument: Boolean)(using Context): Unit =
+      if false then inContext(preErasureCtx):
+        if tpd.isPureExpr(tree.asInstanceOf[tpd.Tree]) then
+          val tree1 = tree.asInstanceOf[tpd.Tree]
+          println(i"$tree1 is pure, ${tree1.tpe.widen}")
+        else
+          def what =
+            if isArgument then "argument to erased parameter"
+            else "right-hand-side of erased value"
+          report.error(em"$what fails to be a pure expression", tree.srcPos)
+
     private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
       case JavaArrayType(et) =>
         checkNotErasedClass(et, tree)
@@ -848,7 +859,12 @@ object Erasure {
       val origFunType = origFun.tpe.widen(using preErasureCtx)
       val ownArgs = origFunType match
         case mt: MethodType if mt.hasErasedParams =>
-          args.zip(mt.erasedParams).collect { case (arg, false) => arg }
+          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
+            if isErased then
+              checkPureErased(arg, isArgument = true)
+              Nil
+            else
+              arg :: Nil
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
@@ -916,7 +932,9 @@ object Erasure {
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
-      if (sym.isEffectivelyErased) erasedDef(sym)
+      if sym.isEffectivelyErased then
+        checkPureErased(vdef.rhs, isArgument = false)
+        erasedDef(sym)
       else
         checkNotErasedClass(sym.info, vdef)
         super.typedValDef(untpd.cpy.ValDef(vdef)(
@@ -928,6 +946,7 @@ object Erasure {
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
+        checkPureErased(ddef.rhs, isArgument = false)
         erasedDef(sym)
       else
         checkNotErasedClass(sym.info.finalResultType, ddef)
