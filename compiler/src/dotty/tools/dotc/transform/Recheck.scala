@@ -183,10 +183,10 @@ abstract class Recheck extends Phase, SymTransformer:
 
     /** If true, remember the new types of nodes in this compilation unit
      *  as an attachment in the unit's tpdTree node. By default, this is
-     *  enabled when -Xprint:cc is set. Can be overridden.
+     *  enabled when -Vprint:cc is set. Can be overridden.
      */
     def keepNuTypes(using Context): Boolean =
-      ctx.settings.Xprint.value.containsPhase(thisPhase)
+      ctx.settings.Vprint.value.containsPhase(thisPhase)
 
     def resetNuTypes()(using Context): Unit =
       nuTypes.clear(resetToInitial = false)
