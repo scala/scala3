@@ -1,1 +1,0 @@
--- [E029] Pattern Match Exhaustivity Warning: tests\warn\patmat-lazy-nothing-not-exhaustive.scala:10:5 -----------------10 |  id(x match { // warn   |     ^   |     match may not be exhaustive.   |   |     It would fail on pattern case: Bar()   |   | longer explanation available when compiling with `-explain`
