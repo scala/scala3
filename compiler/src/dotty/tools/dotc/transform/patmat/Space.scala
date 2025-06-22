@@ -661,49 +661,37 @@ object SpaceEngine {
         // we get
         //    <== refineUsingParent(NatT, class Succ, []) = Succ[NatT]
         //    <== isSub(Succ[NatT] <:< Succ[Succ[<?>]]) = false
-        def getAppliedClass(tp: Type): (Type, List[Type]) = tp match
-          case tp @ AppliedType(_: HKTypeLambda, _)                        => (tp, Nil)
-          case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => (tp, tp.args)
+        def getAppliedClass(tp: Type): Type = tp match
+          case tp @ AppliedType(_: HKTypeLambda, _)                        => tp
+          case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => tp
           case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
-          case tp                                                          => (tp, Nil)
-        val (tp, typeArgs) = getAppliedClass(tpOriginal)
-        // This function is needed to get the arguments of the types that will be applied to the class.
-        // This is necessary because if the arguments of the types contain Nothing,
-        // then this can affect whether the class will be taken into account during the exhaustiveness check
-        def getTypeArgs(parent: Symbol, child: Symbol, typeArgs: List[Type]): List[Type] =
-          val superType = child.typeRef.superType
-          if typeArgs.exists(_.isBottomType) && superType.isInstanceOf[ClassInfo] then
-            val parentClass = superType.asInstanceOf[ClassInfo].declaredParents.find(_.classSymbol == parent).get
-            val paramTypeMap = Map.from(parentClass.argInfos.map(_.typeSymbol).zip(typeArgs))
-            val substArgs = child.typeRef.typeParamSymbols.map(param => paramTypeMap.getOrElse(param, WildcardType))
-            substArgs
-          else Nil
-        def getChildren(sym: Symbol, typeArgs: List[Type]): List[Symbol] =
+          case tp                                                          => tp
+        val tp = getAppliedClass(tpOriginal)
+        def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
               List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
-            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then
-              getChildren(child, getTypeArgs(sym, child, typeArgs))
-            else
-              val childSubstTypes = child.typeRef.applyIfParameterized(getTypeArgs(sym, child, typeArgs))
-              // if a class contains a field of type Nothing,
-              // then it can be ignored in pattern matching, because it is impossible to obtain an instance of it
-              val existFieldWithBottomType = childSubstTypes.fields.exists(_.info.isBottomType)
-              if existFieldWithBottomType then Nil else List(child)
+            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
+            else List(child)
           }
-        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol, typeArgs))
+        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
+          def containsUninhabitedField(tp: Type): Boolean =
+            tp.fields.exists { field =>
+              !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
+            }
+
           def inhabited(tp: Type): Boolean = tp.dealias match
             case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)
             case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
             case tp: RefinedType => inhabited(tp.parent)
-            case tp: TypeRef => inhabited(tp.prefix)
-            case _ => true
+            case tp: TypeRef => !containsUninhabitedField(tp) && inhabited(tp.prefix)
+            case _ => !containsUninhabitedField(tp)
 
           if inhabited(refined) then refined
           else NoType
