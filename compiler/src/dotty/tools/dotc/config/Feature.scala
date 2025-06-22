@@ -133,7 +133,7 @@ object Feature:
   /** Is captureChecking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
-    || ctx.compilationUnit.needsCaptureChecking
+    || ctx.originalCompilationUnit.needsCaptureChecking
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
