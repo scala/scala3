@@ -607,10 +607,12 @@ object Checking {
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
       fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
-    checkApplicable(Erased,
-      !sym.is(Lazy, butNot = Given)
-      && !sym.isMutableVarOrAccessor
-      && (!sym.isType || sym.isClass))
+    val unerasable =
+      sym.is(Lazy, butNot = Given)
+      || sym.is(Method, butNot = Macro)
+      || sym.is(Mutable)
+      || sym.isType && !sym.isClass
+    checkApplicable(Erased, !unerasable)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)

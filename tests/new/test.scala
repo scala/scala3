@@ -1,15 +1,12 @@
+import java.io.IOException
 
-package foo
+class CanThrow[-E <: Exception]
 
-package object bar:
-  opaque type O[X] >: X = X
+def foo[E <: Exception](e: E)(using erased CanThrow[E]): Nothing = throw e
 
-class Test:
-  import bar.O
+erased def magic[E]: E = magic // error
+inline def moreMagic[E]: E = moreMagic
 
-  val x = "abc"
-  val y: O[String] = x
-  //val z: String = y
-
-
-
+def Test =
+  foo(new IOException)(using magic)
+  foo(new IOException)(using moreMagic) // should be error
