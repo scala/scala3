@@ -472,7 +472,7 @@ object Types extends TypeUtils {
         case tp: TypeRef =>
           (tp.symbol.isClass || tp.symbol.isOpaqueAlias) && tp.symbol.is(Into)
         case tp @ AppliedType(tycon, _) =>
-          isInto || tycon.isConversionTargetType
+          tp.isInto || tycon.isConversionTargetType
         case tp: AndOrType =>
           tp.tp1.isConversionTargetType && tp.tp2.isConversionTargetType
         case tp: TypeVar =>
