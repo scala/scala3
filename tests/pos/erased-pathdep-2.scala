@@ -7,8 +7,8 @@ object Test {
   type F >: Bar <: Foo
 
   class A(erased val f: F) {
-    type F1 <: f.X // error
-    type F2[Z <: f.X] // error
+    type F1 <: f.X // was error
+    type F2[Z <: f.X] // was error
   }
 
 }
