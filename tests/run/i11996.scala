@@ -3,7 +3,7 @@
 final class UnivEq[A]
 
 object UnivEq:
-  erased def force[A]: UnivEq[A] =
+  inline def force[A]: UnivEq[A] =
     compiletime.erasedValue
 
 extension [A](a: A)
