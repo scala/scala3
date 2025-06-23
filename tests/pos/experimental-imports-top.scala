@@ -4,4 +4,4 @@ import language.experimental.erasedDefinitions
 import annotation.experimental
 
 @experimental
-erased def f = 1
+erased val f = 1
