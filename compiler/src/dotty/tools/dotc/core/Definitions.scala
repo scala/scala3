@@ -2006,7 +2006,9 @@ class Definitions {
 
   /** A allowlist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
-    (sym `eq` SomeClass) || isTupleClass(sym)
+    (sym `eq` SomeClass)
+    || isTupleClass(sym)
+    || sym.is(Module) && isAssuredNoInits(sym.companionClass)
 
   /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
   def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
