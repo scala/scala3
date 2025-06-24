@@ -588,14 +588,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
+      if tree.tpe.isInstanceOf[MethodOrPoly] then exprPurity(fn)
+      else if fn.symbol == defn.QuotedTypeModule_of || fn.symbol == defn.Predef_classOf then Pure
+      else if fn.symbol == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType] then Pure
+      else Impure
     case Apply(fn, args) =>
-      if isPureApply(tree, fn) then
-        minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else if fn.symbol.is(Erased) then
-        Pure
+      val factorPurity = minOf(exprPurity(fn), args.map(exprPurity))
+      if tree.tpe.isInstanceOf[MethodOrPoly] then // no evaluation
+        factorPurity `min` Pure
+      else if isPureApply(tree, fn) then
+        factorPurity `min` Pure
       else if fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */ then
-        minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
+        factorPurity `min` Idempotent
       else
         Impure
     case Typed(expr, _) =>

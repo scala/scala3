@@ -335,15 +335,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         }
     }
 
-    private object dropInlines extends TreeMap {
-      override def transform(tree: Tree)(using Context): Tree = tree match {
-        case tree @ Inlined(call, _, expansion) =>
-          val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
-          cpy.Inlined(tree)(call, Nil, newExpansion)
-        case _ => super.transform(tree)
-      }
-    }
-
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
@@ -414,26 +405,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkUsableAsValue(tree) match
               case tree1: Select => transformSelect(tree1, Nil)
               case tree1 => tree1
-        case tree: Apply =>
-          val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
-          val app =
-            if (methType.hasErasedParams)
-              tpd.cpy.Apply(tree)(
-                tree.fun,
-                tree.args.zip(methType.erasedParams).map((arg, isErased) =>
-                  if !isErased then arg
-                  else
-                    if methType.isResultDependent then
-                      Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
-                    if (methType.isImplicitMethod && arg.span.isSynthetic)
-                      arg match
-                        case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
-                          dropInlines.transform(arg)
-                        case _ =>
-                          PruneErasedDefs.trivialErasedTree(arg)
-                    else dropInlines.transform(arg)))
-            else
-              tree
+        case app: Apply =>
+          val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
+          if (methType.hasErasedParams)
+            for (arg, isErased) <- app.args.lazyZip(methType.erasedParams) do
+              if isErased then
+                if methType.isResultDependent then
+                  Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
           def app1 =
             // reverse order of transforming args and fun. This way, we get a chance to see other
             // well-formedness errors before reporting errors in possible inferred type args of fun.
@@ -499,7 +477,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
-          val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt), rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
@@ -508,7 +486,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt), rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)
@@ -631,12 +609,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
       Checking.checkAndAdaptExperimentalImports(trees)
       super.transformStats(trees, exprOwner, wrapResult)
-
-    /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-     *  Performed to shrink the tree that is known to be erased later.
-     */
-    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
-      if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
 
     private def registerNeedsInlining(tree: Tree)(using Context): Unit =
       if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.NoInline) then

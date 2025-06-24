@@ -63,7 +63,7 @@ class CompileProgressSpecification {
         "staging",
         "splicing",
         "pickleQuotes",
-        "MegaPhase{pruneErasedDefs,...,arrayConstructors}",
+        "MegaPhase{uninitialized,...,arrayConstructors}",
         "erasure",
         "constructors",
         "genBCode"
