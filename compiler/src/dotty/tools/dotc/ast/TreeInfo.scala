@@ -590,9 +590,13 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
+      val sym = fn.symbol
       if tree.tpe.isInstanceOf[MethodOrPoly] then exprPurity(fn)
-      else if fn.symbol == defn.QuotedTypeModule_of || fn.symbol == defn.Predef_classOf then Pure
-      else if fn.symbol == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType] then Pure
+      else if sym == defn.QuotedTypeModule_of
+          || sym == defn.Predef_classOf
+          || sym == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType]
+          || defn.capsErasedValueMethods.contains(sym)
+      then Pure
       else Impure
     case Apply(fn, args) =>
       val factorPurity = minOf(exprPurity(fn), args.map(exprPurity))
@@ -636,6 +640,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   def isPureBinding(tree: Tree)(using Context): Boolean = statPurity(tree) >= Pure
 
+  def isPureSyntheticCaseApply(sym: Symbol)(using Context): Boolean =
+    sym.isAllOf(SyntheticMethod)
+    && sym.name == nme.apply
+    && sym.owner.is(Module)
+    && {
+      val cls = sym.owner.companionClass
+      cls.is(Case) && cls.isNoInitsRealClass
+    }
+
   /** Is the application `tree` with function part `fn` known to be pure?
    *  Function value and arguments can still be impure.
    */
@@ -647,6 +660,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
     tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && fn.symbol.isConstructor // constructors of no-inits classes are stable
+    || isPureSyntheticCaseApply(fn.symbol)
 
   /** The purity level of this reference.
    *  @return
