@@ -576,7 +576,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  @param  args the type arguments
      */
     def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
-      def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
+      def isExempt = sym.isTypeTestOrCast || defn.capsErasedValueMethods.contains(sym)
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
           fn.tpe.widenDealias match
