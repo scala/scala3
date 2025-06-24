@@ -4,7 +4,7 @@ title: "Erased Definitions"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs.html
 ---
 
-`erased` is a modifier that expresses that some definition or expression is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature
+`erased` is a modifier that expresses that some value or parameter is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature
 [`experimental.erasedDefinitions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$erasedDefinitions$.html). This can be done with a language import
 ```scala
 import scala.language.experimental.erasedDefinitions
@@ -74,9 +74,9 @@ def methodWithErasedInt2(erased i: Int): Int =
   methodWithErasedInt1(i) // OK
 ```
 
-Not only parameters can be marked as erased, `val` and `def` can also be marked
-with `erased`. These will also only be usable as arguments to `erased`
-parameters.
+Besides parameters, `val` definitions can also be marked with `erased`.
+These will also only be usable as arguments to `erased` parameters or
+as part of the definitions of other erased `val`s.
 
 ```scala
 erased val erasedEvidence: Ev = ...
@@ -85,7 +85,7 @@ methodWithErasedEv(erasedEvidence, 40) // 42
 
 ## What happens with erased values at runtime?
 
-As `erased` are guaranteed not to be used in computations, they can and will be
+As `erased` vals and parameters are guaranteed not to be used in computations, they can and will be
 erased.
 
 ```scala
@@ -130,7 +130,7 @@ class IsOff[S <: State]
 object IsOff:
   // will not be called at runtime for turnedOn, the
   // compiler will only require that this evidence exists
-  given IsOff[Off] = new IsOff[Off]
+  erased given IsOff[Off] = new IsOff[Off]
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
@@ -151,14 +151,7 @@ object Machine:
   val m = Machine.newMachine()
   m.turnedOn
   m.turnedOn.turnedOff
-
-  // m.turnedOff
-  //            ^
-  //            State must be On
-
-  // m.turnedOn.turnedOn
-  //                    ^
-  //                    State must be Off
+  m.turnedOn.turnedOn // error: State must be Off
 ```
 
 Note that in [Compile-time operations](../metaprogramming/compiletime-ops.md#erasedvalue) we discussed `erasedValue` and inline
