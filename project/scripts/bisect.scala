@@ -12,6 +12,8 @@ import java.io.File
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 val usageMessage = """
   |Usage:
@@ -154,7 +156,6 @@ case class ReleasesRange(first: Option[String], last: Option[String]):
       val index = releases.indexWhere(_.version == version)
       assert(index > 0, s"${version} matches no nightly compiler release")
       index
-
     val startIdx = first.map(releaseIndex(_)).getOrElse(0)
     val endIdx = last.map(releaseIndex(_) + 1).getOrElse(releases.length)
     val filtered = releases.slice(startIdx, endIdx).toVector
@@ -181,12 +182,15 @@ object Releases:
     re.findAllMatchIn(xml.mkString)
       .flatMap{ m => Option(m.group(1)).map(Release.apply) }
       .toVector
+      .sortBy: release =>
+        (release.version, release.date)
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
 case class Release(version: String):
   private val re = raw".+-bin-(\d{8})-(\w{7})-NIGHTLY".r
-  def date: String =
+  def date: LocalDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE)
+  def dateString: String =
     version match
       case re(date, _) => date
       case _ => sys.error(s"Could not extract date from release name: $version")
