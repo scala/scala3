@@ -1004,9 +1004,11 @@ class Definitions {
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
+    @tu lazy val Caps_erasedValue: Symbol = CapsInternalModule.requiredMethod("erasedValue")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
+    @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
@@ -1559,7 +1561,7 @@ class Definitions {
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
   @tu lazy val capsErasedValueMethods =
-    Set[Symbol]()
+    Set(Caps_erasedValue, Caps_unsafeErasedValue)
   @tu lazy val erasedValueMethods =
     capsErasedValueMethods + Compiletime_erasedValue
 
