@@ -341,6 +341,17 @@ class InlineReducer(inliner: Inliner)(using Context):
     val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
     val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
+    // If scrutinee has embedded `compiletime.erasedValue[T]` expressions, convert them to
+    // mark scrutineeSym as Erased. This means that the scrutinee cannot be referenced in
+    // the reduced term. It is NOT checked that scrutinee is a pure expression, since
+    // there is a special case in Erase that exempts the RHS of an erased scrutinee definition.
+    if scrutinee.existsSubTree:
+      case tree @ TypeApply(fn, args) => tree.symbol == defn.Compiletime_erasedValue
+      case _ => false
+    then
+      scrutineeSym.setFlag(Erased)
+
+
     def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
       val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
 
