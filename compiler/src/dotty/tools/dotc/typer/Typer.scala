@@ -2971,14 +2971,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     EmptyTree
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = if !sym.info.exists then retractDefDef(sym) else ctx.profiler.onTypedDef(sym) {
-
-    // TODO: - Remove this when `scala.language.experimental.erasedDefinitions` is no longer experimental.
-    //       - Modify signature to `erased def erasedValue[T]: T`
-    if sym.eq(defn.Compiletime_erasedValue) then
-      // scala.compiletime.erasedValue should be `erased` but we cannot add this in the source.
-      // The library cannot use experimental language features,
-      // hence we special case it until `erased` is no longer experimental.
-      sym.setFlag(Erased)
     val DefDef(name, paramss, tpt, _) = ddef
     checkNonRootName(ddef.name, ddef.nameSpan)
     completeAnnotations(ddef, sym)
