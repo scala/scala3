@@ -1,5 +1,5 @@
 import scala.language.experimental.erasedDefinitions
-import compiletime.erasedValue
+import caps.unsafe.unsafeErasedValue as erasedValue
 import compiletime.ops.int.S
 object Test {
   type T[X] = X match {

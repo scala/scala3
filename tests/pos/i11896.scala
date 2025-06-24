@@ -1,7 +1,7 @@
 import scala.language.experimental.erasedDefinitions
 
 type X
-inline def x: X = compiletime.erasedValue
+inline def x: X = caps.unsafe.unsafeErasedValue
 
 def foo(using erased X): Unit = ()
 

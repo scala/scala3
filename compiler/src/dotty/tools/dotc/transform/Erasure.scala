@@ -14,7 +14,7 @@ import core.Names.*
 import core.StdNames.*
 import core.NameOps.*
 import core.Periods.currentStablePeriod
-import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
+import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName, InlineScrutineeName}
 import core.Scopes.newScopeWith
 import core.Decorators.*
 import core.Constants.*
@@ -583,16 +583,11 @@ object Erasure {
       checkNotErasedClass(tree)
     end checkNotErased
 
-    def checkPureErased(tree: untpd.Tree, isArgument: Boolean)(using Context): Unit =
-      if false then inContext(preErasureCtx):
-        if tpd.isPureExpr(tree.asInstanceOf[tpd.Tree]) then
-          val tree1 = tree.asInstanceOf[tpd.Tree]
-          println(i"$tree1 is pure, ${tree1.tpe.widen}")
-        else
-          def what =
-            if isArgument then "argument to erased parameter"
-            else "right-hand-side of erased value"
-          report.error(em"$what fails to be a pure expression", tree.srcPos)
+    def checkPureErased(tree: untpd.Tree, isArgument: Boolean, isImplicit: Boolean = false)(using Context): Unit =
+      val tree1 = tree.asInstanceOf[tpd.Tree]
+      inContext(preErasureCtx):
+        if !tpd.isPureExpr(tree1) then
+          report.error(ErasedNotPure(tree1, isArgument, isImplicit), tree1.srcPos)
 
     private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
       case JavaArrayType(et) =>
@@ -861,7 +856,8 @@ object Erasure {
         case mt: MethodType if mt.hasErasedParams =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
-              checkPureErased(arg, isArgument = true)
+              checkPureErased(arg, isArgument = true,
+                isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
               Nil
             else
               arg :: Nil
@@ -933,9 +929,10 @@ object Erasure {
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       if sym.isEffectivelyErased then
-        checkPureErased(vdef.rhs, isArgument = false)
+        if !sym.name.is(InlineScrutineeName) then
+          checkPureErased(vdef.rhs, isArgument = false)
         erasedDef(sym)
-      else
+      else trace(i"erasing $vdef"):
         checkNotErasedClass(sym.info, vdef)
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
@@ -946,7 +943,6 @@ object Erasure {
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
-        checkPureErased(ddef.rhs, isArgument = false)
         erasedDef(sym)
       else
         checkNotErasedClass(sym.info.finalResultType, ddef)

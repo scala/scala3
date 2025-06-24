@@ -28,7 +28,7 @@ trait Dataset[T] {
   // Use c.label to do an untyped select on actual Spark Dataset, and
   // cast the result to TypedDataset[A]
 
-  def col[S <: String, A](s: S) (using erased ev: Exists[T, s.type, A]) =
+  inline def col[S <: String, A](s: S) (using erased ev: Exists[T, s.type, A]) =
     new Column[T, A](s) // ev is only here to check than this is safe, it's never used at runtime!
 
   def collect(): Vector[T]
@@ -71,17 +71,17 @@ case class Column[T, A](label: String)
 trait Exists[T, K, V]
 
 object Exists {
-  implicit def derive[T, H <: HList, K, V](implicit g: LabelledGeneric[T] { type Repr = H }, s: Selector[H, K, V]): Exists[T, K, V] = {
+  inline implicit def derive[T, H <: HList, K, V](implicit g: LabelledGeneric[T] { type Repr = H }, s: Selector[H, K, V]): Exists[T, K, V] = {
     println("Exists.derive")
     null
   }
 
-  implicit def caseFound[T <: HList, K <: String, V]: Selector[R[K, V] :: T, K, V] = {
+  inline implicit def caseFound[T <: HList, K <: String, V]: Selector[R[K, V] :: T, K, V] = {
     println("Selector.caseFound")
     null
   }
 
-  implicit def caseRecur[H, T <: HList, K <: String, V](implicit i: Selector[T, K, V]): Selector[H :: T, K, V] = {
+  inline implicit def caseRecur[H, T <: HList, K <: String, V](implicit i: Selector[T, K, V]): Selector[H :: T, K, V] = {
     println("Selector.caseRecur")
     null
   }
