@@ -1054,6 +1054,7 @@ object SymDenotations {
     def isEffectivelyErased(using Context): Boolean =
       isOneOf(EffectivelyErased)
       || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
+      || defn.erasedValueMethods.contains(symbol)
 
     /** Is this a member that will become public in the generated binary */
     def hasPublicInBinary(using Context): Boolean =

@@ -1558,6 +1558,11 @@ class Definitions {
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
+  @tu lazy val capsErasedValueMethods =
+    Set[Symbol]()
+  @tu lazy val erasedValueMethods =
+    capsErasedValueMethods + Compiletime_erasedValue
+
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
