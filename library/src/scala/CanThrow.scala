@@ -12,5 +12,5 @@ erased class CanThrow[-E <: Exception] extends caps.SharedCapability
 
 @experimental
 object unsafeExceptions:
-  inline given canThrowAny: CanThrow[Exception] = compiletime.erasedValue
+  inline given canThrowAny: CanThrow[Exception] = caps.unsafe.unsafeErasedValue
 
