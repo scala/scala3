@@ -5,5 +5,5 @@ object Test {
   def foo0(a: Int): Int = 3
   def foo1(erased a: Int): Int = 3
   foo0(erasedValue[Int]) // error
-  foo1(erasedValue[Int])
+  foo1(erasedValue[Int]) // error
 }
