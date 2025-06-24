@@ -2395,7 +2395,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       untpd.ValDef(
           CanThrowEvidenceName.fresh(),
           untpd.TypeTree(defn.CanThrowClass.typeRef.appliedTo(tp)),
-          untpd.ref(defn.Compiletime_erasedValue))
+          untpd.ref(defn.Caps_erasedValue))
         .withFlags(Given | Final | Erased)
         .withSpan(expr.span)
     val caughtExceptions =
