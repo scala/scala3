@@ -256,14 +256,17 @@ object Settings:
               doSetArg(arg = null, args) // update with default
 
       def doSetArg(arg: String | Null, argsLeft: List[String]) =
-        classTag[T] match
-          case ListTag if arg == null =>
-            update(default, argStringValue = "", argsLeft)
+        arg match
+        case null =>
+          classTag[T] match
           case ListTag =>
-            val strings = arg.split(",").toList
-            appendList(strings, arg, argsLeft)
-          case _ if arg == null =>
+            update(default, argStringValue = "", argsLeft)
+          case _ =>
             missingArg
+        case arg =>
+          classTag[T] match
+          case ListTag =>
+            appendList(arg.split(",").toList, arg, argsLeft)
           case StringTag =>
             setString(arg, argsLeft)
           case OutputTag =>
