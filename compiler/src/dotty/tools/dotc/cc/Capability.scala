@@ -851,7 +851,8 @@ object Capabilities:
   end toResult
 
   /** Map global roots in function results to result roots. Also,
-   *  map roots in the types of parameterless def methods.
+   *  map roots in the types of def methods that are parameterless
+   *  or have only type parameters.
    */
   def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(tp: Type)(using Context): Type =
     val m = new TypeMap with FollowAliasesMap:
@@ -880,8 +881,17 @@ object Capabilities:
             throw ex
     m(tp) match
       case tp1: ExprType if sym.is(Method, butNot = Accessor) =>
+        // Map the result of parameterless `def` methods.
         tp1.derivedExprType(toResult(tp1.resType, tp1, fail))
       case tp1: PolyType if !tp1.resType.isInstanceOf[MethodicType] =>
+        // Map also the result type of method with only type parameters.
+        // This way, the `^` in the following method will be mapped to a `ResultCap`:
+        // ```
+        // object Buffer:
+        //   def empty[T]: Buffer[T]^
+        // ```
+        // This is more desirable than interpreting `^` as a `Fresh` at the level of `Buffer.empty`
+        // in most cases.
         tp1.derivedLambdaType(resType = toResult(tp1.resType, tp1, fail))
       case tp1 => tp1
   end toResultInResults

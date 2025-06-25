@@ -1,0 +1,19 @@
+Flag -source set repeatedly
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-fresh-levels.scala:14:10 ------------------------------
+14 |    r.put(x)  // error
+   |          ^
+   |          Found:    IO^{x}
+   |          Required: IO^
+   |
+   |          where:    ^ refers to a fresh root capability in the type of value r
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-fresh-levels.scala:17:10 ------------------------------
+17 |    r.put(innerIO)  // error
+   |          ^^^^^^^
+   |          Found:    IO^{innerIO}
+   |          Required: IO^
+   |
+   |          where:    ^ refers to a fresh root capability in the type of value r
+   |
+   | longer explanation available when compiling with `-explain`
