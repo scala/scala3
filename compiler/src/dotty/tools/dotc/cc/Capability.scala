@@ -21,7 +21,7 @@ import annotation.constructorOnly
 import ast.tpd
 import printing.{Printer, Showable}
 import printing.Texts.Text
-import reporting.Message
+import reporting.{Message, trace}
 import NameOps.isImpureFunction
 import annotation.internal.sharable
 
@@ -881,6 +881,8 @@ object Capabilities:
     m(tp) match
       case tp1: ExprType if sym.is(Method, butNot = Accessor) =>
         tp1.derivedExprType(toResult(tp1.resType, tp1, fail))
+      case tp1: PolyType if !tp1.resType.isInstanceOf[MethodicType] =>
+        tp1.derivedLambdaType(resType = toResult(tp1.resType, tp1, fail))
       case tp1 => tp1
   end toResultInResults
 
