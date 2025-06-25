@@ -125,6 +125,12 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
+    // This used to be `pre.isStable || !ctx.phase.isTyper` but the latter
+    // condition was dropped in #21954 to make implicit search during the
+    // inlining phase behave more like implicit search during the typer phase.
+    // However, this change has led to retyping issues (#23423) and I suspect
+    // other issues could crop up as we might end up calling asSeenFrom with a
+    // widened prefix in various situations post-typer.
     pre.isStable
 
   /** Implementation of Types#simplified */

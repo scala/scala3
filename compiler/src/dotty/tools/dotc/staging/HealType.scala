@@ -32,12 +32,14 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
    */
   def apply(tp: Type): Type =
     tp match
-      case NonSpliceAlias(aliased) => this.apply(aliased)
-      case tp: TypeRef => healTypeRef(tp)
-      case tp: TermRef =>
-        val inconsistentRoot = levelInconsistentRootOfPath(tp)
-        if inconsistentRoot.exists then levelError(inconsistentRoot, tp, pos)
-        else mapOver(tp)
+      case tp: NamedType if tp.symbol.isLocal => tp match
+        case NonSpliceAlias(aliased) =>
+          this.apply(aliased)
+        case tp: TypeRef => healTypeRef(tp)
+        case tp: TermRef =>
+          val inconsistentRoot = levelInconsistentRootOfPath(tp)
+          if inconsistentRoot.exists then levelError(inconsistentRoot, tp, pos)
+          else mapOver(tp)
       case tp: AnnotatedType =>
         derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
       case _ =>
