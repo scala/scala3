@@ -403,10 +403,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
        */
       def defaultApply(t: Type) =
         if t.derivesFromCapability
+          && t.typeParams.isEmpty
           && !t.isSingleton
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
-        then CapturingType(t, CaptureSet.CSImpliedByCapability(), boxed = false)
+        then
+          normalizeCaptures(mapOver(t)) match
+            case t1 @ CapturingType(_, _) => t1
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
