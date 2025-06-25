@@ -684,6 +684,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       //   - the selection is either a trackable capture reference or a pure type
       if noWiden(selType, pt)
           || qualType.isBoxedCapturing
+          || selType.isBoxedCapturing
           || selWiden.isBoxedCapturing
           || selType.isTrackableRef
           || selWiden.captureSet.isAlwaysEmpty
@@ -882,7 +883,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val cs = csArg.nuType.captureSet
         val ref = refArg.nuType
         capt.println(i"check contains $cs , $ref")
-        ref match
+        ref.stripCapturing match
           case ref: Capability if ref.isTracked =>
             checkElem(ref, cs, tree.srcPos)
           case _ =>
@@ -1677,7 +1678,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       actual.isSingleton
       && expected.match
           case expected: PathSelectionProto => !expected.sym.isOneOf(UnstableValueFlags)
-          case _ => expected.isSingleton || expected == LhsProto
+          case _ => expected.stripCapturing.isSingleton || expected == LhsProto
 
     /** Adapt `actual` type to `expected` type. This involves:
      *   - narrow toplevel captures of `x`'s underlying type to `{x}` according to CC's VAR rule
@@ -1686,7 +1687,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def adapt(actual: Type, expected: Type, tree: Tree)(using Context): Type =
       if noWiden(actual, expected) then
-        actual
+        expected match
+          case expected @ CapturingType(_, _) if expected.isBoxed =>
+            // actual is a singleton type and expected is of the form box x.type^cs.
+            // Convert actual to the same form.
+            actual.boxDeeply
+              .showing(i"adapt single $actual / $result vs $expected", capt)
+          case _ =>
+            actual
       else
         // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
         // since they obscures the capturing type.
