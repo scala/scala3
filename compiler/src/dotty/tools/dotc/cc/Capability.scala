@@ -693,7 +693,7 @@ object Capabilities:
     thisMap =>
 
     override def apply(t: Type) =
-      if variance <= 0 then t
+      if variance < 0 then t
       else t match
         case t @ CapturingType(_, _) =>
           mapOver(t)
@@ -703,6 +703,8 @@ object Capabilities:
             this(CapturingType(parent1, ann.tree.toCaptureSet))
           else
             t.derivedAnnotatedType(parent1, ann)
+        case t @ FunctionOrMethod(_, _) if t.isAliasFun =>
+          t  // stop at dependent function types
         case _ =>
           mapFollowingAliases(t)
 
