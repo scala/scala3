@@ -61,7 +61,7 @@ private class QualifierEvaluator(args: Map[Symbol, Tree]) extends TreeMap:
     tree match
       case tree: Apply =>
         val treeTransformed = super.transform(tree)
-        constFold(treeTransformed).orElse(reduceBinaryOp(treeTransformed)).orElse(treeTransformed)
+        constFold(treeTransformed).orElse(treeTransformed)
       case tree: Select =>
         val treeTransformed = super.transform(tree)
         constFold(treeTransformed).orElse(treeTransformed)
@@ -74,19 +74,6 @@ private class QualifierEvaluator(args: Map[Symbol, Tree]) extends TreeMap:
     tree match
       case ConstantTree(c: Constant) => Literal(c)
       case _                         => EmptyTree
-
-  private def reduceBinaryOp(tree: Tree)(using Context): Tree =
-    val d = defn // Need a stable path to match on `defn` members
-    tree match
-      case BinaryOp(a, d.Int_== | d.Any_== | d.Boolean_==, b) =>
-        val aNormalized = QualifierNormalizer.normalize(a)
-        val bNormalized = QualifierNormalizer.normalize(b)
-        if QualifierAlphaComparer().iso(aNormalized, bNormalized) then
-          Literal(Constant(true))
-        else
-          EmptyTree
-      case _ =>
-        EmptyTree
 
   private def unfold(tree: Tree)(using Context): Tree =
     args.get(tree.symbol) match
