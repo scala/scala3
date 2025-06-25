@@ -9,8 +9,12 @@ def test: Unit =
   val c: Int = ???
   val d: Int = ???
 
+  summon[{v: Int with v == 2} <:< {v: Int with v == 2}]
+  summon[{v: Int with v == f(a)} <:< {v: Int with v == f(a)}]
+
   // Equality is reflexive, symmetric and transitive
   summon[{v: Int with v == v} <:< {v: Int with true}]
+  summon[{v: Int with a == b} <:< {v: Int with true}]
   summon[{v: Int with v == a} <:< {v: Int with v == a}]
   summon[{v: Int with v == a} <:< {v: Int with a == v}]
   summon[{v: Int with a == b} <:< {v: Int with b == a}]
