@@ -50,12 +50,12 @@ class InferExpectedType(
         val indexedCtx = IndexedContext(pos)(using locatedCtx)
         val printer =
           ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedCtx)
-        InterCompletionType.inferType(path)(using newctx).map{
+        InferCompletionType.inferType(path)(using newctx).map{
           tpe => printer.tpe(tpe)
         }
       case None => None
 
-object InterCompletionType:
+object InferCompletionType:
   def inferType(path: List[Tree])(using Context): Option[Type] =
     path match
       case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(s: Select)) :: rest if s.symbol == defn.Predef_undefined => inferType(rest, lit.span)
@@ -94,7 +94,7 @@ object InterCompletionType:
         else Some(UnapplyArgs(fun.tpe.finalResultType, fun, pats, NoSourcePosition).argTypes(ind))
       // f(@@)
       case ApplyExtractor(app) =>
-        val argsAndParams = ApplyArgsExtractor.getArgsAndParams(None, app, span).headOption
+        val argsAndParams = ApplyArgsExtractor.getArgsAndParams(IndexedContext.Empty, app, span).headOption
         argsAndParams.flatMap:
           case (args, params) =>
             val idx = args.indexWhere(_.span.contains(span))

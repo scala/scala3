@@ -20,6 +20,7 @@ import scala.annotation.tailrec
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Denotations.MultiDenotation
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.core.Symbols
 
 object ApplyExtractor:
   def unapply(path: List[Tree])(using Context): Option[Apply] =
@@ -44,8 +45,10 @@ object ApplyExtractor:
 
 
 object ApplyArgsExtractor:
+  // normally symbol but for refinment types method type
+  type Method = Symbol | Type
   def getArgsAndParams(
-    optIndexedContext: Option[IndexedContext],
+    indexedContext: IndexedContext,
     apply: Apply,
     span: Span
   )(using Context): List[(List[Tree], List[ParamSymbol])] =
@@ -78,47 +81,56 @@ object ApplyArgsExtractor:
 
       // fallback for when multiple overloaded methods match the supplied args
     def fallbackFindMatchingMethods() =
-      def matchingMethodsSymbols(
-        indexedContext: IndexedContext,
-        method: Tree
-      ): List[Symbol] =
+      def matchingMethodsSymbols(method: Tree): List[Method] =
         method match
           case Ident(name) => indexedContext.findSymbol(name).getOrElse(Nil)
-          case Select(This(_), name) => indexedContext.findSymbol(name).getOrElse(Nil)
+          case Select(t @ This(_), name) =>
+            val res = indexedContext.findSymbol(name).getOrElse(Nil).filter(_.exists)
+            res ++ findRefinments(t.symbol.info, name)
           case sel @ Select(from, name) =>
             val symbol = from.symbol
             val ownerSymbol =
               if symbol.is(Method) && symbol.owner.isClass then
                 Some(symbol.owner)
               else Try(symbol.info.classSymbol).toOption
-            ownerSymbol.map(sym =>  sym.info.member(name)).collect{
+            val res = ownerSymbol.map(sym =>  sym.info.member(name)).collect{
               case single: SingleDenotation => List(single.symbol)
               case multi: MultiDenotation => multi.allSymbols
             }.getOrElse(Nil)
-          case Apply(fun, _) => matchingMethodsSymbols(indexedContext, fun)
+            res ++ findRefinments(symbol.info, name)
+          case Apply(fun, _) => matchingMethodsSymbols(fun)
+          case TypeApply(fun, args) =>
+            matchingMethodsSymbols(fun).map {
+              case t: PolyType => t.appliedTo(args.map(_.tpe))
+              case s => s
+            }
           case _ => Nil
       val matchingMethods =
         for
-          indexedContext <- optIndexedContext.toList
-          potentialMatch <- matchingMethodsSymbols(indexedContext, method)
-          if potentialMatch.is(Flags.Method) &&
-                potentialMatch.vparamss.length >= argss.length &&
-                Try(potentialMatch.isAccessibleFrom(apply.symbol.info)).toOption
-                  .getOrElse(false) &&
-                potentialMatch.vparamss
+          potentialMatch <- matchingMethodsSymbols(method)
+          if potentialMatch match
+            case s: Symbol => s.is(Flags.Method) && Try(s.isAccessibleFrom(apply.symbol.info)).toOption.getOrElse(false)
+            case _ => true
+          if potentialMatch.vparamss.length >= argss.length &&
+            (potentialMatch match {
+              case s: Symbol =>
+                s.symVparamss
                   .zip(argss)
                   .reverse
                   .zipWithIndex
                   .forall { case (pair, index) =>
-                    FuzzyArgMatcher(potentialMatch.tparams)
+                    FuzzyArgMatcher(s.symTparams)
                       .doMatch(allArgsProvided = index != 0, span)
                       .tupled(pair)
                     }
+              case _ => true
+            })
+
         yield potentialMatch
       matchingMethods
     end fallbackFindMatchingMethods
 
-    val matchingMethods: List[Symbol] =
+    val matchingMethods: List[Method] =
       if method.symbol.paramSymss.nonEmpty then
         val allArgsAreSupplied =
           val vparamss = method.symbol.vparamss
@@ -157,11 +169,10 @@ object ApplyArgsExtractor:
       // def curry(x: Int)(apple: String, banana: String) = ???
       // curry(1)(apple = "test", b@@)
       // ```
-      val (baseParams0, baseArgs) =
+      val (defaultBaseParams, baseArgs) =
         vparamss.zip(argss).lastOption.getOrElse((Nil, Nil))
 
       val baseParams: List[ParamSymbol] =
-        def defaultBaseParams = baseParams0.map(JustSymbol(_))
         @tailrec
         def getRefinedParams(refinedType: Type, level: Int): List[ParamSymbol] =
           if level > 0 then
@@ -176,8 +187,8 @@ object ApplyArgsExtractor:
           else
             refinedType match
               case RefinedType(AppliedType(_, args), _, MethodType(ri)) =>
-                baseParams0.zip(ri).zip(args).map { case ((sym, name), arg) =>
-                  RefinedSymbol(sym, name, arg)
+                defaultBaseParams.zip(ri).zip(args).map { case ((sym, name), arg) =>
+                  RefinedSymbol(sym.symbol, name, arg)
                 }
               case _ => defaultBaseParams
         // finds param refinements for lambda expressions
@@ -198,11 +209,35 @@ object ApplyArgsExtractor:
       (baseArgs, baseParams)
     }
 
-  extension (method: Symbol)
-    def vparamss(using Context) = method.filteredParamss(_.isTerm)
-    def tparams(using Context) = method.filteredParamss(_.isType).flatten
-    def filteredParamss(f: Symbol => Boolean)(using Context) =
-      method.paramSymss.filter(params => params.forall(f))
+  @tailrec
+  private def findRefinments(tpe: Type, name: Name, acc: List[Method] = Nil): List[Method] =
+    tpe match
+      case RefinedType(parent, `name`, refinedInfo) =>
+        findRefinments(parent, name, refinedInfo :: acc)
+      case RefinedType(parent, _, s) => findRefinments(parent, name, acc)
+      case _ => acc.reverse
+
+
+  extension (method: Method)
+    def vparamss(using Context): List[List[ParamSymbol]] =
+      method match
+        case s: Symbol => s.symVparamss.map(_.map(JustSymbol(_)))
+        case m: MethodType =>
+          m.paramInfoss.zipWithIndex.map {
+            case (params, idx) =>
+              params.zip(m.paramNamess.get(idx).getOrElse(Nil)).map{
+                case (tpe, name) => RefinedSymbol(Symbols.NoSymbol, name, tpe)
+              }
+          }
+        case _ => Nil
+
+  extension (sym: Symbol)
+    def symVparamss(using Context): List[List[Symbol]] = filteredParamss(sym, _.isTerm)
+
+    def symTparams(using Context): List[Symbol] = filteredParamss(sym, _.isType).flatten
+
+  private def filteredParamss(s: Symbol, f: Symbol => Boolean)(using Context): List[List[Symbol]] =
+    s.paramSymss.filter(params => params.forall(f))
 sealed trait ParamSymbol:
   def name: Name
   def info: Type

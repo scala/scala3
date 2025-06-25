@@ -74,7 +74,7 @@ object NamedArgCompletions:
         case _ => false
 
     val argsAndParams = ApplyArgsExtractor.getArgsAndParams(
-      Some(indexedContext),
+      indexedContext,
       apply,
       ident.span
     )

@@ -335,3 +335,48 @@ class InferExpectedTypeSuite extends BasePCSuite:
       """|String
          |""".stripMargin
     )
+
+  @Test def `apply-dynamic` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method(x: Int): Unit
+         |  } = new reflect.Selectable {
+         |    def method(x: Int): Unit = ()
+         |  }
+         |
+         |  obj.method(@@)
+         |}
+         |""".stripMargin,
+      "Int"
+    )
+
+  @Test def `apply-dynamic-2` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method[T](x: Int, y: T): Unit
+         |  } = new reflect.Selectable {
+         |    def method[T](x: Int, y: T): Unit = ()
+         |  }
+         |
+         |  obj.method[Int](1, @@)
+         |}
+         |""".stripMargin,
+      "Int"
+    )
+
+  @Test def `apply-dynamic-3` =
+    check(
+      """|object TypedHoleApplyDynamic {
+         |  val obj: reflect.Selectable {
+         |    def method[T](a: Int)(x: Int, y: T): Unit
+         |  } = new reflect.Selectable {
+         |    def method[T](a: Int)(x: Int, y: T): Unit = ()
+         |  }
+         |
+         |  obj.method[String](1)(1, @@)
+         |}
+         |""".stripMargin,
+      "String"
+    )
