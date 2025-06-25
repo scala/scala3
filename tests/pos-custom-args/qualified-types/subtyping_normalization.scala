@@ -17,9 +17,9 @@ def test: Unit =
   summon[{v: Int with v == x + 3 * y}        <:< {v: Int with v == 2 * y + x + y}]
   summon[{v: Int with v == x + 3 * y}        <:< {v: Int with v == 2 * y + (x + y)}]
   summon[{v: Int with v == 0}                <:< {v: Int with v == 1 - 1}]
-  // summon[{v: Int with v == 0}             <:< {v: Int with v == x - x}] // TODO(mbovel): handle subtraction
+  summon[{v: Int with v == 0}             <:< {v: Int with v == x - x}]
   summon[{v: Int with v == 0}                <:< {v: Int with v == x + (x * -1)}]
-  // summon[{v: Int with v == x}             <:< {v: Int with v == 1 + x - 1}] // TODO(mbovel): handle subtraction
+  summon[{v: Int with v == x}             <:< {v: Int with v == 1 + x - 1}]
   summon[{v: Int with v == 4 * (x + 1)}      <:< {v: Int with v == 2 * (x + 1) + 2 * (1 + x)}]
   summon[{v: Int with v == 4 * (x / 2)}      <:< {v: Int with v == 2 * (x / 2) + 2 * (x / 2)}]
 
