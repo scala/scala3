@@ -45,10 +45,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     // to more symbols being retained as parameters. Test case in run/capturing.scala.
 
   /** The private vals that are known to be retained as class fields */
-  private val retainedPrivateVals = mutable.Set[Symbol]()
+  private val retainedPrivateVals = mutable.Set.empty[Symbol]
 
   /** The private vals whose definition comes before the current focus */
-  private val seenPrivateVals = mutable.Set[Symbol]()
+  private val seenPrivateVals = mutable.Set.empty[Symbol]
 
   // Collect all private parameter accessors and value definitions that need
   // to be retained. There are several reasons why a parameter accessor or
@@ -57,31 +57,37 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   // 2. It is accessed before it is defined
   // 3. It is accessed on an object other than `this`
   // 4. It is a mutable parameter accessor
-  // 5. It is has a wildcard initializer `_`
-  private def markUsedPrivateSymbols(tree: RefTree)(using Context): Unit = {
+  // 5. It has a wildcard initializer `_`
+  private def markUsedPrivateSymbols(tree: RefTree)(using Context): Unit =
 
     val sym = tree.symbol
     def retain() = retainedPrivateVals.add(sym)
 
-    if (sym.exists && sym.owner.isClass && mightBeDropped(sym)) {
-      val owner = sym.owner.asClass
-
-        tree match {
-          case Ident(_) | Select(This(_), _) =>
-            def inConstructor = {
-              val method = ctx.owner.enclosingMethod
-              method.isPrimaryConstructor && ctx.owner.enclosingClass == owner
-            }
-            if (inConstructor &&
-                (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))) {
-              // used inside constructor, accessed on this,
-              // could use constructor argument instead, no need to retain field
-            }
-            else retain()
-          case _ => retain()
-      }
-    }
-  }
+    if sym.exists && sym.owner.isClass && mightBeDropped(sym) then
+      tree match
+      case Ident(_) | Select(This(_), _) =>
+        val method = ctx.owner.enclosingMethod
+        // template exprs are moved (below) to constructor, where lifted anonfun will take its captured env as an arg
+        inline def inAnonFunInCtor =
+             method.isAnonymousFunction
+          && (
+             method.owner.isLocalDummy
+             ||
+             method.owner.owner == sym.owner && !method.owner.isOneOf(MethodOrLazy)
+          )
+          && !sym.owner.is(Module) // lambdalift doesn't transform correctly (to do)
+        val inConstructor =
+             (method.isPrimaryConstructor || inAnonFunInCtor)
+          && ctx.owner.enclosingClass == sym.owner
+        val noField =
+             inConstructor
+          && (sym.is(ParamAccessor) || seenPrivateVals.contains(sym))
+          // used inside constructor, accessed on this,
+          // could use constructor argument instead, no need to retain field
+        if !noField then
+          retain()
+      case _ =>
+        retain()
 
   override def transformIdent(tree: tpd.Ident)(using Context): tpd.Tree = {
     markUsedPrivateSymbols(tree)
@@ -184,6 +190,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisPhase)
     }
 
+    // mightBeDropped is trivially false for NoSymbol -> NoSymbol isRetained
     def isRetained(acc: Symbol) =
       !mightBeDropped(acc) || retainedPrivateVals(acc)
 
@@ -209,30 +216,28 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
     }
 
-    val dropped = mutable.Set[Symbol]()
+    val dropped = mutable.Set.empty[Symbol]
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
-    def splitStats(stats: List[Tree]): Unit = stats match {
-      case stat :: stats1 =>
+    def splitStats(stats: List[Tree]): Unit = stats match
+      case stat :: stats =>
+        val sym = stat.symbol
         stat match {
-          case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) && !stat.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
-            val sym = stat.symbol
+          case stat @ ValDef(name, tpt, _) if !sym.is(Lazy) && !sym.hasAnnotation(defn.ScalaStaticAnnot) =>
             if (isRetained(sym)) {
               if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
                 constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withSpan(stat.span)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
-            else if (!stat.rhs.isEmpty) {
+            else
               dropped += sym
-              sym.copySymDenotation(
-                initFlags = sym.flags &~ Private,
-                owner = constr.symbol).installAfter(thisPhase)
-              constrStats += intoConstr(stat, sym)
-            } else
-              dropped += sym
+              if !stat.rhs.isEmpty then
+                sym.copySymDenotation(
+                  initFlags = sym.flags &~ Private,
+                  owner = constr.symbol).installAfter(thisPhase)
+                constrStats += intoConstr(stat, sym)
           case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) =>
-            val sym = stat.symbol
             assert(isRetained(sym), sym)
             if sym.isConstExprFinalVal then
               if stat.rhs.isInstanceOf[Literal] then
@@ -271,9 +276,9 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           case _ =>
             constrStats += intoConstr(stat, tree.symbol)
         }
-        splitStats(stats1)
+        splitStats(stats)
       case Nil =>
-    }
+    end splitStats
 
     /** Check that we do not have both a private field with name `x` and a private field
      *  with name `FieldName(x)`. These will map to the same JVM name and therefore cause
@@ -303,14 +308,15 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         dropped += acc
         Nil
       }
-      else if (!isRetained(acc.field)) { // It may happen for unit fields, tests/run/i6987.scala
+      else if (acc.field.exists && !isRetained(acc.field)) { // It may happen for unit fields, tests/run/i6987.scala
         dropped += acc.field
         Nil
       }
       else {
         val param = acc.subst(accessors, paramSyms)
-        if (param.hasAnnotation(defn.ConstructorOnlyAnnot))
-          report.error(em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}", acc.srcPos)
+        if param.hasAnnotation(defn.ConstructorOnlyAnnot) then
+          val msg = em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}"
+          report.error(msg, acc.srcPos)
         val target = if (acc.is(Method)) acc.field else acc
         if (!target.exists) Nil // this case arises when the parameter accessor is an alias
         else {
