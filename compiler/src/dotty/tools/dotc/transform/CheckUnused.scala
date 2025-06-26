@@ -568,12 +568,15 @@ object CheckUnused:
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
         // A local param accessor warns as a param; a private accessor as a private member.
-        // Avoid warning for case class elements because they are aliased via unapply.
+        // Avoid warning for case class elements because they are aliased via unapply (i.e. may be extracted).
         if m.isPrimaryConstructor then
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor) && !infos.refs(alias.symbol) then
+            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits then
                   warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
@@ -582,13 +585,14 @@ object CheckUnused:
                   warnAt(pos)(UnusedSymbol.privateMembers)
         else if ctx.settings.WunusedHas.explicits
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
-          && !(sym.owner.is(ExtensionMethod) && {
-            m.paramSymss.dropWhile(_.exists(_.isTypeParam)) match
-            case (h :: Nil) :: Nil => h == sym // param is the extended receiver
+          && !(sym.owner.is(ExtensionMethod) &&
+            m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
+            case (h :: Nil) :: _ => h == sym // param is the extended receiver
             case _ => false
-          })
+          )
           && !sym.name.isInstanceOf[DerivedName]
           && !ctx.platform.isMainMethod(m)
+          && !usedByDefaultGetter(sym, m)
         then
           warnAt(pos)(UnusedSymbol.explicitParams(sym))
       end checkExplicit
@@ -599,6 +603,16 @@ object CheckUnused:
       then
         checkExplicit()
     end checkParam
+
+    // does the param have an alias in a default arg method that is used?
+    def usedByDefaultGetter(param: Symbol, meth: Symbol): Boolean =
+      val cls = if meth.isConstructor then meth.enclosingClass.companionModule else meth.enclosingClass
+      val MethName = meth.name
+      cls.info.decls.exists: d =>
+        d.name match
+        case DefaultGetterName(MethName, _) =>
+          d.paramSymss.exists(_.exists(p => p.name == param.name && infos.refs(p)))
+        case _ => false
 
     def checkImplicit(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
@@ -629,9 +643,12 @@ object CheckUnused:
             val checking =
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
-            if checking && !infos.refs(alias.symbol) then
+            if checking
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
-        else
+        else if !usedByDefaultGetter(sym, m) then
           warnAt(pos)(UnusedSymbol.implicitParams(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
