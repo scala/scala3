@@ -9,7 +9,7 @@ import scala.quoted.runtime.impl.QuotesImpl
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.Run
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
@@ -69,7 +69,7 @@ object TastyInspector:
       override def phaseName: String = "tastyInspector"
 
       override def runOn(units: List[CompilationUnit])(using ctx0: Context): List[CompilationUnit] =
-        // NOTE: although this is a phase, do not expect this to be ran with an xsbti.CompileProgress
+        // NOTE: although this is a phase, do not expect this to be run with an xsbti.CompileProgress
         val ctx = QuotesCache.init(ctx0.fresh)
         runOnImpl(units)(using ctx)
 
