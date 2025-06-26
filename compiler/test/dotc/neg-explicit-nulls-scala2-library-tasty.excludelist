@@ -5,7 +5,6 @@ nn-basic.scala                        # .length flexified but trim rejected
 i21380c.scala                         # .length flexified but replaceAll rejected
 unsafe-scope.scala                    # .length flexified
 i17467.scala                          # Singleton type flexified
-i7883.scala                           # Unsure
 from-nullable.scala                   # Option argument flexified
 flow-in-block.scala                   # .length flexified
 array.scala                           # Type arugment of Array flexified

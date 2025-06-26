@@ -18,4 +18,9 @@ class Unsafe_1 {
 object Foo {
   def bar = "bar!"
   def id[T](t: T): T = t
+
+}
+
+class Constructors {
+
 }

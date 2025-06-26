@@ -36,3 +36,5 @@ def Flexible_2() =
   val s: String = unsafe.foo(s2)
   unsafe.foo("")
   unsafe.foo(null)
+
+  val refinement = new Unsafe_1 {val b: String}

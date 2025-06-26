@@ -156,6 +156,10 @@ object ImplicitNullInterop {
       // In all other cases, return the type unchanged.
       // In particular, if the type is a ConstantType, then we don't nullify it because it is the
       // type of a final non-nullable field.
+      case tp: ExprType => mapOver(tp)
+      case tp: AnnotatedType => mapOver(tp)
+      case tp: OrType => mapOver(tp)
+      case tp: MatchType => mapOver(tp)
       case _ => tp
     }
   }
