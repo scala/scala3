@@ -3556,10 +3556,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
     val tree1 = desugar.tuple(tree, pt).withAttachmentsFrom(tree)
     checkDeprecatedAssignmentSyntax(tree)
-    if tree1 ne tree then
-      val t = typed(tree1, pt)
-      // println(i"typedTuple: ${t} , ${t.tpe}")
-      t
+    if tree1 ne tree then typed(tree1, pt)
     else
       val arity = tree.trees.length
       val pts = pt.stripNamedTuple.tupleElementTypes match
