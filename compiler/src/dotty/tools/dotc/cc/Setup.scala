@@ -667,7 +667,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               def newInfo(using Context) = // will be run in this or next phase
                 toResultInResults(sym, report.error(_, tree.srcPos)):
                   if sym.is(Method) then
-                    paramsToCap(methodType(paramSymss, localReturnType))
+                    inContext(ctx.withOwner(sym)):
+                      paramsToCap(methodType(paramSymss, localReturnType))
                   else tree.tpt.nuType
               if tree.tpt.isInstanceOf[InferredTypeTree]
                   && !sym.is(Param) && !sym.is(ParamAccessor)
