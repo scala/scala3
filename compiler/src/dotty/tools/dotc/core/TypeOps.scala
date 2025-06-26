@@ -123,7 +123,9 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
-    pre.isStable || !ctx.phase.isTyper
+    // isLegalPrefix is relaxed after typer unless we're doing an implicit
+    // search (this matters when doing summonInline in an inline def like in tests/pos/i17222.8.scala).
+    pre.isStable || !ctx.phase.isTyper && ctx.mode.is(Mode.ImplicitsEnabled)
 
   /** Implementation of Types#simplified */
   def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
