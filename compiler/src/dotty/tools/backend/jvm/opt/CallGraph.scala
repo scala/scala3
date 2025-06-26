@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools.nsc
+package dotty.tools
 package backend.jvm
 package opt
 
@@ -28,8 +28,7 @@ import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValu
 import dotty.tools.backend.jvm.analysis._
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
-abstract class CallGraph {
-  val postProcessor: PostProcessor
+class CallGraph(postProcessor: PostProcessor) {
 
   import postProcessor._
   import bTypes._

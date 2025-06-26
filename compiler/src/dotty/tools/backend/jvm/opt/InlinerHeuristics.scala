@@ -26,8 +26,7 @@ import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, OptimizerWarnin
 import dotty.tools.backend.jvm.analysis.BackendUtils
 import dotty.tools.backend.jvm.opt.InlinerHeuristics._
 
-abstract class InlinerHeuristics extends PerRunInit {
-  val postProcessor: PostProcessor
+class InlinerHeuristics(postProcessor: PostProcessor) extends PerRunInit {
 
   import postProcessor._
   import bTypes._

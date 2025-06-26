@@ -10,7 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools.backend.jvm.opt
+package dotty.tools
+package backend.jvm
+package opt
 
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
 import java.util.{LinkedHashMap, Map => JMap}

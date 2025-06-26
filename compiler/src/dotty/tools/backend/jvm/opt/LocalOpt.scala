@@ -149,8 +149,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-abstract class LocalOpt {
-  val postProcessor: PostProcessor
+class LocalOpt(postProcessor: PostProcessor) {
 
   import postProcessor._
   import bTypes._

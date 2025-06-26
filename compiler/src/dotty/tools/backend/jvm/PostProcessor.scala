@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
+import dotty.tools.backend.jvm.opt.*
 
 /**
  * Implements late stages of the backend that don't depend on a Global instance, i.e.,
@@ -19,9 +20,16 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   import bTypes.{classBTypeFromInternalName}
   import frontendAccess.{backendReporting, compilerSettings}
 
-  val backendUtils = new BackendUtils(this)
-  val classfileWriters = new ClassfileWriters(frontendAccess)
-  val classfileWriter  = classfileWriters.ClassfileWriter()
+  val backendUtils        = new BackendUtils(this)
+  val byteCodeRepository  = new ByteCodeRepository(this)
+  val localOpt            = new LocalOpt(this)
+  val inliner             = new Inliner(this)
+  val inlinerHeuristics   = new InlinerHeuristics(this)
+  val closureOptimizer    = new ClosureOptimizer(this)
+  val callGraph           = new CallGraph(this)
+  val classfileWriters    = new ClassfileWriters(frontendAccess)
+  val classfileWriter     = classfileWriters.ClassfileWriter()
+
 
   type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]

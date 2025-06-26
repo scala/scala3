@@ -27,8 +27,7 @@ import dotty.tools.backend.jvm.BackendReporting._
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, BackendUtils, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
-abstract class ClosureOptimizer {
-  val postProcessor: PostProcessor
+class ClosureOptimizer(postProcessor: PostProcessor) {
 
   import postProcessor.{bTypes, bTypesFromClassfile, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
   import bTypes._

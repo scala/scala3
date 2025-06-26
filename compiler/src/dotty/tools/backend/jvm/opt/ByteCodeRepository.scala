@@ -30,8 +30,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  * The ByteCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-abstract class ByteCodeRepository extends PerRunInit {
-  val postProcessor: PostProcessor
+class ByteCodeRepository(postProcessor: PostProcessor) extends PerRunInit {
 
   import postProcessor.{bTypes, bTypesFromClassfile}
   import bTypes._
