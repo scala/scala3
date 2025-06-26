@@ -1310,9 +1310,9 @@ object Denotations {
   }
 
   /** The current denotation of the static reference given by path,
-    *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
-    *  if generateStubs is set, generates stubs for missing top-level symbols
-    */
+   *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+   *  if generateStubs is set, generates stubs for missing top-level symbols
+   */
   def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)
