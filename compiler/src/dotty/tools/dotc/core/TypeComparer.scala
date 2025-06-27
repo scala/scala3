@@ -2771,7 +2771,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @pre !(tp1 <: tp2) && !(tp2 <:< tp1) -- these cases were handled before
    */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
-    case tp1 @ AppliedType(tycon1, args1) =>
+    case tp1 @ AppliedType(tycon1, args1) if false =>
       tp2 match {
         case AppliedType(tycon2, args2)
         if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
