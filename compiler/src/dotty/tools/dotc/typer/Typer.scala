@@ -684,25 +684,33 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree.withType(checkedType)
       checkLegalValue(toNotNullTermRef(tree1, pt), pt)
 
-    def isLocalExtensionMethodRef: Boolean = rawType match
-      case rawType: TermRef =>
-        rawType.denot.hasAltWith(_.symbol.is(ExtensionMethod))
-        && !pt.isExtensionApplyProto
-        && {
-          val xmethod = ctx.owner.enclosingExtensionMethod
-          rawType.denot.hasAltWith { alt =>
-            alt.symbol.is(ExtensionMethod)
-            && alt.symbol.extensionParam.span == xmethod.extensionParam.span
-          }
-        }
-      case _ =>
-        false
+    // extensionParam
+    def leadParamOf(m: SymDenotation): Symbol =
+      def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
+        case (param :: _) :: paramss if param.isType => leadParam(paramss)
+        case _ :: (param :: Nil) :: _ if m.name.isRightAssocOperatorName => param
+        case (param :: Nil) :: _ => param
+        case _ => NoSymbol
+      leadParam(m.rawParamss)
 
-    if ctx.mode.is(Mode.InExtensionMethod) && isLocalExtensionMethodRef then
-      val xmethod = ctx.owner.enclosingExtensionMethod
-      val qualifier = untpd.ref(xmethod.extensionParam.termRef)
-      val selection = untpd.cpy.Select(tree)(qualifier, name)
-      typed(selection, pt)
+    val localExtensionSelection: untpd.Tree =
+      var select: untpd.Tree = EmptyTree
+      if ctx.mode.is(Mode.InExtensionMethod) then
+        rawType match
+        case rawType: TermRef
+        if rawType.denot.hasAltWith(_.symbol.is(ExtensionMethod)) && !pt.isExtensionApplyProto =>
+          val xmethod = ctx.owner.enclosingExtensionMethod
+          val xparam  = leadParamOf(xmethod)
+          if rawType.denot.hasAltWith: alt =>
+               alt.symbol.is(ExtensionMethod)
+            && alt.symbol.extensionParam.span == xparam.span // forces alt.symbol (which might be xmethod)
+          then
+            select = untpd.cpy.Select(tree)(untpd.ref(xparam), name)
+        case _ =>
+      select
+
+    if !localExtensionSelection.isEmpty then
+      typed(localExtensionSelection, pt)
     else if rawType.exists then
       val ref = setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
       if ref.symbol.name != name then
