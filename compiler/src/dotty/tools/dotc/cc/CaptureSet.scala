@@ -14,7 +14,6 @@ import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
-import util.common.alwaysTrue
 import scala.collection.{mutable, immutable}
 import TypeComparer.ErrorNote
 import CCState.*

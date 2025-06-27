@@ -18,7 +18,6 @@ import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
 import CCState.*
-import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
 import NamerOps.methodType
 import NameKinds.{CanThrowEvidenceName, TryOwnerName}
