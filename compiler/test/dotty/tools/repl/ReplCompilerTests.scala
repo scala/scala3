@@ -582,3 +582,34 @@ class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.st
       case class Tree(left: Tree, right: Tree)
       def deepTree(depth: Int): Tree
       deepTree(300)""")
+
+class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-experimental", "-Xprint:pickler")):
+  override val redirectOutput = true
+  @Test def i23408: Unit = initially:
+    run("""
+      import scala.annotation.unroll
+      case class Foo(x: Int, @unroll y: Option[String] = None)"""
+    )
+    val expected = List(
+      "def copy(x: Int, y: Option[String]): Foo = new Foo(x, y)",
+      "def copy(x: Int): Foo = this.copy(x, this.copy$default$2)",
+      "def copy$default$1: Int @uncheckedVariance = Foo.this.x",
+      "def copy$default$2: Option[String] @uncheckedVariance = Foo.this.y",
+      "def apply(x: Int, y: Option[String]): Foo = new Foo(x, y)",
+      "def apply(x: Int): Foo = this.apply(x, Foo.$lessinit$greater$default$2)",
+      """def fromProduct(x$0: Product): Foo.MirroredMonoType = {
+          val arity: Int = x$0.productArity
+          val x$1: Int = x$0.productElement(0).$asInstanceOf[Int]
+          val y$1: Option[String] = (if arity > 1 then x$0.productElement(1) else Foo.$lessinit$greater$default$2).$asInstanceOf[Option[String]]
+          new Foo(x$1, y$1)
+        }"""
+    )
+    def trimWhitespaces(input: String): String = input.replaceAll("\\s+", " ")
+    val output = storedOutput()
+    val normalizedOutput = trimWhitespaces(output)
+    expected.foreach: defn =>
+      val normalizedDefn = trimWhitespaces(defn)
+      assertTrue(
+        s"Output: '$output' did not contain expected definition: ${defn}",
+        normalizedOutput.contains(normalizedDefn)
+      )
