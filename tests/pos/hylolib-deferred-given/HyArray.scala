@@ -185,7 +185,7 @@ given hyArrayIsCollection: [T] => (tIsValue: Value[T]) => Collection[HyArray[T]]
   //given elementIsValue: Value[T] = tIsValue
 
   type Position = Int
-  given positionIsValue: Value[Int] = intIsValue
+  override given positionIsValue: Value[Int] = intIsValue
 
   extension (self: HyArray[T]) {
 
