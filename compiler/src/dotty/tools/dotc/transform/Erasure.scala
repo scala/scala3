@@ -14,7 +14,7 @@ import core.Names.*
 import core.StdNames.*
 import core.NameOps.*
 import core.Periods.currentStablePeriod
-import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName, InlineScrutineeName}
+import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
 import core.Scopes.newScopeWith
 import core.Decorators.*
 import core.Constants.*
@@ -929,8 +929,7 @@ object Erasure {
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       if sym.isEffectivelyErased then
-        if !sym.name.is(InlineScrutineeName) then
-          checkPureErased(vdef.rhs, isArgument = false)
+        checkPureErased(vdef.rhs, isArgument = false)
         erasedDef(sym)
       else trace(i"erasing $vdef"):
         checkNotErasedClass(sym.info, vdef)

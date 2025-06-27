@@ -667,8 +667,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *                    or its type is a constant type
    *    IdempotentPath  if reference is lazy and stable
    *    Impure          otherwise
-   *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
-   *               flags set.
    */
   def refPurity(tree: Tree)(using Context): PurityLevel = {
     val sym = tree.symbol
