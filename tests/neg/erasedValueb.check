@@ -2,7 +2,7 @@
 7 |  foo0(erasedValue[Int]) // error
   |       ^^^^^^^^^^^
   |       method erasedValue is declared as `erased`, but is in fact used
--- [E215] Type Error: tests/neg/erasedValueb.scala:8:18 ----------------------------------------------------------------
+-- [E216] Type Error: tests/neg/erasedValueb.scala:8:18 ----------------------------------------------------------------
 8 |  foo1(erasedValue[Int]) // error
   |       ^^^^^^^^^^^^^^^^
   |       argument to an erased parameter fails to be a pure expression
