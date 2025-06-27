@@ -703,7 +703,7 @@ object Capabilities:
             this(CapturingType(parent1, ann.tree.toCaptureSet))
           else
             t.derivedAnnotatedType(parent1, ann)
-        case t @ FunctionOrMethod(_, _) if t.isAliasFun =>
+        case defn.RefinedFunctionOf(_) =>
           t  // stop at dependent function types
         case _ =>
           mapFollowingAliases(t)
