@@ -286,7 +286,13 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def update(index: Int, elem: Float): Unit = { array(index) = elem }
     override def hashCode = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
-      case that: ofFloat => Arrays.equals(array, that.array)
+      case that: ofFloat =>
+        val thatArray = that.array
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Float] = new ArrayOps.ArrayIterator[Float](array)
@@ -306,7 +312,13 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def update(index: Int, elem: Double): Unit = { array(index) = elem }
     override def hashCode = MurmurHash3.arraySeqHash(array)
     override def equals(that: Any) = that match {
-      case that: ofDouble => Arrays.equals(array, that.array)
+      case that: ofDouble =>
+        val thatArray = that.array
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Double] = new ArrayOps.ArrayIterator[Double](array)

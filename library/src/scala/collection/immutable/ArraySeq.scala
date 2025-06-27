@@ -575,7 +575,14 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def apply(i: Int): Float = unsafeArray(i)
     override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
-      case that: ofFloat => Arrays.equals(unsafeArray, that.unsafeArray)
+      case that: ofFloat =>
+        val array = unsafeArray
+        val thatArray = that.unsafeArray
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Float] = new ArrayOps.ArrayIterator[Float](unsafeArray)
@@ -610,7 +617,14 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     def apply(i: Int): Double = unsafeArray(i)
     override def hashCode = MurmurHash3.arraySeqHash(unsafeArray)
     override def equals(that: Any) = that match {
-      case that: ofDouble => Arrays.equals(unsafeArray, that.unsafeArray)
+      case that: ofDouble =>
+        val array = unsafeArray
+        val thatArray = that.unsafeArray
+        (array eq thatArray) || array.length == thatArray.length && {
+          var i = 0
+          while (i < array.length && array(i) == thatArray(i)) i += 1
+          i >= array.length
+        }
       case _ => super.equals(that)
     }
     override def iterator: Iterator[Double] = new ArrayOps.ArrayIterator[Double](unsafeArray)
