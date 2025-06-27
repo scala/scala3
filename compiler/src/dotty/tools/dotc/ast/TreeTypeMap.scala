@@ -225,6 +225,11 @@ class TreeTypeMap(
         val tmap1 = tmap.withMappedSyms(
           origCls(cls).typeParams ::: origDcls,
           cls.typeParams ::: mappedDcls)
+        mapped.foreach { sym =>
+          // outer Symbols can reference nested ones in info,
+          // so we remap that once again with the updated TreeTypeMap
+          sym.info = tmap1.mapType(sym.info)
+        }
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
         tmap1
       }
