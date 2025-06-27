@@ -19,21 +19,21 @@ import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter._
-import dotty.tools.backend.jvm.analysis.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.*
+import dotty.tools.backend.jvm.opt.BytecodeUtils.*
+import dotty.tools.backend.jvm.BackendUtils.*
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
   override def newParameterValue(isInstanceMethod: Boolean, local: Int, tpe: Type): BasicValue =
     new ParamValue(local, tpe)
 
-  override def newValue(tp: Type): BasicValue = {
+  override def newValue(tp: Type | Null): BasicValue = {
     if (tp == null) UninitializedValue
     else if (isRef(tp)) new SpecialAwareBasicValue(tp)
     else super.newValue(tp)
   }
 
-  def isRef(tp: Type): Boolean = tp != null && (tp.getSort match {
+  def isRef(tp: Type | Null): Boolean = tp != null && (tp.getSort match {
     case Type.OBJECT | Type.ARRAY => true
     case _ => false
   })
@@ -72,7 +72,7 @@ object TypeFlowInterpreter {
   private val obj = Type.getObjectType("java/lang/Object")
 
   // A BasicValue with equality that knows about special versions
-  class SpecialAwareBasicValue(tpe: Type) extends BasicValue(tpe) {
+  class SpecialAwareBasicValue(tpe: Type | Null) extends BasicValue(tpe) {
     override def equals(other: Any): Boolean = {
       this match {
         case tav: AaloadValue => other match {

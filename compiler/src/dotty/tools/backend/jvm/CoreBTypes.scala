@@ -29,6 +29,10 @@ abstract class CoreBTypes {
 
    def ObjectRef                   : ClassBType
    def StringRef                   : ClassBType
+   def PredefRef                   : ClassBType
+   def jlStringBuilderRef          : ClassBType
+   def jlStringBufferRef           : ClassBType
+   def jlCharSequenceRef           : ClassBType
    def jlClassRef                  : ClassBType
    def jlThrowableRef              : ClassBType
    def jlCloneableRef              : ClassBType
@@ -37,7 +41,23 @@ abstract class CoreBTypes {
    def jlIllegalArgExceptionRef    : ClassBType
    def jliSerializedLambdaRef      : ClassBType
 
-   def srBoxesRuntimeRef: ClassBType
+   def srBoxesRuntimeRef            : ClassBType
+   def srBoxedUnitRef               : ClassBType
+   def srBoxesRuntimeBoxToMethods   : Map[BType, MethodNameAndType]
+   def srBoxesRuntimeUnboxToMethods : Map[BType, MethodNameAndType]
+
+   def javaBoxMethods   : Map[InternalName, MethodNameAndType]
+   def javaUnboxMethods : Map[InternalName, MethodNameAndType]
+
+   def predefAutoBoxMethods   : Map[String, MethodBType]
+   def predefAutoUnboxMethods : Map[String, MethodBType]
+
+   def srRefCreateMethods : Map[InternalName, MethodNameAndType]
+   def srRefZeroMethods   : Map[InternalName, MethodNameAndType]
+
+   def primitiveBoxConstructors : Map[InternalName, MethodNameAndType]
+   def srRefConstructors        : Map[InternalName, MethodNameAndType]
+   def tupleClassConstructors   : Map[InternalName, MethodNameAndType]
 
    def jliLambdaMetaFactoryMetafactoryHandle    : Handle
    def jliLambdaMetaFactoryAltMetafactoryHandle : Handle

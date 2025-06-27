@@ -17,7 +17,6 @@ package analysis
 import scala.tools.asm.tree.analysis._
 import scala.tools.asm.tree.{AbstractInsnNode, MethodNode}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.BackendUtils.computeMaxLocalsMaxStack
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
 
@@ -25,7 +24,7 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  * A wrapper to make ASM's Analyzer a bit easier to use.
  */
 abstract class AsmAnalyzer[V <: Value](methodNode: MethodNode, classInternalName: InternalName, val analyzer: Analyzer[V]) {
-  computeMaxLocalsMaxStack(methodNode)
+  BackendUtils.computeMaxLocalsMaxStack(methodNode)
   try {
     analyzer.analyze(classInternalName, methodNode)
   } catch {

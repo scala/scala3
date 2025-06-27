@@ -22,7 +22,7 @@ import scala.tools.asm.tree._
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
-import dotty.tools.backend.jvm.analysis.BackendUtils._
+import dotty.tools.backend.jvm.BackendUtils.*
 
 /**
  * See the package object `analysis` for details on the ASM analysis framework.
@@ -74,7 +74,7 @@ object NullnessValue {
 }
 
 final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolean, modulesNonNull: Boolean, method: MethodNode) extends Interpreter[NullnessValue](Opcodes.ASM5) {
-  def newValue(tp: Type): NullnessValue = {
+  def newValue(tp: Type | Null): NullnessValue | Null = {
     // ASM loves giving semantics to null. The behavior here is the same as in SourceInterpreter,
     // which is provided by the framework.
     //
@@ -149,7 +149,7 @@ final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolea
 }
 
 class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessValue](nLocals, nStack) {
-  private[this] var ifNullAliases: AliasSet = null
+  private[this] var ifNullAliases: AliasSet | Null = null
 
   // Auxiliary constructor required for implementing `NullnessAnalyzer.newFrame`
   def this(src: Frame[_ <: NullnessValue]) = {
@@ -157,13 +157,13 @@ class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessVal
     init(src)
   }
 
-  private def setNullness(s: AliasSet, v: NullnessValue) = {
-    val it = s.iterator
+  private def setNullness(s: AliasSet | Null, v: NullnessValue) = {
+    val it = s.nn.iterator
     while (it.hasNext)
       this.setValue(it.next(), v)
   }
 
-  override def initJumpTarget(opcode: Int, target: LabelNode): Unit = {
+  override def initJumpTarget(opcode: Int, target: LabelNode | Null): Unit = {
     // when `target` is defined, we're in the case where the branch condition is true
     val conditionTrue = target != null
     if (opcode == Opcodes.IFNULL)
@@ -183,7 +183,7 @@ class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessVal
     // get the alias set the object that is known to be not-null after this operation.
     // alias sets are mutable / mutated, so after super.execute, this set contains the remaining
     // aliases of the value that becomes not-null.
-    val nullCheckedAliases: AliasSet = (insn.getOpcode: @switch) match {
+    val nullCheckedAliases: AliasSet | Null = (insn.getOpcode: @switch) match {
       case IALOAD |
            LALOAD |
            FALOAD |
@@ -220,7 +220,7 @@ class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessVal
       case INVOKESTATIC =>
         var nullChecked = BackendUtils.argumentsNullCheckedByCallee(insn.asInstanceOf[MethodInsnNode])
         var i = 0
-        var res: AliasSet = null
+        var res: AliasSet | Null = null
         while (nullChecked > 0) {
           if ((nullChecked & 1L) != 0) {
             val a = aliasesOf(this.stackTop - i)

@@ -23,21 +23,21 @@ import scala.tools.asm.Type
 import scala.tools.asm.tree.MethodNode
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, OptimizerWarning}
-import dotty.tools.backend.jvm.analysis.BackendUtils
+import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.opt.InlinerHeuristics._
 
-class InlinerHeuristics(postProcessor: PostProcessor) extends PerRunInit {
+class InlinerHeuristics(val postProcessor: PostProcessor) extends PerRunInit {
 
   import postProcessor._
   import bTypes._
   import callGraph._
-  import frontendAccess.{backendReporting, compilerSettings}
+  import postProcessor.frontendAccess.{backendReporting, compilerSettings}
 
   lazy val inlineSourceMatcher: LazyVar[InlineSourceMatcher] = perRunLazy(this)(new InlineSourceMatcher(compilerSettings.optInlineFrom))
 
   final case class InlineRequest(callsite: Callsite, reason: InlineReason) {
     // non-null if `-Yopt-log-inline` is active, it explains why the callsite was selected for inlining
-    def logText: String =
+    def logText: String | Null =
       if (compilerSettings.optLogInline.isEmpty) null
       else if (compilerSettings.optInlineHeuristics == "everything") "-Yopt-inline-heuristics:everything is enabled"
       else {

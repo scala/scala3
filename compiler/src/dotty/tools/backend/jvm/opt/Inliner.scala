@@ -26,7 +26,7 @@ import dotty.tools.backend.jvm.AsmUtils._
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting._
 import dotty.tools.backend.jvm.analysis._
-import dotty.tools.backend.jvm.analysis.BackendUtils.LambdaMetaFactoryCall
+import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
 class Inliner(postProcessor: PostProcessor) {

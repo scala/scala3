@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import scala.collection.mutable.{Clearable, HashSet}
 import dotty.tools.dotc.util.*
@@ -29,6 +30,12 @@ sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackend
   inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
   inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
   inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
+
+  def recordPerRunCache[T <: Clearable](cache: T): T
+
+  def recordPerRunJavaMapCache[T <: JMap[_,_]](cache: T): T
+
+  def recordPerRunJavaCache[T <: JCollection[_]](cache: T): T
 }
 
 object PostProcessorFrontendAccess {
@@ -62,6 +69,38 @@ object PostProcessorFrontendAccess {
     def backendParallelism: Int
     def backendMaxWorkerQueue: Option[Int]
     def outputOnlyTasty: Boolean
+
+    def optAddToBytecodeRepository: Boolean
+    def optBuildCallGraph: Boolean
+    def optUseAnalyzerCache: Boolean
+
+    def optNone: Boolean
+
+    def optUnreachableCode: Boolean
+    def optNullnessTracking: Boolean
+    def optBoxUnbox: Boolean
+    def optCopyPropagation: Boolean
+    def optRedundantCasts: Boolean
+    def optSimplifyJumps: Boolean
+    def optCompactLocals: Boolean
+    def optClosureInvocations: Boolean
+    def optAllowSkipCoreModuleInit: Boolean
+    def optAssumeModulesNonNull: Boolean
+    def optAllowSkipClassLoading: Boolean
+
+    def optInlinerEnabled: Boolean
+    def optInlineFrom: List[String]
+    def optInlineHeuristics: String
+
+    def optWarningNoInlineMixed: Boolean
+    def optWarningNoInlineMissingBytecode: Boolean
+    def optWarningNoInlineMissingScalaInlineInfoAttr: Boolean
+    def optWarningEmitAtInlineFailed: Boolean
+    def optWarningEmitAnyInlineFailed: Boolean
+
+    def optLogInline: Option[String]
+    def optTrace: Option[String]
+
   }
 
   sealed trait BackendReporting {
@@ -103,6 +142,8 @@ object PostProcessorFrontendAccess {
   class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess(int) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
+
+    def recordPerRunCache[T <: Clearable](cache: T): T = cache // TODO FIX ME: This doesn't cache anything
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])

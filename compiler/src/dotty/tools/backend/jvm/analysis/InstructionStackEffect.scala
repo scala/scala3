@@ -83,9 +83,9 @@ object InstructionStackEffect {
     d == "J" || d == "D"
   }
 
-  private def computeConsProd[V <: Value](insn: AbstractInsnNode, forClassfile: Boolean, conservative: Boolean, frame: Frame[V] = null): Int = {
+  private def computeConsProd[V <: Value](insn: AbstractInsnNode, forClassfile: Boolean, conservative: Boolean, frame: Frame[V] | Null = null): Int = {
     // not used if `forClassfile || conservative`: in these cases, `frame` is allowed to be `null`
-    def peekStack(n: Int): V = frame.peekStack(n)
+    def peekStack(n: Int): V = frame.nn.peekStack(n)
 
     (insn.getOpcode: @switch) match {
       // The order of opcodes is the same as in Frame.execute.

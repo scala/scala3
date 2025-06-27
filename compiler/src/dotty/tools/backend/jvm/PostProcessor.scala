@@ -133,7 +133,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
       val a = classBTypeFromInternalName(inameA)
       val b = classBTypeFromInternalName(inameB)
-      val lub = a.jvmWiseLUB(b)
+      val lub = a.jvmWiseLUB(b).get
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.

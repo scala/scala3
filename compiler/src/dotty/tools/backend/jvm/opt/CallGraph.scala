@@ -18,22 +18,21 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.IntMap
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters._
-import scala.reflect.internal.util.{NoPosition, Position}
 import scala.tools.asm.tree._
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting._
-import dotty.tools.backend.jvm.analysis.BackendUtils.LambdaMetaFactoryCall
+import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis._
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
-class CallGraph(postProcessor: PostProcessor) {
+class CallGraph(val postProcessor: PostProcessor) {
 
   import postProcessor._
   import bTypes._
-  import bTypesFromClassfile._
-  import frontendAccess.recordPerRunCache
+  //import bTypesFromClassfile._
+  import postProcessor.frontendAccess.recordPerRunCache
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -71,7 +70,7 @@ class CallGraph(postProcessor: PostProcessor) {
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: concurrent.Map[MethodInsnNode, Position] = recordPerRunCache(TrieMap.empty)
+  val callsitePositions: concurrent.Map[MethodInsnNode, SrcPos] = recordPerRunCache(TrieMap.empty)
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.
@@ -279,7 +278,7 @@ class CallGraph(postProcessor: PostProcessor) {
   }
 
   final class FLazy[@specialized(Int) T](_init: => T) {
-    private[this] var init = () => _init
+    private[this] var init: (() => T) | Null = () => _init
     private[this] var v: T = _
     def get: T = {
       if (init != null) {

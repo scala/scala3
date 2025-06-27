@@ -149,22 +149,12 @@ import dotty.tools.backend.jvm.opt.BytecodeUtils._
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(postProcessor: PostProcessor) {
-
-  import postProcessor._
-  import bTypes._
-  import bTypesFromClassfile._
-  import backendUtils._
-  import coreBTypes._
-  import frontendAccess.compilerSettings
+class LocalOpt(pp: PostProcessor) {
 
   import LocalOptImpls._
 
-  val boxUnbox = new BoxUnbox { val postProcessor: LocalOpt.this.postProcessor.type = LocalOpt.this.postProcessor }
-  import boxUnbox._
-
-  val copyProp = new CopyProp { val postProcessor: LocalOpt.this.postProcessor.type = LocalOpt.this.postProcessor }
-  import copyProp._
+  val boxUnbox = new BoxUnbox(pp)
+  val copyProp = new CopyProp(pp)
 
   /**
    * Remove unreachable code from a method.
@@ -249,9 +239,9 @@ class LocalOpt(postProcessor: PostProcessor) {
     // This triggers "ClassFormatError: Illegal exception table range in class file C". Similar
     // for local variables in dead blocks. Maybe that's a bug in the ASM framework.
 
-    var currentTrace: String = null
+    var currentTrace: String | Null = null
     val doTrace = compilerSettings.optTrace match {
-      case Some(v) =>
+      case Some(v: String) =>
         val prefix = if (v == "_") "" else v
         s"$ownerClassName.${method.name}".startsWith(prefix)
 
@@ -702,16 +692,16 @@ class LocalOpt(postProcessor: PostProcessor) {
     // precondition: !isSubType(aDescOrIntN, bDescOrIntN)
     def isUnrelated(aDescOrIntN: String, bDescOrIntN: String): Boolean = {
       @tailrec
-      def impl(aTp: BType, bTp: BType): Boolean = {
+      def impl(aTp: pp.bTypes.BType, bTp: pp.bTypes.BType): Boolean = {
         ((aTp, bTp): @unchecked) match {
-          case (aa: ArrayBType, ba: ArrayBType) =>
+          case (aa: pp.bTypes.ArrayBType, ba: pp.bTypes.ArrayBType) =>
             impl(aa.elementType, ba.elementType)
-          case (act: ClassBType, bct: ClassBType) =>
+          case (act: pp.bTypes.ClassBType, bct: pp.bTypes.ClassBType) =>
             val noItf = act.isInterface.flatMap(aIf => bct.isInterface.map(bIf => !aIf && !bIf)).getOrElse(false)
             noItf && !bct.conformsTo(act).getOrElse(true)
-          case (_: PrimitiveBType, _: RefBType) | (_: RefBType, _: PrimitiveBType) =>
+          case (_: pp.bTypes.PrimitiveBType, _: pp.bTypes.RefBType) | (_: pp.bTypes.RefBType, _: pp.bTypes.PrimitiveBType) =>
             true
-          case (_: PrimitiveBType, _: PrimitiveBType) =>
+          case (_: pp.bTypes.PrimitiveBType, _: pp.bTypes.PrimitiveBType) =>
             // note that this case happens for array element types. [S does not conform to [I.
             aTp != bTp
           case _ =>
@@ -971,7 +961,7 @@ object LocalOptImpls {
 
     val initialSize = method.instructions.size
     val iterator = method.instructions.iterator
-    var previousLabel: LabelNode = null
+    var previousLabel: LabelNode | Null = null
     while (iterator.hasNext) {
       iterator.next match {
         case label: LabelNode =>
@@ -1009,7 +999,7 @@ object LocalOptImpls {
       case _ =>
     }
 
-    var _jumpTargets: Set[AbstractInsnNode] = null
+    var _jumpTargets: Set[AbstractInsnNode] | Null = null
     def jumpTargets = {
       if (_jumpTargets == null) {
         _jumpTargets = jumpInsns.keysIterator.map(_.label).toSet

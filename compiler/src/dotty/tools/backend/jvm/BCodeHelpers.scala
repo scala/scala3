@@ -617,11 +617,10 @@ trait BCodeHelpers extends BCodeIdiomatic {
       val bType      = mirrorClassBTypeFromSymbol(moduleClass)
       val moduleName = internalName(moduleClass) // + "$"
       val mirrorName = bType.internalName
-
       val mirrorClass = new asm.tree.ClassNode
       mirrorClass.visit(
         backendUtils.classfileVersion,
-        bType.info.flags,
+        bType.info.get.flags,
         mirrorName,
         null /* no java-generic-signature */,
         ObjectRef.internalName,
@@ -896,5 +895,16 @@ object BCodeHelpers {
    *  See BCodeSkelBuilder.makeStaticForwarder for more details.
    */
   val UseInvokeSpecial = new dotc.util.Property.Key[Unit]
+
+  /**
+   * Valid flags for InnerClass attribute entry.
+   * See https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.6
+   */
+  val INNER_CLASSES_FLAGS = {
+    asm.Opcodes.ACC_PUBLIC   | asm.Opcodes.ACC_PRIVATE   | asm.Opcodes.ACC_PROTECTED  |
+      asm.Opcodes.ACC_STATIC   | asm.Opcodes.ACC_FINAL     | asm.Opcodes.ACC_INTERFACE  |
+      asm.Opcodes.ACC_ABSTRACT | asm.Opcodes.ACC_SYNTHETIC | asm.Opcodes.ACC_ANNOTATION |
+      asm.Opcodes.ACC_ENUM
+  }
 
 }

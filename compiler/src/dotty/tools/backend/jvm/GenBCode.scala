@@ -60,21 +60,21 @@ class GenBCode extends Phase { self =>
     _bTypes
   }
 
-  private var _frontendAccess: PostProcessorFrontendAccess | Null = uninitialized
+  private var _frontendAccess: PostProcessorFrontendAccess = uninitialized
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
       _frontendAccess = PostProcessorFrontendAccess.Impl(backendInterface, entryPoints)
     _frontendAccess.nn
   }
 
-  private var _postProcessor: PostProcessor | Null = uninitialized
+  private var _postProcessor: PostProcessor = uninitialized
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       _postProcessor = new PostProcessor(frontendAccess, bTypes)
     _postProcessor.nn
   }
 
-  private var _generatedClassHandler: GeneratedClassHandler | Null = uninitialized
+  private var _generatedClassHandler: GeneratedClassHandler = uninitialized
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
       _generatedClassHandler = GeneratedClassHandler(postProcessor)
@@ -129,4 +129,8 @@ class GenBCode extends Phase { self =>
 object GenBCode {
   val name: String = "genBCode"
   val description: String = "generate JVM bytecode"
+
+  val CLASS_CONSTRUCTOR_NAME = "<clinit>"
+  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
+
 }

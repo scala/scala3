@@ -58,20 +58,20 @@ case class InlineInfoAttribute(inlineInfo: InlineInfo) extends Attribute(InlineI
     var flags = 0
     if (inlineInfo.isEffectivelyFinal)      flags |= 1
     //                                      flags |= 2 // no longer written
-    if (inlineInfo.sam.isDefined)           flags |= 4
+    if (inlineInfo.sam.nn.isDefined)           flags |= 4
     result.putByte(flags)
 
-    for (samNameDesc <- inlineInfo.sam) {
+    for (samNameDesc <- inlineInfo.sam.nn) {
       val (name, desc) = samNameDesc.span(_ != '(')
       result.putShort(cw.newUTF8(name))
       result.putShort(cw.newUTF8(desc))
     }
 
     // The method count fits in a short (the methods_count in a classfile is also a short)
-    result.putShort(inlineInfo.methodInfos.size)
+    result.putShort(inlineInfo.methodInfos.nn.size)
 
     // Sort the methodInfos for stability of classfiles
-    inlineInfo.methodInfos.foreachEntry {
+    inlineInfo.methodInfos.nn.foreachEntry {
       case ((name, desc), info) =>
         result.putShort(cw.newUTF8(name))
         result.putShort(cw.newUTF8(desc))

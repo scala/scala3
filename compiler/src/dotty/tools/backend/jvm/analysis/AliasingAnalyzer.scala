@@ -54,18 +54,18 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
    *  - If `aliases(i) contains j` then `aliases(i) eq aliases(j)`, i.e., they are references to the
    *    same (mutable) AliasSet.
    */
-  val aliases: Array[AliasSet] = new Array[AliasSet](getLocals + getMaxStackSize)
+  val aliases: Array[AliasSet | Null] = new Array[AliasSet | Null](getLocals + getMaxStackSize)
 
   /**
    * The set of aliased values for a given entry in the `values` array.
    */
   def aliasesOf(entry: Int): AliasSet = {
-    if (aliases(entry) != null) aliases(entry)
-    else {
-      val init = new AliasSet(new AliasSet.SmallBitSet(entry, -1, -1, -1), 1)
-      aliases(entry) = init
-      init
-    }
+    aliases(entry) match
+      case set: AliasSet => set
+      case null =>
+        val init = new AliasSet(new AliasSet.SmallBitSet(entry, -1, -1, -1), 1)
+        aliases(entry) = init
+        init
   }
 
   /**
@@ -88,7 +88,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
    */
   private def removeAlias(assignee: Int): Unit = {
     if (aliases(assignee) != null) {
-      aliases(assignee) -= assignee
+      aliases(assignee).nn -= assignee
       aliases(assignee) = null
     }
   }
@@ -98,7 +98,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
    */
   private def setAliasSet(assignee: Int, set: AliasSet): Unit = {
     if (aliases(assignee) != null) {
-      aliases(assignee) -= assignee
+      aliases(assignee).nn -= assignee
     }
     aliases(assignee) = set
   }
@@ -209,14 +209,14 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
         val top = stackTop
 
         def moveNextToTop(): Unit = {
-          val nextAliases = aliases(top - 1)
+          val nextAliases = aliases(top - 1).nn
           aliases(top) = nextAliases
           nextAliases -= (top - 1)
           nextAliases += top
         }
 
         if (aliases(top) != null) {
-          val topAliases = aliases(top)
+          val topAliases = aliases(top).nn
           if (aliases(top - 1) != null) moveNextToTop()
           else aliases(top) = null
           // move top to next
@@ -435,7 +435,7 @@ abstract class IntIterator extends AbstractIterator[Int] {
  * @param set  Either a SmallBitSet or an Array[Long]
  * @param size The size of the set, useful for performance of certain operations
  */
-class AliasSet(var set: Object /*SmallBitSet | Array[Long]*/, var size: Int) {
+class AliasSet(var set: Object | Null/*SmallBitSet | Array[Long]*/, var size: Int) {
   import AliasSet._
 
   override def toString: String = iterator.toSet.mkString("<", ",", ">")
@@ -556,7 +556,7 @@ object AliasSet {
   /**
    * Convert a bit array to a SmallBitSet. Requires the bit array to contain exactly four bits.
    */
-  def bsToSmall(bits: Array[Long]): SmallBitSet = {
+  def bsToSmall(bits: Array[Long]): SmallBitSet | Null = {
     var a = -1
     var b = -1
     var c = -1
@@ -577,14 +577,14 @@ object AliasSet {
   /**
    * An iterator that yields the elements that are in one bit set and not in another (&~).
    */
-  private class AndNotIt(setA: AliasSet, setB: AliasSet, thisAndOther: Array[Boolean]) extends IntIterator {
+  private class AndNotIt(setA: AliasSet, setB: AliasSet, thisAndOther: Array[Boolean]| Null) extends IntIterator {
     // values in the first bit set
     private var a, b, c, d = -1
-    private var xs: Array[Long] = null
+    private var xs: Array[Long] | Null = null
 
     // values in the second bit set
     private var notA, notB, notC, notD = -1
-    private var notXs: Array[Long] = null
+    private var notXs: Array[Long]| Null = null
 
     // holds the next value of `x`, `y` or `z` that should be returned. assigned in hasNext
     private var abcdNext = -1
@@ -611,7 +611,7 @@ object AliasSet {
     private def checkABCD(x: Int, num: Int): Boolean = {
       // assert(x == a && num == 1 || x == b && num == 2 || ...)
       x != -1 && {
-        val otherHasA = x == notA || x == notB  || x == notC || x == notD || (notXs != null && bsContains(notXs, x))
+        val otherHasA = x == notA || x == notB  || x == notC || x == notD || (notXs != null && bsContains(notXs.nn, x))
         if (otherHasA) setThisAndOther(x)
         else abcdNext = x
         (num: @switch) match {
@@ -627,19 +627,19 @@ object AliasSet {
     // main performance hot spot
     private def checkXs = {
       (xs != null) && {
-        val end = xs.length * 64
+        val end = xs.nn.length * 64
 
         while (i < end && {
           val index = i >> 6
-          if (xs(index) == 0L) { // boom. for nullness, this saves 35% of the overall analysis time.
+          if (xs.nn(index) == 0L) { // boom. for nullness, this saves 35% of the overall analysis time.
             i = ((index + 1) << 6) - 1 // -1 required because i is incremented in the loop body
             true
           } else {
             val mask = 1L << i
             // if (mask > xs(index)) we could also advance i to the next value, but that didn't pay off in benchmarks
-            val thisHasI = (xs(index) & mask) != 0L
+            val thisHasI = (xs.nn(index) & mask) != 0L
             !thisHasI || {
-              val otherHasI = i == notA || i == notB || i == notC || i == notD || (notXs != null && index < notXs.length && (notXs(index) & mask) != 0L)
+              val otherHasI = i == notA || i == notB || i == notC || i == notD || (notXs != null && index < notXs.nn.length && (notXs.nn(index) & mask) != 0L)
               if (otherHasI) setThisAndOther(i)
               otherHasI
             }
@@ -684,5 +684,5 @@ object AliasSet {
    * If `thisAndOther` is non-null, the iterator sets thisAndOther(i) to true for every value that
    * is both in a and b (&).
    */
-  def andNotIterator(a: AliasSet, b: AliasSet, thisAndOther: Array[Boolean]): IntIterator = new AndNotIt(a, b, thisAndOther)
+  def andNotIterator(a: AliasSet, b: AliasSet, thisAndOther: Array[Boolean] | Null): IntIterator = new AndNotIt(a, b, thisAndOther)
 }

@@ -18,20 +18,19 @@ import scala.annotation.switch
 import scala.collection.immutable.IntMap
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
-import scala.reflect.internal.util.NoPosition
 import scala.tools.asm.Opcodes._
 import scala.tools.asm.Type
 import scala.tools.asm.tree._
 import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.BackendUtils._
 import dotty.tools.backend.jvm.BackendReporting._
-import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, BackendUtils, ProdConsAnalyzer}
+import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
-class ClosureOptimizer(postProcessor: PostProcessor) {
+class ClosureOptimizer(val postProcessor: PostProcessor) {
 
-  import postProcessor.{bTypes, bTypesFromClassfile, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
+  import postProcessor.{bTypes, callGraph, byteCodeRepository, localOpt, inliner, backendUtils}
   import bTypes._
-  import bTypesFromClassfile._
   import backendUtils._
   import callGraph._
   import coreBTypes._
@@ -134,7 +133,7 @@ class ClosureOptimizer(postProcessor: PostProcessor) {
     }
 
     val changedMethods = mutable.LinkedHashSet.empty[MethodNode]
-    var previousMethod: MethodNode = null
+    var previousMethod: MethodNode | Null = null
 
     for ((closureInit, invocations) <- toRewrite) {
       // Local variables that hold the captured values and the closure invocation arguments.

@@ -17,13 +17,12 @@ package opt
 import scala.annotation.nowarn
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters._
-import scala.reflect.internal.util.NoPosition
 import scala.tools.asm
 import scala.tools.asm.{Attribute, Type}
 import scala.tools.asm.tree._
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting._
-import dotty.tools.backend.jvm.analysis.BackendUtils.LambdaMetaFactoryCall
+import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
 /**

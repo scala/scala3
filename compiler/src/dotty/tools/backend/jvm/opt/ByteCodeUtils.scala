@@ -17,7 +17,6 @@ package opt
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
-import scala.reflect.internal.util.Collections._
 import scala.tools.asm.Opcodes._
 import scala.tools.asm.commons.CodeSizeEvaluator
 import scala.tools.asm.tree._
@@ -178,10 +177,10 @@ object BytecodeUtils {
   }
 
   def findSingleCall(method: MethodNode, such: MethodInsnNode => Boolean): Option[MethodInsnNode] = {
-    @tailrec def noMoreInvoke(insn: AbstractInsnNode): Boolean = {
+    @tailrec def noMoreInvoke(insn: AbstractInsnNode | Null): Boolean = {
       insn == null || (!insn.isInstanceOf[MethodInsnNode] && noMoreInvoke(insn.getNext))
     }
-    @tailrec def find(insn: AbstractInsnNode): Option[MethodInsnNode] = {
+    @tailrec def find(insn: AbstractInsnNode | Null): Option[MethodInsnNode] = {
       if (insn == null) None
       else insn match {
         case mi: MethodInsnNode =>
@@ -287,6 +286,16 @@ object BytecodeUtils {
 
   def substituteLabel(reference: AnyRef, from: LabelNode, to: LabelNode): Unit = {
     def substList(list: java.util.List[LabelNode]) = {
+      def foreachWithIndex[A](xs: List[A])(f: (A, Int) => Unit): Unit = {
+        var index = 0
+        var ys = xs
+        while (!ys.isEmpty) {
+          f(ys.head, index)
+          ys = ys.tail
+          index += 1
+        }
+      }
+      
       foreachWithIndex(list.asScala.toList) { case (l, i) =>
         if (l == from) list.set(i, to)
       }

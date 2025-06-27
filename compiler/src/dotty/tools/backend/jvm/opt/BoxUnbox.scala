@@ -22,14 +22,10 @@ import scala.tools.asm.Opcodes._
 import scala.tools.asm.Type
 import scala.tools.asm.tree._
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, BackendUtils, ProdConsAnalyzer}
+import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
 
-abstract class BoxUnbox {
-  val postProcessor: PostProcessor
-
-  import postProcessor.{backendUtils, callGraph}
-  import backendUtils._
+final class BoxUnbox(pp: PostProcessor) {
 
   /**
    * Eliminate box-unbox pairs within `method`. Such appear commonly after closure elimination:
@@ -351,8 +347,8 @@ abstract class BoxUnbox {
                     val pops = boxKind.boxedTypes.tail.map(t => getPop(t.getSize))
                     pops ::: extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head)
                   } else {
-                    var loadOps: List[AbstractInsnNode] = null
-                val consumeStack = boxKind.boxedTypes.zipWithIndex.reverseIterator.map {
+                    var loadOps: List[AbstractInsnNode] | Null = null
+                    val consumeStack = boxKind.boxedTypes.zipWithIndex.reverseIterator.map {
                       case (tp, i) =>
                         if (i == valueIndex) {
                           val resultSlot = getLocal(tp.getSize)
@@ -361,8 +357,8 @@ abstract class BoxUnbox {
                         } else {
                           getPop(tp.getSize)
                         }
-                }.to(List)
-                    consumeStack ::: loadOps
+                      }.to(List)
+                    consumeStack ::: loadOps.nn
                   }
               }
               toReplace(extraction.consumer) = replacementOps
@@ -421,7 +417,7 @@ abstract class BoxUnbox {
       // We don't need to worry about CallGraph.closureInstantiations and
       // BackendUtils.indyLambdaImplMethods, the removed instructions are not IndyLambdas
       def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
-        case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
+        case mi: MethodInsnNode => pp.callGraph.removeCallsite(mi, method)
         case _ =>
       }
 
@@ -652,7 +648,7 @@ abstract class BoxUnbox {
       val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - numArgs)
       if (receiverProds.size == 1) {
         val prod = receiverProds.head
-        if (isPredefLoad(prod) && prodCons.consumersOfOutputsFrom(prod) == Set(mi)) return Some(prod)
+        if (pp.backendUtils.isPredefLoad(prod) && prodCons.consumersOfOutputsFrom(prod) == Set(mi)) return Some(prod)
       }
       None
     }
@@ -676,7 +672,7 @@ abstract class BoxUnbox {
     }
 
     private val primBoxSupertypes: Map[InternalName, Set[InternalName]] = {
-      import postProcessor.bTypes._
+      import pp.bTypes.*
       def transitiveSupertypes(clsbt: ClassBType): Set[ClassBType] =
         (clsbt.info.get.superClass ++ clsbt.info.get.interfaces).flatMap(transitiveSupertypes).toSet + clsbt
 
@@ -694,14 +690,14 @@ abstract class BoxUnbox {
 
       insn match {
         case mi: MethodInsnNode =>
-          if (isScalaBox(mi) || isJavaBox(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = None), _))
-          else if (isPredefAutoBox(mi))
+          if (pp.backendUtils.isScalaBox(mi) || pp.backendUtils.isJavaBox(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = None), _))
+          else if (pp.backendUtils.isPredefAutoBox(mi))
             for (predefLoad <- BoxKind.checkReceiverPredefLoad(mi, prodCons); kind <- checkKind(mi))
               yield (ModuleFactory(predefLoad, mi), kind)
           else None
 
         case ti: TypeInsnNode if ti.getOpcode == NEW =>
-          for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if isPrimitiveBoxConstructor(initCall); kind <- checkKind(initCall))
+          for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if pp.backendUtils.isPrimitiveBoxConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
 
         case _ => None
@@ -712,8 +708,8 @@ abstract class BoxUnbox {
       def typeOK(mi: MethodInsnNode) = kind.boxedType == Type.getReturnType(mi.desc)
       insn match {
         case mi: MethodInsnNode =>
-          if ((isScalaUnbox(mi) || isJavaUnbox(mi)) && typeOK(mi)) Some(StaticGetterOrInstanceRead(mi))
-          else if (isPredefAutoUnbox(mi) && typeOK(mi)) BoxKind.checkReceiverPredefLoad(mi, prodCons).map(ModuleGetter(_, mi))
+          if ((pp.backendUtils.isScalaUnbox(mi) || pp.backendUtils.isJavaUnbox(mi)) && typeOK(mi)) Some(StaticGetterOrInstanceRead(mi))
+          else if (pp.backendUtils.isPredefAutoUnbox(mi) && typeOK(mi)) BoxKind.checkReceiverPredefLoad(mi, prodCons).map(ModuleGetter(_, mi))
           else None
 
         case ti: TypeInsnNode if insn.getOpcode == INSTANCEOF =>
@@ -738,12 +734,12 @@ abstract class BoxUnbox {
   }
 
   object Ref {
-    private def boxedType(mi: MethodInsnNode): Type = runtimeRefClassBoxedType(mi.owner)
+    private def boxedType(mi: MethodInsnNode): Type = pp.backendUtils.runtimeRefClassBoxedType(mi.owner)
     private def refClass(mi: MethodInsnNode): InternalName = mi.owner
-    private def loadZeroValue(refZeroCall: MethodInsnNode): List[AbstractInsnNode] = List(loadZeroForTypeSort(runtimeRefClassBoxedType(refZeroCall.owner).getSort))
+    private def loadZeroValue(refZeroCall: MethodInsnNode): List[AbstractInsnNode] = List(loadZeroForTypeSort(pp.backendUtils.runtimeRefClassBoxedType(refZeroCall.owner).getSort))
 
     private val refSupertypes = {
-      import postProcessor.bTypes._
+      import pp.bTypes._
       Set(coreBTypes.jiSerializableRef, coreBTypes.ObjectRef).map(_.internalName)
     }
 
@@ -755,12 +751,12 @@ abstract class BoxUnbox {
 
       insn match {
         case mi: MethodInsnNode =>
-          if (isRefCreate(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = None), _))
-          else if (isRefZero(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = Some(loadZeroValue(mi))), _))
+          if (pp.backendUtils.isRefCreate(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = None), _))
+          else if (pp.backendUtils.isRefZero(mi)) checkKind(mi).map((StaticFactory(mi, loadInitialValues = Some(loadZeroValue(mi))), _))
           else None
 
         case ti: TypeInsnNode if ti.getOpcode == NEW =>
-          for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if isRuntimeRefConstructor(initCall); kind <- checkKind(initCall))
+          for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if pp.backendUtils.isRuntimeRefConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
 
         case _ => None
@@ -809,7 +805,7 @@ abstract class BoxUnbox {
       insn match {
         // no need to check for TupleN.apply: the compiler transforms case companion apply calls to constructor invocations
         case ti: TypeInsnNode if ti.getOpcode == NEW =>
-          for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if isTupleConstructor(initCall); kind <- checkKind(initCall))
+          for ((dupOp, initCall) <- BoxKind.checkInstanceCreation(ti, prodCons) if pp.backendUtils.isTupleConstructor(initCall); kind <- checkKind(initCall))
             yield (InstanceCreation(ti, dupOp, initCall), kind)
 
         case _ => None
@@ -940,8 +936,8 @@ abstract class BoxUnbox {
      * `Tuple2` extracts the Integer value and unboxes it.
      */
     def postExtractionAdaptationOps(typeOfExtractedValue: Type): List[AbstractInsnNode] = this match {
-      case PrimitiveBoxingGetter(_) => List(getScalaBox(typeOfExtractedValue))
-      case PrimitiveUnboxingGetter(_, unboxedPrimitive) => List(getScalaUnbox(unboxedPrimitive))
+      case PrimitiveBoxingGetter(_) => List(pp.backendUtils.getScalaBox(typeOfExtractedValue))
+      case PrimitiveUnboxingGetter(_, unboxedPrimitive) => List(pp.backendUtils.getScalaUnbox(unboxedPrimitive))
       case BoxedPrimitiveTypeCheck(_, success) =>
         getPop(typeOfExtractedValue.getSize) ::
           new InsnNode(if (success) ICONST_1 else ICONST_0) ::

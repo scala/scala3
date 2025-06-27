@@ -21,12 +21,11 @@ import scala.tools.asm.Opcodes._
 import scala.tools.asm.Type
 import scala.tools.asm.tree._
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.analysis.BackendUtils.{LambdaMetaFactoryCall, _}
 import dotty.tools.backend.jvm.analysis._
 import dotty.tools.backend.jvm.opt.BytecodeUtils._
+import dotty.tools.backend.jvm.BackendUtils.*
 
-abstract class CopyProp {
-  val postProcessor: PostProcessor
+class CopyProp(postProcessor: PostProcessor) {
 
   import postProcessor.{backendUtils, callGraph, bTypes}
   import postProcessor.bTypes.frontendAccess.compilerSettings
@@ -172,7 +171,7 @@ abstract class CopyProp {
             if (receiverProds.size == 1) {
               toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
               toReplace(mi) = List(new TypeInsnNode(ANEWARRAY, newArrayCls))
-              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
+              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if BackendUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
             }
           }
 
@@ -180,13 +179,12 @@ abstract class CopyProp {
           if (isReturn(insn)) returns += insn
       }
 
-      def isTrailing(insn: AbstractInsnNode) = insn != null && {
+      def isTrailing(insn: AbstractInsnNode) =
         import scala.tools.asm.tree.AbstractInsnNode._
         insn.getType match {
           case METHOD_INSN | INVOKE_DYNAMIC_INSN | JUMP_INSN | TABLESWITCH_INSN | LOOKUPSWITCH_INSN => false
           case _ => true
         }
-      }
 
       // stale stores that precede a return can be removed, there's no need to null them out. the
       // references are released for gc when the method returns. this also cleans up unnecessary
@@ -214,8 +212,8 @@ abstract class CopyProp {
           case _ =>
         }
         // the original instruction `i` may appear (once) in `nis`.
-        var insertBefore = i
-        var insertAfter: AbstractInsnNode = null
+        var insertBefore: AbstractInsnNode | Null = i
+        var insertAfter : AbstractInsnNode | Null = null
         for (ni <- nis) {
           if (ni eq i) {
             insertBefore = null
@@ -442,7 +440,7 @@ abstract class CopyProp {
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (isBoxedUnit(prod) || isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+            if (isBoxedUnit(prod) || BackendUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
@@ -454,7 +452,7 @@ abstract class CopyProp {
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
             } else if (isScalaUnbox(methodInsn)) {
               val tp = primitiveAsmTypeToBType(Type.getReturnType(methodInsn.desc))
-              val boxTp = bTypes.coreBTypes.boxedClassOfPrimitive(tp)
+              val boxTp = backendUtils.postProcessor.bTypes.coreBTypes.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
