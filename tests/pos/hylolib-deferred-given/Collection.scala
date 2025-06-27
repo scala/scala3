@@ -10,7 +10,7 @@ trait Collection[Self] {
 
   /** The type of a position in the collection. */
   type Position
-  given positionIsValue: Value[Position]
+  given positionIsValue: Value[Position] = compiletime.deferred
 
   extension (self: Self) {
 

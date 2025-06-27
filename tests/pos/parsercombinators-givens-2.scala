@@ -26,16 +26,14 @@ given apply: [C, E] => Combinator[Apply[C, E]] {
   }
 }
 
-given combine[A, B, C](using
-    f: Combinator[A] { type Context = C },
-    s: Combinator[B] { type Context = C }
-): Combinator[Combine[A, B]] with {
+given combine: [A, B, C]
+    => (f: Combinator[A] { type Context = C }, s: Combinator[B] { type Context = C })
+    => Combinator[Combine[A, B]]:
   type Context = f.Context
   type Element = (f.Element, s.Element)
   extension(self: Combine[A, B]) {
     def parse(context: Context): Option[Element] = ???
   }
-}
 
 extension [A] (buf: mutable.ListBuffer[A]) def popFirst() =
   if buf.isEmpty then None
