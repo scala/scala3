@@ -20,7 +20,6 @@ import dotty.tools.dotc.ast.desugar
  *  The latter condition is checked in [[Desugar.scala#makeFor]]
  */
 class DropForMap extends MiniPhase:
-  import DropForMap.*
 
   override def phaseName: String = DropForMap.name
 
@@ -37,6 +36,22 @@ class DropForMap extends MiniPhase:
         f match
         case Converted(r) if r.tpe =:= tree.tpe => r // drop the map call and the conversion
         case _ => tree
+    case tree => tree
+
+  override def transformInlined(tree: Inlined)(using Context): Tree = tree match
+    case Inlined(call, bindings, expansion) if expansion.hasAttachment(desugar.TrailingForMap) =>
+      call match
+      case Unmapped(f) =>
+        bindings.collectFirst:
+          case vd: ValDef if f.sameTree(vd.rhs) =>
+            expansion.find:
+              case Inlined(Thicket(Nil), Nil, Ident(ident)) => ident == vd.name
+              case _ => false
+            .match
+              case Some(ref) => cpy.Inlined(tree)(call, bindings, ref)
+              case _ => tree
+        .getOrElse(tree)
+      case _ => tree
     case tree => tree
 
   // Extracts a fun from a possibly nested Apply with lambda and arbitrary implicit args.
