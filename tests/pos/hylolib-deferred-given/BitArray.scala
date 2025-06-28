@@ -341,7 +341,7 @@ given bitArrayIsCollection: Collection[BitArray] {
   //given elementIsValue: Value[Boolean] = booleanIsValue
 
   type Position = BitArray.Position
-  given positionIsValue: Value[BitArray.Position] = bitArrayPositionIsValue
+  override given positionIsValue: Value[BitArray.Position] = bitArrayPositionIsValue
 
   extension (self: BitArray) {
 
