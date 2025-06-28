@@ -26,8 +26,6 @@ class TypeUtils:
     def isErasedClass(using Context): Boolean =
       val cls = self.underlyingClassRef(refinementOK = true).typeSymbol
       cls.is(Flags.Erased)
-       && (cls != defn.SingletonClass || Feature.enabled(Feature.modularity))
-         // Singleton counts as an erased class only under x.modularity
 
 
     /** Is this type a checked exception? This is the case if the type
