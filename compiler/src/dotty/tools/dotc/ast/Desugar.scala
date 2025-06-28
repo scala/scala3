@@ -21,6 +21,7 @@ import parsing.Parsers
 import dotty.tools.dotc.util.chaining.*
 
 import scala.annotation.{unchecked as _, *}, internal.sharable
+import scala.collection.mutable, mutable.ListBuffer
 
 object desugar {
   import untpd.*
@@ -272,12 +273,12 @@ object desugar {
    */
   private def desugarContextBounds(
       tdef: TypeDef,
-      evidenceBuf: mutable.ListBuffer[ValDef],
+      evidenceBuf: ListBuffer[ValDef],
       evidenceFlags: FlagSet,
       freshName: untpd.Tree => TermName,
       allParamss: List[ParamClause])(using Context): TypeDef =
 
-    val evidenceNames = mutable.ListBuffer[TermName]()
+    val evidenceNames = ListBuffer.empty[TermName]
 
     def desugarRHS(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, ctxbounds) =>
@@ -322,7 +323,7 @@ object desugar {
   end desugarContextBounds
 
   def elimContextBounds(meth: Tree, isPrimaryConstructor: Boolean = false)(using Context): Tree =
-    val evidenceParamBuf = mutable.ListBuffer[ValDef]()
+    val evidenceParamBuf = ListBuffer.empty[ValDef]
     var seenContextBounds: Int = 0
     def freshName(unused: Tree) =
       seenContextBounds += 1 // Start at 1 like FreshNameCreator.
@@ -647,7 +648,7 @@ object desugar {
    *  ultimately map to deferred givens.
    */
   def typeDef(tdef: TypeDef)(using Context): Tree =
-    val evidenceBuf = new mutable.ListBuffer[ValDef]
+    val evidenceBuf = ListBuffer.empty[ValDef]
     val result = desugarContextBounds(
         tdef, evidenceBuf,
         (tdef.mods.flags.toTermFlags & AccessFlags) | Lazy | DeferredGivenFlags,
@@ -2472,7 +2473,7 @@ object desugar {
    *  without duplicates
    */
   private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
-    val buf = mutable.ListBuffer[VarInfo]()
+    val buf = ListBuffer.empty[VarInfo]
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
