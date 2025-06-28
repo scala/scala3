@@ -543,7 +543,7 @@ class Definitions {
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
     val cls = enterCompleteClassSymbol(
-      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final | Erased,
+      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyType))
     enterTypeField(cls, tpnme.Self, Deferred, cls.info.decls.openForMutations)
     cls
