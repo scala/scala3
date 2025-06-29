@@ -266,6 +266,7 @@ class Definitions {
     @tu lazy val CompiletimeOpsDoubleModuleClass: Symbol = requiredModule("scala.compiletime.ops.double").moduleClass
     @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
     @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
+  @tu lazy val ErasedClass: ClassSymbol = requiredClass("scala.compiletime.Erased")
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -1015,7 +1016,7 @@ class Definitions {
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
 
-  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
+  @tu lazy val PureClass: ClassSymbol = requiredClass("scala.Pure")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")

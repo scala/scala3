@@ -1,6 +1,6 @@
 //> using options -language:experimental.erasedDefinitions
 
-erased trait DBMeta[A]
+trait DBMeta[A] extends compiletime.Erased
 
 trait Table[A]
 

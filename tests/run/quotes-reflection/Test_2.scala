@@ -1,6 +1,6 @@
 import scala.language.experimental.erasedDefinitions
 
-erased class EC
+class EC extends compiletime.Erased
 
 trait X {
   def m1(using i: Int): Int

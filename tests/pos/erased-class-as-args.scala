@@ -1,8 +1,8 @@
-//> using options -language:experimental.erasedDefinitions
+import language.experimental.erasedDefinitions
 
-erased class A
+class A extends compiletime.Erased
 
-erased class B(val x: Int) extends A
+class B(val x: Int) extends A
 
 type T = (x: A, y: Int) => Int
 
