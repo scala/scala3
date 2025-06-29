@@ -105,12 +105,6 @@ class Erasure extends Phase with DenotTransformer {
         if oldSymbol.isRetainedInlineMethod then
           newFlags = newFlags &~ Flags.Inline
           newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
-        oldSymbol match
-          case cls: ClassSymbol if cls.is(Flags.Erased) =>
-            newFlags = newFlags | Flags.Trait | Flags.JavaInterface
-            newAnnotations = Nil
-            newInfo = erasedClassInfo(cls)
-          case _ =>
         // TODO: define derivedSymDenotation?
         if ref.is(Flags.PackageClass)
            || !ref.isClass  // non-package classes are always copied since their base types change
@@ -550,8 +544,11 @@ object Erasure {
       case _ => tree.symbol.isEffectivelyErased
     }
 
-    /** Check that Java statics and packages can only be used in selections.
-      */
+    /** Check that
+     *    - erased values are not referred to from normal code
+     *    - inline method applications were inlined
+     *    - Java statics and packages can only be used in selections.
+     */
     private def checkNotErased(tree: Tree)(using Context): tree.type =
       if !ctx.mode.is(Mode.Type) then
         if isErased(tree) then
@@ -582,6 +579,9 @@ object Erasure {
       tree
     end checkNotErased
 
+    /** Check that initializers of erased vals and arguments to erased parameters
+     *  are pure expressions.
+     */
     def checkPureErased(tree: untpd.Tree, isArgument: Boolean, isImplicit: Boolean = false)(using Context): Unit =
       val tree1 = tree.asInstanceOf[tpd.Tree]
       inContext(preErasureCtx):
@@ -1049,22 +1049,20 @@ object Erasure {
       EmptyTree
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      if cls.is(Flags.Erased) then erasedDef(cls)
-      else
-        val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
-        // In the case where a trait extends a class, we need to strip any non trait class from the signature
-        // and accept the first one (see tests/run/mixins.scala)
-        val newTraits = impl.parents.tail.filterConserve: tree =>
-          def isTraitConstructor = tree match
-            case Trees.Block(_, expr) => // Specific management for trait constructors (see tests/pos/i9213.scala)
-              expr.symbol.isConstructor && expr.symbol.owner.is(Flags.Trait)
-            case _ => tree.symbol.isConstructor && tree.symbol.owner.is(Flags.Trait)
-          tree.symbol.is(Flags.Trait) || isTraitConstructor
+      val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
+      // In the case where a trait extends a class, we need to strip any non trait class from the signature
+      // and accept the first one (see tests/run/mixins.scala)
+      val newTraits = impl.parents.tail.filterConserve: tree =>
+        def isTraitConstructor = tree match
+          case Trees.Block(_, expr) => // Specific management for trait constructors (see tests/pos/i9213.scala)
+            expr.symbol.isConstructor && expr.symbol.owner.is(Flags.Trait)
+          case _ => tree.symbol.isConstructor && tree.symbol.owner.is(Flags.Trait)
+        tree.symbol.is(Flags.Trait) || isTraitConstructor
 
-        val newParents =
-          if impl.parents.tail eq newTraits then impl.parents
-          else impl.parents.head :: newTraits
-        cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
+      val newParents =
+        if impl.parents.tail eq newTraits then impl.parents
+        else impl.parents.head :: newTraits
+      cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
