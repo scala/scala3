@@ -4,6 +4,16 @@ package contextBounds
 import scala.reflect.ClassTag
 
 class A:
+  type :+:[X, Y] = [Z] =>> Map[Z, (X, Y)]
+
+  extension [T : ([X] =>> String) : ([X] =>> Int)](x: Int)
+    def foo[U : ([X] =>> String)](y: Int): Nothing
+      = ???
+    def bar[W : T match { case String => List case Int => Option } : Set]: Nothing
+      = ???
+    def baz[V : Int :+: String : Option]: Nothing
+      = ???
+
   def basic[A : ClassTag]: A
     = ???
 
@@ -35,5 +45,5 @@ class A:
   //   = 1
 
   class Outer[A]:
-    def falsePositiveInner[T](implicit evidence$3: ClassTag[A]): Int
+    def falsePositiveInner[T](implicit evidence$3: ClassTag[A]): Int //expected: def falsePositiveInner[T]: Int
       = 1
