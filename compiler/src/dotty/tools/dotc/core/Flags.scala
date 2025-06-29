@@ -569,7 +569,6 @@ object Flags {
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
-  val EffectivelyErased                      = PhantomSymbol | Erased
   val ConstructorProxyModule: FlagSet        = PhantomSymbol | Module
   val CaptureParam: FlagSet                  = PhantomSymbol | StableRealizable | Synthetic
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter

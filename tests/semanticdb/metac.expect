@@ -2974,6 +2974,7 @@ Text => empty
 Language => Scala
 Symbols => 16 entries
 Occurrences => 12 entries
+Diagnostics => 2 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments extends Object { self: NamedArguments => +4 decls }
@@ -3006,6 +3007,10 @@ Occurrences:
 [5:2..5:6): User -> example/NamedArguments#User.
 [5:7..5:12): apply -> example/NamedArguments#User.apply().
 [5:13..5:17): name -> example/NamedArguments#User.apply().(name)
+
+Diagnostics:
+[4:2..4:21): [warning] A pure expression does nothing in statement position
+[5:2..5:27): [warning] A pure expression does nothing in statement position
 
 expect/NewModifiers.scala
 -------------------------
@@ -3654,7 +3659,7 @@ Text => empty
 Language => Scala
 Symbols => 62 entries
 Occurrences => 165 entries
-Diagnostics => 3 entries
+Diagnostics => 4 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3890,6 +3895,7 @@ Occurrences:
 
 Diagnostics:
 [19:21..19:22): [warning] unused pattern variable
+[28:4..28:9): [warning] A pure expression does nothing in statement position
 [41:4..41:5): [warning] unused pattern variable
 [63:10..63:11): [warning] unused explicit parameter
 

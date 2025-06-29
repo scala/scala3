@@ -1051,8 +1051,13 @@ object SymDenotations {
       && owner.ne(defn.StringContextClass)
 
     /** An erased value or an erased inline method or field */
+    def isErased(using Context): Boolean =
+      is(Erased) || defn.erasedValueMethods.contains(symbol)
+
+    /** An erased value, a phantom symbol or an erased inline method or field */
     def isEffectivelyErased(using Context): Boolean =
-      isOneOf(EffectivelyErased)
+      isErased
+      || is(PhantomSymbol)
       || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
 
     /** Is this a member that will become public in the generated binary */

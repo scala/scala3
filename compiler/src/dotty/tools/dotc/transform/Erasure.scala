@@ -583,6 +583,12 @@ object Erasure {
       checkNotErasedClass(tree)
     end checkNotErased
 
+    def checkPureErased(tree: untpd.Tree, isArgument: Boolean, isImplicit: Boolean = false)(using Context): Unit =
+      val tree1 = tree.asInstanceOf[tpd.Tree]
+      inContext(preErasureCtx):
+        if !tpd.isPureExpr(tree1) then
+          report.error(ErasedNotPure(tree1, isArgument, isImplicit), tree1.srcPos)
+
     private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
       case JavaArrayType(et) =>
         checkNotErasedClass(et, tree)
@@ -848,7 +854,13 @@ object Erasure {
       val origFunType = origFun.tpe.widen(using preErasureCtx)
       val ownArgs = origFunType match
         case mt: MethodType if mt.hasErasedParams =>
-          args.zip(mt.erasedParams).collect { case (arg, false) => arg }
+          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
+            if isErased then
+              checkPureErased(arg, isArgument = true,
+                isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
+              Nil
+            else
+              arg :: Nil
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
@@ -916,8 +928,10 @@ object Erasure {
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
-      if (sym.isEffectivelyErased) erasedDef(sym)
-      else
+      if sym.isEffectivelyErased then
+        checkPureErased(vdef.rhs, isArgument = false)
+        erasedDef(sym)
+      else trace(i"erasing $vdef"):
         checkNotErasedClass(sym.info, vdef)
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)

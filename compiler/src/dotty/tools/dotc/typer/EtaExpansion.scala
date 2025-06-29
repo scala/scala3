@@ -300,9 +300,9 @@ object EtaExpansion extends LiftImpure {
     val body = Apply(lifted, ids)
     if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
-      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.erasedParams)
-      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.erasedParams)
-      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.erasedParams)
+      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.paramErasureStatuses)
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.paramErasureStatuses)
+      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.paramErasureStatuses)
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

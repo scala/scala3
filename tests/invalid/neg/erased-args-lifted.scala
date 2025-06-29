@@ -2,7 +2,7 @@
 
 object Test {
   def foo(a: Int)(b: Int, c: Int) = 42
-  erased def bar(erased i: Int): Int = {
+  inline def bar(erased i: Int): Int = {
     println(1)
     42
   }
