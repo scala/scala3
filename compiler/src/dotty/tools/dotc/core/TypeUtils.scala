@@ -23,11 +23,6 @@ class TypeUtils:
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
-    def isErasedClass(using Context): Boolean =
-      val cls = self.underlyingClassRef(refinementOK = true).typeSymbol
-      cls.is(Flags.Erased)
-
-
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to
      *  that definition Throwable is unchecked. That makes sense since you should

@@ -579,8 +579,7 @@ object Erasure {
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             report.error(message, tree.srcPos)
           case _ => // OK
-
-      checkNotErasedClass(tree)
+      tree
     end checkNotErased
 
     def checkPureErased(tree: untpd.Tree, isArgument: Boolean, isImplicit: Boolean = false)(using Context): Unit =
@@ -588,21 +587,6 @@ object Erasure {
       inContext(preErasureCtx):
         if !tpd.isPureExpr(tree1) then
           report.error(ErasedNotPure(tree1, isArgument, isImplicit), tree1.srcPos)
-
-    private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
-      case JavaArrayType(et) =>
-        checkNotErasedClass(et, tree)
-      case _ =>
-        if tp.isErasedClass then
-          val (kind, tree1) = tree match
-            case tree: untpd.ValOrDefDef => ("definition", tree.tpt)
-            case tree: untpd.DefTree => ("definition", tree)
-            case _ => ("expression", tree)
-          report.error(em"illegal reference to erased ${tp.typeSymbol} in $kind that is not itself erased", tree1.srcPos)
-
-    private def checkNotErasedClass(tree: Tree)(using Context): tree.type =
-      checkNotErasedClass(tree.tpe.widen.finalResultType, tree)
-      tree
 
     def erasedDef(sym: Symbol)(using Context): Tree =
       if sym.isClass then
@@ -631,7 +615,7 @@ object Erasure {
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
-      checkNotErasedClass(tree.withType(erasure(tree.typeOpt)))
+      tree.withType(erasure(tree.typeOpt))
 
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
@@ -650,7 +634,7 @@ object Erasure {
       if (tree.typeOpt.isRef(defn.UnitClass))
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
-        checkNotErasedClass(clsOf(tree.const.typeValue))
+        clsOf(tree.const.typeValue)
       else
         super.typedLiteral(tree)
 
@@ -932,7 +916,6 @@ object Erasure {
         checkPureErased(vdef.rhs, isArgument = false)
         erasedDef(sym)
       else trace(i"erasing $vdef"):
-        checkNotErasedClass(sym.info, vdef)
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
 
@@ -944,7 +927,6 @@ object Erasure {
       if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
         erasedDef(sym)
       else
-        checkNotErasedClass(sym.info.finalResultType, ddef)
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
             ::: ddef.paramss.collect {
@@ -1062,9 +1044,6 @@ object Erasure {
       if (xxl) implClosure = cpy.Closure(implClosure)(tpt = TypeTree(defn.FunctionXXLClass.typeRef))
       adaptClosure(implClosure)
     }
-
-    override def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
-      checkNotErasedClass(super.typedNew(tree, pt))
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree =
       EmptyTree

@@ -1,9 +1,9 @@
 import language.experimental.erasedDefinitions
-erased class ErasedTerm
+class ErasedTerm extends compiletime.Erased
 
-erased class <::<[-From, +To] extends ErasedTerm
+class <::<[-From, +To] extends ErasedTerm
 
-erased class =::=[From, To] extends (From <::< To)
+class =::=[From, To] extends (From <::< To)
 
 inline given [X] => (X =::= X) = scala.caps.unsafe.unsafeErasedValue
 
