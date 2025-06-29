@@ -2,7 +2,7 @@
 
 import language.experimental.erasedDefinitions
 
-erased trait A
+trait A extends compiletime.Erased
 trait B
 
 def foo1: A ?=> B ?=> Nothing = ???

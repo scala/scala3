@@ -682,10 +682,9 @@ object Checking {
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
       fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
     val unerasable =
-      sym.is(Lazy, butNot = Given)
-      || sym.is(Method, butNot = Macro)
+      sym.is(Method, butNot = Macro)
       || sym.is(Mutable)
-      || sym.isType && !sym.isClass
+      || sym.isType
     checkApplicable(Erased, !unerasable)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
