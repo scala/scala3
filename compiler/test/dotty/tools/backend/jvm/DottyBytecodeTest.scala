@@ -133,6 +133,15 @@ trait DottyBytecodeTest {
     }, l.stringLines)
   }
 
+  def assertNoInvoke(m: MethodNode, receiver: String, method: String): Unit =
+    assertNoInvoke(instructionsFromMethod(m), receiver, method)
+  def assertNoInvoke(l: List[Instruction], receiver: String, method: String): Unit = {
+    assert(!l.exists {
+      case Invoke(_, `receiver`, `method`, _, _) => true
+      case _ => false
+    }, s"Found unexpected invoke of $receiver.$method in:\n${l.stringLines}")
+  }
+
   def diffInstructions(isa: List[Instruction], isb: List[Instruction]): String = {
     val len = Math.max(isa.length, isb.length)
     val sb = new StringBuilder
