@@ -2770,16 +2770,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @pre !(tp1 <: tp2) && !(tp2 <:< tp1) -- these cases were handled before
    */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
-    case tp1 @ AppliedType(tycon1, args1) =>
-      tp2 match {
-        case AppliedType(tycon2, args2)
-        if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
-          val jointArgs = glbArgs(args1, args2, tycon1.typeParams)
-          if (jointArgs.forall(_.exists)) (tycon1 & tycon2).appliedTo(jointArgs)
-          else NoType
-        case _ =>
-          NoType
-      }
     case tp1: RefinedType =>
       // opportunistically merge same-named refinements
       // this does not change anything semantically (i.e. merging or not merging
