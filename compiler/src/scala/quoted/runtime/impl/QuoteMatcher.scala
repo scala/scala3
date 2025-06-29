@@ -448,7 +448,7 @@ class QuoteMatcher(debug: Boolean) {
                   def matchErasedParams(sctype: Type, pttype: Type): optional[MatchingExprs] =
                     (sctype, pttype) match
                       case (sctpe: MethodType, pttpe: MethodType) =>
-                        if sctpe.erasedParams.sameElements(pttpe.erasedParams) then
+                        if sctpe.paramErasureStatuses.sameElements(pttpe.paramErasureStatuses) then
                           matchErasedParams(sctpe.resType, pttpe.resType)
                         else
                           notMatched

@@ -11,8 +11,8 @@ object Test {
     )(foo)
   }
 
-  def foo = {
-    println("foo")
+  inline def foo = {
+    //println("foo")
     42
   }
 }

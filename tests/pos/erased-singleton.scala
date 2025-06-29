@@ -5,5 +5,5 @@ trait Sys
 trait Obj {
   erased val s: Sys
 
-  type S = s.type  // error: non final
+  type S = s.type  // now OK, was error: non final
 }

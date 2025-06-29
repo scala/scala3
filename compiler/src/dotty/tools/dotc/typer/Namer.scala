@@ -1325,6 +1325,7 @@ class Namer { typer: Typer =>
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if sym.is(Erased) then mbrFlags |= Inline
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1906,6 +1907,11 @@ class Namer { typer: Typer =>
         case _ =>
 
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    // Add an erased to the using clause generated from a `: Singleton` context bound
+    mdef.tpt match
+      case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
+        sym.setFlag(Erased)
+      case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe

@@ -110,6 +110,13 @@ object internal:
    */
   final class inferredDepFun extends annotation.StaticAnnotation
 
+  /** An erasedValue issued internally by the compiler. Unlike the
+   *  user-accessible compiletime.erasedValue, this version is assumed
+   *  to be a pure expression, hence capability safe. The compiler generates this
+   *  version only where it is known that a value can be generated.
+   */
+  def erasedValue[T]: T = ???
+
 end internal
 
 @experimental
@@ -134,5 +141,12 @@ object unsafe:
   /** A wrapper around code for which separation checks are suppressed.
    */
   def unsafeAssumeSeparate(op: Any): op.type = op
+
+  /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the
+   *  user-accessible compiletime.erasedValue, this version is assumed
+   *  to be a pure expression, hence capability safe. But there is no proof
+   *  of realizability, hence it is unsafe.
+   */
+  def unsafeErasedValue[T]: T = ???
 
 end unsafe
