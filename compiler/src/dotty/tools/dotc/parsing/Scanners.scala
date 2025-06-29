@@ -1236,8 +1236,6 @@ object Scanners {
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && !lookahead.isColon
 
-    def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
-
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3
 

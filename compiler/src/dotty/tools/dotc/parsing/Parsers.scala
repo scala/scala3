@@ -214,9 +214,8 @@ object Parsers {
     def isIdent(name: Name) = in.isIdent(name)
     def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
-    def isErased = isIdent(nme.erased) && in.erasedEnabled
-    // Are we seeing an `erased` soft keyword that will not be an identifier?
-    def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
+    def isErased =
+      isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -1724,8 +1723,8 @@ object Parsers {
         else
           val paramStart = in.offset
           def addErased() =
-            erasedArgs.addOne(isErasedKw)
-            if isErasedKw then in.skipToken()
+            erasedArgs.addOne(isErased)
+            if isErased then in.skipToken()
           addErased()
           val args =
             in.currentRegion.withCommasExpected:
@@ -2624,7 +2623,7 @@ object Parsers {
      */
     def binding(mods: Modifiers): Tree =
       atSpan(in.offset) {
-        val mods1 = if isErasedKw then addModifier(mods) else mods
+        val mods1 = if isErased then addModifier(mods) else mods
         makeParameter(bindingName(), typedOpt(), mods1)
       }
 
@@ -2827,7 +2826,7 @@ object Parsers {
       else in.currentRegion.withCommasExpected {
         var isFormalParams = false
         def exprOrBinding() =
-          if isErasedKw then isFormalParams = true
+          if isErased then isFormalParams = true
           if isFormalParams then binding(Modifiers())
           else
             val t = maybeNamed(exprInParens)()
@@ -3578,7 +3577,7 @@ object Parsers {
       def param(): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
-        if isErasedKw then
+        if isErased then
           mods = addModifier(mods)
         if paramOwner.isClass then
           mods = addFlag(modifiers(start = mods), ParamAccessor)
