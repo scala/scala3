@@ -1326,6 +1326,7 @@ class Namer { typer: Typer =>
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if sym.is(Erased) then mbrFlags |= Inline
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)

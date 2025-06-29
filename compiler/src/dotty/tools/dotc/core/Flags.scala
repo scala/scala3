@@ -540,7 +540,7 @@ object Flags {
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in term export forwarders */
-  val RetainedExportTermFlags = Infix | Given | Implicit | Inline | Transparent | Erased | HasDefaultParams | NoDefaultParams | ExtensionMethod
+  val RetainedExportTermFlags = Infix | Given | Implicit | Inline | Transparent | HasDefaultParams | NoDefaultParams | ExtensionMethod
 
   /** Flags retained in parameters of term export forwarders */
   val RetainedExportTermParamFlags = Given | Implicit | Erased | HasDefault | Inline
