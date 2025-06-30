@@ -297,4 +297,30 @@ class SingletonCompletionsSuite extends BaseCompletionSuite {
       """|"foo": "foo"
          |""".stripMargin
     )
+
+  @Test def `type-apply` =
+    check(
+      """|class Consumer[A]:
+         |  def eat(a: A) = ()
+         |
+         |def test =
+         |  Consumer[7].eat(@@)
+         |""".stripMargin,
+      "7: 7",
+      topLines = Some(1)
+    )
+
+  @Test def `type-apply-2` =
+    check(
+      """|class Consumer[A]:
+         |  def eat(a: A) = ()
+         |
+         |object Consumer7 extends Consumer[7]
+         |
+         |def test =
+         |  Consumer7.eat(@@)
+         |""".stripMargin,
+        "7: 7",
+        topLines = Some(1)
+      )
 }
