@@ -46,7 +46,7 @@ object Instances extends Common:
       case (_, Nil) => +1
       case (x :: xs1, y :: ys1) =>
         val fst = x.compareTo(y)
-        if (fst != 0) fst else xs1.compareTo(ys1)
+        if fst != 0 then fst else xs1.compareTo(ys1)
   end listOrd
 
   given listMonad: List is Monad:
@@ -80,7 +80,7 @@ object Instances extends Common:
       xss.flatMap(identity)
 
   def maximum[T](xs: List[T])(using T is Ord): T =
-    xs.reduceLeft((x, y) => if (x < y) y else x)
+    xs.reduceLeft((x, y) => if x < y then y else x)
 
   def descending[T](using asc: T is Ord): T is Ord = new:
     extension (x: T) def compareTo(y: T) = asc.compareTo(y)(x)
