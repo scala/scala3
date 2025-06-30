@@ -183,7 +183,7 @@ final class InferredTypeProvider(
 
         rhs match
           case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+            if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -224,7 +224,7 @@ final class InferredTypeProvider(
           i
         rhs match
           case t: Tree[?]
-              if t.typeOpt.isErroneous && retryType && !tpt.sourcePos.span.isZeroExtent =>
+              if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
