@@ -378,9 +378,6 @@ trait TypesSupport:
       case NoPrefix() => true
       case ThisType(tp) if tp.typeSymbol == classOwner || tp.typeSymbol == elideThis.symbol => true
       case ThisType(_) if skipThisTypePrefix => true
-      // case ThisType(_) if elideThis.symbol == classOwner =>
-      //   Thread.dumpStack()
-      //   true
       case _ =>
         val flags = tr.typeSymbol.flags
         flags.is(Flags.Module) || flags.is(Flags.Package)
