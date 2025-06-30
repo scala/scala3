@@ -324,15 +324,15 @@ object Completion:
    *   8. symbol is not a constructor proxy module when in type completion mode
    *   9. have same term/type kind as name prefix given so far
    */
-  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean =
-
+  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean = try
     lazy val isEnum = sym.is(Enum) ||
       (sym.companionClass.exists && sym.companionClass.is(Enum))
 
     sym.exists &&
     !sym.isAbsent(canForce = false) &&
     !sym.isPrimaryConstructor &&
-    sym.sourceSymbol.exists &&
+      // running sourceSymbol on ExportedTerm will force a lot of computation from collectSubTrees
+    (sym.is(ExportedTerm) || sym.sourceSymbol.exists) &&
     (!sym.is(Package) || sym.is(ModuleClass)) &&
     !sym.isAllOf(Mutable | Accessor) &&
     !sym.isPackageObject &&
@@ -343,6 +343,9 @@ object Completion:
          (completionMode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
       || (completionMode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
     )
+  catch
+    case NonFatal(ex) =>
+      false
   end isValidCompletionSymbol
 
   given ScopeOrdering(using Context): Ordering[Seq[SingleDenotation]] with
