@@ -4,7 +4,7 @@
    |      Name clash between defined and inherited member:
    |      def f(x: X): Unit in trait A at line 11 and
    |      override def f(x: Conversion.into[X]): Unit in trait C at line 17
-   |      have the same type after erasure.
+   |      have the same type (x: Object): Unit after erasure.
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
@@ -14,7 +14,7 @@
    |      Name clash between inherited members:
    |      override def f(x: X): Unit in trait B at line 14 and
    |      override def f(x: Conversion.into[X]): Unit in trait C at line 17
-   |      have the same type after erasure.
+   |      have the same type (x: Object): Unit after erasure.
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
@@ -24,7 +24,7 @@
    |      Name clash between defined and inherited member:
    |      override def f(x: Conversion.into[X]): Unit in trait C at line 17 and
    |      override def f(x: X): Unit in trait E at line 22
-   |      have the same type after erasure.
+   |      have the same type (x: Object): Unit after erasure.
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.

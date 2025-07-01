@@ -1,4 +1,4 @@
--- [E120] Naming Error: tests\neg\i23402c.scala:4:5 --------------------------------------------------------------------
+-- [E120] Naming Error: tests/neg/i23402c.scala:4:5 --------------------------------------------------------------------
 4 | def apply[T](p1: String)(p2: Int): A = A(p1, p2) // error
   |     ^
   |     Conflicting definitions:

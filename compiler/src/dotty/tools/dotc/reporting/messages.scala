@@ -38,7 +38,6 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.Disambiguation
-import dotty.tools.dotc.transform.Erasure
 
 /**  Messages
   *  ========
@@ -2334,7 +2333,9 @@ class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using C
 extends NamingMsg(DoubleDefinitionID) {
   def msg(using Context) = {
     def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
-    def erasedType = if ctx.erasedTypes then i"${decl.info}" else s"${atPhase(Phases.erasurePhase) {(decl.info.show)}}"
+    def erasedType: Type =
+      if ctx.erasedTypes then decl.info
+      else TypeErasure.transformInfo(decl, decl.info)
     def details(using Context): String =
       if (decl.isRealMethod && previousDecl.isRealMethod) {
         import Signature.MatchDegree.*
