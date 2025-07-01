@@ -10,7 +10,7 @@ object Test {
     println("pacFun4")
   }
 
-  erased def inky: Int = {
+  inline def inky: Int = {
     println("inky") // in erased function
     42
   }

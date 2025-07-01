@@ -697,7 +697,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         val (names, formals0) = if tp.hasErasedParams then
           tp.paramNames
             .zip(tp.paramInfos)
-            .zip(tp.erasedParams)
+            .zip(tp.paramErasureStatuses)
             .collect{ case (param, isErased) if !isErased => param }
             .unzip
         else (tp.paramNames, tp.paramInfos)

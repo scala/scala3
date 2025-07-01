@@ -8,7 +8,7 @@ class Scanners {
 
   class Scanner {
     def foo() =
-      Conc(Run('a', 3), Run('b', 4))
+      Conc(Run('a', 3), Run('b', 4))  // warn
       new LookAheadScanner
 
     class LookAheadScanner() extends Scanner
