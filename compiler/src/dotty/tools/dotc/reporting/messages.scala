@@ -2333,7 +2333,9 @@ class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using C
 extends NamingMsg(DoubleDefinitionID) {
   def msg(using Context) = {
     def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
-    def erasedType = if ctx.erasedTypes then i" ${decl.info}" else ""
+    def erasedType: Type =
+      if ctx.erasedTypes then decl.info
+      else TypeErasure.transformInfo(decl, decl.info)
     def details(using Context): String =
       if (decl.isRealMethod && previousDecl.isRealMethod) {
         import Signature.MatchDegree.*
@@ -2361,7 +2363,7 @@ extends NamingMsg(DoubleDefinitionID) {
                     |Consider adding a @targetName annotation to one of the conflicting definitions
                     |for disambiguation."""
               else ""
-            i"have the same$nameAnd type$erasedType after erasure.$hint"
+            i"have the same$nameAnd type $erasedType after erasure.$hint"
         }
       }
       else ""
@@ -2374,7 +2376,7 @@ extends NamingMsg(DoubleDefinitionID) {
     }
     val clashDescription =
       if (decl.owner eq previousDecl.owner)
-        "Double definition"
+        "Conflicting definitions"
       else if ((decl.owner eq base) || (previousDecl eq base))
         "Name clash between defined and inherited member"
       else

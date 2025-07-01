@@ -21,3 +21,6 @@ i22357a.scala
 
 # `110 (of class java.lang.Integer)`
 context-function-syntax.scala
+
+# Failure to disambiguate overloaded reference
+i23402b.scala
