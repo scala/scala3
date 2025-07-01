@@ -2,7 +2,7 @@ import language.experimental.erasedDefinitions
 import annotation.experimental
 
 @experimental
-erased class CanThrow[-E <: Exception](val i: Int = 0)
+class CanThrow[-E <: Exception](val i: Int = 0) extends compiletime.Erased
 
 @experimental
 object Foo

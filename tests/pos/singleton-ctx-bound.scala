@@ -1,4 +1,4 @@
-//> using options -language:experimental.modularity -source future
+//> using options -language:experimental.modularity -source future -language:experimental.erasedDefinitions
 object Test:
 
   class Wrap[T](x: T)
@@ -11,7 +11,7 @@ object Test:
   val x1 = f1(1)
   val _: Wrap[1] = x1
 
-  def f2[T](x: T)(using Singleton { type Self = T}): Wrap[T] = Wrap(x)
+  def f2[T](x: T)(using erased Singleton { type Self = T}): Wrap[T] = Wrap(x)
   val x2 = f2(1)
   val _: Wrap[1] = x2
 
@@ -19,7 +19,7 @@ object Test:
   val x3 = f3(1)
   val _: Wrap[1] = x3
 
-  def f4[T](x: T)(using T is Singleton): Wrap[T] = Wrap(x)
+  def f4[T](x: T)(using erased T is Singleton): Wrap[T] = Wrap(x)
   val x4 = f4(1)
   val _: Wrap[1] = x4
 
@@ -33,7 +33,7 @@ object Test:
   val y1 = C1("hi")
   val _: "hi" = y1.fld
 
-  class C2[T](x: T)(using T is Singleton):
+  class C2[T](x: T)(using erased T is Singleton):
     def fld: T = x
   val y2 = C2("hi")
   val _: "hi" = y2.fld

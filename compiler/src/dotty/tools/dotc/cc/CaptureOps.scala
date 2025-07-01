@@ -495,15 +495,13 @@ extension (sym: Symbol)
 
   /** Does this symbol allow results carrying the universal capability?
    *  Currently this is true only for function type applies (since their
-   *  results are unboxed) and `erasedValue` since this function is magic in
-   *  that is allows to conjure global capabilies from nothing (aside: can we find a
-   *  more controlled way to achieve this?).
+   *  results are unboxed) and `caps.{$internal,unsafe}.erasedValue` since
+   *  these function are magic in that they allow to conjure global capabilies from nothing.
    *  But it could be generalized to other functions that so that they can take capability
    *  classes as arguments.
    */
   def allowsRootCapture(using Context): Boolean =
-    sym == defn.Compiletime_erasedValue
-    || defn.isFunctionClass(sym.maybeOwner)
+    defn.capsErasedValueMethods.contains(sym) || defn.isFunctionClass(sym.maybeOwner)
 
   /** When applying `sym`, would the result type be unboxed?
    *  This is the case if the result type contains a top-level reference to an enclosing
