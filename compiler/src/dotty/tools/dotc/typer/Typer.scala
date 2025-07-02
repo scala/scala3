@@ -1093,8 +1093,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if symbol.exists && symbol.owner == defn.ScalaPredefModuleClass && symbol.name == nme.nn then
           tree match
           case Apply(_, args) =>
-            if(args.head.tpe.isNotNull) then report.warning("Unnecessary .nn: qualifier is already not null", tree)
-            if pt.admitsNull then report.warning("Unnecessary .nn: expected type admits null", tree)
+            if(args.head.tpe.isNotNull) then report.warning(UnnecessaryNN("qualifier is already not null", args.head.sourcePos), tree)
+            if pt.admitsNull then report.warning(UnnecessaryNN("expected type admits null", args.head.sourcePos), tree)
           case _ =>
       }
     }

@@ -3549,3 +3549,38 @@ final class NamedPatternNotApplicable(selectorType: Type)(using Context) extends
     i"Named patterns cannot be used with $selectorType, because it is not a named tuple or case class"
 
   override protected def explain(using Context): String = ""
+
+/**  @param reason            The reason for the unnecessary null. The warning given to the user will be i""""Unncessary .nn: $reason"""
+   *  @param sourcePosition   The sourcePosition of the qualifier
+   */
+class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Context) extends SyntaxMsg(UnnecessaryNN) {
+  override def msg(using Context) = i"""Unnecessary .nn: $reason"""
+
+  override def explain(using Context) = {
+    val code1 = """val a: String = "foo".nn"""
+    val code2 = """val a: String = "foo""""
+    i"""With -Yexplicit-nulls, this happens when use apply .nn to a term that is already non-null.
+        |
+        |Example:
+        |
+        |$code1
+        |
+        |instead of
+        |
+        |$code2
+        |
+        |"""
+  }
+
+  private val nnSourcePosition = SourcePosition(sourcePosition.source, Span(sourcePosition.span.end, sourcePosition.span.end + 2, sourcePosition.span.end), sourcePosition.outer)
+
+  override def actions(using Context) =
+    List(
+      CodeAction(title = """Remove unnecessary .nn""",
+        description = None,
+        patches = List(
+          ActionPatch(nnSourcePosition, "")
+        )
+      )
+    )
+}
