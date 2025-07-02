@@ -3594,21 +3594,7 @@ final class NamedPatternNotApplicable(selectorType: Type)(using Context) extends
 class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Context) extends SyntaxMsg(UnnecessaryNN) {
   override def msg(using Context) = i"""Unnecessary .nn: $reason"""
 
-  override def explain(using Context) = {
-    val code1 = """val a: String = "foo".nn"""
-    val code2 = """val a: String = "foo""""
-    i"""With -Yexplicit-nulls, this happens when use apply .nn to a term that is already non-null.
-        |
-        |Example:
-        |
-        |$code1
-        |
-        |instead of
-        |
-        |$code2
-        |
-        |"""
-  }
+  override def explain(using Context) = ""
 
   private val nnSourcePosition = SourcePosition(sourcePosition.source, Span(sourcePosition.span.end, sourcePosition.span.end + 2, sourcePosition.span.end), sourcePosition.outer)
 
