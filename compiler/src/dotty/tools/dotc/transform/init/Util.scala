@@ -17,7 +17,7 @@ import Trace.*
 object Util:
   /** Exception used for errors encountered when reading TASTy. */
   case class TastyTreeException(msg: String) extends RuntimeException(msg)
-  
+
   /** Utility definition used for better error-reporting of argument errors */
   case class TraceValue[T](value: T, trace: Trace)
 
@@ -96,7 +96,7 @@ object Util:
     else sym.matchingMember(cls.appliedRef)
 
   extension (sym: Symbol)
-    def hasSource(using Context): Boolean = !sym.defTree.isEmpty
+    def hasSource(using Context): Boolean = !sym.is(Flags.JavaDefined) && !sym.defTree.isEmpty
 
     def isStaticObject(using Context) =
       sym.is(Flags.Module, butNot = Flags.Package) && sym.isStatic

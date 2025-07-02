@@ -151,12 +151,12 @@ class Objects(using Context @constructorOnly):
     def hasVar(sym: Symbol)(using Heap.MutableData): Boolean = Heap.containsVal(this, sym)
 
     def initVal(field: Symbol, value: Value)(using Context, Heap.MutableData) = log("Initialize " + field.show + " = " + value + " for " + this, printer) {
-      assert(field.is(Flags.Param) || !field.is(Flags.Mutable), "Field is mutable: " + field.show)
+      assert(!field.is(Flags.Mutable), "Field is mutable: " + field.show)
       Heap.writeJoinVal(this, field, value)
     }
 
     def initVar(field: Symbol, value: Value)(using Context, Heap.MutableData) = log("Initialize " + field.show + " = " + value + " for " + this, printer) {
-      assert(field.is(Flags.Mutable, butNot = Flags.Param), "Field is not mutable: " + field.show)
+      assert(field.is(Flags.Mutable), "Field is not mutable: " + field.show)
       Heap.writeJoinVal(this, field, value)
     }
 
@@ -421,12 +421,12 @@ class Objects(using Context @constructorOnly):
       def hasVar(sym: Symbol)(using EnvMap.EnvMapMutableData): Boolean = EnvMap.containsVal(this, sym)
 
       def initVal(field: Symbol, value: Value)(using Context, EnvMap.EnvMapMutableData) = log("Initialize " + field.show + " = " + value + " for " + this, printer) {
-        assert(field.is(Flags.Param) || !field.is(Flags.Mutable), "Field is mutable: " + field.show)
+        assert(!field.is(Flags.Mutable), "Field is mutable: " + field.show)
         EnvMap.writeJoinVal(this, field, value)
       }
 
       def initVar(field: Symbol, value: Value)(using Context, EnvMap.EnvMapMutableData) = log("Initialize " + field.show + " = " + value + " for " + this, printer) {
-        assert(field.is(Flags.Mutable, butNot = Flags.Param), "Field is not mutable: " + field.show)
+        assert(field.is(Flags.Mutable), "Field is not mutable: " + field.show)
         EnvMap.writeJoinVal(this, field, value)
       }
 
@@ -527,7 +527,7 @@ class Objects(using Context @constructorOnly):
       _of(Map.empty, byNameParam, thisV, outerEnv)
 
     def setLocalVal(x: Symbol, value: Value)(using scope: Scope, ctx: Context, heap: Heap.MutableData, envMap: EnvMap.EnvMapMutableData): Unit =
-      assert(x.is(Flags.Param) || !x.is(Flags.Mutable), "Only local immutable variable allowed")
+      assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
       scope match
       case env: EnvRef =>
         env.initVal(x, value)
@@ -1806,6 +1806,7 @@ class Objects(using Context @constructorOnly):
             val toSeqResTp = resultTp.memberInfo(selectors.last).finalResultType
             evalSeqPatterns(toSeqRes, toSeqResTp, elemTp, seqPats)
           end if
+          // TODO: refactor the code of product sequence match, avoid passing NoType to parameter elemTp in evalSeqPatterns
 
         else
           // distribute unapply to patterns
