@@ -738,10 +738,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
     // to the Tuple class of the right arity and select from that one
     def trySmallGenericTuple(qual: Tree, withCast: Boolean) =
-      if qual.tpe.isSmallGenericTuple then
+      val tp = qual.tpe.widenTermRefExpr
+      val tpNormalized = tp.normalizedTupleType
+      if tp ne tpNormalized then
         if withCast then
-          val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
-          typedSelectWithAdapt(tree, pt, qual.cast(defn.tupleType(elems)))
+          typedSelectWithAdapt(tree, pt, qual.cast(tpNormalized))
         else
           typedSelectWithAdapt(tree, pt, qual)
       else EmptyTree
