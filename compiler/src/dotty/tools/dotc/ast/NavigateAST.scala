@@ -141,7 +141,9 @@ object NavigateAST {
           case _ =>
         val iterator = p match
           case defdef: DefTree[?] =>
-            p.productIterator ++ defdef.mods.productIterator
+            val mods = defdef.mods
+            val annotations = defdef.symbol.annotations.filter(_.tree.span.contains(span)).map(_.tree)
+            p.productIterator ++ annotations ++ mods.productIterator
           case _ =>
             p.productIterator
         childPath(iterator, p :: path)
