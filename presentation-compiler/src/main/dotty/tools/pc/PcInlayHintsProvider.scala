@@ -434,7 +434,7 @@ object Parameters:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[(Boolean, List[(Name, SourcePosition, Boolean)])] = 
     def shouldSkipFun(fun: Tree)(using Context): Boolean = 
       fun match
-        case sel: Select => isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply
+        case sel: Select => isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply || sel.symbol.is(Flags.JavaDefined)
         case _ => false
 
     def isInfixFun(fun: Tree, args: List[Tree])(using Context): Boolean = 
