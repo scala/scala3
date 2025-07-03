@@ -47,6 +47,7 @@ import dotty.tools.dotc.qualified_types.ENode.Op
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
 import dotty.tools.dotc.util.Spans.Span
+import scala.collection.mutable.ListBuffer
 
 final class EGraph(rootCtx: Context):
 
@@ -72,23 +73,23 @@ final class EGraph(rootCtx: Context):
   /** Map used for hash-consing nodes, keys and values are the same */
   private val index = mutable.Map.empty[ENode, ENode]
 
-  val trueNode: ENode.Atom = ENode.Atom(ConstantType(Constant(true))(using rootCtx))
+  final val trueNode: ENode.Atom = ENode.Atom(ConstantType(Constant(true))(using rootCtx))
   index(trueNode) = trueNode
 
-  val falseNode: ENode.Atom = ENode.Atom(ConstantType(Constant(false))(using rootCtx))
+  final val falseNode: ENode.Atom = ENode.Atom(ConstantType(Constant(false))(using rootCtx))
   index(falseNode) = falseNode
 
-  val minusOneIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(-1))(using rootCtx))
+  final val minusOneIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(-1))(using rootCtx))
   index(minusOneIntNode) = minusOneIntNode
 
-  val zeroIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(0))(using rootCtx))
+  final val zeroIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(0))(using rootCtx))
   index(zeroIntNode) = zeroIntNode
 
-  val oneIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(1))(using rootCtx))
+  final val oneIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(1))(using rootCtx))
   index(oneIntNode) = oneIntNode
 
-  val d = defn(using rootCtx) // Need a stable path to match on `defn` members
-  val builtinOps = Map(
+  private val d = defn(using rootCtx) // Need a stable path to match on `defn` members
+  private val builtinOps = Map(
     d.Int_== -> Op.Equal,
     d.Boolean_== -> Op.Equal,
     d.Any_== -> Op.Equal,
@@ -137,16 +138,16 @@ final class EGraph(rootCtx: Context):
       }
     ).asInstanceOf[node.type]
 
-  def toNode(tree: Tree, paramSyms: List[Symbol] = Nil, paramNodes: List[ENode.ArgRefType] = Nil)(using
+  def toNode(tree: Tree, paramSyms: List[Symbol] = Nil, paramTps: List[ENode.ArgRefType] = Nil)(using
       Context
   ): Option[ENode] =
     trace(i"EGraph.toNode $tree", Printers.qualifiedTypes):
-      computeToNode(tree, paramSyms, paramNodes).map(node => representent(unique(node)))
+      computeToNode(tree, paramSyms, paramTps).map(node => representent(unique(node)))
 
   private def computeToNode(
       tree: Tree,
       paramSyms: List[Symbol] = Nil,
-      paramNodes: List[ENode.ArgRefType] = Nil
+      paramTps: List[ENode.ArgRefType] = Nil
   )(using currentCtx: Context): Option[ENode] =
     trace(i"ENode.computeToNode $tree", Printers.qualifiedTypes):
       def normalizeType(tp: Type): Type =
@@ -159,48 +160,45 @@ final class EGraph(rootCtx: Context):
           case tp => tp
 
       def mapType(tp: Type): Type =
-        normalizeType(tp.subst(paramSyms, paramNodes))
+        normalizeType(tp.subst(paramSyms, paramTps))
 
       tree match
         case Literal(_) | Ident(_) | This(_) if tree.tpe.isInstanceOf[SingletonType] =>
           Some(ENode.Atom(mapType(tree.tpe).asInstanceOf[SingletonType]))
         case New(clazz) =>
-          for clazzNode <- toNode(clazz, paramSyms, paramNodes) yield ENode.New(clazzNode)
+          for clazzNode <- toNode(clazz, paramSyms, paramTps) yield ENode.New(clazzNode)
         case Select(qual, name) =>
-          for qualNode <- toNode(qual, paramSyms, paramNodes) yield ENode.Select(qualNode, tree.symbol)
+          for qualNode <- toNode(qual, paramSyms, paramTps) yield ENode.Select(qualNode, tree.symbol)
         case BinaryOp(lhs, op, rhs) if builtinOps.contains(op) =>
           for
-            lhsNode <- toNode(lhs, paramSyms, paramNodes)
-            rhsNode <- toNode(rhs, paramSyms, paramNodes)
+            lhsNode <- toNode(lhs, paramSyms, paramTps)
+            rhsNode <- toNode(rhs, paramSyms, paramTps)
           yield normalizeOp(builtinOps(op), List(lhsNode, rhsNode))
         case BinaryOp(lhs, d.Int_-, rhs) if lhs.tpe.isInstanceOf[ValueType] && rhs.tpe.isInstanceOf[ValueType] =>
           for
-            lhsNode <- toNode(lhs, paramSyms, paramNodes)
-            rhsNode <- toNode(rhs, paramSyms, paramNodes)
+            lhsNode <- toNode(lhs, paramSyms, paramTps)
+            rhsNode <- toNode(rhs, paramSyms, paramTps)
           yield normalizeOp(Op.IntSum, List(lhsNode, normalizeOp(Op.IntProduct, List(minusOneIntNode, rhsNode))))
         case Apply(fun, args) =>
           for
-            funNode <- toNode(fun, paramSyms, paramNodes)
-            argsNodes <- args.map(toNode(_, paramSyms, paramNodes)).sequence
+            funNode <- toNode(fun, paramSyms, paramTps)
+            argsNodes <- args.map(toNode(_, paramSyms, paramTps)).sequence
           yield ENode.Apply(funNode, argsNodes)
         case TypeApply(fun, args) =>
-          for funNode <- toNode(fun, paramSyms, paramNodes)
+          for funNode <- toNode(fun, paramSyms, paramTps)
           yield ENode.TypeApply(funNode, args.map(tp => mapType(tp.tpe)))
         case closureDef(defDef) =>
           defDef.symbol.info.dealias match
             case mt: MethodType =>
               assert(defDef.termParamss.size == 1, "closures have a single parameter list, right?")
-              val params = defDef.termParamss.head
-              val myParamSyms = params.map(_.symbol)
-
-              val myParamTps: ArrayBuffer[Type] = ArrayBuffer.empty
-              ???
-
-              val myRetTp = ???
-
-              val myParamNodes = myParamTps.zipWithIndex.map((tp, i) => ENode.ArgRefType(i, tp)).toList
-
-              for body <- toNode(defDef.rhs, myParamSyms ::: paramSyms, myParamNodes ::: paramNodes)
+              val myParamSyms: List[Symbol] = defDef.termParamss.head.map(_.symbol)
+              val myParamTps: ListBuffer[ENode.ArgRefType] =  ListBuffer.empty
+              val paramTpsSize = paramTps.size
+              for myParamSym <- myParamSyms do
+                val underlying = mapType(myParamSym.info.subst(myParamSyms.take(myParamTps.size), myParamTps.toList))
+                myParamTps += ENode.ArgRefType(paramTpsSize + myParamTps.size, underlying)
+              val myRetTp = mapType(defDef.tpt.tpe.subst(myParamSyms, myParamTps.toList))
+              for body <- toNode(defDef.rhs, myParamSyms ::: paramSyms, myParamTps.toList ::: paramTps)
               yield ENode.Lambda(myParamTps.toList, myRetTp, body)
             case _ => None
         case _ =>
@@ -222,7 +220,6 @@ final class EGraph(rootCtx: Context):
         case ENode.TypeApply(fn, args) =>
           ENode.TypeApply(representent(fn), args)
         case ENode.Lambda(paramTps, retTp, body) =>
-
           ENode.Lambda(paramTps, retTp, representent(body))
     ))
 
@@ -230,7 +227,8 @@ final class EGraph(rootCtx: Context):
     op match
       case Op.Equal =>
         assert(args.size == 2, s"Expected 2 arguments for equality, got $args")
-        if args(0) eq args(1) then trueNode
+        if args(0) eq args(1) then
+          trueNode
         else ENode.OpApply(op, args.sortBy(_.hashCode()))
       case Op.And =>
         assert(args.size == 2, s"Expected 2 arguments for conjunction, got $args")
