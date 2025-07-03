@@ -53,10 +53,10 @@ class QualifierSolver(using Context):
       case _ => ()
 
     val egraph = EGraph(ctx)
-    //println(s"tree implies $tree1 -> $tree2")
+    // println(s"tree implies $tree1 -> $tree2")
     (egraph.toNode(QualifierEvaluator.evaluate(tree1)), egraph.toNode(QualifierEvaluator.evaluate(tree2))) match
       case (Some(node1), Some(node2)) =>
-        //println(s"node implies $node1 -> $node2")
+        // println(s"node implies $node1 -> $node2")
         egraph.merge(node1, egraph.trueNode)
         egraph.repair()
         egraph.equiv(node2, egraph.trueNode)
