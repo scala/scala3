@@ -8,6 +8,8 @@
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E120] Naming Error: tests/neg/into-override.scala:19:6 -------------------------------------------------------------
 19 |class D[X] extends B[X], C[X] // error
    |      ^
@@ -18,6 +20,8 @@
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E120] Naming Error: tests/neg/into-override.scala:21:6 -------------------------------------------------------------
 21 |trait E[X] extends C[X]: // error
    |      ^
@@ -28,3 +32,5 @@
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
