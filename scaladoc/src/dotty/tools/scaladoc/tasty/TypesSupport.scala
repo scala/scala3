@@ -116,7 +116,34 @@ trait TypesSupport:
         inner(tpe, skipThisTypePrefix) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, skipThisTypePrefix) :+ plain("*")
-      case AnnotatedType(tpe, _) =>
+      case tp @ AnnotatedType(tpe, annotTerm) =>
+        val retainsSym = Symbol.requiredClass("_root_.scala.annotation.retains")
+        val retainsCapSym = Symbol.requiredClass("_root_.scala.annotation.retainsCap")
+        val retainsByNameSym = Symbol.requiredClass("_root_.scala.annotation.retainsByName")
+        val retainsSym2 = Symbol.requiredClass("scala.annotation.retains")
+        val retainsCapSym2 = Symbol.requiredClass("scala.annotation.retainsCap")
+        val retainsByNameSym2 = Symbol.requiredClass("scala.annotation.retainsByName")
+        val sym = annotTerm.tpe match
+          case AppliedType(base, _) => base.typeSymbol
+          case other                => other.typeSymbol
+        if sym.name.contains("retains") then
+          println("Annot: " + sym)
+          println("name: " + sym.fullName)
+          println("id: " + System.identityHashCode(sym))
+          println("isClassDef: " + sym.isClassDef)
+          println("isRetains: " + sym == retainsSym)
+          println("isRetainsCap: " + sym == retainsCapSym)
+          println("isRetainsByName: " + sym == retainsByNameSym)
+          println("isRetains2: " + sym == retainsSym2)
+          println("isRetainsCap2: " + sym == retainsCapSym2)
+          println("isRetainsByName2: " + sym == retainsByNameSym2)
+          println("retainsSym " + retainsSym)
+          println("retainsSym2 " + retainsSym2)
+          println("retainsSym.isClassDef " + retainsSym.isClassDef)
+          println("retainsSym2.isClassDef " + retainsSym2.isClassDef)
+          println("retainsSym.id " + System.identityHashCode(retainsSym))
+          println("retainsSym2.id " + System.identityHashCode(retainsSym2))
+          println()
         inner(tpe, skipThisTypePrefix)
       case tl @ TypeLambda(params, paramBounds, AppliedType(tpe, args))
         if paramBounds.forall { case TypeBounds(low, hi) => low.typeSymbol == defn.NothingClass && hi.typeSymbol == defn.AnyClass }
