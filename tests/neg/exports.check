@@ -22,6 +22,8 @@
    |
    |                                 Consider adding a @targetName annotation to one of the conflicting definitions
    |                                 for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E120] Naming Error: tests/neg/exports.scala:24:20 ------------------------------------------------------------------
 24 |    export scanUnit._               // error: double definition
    |                    ^
@@ -32,6 +34,8 @@
    |
    |                    Consider adding a @targetName annotation to one of the conflicting definitions
    |                    for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E120] Naming Error: tests/neg/exports.scala:26:21 ------------------------------------------------------------------
 26 |    export printUnit.status         // error: double definition
    |                     ^
@@ -42,6 +46,8 @@
    |
    |                     Consider adding a @targetName annotation to one of the conflicting definitions
    |                     for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/exports.scala:35:24 --------------------------------------------------------------------------------
 35 |    export this.{concat => ++}   // error: no eligible member
    |                 ^^^^^^^^^^^^
@@ -58,6 +64,8 @@
    |               Conflicting definitions:
    |               val bar: Bar in class Baz at line 45 and
    |               final def bar: (Baz.this.bar.bar : => (Baz.this.bar.baz.bar : Bar)) in class Baz at line 46
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E083] Type Error: tests/neg/exports.scala:57:11 --------------------------------------------------------------------
 57 |    export printer.*  // error: not stable
    |           ^^^^^^^
