@@ -2,6 +2,7 @@ package dotty.tools.dotc.qualified_types
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ListBuffer
 
 import dotty.tools.dotc.ast.tpd.{
   closureDef,
@@ -25,13 +26,16 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Contexts.ctx
 import dotty.tools.dotc.core.Decorators.i
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Hashable.Binders
 import dotty.tools.dotc.core.Names.Designator
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.{
+  AppliedType,
   CachedProxyType,
   ConstantType,
+  LambdaType,
   MethodType,
   NamedType,
   NoPrefix,
@@ -40,6 +44,7 @@ import dotty.tools.dotc.core.Types.{
   TermParamRef,
   TermRef,
   Type,
+  TypeRef,
   TypeVar,
   ValueType
 }
@@ -47,7 +52,6 @@ import dotty.tools.dotc.qualified_types.ENode.Op
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
 import dotty.tools.dotc.util.Spans.Span
-import scala.collection.mutable.ListBuffer
 
 final class EGraph(rootCtx: Context):
 
@@ -92,7 +96,7 @@ final class EGraph(rootCtx: Context):
   private val builtinOps = Map(
     d.Int_== -> Op.Equal,
     d.Boolean_== -> Op.Equal,
-    d.Any_== -> Op.Equal,
+    d.String_== -> Op.Equal,
     d.Boolean_&& -> Op.And,
     d.Boolean_|| -> Op.Or,
     d.Boolean_! -> Op.Not,
@@ -108,9 +112,8 @@ final class EGraph(rootCtx: Context):
 
   def equiv(node1: ENode, node2: ENode)(using Context): Boolean =
     trace(i"EGraph.equiv", Printers.qualifiedTypes):
-      val margin = ctx.base.indentTab * (ctx.base.indent)
+      // val margin = ctx.base.indentTab * (ctx.base.indent)
       // println(s"$margin node1: $node1\n$margin node2: $node2")
-      // Check if the representents of both nodes are the same
       val repr1 = representent(node1)
       val repr2 = representent(node2)
       repr1 eq repr2
@@ -121,8 +124,8 @@ final class EGraph(rootCtx: Context):
         node match
           case ENode.Atom(tp) =>
             ()
-          case ENode.New(clazz) =>
-            addUse(clazz, node)
+          case ENode.Constructor(sym) =>
+            ()
           case ENode.Select(qual, member) =>
             addUse(qual, node)
           case ENode.Apply(fn, args) =>
@@ -138,6 +141,7 @@ final class EGraph(rootCtx: Context):
       }
     ).asInstanceOf[node.type]
 
+  // TODO(mbovel): Memoize this
   def toNode(tree: Tree, paramSyms: List[Symbol] = Nil, paramTps: List[ENode.ArgRefType] = Nil)(using
       Context
   ): Option[ENode] =
@@ -165,16 +169,18 @@ final class EGraph(rootCtx: Context):
       tree match
         case Literal(_) | Ident(_) | This(_) if tree.tpe.isInstanceOf[SingletonType] =>
           Some(ENode.Atom(mapType(tree.tpe).asInstanceOf[SingletonType]))
-        case New(clazz) =>
-          for clazzNode <- toNode(clazz, paramSyms, paramTps) yield ENode.New(clazzNode)
+        case Select(New(_), nme.CONSTRUCTOR) =>
+          constructorNode(tree.symbol)
+        case tree: Select if isCaseClassApply(tree.symbol) =>
+          constructorNode(tree.symbol.owner.linkedClass.primaryConstructor)
         case Select(qual, name) =>
-          for qualNode <- toNode(qual, paramSyms, paramTps) yield ENode.Select(qualNode, tree.symbol)
+          for qualNode <- toNode(qual, paramSyms, paramTps) yield normalizeSelect(qualNode, tree.symbol)
         case BinaryOp(lhs, op, rhs) if builtinOps.contains(op) =>
           for
             lhsNode <- toNode(lhs, paramSyms, paramTps)
             rhsNode <- toNode(rhs, paramSyms, paramTps)
           yield normalizeOp(builtinOps(op), List(lhsNode, rhsNode))
-        case BinaryOp(lhs, d.Int_-, rhs) if lhs.tpe.isInstanceOf[ValueType] && rhs.tpe.isInstanceOf[ValueType] =>
+        case BinaryOp(lhs, d.Int_-, rhs) =>
           for
             lhsNode <- toNode(lhs, paramSyms, paramTps)
             rhsNode <- toNode(rhs, paramSyms, paramTps)
@@ -192,7 +198,7 @@ final class EGraph(rootCtx: Context):
             case mt: MethodType =>
               assert(defDef.termParamss.size == 1, "closures have a single parameter list, right?")
               val myParamSyms: List[Symbol] = defDef.termParamss.head.map(_.symbol)
-              val myParamTps: ListBuffer[ENode.ArgRefType] =  ListBuffer.empty
+              val myParamTps: ListBuffer[ENode.ArgRefType] = ListBuffer.empty
               val paramTpsSize = paramTps.size
               for myParamSym <- myParamSyms do
                 val underlying = mapType(myParamSym.info.subst(myParamSyms.take(myParamTps.size), myParamTps.toList))
@@ -204,15 +210,38 @@ final class EGraph(rootCtx: Context):
         case _ =>
           None
 
+  // TODO(mbovel): Memoize this
+  private def constructorNode(constr: Symbol)(using Context): Option[ENode.Constructor] =
+    val clazz = constr.owner
+    if hasStructuralEquality(clazz) then
+      val isPrimaryConstructor = constr.denot.isPrimaryConstructor
+      val fieldsRaw = clazz.denot.asClass.paramAccessors.filter(isPrimaryConstructor && _.isStableMember)
+      val constrParams = constr.paramSymss.flatten.filter(_.isTerm)
+      val fields = constrParams.map(p => fieldsRaw.find(_.name == p.name).getOrElse(NoSymbol))
+      Some(ENode.Constructor(constr)(fields))
+    else
+      None
+
+  private def hasStructuralEquality(clazz: Symbol)(using Context): Boolean =
+    val equalsMethod = clazz.info.decls.lookup(nme.equals_)
+    val equalsNotOverriden = !equalsMethod.exists || equalsMethod.is(Flags.Synthetic)
+    clazz.isClass && clazz.is(Flags.Case) && equalsNotOverriden
+
+  private def isCaseClassApply(meth: Symbol)(using Context): Boolean =
+    meth.name == nme.apply
+      && meth.flags.is(Flags.Synthetic)
+      && meth.owner.linkedClass.is(Flags.Case)
+
   private def canonicalize(node: ENode): ENode =
+    // println(s"canonicalize $node")
     representent(unique(
       node match
         case ENode.Atom(tp) =>
           node
-        case ENode.New(clazz) =>
-          ENode.New(representent(clazz))
+        case ENode.Constructor(sym) =>
+          node
         case ENode.Select(qual, member) =>
-          ENode.Select(representent(qual), member)
+          normalizeSelect(representent(qual), member)
         case ENode.Apply(fn, args) =>
           ENode.Apply(representent(fn), args.map(representent))
         case ENode.OpApply(op, args) =>
@@ -222,6 +251,33 @@ final class EGraph(rootCtx: Context):
         case ENode.Lambda(paramTps, retTp, body) =>
           ENode.Lambda(paramTps, retTp, representent(body))
     ))
+
+  private def normalizeSelect(qual: ENode, member: Symbol): ENode =
+    getAppliedConstructor(qual) match
+      case Some(constr) =>
+        val memberIndex = constr.fields.indexOf(member)
+
+        if memberIndex >= 0 then
+          val args = getTermArguments(qual)
+          assert(args.size == constr.fields.size)
+          args(memberIndex)
+        else
+          ENode.Select(qual, member)
+      case None =>
+        ENode.Select(qual, member)
+
+  private def getAppliedConstructor(node: ENode): Option[ENode.Constructor] =
+    node match
+      case ENode.Apply(fn, args)     => getAppliedConstructor(fn)
+      case ENode.TypeApply(fn, args) => getAppliedConstructor(fn)
+      case node: ENode.Constructor   => Some(node)
+      case _                         => None
+
+  private def getTermArguments(node: ENode): List[ENode] =
+    node match
+      case ENode.Apply(fn, args)     => getTermArguments(fn) ::: args
+      case ENode.TypeApply(fn, args) => getTermArguments(fn)
+      case _                         => Nil
 
   private def normalizeOp(op: ENode.Op, args: List[ENode]): ENode =
     op match
@@ -316,12 +372,10 @@ final class EGraph(rootCtx: Context):
     (a, b) match
       case (ENode.Atom(_: ConstantType), _) => (a, b)
       case (_, ENode.Atom(_: ConstantType)) => (b, a)
-      case (ENode.Atom(_: SkolemType), _)   => (a, b)
-      case (_, ENode.Atom(_: SkolemType))   => (b, a)
+      case (_: ENode.Constructor, _)        => (a, b)
+      case (_, _: ENode.Constructor)        => (b, a)
       case (_: ENode.Atom, _)               => (a, b)
       case (_, _: ENode.Atom)               => (b, a)
-      case (_: ENode.New, _)                => (a, b)
-      case (_, _: ENode.New)                => (b, a)
       case (_: ENode.Select, _)             => (a, b)
       case (_, _: ENode.Select)             => (b, a)
       case (_: ENode.Apply, _)              => (a, b)
@@ -335,8 +389,6 @@ final class EGraph(rootCtx: Context):
     val bRepr = representent(b)
     if aRepr eq bRepr then return
     assert(aRepr != bRepr, s"$aRepr and $bRepr are `equals` but not `eq`")
-
-    // TODO(mbovel): if both nodes are objects, recursively merge their arguments
 
     /// Update represententOf and usedBy maps
     val (newRepr, oldRepr) = order(aRepr, bRepr)
@@ -371,8 +423,9 @@ final class EGraph(rootCtx: Context):
     node match
       case ENode.Atom(tp) =>
         singleton(tp)
-      case ENode.New(clazz) =>
-        New(toTree(clazz, paramRefs))
+      case ENode.Constructor(sym) =>
+        val tycon = sym.owner.info.typeConstructor
+        New(tycon).select(TermRef(tycon, sym))
       case ENode.Select(qual, member) =>
         toTree(qual, paramRefs).select(member)
       case ENode.Apply(fn, args) =>

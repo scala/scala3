@@ -665,6 +665,7 @@ class Definitions {
   @tu lazy val StringClass: ClassSymbol = requiredClass("java.lang.String")
   def StringType: Type = StringClass.typeRef
   @tu lazy val StringModule: Symbol = StringClass.linkedClass
+    @tu lazy val String_== : TermSymbol = enterMethod(StringClass, nme.EQ, methOfAnyRef(BooleanType), Final)
     @tu lazy val String_+ : TermSymbol = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     @tu lazy val String_valueOf_Object: Symbol = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
       case List(pt) => pt.isAny || pt.stripNull().isAnyRef
