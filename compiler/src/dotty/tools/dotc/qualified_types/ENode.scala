@@ -23,7 +23,7 @@ enum ENode:
   import ENode.*
 
   case Atom(tp: SingletonType)
-  case New(clazz: ENode)
+  case Constructor(constr: Symbol)(val fields: List[Symbol])
   case Select(qual: ENode, member: Symbol)
   case Apply(fn: ENode, args: List[ENode])
   case OpApply(fn: ENode.Op, args: List[ENode])
@@ -33,7 +33,7 @@ enum ENode:
   override def toString(): String =
     this match
       case Atom(tp)             => typeToString(tp)
-      case New(clazz)           => s"new $clazz"
+      case Constructor(constr)  => s"new ${designatorToString(constr.lastKnownDenotation.owner)}"
       case Select(qual, member) => s"$qual.${designatorToString(member)}"
       case Apply(fn, args)      => s"$fn(${args.mkString(", ")})"
       case OpApply(op, args)    => s"(${args.mkString(op.operatorString())})"

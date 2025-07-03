@@ -1,8 +1,5 @@
-
-
 def size(v: Vec): Int = ???
 type Vec
-
 
 def vec(s: Int): {v: Vec with size(v) == s} = ???
 def concat(v1: Vec, v2: Vec): {v: Vec with size(v) == size(v1) + size(v2)} = ???
