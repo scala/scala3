@@ -3596,7 +3596,7 @@ class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Contex
 
   override def explain(using Context) = ""
 
-  private val nnSourcePosition = SourcePosition(sourcePosition.source, Span(sourcePosition.span.end, sourcePosition.span.end + 2, sourcePosition.span.end), sourcePosition.outer)
+  private val nnSourcePosition = SourcePosition(sourcePosition.source, Span(sourcePosition.span.end, sourcePosition.span.end + 3, sourcePosition.span.end), sourcePosition.outer)
 
   override def actions(using Context) =
     List(
