@@ -17,6 +17,8 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.NameOps.fieldName
+import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -116,28 +118,44 @@ class PcInlayHintsProvider(
               InlayHintKind.Type,
             )
             .addDefinition(adjustedPos.start)
-      case ByNameParameters(byNameParams) =>
-        def adjustByNameParameterPos(pos: SourcePosition): SourcePosition =
-          val adjusted = adjustPos(pos)
-          val start = text.indexWhere(!_.isWhitespace, adjusted.start)
-          val end = text.lastIndexWhere(!_.isWhitespace, adjusted.end - 1)
+      case Parameters(isInfixFun, args) =>        
+        def isNamedParam(pos: SourcePosition): Boolean =
+          val start = text.indexWhere(!_.isWhitespace, pos.start)
+          val end = text.lastIndexWhere(!_.isWhitespace, pos.end - 1)
 
+          text.slice(start, end).contains('=')
+
+        def isBlockParam(pos: SourcePosition): Boolean =
+          val start = text.indexWhere(!_.isWhitespace, pos.start)
+          val end = text.lastIndexWhere(!_.isWhitespace, pos.end - 1)
           val startsWithBrace = text.lift(start).contains('{')
           val endsWithBrace = text.lift(end).contains('}')
 
-          if startsWithBrace && endsWithBrace then
-            adjusted.withStart(start + 1)
-          else
-            adjusted
+          startsWithBrace && endsWithBrace
 
-        byNameParams.foldLeft(inlayHints) {
-          case (ih, pos) => 
-            val adjusted = adjustByNameParameterPos(pos)
-            ih.add(
-              adjusted.startPos.toLsp,
-              List(LabelPart("=> ")),
-              InlayHintKind.Parameter
-            )
+        def adjustBlockParamPos(pos: SourcePosition): SourcePosition =
+            pos.withStart(pos.start + 1)
+
+
+        args.foldLeft(inlayHints) {
+          case (ih, (name, pos0, isByName)) =>
+            val pos = adjustPos(pos0)
+            val isBlock = isBlockParam(pos)
+            val namedLabel = 
+              if params.namedParameters() && !isInfixFun && !isBlock && !isNamedParam(pos) then s"${name} = " else ""
+            val byNameLabel = 
+              if params.byNameParameters() && isByName && (!isInfixFun || isBlock) then "=> " else ""
+
+            val labelStr = s"${namedLabel}${byNameLabel}"
+            val hintPos = if isBlock then adjustBlockParamPos(pos) else pos
+
+            if labelStr.nonEmpty then
+                ih.add(
+                  hintPos.startPos.toLsp,
+                  List(LabelPart(labelStr)),
+                  InlayHintKind.Parameter,
+                )
+            else ih
         }
       case _ => inlayHints
 
@@ -412,27 +430,55 @@ object InferredType:
 
 end InferredType
 
-object ByNameParameters:
-  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[List[SourcePosition]] =
-    def shouldSkipSelect(sel: Select) = 
-      isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply
+object Parameters:
+  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[(Boolean, List[(Name, SourcePosition, Boolean)])] = 
+    def shouldSkipFun(fun: Tree)(using Context): Boolean = 
+      fun match
+        case sel: Select => isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply
+        case _ => false
 
-    if (params.byNameParameters()){
+    def isInfixFun(fun: Tree, args: List[Tree])(using Context): Boolean = 
+      val isInfixSelect = fun match
+        case Select(sel, _) => sel.isInfix
+        case _ => false
+      val source = fun.source
+      if args.isEmpty then isInfixSelect
+      else 
+        (!(fun.span.end until args.head.span.start)
+        .map(source.apply)
+        .contains('.') && fun.symbol.is(Flags.ExtensionMethod)) || isInfixSelect
+
+    def isRealApply(tree: Tree) =
+      !tree.symbol.isOneOf(Flags.GivenOrImplicit) && !tree.span.isZeroExtent
+
+    def getUnderlyingFun(tree: Tree): Tree =
       tree match
-        case Apply(TypeApply(sel: Select, _), _) if shouldSkipSelect(sel) => 
-          None 
-        case Apply(sel: Select, _) if shouldSkipSelect(sel) => 
-          None
-        case Apply(fun, args) =>
-          val funTp = fun.typeOpt.widenTermRefExpr
-          val params = funTp.paramInfoss.flatten
-          Some(
-            args
-            .zip(params)
-            .collect {
-              case (tree, param) if param.isByName => tree.sourcePos
-            }
-          )
+        case Apply(fun, _) => getUnderlyingFun(fun)
+        case TypeApply(fun, _) => getUnderlyingFun(fun)
+        case t => t
+
+    if (params.namedParameters() || params.byNameParameters()) then
+      tree match
+        case Apply(fun, args) if isRealApply(fun) => 
+          val underlyingFun = getUnderlyingFun(fun)
+          if shouldSkipFun(underlyingFun) then
+            None
+          else
+            val funTp = fun.typeOpt.widenTermRefExpr
+            val paramNames = funTp.paramNamess.flatten
+            val paramInfos = funTp.paramInfoss.flatten
+            Some(
+              // Check if the function is an infix function or the underlying function is an infix function
+              isInfixFun(fun, args) || underlyingFun.isInfix,
+              (
+                args
+                .zip(paramNames)
+                .zip(paramInfos)
+                .collect {
+                  case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent => (paramName.fieldName, arg.sourcePos, paramInfo.isByName)
+                }
+              )
+            )
         case _ => None
-    } else None
-end ByNameParameters
+    else None
+end Parameters
