@@ -522,7 +522,7 @@ class Completions(
           config.isCompletionSnippetsEnabled()
         )
         (args, false)
-    val singletonCompletions = InterCompletionType.inferType(path).map(
+    val singletonCompletions = InferCompletionType.inferType(path).map(
       SingletonCompletions.contribute(path, _, completionPos)
     ).getOrElse(Nil)
     (singletonCompletions ++ advanced, exclusive)
