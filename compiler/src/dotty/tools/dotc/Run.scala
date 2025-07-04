@@ -338,7 +338,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             profiler.onPhase(phase):
               try units = phase.runOn(units)
               catch case _: InterruptedException => cancelInterrupted()
-            if (ctx.settings.Xprint.value.containsPhase(phase))
+            if (ctx.settings.Vprint.value.containsPhase(phase))
               for (unit <- units)
                 lastPrintedTree =
                   printTree(lastPrintedTree)(using ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
