@@ -107,7 +107,16 @@ trait TypesSupport:
         inParens(inner(left, skipThisTypePrefix), shouldWrapInParens(left, tp, true))
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
-      case ByNameType(tpe) => keyword("=> ") :: inner(tpe, skipThisTypePrefix)
+      case CapturingType(base, refs) =>
+        inner(base, skipThisTypePrefix) ++ renderCaptureSet(refs)
+      case ByNameType(CapturingType(tpe, refs)) =>
+        refs match
+          case Nil => keyword("-> ") :: inner(tpe, skipThisTypePrefix)
+          case List(ref) if ref.isCaptureRoot =>
+            keyword("=> ") :: inner(tpe, skipThisTypePrefix)
+          case refs =>
+            keyword("->") :: (renderCaptureSet(refs) ++ inner(tpe, skipThisTypePrefix))
+      case ByNameType(tpe) => keyword("=> ") :: inner(tpe, skipThisTypePrefix) // FIXME: does it need change for CC?
       case ConstantType(constant) =>
         plain(constant.show).l
       case ThisType(tpe) =>
@@ -118,8 +127,6 @@ trait TypesSupport:
         inner(tpe, skipThisTypePrefix) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, skipThisTypePrefix) :+ plain("*")
-      case AnnotatedType(tpe, annotTerm) if annotTerm.isRetains =>
-        inner(tpe, skipThisTypePrefix) :+ plain(" @retains") // FIXME
       case AnnotatedType(tpe, _) =>
         inner(tpe, skipThisTypePrefix)
       case tl @ TypeLambda(params, paramBounds, AppliedType(tpe, args))
