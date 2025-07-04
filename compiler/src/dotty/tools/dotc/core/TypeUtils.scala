@@ -152,6 +152,17 @@ class TypeUtils:
     def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
       namedTupleElementTypesUpTo(Int.MaxValue, derived)
 
+    /** If this is a generic tuple type with arity <= MaxTupleArity, return the
+     *  corresponding TupleN type, otherwise return this.
+     */
+    def normalizedTupleType(using Context): Type =
+      if self.isGenericTuple then
+        self.tupleElementTypes match
+          case Some(elems) if elems.size <= Definitions.MaxTupleArity => defn.tupleType(elems)
+          case _ => self
+      else
+        self
+
     def isNamedTupleType(using Context): Boolean = self match
       case defn.NamedTuple(_, _) => true
       case _ => false
