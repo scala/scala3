@@ -438,13 +438,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def makeTupleProductMirror(tps: List[Type]): TreeWithErrors =
       val arity = tps.size
-      if arity < Definitions.MaxTupleArity then
+      if arity <= Definitions.MaxTupleArity then
         val tupleCls = defn.TupleType(arity).nn.classSymbol
         makeClassProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
       else
         val elemLabels = (for i <- 1 to arity yield ConstantType(Constant(s"_$i"))).toList
         val mirrorRef: Type => Tree = _ => newTupleMirror(arity)
-        makeProductMirror(tps, elemLabels, s"Tuple$arity".toTermName, mirrorRef)
+        makeProductMirror(tps, elemLabels, tpnme.Tuple, mirrorRef)
     end makeTupleProductMirror
 
     def makeClassProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]) =
