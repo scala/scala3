@@ -196,7 +196,7 @@ class CheckRealizable(using Context) {
         }
       }
     if sourceVersion.isAtLeast(future) then
-      // check fields only from version 3.x.
+      // check fields only from version 3.future.
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.

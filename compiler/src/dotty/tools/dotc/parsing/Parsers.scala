@@ -393,10 +393,9 @@ object Parsers {
       syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(`3.0-migration`, option)}""", span)
 
     def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
-      if (in.newSyntax) {
-        if (in.rewrite) return true
-        syntaxVersionError("-new-syntax", span)
-      }
+      if in.newSyntax then
+        if in.rewrite then return true
+        syntaxVersionError("-new-syntax or -language:future", span)
       false
     }
 
@@ -2559,7 +2558,7 @@ object Parsers {
       }
     }
 
-    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]  -- Scala 2 compat
      *     `if' Expr `then' Expr [[semi] else Expr]
      */
     def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
