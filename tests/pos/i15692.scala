@@ -9,7 +9,7 @@ class Sum[M <: Nat, N <: Nat] {
 object Sum {
   type Aux[M <: Nat, N <: Nat, R <: Nat] = Sum[M, N] { type Out = R }
 
-  implicit def sum0[N <: Nat]: Sum.Aux[Zero, N, N] = new Sum[Zero, N] { type Out = N } 
+  implicit def sum0[N <: Nat]: Sum.Aux[Zero, N, N] = new Sum[Zero, N] { type Out = N }
   implicit def sum1[M <: Nat, N <: Nat, R <: Nat](implicit sum: Sum.Aux[M, Succ[N], R]): Sum.Aux[Succ[M], N, R] =
     new Sum[Succ[M], N] { type Out = R }
 }
