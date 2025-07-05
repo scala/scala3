@@ -25,8 +25,8 @@ import ValueClasses.*
  *  This is necessary since private methods are not allowed to have the same name
  *  as inherited public ones.
  *
- * Also, make non-private any private constructor that is annotated with `@publicInBinary`.
- * (See SIP-52)
+ *  Also, make non-private any private constructor that is annotated with `@publicInBinary`.
+ *  (See SIP-52)
  *
  *  See discussion in https://github.com/scala/scala3/pull/784
  *  and https://github.com/scala/scala3/issues/783
