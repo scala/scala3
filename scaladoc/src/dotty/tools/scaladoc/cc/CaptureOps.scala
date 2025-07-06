@@ -49,6 +49,9 @@ object CaptureDefs:
   def Function1(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.Function1")
 
+  def ContextFunction1(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.ContextFunction1")
+
   val ccImportSelector = "captureChecking"
 end CaptureDefs
 
@@ -65,14 +68,26 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
     ann == CaptureDefs.ReachCapabilityAnnot
 end extension
 
-extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr)
+extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and have versions on Symbol for those
   def isCaptureRoot: Boolean = tpe.termSymbol == CaptureDefs.captureRoot
 
-  def isImpureFunction1: Boolean = tpe.derivesFrom(CaptureDefs.ImpureFunction1)
+  // NOTE: There's something horribly broken with Symbols, and we can't rely on tests like .isContextFunctionType either,
+  // so we do these lame string comparisons instead.
+  def isImpureFunction1: Boolean = tpe.typeSymbol.fullName == "scala.ImpureFunction1"
 
-  def isImpureContextFunction1: Boolean = tpe.derivesFrom(CaptureDefs.ImpureContextFunction1)
+  def isImpureContextFunction1: Boolean = tpe.typeSymbol.fullName == "scala.ImpureContextFunction1"
 
-  def isFunction1: Boolean = tpe.derivesFrom(CaptureDefs.Function1)
+  def isFunction1: Boolean = tpe.typeSymbol.fullName == "scala.Function1"
+
+  def isContextFunction1: Boolean = tpe.typeSymbol.fullName == "scala.ContextFunction1"
+
+  def isAnyImpureFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.ImpureFunction")
+
+  def isAnyImpureContextFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.ImpureContextFunction")
+
+  def isAnyFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.Function")
+
+  def isAnyContextFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.ContextFunction")
 end extension
 
 /** Matches `import scala.language.experimental.captureChecking` */

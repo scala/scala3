@@ -124,9 +124,9 @@ trait TypesSupport:
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
       case ByNameType(CapturingType(tpe, refs)) =>
-        renderFunctionArrow(using q)(refs, FunKind(true, false), skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
+        renderByNameArrow(using q)(Some(refs), skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ByNameType(tpe) =>
-        (if ccEnabled then keyword("-> ") else keyword("=> ")):: inner(tpe, skipThisTypePrefix)
+        renderByNameArrow(using q)(None, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ConstantType(constant) =>
         plain(constant.show).l
       case ThisType(tpe) =>
@@ -139,7 +139,7 @@ trait TypesSupport:
         inner(tpe, skipThisTypePrefix) :+ plain("*")
       case CapturingType(base, refs) => base match
         case t @ AppliedType(base, args) if t.isFunctionType =>
-          functionType(t, base, args, skipThisTypePrefix)(using inCC = Some(refs))
+          functionType(base, args, skipThisTypePrefix)(using inCC = Some(refs))
         case _ => inner(base, skipThisTypePrefix) ++ renderCapturing(refs, skipThisTypePrefix)
       case AnnotatedType(tpe, _) =>
         inner(tpe, skipThisTypePrefix)
@@ -258,7 +258,7 @@ trait TypesSupport:
         ++ inParens(inner(rhs, skipThisTypePrefix), shouldWrapInParens(rhs, t, false))
 
       case t @ AppliedType(tpe, args) if t.isFunctionType =>
-        functionType(t, tpe, args, skipThisTypePrefix)
+        functionType(tpe, args, skipThisTypePrefix)
 
       case t @ AppliedType(tpe, typeList) =>
         inner(tpe, skipThisTypePrefix) ++ plain("[").l ++ commas(typeList.map { t => t match
@@ -346,19 +346,14 @@ trait TypesSupport:
           s"${tpe.show(using Printer.TypeReprStructure)}"
         throw MatchError(msg)
 
-  private def functionType(using q: Quotes)(t: reflect.TypeRepr, tpe: reflect.TypeRepr, args: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using
+  private def functionType(using q: Quotes)(funTy: reflect.TypeRepr, args: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using
     elideThis: reflect.ClassDef,
     indent: Int,
     originalOwner: reflect.Symbol,
     inCC: Option[List[reflect.TypeRepr]],
   ): SSignature =
     import reflect._
-    val refs = if !inCC.isDefined && t.isContextFunctionType then
-      // This'll ensure that an impure context function type is rendered correctly
-      Some(List(CaptureDefs.captureRoot.termRef))
-    else
-      inCC
-    val arrow = plain(" ") :: (renderFunctionArrow(using q)(refs, FunKind(isPure = t.isFunction1, isImplicit = t.isContextFunctionType), skipThisTypePrefix) ++ plain(" ").l)
+    val arrow = plain(" ") :: (renderFunctionArrow(using q)(funTy, inCC, skipThisTypePrefix) ++ plain(" ").l)
     given Option[List[TypeRepr]] = None // FIXME: this is ugly
     args match
       case Nil => Nil
@@ -507,27 +502,33 @@ trait TypesSupport:
     import reflect._
     Keyword("^") :: renderCaptureSet(refs, skipThisTypePrefix)
 
-  private def renderFunctionArrow(using q: Quotes)(refs: List[reflect.TypeRepr], fun: FunKind, skipThisTypePrefix: Boolean)(
+  private def renderFunctionArrow(using q: Quotes)(funTy: reflect.TypeRepr, captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
   ): SSignature =
     import reflect._
-    val prefix = if fun.isImplicit then "?" else ""
+    val isContextFun = funTy.isAnyContextFunction || funTy.isAnyImpureContextFunction
+    val prefix = if isContextFun then "?" else ""
     if !ccEnabled then
       List(Keyword(prefix + "=>"))
     else
-      refs match
-        case Nil => if fun.isPure then List(Keyword(prefix + "->")) else List(Keyword(prefix + "=>"))
-        case List(ref) if ref.isCaptureRoot => List(Keyword(prefix + "=>"))
-        case refs => Keyword(prefix + "->") :: renderCaptureSet(using q)(refs, skipThisTypePrefix)
+      val isPureFun = funTy.isAnyFunction || funTy.isAnyContextFunction
+      val isImpureFun = funTy.isAnyImpureFunction || funTy.isAnyImpureContextFunction
+      captures match
+        case None => // means an explicit retains* annotation is missing
+          if isPureFun then
+            List(Keyword(prefix + "->"))
+          else if isImpureFun then
+            List(Keyword(prefix + "=>"))
+          else
+            report.error(s"Cannot render function arrow: expected a (Context)Function* or Impure(Context)Function*, but got: ${funTy.show}")
+            Nil
+        case Some(refs) => // there is some capture set
+          refs match
+            case Nil => List(Keyword(prefix + "->"))
+            case List(ref) if ref.isCaptureRoot => List(Keyword(prefix + "=>"))
+            case refs => Keyword(prefix + "->") :: renderCaptureSet(using q)(refs, skipThisTypePrefix)
 
-  private def renderFunctionArrow(using q: Quotes)(refs: Option[List[reflect.TypeRepr]], fun: FunKind, skipThisTypePrefix: Boolean)(
+  private def renderByNameArrow(using q: Quotes)(captures: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
   ): SSignature =
-    import reflect._
-    val prefix = if fun.isImplicit then "?" else ""
-    if !ccEnabled then
-      List(Keyword(prefix + "=>"))
-    else
-      refs match
-        case None => if fun.isPure then List(Keyword(prefix + "->")) else List(Keyword(prefix + "=>"))
-        case Some(refs) => renderFunctionArrow(using q)(refs, fun, skipThisTypePrefix)
+    renderFunctionArrow(using q)(CaptureDefs.Function1.typeRef, captures, skipThisTypePrefix)

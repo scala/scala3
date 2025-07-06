@@ -1,7 +1,6 @@
 package dummy
 
 import language.experimental.captureChecking
-import language.experimental.pureFunctions
 import caps.*
 
 trait Nested:
@@ -18,6 +17,15 @@ trait Arrows:
   val impurev: Int => Int
   val impurev2: Int ->{a,b,c} Int
   val impurev3: Int ->{a,b,c} Int => Int
+  val impureCap: Int ->{cap} Int
+  val impureCap2: Int ->{cap, a, b, c} Int
+  val contextPureV: Int ?-> Int
+  val contextPureV2: Int ?->{} Int
+  val contextImpureV: Int ?=> Int
+  val contextImpureV2: Int ?->{a,b,c} Int
+  val contextImpureV3: Int ?->{a,b,c} Int ?=> Int
+  val contextImpureCap: Int ?->{cap} Int
+  val contextImpureCap2: Int ?->{cap, a, b, c} Int
 
   def pure(f: Int -> Int): Int
   def pure2(f: Int ->{} Int): Int
@@ -46,7 +54,7 @@ trait Arrows:
   def pathDependent2(n: Nested^)(g: AnyRef^{n.next.c} => Any): Any
   def pathDependent3(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): Any
   def pathDependent4(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c}
-  def pathDependent5(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c*, n.c}
+  def pathDependent5(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c*, n.c, cap}
 
   def contextPure(f: AnyRef^{a} ?-> Int): Int
   def contextImpure(f: AnyRef^{a} ?=> Int): Int
