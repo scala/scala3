@@ -1173,37 +1173,10 @@ class Objects(using Context @constructorOnly):
 
     case v @ SafeValue(_) =>
       if v.typeSymbol != defn.NullClass then
-        // call on Null is sensible on AST level but not in practice
+        // selection on Null is sensible on AST level but not in practice
         report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
       end if
       Bottom
-    // case v @ SafeValue(_) =>
-    //   if v.typeSymbol == defn.NullClass then
-    //     // call on Null is sensible on AST level but not in practice
-    //     Bottom
-    //   else if field.is(Flags.Method) then
-    //     // Assume such method is pure. Check return type, only try to analyze body if return type is not safe
-    //     val target = resolve(v.typeSymbol.asClass, field)
-    //     val targetInfo = target.info
-
-    //     val returnType = targetInfo match {
-    //       case tpe: MethodicType => tpe.resType
-    //       case _ =>
-    //         report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + " with type " + targetInfo.show + ". " + Trace.show, Trace.position)
-    //         Bottom
-    //     }
-
-    //     val typeSymbol = SafeValue.getSafeTypeSymbol(returnType)
-    //     if typeSymbol.isDefined then
-    //       // since method is pure and return type is safe, no need to analyze method body
-    //       SafeValue(typeSymbol.get)
-    //     else if !target.hasSource then
-    //       UnknownValue
-    //     else
-    //       call(v, target, args = Nil, receiver = receiver, superType = NoType, needResolve = false)
-    //   else
-    //     report.warning("[Internal error] Unexpected selection of a non-method on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
-    //     Bottom
 
     case Package(packageModuleClass) =>
       if field.isStaticObject then
