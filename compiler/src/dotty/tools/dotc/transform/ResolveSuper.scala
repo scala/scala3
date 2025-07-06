@@ -37,7 +37,8 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def description: String = ResolveSuper.description
 
-  override def runsAfter: Set[String] = Set(ElimByName.name) // verified empirically, need to figure out what the reason is.
+  override def runsAfter: Set[String] = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
+                               PruneErasedDefs.name) // Erased decls make `isCurrent` work incorrectly
 
   override def changesMembers: Boolean = true // the phase adds super accessors
 

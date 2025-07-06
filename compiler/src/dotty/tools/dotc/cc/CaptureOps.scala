@@ -203,6 +203,39 @@ extension (tp: Type)
     case _ =>
       tp
 
+  /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
+   *  convert it to be boxed.
+   */
+  def boxDeeply(using Context): Type =
+    def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
+      case tp @ CapturingType(parent, refs) =>
+        if tp.isBoxed || parent.derivesFrom(defn.Caps_CapSet) then tp
+        else tp.boxed
+      case tp @ AnnotatedType(parent, ann) =>
+        if ann.symbol.isRetains && !parent.derivesFrom(defn.Caps_CapSet)
+        then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
+        else tp.derivedAnnotatedType(parent.boxDeeply, ann)
+      case tp: (Capability & SingletonType) if tp.isTrackableRef && !tp.isAlwaysPure =>
+        recur(CapturingType(tp, CaptureSet(tp)))
+      case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
+        val res = args.last
+        val boxedRes = recur(res)
+        if boxedRes eq res then tp
+        else tp1.derivedAppliedType(tycon, args.init :+ boxedRes)
+      case tp1 @ defn.RefinedFunctionOf(rinfo: MethodType) =>
+        val boxedRinfo = recur(rinfo)
+        if boxedRinfo eq rinfo then tp
+        else boxedRinfo.toFunctionType(alwaysDependent = true)
+      case tp1: MethodOrPoly =>
+        val res = tp1.resType
+        val boxedRes = recur(res)
+        if boxedRes eq res then tp
+        else tp1.derivedLambdaType(resType = boxedRes)
+      case _ => tp
+    tp match
+      case tp: MethodOrPoly => tp // don't box results of methods outside refinements
+      case _ => recur(tp)
+
   /** The capture set consisting of all top-level captures of `tp` that appear under a box.
    *  Unlike for `boxed` this also considers parents of capture types, unions and
    *  intersections, and type proxies other than abstract types.
@@ -621,9 +654,12 @@ object ContainsImpl:
 object ContainsParam:
   def unapply(sym: Symbol)(using Context): Option[(TypeRef, Capability)] =
     sym.info.dealias match
-      case AppliedType(tycon, (cs: TypeRef) :: (ref: Capability) :: Nil)
+      case AppliedType(tycon, (cs: TypeRef) :: arg2 :: Nil)
       if tycon.typeSymbol == defn.Caps_ContainsTrait
-          && cs.typeSymbol.isAbstractOrParamType => Some((cs, ref))
+          && cs.typeSymbol.isAbstractOrParamType =>
+        arg2.stripCapturing match // ref.type was converted to box ref.type^{ref} by boxing
+          case ref: Capability => Some((cs, ref))
+          case _ => None
       case _ => None
 
 /** A class encapsulating the assumulator logic needed for `CaptureSet.ofTypeDeeply`

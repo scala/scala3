@@ -18,23 +18,6 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-0
-macro-late-suspend/UsesTest.scala
-example
-UsesTest$package
-Object
-example.UsesTest$package
-<init>
-22
-22
-3
-<none>
-Literal
-true
-0
-false
-
-
 1
 macro-late-suspend/VisitorMacros.scala
 example
@@ -85,4 +68,21 @@ false
 0
 false
 mkVisitorType[Test]
+
+4
+macro-late-suspend/UsesTest.scala
+example
+UsesTest$package
+Object
+example.UsesTest$package
+<init>
+22
+22
+3
+<none>
+Literal
+true
+0
+false
+
 

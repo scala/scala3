@@ -1,3 +1,8 @@
+-- Error: tests/neg/i22440.scala:3:8 -----------------------------------------------------------------------------------
+3 |def foo(implicit x: Int) = x // error
+  |        ^
+  |        `implicit` parameters are no longer supported, use a `using` clause instead
+  |        This construct can be rewritten automatically under -rewrite -source future-migration.
 -- Error: tests/neg/i22440.scala:4:12 ----------------------------------------------------------------------------------
 4 |val _ = foo(1) // error
   |            ^

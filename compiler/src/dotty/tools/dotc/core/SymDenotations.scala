@@ -2720,7 +2720,7 @@ object SymDenotations {
       || owner.isRefinementClass
       || owner.is(Scala2x)
       || owner.unforcedDecls.contains(denot.name, denot.symbol)
-      || (denot.is(Synthetic) && denot.is(ModuleClass) && stillValidInOwner(denot.companionClass))
+      || (denot.is(Synthetic) && denot.is(ModuleClass) && denot.companionClass.exists && stillValidInOwner(denot.companionClass))
       || denot.isSelfSym
       || denot.isLocalDummy)
   catch case ex: StaleSymbol => false
