@@ -550,6 +550,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       annot.putAttachment(RetainsAnnot, ())
     Annotated(parent, annot)
 
+  def makeReachAnnot()(using Context): Tree =
+    New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil)
+
+  def makeReadOnlyAnnot()(using Context): Tree =
+    New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil)
+
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
 
