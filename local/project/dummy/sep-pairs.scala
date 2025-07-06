@@ -22,6 +22,6 @@ def copyPair(@consume @use p: Pair[Ref^, Ref^]): Pair[Ref^, Ref^] =
   Pair(x, y)
 
 trait TestRd:
-  def copyPair(@use p: Pair[Ref^, Ref^]): Pair[Ref^{p.fst*}, Ref^{p.snd*}]
+  @consume def copyPair(@use p: Pair[Ref^, Ref^]): Pair[Ref^{p.fst*}, Ref^{p.snd*}]
   def rdPair(@consume p: Pair[Ref^, Ref^]): Int ->{p.fst*.rd} Int
   val rdPairV: (p: Pair[Ref^, Ref^]) => Int ->{p.fst*, p.snd*.rd} Int

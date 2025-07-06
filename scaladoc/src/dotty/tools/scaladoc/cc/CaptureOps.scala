@@ -52,6 +52,8 @@ object CaptureDefs:
   def ContextFunction1(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.ContextFunction1")
 
+  val useAnnotFullName: String = "scala.caps.use.<init>"
+  val consumeAnnotFullName: String = "scala.caps.consume.<init>"
   val ccImportSelector = "captureChecking"
 end CaptureDefs
 
