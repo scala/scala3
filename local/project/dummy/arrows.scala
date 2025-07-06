@@ -60,3 +60,17 @@ trait Arrows:
   def contextImpure(f: AnyRef^{a} ?=> Int): Int
   def contextImpure2(f: AnyRef^{a} ?->{b,c} Int): Int
   def contextImpure3(f: AnyRef^{a} ?->{b,c} Int => AnyRef^{a} ?=> Int): Int
+
+  val noParams: () -> () -> Int
+  val noParams2: () ->{} () ->{} Int
+  val noParamsImpure: () => () => Int => Unit
+
+  val uncurried: (x: AnyRef^, y: AnyRef^) -> AnyRef^{x,y} => Int ->{x,y} Int
+  val uncurried2: (x: AnyRef^, y: AnyRef^) -> AnyRef => Int ->{x,y} Int
+  val uncurried3: (x: AnyRef^, y: AnyRef^) => AnyRef
+  val uncurried4: (x: AnyRef^, y: AnyRef^) ->{a,b} AnyRef^ => Int ->{x,y} Int
+
+  val contextUncurried: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef^{x,y} ?-> Int ?->{x,y} Int
+  val contextUncurried2: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef ?-> Int ?->{x,y} Int
+  val contextUncurried3: (x: AnyRef^{a}, y: AnyRef^{b}) ?=> AnyRef
+  val contextUncurried4: (x: AnyRef^{a}, y: AnyRef^{b}) ?->{a,b} AnyRef^ ?=> Int ?->{x,y} Int
