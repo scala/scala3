@@ -1804,6 +1804,9 @@ class Objects(using Context @constructorOnly):
             val seqPats = pats.drop(selectors.length - 1)
             val toSeqRes = call(resToMatch, selectors.last, Nil, resultTp, superType = NoType, needResolve = true)
             val toSeqResTp = resultTp.memberInfo(selectors.last).finalResultType
+            elemTp = unapplySeqTypeElemTp(toSeqResTp)
+            // elemTp must conform to the signature in sequence match
+            assert(elemTp.exists, "Product sequence match fails on " + pat + " since last element type of product is " + toSeqResTp)
             evalSeqPatterns(toSeqRes, toSeqResTp, elemTp, seqPats)
           end if
           // TODO: refactor the code of product sequence match, avoid passing NoType to parameter elemTp in evalSeqPatterns
