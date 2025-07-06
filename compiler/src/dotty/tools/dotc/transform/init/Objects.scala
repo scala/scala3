@@ -1181,10 +1181,37 @@ class Objects(using Context @constructorOnly):
 
     case v @ SafeValue(_) =>
       if v.typeSymbol != defn.NullClass then
-        // selection on Null is sensible on AST level; no warning for it
+        // call on Null is sensible on AST level but not in practice
         report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
       end if
       Bottom
+    // case v @ SafeValue(_) =>
+    //   if v.typeSymbol == defn.NullClass then
+    //     // call on Null is sensible on AST level but not in practice
+    //     Bottom
+    //   else if field.is(Flags.Method) then
+    //     // Assume such method is pure. Check return type, only try to analyze body if return type is not safe
+    //     val target = resolve(v.typeSymbol.asClass, field)
+    //     val targetInfo = target.info
+
+    //     val returnType = targetInfo match {
+    //       case tpe: MethodicType => tpe.resType
+    //       case _ =>
+    //         report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + " with type " + targetInfo.show + ". " + Trace.show, Trace.position)
+    //         Bottom
+    //     }
+
+    //     val typeSymbol = SafeValue.getSafeTypeSymbol(returnType)
+    //     if typeSymbol.isDefined then
+    //       // since method is pure and return type is safe, no need to analyze method body
+    //       SafeValue(typeSymbol.get)
+    //     else if !target.hasSource then
+    //       UnknownValue
+    //     else
+    //       call(v, target, args = Nil, receiver = receiver, superType = NoType, needResolve = false)
+    //   else
+    //     report.warning("[Internal error] Unexpected selection of a non-method on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
+    //     Bottom
 
     case Package(packageModuleClass) =>
       if field.isStaticObject then
@@ -1580,7 +1607,13 @@ class Objects(using Context @constructorOnly):
             val target = expr.tpe.widenSingleton.classSymbol.asClass
             withTrace(trace2) { resolveThis(target, qual.asInstanceOf[ThisValue], klass) }
           case _ =>
-            withTrace(trace2) { select(qual, expr.symbol, receiver = qualifier.tpe) }
+            qual match {
+              // Check if expression is a selection of a method
+              case v: SafeValue if expr.symbol.is(Flags.Method) =>
+                withTrace(trace2) { call(v, expr.symbol, args = Nil, receiver = qualifier.tpe, superType = NoType) }
+              case _ =>
+                withTrace(trace2) { select(qual, expr.symbol, receiver = qualifier.tpe) }
+            }
 
       case _: This =>
         evalType(expr.tpe, thisV, klass)
