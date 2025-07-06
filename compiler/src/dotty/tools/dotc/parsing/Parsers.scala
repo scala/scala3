@@ -1591,20 +1591,20 @@ object Parsers {
      */
     def captureRef(): Tree =
 
-      def derived(ref: Tree, name: TermName) =
+      def derived(ref: Tree, ann: () => Tree) =
         in.nextToken()
-        atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
+        atSpan(startOffset(ref)) { Annotated(ref, ann()) }
 
       def recur(ref: Tree): Tree =
         if in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) then derived(ref, nme.CC_READONLY)
+          if in.isIdent(nme.rd) then derived(ref, makeReadOnlyAnnot)
           else recur(selector(ref))
         else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref, nme.CC_REACH)
+          val reachRef = derived(ref, makeReachAnnot)
           if in.token == DOT && in.lookahead.isIdent(nme.rd) then
             in.nextToken()
-            derived(reachRef, nme.CC_READONLY)
+            derived(reachRef, makeReadOnlyAnnot)
           else reachRef
         else ref
 
