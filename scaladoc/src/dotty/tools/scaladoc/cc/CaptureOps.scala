@@ -66,6 +66,9 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
 
   def isReachCapabilityAnnot: Boolean =
     ann == CaptureDefs.ReachCapabilityAnnot
+
+  def isReadOnlyCapabilityAnnot: Boolean =
+    ann == CaptureDefs.ReadOnlyCapabilityAnnot
 end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and have versions on Symbol for those
@@ -113,6 +116,15 @@ object ReachCapability:
       case _ => None
 end ReachCapability
 
+object ReadOnlyCapability:
+  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
+    import qctx.reflect._
+    ty match
+      case AnnotatedType(base, Apply(Select(New(annot), _), Nil)) if annot.symbol.isReadOnlyCapabilityAnnot =>
+        Some(base)
+      case _ => None
+end ReadOnlyCapability
+
 /** Decompose capture sets in the union-type-encoding into the sequence of atomic `TypeRepr`s.
  *  Returns `None` if the type is not a capture set.
 */
@@ -122,11 +134,12 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
   def include(t: TypeRepr): Boolean = { buffer += t; true }
   def traverse(typ: TypeRepr): Boolean =
     typ match
-      case OrType(t1, t2)         => traverse(t1) && traverse(t2)
-      case t @ ThisType(_)        => include(t)
-      case t @ TermRef(_, _)      => include(t)
-      case t @ ParamRef(_, _)     => include(t)
-      case t @ ReachCapability(_) => include(t)
+      case OrType(t1, t2)            => traverse(t1) && traverse(t2)
+      case t @ ThisType(_)           => include(t)
+      case t @ TermRef(_, _)         => include(t)
+      case t @ ParamRef(_, _)        => include(t)
+      case t @ ReachCapability(_)    => include(t)
+      case t @ ReadOnlyCapability(_) => include(t)
       case t if t.typeSymbol == defn.NothingClass => true
        // TODO: are atoms only ever the above? Then we could refine the return type
       case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false // TODO remove warning eventually

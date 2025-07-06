@@ -478,9 +478,10 @@ trait TypesSupport:
   ): SSignature =
     import reflect._
     ref match
-      case ReachCapability(c) => renderCapability(c, skipThisTypePrefix) :+ Keyword("*")
-      case ThisType(_)        => List(Keyword("this"))
-      case t                  => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
+      case ReachCapability(c)    => renderCapability(c, skipThisTypePrefix) :+ Keyword("*")
+      case ReadOnlyCapability(c) => renderCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
+      case ThisType(_)           => List(Keyword("this"))
+      case t                     => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
 
   private def renderCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
