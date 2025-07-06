@@ -527,8 +527,11 @@ trait ClassLikeSupport:
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
       case _ => symbol.getExtraModifiers()
 
-    mkMember(symbol, kind, sig)(
-      modifiers = modifiers,
+    mkMember(valDef.symbol, kind, sig)(
+      // Due to how capture checking encodes update methods (recycling the mutable flag for methods),
+      // we need to filter out the update modifier here. Otherwise, mutable fields will
+      // be documented as having the update modifier, which is not correct.
+      modifiers = modifiers.filterNot(_ == Modifier.Update),
       deprecated = symbol.isDeprecated(),
       experimental = symbol.isExperimental()
     )
