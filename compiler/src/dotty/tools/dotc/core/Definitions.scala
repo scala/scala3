@@ -1014,7 +1014,7 @@ class Definitions {
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
-    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
+    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.Sharable")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.Pure")
 

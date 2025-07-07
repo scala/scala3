@@ -37,7 +37,13 @@ trait Mutable extends Capability
   * During separation checking, shared capabilities are not taken into account.
   */
 @experimental
-trait SharedCapability extends Capability
+trait Sharable extends Capability
+
+/** Base trait for capabilities that capture some continuation or return point in
+ *  the stack. Examples are exceptions, labels, Async, CanThrow.
+ */
+@experimental
+trait Control extends Sharable
 
 /** Carrier trait for capture set type parameters */
 @experimental

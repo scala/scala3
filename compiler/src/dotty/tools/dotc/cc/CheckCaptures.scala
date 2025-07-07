@@ -1293,7 +1293,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case ExistentialSubsumesFailure(ex, other) =>
               def since =
                 if other.isTerminalCapability then ""
-                else " since that capability is not a SharedCapability"
+                else " since that capability is not a `Sharable` capability"
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
             case MutAdaptFailure(cs, lo, hi) =>
