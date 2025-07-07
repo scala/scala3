@@ -597,7 +597,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *   - If the reference is to a this type of the enclosing class, the
    *     access must be in a @consume method.
    *
-   *  References that extend SharedCapability are excluded from checking.
+   *  References that extend cpas.Sharable are excluded from checking.
    *  As a side effect, add all checked references with the given position `pos`
    *  to the global `consumed` map.
    *
