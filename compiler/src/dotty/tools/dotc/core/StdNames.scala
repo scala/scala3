@@ -568,6 +568,7 @@ object StdNames {
     val null_ : N               = "null"
     val ofDim: N                = "ofDim"
     val on: N                   = "on"
+    val only: N                 = "only"
     val opaque: N               = "opaque"
     val open: N                 = "open"
     val ordinal: N              = "ordinal"
