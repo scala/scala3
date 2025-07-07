@@ -9,6 +9,7 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.asCapability"),
 
         // Scala.js-only class
         ProblemFilters.exclude[FinalClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),

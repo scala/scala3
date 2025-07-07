@@ -1587,24 +1587,35 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` `rd`] -- under captureChecking
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
+     *  CapFilter   ::=  `.` `as` `[` QualId `]`
      */
     def captureRef(): Tree =
 
-      def derived(ref: Tree, ann: () => Tree) =
-        in.nextToken()
-        atSpan(startOffset(ref)) { Annotated(ref, ann()) }
+      def derived(ref: Tree): Tree =
+        atSpan(startOffset(ref)):
+          if in.isIdent(nme.raw.STAR) then
+            in.nextToken()
+            Annotated(ref, makeReachAnnot())
+          else if in.isIdent(nme.rd) then
+            in.nextToken()
+            Annotated(ref, makeReadOnlyAnnot())
+          else if in.isIdent(nme.only) then
+            in.nextToken()
+            Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
+          else assert(false)
 
       def recur(ref: Tree): Tree =
         if in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) then derived(ref, makeReadOnlyAnnot)
+          if in.isIdent(nme.rd) || in.isIdent(nme.only) then derived(ref)
           else recur(selector(ref))
         else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref, makeReachAnnot)
-          if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+          val reachRef = derived(ref)
+          val next = in.lookahead
+          if in.token == DOT && (next.isIdent(nme.rd) || next.isIdent(nme.only)) then
             in.nextToken()
-            derived(reachRef, makeReadOnlyAnnot)
+            derived(reachRef)
           else reachRef
         else ref
 
