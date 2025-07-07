@@ -260,5 +260,9 @@ class TypeUtils:
 
       self.decl(nme.CONSTRUCTOR).altsWith(isApplicable).map(_.symbol)
 
+    def showRef(using Context): String = self match
+      case self: SingletonType => ctx.printer.toTextRef(self).show
+      case _ => self.show
+
 end TypeUtils
 

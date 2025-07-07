@@ -558,8 +558,8 @@ object Implicits:
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
       if str1 == str2 then
-        str1 = ctx.printer.toTextRef(alt1.ref).show
-        str2 = ctx.printer.toTextRef(alt2.ref).show
+        str1 = alt1.ref.showRef
+        str2 = alt2.ref.showRef
       em"both $str1 and $str2 $qualify".withoutDisambiguation()
 
     override def toAdd(using Context) =
@@ -1728,7 +1728,7 @@ trait Implicits:
                     "argument"
 
                 def showResult(r: SearchResult) = r match
-                  case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
+                  case r: SearchSuccess => r.ref.showRef
                   case r => r.show
 
                 result match
