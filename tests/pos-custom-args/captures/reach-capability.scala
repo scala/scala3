@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 import annotation.experimental
-import caps.SharedCapability
+import caps.Sharable
 import caps.use
 
 @experimental object Test2:
@@ -8,7 +8,7 @@ import caps.use
   class List[+A]:
     def map[B](f: A => B): List[B] = ???
 
-  class Label extends SharedCapability
+  class Label extends Sharable
 
   class Listener
 

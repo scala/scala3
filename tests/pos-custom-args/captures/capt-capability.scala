@@ -1,4 +1,4 @@
-import caps.{Capability, SharedCapability}
+import caps.{Capability, Sharable}
 
 def f1(c: Capability): () ->{c} c.type = () => c // ok
 
@@ -14,7 +14,7 @@ def f3: Int =
   x
 
 def foo() =
-  val x: SharedCapability = ???
+  val x: Sharable = ???
   val y: Capability = x
   val x2: () ->{x} Capability = ???
   val y2: () ->{x} Capability = x2
