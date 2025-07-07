@@ -113,6 +113,8 @@ object CheckCaptures:
           report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
       case ReadOnlyCapability(ref) =>
         check(ref)
+      case OnlyCapability(ref, cls) =>
+        check(ref)
       case tpe =>
         report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
     ann.retainedSet.retainedElementsRaw.foreach(check)

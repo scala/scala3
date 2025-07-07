@@ -80,6 +80,8 @@ extension (tp: Type)
       tp1.toCapability.reach
     case ReadOnlyCapability(tp1) =>
       tp1.toCapability.readOnly
+    case OnlyCapability(tp1, cls) =>
+      tp1.toCapability.restrict(cls) // for now
     case ref: TermRef if ref.isCapRef =>
       GlobalCap
     case ref: Capability if ref.isTrackableRef =>
@@ -587,7 +589,6 @@ abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def unapply(tree: AnnotatedType)(using Context): Option[Type] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(annotCls) => Some(parent)
     case _ => None
-
 end AnnotatedCapability
 
 /** An extractor for `ref @readOnlyCapability`, which is used to express
@@ -604,6 +605,17 @@ object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
  *  the maybe capability `ref?` as a type.
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
+
+object OnlyCapability:
+  def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
+    AnnotatedType(tp,
+      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+
+  def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
+      Some((parent, ann.tree.tpe.argTypes.head.classSymbol.asClass))
+    case _ => None
+end OnlyCapability
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?

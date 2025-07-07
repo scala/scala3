@@ -39,8 +39,9 @@ import annotation.internal.sharable
  *               |                      +-- SetCapability -----+-- TypeRef
  *               |                                             +-- TypeParamRef
  *               |
- *               +-- DerivedCapability -+-- ReadOnly
- *                                      +-- Reach
+ *               +-- DerivedCapability -+-- Reach
+ *                                      +-- Only
+ *                                      +-- ReadOnly
  *                                      +-- Maybe
  *
  *  All CoreCapabilities are Types, or, more specifically instances of TypeProxy.
@@ -96,9 +97,18 @@ object Capabilities:
    *  but they can wrap reach capabilities. We have
    *      (x?).readOnly = (x.rd)?
    */
-  case class ReadOnly(underlying: ObjectCapability | RootCapability | Reach)
-  extends DerivedCapability:
-    assert(!underlying.isInstanceOf[Maybe])
+  case class ReadOnly(underlying: ObjectCapability | RootCapability | Reach | Restricted)
+  extends DerivedCapability
+
+  /** The restricted capability `x.only[C]`. We have {x.only[C]} <: {x}.
+   *
+   *  Restricted capabilities cannot wrap maybe capabilities or read-only capabilities
+   *  but they can wrap reach capabilities. We have
+   *      (x?).restrict[T] = (x.restrict[T])?
+   *      (x.rd).restrict[T] = (x.restrict[T]).rd
+   */
+  case class Restricted(underlying: ObjectCapability | RootCapability | Reach, cls: ClassSymbol)
+  extends DerivedCapability
 
   /** If `x` is a capability, its reach capability `x*`. `x*` stands for all
    *  capabilities reachable through `x`.
@@ -109,11 +119,11 @@ object Capabilities:
    *
    *  Reach capabilities cannot wrap read-only capabilities or maybe capabilities.
    *  We have
-   *      (x.rd).reach = x*.rd
-   *      (x.rd)?      = (x*)?
+   *      (x?).reach        = (x.reach)?
+   *      (x.rd).reach      = (x.reach).rd
+   *      (x.only[T]).reach = (x*).only[T]
    */
-  case class Reach(underlying: ObjectCapability) extends DerivedCapability:
-    assert(!underlying.isInstanceOf[Maybe | ReadOnly])
+  case class Reach(underlying: ObjectCapability) extends DerivedCapability
 
   /** The global root capability referenced as `caps.cap`
    *  `cap` does not subsume other capabilities, except in arguments of
@@ -124,6 +134,7 @@ object Capabilities:
     def descr(using Context) = "the universal root capability"
     override val maybe = Maybe(this)
     override val readOnly = ReadOnly(this)
+    override def restrict(cls: ClassSymbol)(using Context) = Restricted(this, cls)
     override def reach = unsupported("cap.reach")
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
@@ -242,7 +253,7 @@ object Capabilities:
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
    *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
    *  If there are several annotations they come with an order:
-   *  `*` first, `.rd` next, `?` last.
+   *  `*` first, `.only` next, `.rd` next, `?` last.
    */
   trait Capability extends Showable:
 
@@ -254,7 +265,15 @@ object Capabilities:
     protected def cached[C <: DerivedCapability](newRef: C): C =
       def recur(refs: List[DerivedCapability]): C = refs match
         case ref :: refs1 =>
-          if ref.getClass == newRef.getClass then ref.asInstanceOf[C] else recur(refs1)
+          val exists = ref match
+            case Restricted(_, cls) =>
+              newRef match
+                case Restricted(_, newCls) => cls == newCls
+                case _ => false
+            case _ =>
+              ref.getClass == newRef.getClass
+          if exists then ref.asInstanceOf[C]
+          else recur(refs1)
         case Nil =>
           myDerived = newRef :: myDerived
           newRef
@@ -267,11 +286,24 @@ object Capabilities:
     def readOnly: ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.readOnly)
       case self: ReadOnly => self
-      case self: (ObjectCapability | RootCapability | Reach) => cached(ReadOnly(self))
+      case self: (ObjectCapability | RootCapability | Reach | Restricted) => cached(ReadOnly(self))
 
-    def reach: Reach | ReadOnly | Maybe = this match
+    def restrict(cls: ClassSymbol)(using Context): Restricted | ReadOnly | Maybe = this match
+      case Maybe(ref1) => Maybe(ref1.restrict(cls))
+      case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[Restricted])
+      case self @ Restricted(ref1, prevCls) =>
+        val combinedCls =
+          if prevCls.isSubClass(cls) then prevCls
+          else if cls.isSubClass(prevCls) then cls
+          else defn.NothingClass
+        if combinedCls == prevCls then self
+        else cached(Restricted(ref1, combinedCls))
+      case self: (ObjectCapability | RootCapability | Reach) => cached(Restricted(self, cls))
+
+    def reach: Reach | Restricted | ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.reach)
-      case ReadOnly(ref1) => ReadOnly(ref1.reach.asInstanceOf[Reach])
+      case ReadOnly(ref1) => ReadOnly(ref1.reach.asInstanceOf[Reach | Restricted])
+      case Restricted(ref1, cls) => Restricted(ref1.reach.asInstanceOf[Reach], cls)
       case self: Reach => self
       case self: ObjectCapability => cached(Reach(self))
 
@@ -285,6 +317,12 @@ object Capabilities:
       case tp: SetCapability => tp.captureSetOfInfo.isReadOnly
       case _ => this ne stripReadOnly
 
+    final def restriction(using Context): Symbol = this match
+      case Restricted(_, cls) => cls
+      case ReadOnly(ref1) => ref1.restriction
+      case Maybe(ref1) => ref1.restriction
+      case _ => NoSymbol
+
     /** Is this a reach reference of the form `x*` or a readOnly or maybe variant
      *  of a reach reference?
      */
@@ -297,6 +335,12 @@ object Capabilities:
     final def stripReadOnly(using Context): Capability = this match
       case ReadOnly(ref1) => ref1
       case Maybe(ref1) => ref1.stripReadOnly.maybe
+      case _ => this
+
+    final def stripRestricted(using Context): Capability = this match
+      case Restricted(ref1, _) => ref1
+      case ReadOnly(ref1) => ref1.stripRestricted.readOnly
+      case Maybe(ref1) => ref1.stripRestricted.maybe
       case _ => this
 
     final def stripReach(using Context): Capability = this match

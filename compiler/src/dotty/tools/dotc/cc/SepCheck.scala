@@ -256,6 +256,7 @@ object SepCheck:
 
       def hiddenByElem(elem: Capability): Refs = elem match
         case elem: FreshCap => elem.hiddenSet.elems ++ recur(elem.hiddenSet.elems)
+        case Restricted(elem1, cls) => hiddenByElem(elem1).map(_.restrict(cls))
         case ReadOnly(elem1) => hiddenByElem(elem1).map(_.readOnly)
         case _ => emptyRefs
 
