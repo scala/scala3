@@ -74,3 +74,20 @@ trait Arrows:
   val contextUncurried2: (x: AnyRef^{a}, y: AnyRef^{b}) ?-> AnyRef ?-> Int ?->{x,y} Int
   val contextUncurried3: (x: AnyRef^{a}, y: AnyRef^{b}) ?=> AnyRef
   val contextUncurried4: (x: AnyRef^{a}, y: AnyRef^{b}) ?->{a,b} AnyRef^ ?=> Int ?->{x,y} Int
+
+  def polyPure[A](f: A -> Int): Int
+  def polyPure2[A](f: A ->{} Int): Int
+  def polyImpure[A](f: A => Int): Int
+  def polyImpure2[A](f: A ->{a,b,c} Int): Int
+  def polyImpure3[A](f: A ->{a,b,c} Int => Int): Int
+
+  def polyContextPure[A](f: A ?-> Int): Int
+  def polyContextPure2[A](f: A ?->{} Int): Int
+  def polyContextImpure[A](f: A ?=> Int): Int
+  def polyContextImpure2[A](f: A ?->{a,b,c} Int): Int
+  def polyContextImpure3[A](f: A ?->{a,b,c} Int => Int): Int
+
+  val polyPureV: [A] => A -> Int
+  val polyPureV2: [A] => Int => A ->{a,b,c} Int
+  val polyImpureV: [A] -> A => Int
+  val polyImpureV2: [A] -> A => Int
