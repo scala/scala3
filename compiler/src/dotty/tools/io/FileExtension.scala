@@ -1,6 +1,5 @@
 package dotty.tools.io
 
-import dotty.tools.uncheckedNN
 import dotty.tools.dotc.util.EnumFlags.FlagSet
 
 enum FileExtension(val toLowerCase: String):
