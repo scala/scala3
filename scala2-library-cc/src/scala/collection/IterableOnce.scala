@@ -246,7 +246,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   }
 
   @deprecated("Use .iterator.flatMap instead or consider requiring an Iterable", "2.13.0")
-  def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f} = it match {
+  def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f*} = it match {
     case it: Iterable[A] => it.flatMap(f)
     case _ => it.iterator.flatMap(f)
   }
@@ -439,7 +439,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return       a new $coll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
    */
-  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f}
+  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f*}
 
   /** Converts this $coll of iterable collections into
    *  a $coll formed by the elements of these iterable

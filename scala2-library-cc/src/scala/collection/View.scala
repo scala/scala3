@@ -57,8 +57,9 @@ object View extends IterableFactory[View] {
     *
     * @tparam A View element type
     */
-  def fromIteratorProvider[A](it: () => Iterator[A]^): View[A]^{it} = new AbstractView[A] {
-    def iterator: Iterator[A]^{it} = it()
+  def fromIteratorProvider[A](it: () => Iterator[A]^): View[A]^{it*} = new AbstractView[A] {  // TODO: this seems clearly unsound: not only `it*` but also `it` is used
+                                                                                              // why it capture-checks?
+    def iterator: Iterator[A]^{it*} = it()
   }
 
   /**
@@ -310,7 +311,7 @@ object View extends IterableFactory[View] {
   /** A view that flatmaps elements of the underlying collection. */
   @SerialVersionUID(3L)
   class FlatMap[A, B](underlying: SomeIterableOps[A]^, f: A => IterableOnce[B]^) extends AbstractView[B] {
-    def iterator: Iterator[B]^{underlying, f} = underlying.iterator.flatMap(f)
+    def iterator: Iterator[B]^{underlying, f*} = underlying.iterator.flatMap(f)
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
     override def isEmpty: Boolean = iterator.isEmpty
   }
