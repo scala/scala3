@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
+import Symbols.*, Types.*, Contexts.*, Constants.*, Decorators.*, Names.*, Phases.*
 import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
@@ -42,6 +42,29 @@ object Annotations {
 
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
+
+    def argsForSuper(parent: Symbol)(using Context): List[Tree] =
+      val symbol = this.symbol
+      val args = arguments
+      if symbol == parent then args
+      else if symbol.asClass.superClass == parent then
+        val params: List[Name] = parent.primaryConstructor.paramSymss.headOrNil.map(_.name)
+        val subArgs: Map[Name, Tree] = symbol.primaryConstructor.paramSymss.headOrNil.map(_.name).zip(args).toMap
+        val superArgs: Map[Name, Tree] =
+          symbol.annotations.collect {
+            case annot if annot.matches(defn.SuperArgMetaAnnot) =>
+              val List(Literal(Constant(param: String)), value) = annot.arguments: @unchecked
+              param.toTermName -> value
+          }.toMap
+        val superFwdArgs: Map[Name, Name] =
+          symbol.annotations.collect {
+            case annot if annot.matches(defn.SuperFwdArgMetaAnnot) =>
+              val List(Literal(Constant(param: String)), Literal(Constant(subParam: String))) = annot.arguments: @unchecked
+              param.toTermName -> subParam.toTermName
+          }.toMap
+        val argsForSuper = params.map(p => superArgs.getOrElse(p, subArgs(superFwdArgs(p))))
+        if params.lengthCompare(argsForSuper) == 0 then argsForSuper else Nil
+      else Nil
 
     /** The tree evaluation is in progress. */
     def isEvaluating: Boolean = false
@@ -148,6 +171,11 @@ object Annotations {
     override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
   }
 
+  class DeferredSym(sym: Symbol, treeFn: Context ?=> Tree)
+  extends LazyAnnotation:
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null = sym
+    protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
+
   class DeferredSymAndTree(symFn: Context ?=> Symbol, treeFn: Context ?=> Tree)
   extends LazyAnnotation:
     protected var mySym: Symbol | (Context ?=> Symbol) | Null = ctx ?=> symFn(using ctx)
@@ -214,10 +242,7 @@ object Annotations {
 
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
-      new LazyAnnotation {
-        protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
-        protected var mySym: Symbol | (Context ?=> Symbol) | Null = sym
-      }
+      DeferredSym(sym, treeFn)
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
     def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree): Annotation =

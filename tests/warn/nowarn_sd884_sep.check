@@ -1,0 +1,19 @@
+
+-- [E129] Potential Issue Warning: tests/warn/nowarn_sd884_sep/test_2.scala:16:20 --------------------------------------
+16 |  @nodep def t4 = { 1; 2 } // warn // warn: unused @nowarn
+   |                    ^
+   |                    A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`
+-- Deprecation Warning: tests/warn/nowarn_sd884_sep/test_2.scala:12:25 -------------------------------------------------
+12 |  @purr def t2 = new C().dep  // warn // warn: unused @nowarn
+   |                 ^^^^^^^^^^^
+   |                 method dep in class C is deprecated since 1.2.3: message
+-- Warning: tests/warn/nowarn_sd884_sep/test_2.scala:12:2 --------------------------------------------------------------
+12 |  @purr def t2 = new C().dep  // warn // warn: unused @nowarn
+   |  ^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Warning: tests/warn/nowarn_sd884_sep/test_2.scala:16:2 --------------------------------------------------------------
+16 |  @nodep def t4 = { 1; 2 } // warn // warn: unused @nowarn
+   |  ^^^^^^
+   |  @nowarn annotation does not suppress any warnings
