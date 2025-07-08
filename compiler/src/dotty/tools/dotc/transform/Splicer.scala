@@ -53,7 +53,7 @@ object Splicer {
         inContext(sliceContext) {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
-          try ctx.profiler.onMacroSplice(owner){
+          try {
             val interpreter = new SpliceInterpreter(splicePos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
