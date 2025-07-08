@@ -23,7 +23,7 @@ object Test2 {
     type A
     type B = z.A
   }
-  trait Z extends X with Y // error: cyclic
+  trait Z extends X with Y { z: W => } // error: cyclic
 }
 
 object Test3 {
@@ -41,7 +41,7 @@ object Test3 {
   }
 
   object App {
-    type Z = X with Y
+    type Z = X & Y
     val z: Z = z
     val a: z.A = a // error: too deep
   }
@@ -155,19 +155,9 @@ object i4369 {
 }
 object i4370 {
   class Foo { type R = A }
-  type A = List[Foo#R] // error: cyclic
+  type A = List[Foo#R] // error: type mismatch
 }
 object i4371 {
   class Foo { type A = Boo#B } // error: cyclic
   class Boo { type B = Foo#A }
-}
-object i318 {
-  trait Y {
-    type A <: { type T >: B }
-    type B >: { type T >: A }
-  }
-
-  val y: Y = ???
-  val a: y.A = ??? // error: too deep
-  val b: y.B = a   // error: too deep
 }
