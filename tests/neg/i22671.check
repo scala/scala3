@@ -1,0 +1,18 @@
+-- [E052] Type Error: tests/neg/i22671.scala:6:6 -----------------------------------------------------------------------
+6 |  X.x = 27 // error
+  |  ^^^^^^^^
+  |  Reassignment to val x
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:10:4 ----------------------------------------------------------------------
+10 |  x = 27 // error
+   |  ^^^^^^
+   |  Reassignment to val x
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i22671.scala:14:4 ----------------------------------------------------------------------
+14 |  x = 27 // error
+   |  ^^^^^^
+   |  Reassignment to val x
+   |
+   | longer explanation available when compiling with `-explain`
