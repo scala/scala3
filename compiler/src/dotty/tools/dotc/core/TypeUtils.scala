@@ -115,6 +115,16 @@ class TypeUtils:
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
+    /** If this is a generic tuple type with arity <= MaxTupleArity, return the
+     *  corresponding TupleN type, otherwise return this.
+     */
+    def normalizedTupleType(using Context): Type =
+      if self.isGenericTuple then
+        self.tupleElementTypes match
+          case Some(elems) if elems.size <= Definitions.MaxTupleArity => defn.tupleType(elems)
+          case _ => self
+      else
+        self
     def refinedWith(name: Name, info: Type)(using Context) = RefinedType(self, name, info)
 
     /** Is this type a methodic type that takes at least one parameter? */
