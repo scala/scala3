@@ -63,6 +63,8 @@
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/type-params.scala:4:7 ------------------------------------------------------------------------------
 4 |  "".==[Int] // error
   |  ^^^^^^^^^^
