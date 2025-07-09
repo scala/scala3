@@ -630,10 +630,16 @@ object RefChecks {
         // to consolidate getters and setters.
         val grouped = missing.groupBy(_.underlyingSymbol.name)
 
+        def isDuplicateSetter(sym: Symbol): Boolean =
+          sym.isSetter && {
+            val field = sym.accessedFieldOrGetter
+            grouped.getOrElse(field.name, Nil).contains(field)
+          }
+
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
             lastOverrides(syms)
-              .filterConserve(!_.isSetter)
+              .filterConserve(!isDuplicateSetter(_)) // Avoid reporting override error for both `x` and setter `x_=`
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
