@@ -1035,6 +1035,70 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `Adjust type for val` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>:String = 123
+         |}""".stripMargin,
+
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for val2` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>:Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for val3` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>: Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for def` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>:String = 123
+         |}""".stripMargin,
+
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for def2` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>:Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+
+  @Test def `Adjust type for def3` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>: Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+
   def checkEdit(
       original: String,
       expected: String
