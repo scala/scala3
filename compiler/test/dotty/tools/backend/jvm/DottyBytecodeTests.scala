@@ -1617,7 +1617,14 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
     checkBCode(code) { dir =>
       val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
-      assertNoInvoke(getMethod(c, "f1"), "scala/Tuple2$", "apply") // no Tuple2.apply call
+      val f1 = getMethod(c, "f1")
+      assertNoInvoke(f1, "scala/Tuple2$", "apply") // no Tuple2.apply call
+      // no `new` instruction
+      val hasNew = instructionsFromMethod(f1).exists {
+        case Op(Opcodes.NEW) => true
+        case _ => false
+      }
+      assertFalse("f1 should not have NEW instruction", hasNew)
     }
   }
 
