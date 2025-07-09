@@ -255,3 +255,51 @@ class HoverDefnSuite extends BaseHoverSuite:
          |```
          |""".stripMargin
     )
+
+  @Test def `annotation` =
+    check(
+      """|
+         |@ma@@in
+         |def example() = 
+         |    println("test")
+         |""".stripMargin,
+      """|```scala
+         |def this(): main
+         |```""".stripMargin.hover
+    )
+
+  @Test def `annotation-2` =
+      check(
+        """|
+          |@ma@@in
+          |def example() = 
+          |    List("test")
+          |""".stripMargin,
+        """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+      )
+
+  @Test def `annotation-3` =
+      check(
+        """|
+          |@ma@@in
+          |def example() = 
+          |    Array("test")
+          |""".stripMargin,
+        """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+      )
+
+  @Test def `annotation-4` =
+      check(
+        """|
+          |@ma@@in
+          |def example() = 
+          |    Array(1, 2)
+          |""".stripMargin,
+        """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+      )
