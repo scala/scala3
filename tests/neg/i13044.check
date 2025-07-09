@@ -1,4 +1,4 @@
--- [E172] Type Error: tests/neg/i13044.scala:46:40 ---------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i13044.scala:61:40 ---------------------------------------------------------------------
 61 |   implicit def typeSchema: Schema[A] = Schema.gen // error
    |                                        ^^^^^^^^^^
    |                                 No given instance of type Schema[B] was found.

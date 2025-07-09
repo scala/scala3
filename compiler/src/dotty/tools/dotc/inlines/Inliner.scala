@@ -1098,9 +1098,10 @@ class Inliner(val call: tpd.Tree)(using Context):
       if suspendable then
         ctx.compilationUnit.suspend() // this throws a SuspendException
 
-    val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
-      Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
-    }
+    val evaluatedSplice =
+      inContext(quoted.MacroExpansion.context(inlinedFrom)):
+        ctx.profiler.onMacroSplice(inlinedFrom.symbol):
+          Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
     val inlinedNormalizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case tree @ Inlined(_, Nil, expr) if tree.inlinedFromOuterScope && enclosingInlineds.isEmpty => transform(expr)
