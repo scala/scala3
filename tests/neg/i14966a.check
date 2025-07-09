@@ -1,7 +1,7 @@
 -- [E120] Naming Error: tests/neg/i14966a.scala:3:6 --------------------------------------------------------------------
 3 |  def f(x: List[Int]): String = ??? // error
   |      ^
-  |      Double definition:
+  |      Conflicting definitions:
   |      def f[X <: String](x: List[X]): String in class Test at line 2 and
   |      def f(x: List[Int]): String in class Test at line 3
   |      have the same type (x: scala.collection.immutable.List): String after erasure.
