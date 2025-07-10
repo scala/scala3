@@ -1581,7 +1581,7 @@ trait Applications extends Compatibility {
               val newAcc =
                 params match
                   case param :: _ if param.isType => true
-                  case param :: _ if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
+                  case param :: _ if param.isTerm && !param.is(Given) => false
                   case _ => acc
               hasTrailingTypeParams(paramss.tail, newAcc)
 
