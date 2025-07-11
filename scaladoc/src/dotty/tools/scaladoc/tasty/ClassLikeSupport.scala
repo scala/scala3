@@ -495,7 +495,12 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
 
-    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), symbol.isOpaque, generics).asInstanceOf[Kind.Type]
+    val isCaptureVar = ccEnabled && typeDef.rhs.match
+      case t: TypeTree => t.tpe.derivesFrom(CaptureDefs.Caps_CapSet)
+      case t: TypeBoundsTree => t.tpe.derivesFrom(CaptureDefs.Caps_CapSet)
+      case _ => false
+
+    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), symbol.isOpaque, generics, isCaptureVar).asInstanceOf[Kind.Type]
     val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
 

@@ -3,7 +3,9 @@ package translators
 
 case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtils:
   def plain(str: String): SignatureBuilder = copy(content = content :+ Plain(str))
-  def name(str: String, dri: DRI): SignatureBuilder = copy(content = content :+ Name(str, dri))
+  def name(str: String, dri: DRI, isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
+    val suffix = if isCaptureVar then List(Keyword("^")) else Nil
+    copy(content = content ++ (Name(str, dri) :: suffix))
   def tpe(text: String, dri: Option[DRI]): SignatureBuilder = copy(content = content :+ Type(text, dri))
   def keyword(str: String): SignatureBuilder = copy(content = content :+ Keyword(str))
   def tpe(text: String, dri: DRI): SignatureBuilder = copy(content = content :+ Type(text, Some(dri)))

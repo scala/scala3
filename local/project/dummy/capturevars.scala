@@ -14,6 +14,7 @@ trait Test:
     type D^ >: {C} <: {a,b}
     type E^ <: C
     type F^ <: {D,E}
+    type G^ = C
     def foo[C^ >: {a,b}](x: T[C]): Unit
     def bar(x: T[{a,b}]): Unit
     def baz(x: T[{a,b,caps.cap}]): Unit
