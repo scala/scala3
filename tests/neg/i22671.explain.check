@@ -1,0 +1,94 @@
+-- [E052] Type Error: tests/neg/i22671.explain.scala:14:6 --------------------------------------------------------------
+14 |  X.w = 27 // error
+   |  ^^^^^^^^
+   |  Assignment to value w
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Members defined using `val` or `def` can't be assigned to.
+   | If you need to change the value of w, use `var` instead:
+   |   var w = ...
+   | However, it's more common to initialize a variable just once
+   | with a complex expression or even a block with many statements:
+   |   val w = if (condition) 1 else -1
+   | Also, assignment syntax can be used if there is a corresponding setter:
+   |   def w_=(x: Int): Unit = _v = x
+    --------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.explain.scala:17:6 --------------------------------------------------------------
+17 |  X.x = 27 // error
+   |  ^^^^^^^^
+   |  Assignment to method x
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Members defined using `val` or `def` can't be assigned to.
+   | If you need to change the value of x, use `var` instead:
+   |   var x = ...
+   | However, it's more common to initialize a variable just once
+   | with a complex expression or even a block with many statements:
+   |   val x = if (condition) 1 else -1
+   | Also, assignment syntax can be used if there is a corresponding setter:
+   |   def x_=(x: Int): Unit = _v = x
+    --------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.explain.scala:21:4 --------------------------------------------------------------
+21 |  y = 27 // error overload renamed
+   |  ^^^^^^
+   |  Assignment to method x
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Members defined using `val` or `def` can't be assigned to.
+   | If you need to change the value of x, use `var` instead:
+   |   var x = ...
+   | However, it's more common to initialize a variable just once
+   | with a complex expression or even a block with many statements:
+   |   val x = if (condition) 1 else -1
+   | Also, assignment syntax can be used if there is a corresponding setter:
+   |   def x_=(x: Int): Unit = _v = x
+    --------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.explain.scala:25:4 --------------------------------------------------------------
+25 |  y = 27 // error val renamed
+   |  ^^^^^^
+   |  Assignment to value z
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Members defined using `val` or `def` can't be assigned to.
+   | If you need to change the value of z, use `var` instead:
+   |   var z = ...
+   | However, it's more common to initialize a variable just once
+   | with a complex expression or even a block with many statements:
+   |   val z = if (condition) 1 else -1
+   | Also, assignment syntax can be used if there is a corresponding setter:
+   |   def z_=(x: Int): Unit = _v = x
+    --------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.explain.scala:29:4 --------------------------------------------------------------
+29 |  x = 27 // error local
+   |  ^^^^^^
+   |  Assignment to value x
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Members defined using `val` or `def` can't be assigned to.
+   | If you need to change the value of x, use `var` instead:
+   |   var x = ...
+   | However, it's more common to initialize a variable just once
+   | with a complex expression or even a block with many statements:
+   |   val x = if (condition) 1 else -1
+    --------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i22671.explain.scala:32:6 --------------------------------------------------------------
+32 |  t.t = t // error
+   |  ^^^^^^^
+   |  Assignment to method t
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Members defined using `val` or `def` can't be assigned to.
+   | If you need to change the value of t, use `var` instead:
+   |   var t = ...
+   | However, it's more common to initialize a variable just once
+   | with a complex expression or even a block with many statements:
+   |   val t = if (condition) 1 else -1
+   | Also, assignment syntax can be used if there is a corresponding setter:
+   |   def t_=(x: Int): Unit = _v = x
+    --------------------------------------------------------------------------------------------------------------------
