@@ -1,5 +1,3 @@
 package scalaql
 
-import scala.annotation.StaticAnnotation
-
-class forbiddenInheritance extends StaticAnnotation
+class forbiddenInheritance extends scala.annotation.StaticAnnotation
