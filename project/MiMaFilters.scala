@@ -24,6 +24,12 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
         
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
+
+        // Change `caps.Capability` to non-experimental
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Capability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Shared"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
       ),
 
       // Additions since last LTS
