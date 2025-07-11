@@ -1450,6 +1450,27 @@ object desugar {
       sel
     end match
 
+  case class TuplePatternInfo(arity: Int, varNum: Int, wildcardNum: Int)
+  object TuplePatternInfo:
+    def apply(pat: Tree)(using Context): TuplePatternInfo = pat match
+      case Tuple(pats) =>
+        var arity = 0
+        var varNum = 0
+        var wildcardNum = 0
+        pats.foreach: p =>
+          arity += 1
+          p match
+            case id: Ident if !isBackquoted(id) =>
+              if id.name.isVarPattern then
+                varNum += 1
+                if id.name == nme.WILDCARD then
+                  wildcardNum += 1
+            case _ =>
+        TuplePatternInfo(arity, varNum, wildcardNum)
+      case _ =>
+        TuplePatternInfo(-1, -1, -1)
+  end TuplePatternInfo
+
   /** If `pat` is a variable pattern,
    *
    *    val/var/lazy val p = e
@@ -1483,30 +1504,47 @@ object desugar {
               |please bind to an identifier and use an alias given.""", bind)
         false
 
-      def isTuplePattern(arity: Int): Boolean = pat match {
-        case Tuple(pats) if pats.size == arity =>
-          pats.forall(isVarPattern)
-        case _ => false
-      }
+      val tuplePatternInfo = TuplePatternInfo(pat)
 
-      val isMatchingTuple: Tree => Boolean = {
-        case Tuple(es) => isTuplePattern(es.length) && !hasNamedArg(es)
-        case _ => false
-      }
+      // When desugaring a PatDef in general, we use pattern matching on the rhs
+      // and collect the variable values in a tuple, then outside the match,
+      // we destructure the tuple to get the individual variables.
+      // We can achieve two kinds of tuple optimizations if the pattern is a tuple
+      // of simple variables or wildcards:
+      // 1. Full optimization:
+      //    If the rhs is known to produce a literal tuple of the same arity,
+      //    we can directly fetch the values from the tuple.
+      //    For example: `val (x, y) = if ... then (1, "a") else (2, "b")` becomes
+      //    `val $1$ = if ...; val x = $1$._1; val y = $1$._2`.
+      // 2. Partial optimization:
+      //    If the rhs can be typed as a tuple and matched with correct arity, we can
+      //    return the tuple itself in the case if there are no more than one variable
+      //    in the pattern, or return the the value if there is only one variable.
 
-      // We can only optimize `val pat = if (...) e1 else e2` if:
-      // - `e1` and `e2` are both tuples of arity N
-      // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
-      val tupleOptimizable = forallResults(rhs, isMatchingTuple)
+      val fullTupleOptimizable =
+        val isMatchingTuple: Tree => Boolean = {
+          case Tuple(es) => tuplePatternInfo.varNum == es.length && !hasNamedArg(es)
+          case _ => false
+        }
+        tuplePatternInfo.arity > 0
+        && tuplePatternInfo.arity == tuplePatternInfo.varNum
+        && forallResults(rhs, isMatchingTuple)
+
+      val partialTupleOptimizable =
+        tuplePatternInfo.arity > 0
+        && tuplePatternInfo.arity == tuplePatternInfo.varNum
+        // We exclude the case where there is only one variable,
+        // because it should be handled by `makeTuple` directly.
+        && tuplePatternInfo.wildcardNum < tuplePatternInfo.arity - 1
 
       val inAliasGenerator = original match
         case _: GenAlias => true
         case _ => false
 
-      val vars =
-        if (tupleOptimizable) // include `_`
+      val vars: List[VarInfo] =
+        if fullTupleOptimizable || partialTupleOptimizable then // include `_`
           pat match
-            case Tuple(pats) => pats.map { case id: Ident => id -> TypeTree() }
+            case Tuple(pats) => pats.map { case id: Ident => (id, TypeTree()) }
         else
           getVariables(
             tree = pat,
@@ -1517,12 +1555,27 @@ object desugar {
                 errorOnGivenBinding
           ) // no `_`
 
-      val ids = for ((named, _) <- vars) yield Ident(named.name)
+      val ids = for ((named, tpt) <- vars) yield Ident(named.name)
+
       val matchExpr =
-        if (tupleOptimizable) rhs
+        if fullTupleOptimizable then rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
+          val caseDef =
+            if partialTupleOptimizable then
+              val tmpTuple = UniqueName.fresh()
+              // Replace all variables with wildcards in the pattern
+              val pat1 = pat match
+                case Tuple(pats) =>
+                  val wildcardPats = pats.map(p => Ident(nme.WILDCARD).withSpan(p.span))
+                  Tuple(wildcardPats).withSpan(pat.span)
+              CaseDef(
+                Bind(tmpTuple, pat1),
+                EmptyTree,
+                Ident(tmpTuple).withAttachment(ForArtifact, ())
+              )
+            else CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
