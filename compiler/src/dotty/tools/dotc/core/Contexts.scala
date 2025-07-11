@@ -870,6 +870,13 @@ object Contexts {
       result.init(ctx)
       result
 
+  def currentComparer(using Context): TypeComparer =
+    val base = ctx.base
+    if base.comparersInUse > 0 then
+      base.comparers(base.comparersInUse - 1)
+    else
+      comparer
+
   inline def comparing[T](inline op: TypeComparer => T)(using Context): T =
     util.Stats.record("comparing")
     val saved = ctx.base.comparersInUse

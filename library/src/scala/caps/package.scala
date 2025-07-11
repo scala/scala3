@@ -25,25 +25,32 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
 @experimental
 trait Capability extends Any
 
+/** A marker trait for classifier capabilities that can appear in `.only`
+ *  qualifiers. Capability classes directly extending `Classifier` are treated
+ *  as classifier capbilities
+ */
+@experimental
+trait Classifier
+
 /** The universal capture reference. */
 @experimental
 object cap extends Capability
 
 /** Marker trait for classes with methods that requires an exclusive reference. */
 @experimental
-trait Mutable extends Capability
+trait Mutable extends Capability, Classifier
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
   * During separation checking, shared capabilities are not taken into account.
   */
 @experimental
-trait Sharable extends Capability
+trait Sharable extends Capability, Classifier
 
 /** Base trait for capabilities that capture some continuation or return point in
  *  the stack. Examples are exceptions, labels, Async, CanThrow.
  */
 @experimental
-trait Control extends Sharable
+trait Control extends Sharable, Classifier
 
 /** Carrier trait for capture set type parameters */
 @experimental
