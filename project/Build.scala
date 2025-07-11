@@ -1411,6 +1411,33 @@ object Build {
       )
     )
 
+  // ==============================================================================================
+  // =================================== SCALA STANDARD LIBRARY ===================================
+  // ==============================================================================================
+
+  /* Configuration of the org.scala-lang:scala-library:*.**.**-nonboostrapped project */
+  lazy val `scala-library-nonbootstrapped` = project.in(file("library"))
+    .settings(
+      name          := "scala-library-nonbootstrapped",
+      moduleName    := "scala-library",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala-library-nonbootstrapped",
+    )
+
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
     case Bootstrapped => `scala3-library-bootstrapped`
