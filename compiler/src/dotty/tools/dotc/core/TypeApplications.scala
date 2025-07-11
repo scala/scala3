@@ -13,7 +13,7 @@ import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
 
-object TypeApplications {
+object TypeApplications:
 
   type TypeParamInfo = ParamInfo.Of[TypeName]
 
@@ -148,8 +148,12 @@ object TypeApplications {
     }
   }
 
-  // Extensions that model type application.
-  extension (self: Type) {
+/** Extensions that model type application.
+ */
+trait TypeApplications:
+  import TypeApplications.*
+
+  extension (self: Type) { // braces to avoid indent
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
@@ -584,4 +588,3 @@ object TypeApplications {
     assert(!self.isInstanceOf[TypeBounds], "no TypeBounds allowed")
     self
   }
-}
