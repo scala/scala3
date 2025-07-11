@@ -2736,7 +2736,10 @@ object Types extends TypeUtils {
           while (tparams.nonEmpty && args.nonEmpty) {
             if (tparams.head.eq(tparam))
               return args.head match {
-                case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
+                case _: TypeBounds if !widenAbstract =>
+                  if !NamedType.validPrefix(pre) then
+                    throw TypeError(em"invalid prefix $pre cannot replace parameter $tparam in result of selection")
+                  TypeRef(pre, tparam)
                 case arg => arg
               }
             tparams = tparams.tail
