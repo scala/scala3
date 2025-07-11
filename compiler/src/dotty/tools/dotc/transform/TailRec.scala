@@ -346,7 +346,10 @@ class TailRec extends MiniPhase {
               case prefix: This if prefix.symbol == enclosingClass =>
                 // Avoid assigning `this = this`
                 assignParamPairs
-              case prefix if prefix.symbol.is(Module) && prefix.symbol.moduleClass == enclosingClass =>
+              case prefix
+              if prefix.symbol.is(Module)
+              && prefix.symbol.moduleClass == enclosingClass
+              && isPurePath(prefix) =>
                 // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>
