@@ -1570,20 +1570,18 @@ trait Applications extends Compatibility {
     def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
       // try first for non-overloaded, then for overloaded occurrences
       def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree =
-        /** Returns `true` if there are type parameters after the last explicit
-         *  (non-implicit) term parameters list.
-         */
-        @tailrec
-        def hasTrailingTypeParams(paramss: List[List[Symbol]], acc: Boolean = false): Boolean =
-          paramss match
-            case Nil => acc
-            case params :: rest =>
-              val newAcc =
-                params match
-                  case param :: _ if param.isType => true
-                  case param :: _ if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
-                  case _ => acc
-              hasTrailingTypeParams(paramss.tail, newAcc)
+        // `true` if there are no type parameters following the first explicit term parameter.
+        def hasOnlyLeadingTypeParams(fun: Symbol): Boolean =
+          def checkForIt(paramss: List[List[Symbol]], leading: Int): Boolean =
+            inline def isLeading = leading > 0
+            paramss match
+            case params :: paramss =>
+              params match
+              case param :: _ if param.isType && !isLeading => false
+              case param :: _ if param.isTerm && !param.isOneOf(GivenOrImplicit) => checkForIt(paramss, leading - 1)
+              case _ => checkForIt(paramss, leading)
+            case nil => true
+          checkForIt(fun.paramSymss, leading = if fun.is(Extension) then 2 else 1)
 
         def tryWithProto(qual: untpd.Tree, targs: List[Tree], pt: Type)(using Context) =
           val proto = UnapplyFunProto(pt, this)
@@ -1591,7 +1589,7 @@ trait Applications extends Compatibility {
           val result =
             if targs.isEmpty then typedExpr(unapp, proto)
             else typedExpr(unapp, PolyProto(targs, proto)).appliedToTypeTrees(targs)
-          if result.symbol.exists && hasTrailingTypeParams(result.symbol.paramSymss) then
+          if result.symbol.exists && !hasOnlyLeadingTypeParams(result.symbol) then
             // We don't accept `unapply` or `unapplySeq` methods with type
             // parameters after the last explicit term parameter because we
             // can't encode them: `UnApply` nodes cannot take type paremeters.
