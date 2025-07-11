@@ -4469,10 +4469,10 @@ object Types extends TypeUtils {
         setVariances(tparams.tail, vs.tail)
 
     override val isDeclaredVarianceLambda = variances.nonEmpty
-    if isDeclaredVarianceLambda then setVariances(typeParams, variances)
+    if isDeclaredVarianceLambda then setVariances(this.typeParams, variances)
 
     def declaredVariances =
-      if isDeclaredVarianceLambda then typeParams.map(_.declaredVariance)
+      if isDeclaredVarianceLambda then this.typeParams.map(_.declaredVariance)
       else Nil
 
     override def computeHash(bs: Binders): Int =
@@ -4485,7 +4485,7 @@ object Types extends TypeUtils {
         paramNames.eqElements(that.paramNames)
         && isDeclaredVarianceLambda == that.isDeclaredVarianceLambda
         && (!isDeclaredVarianceLambda
-            || typeParams.corresponds(that.typeParams)((x, y) =>
+            || this.typeParams.corresponds(that.typeParams)((x, y) =>
                   x.declaredVariance == y.declaredVariance))
         && {
           val bs1 = new SomeBinderPairs(this, that, bs)
@@ -7302,7 +7302,7 @@ object Types extends TypeUtils {
 
   // ----- Helpers and Decorator implicits --------------------------------------
 
-  implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
+  export TypeApplications.{EtaExpandIfHK as _, EtaExpansion as _, TypeParamInfo as _, *}
 
   extension (tps1: List[Type]) {
     @tailrec def hashIsStable: Boolean =
