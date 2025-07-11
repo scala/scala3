@@ -121,7 +121,8 @@ case class TypeParameter(
   variance: "" | "+" | "-",
   name: String,
   dri: DRI,
-  signature: Signature
+  signature: Signature,
+  isCaptureVar: Boolean = false // under capture checking
 )
 
 case class Link(name: String, dri: DRI)

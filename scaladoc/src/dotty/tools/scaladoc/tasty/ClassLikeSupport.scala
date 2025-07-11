@@ -3,7 +3,7 @@ package dotty.tools.scaladoc.tasty
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
-import dotty.tools.scaladoc.cc.CaptureDefs
+import dotty.tools.scaladoc.cc.*
 
 import scala.quoted._
 
@@ -466,6 +466,8 @@ trait ClassLikeSupport:
       else if symbol.flags.is(Flags.Contravariant) then "-"
       else ""
 
+    val isCaptureVar = ccEnabled && argument.derivesFromCapSet
+
     val name = symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
     val boundsSignature = argument.rhs.asSignature(classDef, symbol.owner)
@@ -481,7 +483,8 @@ trait ClassLikeSupport:
       variancePrefix,
       normalizedName,
       symbol.dri,
-      signature
+      signature,
+      isCaptureVar,
     )
 
   def parseTypeDef(typeDef: TypeDef, classDef: ClassDef): Member =
@@ -491,14 +494,12 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
+
+    val isCaptureVar = ccEnabled && typeDef.derivesFromCapSet
+
     val (generics, tpeTree) = typeDef.rhs match
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
-
-    val isCaptureVar = ccEnabled && typeDef.rhs.match
-      case t: TypeTree => t.tpe.derivesFrom(CaptureDefs.Caps_CapSet)
-      case t: TypeBoundsTree => t.tpe.derivesFrom(CaptureDefs.Caps_CapSet)
-      case _ => false
 
     val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), symbol.isOpaque, generics, isCaptureVar).asInstanceOf[Kind.Type]
     val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)

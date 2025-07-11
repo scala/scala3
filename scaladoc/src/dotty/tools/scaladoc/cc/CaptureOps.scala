@@ -107,6 +107,15 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
       case _ => false
 end extension
 
+extension (using qctx: Quotes)(typedef: qctx.reflect.TypeDef)
+  def derivesFromCapSet: Boolean =
+    import qctx.reflect.*
+    typedef.rhs.match
+      case t: TypeTree => t.tpe.derivesFrom(CaptureDefs.Caps_CapSet)
+      case t: TypeBoundsTree => t.tpe.derivesFrom(CaptureDefs.Caps_CapSet)
+      case _ => false
+end extension
+
 /** Matches `import scala.language.experimental.captureChecking` */
 object CCImport:
   def unapply(using qctx: Quotes)(tree: qctx.reflect.Tree): Boolean =

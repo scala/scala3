@@ -156,7 +156,8 @@ trait TypesSupport:
       case tl @ TypeLambda(params, paramBounds, resType) =>
         plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
           val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-          tpe(normalizedName).l ++ inner(typ, skipThisTypePrefix)
+          val suffix = if ccEnabled && typ.derivesFrom(CaptureDefs.Caps_CapSet) then List(Keyword("^")) else Nil
+          tpe(normalizedName).l ++ suffix ++ inner(typ, skipThisTypePrefix)
         }) ++ plain("]").l
         ++ keyword(" =>> ").l
         ++ inner(resType, skipThisTypePrefix)
@@ -174,8 +175,11 @@ trait TypesSupport:
         }
 
         def getParamBounds(t: PolyType): SSignature = commas(
-          t.paramNames.zip(t.paramBounds.map(inner(_, skipThisTypePrefix)))
-            .map(b => tpe(b(0)).l ++ b(1))
+          t.paramNames.zip(t.paramBounds.map(inner(_, skipThisTypePrefix))).zipWithIndex
+            .map { case ((name, bound), idx) =>
+              val suffix = if ccEnabled && t.param(idx).derivesFrom(CaptureDefs.Caps_CapSet) then List(Keyword("^")) else Nil
+              tpe(name).l ++ suffix ++ bound
+            }
         )
 
         def getParamList(m: MethodType): SSignature =
