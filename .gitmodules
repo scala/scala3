@@ -100,6 +100,7 @@
 [submodule "community-build/community-projects/scala-parallel-collections"]
 	path = community-build/community-projects/scala-parallel-collections
 	url = https://github.com/dotty-staging/scala-parallel-collections.git
+	branch = serialisation-stability-fix
 [submodule "community-build/community-projects/scala-collection-compat"]
 	path = community-build/community-projects/scala-collection-compat
 	url = https://github.com/dotty-staging/scala-collection-compat.git
