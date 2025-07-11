@@ -24,3 +24,6 @@ context-function-syntax.scala
 
 # Failure to disambiguate overloaded reference
 i23402b.scala
+
+# owner of anon, where package object has funky name
+i20511-1.scala
