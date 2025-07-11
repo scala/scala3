@@ -33,6 +33,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Pure",
   "scala.caps.CapSet",
   "scala.caps.Capability",
+  "scala.caps.Classifier",
   "scala.caps.Contains",
   "scala.caps.Contains$",
   "scala.caps.Contains$.containsImpl",

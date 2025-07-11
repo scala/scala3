@@ -114,6 +114,11 @@ object CheckCaptures:
       case ReadOnlyCapability(ref) =>
         check(ref)
       case OnlyCapability(ref, cls) =>
+        if !cls.isClassifiedCapabilityClass then
+          report.error(
+            em"""${ref.showRef}.only[${cls.name}] is not well-formed since $cls is not a classifier class.
+                |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
+            ann.srcPos)
         check(ref)
       case tpe =>
         report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)

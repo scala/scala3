@@ -378,7 +378,7 @@ extension (tp: Type)
 
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
   def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-  def derivesFromSharedCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+  def derivesFromSharedCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Sharable)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -444,6 +444,30 @@ extension (tp: Type)
   def dropUseAndConsumeAnnots(using Context): Type =
     tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)
 
+  /** If `tp` is a function or method, a type of the same kind with the given
+   *  argument and result types.
+  */
+  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = tp match
+    case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
+      val args1 = argTypes :+ resType
+      if args.corresponds(args1)(_ eq _) then tp
+      else tp.derivedAppliedType(tycon, args1)
+    case tp @ defn.RefinedFunctionOf(rinfo) =>
+      val rinfo1 = rinfo.derivedFunctionOrMethod(argTypes, resType)
+      if rinfo1 eq rinfo then tp
+      else if rinfo1.isInstanceOf[PolyType] then tp.derivedRefinedType(refinedInfo = rinfo1)
+      else rinfo1.toFunctionType(alwaysDependent = true)
+    case tp: MethodType =>
+      tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
+    case tp: PolyType =>
+      assert(argTypes.isEmpty)
+      tp.derivedLambdaType(resType = resType)
+    case _ =>
+      tp
+
+  def classifier(using Context): ClassSymbol =
+    tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
+
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
@@ -474,6 +498,16 @@ extension (cls: ClassSymbol)
     cls.baseClasses.tail.exists: bc =>
       val selfType = bc.givenSelfType
       bc.is(CaptureChecked) && selfType.exists && selfType.captureSet.elems == refs.elems
+
+  def isClassifiedCapabilityClass(using Context): Boolean =
+    cls.derivesFrom(defn.Caps_Capability) && cls.parentSyms.contains(defn.Caps_Classifier)
+
+  def classifier(using Context): ClassSymbol =
+    if cls.derivesFrom(defn.Caps_Capability) then
+      cls.baseClasses
+        .filter(_.parentSyms.contains(defn.Caps_Classifier))
+        .foldLeft(defn.AnyClass)(leastClassifier)
+    else defn.AnyClass
 
 extension (sym: Symbol)
 
@@ -629,28 +663,6 @@ object FunctionOrMethod:
     case mt: PolyType => Some((Nil, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
     case _ => None
-
-/** If `tp` is a function or method, a type of the same kind with the given
- *  argument and result types.
- */
-extension (self: Type)
-  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = self match
-    case self @ AppliedType(tycon, args) if defn.isNonRefinedFunction(self) =>
-      val args1 = argTypes :+ resType
-      if args.corresponds(args1)(_ eq _) then self
-      else self.derivedAppliedType(tycon, args1)
-    case self @ defn.RefinedFunctionOf(rinfo) =>
-      val rinfo1 = rinfo.derivedFunctionOrMethod(argTypes, resType)
-      if rinfo1 eq rinfo then self
-      else if rinfo1.isInstanceOf[PolyType] then self.derivedRefinedType(refinedInfo = rinfo1)
-      else rinfo1.toFunctionType(alwaysDependent = true)
-    case self: MethodType =>
-      self.derivedLambdaType(paramInfos = argTypes, resType = resType)
-    case self: PolyType =>
-      assert(argTypes.isEmpty)
-      self.derivedLambdaType(resType = resType)
-    case _ =>
-      self
 
 /** An extractor for a contains argument */
 object ContainsImpl:

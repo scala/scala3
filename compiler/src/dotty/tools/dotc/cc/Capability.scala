@@ -258,9 +258,11 @@ object Capabilities:
   trait Capability extends Showable:
 
     private var myCaptureSet: CaptureSet | Null = uninitialized
-    private var myCaptureSetValid: Validity = invalid
+    private var captureSetValid: Validity = invalid
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
     private var myDerived: List[DerivedCapability] = Nil
+    private var myClassifiers: Classifiers = UnknownClassifier
+    private var classifiersValid: Validity = invalid
 
     protected def cached[C <: DerivedCapability](newRef: C): C =
       def recur(refs: List[DerivedCapability]): C = refs match
@@ -292,10 +294,7 @@ object Capabilities:
       case Maybe(ref1) => Maybe(ref1.restrict(cls))
       case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[Restricted])
       case self @ Restricted(ref1, prevCls) =>
-        val combinedCls =
-          if prevCls.isSubClass(cls) then prevCls
-          else if cls.isSubClass(prevCls) then cls
-          else defn.NothingClass
+        val combinedCls = leastClassifier(prevCls, cls)
         if combinedCls == prevCls then self
         else cached(Restricted(ref1, combinedCls))
       case self: (ObjectCapability | RootCapability | Reach) => cached(Restricted(self, cls))
@@ -469,7 +468,7 @@ object Capabilities:
 
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
     def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-    def derivesFromSharedCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+    def derivesFromSharable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Sharable)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -479,7 +478,7 @@ object Capabilities:
 
     /** The capture set of the type underlying this reference */
     def captureSetOfInfo(using Context): CaptureSet =
-      if myCaptureSetValid == currentId then myCaptureSet.nn
+      if captureSetValid == currentId then myCaptureSet.nn
       else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
       else
         myCaptureSet = CaptureSet.Pending
@@ -491,11 +490,60 @@ object Capabilities:
           myCaptureSet = null
         else
           myCaptureSet = computed
-          myCaptureSetValid = currentId
+          captureSetValid = currentId
         computed
 
+    /** The transitive classifiers of this capability. */
+    def transClassifiers(using Context): Classifiers =
+      def toClassifiers(cls: ClassSymbol): Classifiers =
+        if cls == defn.AnyClass then Unclassified
+        else ClassifiedAs(cls :: Nil)
+      if classifiersValid != currentId then
+        myClassifiers = this match
+          case self: FreshCap =>
+            toClassifiers(self.hiddenSet.classifier)
+          case self: RootCapability =>
+            Unclassified
+          case Restricted(_, cls) =>
+            assert(cls != defn.AnyClass)
+            if cls == defn.NothingClass then ClassifiedAs(Nil)
+            else ClassifiedAs(cls :: Nil)
+          case ReadOnly(ref1) =>
+            ref1.transClassifiers
+          case Maybe(ref1) =>
+            ref1.transClassifiers
+          case Reach(_) =>
+            captureSetOfInfo.transClassifiers
+          case self: CoreCapability =>
+            joinClassifiers(toClassifiers(self.classifier), captureSetOfInfo.transClassifiers)
+        if myClassifiers != UnknownClassifier then
+          classifiersValid == currentId
+      myClassifiers
+    end transClassifiers
+
+    def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+      cls == defn.AnyClass
+      || this.match
+        case self: FreshCap =>
+          self.hiddenSet.tryClassifyAs(cls)
+        case self: RootCapability =>
+          true
+        case Restricted(_, cls1) =>
+          assert(cls != defn.AnyClass)
+          cls1.isSubClass(cls)
+        case ReadOnly(ref1) =>
+          ref1.tryClassifyAs(cls)
+        case Maybe(ref1) =>
+          ref1.tryClassifyAs(cls)
+        case Reach(_) =>
+          captureSetOfInfo.tryClassifyAs(cls)
+        case self: CoreCapability =>
+          self.classifier.isSubClass(cls)
+          && captureSetOfInfo.tryClassifyAs(cls)
+
     def invalidateCaches() =
-      myCaptureSetValid = invalid
+      captureSetValid = invalid
+      classifiersValid = invalid
 
     /**  x subsumes x
      *   x =:= y       ==>  x subsumes y
@@ -603,12 +651,15 @@ object Capabilities:
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
           || levelOK
+              && ( y.tryClassifyAs(x.hiddenSet.classifier)
+                   || { capt.println(i"$y is not classified as $x"); false }
+              )
               && canAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
           val result = y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromSharedCapability
+            case _ => y.derivesFromSharable
           if !result then
             TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
           result
@@ -618,7 +669,7 @@ object Capabilities:
             case _: ResultCap => false
             case _: FreshCap if CCState.collapseFresh => true
             case _ =>
-              y.derivesFromSharedCapability
+              y.derivesFromSharable
               || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
         case _ =>
           y match
@@ -673,6 +724,39 @@ object Capabilities:
 
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability
+
+  /** Result type of `transClassifiers`. Interprete as follows:
+   *    UnknownClassifier: No list could be computed since some capture sets
+   *                       are still unsolved variables
+   *    Unclassified     : No set exists since some parts of tcs are not classified
+   *    ClassifiedAs(clss: All parts of tcss are classified with classes in clss
+   */
+  enum Classifiers:
+    case UnknownClassifier
+    case Unclassified
+    case ClassifiedAs(clss: List[ClassSymbol])
+
+  export Classifiers.{UnknownClassifier, Unclassified, ClassifiedAs}
+
+  /** The least classifier between `cls1` and `cls2`, which are either
+   *  AnyClass, NothingClass, or a class directly extending caps.Classifier.
+   *  @return if oen of cls1, cls2 is a subclass of the other, the subclass
+   *          otherwise NothingClass (which is a subclass of all classes)
+   */
+  def leastClassifier(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): ClassSymbol =
+    if cls1.isSubClass(cls2) then cls1
+    else if cls2.isSubClass(cls1) then cls2
+    else defn.NothingClass
+
+  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
+    // Drop classes that subclass classes of the other set
+    def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol]) =
+      cs1.filter(cls1 => !cs2.exists(cls2 => cls1.isSubClass(cls2)))
+    (cs1, cs2) match
+      case (Unclassified, _) | (_, Unclassified) => Unclassified
+      case (UnknownClassifier, _) | (_, UnknownClassifier) => UnknownClassifier
+      case (ClassifiedAs(cs1), ClassifiedAs(cs2)) =>
+        ClassifiedAs(filterSub(cs1, cs2) ++ filterSub(cs2, cs1))
 
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics

@@ -410,6 +410,20 @@ sealed abstract class CaptureSet extends Showable:
     if mutability != Ignored then res.mutability = Reader
     res
 
+  def transClassifiers(using Context): Classifiers =
+    if isConst then
+      (ClassifiedAs(Nil) /: elems.map(_.transClassifiers))(joinClassifiers)
+    else UnknownClassifier
+
+  def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+    elems.forall(_.tryClassifyAs(cls))
+
+  def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
+    for elem <- elems do
+      elem.stripReadOnly match
+        case fresh: FreshCap => fresh.hiddenSet.adoptClassifier(cls)
+        case _ =>
+
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
    *  If the limit is null, all capture roots are good.
@@ -651,6 +665,25 @@ object CaptureSet:
      */
     private[CaptureSet] var rootLimit: Symbol | Null = null
 
+    private var myClassifier: ClassSymbol = defn.AnyClass
+    def classifier: ClassSymbol = myClassifier
+
+    private def narrowClassifier(cls: ClassSymbol)(using Context): Unit =
+      val newClassifier = leastClassifier(classifier, cls)
+      if newClassifier == defn.NothingClass then
+        println(i"conflicting classifications for $this, was $classifier, now $cls")
+      myClassifier = newClassifier
+
+    override def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
+      if !classifier.isSubClass(cls) then // serves as recursion brake
+        narrowClassifier(cls)
+        super.adoptClassifier(cls)
+
+    override def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+      classifier.isSubClass(cls)
+      || super.tryClassifyAs(cls)
+          && { narrowClassifier(cls); true }
+
     /** A handler to be invoked when new elems are added to this set */
     var newElemAddedHandler: Capability => Context ?=> Unit = _ => ()
 
@@ -682,6 +715,8 @@ object CaptureSet:
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
         failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
+      else if !elem.tryClassifyAs(classifier) then
+        failWith(IncludeFailure(this, elem))
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
@@ -689,7 +724,6 @@ object CaptureSet:
         includeElem(elem)
         if isBadRoot(rootLimit, elem) then
           rootAddedHandler()
-        newElemAddedHandler(elem)
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = deps.forall: dep =>
