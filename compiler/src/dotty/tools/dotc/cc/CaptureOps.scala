@@ -81,7 +81,7 @@ extension (tp: Type)
     case ReadOnlyCapability(tp1) =>
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
-      tp1.toCapability.restrict(cls) // for now
+      tp1.toCapability.restrict(cls)
     case ref: TermRef if ref.isCapRef =>
       GlobalCap
     case ref: Capability if ref.isTrackableRef =>
@@ -292,7 +292,7 @@ extension (tp: Type)
   def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
       val refs1 = tp match
-        case ref: Capability if ref.isTracked || ref.isReach || ref.isReadOnly =>
+        case ref: Capability if ref.isTracked || ref.isInstanceOf[DerivedCapability] =>
           ref.singletonCaptureSet
         case _ => refs
       CapturingType(parent, refs1, boxed)

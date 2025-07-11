@@ -336,15 +336,20 @@ object Capabilities:
       case Maybe(ref1) => ref1.stripReadOnly.maybe
       case _ => this
 
-    final def stripRestricted(using Context): Capability = this match
-      case Restricted(ref1, _) => ref1
-      case ReadOnly(ref1) => ref1.stripRestricted.readOnly
-      case Maybe(ref1) => ref1.stripRestricted.maybe
+    /** Drop restrictions with clss `cls` or a superclass of `cls` */
+    final def stripRestricted(cls: ClassSymbol)(using Context): Capability = this match
+      case Restricted(ref1, cls1) if cls.isSubClass(cls1) => ref1
+      case ReadOnly(ref1) => ref1.stripRestricted(cls).readOnly
+      case Maybe(ref1) => ref1.stripRestricted(cls).maybe
       case _ => this
+
+    final def stripRestricted(using Context): Capability =
+      stripRestricted(defn.NothingClass)
 
     final def stripReach(using Context): Capability = this match
       case Reach(ref1) => ref1
       case ReadOnly(ref1) => ref1.stripReach.readOnly
+      case Restricted(ref1, cls) => ref1.stripReach.restrict(cls)
       case Maybe(ref1) => ref1.stripReach.maybe
       case _ => this
 
@@ -541,6 +546,22 @@ object Capabilities:
           self.classifier.isSubClass(cls)
           && captureSetOfInfo.tryClassifyAs(cls)
 
+    def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
+      transClassifiers match
+        case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
+        case _ => false
+
+    def isKnownEmpty(using Context): Boolean = this match
+      case Restricted(ref1, cls) =>
+        val isEmpty = ref1.transClassifiers match
+          case ClassifiedAs(cs) =>
+            cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
+          case _ => false
+        isEmpty || ref1.isKnownEmpty
+      case ReadOnly(ref1) => ref1.isKnownEmpty
+      case Maybe(ref1) => ref1.isKnownEmpty
+      case _ => false
+
     def invalidateCaches() =
       captureSetValid = invalid
       classifiersValid = invalid
@@ -597,6 +618,7 @@ object Capabilities:
           || viaInfo(y.info)(subsumingRefs(this, _))
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
+        case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
         case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
@@ -611,6 +633,7 @@ object Capabilities:
         case _ => false
       || this.match
           case Reach(x1) => x1.subsumes(y.stripReach)
+          case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
           case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
@@ -652,7 +675,7 @@ object Capabilities:
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
           || levelOK
               && ( y.tryClassifyAs(x.hiddenSet.classifier)
-                   || { capt.println(i"$y is not classified as $x"); false }
+                   || { capt.println(i"$y cannot be classified as $x"); false }
               )
               && canAddHidden
               && vs.addHidden(x.hiddenSet, y)
@@ -674,6 +697,7 @@ object Capabilities:
         case _ =>
           y match
             case ReadOnly(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
+            case Restricted(y1, cls) => this.stripRestricted(cls).maxSubsumes(y1, canAddHidden)
             case _ => false
 
     /** `x covers y` if we should retain `y` when computing the overlap of
@@ -718,6 +742,7 @@ object Capabilities:
         val c1 = c.underlying.toType
         c match
           case _: ReadOnly => ReadOnlyCapability(c1)
+          case Restricted(_, cls) => OnlyCapability(c1, cls)
           case _: Reach => ReachCapability(c1)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
