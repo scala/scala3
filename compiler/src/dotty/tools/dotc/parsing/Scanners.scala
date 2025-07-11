@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.migrateTo3
+import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
@@ -184,7 +184,7 @@ object Scanners {
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
-    val newSyntax = ctx.settings.newSyntax.value
+    val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
     val rewriteToIndent = ctx.settings.indent.value && rewrite
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite

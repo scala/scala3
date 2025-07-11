@@ -28,8 +28,9 @@ given apply: [C, E] => Combinator {
   }
 }
 
-given combine[A: Combinator, B: Combinator { type Context = A.Context }]
-    : Combinator with
+given combine
+  : [A: Combinator, B: Combinator { type Context = A.Context }]
+    => Combinator:
   type Self = Combine[A, B]
   type Context = A.Context
   type Element = (A.Element, B.Element)

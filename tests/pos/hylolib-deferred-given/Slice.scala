@@ -32,7 +32,7 @@ given sliceIsCollection: [T] => (c: Collection[T]) => Collection[Slice[T]] {
   //given elementIsValue: Value[Element] = c.elementIsValue
 
   type Position = c.Position
-  given positionIsValue: Value[Position] = c.positionIsValue
+  override given positionIsValue: Value[Position] = c.positionIsValue
 
   extension (self: Slice[T]) {
 
