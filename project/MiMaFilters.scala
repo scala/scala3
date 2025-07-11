@@ -19,6 +19,9 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
+
+        // Change `caps.Capability` to non-experimental
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Capability")
       ),
 
       // Additions since last LTS
