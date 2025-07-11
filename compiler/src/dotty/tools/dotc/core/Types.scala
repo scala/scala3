@@ -355,7 +355,6 @@ object Types extends TypeUtils {
       case tp: HKTypeLambda => false
       case tp: TypeProxy => tp.superType.isSingletonBounded(frozen)
       case tp: AndType => tp.tp1.isSingletonBounded(frozen) || tp.tp2.isSingletonBounded(frozen)
-      case tp: OrType => tp.tp1.isSingletonBounded(frozen) && tp.tp2.isSingletonBounded(frozen)
       case _ => false
 
     /** Is this type of kind `AnyKind`? */
