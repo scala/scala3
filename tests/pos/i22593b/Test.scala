@@ -1,0 +1,3 @@
+object CoreSpec  {
+  jam.brew
+}
