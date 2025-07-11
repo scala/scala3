@@ -2132,6 +2132,9 @@ object Types extends TypeUtils {
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
     def hashIsStable: Boolean = true
   }
+  object Type:
+    // Extensions that model type application.
+    given TypeApplications()
 
   // end Type
 
@@ -4370,10 +4373,10 @@ object Types extends TypeUtils {
         setVariances(tparams.tail, vs.tail)
 
     override val isDeclaredVarianceLambda = variances.nonEmpty
-    if isDeclaredVarianceLambda then setVariances(this.typeParams, variances)
+    if isDeclaredVarianceLambda then setVariances(typeParams, variances)
 
     def declaredVariances =
-      if isDeclaredVarianceLambda then this.typeParams.map(_.declaredVariance)
+      if isDeclaredVarianceLambda then typeParams.map(_.declaredVariance)
       else Nil
 
     override def computeHash(bs: Binders): Int =
@@ -4386,7 +4389,7 @@ object Types extends TypeUtils {
         paramNames.eqElements(that.paramNames)
         && isDeclaredVarianceLambda == that.isDeclaredVarianceLambda
         && (!isDeclaredVarianceLambda
-            || this.typeParams.corresponds(that.typeParams)((x, y) =>
+            || typeParams.corresponds(that.typeParams)((x, y) =>
                   x.declaredVariance == y.declaredVariance))
         && {
           val bs1 = new SomeBinderPairs(this, that, bs)
@@ -7159,8 +7162,6 @@ object Types extends TypeUtils {
   }
 
   // ----- Helpers and Decorator implicits --------------------------------------
-
-  export TypeApplications.{EtaExpandIfHK as _, EtaExpansion as _, TypeParamInfo as _, *}
 
   extension (tps1: List[Type]) {
     @tailrec def hashIsStable: Boolean =
