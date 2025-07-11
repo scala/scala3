@@ -41,6 +41,8 @@ import scala.util.Properties.isJavaAtLeast
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
 
+import sbt.internal.inc.Analysis
+
 object DottyJSPlugin extends AutoPlugin {
   import Build._
 
@@ -1139,6 +1141,36 @@ object Build {
 
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
   lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
+
+  /* Configuration of the org.scala-lang:scala-library:*.**.** project 
+   * NOTES: - This project only exists as a POM, it should not be used as a dependency to any other sbt project here
+   *        - The only commands you should run on this project are `publish` and `publishLocal`
+   *        - This project produces no artifacts and has no sources
+   */
+  lazy val `scala-library` = project.in(file("scala-library"))
+    .settings(
+      name          := "scala-library",
+      version       := dottyVersion, // Keep the same version as the current Scala version
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // sbt 1.x defaults to Scala 2.12.*. Therefore, resolution below tries to resolve scala3-library_2.12  
+      crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
+      libraryDependencies := Seq(organization.value %% "scala3-library" % version.value),
+      // Do not allow any sources or resources (managed or not, compilation or test) for this project 
+      Compile / sources   := Seq.empty,
+      Compile / resources := Seq.empty,
+      Test    / sources   := Seq.empty,
+      Test    / resources := Seq.empty,
+      Compile / compile := {
+        streams.value.log.error(s"Compiling project ${name.value} is disabled. Please consider compiling ${(`scala3-library-bootstrapped` / name).value} instead.")
+        Analysis.Empty
+      },
+      // Only publish a .pom, no need to publish empty artifacts
+      Compile / publishArtifact := false,
+      Test    / publishArtifact := false,
+      // Make sure this project is not publishable. This will change starting from 3.8.0
+      publish / skip := true,
+    )
+
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
