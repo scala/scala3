@@ -1,0 +1,4 @@
+MySome(())
+MySome(2)
+MySome((2,3))
+MySome((2,(3,4)))
