@@ -668,7 +668,7 @@ class TreeUnpickler(reader: TastyReader,
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
       var annots = annotFns.map(_(annotOwner))
-      if annots.exists(_.symbol == defn.SilentIntoAnnot) then
+      if annots.exists(_.hasSymbol(defn.SilentIntoAnnot)) then
         // Temporary measure until we can change TastyFormat to include an INTO tag
         sym.setFlag(Into)
         annots = annots.filterNot(_.symbol == defn.SilentIntoAnnot)
