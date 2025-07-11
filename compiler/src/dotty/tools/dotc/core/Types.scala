@@ -2174,8 +2174,7 @@ object Types extends TypeUtils {
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
     def hashIsStable: Boolean = true
   }
-
-  // end Type
+  end Type
 
 // ----- Type categories ----------------------------------------------
 
@@ -7309,9 +7308,7 @@ object Types extends TypeUtils {
     case _ => false
   }
 
-  // ----- Helpers and Decorator implicits --------------------------------------
-
-  implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
+  // ----- Helpers and Decorators --------------------------------------
 
   extension (tps1: List[Type]) {
     @tailrec def hashIsStable: Boolean =

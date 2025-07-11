@@ -19,9 +19,9 @@ object TypeApplications {
   type TypeParamInfo = ParamInfo.Of[TypeName]
 
   /** Assert type is not a TypeBounds instance and return it unchanged */
-  def noBounds(tp: Type): Type = tp match {
-    case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
-    case _ => tp
+  def noBounds(tp: Type): tp.type = {
+    assert(!tp.isInstanceOf[TypeBounds], "no TypeBounds allowed")
+    tp
   }
 
   /** Extractor for
@@ -156,11 +156,12 @@ object TypeApplications {
   }
 }
 
-import TypeApplications.*
+/** Extensions that model type application.
+ */
+class TypeApplications {
+  import TypeApplications.*
 
-/** A decorator that provides methods for modeling type application */
-class TypeApplications(val self: Type) extends AnyVal {
-
+  extension (self: Type) { // braces to avoid indenting existing code
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
@@ -562,7 +563,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
-  def argTypes(using Context): List[Type] = argInfos mapConserve noBounds
+  def argTypes(using Context): List[Type] = argInfos.mapConserve(noBounds)
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
   def argTypesLo(using Context): List[Type] = argInfos.mapConserve(_.loBound)
@@ -596,4 +597,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       .orElse(self.baseType(defn.ArrayClass))
       .argInfos.headOption.getOrElse(NoType)
   }
+  }
+  end extension
 }
