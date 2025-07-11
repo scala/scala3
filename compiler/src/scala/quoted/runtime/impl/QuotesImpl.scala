@@ -1911,9 +1911,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Symbols.defn.isTupleNType(self)
         def select(sym: Symbol): TypeRepr = self.select(sym)
         def appliedTo(targ: TypeRepr): TypeRepr =
-          dotc.core.Types.appliedTo(self)(targ)
+          Types.Type.given_TypeApplications.appliedTo(self)(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
-          dotc.core.Types.appliedTo(self)(targs)
+          Types.Type.given_TypeApplications.appliedTo(self)(targs)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
           self.subst(from, to)
 
