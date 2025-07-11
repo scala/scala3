@@ -598,7 +598,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *   - If the reference is to a this type of the enclosing class, the
    *     access must be in a @consume method.
    *
-   *  References that extend cpas.Sharable are excluded from checking.
+   *  References that extend caps.Sharable are excluded from checking.
    *  As a side effect, add all checked references with the given position `pos`
    *  to the global `consumed` map.
    *
@@ -612,7 +612,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- refsToCheck.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe)) do
-      if !hiddenRef.derivesFromSharedCapability then
+      if !hiddenRef.derivesFromSharable then
         hiddenRef.pathRoot match
           case ref: TermRef =>
             val refSym = ref.symbol
@@ -649,7 +649,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.derivesFromSharedCapability then
+          if !ref.derivesFromSharable then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs
