@@ -93,6 +93,18 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
   def isAnyFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.Function")
 
   def isAnyContextFunction: Boolean = tpe.typeSymbol.fullName.startsWith("scala.ContextFunction")
+
+  def isCapSet: Boolean = tpe.typeSymbol == CaptureDefs.Caps_CapSet
+
+  def isCapSetPure: Boolean =
+    tpe.isCapSet && tpe.match
+      case CapturingType(_, refs) => refs.isEmpty
+      case _ => true
+
+  def isCapSetCap: Boolean =
+    tpe.isCapSet && tpe.match
+      case CapturingType(_, List(ref)) => ref.isCaptureRoot
+      case _ => false
 end extension
 
 /** Matches `import scala.language.experimental.captureChecking` */
@@ -136,14 +148,14 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
   def include(t: TypeRepr): Boolean = { buffer += t; true }
   def traverse(typ: TypeRepr): Boolean =
     typ match
+      case t if t.typeSymbol == defn.NothingClass => true
       case OrType(t1, t2)            => traverse(t1) && traverse(t2)
       case t @ ThisType(_)           => include(t)
       case t @ TermRef(_, _)         => include(t)
       case t @ ParamRef(_, _)        => include(t)
       case t @ ReachCapability(_)    => include(t)
       case t @ ReadOnlyCapability(_) => include(t)
-      case t if t.typeSymbol == defn.NothingClass => true
-       // TODO: are atoms only ever the above? Then we could refine the return type
+      case t : TypeRef               => include(t) // FIXME: does this need a more refined check?
       case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false // TODO remove warning eventually
   if traverse(typ0) then Some(buffer.toList) else None
 end decomposeCaptureRefs
