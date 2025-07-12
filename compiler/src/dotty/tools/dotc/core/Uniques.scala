@@ -3,6 +3,7 @@ package core
 
 import Types.*, Contexts.*, util.Stats.*, Hashable.*, Names.*
 import config.Config
+import Symbols.Symbol
 import Decorators.*
 import util.{WeakHashSet, Stats}
 import WeakHashSet.Entry
@@ -41,8 +42,10 @@ object Uniques:
       val h = doHash(null, designator, prefix)
       if monitored then recordCaching(h, classOf[NamedType])
       def newType =
-        if (isTerm) new CachedTermRef(prefix, designator, h)
-        else new CachedTypeRef(prefix, designator, h)
+        try
+          if isTerm then new CachedTermRef(prefix, designator, h)
+          else new CachedTypeRef(prefix, designator, h)
+        catch case ex: InvalidPrefix => badPrefix(prefix, designator)
       if h == NotCached then newType
       else
         // Inlined from WeakHashSet#put
@@ -61,6 +64,14 @@ object Uniques:
 
         linkedListLoop(oldHead)
       end if
+    end enterIfNew
+
+    private def badPrefix(prefix: Type, desig: Designator)(using Context): Nothing =
+      def name = desig match
+        case desig: Name => desig
+        case desig: Symbol => desig.name
+      throw TypeError(em"invalid prefix $prefix when trying to form $prefix . $name")
+
   end NamedTypeUniques
 
   final class AppliedUniques extends WeakHashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:

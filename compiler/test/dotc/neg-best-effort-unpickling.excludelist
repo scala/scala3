@@ -24,3 +24,6 @@ context-function-syntax.scala
 
 # Failure to disambiguate overloaded reference
 i23402b.scala
+
+# Unhandled TypeError exception
+i23504.scala
