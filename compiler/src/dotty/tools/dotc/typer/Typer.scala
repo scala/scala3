@@ -4355,7 +4355,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             def inferArgsAfter(leading: Tree) =
               val formals2 =
                 if wtp.isParamDependent && leading.tpe.exists then
-                  formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), leading.tpe))
+                  formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), leading.tpe, leading))
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 

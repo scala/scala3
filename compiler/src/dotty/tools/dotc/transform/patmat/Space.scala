@@ -570,7 +570,10 @@ object SpaceEngine {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = wildApprox(ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType)
+    var resTp0 = mt.resultType
+    if mt.isResultDependent then
+      resTp0 = ctx.typeAssigner.safeSubstParam(resTp0, mt.paramRefs.head, scrutineeTp)
+    val resTp = wildApprox(resTp0).finalResultType
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))

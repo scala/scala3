@@ -12,6 +12,7 @@ import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
+import util.Property
 import transform.Splicer
 
 trait TypeAssigner {
@@ -273,9 +274,9 @@ trait TypeAssigner {
   /** Substitute argument type `argType` for parameter `pref` in type `tp`,
    *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.
    */
-  def safeSubstParam(tp: Type, pref: ParamRef, argType: Type)(using Context): Type = {
+  def safeSubstParam(tp: Type, pref: ParamRef, argType: Type, arg: Tree | Null = null)(using Context): Type = {
     val tp1 = tp.substParam(pref, argType)
-    if ((tp1 eq tp) || argType.isStable) tp1
+    if (tp1 eq tp) || argType.isStable then tp1
     else tp.substParam(pref, SkolemType(argType.widen))
   }
 
@@ -283,23 +284,22 @@ trait TypeAssigner {
    *  The number of parameters `params` may exceed the number of arguments.
    *  In this case, only the common prefix is substituted.
    */
-  def safeSubstParams(tp: Type, params: List[ParamRef], argTypes: List[Type])(using Context): Type = argTypes match {
-    case argType :: argTypes1 =>
-      val tp1 = safeSubstParam(tp, params.head, argType)
-      safeSubstParams(tp1, params.tail, argTypes1)
+  def safeSubstParams(tp: Type, params: List[ParamRef], args: List[Tree])(using Context): Type = args match
+    case arg :: args1 =>
+      val tp1 = safeSubstParam(tp, params.head, arg.tpe, arg)
+      safeSubstParams(tp1, params.tail, args1)
     case Nil =>
       tp
-  }
 
-  def safeSubstMethodParams(mt: MethodType, argTypes: List[Type])(using Context): Type =
-    if mt.isResultDependent then safeSubstParams(mt.resultType, mt.paramRefs, argTypes)
+  def safeSubstMethodParams(mt: MethodType, args: List[Tree])(using Context): Type =
+    if mt.isResultDependent then safeSubstParams(mt.resultType, mt.paramRefs, args)
     else mt.resultType
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping then
-          if fntpe.isResultDependent then safeSubstMethodParams(fntpe, args.tpes)
+          if fntpe.isResultDependent then safeSubstMethodParams(fntpe, args)
           else fntpe.resultType // fast path optimization
         else
           val erroringPhase =
@@ -570,6 +570,12 @@ trait TypeAssigner {
 }
 
 object TypeAssigner extends TypeAssigner:
+
+  /** An attachment on an argument in an application indicating that the argument's
+   *  type was converted to the given skolem type.
+   */
+  private[typer] val Skolemized = new Property.StickyKey[SkolemType]
+
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
     case _ => if ctx.erasedTypes then defn.SeqType else defn.SeqType.appliedTo(elemType)
