@@ -206,7 +206,7 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   /** Does this import clause or a preceding import clause enable `feature`?
    *
-   *  @param  feature  a possibly quailified name, e.g.
+   *  @param  feature  a possibly qualified name, e.g.
    *                      strictEquality
    *                      experimental.genericNumberLiterals
    *
