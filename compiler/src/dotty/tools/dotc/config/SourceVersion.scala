@@ -8,7 +8,7 @@ import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
-  case `3.0-migration`, `3.0` 
+  case `3.0-migration`, `3.0`
   case `3.1-migration`, `3.1`
   case `3.2-migration`, `3.2`
   case `3.3-migration`, `3.3`
@@ -45,7 +45,7 @@ enum SourceVersion:
   def enablesBetterFors(using Context) = isAtLeast(`3.7`) && isPreviewEnabled
 
 object SourceVersion extends Property.Key[SourceVersion]:
-  
+
   /* The default source version used by the built compiler */
   val defaultSourceVersion = `3.7`
 

@@ -210,6 +210,7 @@ sealed abstract class CaptureSet extends Showable:
 
   protected def addIfHiddenOrFail(elem: Capability)(using ctx: Context, vs: VarState): Boolean =
     elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    || elem.isKnownEmpty
     || failWith(IncludeFailure(this, elem))
 
   /** If this is a variable, add `cs` as a dependent set */
@@ -403,10 +404,26 @@ sealed abstract class CaptureSet extends Showable:
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
+  def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
+
   def readOnly(using Context): CaptureSet =
     val res = map(ReadOnlyMap())
     if mutability != Ignored then res.mutability = Reader
     res
+
+  def transClassifiers(using Context): Classifiers =
+    if isConst then
+      (ClassifiedAs(Nil) /: elems.map(_.transClassifiers))(joinClassifiers)
+    else UnknownClassifier
+
+  def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+    elems.forall(_.tryClassifyAs(cls))
+
+  def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
+    for elem <- elems do
+      elem.stripReadOnly match
+        case fresh: FreshCap => fresh.hiddenSet.adoptClassifier(cls)
+        case _ =>
 
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
@@ -649,6 +666,25 @@ object CaptureSet:
      */
     private[CaptureSet] var rootLimit: Symbol | Null = null
 
+    private var myClassifier: ClassSymbol = defn.AnyClass
+    def classifier: ClassSymbol = myClassifier
+
+    private def narrowClassifier(cls: ClassSymbol)(using Context): Unit =
+      val newClassifier = leastClassifier(classifier, cls)
+      if newClassifier == defn.NothingClass then
+        println(i"conflicting classifications for $this, was $classifier, now $cls")
+      myClassifier = newClassifier
+
+    override def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
+      if !classifier.isSubClass(cls) then // serves as recursion brake
+        narrowClassifier(cls)
+        super.adoptClassifier(cls)
+
+    override def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
+      classifier.isSubClass(cls)
+      || super.tryClassifyAs(cls)
+          && { narrowClassifier(cls); true }
+
     /** A handler to be invoked when new elems are added to this set */
     var newElemAddedHandler: Capability => Context ?=> Unit = _ => ()
 
@@ -680,6 +716,8 @@ object CaptureSet:
         addIfHiddenOrFail(elem)
       else if !levelOK(elem) then
         failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
+      else if !elem.tryClassifyAs(classifier) then
+        failWith(IncludeFailure(this, elem))
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
@@ -687,7 +725,6 @@ object CaptureSet:
         includeElem(elem)
         if isBadRoot(rootLimit, elem) then
           rootAddedHandler()
-        newElemAddedHandler(elem)
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = deps.forall: dep =>
@@ -1344,8 +1381,9 @@ object CaptureSet:
 
   /** A template for maps on capabilities where f(c) <: c and f(f(c)) = c */
   private abstract class NarrowingCapabilityMap(using Context) extends BiTypeMap:
-
     def apply(t: Type) = mapOver(t)
+
+    protected def isSameMap(other: BiTypeMap) = other.getClass == getClass
 
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: Inverse if next.inverse.getClass == getClass => Some(IdentityTypeMap)
@@ -1358,8 +1396,8 @@ object CaptureSet:
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
       override def fuse(next: BiTypeMap)(using Context) = next match
-        case next: NarrowingCapabilityMap if next.inverse.getClass == getClass => Some(IdentityTypeMap)
-        case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
+        case next: NarrowingCapabilityMap if isSameMap(next.inverse) => Some(IdentityTypeMap)
+        case next: NarrowingCapabilityMap if isSameMap(next) => Some(this)
         case _ => None
 
     lazy val inverse = Inverse()
@@ -1374,6 +1412,13 @@ object CaptureSet:
   private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
     override def mapCapability(c: Capability, deep: Boolean) = c.readOnly
     override def toString = "ReadOnly"
+
+  private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+    override def mapCapability(c: Capability, deep: Boolean) = c.restrict(cls)
+    override def toString = "Restrict"
+    override def isSameMap(other: BiTypeMap) = other match
+      case other: RestrictMap => cls == other.cls
+      case _ => false
 
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
@@ -1402,6 +1447,9 @@ object CaptureSet:
     case Reach(c1) =>
       c1.widen.deepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
+    case Restricted(c1, cls) =>
+      if cls == defn.NothingClass then CaptureSet.empty
+      else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
