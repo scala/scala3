@@ -10,4 +10,4 @@ def Test = ()
 
   val _: Box1[? <: Int] = x
 
-  val y = Box2(id(readInt())) // error
+  val y = Box2(id(readInt()))

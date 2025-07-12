@@ -277,7 +277,7 @@ trait TypeAssigner {
   def safeSubstParam(tp: Type, pref: ParamRef, argType: Type, arg: Tree | Null = null)(using Context): Type = {
     val tp1 = tp.substParam(pref, argType)
     if (tp1 eq tp) || argType.isStable then tp1
-    else tp.substParam(pref, SkolemType(argType.widen))
+    else tp.substParam(pref, skolemizeArgType(argType.widen, arg))
   }
 
   /** Substitute types of all arguments `args` for corresponding `params` in `tp`.
@@ -574,7 +574,22 @@ object TypeAssigner extends TypeAssigner:
   /** An attachment on an argument in an application indicating that the argument's
    *  type was converted to the given skolem type.
    */
-  private[typer] val Skolemized = new Property.StickyKey[SkolemType]
+  private val Skolemized = new Property.StickyKey[SkolemType]
+
+  /** A skolem type wrapping `argType`, associated with `arg` if it is non-null.
+   *  Skolem types for the same arguments with equal underlying `argType`s are re-used.
+   */
+  def skolemizeArgType(argType: Type, arg: tpd.Tree | Null)(using Context): Type =
+    if arg == null then
+      SkolemType(argType)
+    else
+      arg.getAttachment(Skolemized) match
+        case Some(sk @ SkolemType(tp)) if argType frozen_=:= tp =>
+          sk
+        case _ =>
+          val sk = SkolemType(argType)
+          arg.putAttachment(Skolemized, sk)
+          sk
 
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)

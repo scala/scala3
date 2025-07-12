@@ -13,6 +13,7 @@ import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec
 import reporting.*
+import TypeAssigner.skolemizeArgType
 import collection.mutable
 import scala.annotation.internal.sharable
 
@@ -853,7 +854,8 @@ trait Inferencing { this: Typer =>
           val arg = findArg(call)
           if !arg.isEmpty then
             var argType = arg.tpe.widenIfUnstable
-            if !argType.isSingleton then argType = SkolemType(argType)
+            if !argType.isSingleton then
+              argType = skolemizeArgType(argType, arg)
             argType <:< tvar
         case _ =>
   end constrainIfDependentParamRef
