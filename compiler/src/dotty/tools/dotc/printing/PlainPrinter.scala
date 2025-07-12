@@ -459,9 +459,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info)
-        else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
-        else toText(tp.repr)
+        def reprStr = toText(tp.repr) ~ hashStr(tp)
+        if homogenizedView then
+          toText(tp.info)
+        else if ctx.settings.XprintTypes.value then
+          "<" ~ reprStr ~ ":" ~ toText(tp.info) ~ ">"
+        else
+          reprStr
     }
   }
 
