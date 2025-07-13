@@ -1451,11 +1451,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else typedFunctionValue(tree, pt)
 
   def typedFunctionType(tree: untpd.Function, pt: Type)(using Context): Tree = {
-    val untpd.Function(args, body) = tree
-    body match
-      case untpd.CapturesAndResult(refs, result) =>
+    val untpd.Function(args, result) = tree
+    result match
+      case untpd.CapturesAndResult(refs, result1) =>
         return typedUnadapted(untpd.makeRetaining(
-          cpy.Function(tree)(args, result), refs, tpnme.retains), pt)
+          cpy.Function(tree)(args, result1), refs, tpnme.retains), pt)
       case _ =>
     var (funFlags, erasedParams) = tree match {
       case tree: untpd.FunctionWithMods => (tree.mods.flags, tree.erasedParams)
@@ -1467,22 +1467,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val isImpure = funFlags.is(Impure)
 
     /** Typechecks dependent function type with given parameters `params` */
-    def typedDependent(params: List[untpd.ValDef])(using Context): Tree =
-      val fixThis = new untpd.UntypedTreeMap:
-        // pretype all references of this in outer context,
-        // so that they do not refer to the refined type being constructed
-        override def transform(tree: untpd.Tree)(using Context): untpd.Tree = tree match
-          case This(id) => untpd.TypedSplice(typedExpr(tree)(using ctx.outer))
-          case _ => super.transform(tree)
-
+    def typedDependent(params: List[untpd.ValDef], result: untpd.Tree)(using Context): Tree =
       val params1 =
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
-      val params2 = params1.map(fixThis.transformSub)
-      val params3 = params2.zipWithConserve(erasedParams) { (arg, isErased) =>
+      val params2 = params1.zipWithConserve(erasedParams): (arg, isErased) =>
         if isErased then arg.withAddedFlags(Erased) else arg
-      }
-      val appDef0 = untpd.DefDef(nme.apply, List(params3), body, EmptyTree).withSpan(tree.span)
+      val appDef0 = untpd.DefDef(nme.apply, List(params2), result, EmptyTree).withSpan(tree.span)
       index(appDef0 :: Nil)
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
@@ -1490,14 +1481,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         report.error(em"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       // Restart typechecking if there are erased classes that we want to mark erased
       if mt.erasedParams.zip(mt.paramInfos.map(_.isErasedClass)).exists((paramErased, classErased) => classErased && !paramErased) then
-        val newParams = params3.zipWithConserve(mt.paramInfos.map(_.isErasedClass)) { (arg, isErasedClass) =>
+        val newParams = params2.zipWithConserve(mt.paramInfos.map(_.isErasedClass)) { (arg, isErasedClass) =>
           if isErasedClass then arg.withAddedFlags(Erased) else arg
         }
-        return typedDependent(newParams)
+        return typedDependent(newParams, result)
       val core =
         if mt.hasErasedParams then TypeTree(defn.ErasedFunctionClass.typeRef)
         else
-          val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
+          val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(result.span)
           val paramTpts = appDef.termParamss.head.map(p => TypeTree(p.tpt.tpe).withSpan(p.tpt.span))
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
           val tycon = TypeTree(funSym.typeRef)
@@ -1507,19 +1498,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     args match {
       case ValDef(_, _, _) :: _ =>
-        typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
+        val fixThis = new untpd.UntypedTreeMap:
+          // pretype all references of this so that they do not refer to the
+          // refined type being constructed
+          override def transform(tree: untpd.Tree)(using Context): untpd.Tree = tree match
+            case This(id) => untpd.TypedSplice(typedExpr(tree))
+            case _ => super.transform(tree)
+
+        val untpd.Function(fixedArgs: List[untpd.ValDef] @unchecked, fixedResult) =
+          fixThis.transform(tree): @unchecked
+        typedDependent(fixedArgs, fixedResult)(
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
         if erasedParams.contains(true) then
           typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
         else
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
-          val result = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt)
+          val funTpt = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ result), pt)
           // if there are any erased classes, we need to re-do the typecheck.
-          result match
+          funTpt match
             case r: AppliedTypeTree if r.args.exists(_.tpe.isErasedClass) =>
               typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
-            case _ => result
+            case _ => funTpt
     }
   }
 
