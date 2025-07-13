@@ -1573,13 +1573,7 @@ class Objects(using Context @constructorOnly):
             val target = expr.tpe.widenSingleton.classSymbol.asClass
             withTrace(trace2) { resolveThis(target, qual.asInstanceOf[ThisValue], klass) }
           case _ =>
-            qual match {
-              // Check if expression is a selection of a method
-              case v: SafeValue if expr.symbol.is(Flags.Method) =>
-                withTrace(trace2) { call(v, expr.symbol, args = Nil, receiver = qualifier.tpe, superType = NoType) }
-              case _ =>
-                withTrace(trace2) { select(qual, expr.symbol, receiver = qualifier.tpe) }
-            }
+            withTrace(trace2) { select(qual, expr.symbol, receiver = qualifier.tpe) }
 
       case _: This =>
         evalType(expr.tpe, thisV, klass)
