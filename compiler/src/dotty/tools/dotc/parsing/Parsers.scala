@@ -2007,15 +2007,19 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if !inMatchPattern then
-            report.errorOrMigrationWarning(
-              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
-              in.sourcePos(),
-              MigrationVersion.WildcardType)
-            if MigrationVersion.WildcardType.needsPatch then
-              patch(source, Span(in.offset, in.offset + 1), "?")
-          end if
+            val msg =
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}"
+            report.errorOrMigrationWarning(msg, in.sourcePos(), MigrationVersion.WildcardType)
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
+            .tap: tbt =>
+              if !inMatchPattern && MigrationVersion.WildcardType.needsPatch then
+                val offset_? = tbt.span.start
+                if Chars.isOperatorPart(source(offset_? + 1)) then
+                  patch(source, tbt.span, "?" + ctx.printer.toText(tbt).mkString())
+                else
+                  patch(source, Span(offset_?, offset_? + 1), "?")
+
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
       else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.XkindProjector.value == "underscores" then
