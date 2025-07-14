@@ -7,6 +7,7 @@ import core.Symbols.*
 import core.Contexts.*
 import ast.TreeTypeMap
 import core.Types.*
+import core.TypeApplications.*
 import core.Flags.*
 import core.Decorators.*
 import collection.mutable

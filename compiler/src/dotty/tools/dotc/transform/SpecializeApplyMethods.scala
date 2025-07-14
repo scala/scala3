@@ -3,6 +3,7 @@ package transform
 
 import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
+import TypeApplications.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 import config.Feature

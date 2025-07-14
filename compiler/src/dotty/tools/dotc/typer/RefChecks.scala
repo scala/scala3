@@ -5,6 +5,7 @@ package typer
 import transform.*
 import core.*
 import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, NameOps.*, NameKinds.*
+import TypeApplications.*
 import StdNames.*, Denotations.*, Phases.*, SymDenotations.*
 import NameKinds.DefaultGetterName
 import util.Spans.*

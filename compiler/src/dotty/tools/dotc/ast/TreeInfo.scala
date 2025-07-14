@@ -4,6 +4,7 @@ package ast
 
 import core.*
 import Flags.*, Trees.*, Types.*, Contexts.*
+import TypeApplications.*
 import Names.*, StdNames.*, NameOps.*, Symbols.*
 import Annotations.Annotation
 import NameKinds.ContextBoundParamName

@@ -8,6 +8,7 @@ import NameKinds.NonLocalReturnKeyName
 import config.SourceVersion.*
 import Decorators.em
 import dotty.tools.dotc.config.MigrationVersion
+import dotty.tools.dotc.core.TypeApplications.*
 
 object NonLocalReturns {
   import ast.tpd.*

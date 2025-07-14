@@ -3,6 +3,7 @@ package transform
 
 import core.*
 import Types.*
+import TypeApplications.*
 import Contexts.*
 import Symbols.*
 import Decorators.*

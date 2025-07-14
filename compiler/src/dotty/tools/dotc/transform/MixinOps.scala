@@ -3,6 +3,7 @@ package transform
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import TypeApplications.*
 import util.Spans.*
 
 import StdNames.*, NameOps.*

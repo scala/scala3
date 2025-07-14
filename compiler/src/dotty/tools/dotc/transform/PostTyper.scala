@@ -10,6 +10,7 @@ import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.typer.VarianceChecker
 import typer.ErrorReporting.errorTree
 import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
+import TypeApplications.*
 import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
 import Decorators.*
 import Symbols.*, NameOps.*

@@ -4,6 +4,7 @@ package core
 
 import scala.annotation.{threadUnsafe => tu}
 import Types.*, Contexts.*, Symbols.*, SymDenotations.*, StdNames.*, Names.*, Phases.*
+import TypeApplications.*
 import Flags.*, Scopes.*, Decorators.*, NameOps.*, Periods.*, NullOpsDecorator.*
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable

@@ -15,6 +15,7 @@ import Names.*
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
 import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix, NoType}
+import TypeApplications.*
 
 import dotty.tools.dotc.printing.Formatting.hl
 
