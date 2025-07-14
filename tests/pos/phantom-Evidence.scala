@@ -27,5 +27,5 @@ object WithNormalState {
 
 object Utils {
   type =::=[From, To]
-  inline given tpEquals: [A] => (A =::= A) = caps.unsafe.unsafeErasedValue
+inline given tpEquals: [A] => (A =::= A) = compiletime.erasedValue
 }

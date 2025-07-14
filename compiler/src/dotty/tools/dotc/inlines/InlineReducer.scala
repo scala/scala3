@@ -176,7 +176,7 @@ class InlineReducer(inliner: Inliner)(using Context):
 
     /** Adjust internaly generated value definitions;
      *   - If the RHS refers to an erased symbol, mark the val as erased
-     *   - If the RHS refers to an erased symbol, mark the val as unsuable
+     *   - If the RHS refers to an unusable symbol, mark the val as unusable
      */
     def adjustErased(sym: TermSymbol, rhs: Tree): Unit =
       rhs.foreachSubTree:

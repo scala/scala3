@@ -8,9 +8,10 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
 
 1. `erased` is a soft modifier. It can appear in a `val` definition or in a parameter.
 
-2. A reference to an `erased` value can only be used
-   * Inside the expression of argument to an `erased` parameter
-   * Inside the body of an `erased` `val` or `def`
+2. A reference to an `erased` value can only be used in an *erased context*:
+   * Inside the expression of an argument to an `erased` parameter
+   * Inside the body of an `erased` `val`
+   * Inside the path of a dependent type expression
 
 3. `erased` can also be used in a function type, e.g.
 
@@ -25,7 +26,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
 
 5. Erasure semantics
    * All `erased` parameters are removed from the function
-   * All argument to `erased` parameters are not passed to the function
+   * All arguments to `erased` parameters are not passed to the function
    * All `erased` value definitions are removed
    * All `erased` argument types are removed from a function type
 

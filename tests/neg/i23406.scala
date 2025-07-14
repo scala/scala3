@@ -13,8 +13,12 @@ inline def problem[T]: String =
 inline def ok[T]: String =
   inline compiletime.erasedValue[T] match
     case x: String => "hi"
+inline def alsoOk[T](erased x: T): String =
+  inline x match
+    case x: String => "hi again"
 
 def Test =
   funny[String]  // error
   problem[String] // error
-  ok[String]
+ok[String]
+alsoOk[String](compiletime.erasedValue)
