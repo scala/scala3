@@ -16,6 +16,7 @@ import core.Flags
 import core.Names.*
 import core.NameKinds
 import core.Types.*
+import core.TypeApplications.*
 import core.Symbols.{NoSymbol, isLocalToBlock}
 import interactive.Interactive
 import util.Spans.Span

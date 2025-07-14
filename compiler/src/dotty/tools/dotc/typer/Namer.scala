@@ -6,6 +6,7 @@ import core.*
 import ast.*
 import Trees.*, StdNames.*, Scopes.*, Denotations.*, NamerOps.*, ContextOps.*
 import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*
+import TypeApplications.*
 import Decorators.*, Comments.{_, given}
 import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar.*

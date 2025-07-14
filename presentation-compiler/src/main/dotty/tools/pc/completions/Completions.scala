@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
 import dotty.tools.dotc.util.SourcePosition

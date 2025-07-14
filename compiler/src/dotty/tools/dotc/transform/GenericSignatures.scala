@@ -13,6 +13,7 @@ import core.Symbols.*
 import core.TypeApplications.{EtaExpansion, TypeParamInfo}
 import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
 import core.Types.*
+import core.TypeApplications.*
 import core.classfile.ClassfileConstants
 
 import config.Printers.transforms

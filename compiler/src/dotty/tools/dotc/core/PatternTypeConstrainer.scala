@@ -5,6 +5,7 @@ package core
 import Decorators.*
 import Symbols.*
 import Types.*
+import TypeApplications.*
 import Flags.*
 import Contexts.ctx
 import dotty.tools.dotc.reporting.trace

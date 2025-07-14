@@ -9,6 +9,7 @@ import Comments.docCtx
 import Contexts.*
 import Symbols.*
 import Types.*
+import TypeApplications.*
 import Scopes.*
 import SymDenotations.*
 import Denotations.*

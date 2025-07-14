@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report

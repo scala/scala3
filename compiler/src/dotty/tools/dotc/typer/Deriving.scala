@@ -7,6 +7,7 @@ import ast.*
 import ast.Trees.*
 import StdNames.*
 import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*, Decorators.*
+import TypeApplications.*
 import ProtoTypes.*, ContextOps.*
 import util.Spans.*
 import util.SrcPos

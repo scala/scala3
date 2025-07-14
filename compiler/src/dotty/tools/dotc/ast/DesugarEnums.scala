@@ -4,6 +4,7 @@ package ast
 
 import core.*
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*
+import TypeApplications.*
 import Symbols.*, StdNames.*, Trees.*
 import Decorators.*
 import util.{Property, SourceFile}

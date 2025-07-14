@@ -6,6 +6,7 @@ import core.*
 import util.Spans.Span
 import Contexts.*
 import Types.*, Flags.*, Symbols.*, Names.*, StdNames.*, Constants.*
+import TypeApplications.*
 import TypeErasure.{erasure, hasStableErasure}
 import Decorators.*
 import ProtoTypes.*

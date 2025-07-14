@@ -7,6 +7,7 @@ import dotty.tools.dotc.transform.MegaPhase.*
 import ast.untpd
 import Flags.*
 import Types.*
+import TypeApplications.*
 import Constants.Constant
 import Contexts.*
 import Symbols.*

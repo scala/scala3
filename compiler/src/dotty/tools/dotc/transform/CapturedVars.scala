@@ -11,6 +11,7 @@ import core.StdNames.nme
 import core.Names.*
 import core.NameKinds.TempResultName
 import core.Constants.*
+import core.TypeApplications.*
 import util.Store
 import dotty.tools.uncheckedNN
 import ast.tpd.*

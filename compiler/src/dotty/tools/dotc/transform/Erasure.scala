@@ -10,6 +10,7 @@ import core.SymDenotations.*
 import core.Symbols.*
 import core.Contexts.*
 import core.Types.*
+import core.TypeApplications.*
 import core.Names.*
 import core.StdNames.*
 import core.NameOps.*

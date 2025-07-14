@@ -19,6 +19,7 @@ import Denotations.*
 import Periods.*
 import CheckRealizable.*
 import Variances.{Variance, setStructuralVariances, Invariant}
+import TypeApplications.*
 import typer.Nullables
 import util.Stats.*
 import util.{SimpleIdentityMap, SimpleIdentitySet}
@@ -2169,11 +2170,7 @@ object Types extends TypeUtils {
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
     def hashIsStable: Boolean = true
   }
-  object Type:
-    // Extensions that model type application.
-    given TypeApplications()
-
-  // end Type
+  end Type
 
 // ----- Type categories ----------------------------------------------
 

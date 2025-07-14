@@ -5,6 +5,7 @@ import core.*
 import Decorators.*
 import Flags.*
 import Types.*
+import TypeApplications.*
 import Contexts.*
 import Symbols.*
 import Constants.*

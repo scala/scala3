@@ -9,6 +9,7 @@ import core.Contexts.*
 import core.Decorators.*
 import core.StdNames.nme
 import core.Symbols.*
+import core.TypeApplications.*
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 

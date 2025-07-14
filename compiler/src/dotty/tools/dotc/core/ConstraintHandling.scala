@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types.*
+import TypeApplications.*
 import Contexts.*
 import Symbols.*
 import Decorators.*

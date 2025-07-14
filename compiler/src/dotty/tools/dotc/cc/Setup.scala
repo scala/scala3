@@ -6,6 +6,7 @@ import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
+import TypeApplications.*
 import Annotations.Annotation
 import config.Feature
 import config.Printers.{capt, captDebug}

@@ -6,6 +6,7 @@ import core.*
 import Contexts.*
 import Symbols.*
 import Types.*
+import TypeApplications.*
 import Denotations.Denotation
 import StdNames.*
 import Names.TermName

@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types.*, Contexts.*, Symbols.*, Flags.*, Names.*, NameOps.*, Denotations.*
+import TypeApplications.*
 import Decorators.*
 import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme

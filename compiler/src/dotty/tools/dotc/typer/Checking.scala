@@ -6,6 +6,7 @@ import core.*
 import ast.*
 import Contexts.*
 import Types.*
+import TypeApplications.*
 import Flags.*
 import Names.*
 import StdNames.*

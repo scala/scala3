@@ -4,6 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Flags.*, Contexts.*, Decorators.*
+import TypeApplications.*
 import config.Printers.{capt, captDebug}
 import Annotations.Annotation
 import annotation.threadUnsafe

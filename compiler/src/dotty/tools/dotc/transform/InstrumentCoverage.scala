@@ -13,6 +13,7 @@ import core.Constants.Constant
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
+import core.TypeApplications.*
 import core.Decorators.*
 import coverage.*
 import typer.LiftCoverage

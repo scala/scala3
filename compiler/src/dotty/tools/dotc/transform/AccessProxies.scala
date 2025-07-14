@@ -10,6 +10,7 @@ import Names.*
 import NameOps.*
 import Decorators.*
 import Types.*
+import TypeApplications.*
 import util.Spans.Span
 import config.Printers.transforms
 import Annotations.ExperimentalAnnotation

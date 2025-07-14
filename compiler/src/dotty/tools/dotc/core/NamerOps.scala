@@ -3,9 +3,9 @@ package dotc
 package core
 
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
+import TypeApplications.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
 import ContextOps.enter
-import TypeApplications.EtaExpansion
 import collection.mutable
 import config.Printers.typr
 import rewrites.Rewrites.patch

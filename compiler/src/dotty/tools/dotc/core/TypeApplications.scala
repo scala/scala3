@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types.*
+import TypeApplications.*
 import Contexts.*
 import Symbols.*
 import SymDenotations.LazyType
@@ -26,7 +27,7 @@ object TypeApplications:
    *
    *  @param tycon     C
    */
-  object EtaExpansion:
+  object EtaExpansion: // note typer.EtaExpansion
 
     /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
      *  contain the bounds of the type parameters of `C`. This is necessary to be able to
@@ -149,11 +150,7 @@ object TypeApplications:
     }
   }
 
-/** Extensions that model type application.
- */
-trait TypeApplications:
-  import TypeApplications.*
-
+  // Extensions that model type application.
   extension (self: Type) { // braces to avoid indent
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
@@ -310,7 +307,7 @@ trait TypeApplications:
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def etaExpand(using Context): Type =
+  def etaExpand(using Context): Type = // note typer.EtaExpansion.etaExpand
     val tparams = self.typeParams
     val resType = self.appliedTo(tparams.map(_.paramRef))
     self.dealias match

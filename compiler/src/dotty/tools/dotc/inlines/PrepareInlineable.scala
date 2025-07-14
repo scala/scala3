@@ -9,6 +9,7 @@ import Flags.*
 import Symbols.*
 import Flags.*
 import Types.*
+import TypeApplications.*
 import Decorators.*
 import StdNames.nme
 import Contexts.*

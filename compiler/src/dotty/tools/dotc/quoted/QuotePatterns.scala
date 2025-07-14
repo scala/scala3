@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.TypeOps.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 
 

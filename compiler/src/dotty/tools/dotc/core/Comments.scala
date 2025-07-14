@@ -4,6 +4,7 @@ package core
 
 import ast.{ untpd, tpd }
 import Symbols.*, Contexts.*
+import TypeApplications.*
 import util.{SourceFile, ReadOnlyMap}
 import util.Spans.*
 import util.CommentParsing.*

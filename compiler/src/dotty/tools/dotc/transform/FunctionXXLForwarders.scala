@@ -11,6 +11,7 @@ import StdNames.*
 import Symbols.*
 import MegaPhase.*
 import Types.*
+import TypeApplications.*
 
 
 /** This phase adds forwarder for XXL functions `apply` methods that are implemented with a method

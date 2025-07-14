@@ -4,6 +4,7 @@ package ast
 
 import core.*
 import Types.*, Contexts.*, Flags.*
+import TypeApplications.*
 import Symbols.*, Annotations.*, Trees.*, Symbols.*, Constants.Constant
 import Decorators.*
 

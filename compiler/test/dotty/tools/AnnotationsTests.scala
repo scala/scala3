@@ -10,6 +10,7 @@ import dotc.core.Contexts._
 import dotc.core.Phases._
 import dotc.core.Types._
 import dotc.core.Symbols._
+import dotc.core.TypeApplications.*
 
 import java.io.File
 import java.nio.file._
