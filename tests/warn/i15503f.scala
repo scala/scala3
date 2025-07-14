@@ -1,4 +1,4 @@
-//> using options  -Wunused:implicits
+//> using options -Wunused:implicits
 
 /* This goes around the "trivial method" detection */
 val default_int = 1
@@ -58,6 +58,8 @@ package givens:
   trait Y:
     def doY: String
 
+  trait Z
+
   given X with
     def doX = 7
 
@@ -75,6 +77,9 @@ package givens:
 
   given namely (using x: X): Y with // warn protected param to given class
     def doY = "8"
+
+  def f(using => X) = println() // warn
+  def g(using => Z) = println() // nowarn marker trait
 end givens
 
 object i22895:

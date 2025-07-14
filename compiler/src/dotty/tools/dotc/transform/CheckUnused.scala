@@ -964,7 +964,7 @@ object CheckUnused:
     def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
     def isMarkerTrait: Boolean =
-      sym.info.hiBound.allMembers.forall: d =>
+      sym.info.hiBound.resultType.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
     def isEffectivelyPrivate: Boolean =
