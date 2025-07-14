@@ -8,6 +8,7 @@ import core.Symbols.*
 import core.Contexts.*
 import core.Phases.*
 import core.Types.*
+import core.TypeApplications.*
 import core.Flags.*
 import core.Decorators.*
 import core.StdNames.nme

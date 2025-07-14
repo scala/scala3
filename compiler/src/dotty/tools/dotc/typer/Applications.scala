@@ -11,6 +11,7 @@ import Flags.*
 import Symbols.*
 import Denotations.Denotation
 import Types.*
+import TypeApplications.*
 import Decorators.*
 import ErrorReporting.*
 import Trees.*
@@ -27,7 +28,6 @@ import config.{Feature, MigrationVersion, SourceVersion}
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
-import TypeApplications.*
 import Annotations.Annotation
 
 import Constants.{Constant, IntTag}

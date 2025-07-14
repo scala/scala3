@@ -4,6 +4,7 @@ package transform
 package patmat
 
 import core.*, Annotations.*, Contexts.*, Decorators.*, Flags.*, Names.*, StdNames.*, Symbols.*, Types.*
+import TypeApplications.*
 import ast.*, tpd.*
 
 import vulpix.TestConfiguration, TestConfiguration.basicClasspath

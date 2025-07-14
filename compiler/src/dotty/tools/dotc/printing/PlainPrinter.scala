@@ -3,6 +3,7 @@ package printing
 
 import core.*
 import Texts.*, Types.*, Flags.*, Names.*, Symbols.*, NameOps.*, Constants.*, Denotations.*
+import TypeApplications.*
 import StdNames.*
 import Contexts.*
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation

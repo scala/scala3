@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.utils.InteractiveEnrichments.decoded
 

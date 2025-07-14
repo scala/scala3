@@ -13,6 +13,7 @@ import core.NameKinds.{ExpandedName, LazyBitMapName, LazyLocalInitName, LazyLoca
 import core.StdNames.nme
 import core.Symbols.*
 import core.Types.*
+import core.TypeApplications.*
 import core.{Names, StdNames}
 import dotty.tools.dotc.config.Feature
 import transform.MegaPhase.MiniPhase

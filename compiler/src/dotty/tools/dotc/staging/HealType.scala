@@ -9,6 +9,7 @@ import core.Flags.*
 import core.StdNames.*
 import core.Symbols.*
 import core.Types.*
+import core.TypeApplications.*
 import StagingLevel.*
 import QuoteTypeTags.*
 

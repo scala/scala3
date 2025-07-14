@@ -5,6 +5,7 @@ package semanticdb
 import core.Symbols.*
 import core.Contexts.Context
 import core.Types.*
+import core.TypeApplications.*
 import core.Annotations.Annotation
 import core.Flags
 import core.Names.Name

@@ -8,6 +8,7 @@ import scala.language.unsafeNulls
 import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
+import TypeApplications.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
 import Phases.*
 import ast.{ tpd, untpd }

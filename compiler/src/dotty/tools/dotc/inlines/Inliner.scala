@@ -4,6 +4,7 @@ package inlines
 
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
+import TypeApplications.*
 import StdNames.nme
 import typer.*
 import Names.Name
