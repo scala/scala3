@@ -185,7 +185,7 @@ object SepCheck:
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
-          else newElem.stripReadOnly match
+          else newElem.stripRestricted.stripReadOnly match
             case elem: FreshCap =>
               if elem.hiddenSet.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
@@ -197,7 +197,7 @@ object SepCheck:
               if newElem.isTerminalCapability
                 //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
               then recur(seen + newElem, acc, newElems1)
-              else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
+              else recur(seen + newElem, acc, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
         case Nil => acc
       recur(emptyRefs, emptyRefs, refs.toList)
 

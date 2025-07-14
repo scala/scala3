@@ -2070,7 +2070,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       if sepChecksEnabled then
         for (tree, cs, env) <- useInfos do
           usedSet(tree) = tree.markedFree ++ cs
-        SepCheck(this).traverse(unit)
+        ccState.inSepCheck:
+          SepCheck(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

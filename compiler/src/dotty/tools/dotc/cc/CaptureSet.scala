@@ -83,6 +83,14 @@ sealed abstract class CaptureSet extends Showable:
    */
   def owner: Symbol
 
+  /** If this set is a variable: Drop capabilities that are known to be empty
+   *  This is called during separation checking so that capabilities that turn
+   *  out to be always empty because of conflicting clasisifiers don't contribute
+   *  to peaks. We can't do it before that since classifiers are set during
+   *  capture checking.
+   */
+  def dropEmpties()(using Context): this.type
+
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
@@ -412,9 +420,15 @@ sealed abstract class CaptureSet extends Showable:
     res
 
   def transClassifiers(using Context): Classifiers =
-    if isConst then
+    def elemClassifiers =
       (ClassifiedAs(Nil) /: elems.map(_.transClassifiers))(joinClassifiers)
-    else UnknownClassifier
+    if ccState.isSepCheck then
+      dropEmpties()
+      elemClassifiers
+    else if isConst then
+      elemClassifiers
+    else
+      UnknownClassifier
 
   def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
     elems.forall(_.tryClassifyAs(cls))
@@ -574,6 +588,8 @@ object CaptureSet:
 
     def owner = NoSymbol
 
+    def dropEmpties()(using Context) = this
+
     private var isComplete = true
 
     def setMutable()(using Context): Unit =
@@ -657,6 +673,16 @@ object CaptureSet:
     def isProvisionallySolved(using Context): Boolean = solved > 0 && solved != Int.MaxValue
 
     def isMaybeSet = false // overridden in BiMapped
+
+    private var emptiesDropped = false
+
+    def dropEmpties()(using Context): this.type =
+      if !emptiesDropped then
+        emptiesDropped = true
+        for elem <- elems do
+          if elem.isKnownEmpty then
+            elems -= empty
+      this
 
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
