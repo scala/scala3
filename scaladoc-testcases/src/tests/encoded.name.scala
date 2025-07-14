@@ -1,0 +1,2 @@
+
+def exampleMember = "hello, world"
