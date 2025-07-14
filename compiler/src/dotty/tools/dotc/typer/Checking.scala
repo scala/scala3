@@ -586,6 +586,12 @@ object Checking {
             |""")
   end checkScala2Implicit
 
+  def checkErasedOK(sym: Symbol)(using Context): Unit =
+    if sym.is(Method, butNot = Macro)
+        || sym.isOneOf(Mutable | Lazy)
+        || sym.isType
+    then report.error(IllegalErasedDef(sym), sym.srcPos)
+
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(using Context): Unit = {
     def fail(msg: Message) = report.error(msg, sym.srcPos)
@@ -681,11 +687,7 @@ object Checking {
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
       fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
-    val unerasable =
-      sym.is(Method, butNot = Macro)
-      || sym.is(Mutable)
-      || sym.isType
-    checkApplicable(Erased, !unerasable)
+    if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)

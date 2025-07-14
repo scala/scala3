@@ -2824,7 +2824,7 @@ class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(using Context)
         |"""
 }
 
-class ModifierNotAllowedForDefinition(flag: Flag, explanation: String = "")(using Context)
+class ModifierNotAllowedForDefinition(flag: Flag, explanation: => String = "")(using Context)
   extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
   def msg(using Context) = i"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
   def explain(using Context) = explanation
@@ -3640,3 +3640,15 @@ final class ErasedNotPure(tree: tpd.Tree, isArgument: Boolean, isImplicit: Boole
        |$alternatives"""
 end ErasedNotPure
 
+final class IllegalErasedDef(sym: Symbol)(using Context) extends TypeMsg(IllegalErasedDefID):
+  override protected def msg(using Context): String =
+    def notAllowed = "`erased` is not allowed for this kind of definition."
+    def result = if sym.is(Method) then " result" else ""
+    if sym.is(Erased) then notAllowed
+    else
+      i"""$sym is implicitly `erased` since its$result type extends trait `compiletime.Erased`.
+         |But $notAllowed"""
+
+  override protected def explain(using Context): String =
+    "Only non-lazy immutable values can be `erased`"
+end IllegalErasedDef

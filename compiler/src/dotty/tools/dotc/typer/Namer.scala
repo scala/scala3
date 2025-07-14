@@ -1913,6 +1913,7 @@ class Namer { typer: Typer =>
     mdef.tpt match
       case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
         sym.setFlag(Erased)
+        sym.resetFlag(Lazy)
       case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))

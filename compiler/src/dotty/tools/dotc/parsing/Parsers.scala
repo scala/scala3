@@ -4373,7 +4373,7 @@ object Parsers {
           accept(EQUALS)
           mods1 |= Final
           if !hasParams && !mods.is(Inline) then
-            mods1 |= Lazy
+            if !mods.is(Erased) then mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, subExpr())

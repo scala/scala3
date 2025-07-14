@@ -2951,6 +2951,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.is(Implicit) then checkImplicitConversionDefOK(sym)
     if sym.is(Module) then checkNoModuleClash(sym)
     else if sym.info.derivesFrom(defn.ErasedClass) then
+      if sym.isAllOf(Given | Lazy) && !vdef.mods.mods.exists(_.flags.is(Lazy)) then
+        // reset implied Lazy flag of givens, but keep explicit modifier
+        sym.resetFlag(Lazy)
+      checkErasedOK(sym)
       sym.setFlag(Erased)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match
@@ -2968,6 +2972,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val nnInfo = rhs1.notNullInfo
     vdef1.withNotNullInfo(if sym.is(Lazy) then nnInfo.retractedInfo else nnInfo)
   }
+
   private def retractDefDef(sym: Symbol)(using Context): Tree =
     // it's a discarded method (synthetic case class method or synthetic java record constructor or overridden member), drop it
     val canBeInvalidated: Boolean =

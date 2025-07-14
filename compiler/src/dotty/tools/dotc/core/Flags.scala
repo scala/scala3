@@ -529,11 +529,11 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | PhantomSymbol | Invisible | Erased
+    Lifted | MixedIn | Specialized | PhantomSymbol | Invisible
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Override | Final | Method | Implicit | Given | Lazy |
+    Override | Final | Method | Implicit | Given | Lazy | Erased |
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Transparent
 
   /** Flags that can apply to a module class */

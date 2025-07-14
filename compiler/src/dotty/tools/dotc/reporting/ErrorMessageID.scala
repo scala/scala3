@@ -230,7 +230,8 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case IllegalContextBoundsID // errorNumber: 214
   case NamedPatternNotApplicableID // errorNumber: 215
   case UnnecessaryNN // errorNumber: 216
-  case ErasedNotPureID // errornumber 217
+  case ErasedNotPureID // errorNumber: 217
+  case IllegalErasedDefID // errorNumber: 218
 
   def errorNumber = ordinal - 1
 
