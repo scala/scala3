@@ -1429,6 +1429,13 @@ object Build {
     settings(
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
+      // NOTE: Until 3.8.0, we pin the source files to be used by the scala3 library
+      Compile / sources := (`scala3-library-bootstrapped` / Compile / sources).value,
+      Compile / sources ++= Seq(
+        file(s"${baseDirectory.value}/src/scala/scalajs/js/internal/UnitOps.scala"),
+        file(s"${baseDirectory.value}/src/scala/scalajs/runtime/AnonFunctionXXL.scala"),
+      ),
+      // NOTE: We keep this so that the mappings are correct when packaging
       Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
