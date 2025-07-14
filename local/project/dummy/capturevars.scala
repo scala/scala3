@@ -25,3 +25,6 @@ trait Test:
     def baz2(x: U[{caps.cap}]): Unit
     def test[E^, F^ >: {caps.cap} <: {}, G <: [C^ >: {a,b} <: {a,b}] =>> AnyRef^{C}](x: T[{E,a,b}], y: U[F]): Unit
     val poly: [C^ >: {a,b}] => (f: () ->{C} Unit) -> Int ->{C} Unit
+
+    def readup[T^ <: {cap.rd}]() = ()
+    def readlo[T^ >: {cap.rd}]() = ()

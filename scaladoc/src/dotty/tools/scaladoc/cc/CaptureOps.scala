@@ -74,7 +74,13 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
 end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and have versions on Symbol for those
-  def isCaptureRoot: Boolean = tpe.termSymbol == CaptureDefs.captureRoot
+  def isCaptureRoot: Boolean =
+    import qctx.reflect.*
+    tpe match
+      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), "cap") => true
+      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), "cap") => true
+      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), "cap") => true
+      case _ => false
 
   // NOTE: There's something horribly broken with Symbols, and we can't rely on tests like .isContextFunctionType either,
   // so we do these lame string comparisons instead.
