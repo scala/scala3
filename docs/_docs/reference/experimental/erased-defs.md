@@ -38,7 +38,7 @@ The method works for objects of its type parameter `T`. `T` is required to confo
 ```scala
 def writeList[T]
     (out: java.io.ObjectOutputStream, xs: List[T])
-    (using erased CanSerialize[T]): Unit =
+    (using CanSerialize[T]): Unit =
   safeWriteObject(out, xs)
 ```
 We can test `writeList` by applying it to different types of lists:
@@ -144,7 +144,7 @@ methodWithErasedEv(erasedEvidence, 40) // 42
 
 In some cases we would expect all instances of a trait to be erased. For instance, one could argue that it does not make sense to ever have a `CanSerialize[T]` instance at runtime. In that case we
 can make `CanSerialize` extend from a new trait `compiletimetime.Erased` and avoid the explicit
-`erased` modifiers in erased parameters and vals. Here is an alternative version our example using this scheme:
+`erased` modifiers in erased parameters and vals. Here is an alternative version of our example using this scheme:
 ```scala
 class CanSerialize[T] extends compiletime.Erased
 ...
@@ -157,7 +157,7 @@ using clause `(using CanSerialize[T])` which gets implicitly tagged with `erased
 
 ## Uses of `Erased` in existing Code
 
- - The `CanThrow[T]` typeclass is used to declare that an can be thrown. The compiler generates a  `CanThrow[E]` instances for exceptions that are handled in a `try`. Methods take an implicit `CanThrow[E]` parameter to indicate that they might throw exception `E`. `CanThrow` is declared to be an `Erased` capability class, so no actual evidence of `CanThrow` remains at run-time.
+ - The `CanThrow[T]` type class is used to declare that an exception can be thrown. The compiler generates a  `CanThrow[E]` instances for exceptions that are handled in a `try`. Methods take an implicit `CanThrow[E]` parameter to indicate that they might throw exception `E`. `CanThrow` is declared to be an `Erased` capability class, so no actual evidence of `CanThrow` remains at run-time.
 
  - The `CanEqual` evidence of [multiversal equality](../contextual/multiversal-equality.html) checks that two types can be compared. The actual comparison is done by the universal `equals` method of class `Object` or an overriding instance, it does not rely on the `CanEqual` value.
 So far, `CanEqual` is handled specially in the compiler. With erased definitions, we could

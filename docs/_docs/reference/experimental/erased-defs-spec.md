@@ -39,4 +39,4 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
    * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` and vice-versa.
 
 8. Type Restrictions
-   * Polymorphic functions with erased parameters are currently not supported, and will be rejected by the compiler. This is purely an implementation restriction, and might be lifted in the future.
+   * Polymorphic function literals with erased parameters are currently not supported, and will be rejected by the compiler. This is purely an implementation restriction, and might be lifted in the future.
