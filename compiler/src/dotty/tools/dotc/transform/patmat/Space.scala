@@ -573,7 +573,7 @@ object SpaceEngine {
     var resTp0 = mt.resultType
     if mt.isResultDependent then
       resTp0 = ctx.typeAssigner.safeSubstParam(resTp0, mt.paramRefs.head, scrutineeTp)
-    val resTp = wildApprox(resTp0).finalResultType
+    val resTp = wildApprox(resTp0.finalResultType)
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
