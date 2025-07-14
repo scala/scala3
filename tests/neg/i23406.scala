@@ -20,5 +20,5 @@ inline def alsoOk[T](erased x: T): String =
 def Test =
   funny[String]  // error
   problem[String] // error
-ok[String]
-alsoOk[String](compiletime.erasedValue)
+  ok[String]
+  alsoOk[String](compiletime.erasedValue)

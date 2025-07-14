@@ -1,5 +1,5 @@
--- Error: tests/neg/i23406.scala:18:7 ----------------------------------------------------------------------------------
-18 |  funny[String]  // error
+-- Error: tests/neg/i23406.scala:21:7 ----------------------------------------------------------------------------------
+21 |  funny[String]  // error
    |  ^^^^^^^^^^^^^
    |  value x is unusable in method Test because it refers to an erased expression
    |  in the selector of an inline match that reduces to
@@ -18,8 +18,8 @@
  7 |    case x: String => x
    |                      ^
     --------------------------------------------------------------------------------------------------------------------
--- Error: tests/neg/i23406.scala:19:9 ----------------------------------------------------------------------------------
-19 |  problem[String] // error
+-- Error: tests/neg/i23406.scala:22:9 ----------------------------------------------------------------------------------
+22 |  problem[String] // error
    |  ^^^^^^^^^^^^^^^
    |  value x is unusable in method Test because it refers to an erased expression
    |  in the selector of an inline match that reduces to
