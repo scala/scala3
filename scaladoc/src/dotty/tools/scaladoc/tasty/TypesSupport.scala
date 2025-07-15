@@ -40,13 +40,13 @@ trait TypesSupport:
 
   private def keyword(str: String): SignaturePart = Keyword(str)
 
-  private def tpe(str: String, dri: DRI)(using inCC: Option[Unit]): SignaturePart =
+  private def tpe(str: String, dri: DRI)(using inCC: Option[Any]): SignaturePart =
     if inCC.isDefined then
       dotty.tools.scaladoc.Plain(str)
     else
       dotty.tools.scaladoc.Type(str, Some(dri))
 
-  private def tpe(str: String)(using inCC: Option[Unit]): SignaturePart =
+  private def tpe(str: String)(using inCC: Option[Any]): SignaturePart =
     if inCC.isDefined then
       dotty.tools.scaladoc.Plain(str)
     else
@@ -57,7 +57,7 @@ trait TypesSupport:
 
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
 
-  private def tpe(using Quotes)(symbol: reflect.Symbol)(using inCC: Option[Unit]): SSignature =
+  private def tpe(using Quotes)(symbol: reflect.Symbol)(using inCC: Option[Any]): SSignature =
     import SymOps._
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
     if inCC.isDefined then
@@ -105,9 +105,8 @@ trait TypesSupport:
     originalOwner: reflect.Symbol,
     indent: Int = 0,
     skipTypeSuffix: Boolean = false,
-    // inCC means in capture-checking context.
-    // Somewhat hacky, because it should be a Boolean, but then it'd clash with skipTypeSuffix
-    inCC: Option[Unit] = None,
+    // inCC means in capture-checking context. If defined, it carries the current capture-set contents.
+    inCC: Option[List[reflect.TypeRepr]] = None,
   ): SSignature =
     import reflect._
     def noSupported(name: String): SSignature =
@@ -122,15 +121,8 @@ trait TypesSupport:
         inParens(inner(left, skipThisTypePrefix), shouldWrapInParens(left, tp, true))
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
-      case CapturingType(base, refs) =>
-        inner(base, skipThisTypePrefix) ++ renderCapturing(refs)
       case ByNameType(CapturingType(tpe, refs)) =>
-        refs match
-          case Nil => keyword("-> ") :: inner(tpe, skipThisTypePrefix)
-          case List(ref) if ref.isCaptureRoot =>
-            keyword("=> ") :: inner(tpe, skipThisTypePrefix)
-          case refs =>
-            keyword("->") :: (renderCaptureSet(refs) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix)))
+        renderCaptureArrow(refs, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ByNameType(tpe) => keyword("=>!! ") :: inner(tpe, skipThisTypePrefix) // FIXME: does it need change for CC?
       case ConstantType(constant) =>
         plain(constant.show).l
@@ -142,6 +134,10 @@ trait TypesSupport:
         inner(tpe, skipThisTypePrefix) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, skipThisTypePrefix) :+ plain("*")
+      case CapturingType(base, refs) => base match
+        case t @ AppliedType(base, args) if t.isFunctionType =>
+          functionType(t, base, args, skipThisTypePrefix)(using inCC = Some(refs))
+        case _ => inner(base, skipThisTypePrefix) ++ renderCapturing(refs, skipThisTypePrefix)
       case AnnotatedType(tpe, _) =>
         inner(tpe, skipThisTypePrefix)
       case tl @ TypeLambda(params, paramBounds, AppliedType(tpe, args))
@@ -258,19 +254,7 @@ trait TypesSupport:
         ++ plain(" ").l
         ++ inParens(inner(rhs, skipThisTypePrefix), shouldWrapInParens(rhs, t, false))
 
-      case t @ AppliedType(tpe, args) if t.isFunctionType =>
-        val arrow = if t.isContextFunctionType then " ?=> " else " => "
-        args match
-          case Nil => Nil
-          case List(rtpe) => plain("()").l ++ keyword(arrow).l ++ inner(rtpe, skipThisTypePrefix)
-          case List(arg, rtpe) =>
-            val wrapInParens = stripAnnotated(arg) match
-              case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => false
-              case at: AppliedType if !isInfix(at) && !at.isFunctionType && !at.isTupleN => false
-              case _ => true
-            inParens(inner(arg, skipThisTypePrefix), wrapInParens) ++ keyword(arrow).l ++ inner(rtpe, skipThisTypePrefix)
-          case _ =>
-            plain("(").l ++ commas(args.init.map(inner(_, skipThisTypePrefix))) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last, skipThisTypePrefix)
+      case t @ AppliedType(tpe, args) if t.isFunctionType => functionType(t, tpe, args, skipThisTypePrefix)
 
       case t @ AppliedType(tpe, typeList) =>
         inner(tpe, skipThisTypePrefix) ++ plain("[").l ++ commas(typeList.map { t => t match
@@ -358,6 +342,27 @@ trait TypesSupport:
           s"${tpe.show(using Printer.TypeReprStructure)}"
         throw MatchError(msg)
 
+  private def functionType(using Quotes)(t: reflect.TypeRepr, tpe: reflect.TypeRepr, args: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using
+    elideThis: reflect.ClassDef,
+    indent: Int,
+    originalOwner: reflect.Symbol,
+    inCC: Option[List[reflect.TypeRepr]],
+  ): SSignature =
+    import reflect._
+    val arrow = if t.isContextFunctionType then keyword(" ?=> ").l // FIXME: can we have contextual functions with capture sets?
+                else plain(" ") :: (renderCaptureArrow(inCC, skipThisTypePrefix) ++ plain(" ").l)
+    args match
+      case Nil => Nil
+      case List(rtpe) => plain("()").l ++ arrow ++ inner(rtpe, skipThisTypePrefix)
+      case List(arg, rtpe) =>
+        val wrapInParens = stripAnnotated(arg) match
+          case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => false
+          case at: AppliedType if !isInfix(at) && !at.isFunctionType && !at.isTupleN => false
+          case _ => true
+        inParens(inner(arg, skipThisTypePrefix), wrapInParens) ++ arrow ++ inner(rtpe, skipThisTypePrefix)
+      case _ =>
+        plain("(").l ++ commas(args.init.map(inner(_, skipThisTypePrefix))) ++ plain(")").l ++ arrow ++ inner(args.last, skipThisTypePrefix)
+
   private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean, skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol) =
     import reflect._
     val ignore = if (low) t.typeSymbol == defn.NothingClass else t.typeSymbol == defn.AnyClass
@@ -370,7 +375,7 @@ trait TypesSupport:
     }
 
   private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr, skipThisTypePrefix: Boolean)(
-    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol, inCC: Option[Unit]
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol, inCC: Option[List[reflect.TypeRepr]]
   ) =
     import reflect._
     def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
@@ -464,25 +469,48 @@ trait TypesSupport:
       case AnnotatedType(tr, _) => stripAnnotated(tr)
       case other => other
 
-  private def renderCapability(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): List[SignaturePart] =
+  private def renderCapability(using Quotes)(ref: reflect.TypeRepr, skipThisTypePrefix: Boolean)(
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
+  ): SSignature =
     import reflect._
     ref match
-      case ReachCapability(c) => renderCapability(c) :+ Keyword("*")
+      case ReachCapability(c) => renderCapability(c, skipThisTypePrefix) :+ Keyword("*")
       case ThisType(_)        => List(Keyword("this"))
-      case t                  => inner(t)(using skipTypeSuffix = true, inCC = Some(()))
+      case t                  => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
 
-  private def renderCaptureSet(using Quotes)(refs: List[reflect.TypeRepr])(using elideThis: reflect.ClassDef): List[SignaturePart] =
+  private def renderCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
+  ): SSignature =
     import dotty.tools.scaladoc.tasty.NameNormalizer._
     import reflect._
     refs match
       case List(ref) if ref.isCaptureRoot => Nil
       case refs =>
-        val res0 = refs.map(renderCapability)
+        val res0 = refs.map(renderCapability(_, skipThisTypePrefix))
         val res1 = res0 match
           case Nil => Nil
           case other => other.reduce((r, e) => r ++ (List(Plain(", ")) ++ e))
         Plain("{") :: (res1 ++ List(Plain("}")))
 
-  private def renderCapturing(using Quotes)(refs: List[reflect.TypeRepr])(using elideThis: reflect.ClassDef): List[SignaturePart] =
+  private def renderCapturing(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
+  ): SSignature =
     import reflect._
-    Keyword("^") :: renderCaptureSet(refs)
+    Keyword("^") :: renderCaptureSet(refs, skipThisTypePrefix)
+
+  private def renderCaptureArrow(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
+  ): SSignature =
+    import reflect._
+    refs match
+      case Nil => List(Keyword("->"))
+      case List(ref) if ref.isCaptureRoot => List(Keyword("=>"))
+      case refs => Keyword("->") :: renderCaptureSet(refs, skipThisTypePrefix)
+
+  private def renderCaptureArrow(using Quotes)(refs: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
+  ): SSignature =
+    import reflect._
+    refs match
+      case None => List(Keyword("=>")) // FIXME: is this correct? or should it be `->` by default?
+      case Some(refs) => renderCaptureArrow(refs, skipThisTypePrefix)
