@@ -2288,7 +2288,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
-        def erasedParams: List[Boolean] = self.erasedParams
+        def erasedParams: List[Boolean] = self.paramErasureStatuses
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
     end MethodTypeMethods
