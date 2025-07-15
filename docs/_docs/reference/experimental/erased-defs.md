@@ -161,7 +161,7 @@ using clause `(using CanSerialize[T])` which gets implicitly tagged with `erased
 
  - The `CanEqual` evidence of [multiversal equality](../contextual/multiversal-equality.html) checks that two types can be compared. The actual comparison is done by the universal `equals` method of class `Object` or an overriding instance, it does not rely on the `CanEqual` value.
 So far, `CanEqual` is handled specially in the compiler. With erased definitions, we could
-avoid some of the special treatment by making `CanThrow` extend `compiletime.Erased`.
+avoid some of the special treatment by making `CanEqual` extend `compiletime.Erased`.
 
 - The conforms `<:<` typeclass asserts that we can prove that two types are in a subtype relation. `<:<` does offer a method to upcast values, but that could be also provided as a compiler-generated
 cast operation. In that case, run-time instances of `<:<` (and also `=:=`) would be no longer needed and could be erased.

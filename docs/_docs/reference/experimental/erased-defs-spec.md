@@ -10,10 +10,11 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
    * `erased` cannot appear in a `lazy` `val` definition.
    * `erased` _can_ appear for a parameterless given that expands to a value
      definition. In that case the `given` is expanded to a non-lazy `val`.
+   * `erased` cannot appear in a call-by-name parameter.
    * `erased` cannot appear in a mutable `var` definition.
    * `erased` cannot appear in an `object` definition.
 
-2. Values that have a type that extends the `scala.compiletime.Erased` trait are
+2. Values or parameters that have a type that extends the `scala.compiletime.Erased` trait are
    implicitly `erased`.
 
    * The restrictions of point (1) apply.
