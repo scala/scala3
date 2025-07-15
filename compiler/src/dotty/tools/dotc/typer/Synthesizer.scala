@@ -29,7 +29,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
-    def instArg(tp: Type): Type = tp.stripTypeVar match
+    def instArg(tp: Type): Type = tp.dealias match
       // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
       // i16328.scala. The intersection comes from an earlier instantiation
       // to an upper bound.
@@ -37,9 +37,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       // bounds are usually widened during instantiation.
       case tp: AndOrType if tp.tp1 =:= tp.tp2 =>
         instArg(tp.tp1)
+      case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) =>
+        instArg(
+            if tvar.hasLowerBound then tvar.instantiate(fromBelow = true)
+            else if tvar.hasUpperBound then tvar.instantiate(fromBelow = false)
+            else NoType)
       case _ =>
-        if isFullyDefined(tp, ForceDegree.all) then tp
-        else NoType // this happens in tests/neg/i15372.scala
+        tp
 
     val tag = formal.argInfos match
       case arg :: Nil =>
