@@ -226,12 +226,6 @@ jobs:
          )"
 
     steps:
-      - name: Reset existing repo
-        shell: cmd
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
       - name: Git Checkout
         uses: actions/checkout@v4
 
