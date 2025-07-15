@@ -186,15 +186,22 @@ object Nullables:
    *  Check `usedOutOfOrder` to see the explaination and example of "out of order".
    *  See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
    */
-  def isTracked(ref: TermRef)(using Context) =
+  def isTracked(ref: TermRef)(using Context) = // true
+    val sym = ref.symbol
+
+    def isNullTrackableField: Boolean =
+      ref.prefix.isStable
+      && sym.isField
+      && sym.hasAnnotation(defn.NullTrackableAnnot)
+
+    // println(s"isTracked: $ref, usedOutOfOrder = ${ref.usedOutOfOrder}, isStable = ${ref.isStable}, span = ${ref.symbol.span}, assignmentSpans = ${ctx.compilationUnit.assignmentSpans.get(ref.symbol.span.start)}")
     ref.isStable
-    || { val sym = ref.symbol
-         val unit = ctx.compilationUnit
+    || isNullTrackableField
+    || { val unit = ctx.compilationUnit
          !ref.usedOutOfOrder
          && sym.span.exists
          && (unit ne NoCompilationUnit) // could be null under -Ytest-pickler
-         && unit.assignmentSpans.contains(sym.span.start)
-      }
+         && unit.assignmentSpans.contains(sym.span.start) }
 
   /** The nullability context to be used after a case that matches pattern `pat`.
    *  If `pat` is `null`, this will assert that the selector `sel` is not null afterwards.
