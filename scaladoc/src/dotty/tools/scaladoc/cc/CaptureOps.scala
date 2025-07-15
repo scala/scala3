@@ -6,19 +6,36 @@ import scala.quoted._
 
 object CaptureDefs:
   // these should become part of the reflect API in the distant future
-  def retains(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.annotation.retains")
-  def retainsCap(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.annotation.retainsCap")
-  def retainsByName(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.annotation.retainsByName")
-  def CapsModule(using qctx: Quotes) = qctx.reflect.Symbol.requiredPackage("scala.caps")
-  def captureRoot(using qctx: Quotes) = qctx.reflect.Symbol.requiredPackage("scala.caps.cap")
-  def Caps_Capability(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.caps.Capability")
-  def Caps_CapSet(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.caps.CapSet")
-  def Caps_Mutable(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.caps.Mutable")
-  def Caps_SharedCapability(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.caps.SharedCapability")
-
-  def UseAnnot(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.caps.use")
-  def ConsumeAnnot(using qctx: Quotes) = qctx.reflect.Symbol.requiredClass("scala.caps.consume")
-
+  def retains(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.retains")
+  def retainsCap(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.retainsCap")
+  def retainsByName(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.retainsByName")
+  def CapsModule(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredPackage("scala.caps")
+  def captureRoot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredPackage("scala.caps.cap")
+  def Caps_Capability(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.Capability")
+  def Caps_CapSet(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.CapSet")
+  def Caps_Mutable(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.Mutable")
+  def Caps_SharedCapability(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.SharedCapability")
+  def UseAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.use")
+  def ConsumeAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.consume")
+  def ReachCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.reachCapability")
+  def RootCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.caps.internal.rootCapability")
+  def ReadOnlyCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.readOnlyCapability")
+  def RequiresCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.requiresCapability")
 end CaptureDefs
 
 extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
@@ -29,11 +46,23 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
   /** This symbol is one of `retains`, `retainsCap`, or `retainsByName` */
   def isRetainsLike: Boolean =
     ann.isRetains || ann == CaptureDefs.retainsByName
+
+  def isReachCapabilityAnnot: Boolean =
+    ann == CaptureDefs.ReachCapabilityAnnot
 end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr)
   def isCaptureRoot: Boolean = tpe.termSymbol == CaptureDefs.captureRoot
 end extension
+
+object ReachCapability:
+  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
+    import qctx.reflect._
+    ty match
+      case AnnotatedType(base, Apply(Select(New(annot), _), Nil)) if annot.symbol.isReachCapabilityAnnot =>
+        Some(base)
+      case _ => None
+end ReachCapability
 
 /** Decompose capture sets in the union-type-encoding into the sequence of atomic `TypeRepr`s.
  *  Returns `None` if the type is not a capture set.
@@ -41,12 +70,14 @@ end extension
 def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Option[List[qctx.reflect.TypeRepr]] =
   import qctx.reflect._
   val buffer = collection.mutable.ListBuffer.empty[TypeRepr]
+  def include(t: TypeRepr): Boolean = { buffer += t; true }
   def traverse(typ: TypeRepr): Boolean =
     typ match
-      case OrType(t1, t2)     => traverse(t1) && traverse(t2)
-      case t @ ThisType(_)    => buffer += t; true
-      case t @ TermRef(_, _)  => buffer += t; true
-      case t @ ParamRef(_, _) => buffer += t; true
+      case OrType(t1, t2)         => traverse(t1) && traverse(t2)
+      case t @ ThisType(_)        => include(t)
+      case t @ TermRef(_, _)      => include(t)
+      case t @ ParamRef(_, _)     => include(t)
+      case t @ ReachCapability(_) => include(t)
       case t if t.typeSymbol == defn.NothingClass => true
        // TODO: are atoms only ever the above? Then we could refine the return type
       case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false // TODO remove warning eventually
@@ -67,21 +98,3 @@ object CapturingType:
         Some((base, List(CaptureDefs.captureRoot.termRef)))
       case _ => None
 end CapturingType
-
-def renderCaptureSet(using qctx: Quotes)(refs: List[qctx.reflect.TypeRepr]): List[SignaturePart] =
-  import dotty.tools.scaladoc.tasty.NameNormalizer._
-  import qctx.reflect._
-  refs match
-    case List(ref) if ref.isCaptureRoot => List(Keyword("^"))
-    case refs =>
-      val res0 = refs.map { ref =>
-        ref match
-          case ThisType(_) => List(Keyword("this"))
-          case TermRef(_, sym) => List(Plain(sym)) // FIXME: use type other than Plain, can we have clickable links to say, caps.cap and other things?
-          case pf @ ParamRef(tpe, i) => List(Plain(tpe.asInstanceOf[MethodType].paramNames(i))) // FIXME: not sure if this covers all cases
-          case _ => List(Plain("<unknown>"))
-      }
-      val res1 = res0 match
-        case Nil => Nil
-        case other => other.reduce((r, e) => r ++ (List(Plain(", ")) ++ e))
-      Keyword("^") :: Plain("{") :: (res1 ++ List(Plain("}")))

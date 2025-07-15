@@ -21,11 +21,12 @@ trait TypesSupport:
       def asSignature(elideThis: reflect.ClassDef, originalOwner: reflect.Symbol, skipThisTypePrefix: Boolean): SSignature =
         import reflect._
         tpeTree match
-          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe, skipThisTypePrefix)(using elideThis, originalOwner)
+          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe, skipThisTypePrefix)(using elideThis, originalOwner, inCC = None)
           case tpeTree: TypeTree => topLevelProcess(tpeTree.tpe, skipThisTypePrefix)(using elideThis, originalOwner)
           case term: Term => topLevelProcess(term.tpe, skipThisTypePrefix)(using elideThis, originalOwner)
       def asSignature(elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
         tpeTree.asSignature(elideThis, originalOwner, skipThisTypePrefix = false)
+
 
   given TypeSyntax: AnyRef with
     extension (using Quotes)(tpe: reflect.TypeRepr)
@@ -39,19 +40,30 @@ trait TypesSupport:
 
   private def keyword(str: String): SignaturePart = Keyword(str)
 
-  private def tpe(str: String, dri: DRI): SignaturePart = dotty.tools.scaladoc.Type(str, Some(dri))
+  private def tpe(str: String, dri: DRI)(using inCC: Option[Unit]): SignaturePart =
+    if inCC.isDefined then
+      dotty.tools.scaladoc.Plain(str)
+    else
+      dotty.tools.scaladoc.Type(str, Some(dri))
 
-  private def tpe(str: String): SignaturePart = dotty.tools.scaladoc.Type(str, None)
+  private def tpe(str: String)(using inCC: Option[Unit]): SignaturePart =
+    if inCC.isDefined then
+      dotty.tools.scaladoc.Plain(str)
+    else
+      dotty.tools.scaladoc.Type(str, None)
 
   protected def inParens(s: SSignature, wrap: Boolean = true) =
     if wrap then plain("(").l ++ s ++ plain(")").l else s
 
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
 
-  private def tpe(using Quotes)(symbol: reflect.Symbol): SSignature =
+  private def tpe(using Quotes)(symbol: reflect.Symbol)(using inCC: Option[Unit]): SSignature =
     import SymOps._
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
-    dotty.tools.scaladoc.Type(symbol.normalizedName, dri).l
+    if inCC.isDefined then
+      dotty.tools.scaladoc.Plain(symbol.normalizedName).l
+    else
+      dotty.tools.scaladoc.Type(symbol.normalizedName, dri).l
 
   private def commas(lists: List[SSignature]) = lists match
     case List(single) => single
@@ -93,6 +105,9 @@ trait TypesSupport:
     originalOwner: reflect.Symbol,
     indent: Int = 0,
     skipTypeSuffix: Boolean = false,
+    // inCC means in capture-checking context.
+    // Somewhat hacky, because it should be a Boolean, but then it'd clash with skipTypeSuffix
+    inCC: Option[Unit] = None,
   ): SSignature =
     import reflect._
     def noSupported(name: String): SSignature =
@@ -108,7 +123,7 @@ trait TypesSupport:
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
       case CapturingType(base, refs) =>
-        inner(base, skipThisTypePrefix) ++ renderCaptureSet(refs)
+        inner(base, skipThisTypePrefix) ++ renderCapturing(refs)
       case ByNameType(CapturingType(tpe, refs)) =>
         refs match
           case Nil => keyword("-> ") :: inner(tpe, skipThisTypePrefix)
@@ -355,7 +370,7 @@ trait TypesSupport:
     }
 
   private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr, skipThisTypePrefix: Boolean)(
-    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
+    using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol, inCC: Option[Unit]
   ) =
     import reflect._
     def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
@@ -366,7 +381,7 @@ trait TypesSupport:
         if resType.typeSymbol == defn.AnyClass then
           plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
             val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-            tpe(normalizedName).l ++ inner(typ, skipThisTypePrefix)(using elideThis, originalOwner)
+            tpe(normalizedName)(using inCC).l ++ inner(typ, skipThisTypePrefix)(using elideThis, originalOwner)
           }) ++ plain("]").l
         else
           regularTypeBounds(low, high)
@@ -448,3 +463,26 @@ trait TypesSupport:
     tr match
       case AnnotatedType(tr, _) => stripAnnotated(tr)
       case other => other
+
+  private def renderCapability(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): List[SignaturePart] =
+    import reflect._
+    ref match
+      case ReachCapability(c) => renderCapability(c) :+ Keyword("*")
+      case ThisType(_)        => List(Keyword("this"))
+      case t                  => inner(t)(using skipTypeSuffix = true, inCC = Some(()))
+
+  private def renderCaptureSet(using Quotes)(refs: List[reflect.TypeRepr])(using elideThis: reflect.ClassDef): List[SignaturePart] =
+    import dotty.tools.scaladoc.tasty.NameNormalizer._
+    import reflect._
+    refs match
+      case List(ref) if ref.isCaptureRoot => Nil
+      case refs =>
+        val res0 = refs.map(renderCapability)
+        val res1 = res0 match
+          case Nil => Nil
+          case other => other.reduce((r, e) => r ++ (List(Plain(", ")) ++ e))
+        Plain("{") :: (res1 ++ List(Plain("}")))
+
+  private def renderCapturing(using Quotes)(refs: List[reflect.TypeRepr])(using elideThis: reflect.ClassDef): List[SignaturePart] =
+    import reflect._
+    Keyword("^") :: renderCaptureSet(refs)

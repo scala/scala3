@@ -3,6 +3,10 @@ package dummy
 import language.experimental.captureChecking
 import caps.*
 
+trait Nested:
+  val c: AnyRef^
+  val next: Nested
+
 trait Arrows:
   val a: AnyRef^
   val b: AnyRef^
@@ -29,7 +33,16 @@ trait Arrows:
   def usesAndConsumes(@use a: AnyRef^, @consume b: AnyRef^): Any
   def usesAndConsumes2(@use @consume x: AnyRef^{a}): Any
   def consumesAndUses(@consume @use x: AnyRef^{a}): Any
+  def consumesAndUses2(@consume @use x: List[AnyRef^]): Array[AnyRef^{x*}]
+
+  def reachThis: AnyRef^{this*}
 
   def byNamePure(f: -> Int): Int
   def byNameImpure(f: ->{a,b,c} Int): Int
   def byNameImpure2(f: => Int): Int
+
+  def pathDependent(n: Nested^)(g: AnyRef^{n.c} => Any): Any
+  def pathDependent2(n: Nested^)(g: AnyRef^{n.next.c} => Any): Any
+  def pathDependent3(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): Any
+  def pathDependent4(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c}
+  def pathDependent5(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c*, n.c}
