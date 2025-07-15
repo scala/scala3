@@ -28,12 +28,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     def instArg(tp: Type): Type = tp.dealias match
-      // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
-      // i16328.scala. The intersection comes from an earlier instantiation
-      // to an upper bound.
-      // The dual situation with unions is harder to trigger because lower
-      // bounds are usually widened during instantiation.
       case tp: AndOrType if tp.tp1 =:= tp.tp2 =>
+        // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
+        // i16328.scala. The intersection comes from an earlier instantiation
+        // to an upper bound.
+        // The dual situation with unions is harder to trigger because lower
+        // bounds are usually widened during instantiation.
         instArg(tp.tp1)
       case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) =>
         instArg(
