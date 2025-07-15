@@ -1,4 +1,4 @@
--- [E217] Type Error: tests/neg/erased-lazy-given.scala:8:13 -----------------------------------------------------------
+-- [E218] Type Error: tests/neg/erased-lazy-given.scala:8:13 -----------------------------------------------------------
 8 |  lazy given E = E() // error
   |             ^
   |             given instance given_E is implicitly `erased` since its type extends trait `compiletime.Erased`.
