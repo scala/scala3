@@ -17,8 +17,7 @@ import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Names.NameOrdering
 import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.core.Symbols.NoSymbol
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.printing.RefinedPrinter
@@ -254,7 +253,6 @@ class ShortenedTypePrinter(
   end hoverSymbol
 
   def isImportedByDefault(sym: Symbol): Boolean =
-    import dotty.tools.dotc.core.Symbols.defn
     lazy val effectiveOwner = sym.effectiveOwner
     sym.isType && (effectiveOwner == defn.ScalaPackageClass || effectiveOwner == defn.ScalaPredefModuleClass)
 
@@ -496,9 +494,9 @@ class ShortenedTypePrinter(
     val info = nameToInfo
       .get(param.name)
       .flatMap { info =>
-        // In some cases, paramInfo becomes Nothing (e.g. CompletionOverrideSuite#cake)
+        // In some cases, paramInfo becomes `... & Nothing` (e.g. CompletionOverrideSuite#cake)
         // which is meaningless, in that case, fallback to param.info
-        if info.isNothingType then None
+        if info <:< defn.NothingType then None
         else Some(info)
       }
       .getOrElse(param.info)
