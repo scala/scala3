@@ -47,8 +47,9 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
       case t @ ThisType(_)    => buffer += t; true
       case t @ TermRef(_, _)  => buffer += t; true
       case t @ ParamRef(_, _) => buffer += t; true
+      case t if t.typeSymbol == defn.NothingClass => true
        // TODO: are atoms only ever the above? Then we could refine the return type
-      case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); System.exit(1); false // TODO remove warning eventually
+      case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false // TODO remove warning eventually
   if traverse(typ0) then Some(buffer.toList) else None
 end decomposeCaptureRefs
 
