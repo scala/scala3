@@ -213,7 +213,7 @@ jobs:
 
 
   test_windows_fast:
-    runs-on: [self-hosted, Windows]
+    runs-on: [self-hosted, Windows, win11]
     if: "(
            github.event_name == 'push'
            && github.ref != 'refs/heads/main'
