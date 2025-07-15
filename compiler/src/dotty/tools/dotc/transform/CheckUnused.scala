@@ -305,8 +305,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     def matchingSelector(info: ImportInfo): ImportSelector | Null =
       val qtpe = info.site
       def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith: alt =>
-           alt.symbol == sym
-        || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
+        val sameSym =
+             alt.symbol == sym
+          || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
+        sameSym && alt.symbol.isAccessibleFrom(qtpe)
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -924,7 +926,7 @@ object CheckUnused:
     def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
     def isMarkerTrait: Boolean =
-      sym.info.hiBound.allMembers.forall: d =>
+      sym.info.hiBound.resultType.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
     def isEffectivelyPrivate: Boolean =

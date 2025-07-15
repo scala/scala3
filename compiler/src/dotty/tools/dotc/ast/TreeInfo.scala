@@ -350,14 +350,16 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   }
 
   /** Checks whether predicate `p` is true for all result parts of this expression,
-   *  where we zoom into Ifs, Matches, and Blocks.
+   *  where we zoom into Ifs, Matches, Tries, and Blocks.
    */
-  def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match {
+  def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match
     case If(_, thenp, elsep) => forallResults(thenp, p) && forallResults(elsep, p)
-    case Match(_, cases) => cases forall (c => forallResults(c.body, p))
+    case Match(_, cases) => cases.forall(c => forallResults(c.body, p))
+    case Try(_, cases, finalizer) =>
+      cases.forall(c => forallResults(c.body, p))
+      && (finalizer.isEmpty || forallResults(finalizer, p))
     case Block(_, expr) => forallResults(expr, p)
     case _ => p(tree)
-  }
 
   /** The tree stripped of the possibly nested applications (term and type).
    *  The original tree if it's not an application.

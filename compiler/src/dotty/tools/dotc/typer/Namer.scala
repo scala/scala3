@@ -1141,7 +1141,8 @@ class Namer { typer: Typer =>
     end typeSig
   }
 
-  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context)
+  extends Completer(original)(ictx), CompleterWithCleanup {
     withDecls(newScope(using ictx))
 
     protected given completerCtx: Context = localContext(cls)
@@ -1764,6 +1765,7 @@ class Namer { typer: Typer =>
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
+      cleanup()
     }
   }
 
@@ -2245,8 +2247,9 @@ class Namer { typer: Typer =>
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-    def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
+    def cookedRhsType = dealiasIfUnit(rhsType)
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
+      .deskolemized
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal || isTracked then lhsType else inherited

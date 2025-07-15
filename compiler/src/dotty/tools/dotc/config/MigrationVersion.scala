@@ -31,7 +31,7 @@ enum MigrationVersion(val warnFrom: SourceVersion, val errorFrom: SourceVersion)
   case ImportRename extends MigrationVersion(future, future)
   case ParameterEnclosedByParenthesis extends MigrationVersion(future, future)
   case XmlLiteral extends MigrationVersion(future, future)
-  case GivenSyntax extends MigrationVersion(future, never)
+  case GivenSyntax extends MigrationVersion(future, future)
   case ImplicitParamsWithoutUsing extends MigrationVersion(`3.7`, future)
   case Scala2Implicits extends MigrationVersion(future, future)
 
