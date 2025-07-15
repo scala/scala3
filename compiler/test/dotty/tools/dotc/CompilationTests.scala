@@ -240,6 +240,21 @@ class CompilationTests {
       compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
       compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     end if
+    locally {
+      val tastyErrorGroup = TestGroup("checkInitGlobal/safe-value-tasty")
+      val options = defaultOptions.and("-Wsafe-init", "-Xfatal-warnings")
+      val tastyErrorOptions = options.without("-Xfatal-warnings")
+
+      val outDirDef = defaultOutputDir + tastyErrorGroup + "/SafeValuesDef/safe-value-tasty/SafeValuesDef"
+
+      val tests = List(
+        compileFile("tests/init-global/pos-tasty/safe-value-tasty/def/SafeValuesDef.scala", tastyErrorOptions)(tastyErrorGroup),
+      ).map(_.keepOutput.checkCompile())
+
+      compileFile("tests/init-global/pos-tasty/safe-value-tasty/SafeValuesUse.scala", tastyErrorOptions.withClasspath(outDirDef))(tastyErrorGroup).checkCompile()
+
+      tests.foreach(_.delete())
+    }
   }
 
   // initialization tests
