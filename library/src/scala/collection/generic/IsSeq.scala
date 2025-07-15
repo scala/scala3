@@ -25,7 +25,7 @@ import scala.reflect.ClassTag
   *
   * @see [[scala.collection.generic.IsIterable]]
   */
-trait IsSeq[Repr] extends IsIterable[Repr] {
+transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
   override val conversion: Repr => SeqOps[A, Iterable, C] = apply(_)

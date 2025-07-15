@@ -30,14 +30,14 @@ trait SortedSet[A]
   * @define coll immutable sorted set
   * @define Coll `immutable.SortedSet`
   */
-trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
+transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
   extends SetOps[A, Set, C]
      with collection.SortedSetOps[A, CC, C] {
 
   def unsorted: Set[A]
 }
 
-trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
+transparent trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
   extends SortedSetOps[A, CC, C]
     with collection.StrictOptimizedSortedSetOps[A, CC, C]
     with StrictOptimizedSetOps[A, Set, C] {

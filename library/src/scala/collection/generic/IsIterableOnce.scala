@@ -37,7 +37,7 @@ package generic
  *    // == List(2, 4)
  * }}}
  */
-trait IsIterableOnce[Repr] {
+transparent trait IsIterableOnce[Repr] {
 
   /** The type of elements we can traverse over (e.g. `Int`). */
   type A
@@ -61,7 +61,7 @@ object IsIterableOnce extends IsIterableOnceLowPriority {
 
 }
 
-trait IsIterableOnceLowPriority {
+transparent trait IsIterableOnceLowPriority {
 
   // Makes `IsIterable` instance visible in `IsIterableOnce` companion
   implicit def isIterableLikeIsIterableOnce[Repr](implicit

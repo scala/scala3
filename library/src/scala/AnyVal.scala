@@ -53,6 +53,6 @@ package scala
  * still must allocate a value class instance at runtime. These limitations and circumstances are
  * explained in greater detail in the [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Classes and Universal Traits]].
  */
-abstract class AnyVal extends Any {
+transparent abstract class AnyVal extends Any {
   def getClass(): Class[_ <: AnyVal] = null
 }

@@ -82,7 +82,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 }
 
 /** Base implementation type of bitsets */
-trait BitSetOps[+C <: BitSet with BitSetOps[C]]
+transparent trait BitSetOps[+C <: BitSet with BitSetOps[C]]
   extends SortedSetOps[Int, SortedSet, C] { self =>
   import BitSetOps._
 
