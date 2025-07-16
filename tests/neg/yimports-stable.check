@@ -1,4 +1,3 @@
-
 error: bad preamble import hello.world.potions
 -- [E006] Not Found Error: tests/neg/yimports-stable/C_2.scala:4:9 -----------------------------------------------------
 4 |  val v: Numb = magic // error // error
