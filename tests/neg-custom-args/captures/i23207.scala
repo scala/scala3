@@ -13,4 +13,6 @@ def leak(io: AnyRef^): A =
   val b = new B
   val box = b.getBox
   val a: A = box.x // error
-  b.getBox.x // error
+  val c = b.getBox.x // now OK
+  val _: B^{b} = c
+  c
