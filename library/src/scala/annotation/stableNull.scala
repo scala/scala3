@@ -7,4 +7,4 @@ package scala.annotation
  *  prefix is a stable path.
  *  See `tests/explicit-nulls/pos/force-track-var-fields.scala` for an example.
  */
-final class nullTrackable extends StaticAnnotation
+private[scala] final class stableNull extends StaticAnnotation

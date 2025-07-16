@@ -1,7 +1,9 @@
-import scala.annotation.nullTrackable
+package scala
+
+import scala.annotation.stableNull
 
 class A:
-  @nullTrackable var s: String | Null = null
+  @stableNull var s: String | Null = null
   def getS: String =
     if s == null then s = ""
     s
