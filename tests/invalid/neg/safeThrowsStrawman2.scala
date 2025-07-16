@@ -1,7 +1,7 @@
 import language.experimental.erasedDefinitions
 
 object scalax:
-  erased class CanThrow[E <: Exception]
+  class CanThrow[E <: Exception] extends compiletime.Erased
   type CTF = CanThrow[Fail]
 
   infix type raises[R, E <: Exception] = CanThrow[E] ?=> R

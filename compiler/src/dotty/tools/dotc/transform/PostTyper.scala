@@ -408,7 +408,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case app: Apply =>
           val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
           if (methType.hasErasedParams)
-            for (arg, isErased) <- app.args.lazyZip(methType.erasedParams) do
+            for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
               if isErased then
                 if methType.isResultDependent then
                   Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
@@ -475,7 +475,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
-          checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
@@ -483,7 +482,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
-          checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
@@ -623,21 +621,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     private def checkMacroAnnotation(sym: Symbol)(using Context) =
       if sym.derivesFrom(defn.MacroAnnotationClass) && !sym.isStatic then
         report.error("classes that extend MacroAnnotation must not be inner/local classes", sym.srcPos)
-
-    private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
-      def checkOnlyErasedParams(): Unit = tree match
-        case tree: DefDef =>
-          for params <- tree.paramss; param <- params if !param.symbol.isType && !param.symbol.is(Erased) do
-            report.error("erased definition can only have erased parameters", param.srcPos)
-        case _ =>
-
-      if tree.symbol.is(Erased, butNot = Macro) then
-        checkOnlyErasedParams()
-        val tpe = tree.rhs.tpe
-        if tpe.derivesFrom(defn.NothingClass) then
-          report.error("`erased` definition cannot be implemented with en expression of type Nothing", tree.srcPos)
-        else if tpe.derivesFrom(defn.NullClass) then
-          report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimentalCompanion(sym: Symbol)(using Context): Unit =
       if sym.is(Module) then

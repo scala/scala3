@@ -266,6 +266,7 @@ class Definitions {
     @tu lazy val CompiletimeOpsDoubleModuleClass: Symbol = requiredModule("scala.compiletime.ops.double").moduleClass
     @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
     @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
+  @tu lazy val ErasedClass: ClassSymbol = requiredClass("scala.compiletime.Erased")
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -543,7 +544,7 @@ class Definitions {
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
     val cls = enterCompleteClassSymbol(
-      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final | Erased,
+      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyType))
     enterTypeField(cls, tpnme.Self, Deferred, cls.info.decls.openForMutations)
     cls
@@ -1004,16 +1005,18 @@ class Definitions {
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
+    @tu lazy val Caps_erasedValue: Symbol = CapsInternalModule.requiredMethod("erasedValue")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
+    @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
 
-  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
+  @tu lazy val PureClass: ClassSymbol = requiredClass("scala.Pure")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1563,6 +1566,11 @@ class Definitions {
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
+  @tu lazy val capsErasedValueMethods =
+    Set(Caps_erasedValue, Caps_unsafeErasedValue)
+  @tu lazy val erasedValueMethods =
+    capsErasedValueMethods + Compiletime_erasedValue
+
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
@@ -2006,7 +2014,9 @@ class Definitions {
 
   /** A allowlist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
-    (sym `eq` SomeClass) || isTupleClass(sym)
+    (sym `eq` SomeClass)
+    || isTupleClass(sym)
+    || sym.is(Module) && isAssuredNoInits(sym.companionClass)
 
   /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
   def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {

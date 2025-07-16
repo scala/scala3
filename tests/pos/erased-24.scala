@@ -12,8 +12,8 @@ object Test {
     null.asInstanceOf[foo.X] // ok
   }
 
-  def fun2(erased foo: Foo)(erased bar: foo.B): bar.X = { // error
-    null.asInstanceOf[bar.X] // error
+  def fun2(erased foo: Foo)(erased bar: foo.B): bar.X = { // was error
+    null.asInstanceOf[bar.X] // was error
   }
 }
 

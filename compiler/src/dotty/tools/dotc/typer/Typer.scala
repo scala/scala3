@@ -1761,24 +1761,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (mt.isParamDependent)
         report.error(em"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       // Restart typechecking if there are erased classes that we want to mark erased
-      if mt.erasedParams.zip(mt.paramInfos.map(_.isErasedClass)).exists((paramErased, classErased) => classErased && !paramErased) then
-        val newParams = params2.zipWithConserve(mt.paramInfos.map(_.isErasedClass)) { (arg, isErasedClass) =>
-          if isErasedClass then arg.withAddedFlags(Erased) else arg
-        }
-        return typedDependent(newParams, result)
-      val core =
-        if mt.hasErasedParams then TypeTree(defn.PolyFunctionClass.typeRef)
-        else
-          val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(result.span)
-          val paramTpts = appDef.termParamss.head.map(p => TypeTree(p.tpt.tpe).withSpan(p.tpt.span))
-          val funSym = defn.FunctionSymbol(numArgs, isContextual)
-          val tycon = TypeTree(funSym.typeRef)
-          AppliedTypeTree(tycon, paramTpts :+ resTpt)
-      val res = RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
-      if isImpure then
-        typed(untpd.makeRetaining(untpd.TypedSplice(res), Nil, tpnme.retainsCap), pt)
+      if mt.paramErasureStatuses.lazyZip(mt.paramInfos).exists: (paramErased, info) =>
+        !paramErased && info.derivesFrom(defn.ErasedClass)
+      then
+        val newParams = params2.zipWithConserve(mt.paramInfos): (param, info) =>
+          if info.derivesFrom(defn.ErasedClass) then param.withAddedFlags(Erased) else param
+        typedDependent(newParams, result)
       else
-        res
+        val core =
+          if mt.hasErasedParams then TypeTree(defn.PolyFunctionClass.typeRef)
+          else
+            val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(result.span)
+            val paramTpts = appDef.termParamss.head.map(p => TypeTree(p.tpt.tpe).withSpan(p.tpt.span))
+            val funSym = defn.FunctionSymbol(numArgs, isContextual)
+            val tycon = TypeTree(funSym.typeRef)
+            AppliedTypeTree(tycon, paramTpts :+ resTpt)
+        val res = RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
+        if isImpure then
+          typed(untpd.makeRetaining(untpd.TypedSplice(res), Nil, tpnme.retainsCap), pt)
+        else
+          res
     end typedDependent
 
     args match {
@@ -1802,7 +1804,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val funTpt = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ result), pt)
           // if there are any erased classes, we need to re-do the typecheck.
           funTpt match
-            case r: AppliedTypeTree if r.args.exists(_.tpe.isErasedClass) =>
+            case r: AppliedTypeTree if r.args.init.exists(_.tpe.derivesFrom(defn.ErasedClass)) =>
               typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
             case _ => funTpt
     }
@@ -2395,7 +2397,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       untpd.ValDef(
           CanThrowEvidenceName.fresh(),
           untpd.TypeTree(defn.CanThrowClass.typeRef.appliedTo(tp)),
-          untpd.ref(defn.Compiletime_erasedValue))
+          untpd.ref(defn.Caps_erasedValue))
         .withFlags(Given | Final | Erased)
         .withSpan(expr.span)
     val caughtExceptions =
@@ -2948,6 +2950,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     completeAnnotations(vdef, sym)
     if sym.is(Implicit) then checkImplicitConversionDefOK(sym)
     if sym.is(Module) then checkNoModuleClash(sym)
+    else if sym.info.derivesFrom(defn.ErasedClass) then
+      if sym.isAllOf(Given | Lazy) && !vdef.mods.mods.exists(_.flags.is(Lazy)) then
+        // reset implied Lazy flag of givens, but keep explicit modifier
+        sym.resetFlag(Lazy)
+      checkErasedOK(sym)
+      sym.setFlag(Erased)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match
       case rhs @ Ident(nme.WILDCARD) =>
@@ -2964,6 +2972,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val nnInfo = rhs1.notNullInfo
     vdef1.withNotNullInfo(if sym.is(Lazy) then nnInfo.retractedInfo else nnInfo)
   }
+
   private def retractDefDef(sym: Symbol)(using Context): Tree =
     // it's a discarded method (synthetic case class method or synthetic java record constructor or overridden member), drop it
     val canBeInvalidated: Boolean =
@@ -2975,14 +2984,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     EmptyTree
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = if !sym.info.exists then retractDefDef(sym) else ctx.profiler.onTypedDef(sym) {
-
-    // TODO: - Remove this when `scala.language.experimental.erasedDefinitions` is no longer experimental.
-    //       - Modify signature to `erased def erasedValue[T]: T`
-    if sym.eq(defn.Compiletime_erasedValue) then
-      // scala.compiletime.erasedValue should be `erased` but we cannot add this in the source.
-      // The library cannot use experimental language features,
-      // hence we special case it until `erased` is no longer experimental.
-      sym.setFlag(Erased)
     val DefDef(name, paramss, tpt, _) = ddef
     checkNonRootName(ddef.name, ddef.nameSpan)
     completeAnnotations(ddef, sym)
@@ -3080,16 +3081,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** (1) Check that the signature of the class member does not return a repeated parameter type
-   *  (2) If info is an erased class, set erased flag of member
-   *  (3) Check that erased classes are not parameters of polymorphic functions.
-   *  (4) Make sure the definition's symbol is `sym`.
-   *  (5) Set the `defTree` of `sym` to be `mdef`.
+   *  (2) Make sure the definition's symbol is `sym`.
+   *  (3) Set the `defTree` of `sym` to be `mdef`.
    */
   private def postProcessInfo(mdef: MemberDef, sym: Symbol)(using Context): MemberDef =
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
-    if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
-      sym.setFlag(Erased)
     mdef.ensureHasSym(sym)
     mdef.setDefTree
 
@@ -3813,7 +3810,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     val erasedParams = pt match {
-      case defn.PolyFunctionOf(mt: MethodType) => mt.erasedParams
+      case defn.PolyFunctionOf(mt: MethodType) => mt.paramErasureStatuses
       case _ => paramTypes.map(_ => false)
     }
 

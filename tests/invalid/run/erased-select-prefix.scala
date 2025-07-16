@@ -29,9 +29,9 @@ object Test {
 
   def bar(erased i: Int): Unit = ()
 
-  erased def foo0: Int = 0
-  erased def foo1(): Int = 1
-  erased def foo2[T]: Int = 2
-  erased def foo3[T](): Int = 3
+  inline def foo0: Int = 0
+  inline def foo1(): Int = 1
+  inline def foo2[T]: Int = 2
+  inline def foo3[T](): Int = 3
 
 }

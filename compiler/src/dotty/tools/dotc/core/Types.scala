@@ -275,7 +275,7 @@ object Types extends TypeUtils {
         tp.isBottomType
         && (tp.hasClassSymbol(defn.NothingClass)
             || cls != defn.NothingClass && !cls.isValueClass)
-      def loop(tp: Type): Boolean = tp match {
+      def loop(tp: Type): Boolean = try tp match
         case tp: TypeRef =>
           val sym = tp.symbol
           if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType)
@@ -301,7 +301,7 @@ object Types extends TypeUtils {
           cls == defn.ObjectClass
         case _ =>
           false
-      }
+      catch case ex: Throwable => handleRecursive(i"derivesFrom $cls:", show, ex)
       loop(this)
     }
 
@@ -3935,7 +3935,7 @@ object Types extends TypeUtils {
           case tp: MethodType =>
             val params = if (hasErasedParams)
               tp.paramInfos
-                .zip(tp.erasedParams)
+                .zip(tp.paramErasureStatuses)
                 .collect { case (param, isErased) if !isErased => param }
             else tp.paramInfos
             resultSignature.prependTermParams(params, sourceLanguage)
@@ -4167,7 +4167,7 @@ object Types extends TypeUtils {
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
 
-    def erasedParams(using Context): List[Boolean] =
+    def paramErasureStatuses(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
     def nonErasedParamCount(using Context): Int =

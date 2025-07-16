@@ -2387,7 +2387,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         formals2.isEmpty
     }
     // If methods have erased parameters, then the erased parameters must match
-    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.erasedParams == tp2.erasedParams)
+    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.paramErasureStatuses == tp2.paramErasureStatuses)
 
     erasedValid && loop(tp1.paramInfos, tp2.paramInfos)
   }

@@ -1,7 +1,7 @@
 import language.experimental.erasedDefinitions
 
-erased class CanThrow[-E <: Exception]
-erased class Foo
+class CanThrow[-E <: Exception] extends compiletime.Erased
+class Foo extends compiletime.Erased
 class Bar
 
 object unsafeExceptions:
