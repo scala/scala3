@@ -11,7 +11,7 @@ import core.Decorators.*
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
-import util.{ SourcePosition, NoSourcePosition }
+import util.{ SourcePosition, NoSourcePosition, WrappedSourceFile }
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
@@ -44,7 +44,9 @@ trait MessageRendering {
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
       val (offset1, line) = offsetAndLine
-      val lineNbr = (pos.source.offsetToLine(offset1) + 1).toString
+      val magicOffset = WrappedSourceFile.locateMagicHeader(pos.source).getOrElse(0)
+      println(i"magicOffset: $magicOffset")
+      val lineNbr = (pos.source.offsetToLine(offset1) + 1 - magicOffset).toString
       val prefix = String.format(s"%${offset - 2}s |", lineNbr)
       maxLen = math.max(maxLen, prefix.length)
       val lnum = hl(" " * math.max(0, maxLen - prefix.length - 1) + prefix)
