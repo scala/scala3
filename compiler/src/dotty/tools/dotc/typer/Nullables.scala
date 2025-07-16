@@ -194,7 +194,6 @@ object Nullables:
       && sym.isField
       && sym.hasAnnotation(defn.StableNullAnnot)
 
-    // println(s"isTracked: $ref, usedOutOfOrder = ${ref.usedOutOfOrder}, isStable = ${ref.isStable}, span = ${ref.symbol.span}, assignmentSpans = ${ctx.compilationUnit.assignmentSpans.get(ref.symbol.span.start)}")
     ref.isStable
     || isNullStableField
     || { val unit = ctx.compilationUnit
