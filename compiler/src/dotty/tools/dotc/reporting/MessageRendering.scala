@@ -44,9 +44,10 @@ trait MessageRendering {
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
       val (offset1, line) = offsetAndLine
-      val magicOffset = WrappedSourceFile.locateMagicHeader(pos.source).getOrElse(0)
-      println(i"magicOffset: $magicOffset")
-      val lineNbr = (pos.source.offsetToLine(offset1) + 1 - magicOffset).toString
+      var magicOffset = WrappedSourceFile.locateMagicHeader(pos.source).getOrElse(0)
+      val lineId = pos.source.offsetToLine(offset1)
+      if lineId < magicOffset then magicOffset = 0
+      val lineNbr = (lineId + 1 - magicOffset).toString
       val prefix = String.format(s"%${offset - 2}s |", lineNbr)
       maxLen = math.max(maxLen, prefix.length)
       val lnum = hl(" " * math.max(0, maxLen - prefix.length - 1) + prefix)
