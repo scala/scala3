@@ -1,1 +1,0 @@
-package scalaql.fixture
