@@ -189,14 +189,14 @@ object Nullables:
   def isTracked(ref: TermRef)(using Context) = // true
     val sym = ref.symbol
 
-    def isNullTrackableField: Boolean =
+    def isNullStableField: Boolean =
       ref.prefix.isStable
       && sym.isField
-      && sym.hasAnnotation(defn.NullTrackableAnnot)
+      && sym.hasAnnotation(defn.StableNullAnnot)
 
     // println(s"isTracked: $ref, usedOutOfOrder = ${ref.usedOutOfOrder}, isStable = ${ref.isStable}, span = ${ref.symbol.span}, assignmentSpans = ${ctx.compilationUnit.assignmentSpans.get(ref.symbol.span.start)}")
     ref.isStable
-    || isNullTrackableField
+    || isNullStableField
     || { val unit = ctx.compilationUnit
          !ref.usedOutOfOrder
          && sym.span.exists
