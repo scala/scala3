@@ -122,8 +122,10 @@ trait TypesSupport:
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
       case ByNameType(CapturingType(tpe, refs)) =>
-        renderCaptureArrow(using q)(Some(refs), skipThisTypePrefix)(using elideThis, originalOwner) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
-      case ByNameType(tpe) => keyword("=>!! ") :: inner(tpe, skipThisTypePrefix) // FIXME: does it need change for CC?
+        renderCaptureArrow(using q)(refs, false, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
+      case ByNameType(tpe) =>
+        tpe.typeSymbol.pos.map(p => report.warning(s"Pure ByNameType at ${p}"))
+        keyword("-> ") :: inner(tpe, skipThisTypePrefix) // FIXME need to check if cc is enabled in current file first!!!
       case ConstantType(constant) =>
         plain(constant.show).l
       case ThisType(tpe) =>
@@ -349,9 +351,13 @@ trait TypesSupport:
     inCC: Option[List[reflect.TypeRepr]],
   ): SSignature =
     import reflect._
-    val arrow = if t.isContextFunctionType then keyword(" ?=> ").l // FIXME: can we have contextual functions with capture sets?
-                else plain(" ") :: (renderCaptureArrow(using q)(inCC, skipThisTypePrefix) ++ plain(" ").l)
-    given Option[List[TypeRepr]] = None
+    val refs = if !inCC.isDefined && t.isContextFunctionType then
+      // This'll ensure that an impure context function type is rendered correctly
+      Some(List(CaptureDefs.captureRoot.termRef))
+    else
+      inCC
+    val arrow = plain(" ") :: (renderCaptureArrow(using q)(refs, t.isContextFunctionType, skipThisTypePrefix) ++ plain(" ").l)
+    given Option[List[TypeRepr]] = None // FIXME: this is ugly
     args match
       case Nil => Nil
       case List(rtpe) => plain("()").l ++ arrow ++ inner(rtpe, skipThisTypePrefix)
@@ -499,19 +505,21 @@ trait TypesSupport:
     import reflect._
     Keyword("^") :: renderCaptureSet(refs, skipThisTypePrefix)
 
-  private def renderCaptureArrow(using q: Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(
+  private def renderCaptureArrow(using q: Quotes)(refs: List[reflect.TypeRepr], isImplicitFun: Boolean, skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
   ): SSignature =
-    import reflect.*
+    import reflect._
+    val prefix = if isImplicitFun then "?" else ""
     refs match
-      case Nil => List(Keyword("->"))
-      case List(ref) if ref.isCaptureRoot => List(Keyword("=>"))
-      case refs => Keyword("->") :: renderCaptureSet(using q)(refs, skipThisTypePrefix)
+      case Nil => List(Keyword(prefix + "->")) // FIXME need to check if cc is enabled in current file first!!!
+      case List(ref) if ref.isCaptureRoot => List(Keyword(prefix + "=>"))
+      case refs => Keyword(prefix + "->") :: renderCaptureSet(using q)(refs, skipThisTypePrefix)
 
-  private def renderCaptureArrow(using q: Quotes)(refs: Option[List[reflect.TypeRepr]], skipThisTypePrefix: Boolean)(
+  private def renderCaptureArrow(using q: Quotes)(refs: Option[List[reflect.TypeRepr]], isImplicitFun: Boolean, skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
   ): SSignature =
-    import reflect.*
+    import reflect._
+    val prefix = if isImplicitFun then "?" else ""
     refs match
-      case None => List(Keyword("=>")) // FIXME: is this correct? or should it be `->` by default?
-      case Some(refs) => renderCaptureArrow(using q)(refs, skipThisTypePrefix)
+      case None => List(Keyword(prefix + "->")) // FIXME need to check if cc is enabled in current file first!!!
+      case Some(refs) => renderCaptureArrow(using q)(refs, isImplicitFun, skipThisTypePrefix)
