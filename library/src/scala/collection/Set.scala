@@ -13,6 +13,7 @@
 package scala
 package collection
 
+import scala.language.`2.13`
 import scala.util.hashing.MurmurHash3
 import java.lang.String
 

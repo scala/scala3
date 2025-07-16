@@ -13,6 +13,7 @@
 package scala
 package collection
 
+import scala.language.`2.13`
 
 protected[collection] object Hashing {
 

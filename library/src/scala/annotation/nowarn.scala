@@ -12,6 +12,8 @@
 
 package scala.annotation
 
+import scala.language.`2.13`
+
 /** An annotation for local warning suppression.
   *
   * The optional `value` parameter allows selectively silencing messages. See `-Wconf:help` for help

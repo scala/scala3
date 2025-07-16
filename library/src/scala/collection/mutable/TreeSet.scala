@@ -13,6 +13,7 @@
 package scala
 package collection.mutable
 
+import scala.language.`2.13`
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{RedBlackTree => RB}

@@ -12,6 +12,7 @@
 
 package scala.sys.process
 
+import scala.language.`2.13`
 import processInternal._
 
 import java.util.concurrent.LinkedBlockingQueue

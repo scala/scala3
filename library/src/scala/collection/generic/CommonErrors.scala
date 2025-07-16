@@ -13,6 +13,7 @@
 package scala.collection
 package generic
 
+import scala.language.`2.13`
 
 /** Some precomputed common errors to reduce the generated code size.
   */

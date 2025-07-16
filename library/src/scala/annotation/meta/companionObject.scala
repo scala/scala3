@@ -12,6 +12,8 @@
 
 package scala.annotation.meta
 
+import scala.language.`2.13`
+
 /**
  * Currently unused; intended as an annotation target for classes such as case classes
  * that automatically generate a companion object

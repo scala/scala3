@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import scala.language.`2.13`
 
 package object generic {
   @deprecated("Clearable was moved from collection.generic to collection.mutable", "2.13.0")

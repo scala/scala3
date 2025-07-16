@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2.13`
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.ReusableBuilder
 import scala.collection.generic.DefaultSerializable

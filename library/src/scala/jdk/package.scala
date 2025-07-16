@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 /** The jdk package contains utilities to interact with JDK classes.
  * 
  * This packages offers a number of converters, that are able to wrap or copy

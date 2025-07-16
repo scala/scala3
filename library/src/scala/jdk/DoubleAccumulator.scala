@@ -12,6 +12,7 @@
 
 package scala.jdk
 
+import scala.language.`2.13`
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import java.util.Spliterator
 import java.util.function.{Consumer, DoubleConsumer}

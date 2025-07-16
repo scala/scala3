@@ -12,6 +12,7 @@
 
 package scala.runtime
 
+import scala.language.`2.13`
 import java.lang.invoke._
 
 /**

@@ -12,6 +12,8 @@
 
 package scala.ref
 
+import scala.language.`2.13`
+
 class SoftReference[+T <: AnyRef](value : T, queue : ReferenceQueue[T]) extends ReferenceWrapper[T] {
   def this(value : T) = this(value, null)
 

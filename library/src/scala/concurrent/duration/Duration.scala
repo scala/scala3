@@ -12,6 +12,7 @@
 
 package scala.concurrent.duration
 
+import scala.language.`2.13`
 import java.lang.{ Double => JDouble }
 import scala.collection.StringParsers
 

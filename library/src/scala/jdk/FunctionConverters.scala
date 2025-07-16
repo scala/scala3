@@ -15,6 +15,8 @@
 
 package scala.jdk
 
+import scala.language.`2.13`
+
 /** This object provides extension methods that convert between Scala and Java function types.
   *
   * When writing Java code, use the explicit conversion methods defined in

@@ -12,6 +12,7 @@
 
 package scala.concurrent.duration
 
+import scala.language.`2.13`
 import DurationConversions._
 
 // Would be nice to limit the visibility of this trait a little bit,

@@ -14,6 +14,7 @@ package scala
 package collection
 package immutable
 
+import scala.language.`2.13`
 import scala.annotation.meta.{getter, setter}
 import scala.annotation.tailrec
 import scala.runtime.Statics.releaseFence

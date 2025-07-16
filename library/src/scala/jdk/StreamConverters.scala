@@ -12,6 +12,7 @@
 
 package scala.jdk
 
+import scala.language.`2.13`
 import scala.collection.convert.StreamExtensions
 
 /** This object provides extension methods to create [[java.util.stream.Stream Java Streams]] that

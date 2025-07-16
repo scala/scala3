@@ -13,6 +13,8 @@
 package scala.collection
 package generic
 
+import scala.language.`2.13`
+
 /** A trait which can be used to avoid code duplication when defining extension
  *  methods that should be applicable both to existing Scala collections (i.e.,
  *  types extending `Iterable`) as well as other (potentially user-defined)

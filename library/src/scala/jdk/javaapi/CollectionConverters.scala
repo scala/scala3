@@ -12,6 +12,7 @@
 
 package scala.jdk.javaapi
 
+import scala.language.`2.13`
 import scala.collection.convert.{AsJavaConverters, AsScalaConverters}
 
 /** This object contains methods that convert between Scala and Java collections.

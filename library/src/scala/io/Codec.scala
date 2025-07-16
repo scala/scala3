@@ -13,6 +13,7 @@
 package scala
 package io
 
+import scala.language.`2.13`
 import java.nio.charset.{CharacterCodingException, Charset, CharsetDecoder, CharsetEncoder, CodingErrorAction => Action}
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import scala.annotation.migration
