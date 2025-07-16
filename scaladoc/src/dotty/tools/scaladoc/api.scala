@@ -44,6 +44,7 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Transparent extends Modifier("transparent", true)
   case Infix extends Modifier("infix", true)
   case AbsOverride extends Modifier("abstract override", true)
+  case Mut extends Modifier("mut", true)
 
 case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[TermParameterList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)

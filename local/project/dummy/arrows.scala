@@ -1,6 +1,7 @@
 package dummy
 
 import language.experimental.captureChecking
+import language.experimental.pureFunctions
 import caps.*
 
 trait Nested:

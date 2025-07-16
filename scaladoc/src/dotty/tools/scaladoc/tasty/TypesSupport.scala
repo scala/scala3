@@ -11,6 +11,8 @@ import dotty.tools.scaladoc.cc.*
 import NameNormalizer._
 import SyntheticsSupport._
 
+private case class FunKind(isPure: Boolean, isImplicit: Boolean)
+
 trait TypesSupport:
   self: TastyParser =>
 
@@ -122,10 +124,9 @@ trait TypesSupport:
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
       case ByNameType(CapturingType(tpe, refs)) =>
-        renderCaptureArrow(using q)(refs, false, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
+        renderFunctionArrow(using q)(refs, FunKind(true, false), skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ByNameType(tpe) =>
-        tpe.typeSymbol.pos.map(p => report.warning(s"Pure ByNameType at ${p}"))
-        keyword("-> ") :: inner(tpe, skipThisTypePrefix) // FIXME need to check if cc is enabled in current file first!!!
+        (if ccEnabled then keyword("-> ") else keyword("=> ")):: inner(tpe, skipThisTypePrefix)
       case ConstantType(constant) =>
         plain(constant.show).l
       case ThisType(tpe) =>
@@ -256,7 +257,8 @@ trait TypesSupport:
         ++ plain(" ").l
         ++ inParens(inner(rhs, skipThisTypePrefix), shouldWrapInParens(rhs, t, false))
 
-      case t @ AppliedType(tpe, args) if t.isFunctionType => functionType(t, tpe, args, skipThisTypePrefix)
+      case t @ AppliedType(tpe, args) if t.isFunctionType =>
+        functionType(t, tpe, args, skipThisTypePrefix)
 
       case t @ AppliedType(tpe, typeList) =>
         inner(tpe, skipThisTypePrefix) ++ plain("[").l ++ commas(typeList.map { t => t match
@@ -356,7 +358,7 @@ trait TypesSupport:
       Some(List(CaptureDefs.captureRoot.termRef))
     else
       inCC
-    val arrow = plain(" ") :: (renderCaptureArrow(using q)(refs, t.isContextFunctionType, skipThisTypePrefix) ++ plain(" ").l)
+    val arrow = plain(" ") :: (renderFunctionArrow(using q)(refs, FunKind(isPure = t.isFunction1, isImplicit = t.isContextFunctionType), skipThisTypePrefix) ++ plain(" ").l)
     given Option[List[TypeRepr]] = None // FIXME: this is ugly
     args match
       case Nil => Nil
@@ -505,21 +507,27 @@ trait TypesSupport:
     import reflect._
     Keyword("^") :: renderCaptureSet(refs, skipThisTypePrefix)
 
-  private def renderCaptureArrow(using q: Quotes)(refs: List[reflect.TypeRepr], isImplicitFun: Boolean, skipThisTypePrefix: Boolean)(
+  private def renderFunctionArrow(using q: Quotes)(refs: List[reflect.TypeRepr], fun: FunKind, skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
   ): SSignature =
     import reflect._
-    val prefix = if isImplicitFun then "?" else ""
-    refs match
-      case Nil => List(Keyword(prefix + "->")) // FIXME need to check if cc is enabled in current file first!!!
-      case List(ref) if ref.isCaptureRoot => List(Keyword(prefix + "=>"))
-      case refs => Keyword(prefix + "->") :: renderCaptureSet(using q)(refs, skipThisTypePrefix)
+    val prefix = if fun.isImplicit then "?" else ""
+    if !ccEnabled then
+      List(Keyword(prefix + "=>"))
+    else
+      refs match
+        case Nil => if fun.isPure then List(Keyword(prefix + "->")) else List(Keyword(prefix + "=>"))
+        case List(ref) if ref.isCaptureRoot => List(Keyword(prefix + "=>"))
+        case refs => Keyword(prefix + "->") :: renderCaptureSet(using q)(refs, skipThisTypePrefix)
 
-  private def renderCaptureArrow(using q: Quotes)(refs: Option[List[reflect.TypeRepr]], isImplicitFun: Boolean, skipThisTypePrefix: Boolean)(
+  private def renderFunctionArrow(using q: Quotes)(refs: Option[List[reflect.TypeRepr]], fun: FunKind, skipThisTypePrefix: Boolean)(
     using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol
   ): SSignature =
     import reflect._
-    val prefix = if isImplicitFun then "?" else ""
-    refs match
-      case None => List(Keyword(prefix + "->")) // FIXME need to check if cc is enabled in current file first!!!
-      case Some(refs) => renderCaptureArrow(using q)(refs, isImplicitFun, skipThisTypePrefix)
+    val prefix = if fun.isImplicit then "?" else ""
+    if !ccEnabled then
+      List(Keyword(prefix + "=>"))
+    else
+      refs match
+        case None => if fun.isPure then List(Keyword(prefix + "->")) else List(Keyword(prefix + "=>"))
+        case Some(refs) => renderFunctionArrow(using q)(refs, fun, skipThisTypePrefix)

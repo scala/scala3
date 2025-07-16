@@ -36,6 +36,20 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.readOnlyCapability")
   def RequiresCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.requiresCapability")
+
+  def LanguageExperimental(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredPackage("scala.language.experimental")
+
+  def ImpureFunction1(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.ImpureFunction1")
+
+  def ImpureContextFunction1(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.ImpureContextFunction1")
+
+  def Function1(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.Function1")
+
+  val ccImportSelector = "captureChecking"
 end CaptureDefs
 
 extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
@@ -53,7 +67,27 @@ end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr)
   def isCaptureRoot: Boolean = tpe.termSymbol == CaptureDefs.captureRoot
+
+  def isImpureFunction1: Boolean = tpe.derivesFrom(CaptureDefs.ImpureFunction1)
+
+  def isImpureContextFunction1: Boolean = tpe.derivesFrom(CaptureDefs.ImpureContextFunction1)
+
+  def isFunction1: Boolean = tpe.derivesFrom(CaptureDefs.Function1)
 end extension
+
+/** Matches `import scala.language.experimental.captureChecking` */
+object CCImport:
+  def unapply(using qctx: Quotes)(tree: qctx.reflect.Tree): Boolean =
+    import qctx.reflect._
+    tree match
+      case imprt: Import if imprt.expr.tpe.termSymbol == CaptureDefs.LanguageExperimental =>
+        imprt.selectors.exists {
+          case SimpleSelector(s) if s == CaptureDefs.ccImportSelector => true
+          case _ => false
+        }
+      case _ => false
+  end unapply
+end CCImport
 
 object ReachCapability:
   def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
