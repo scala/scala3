@@ -35,6 +35,7 @@ trait C {
   var stringC: String
 }
 
+
 object Foo {
   extension (c: C)
     def reverse: String = c.stringC.reverse
