@@ -1272,6 +1272,7 @@ object Build {
         file(s"${baseDirectory.value}/src/scala/quoted/runtime/SplicedType.scala"),
         file(s"${baseDirectory.value}/src/scala/quoted/runtime/StopMacroExpansion.scala"),
         file(s"${baseDirectory.value}/src/scala/compiletime/Erased.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/onlyCapability.scala"),
       )
     )
   lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
@@ -1408,6 +1409,7 @@ object Build {
         file(s"${baseDirectory.value}/src/scala/quoted/runtime/SplicedType.scala"),
         file(s"${baseDirectory.value}/src/scala/quoted/runtime/StopMacroExpansion.scala"),
         file(s"${baseDirectory.value}/src/scala/compiletime/Erased.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/onlyCapability.scala"),
       )
     )
 
