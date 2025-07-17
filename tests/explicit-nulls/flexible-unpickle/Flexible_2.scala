@@ -1,5 +1,7 @@
 import unsafeNulls.Foo.*
 import unsafeNulls.Unsafe_1
+import unsafeNulls.{A, B, C}
+import scala.reflect.Selectable.reflectiveSelectable
 
 class Inherit_1 extends Unsafe_1 {
   override def foo(s: String): String = s
@@ -37,4 +39,30 @@ def Flexible_2() =
   unsafe.foo("")
   unsafe.foo(null)
 
-  val refinement = new Unsafe_1 {val b: String}
+
+  val a = refinement.b
+  refinement.b = null
+  val refinement2: Unsafe_1 { var b: String } = refinement
+  refinement = null
+
+  val singletonbar: bar.type = singleton
+
+  val extension: String = intersection.reverse
+
+  val stringA: String = intersection.stringA
+  val stringB: String = intersection.stringB
+  intersection.stringA = null
+  intersection.stringB = null
+
+  val intersection2: A & B = intersection
+  intersection = null
+
+  val stringC: String = union.stringC
+  union.stringC = null
+
+  val union2: A | B = union
+  union = null
+
+  val constructorTest = new Unsafe_1(null)
+  val member: String = constructorTest.member
+  constructorTest.member = null

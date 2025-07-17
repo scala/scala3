@@ -160,6 +160,7 @@ object ImplicitNullInterop {
       case tp: AnnotatedType => mapOver(tp)
       case tp: OrType => mapOver(tp)
       case tp: MatchType => mapOver(tp)
+      case tp: RefinedType => nullify(mapOver(tp))
       case _ => tp
     }
   }
