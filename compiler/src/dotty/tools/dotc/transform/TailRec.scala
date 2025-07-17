@@ -10,6 +10,7 @@ import NameKinds.{TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
+import typer.Applications.UsedDefaults
 import util.LinearSet
 import dotty.tools.uncheckedNN
 
@@ -325,7 +326,10 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
-        if (isRecursiveCall)
+        if isRecursiveCall then
+          if ctx.settings.Whas.recurseWithDefault && tree.args.exists(_.hasAttachment(UsedDefaults)) then
+            report.warning(TailrecUsedDefault(), tree.srcPos)
+
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
