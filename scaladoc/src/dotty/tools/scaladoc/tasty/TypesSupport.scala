@@ -1,13 +1,13 @@
 package dotty.tools.scaladoc
 package tasty
 
-import scala.jdk.CollectionConverters._
-
-import scala.quoted._
+import scala.annotation.*
+import scala.jdk.CollectionConverters.*
+import scala.quoted.*
 import scala.util.control.NonFatal
 
-import NameNormalizer._
-import SyntheticsSupport._
+import NameNormalizer.*
+import SyntheticsSupport.*
 
 trait TypesSupport:
   self: TastyParser =>
@@ -81,6 +81,7 @@ trait TypesSupport:
       case tpe => inner(tpe, skipThisTypePrefix)
 
   // TODO #23 add support for all types signatures that make sense
+  @nowarn("id=E219")
   private def inner(
     using Quotes,
   )(
