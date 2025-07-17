@@ -162,7 +162,11 @@ object Capabilities:
           origin.explanation
         case _ =>
           i" created in ${hiddenSet.owner.sanitizedDescription}${origin.explanation}"
-      i"a fresh root capability$originStr"
+      val classifierStr =
+        if hiddenSet.classifier != defn.AnyClass
+        then i" classified as ${hiddenSet.classifier.name}"
+        else ""
+      i"a fresh root capability$classifierStr$originStr"
 
   object FreshCap:
     def apply(origin: Origin)(using Context): FreshCap | GlobalCap.type =
