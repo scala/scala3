@@ -2458,26 +2458,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     isSubRef(tp1, tp2) && isSubRef(tp2, tp1)
   }
 
-  /** If the range `tp1..tp2` consist of a single type, that type, otherwise NoType`.
-   *  This is the case if `tp1 =:= tp2`, but also if `tp1 <:< tp2`, `tp1` is a singleton type,
-   *  and `tp2` derives from `scala.Singleton` (or vice-versa). Examples of the latter case:
-   *
-   *     "name".type .. Singleton
-   *     "name".type .. String & Singleton
-   *     Singleton .. "name".type
-   *     String & Singleton .. "name".type
-   *
-   *  All consist of the single type `"name".type`.
-   */
-  def singletonInterval(tp1: Type, tp2: Type): Type = {
-    def isSingletonBounds(lo: Type, hi: Type) =
-      lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && isSubTypeWhenFrozen(lo, hi)
-    if (isSameTypeWhenFrozen(tp1, tp2)) tp1
-    else if (isSingletonBounds(tp1, tp2)) tp1
-    else if (isSingletonBounds(tp2, tp1)) tp2
-    else NoType
-  }
-
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = // trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true):
     if tp1 eq tp2 then tp1
@@ -2583,7 +2563,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1: @unchecked
         val arg2 :: args2Rest = args2: @unchecked
-        val common = singletonInterval(arg1, arg2)
+        val common = if isSameTypeWhenFrozen(arg1, arg2) then arg1 else NoType
         val v = tparam.paramVarianceSign
         val lubArg =
           if (common.exists) common
@@ -2615,7 +2595,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1: @unchecked
         val arg2 :: args2Rest = args2: @unchecked
-        val common = singletonInterval(arg1, arg2)
+        val common = if isSameTypeWhenFrozen(arg1, arg2) then arg1 else NoType
         val v = tparam.paramVarianceSign
         val glbArg =
           if (common.exists) common
