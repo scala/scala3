@@ -547,6 +547,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if tp2.isAny then true
           else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
+            || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
             val tp2a =
               if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
