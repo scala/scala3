@@ -571,7 +571,7 @@ object Inlines:
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      val inlined = tpd.Inlined(call, bindings, expansion)
+      val inlined = tpd.Inlined(call, bindings, expansion.withAttachmentsFrom(call))
 
       if !hasOpaqueProxies then inlined
       else
