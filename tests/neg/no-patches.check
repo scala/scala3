@@ -3,9 +3,9 @@
   |        ^^^^^^^^^^^^^^^^^^^^
   |        value 3.4 is not a member of object language
 -- [E008] Not Found Error: tests/neg/no-patches.scala:4:36 -------------------------------------------------------------
-4 |val _ = scala.language.experimental.captureChecking // error: we do not patch `scala.language.experimental`
-  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |        value captureChecking is not a member of object language.experimental
+4 |val _ = scala.language.experimental.modularity // error: we do not patch `scala.language.experimental`
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |        value modularity is not a member of object language.experimental
 -- [E008] Not Found Error: tests/neg/no-patches.scala:5:15 -------------------------------------------------------------
 5 |val _ = Predef.summon[DummyImplicit] // error: we do not patch `scala.Predef`
   |        ^^^^^^^^^^^^^
