@@ -1468,6 +1468,11 @@ class Definitions {
    *  is read from a classfile.
    */
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
+    // Do not patch the stdlib files if we explicitly disable it
+    // This is only to be used during the migration of the stdlib
+    if ctx.settings.YnoStdlibPatches.value then 
+      return
+
     def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
       val scope = denot.info.decls.openForMutations
 
