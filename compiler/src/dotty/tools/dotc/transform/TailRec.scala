@@ -4,9 +4,9 @@ package transform
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.em
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import Constants.Constant
-import NameKinds.{TailLabelName, TailLocalName, TailTempName}
+import NameKinds.{DefaultGetterName, TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
@@ -325,7 +325,11 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
-        if (isRecursiveCall)
+        if isRecursiveCall then
+          if ctx.settings.Whas.recurseWithDefault then
+            if tree.args.exists(_.symbol.name.is(DefaultGetterName)) then
+              report.warning(RecurseWithDefault(), tree.srcPos)
+
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
