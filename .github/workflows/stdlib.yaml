@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  compile-nonbootstrapped:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -26,3 +26,21 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Compile `scala-library-nonbootstrapped`
         run: ./project/scripts/sbt scala-library-nonbootstrapped/compile
+
+  compile-bootstrapped:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala-library-bootstrapped`
+        run: ./project/scripts/sbt scala-library-bootstrapped/compile
+
