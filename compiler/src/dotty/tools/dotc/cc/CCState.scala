@@ -81,6 +81,16 @@ class CCState:
   def start(): Unit =
     iterCount = 1
 
+  private var mySepCheck = false
+
+  /** Are we currently running separation checks? */
+  def isSepCheck = mySepCheck
+
+  def inSepCheck(op: => Unit): Unit =
+    val saved = mySepCheck
+    mySepCheck = true
+    try op finally mySepCheck = saved
+
   // ------ Global counters -----------------------
 
   /** Next CaptureSet.Var id */

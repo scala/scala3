@@ -112,6 +112,13 @@ object CheckCaptures:
           report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
       case ReadOnlyCapability(ref) =>
         check(ref)
+      case OnlyCapability(ref, cls) =>
+        if !cls.isClassifiedCapabilityClass then
+          report.error(
+            em"""${ref.showRef}.only[${cls.name}] is not well-formed since $cls is not a classifier class.
+                |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
+            ann.srcPos)
+        check(ref)
       case tpe =>
         report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
     ann.retainedSet.retainedElementsRaw.foreach(check)
@@ -1290,7 +1297,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case ExistentialSubsumesFailure(ex, other) =>
               def since =
                 if other.isTerminalCapability then ""
-                else " since that capability is not a SharedCapability"
+                else " since that capability is not a `Sharable` capability"
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
             case MutAdaptFailure(cs, lo, hi) =>
@@ -2014,7 +2021,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      if ccConfig.useSepChecks then SepCheck(this).traverse(unit)
+      if ccConfig.useSepChecks then
+        ccState.inSepCheck:
+          SepCheck(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

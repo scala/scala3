@@ -2321,10 +2321,6 @@ object desugar {
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        else if op.name == nme.CC_REACH then
-          Annotated(t, New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil))
-        else if op.name == nme.CC_READONLY then
-          Annotated(t, New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil))
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
