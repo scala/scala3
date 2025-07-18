@@ -1450,6 +1450,9 @@ object Build {
       moduleName    := "scala-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
