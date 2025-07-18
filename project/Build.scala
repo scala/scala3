@@ -1424,11 +1424,16 @@ object Build {
       versionScheme := Some("semver-spec"),
       scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
-      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
-      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      autoScalaLibrary := false, // do not add a dependency to stdlib
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      (Compile / scalacOptions) ++= Seq(
+        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
+        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+      ),
       // Only publish compilation artifacts, no test artifacts
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1436,6 +1441,63 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala-library:*.**.**-boostrapped project */
+  lazy val `scala-library-bootstrapped` = project.in(file("library"))
+    .settings(
+      name          := "scala-library-bootstrapped",
+      moduleName    := "scala-library",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / scalacOptions ++= Seq(
+        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
+        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+      ),
+      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala-library-bootstrapped",
+      // Configure the nonbootstrapped compiler
+      managedScalaInstance := false,
+      scalaInstance := {
+        val externalLibraryDeps = (`scala3-library` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+        val externalCompilerDeps = (`scala3-compiler` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core` / Compile / packageBin).value
+        val scala3Library = (`scala3-library` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler` / Compile / packageBin).value
+
+        val libraryJars = Array(scala3Library) ++ externalLibraryDeps
+        val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
+
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          libraryJars = libraryJars,
+          allCompilerJars = compilerJars,
+          allDocJars = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge` / Compile / packageBin).value)
+      },
     )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
