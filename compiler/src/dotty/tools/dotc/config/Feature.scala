@@ -32,6 +32,7 @@ object Feature:
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val separationChecking = experimental("separationChecking")
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
@@ -60,6 +61,7 @@ object Feature:
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
+    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (packageObjectValues, "Enable experimental package objects as values"),
