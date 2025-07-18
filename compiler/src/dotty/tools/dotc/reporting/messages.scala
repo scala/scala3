@@ -3652,3 +3652,15 @@ final class IllegalErasedDef(sym: Symbol)(using Context) extends TypeMsg(Illegal
   override protected def explain(using Context): String =
     "Only non-lazy immutable values can be `erased`"
 end IllegalErasedDef
+
+final class DefaultShadowsGiven(name: Name)(using Context) extends TypeMsg(DefaultShadowsGivenID):
+  override protected def msg(using Context): String =
+    i"Argument for implicit parameter $name was supplied using a default argument."
+  override protected def explain(using Context): String =
+    "Usually it's intended to prefer the given in scope, but you must specify it explicitly."
+
+final class TailrecUsedDefault(using Context) extends TypeMsg(TailrecUsedDefaultID):
+  override protected def msg(using Context): String =
+    i"Recursive call used a default argument."
+  override protected def explain(using Context): String =
+    "Usually it's intended to pass current arguments in a recursion."

@@ -5,7 +5,7 @@ package typer
 import core.*
 import ast.{Trees, tpd, untpd, desugar}
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition}
+import util.{Property, SrcPos, NoSourcePosition}
 import Contexts.*
 import Flags.*
 import Symbols.*
@@ -41,6 +41,9 @@ import dotty.tools.dotc.inlines.Inlines
 
 object Applications {
   import tpd.*
+
+  /** Attachment indicating that an argument in an application was a default arg. */
+  val UsedDefaults = Property.StickyKey[Unit]
 
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
@@ -774,6 +777,14 @@ trait Applications extends Compatibility {
               methodType.isImplicitMethod && (applyKind == ApplyKind.Using || failEmptyArgs)
 
             if !defaultArg.isEmpty then
+              if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled)
+              && inferImplicitArg(formal, appPos.span).tpe.isError == false
+              then
+                report.warning(DefaultShadowsGiven(methodType.paramNames(n)), appPos)
+              else if ctx.settings.Whas.recurseWithDefault && ctx.outersIterator.map(_.owner).toSet(sym)
+              then
+                defaultArg.withAttachment(UsedDefaults, ()) // might warn at tailrec
+
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
