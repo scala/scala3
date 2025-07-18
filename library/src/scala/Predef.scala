@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import scala.language.implicitConversions
 
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
-import scala.annotation.{elidable, experimental, implicitNotFound}, elidable.ASSERTION
+import scala.annotation.{elidable, experimental, implicitNotFound, publicInBinary, targetName }, elidable.ASSERTION
 import scala.annotation.meta.{ companionClass, companionMethod }
 import scala.annotation.internal.{ RuntimeChecked }
 import scala.compiletime.summonFrom
@@ -285,8 +285,8 @@ object Predef extends LowPriorityImplicits {
    *  @param assertion   the expression to test
    *  @group assertions
    */
-  @elidable(ASSERTION)
-  def assert(assertion: Boolean): Unit = {
+  @elidable(ASSERTION) @publicInBinary
+  @targetName("assert") private[scala] def scala2Assert(assertion: Boolean): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed")
   }
@@ -300,11 +300,17 @@ object Predef extends LowPriorityImplicits {
    *  @param message     a String to include in the failure message
    *  @group assertions
    */
-  @elidable(ASSERTION) @inline
-  final def assert(assertion: Boolean, message: => Any): Unit = {
+  @elidable(ASSERTION) @inline @publicInBinary
+  @targetName("assert") private[scala] final def scala2Assert(assertion: Boolean, message: => Any): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed: "+ message)
   }
+
+  transparent inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
+
+  transparent inline def assert(inline assertion: Boolean): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed()
 
   /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
