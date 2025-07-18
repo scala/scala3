@@ -16,7 +16,7 @@ import scala.language.`2.13`
 import scala.language.implicitConversions
 
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
-import scala.annotation.{elidable, experimental, implicitNotFound}, elidable.ASSERTION
+import scala.annotation.{elidable, experimental, implicitNotFound, publicInBinary, targetName }, elidable.ASSERTION
 import scala.annotation.meta.{ companionClass, companionMethod }
 import scala.annotation.internal.{ RuntimeChecked }
 import scala.compiletime.summonFrom
@@ -275,7 +275,26 @@ object Predef extends LowPriorityImplicits {
    */
   @inline def locally[T](@deprecatedName("x") x: T): T = x
 
-  // assertions ---------------------------------------------------------
+  // ==============================================================================================
+  // ========================================= ASSERTIONS =========================================
+  // ==============================================================================================
+
+  /* In Scala 3, `assert` are methods that are `transparent` and `inline`.
+     In Scala 2, `assert` are methods that are elidable, inlinable by the optimizer
+     For scala 2 code to be able to run with the scala 3 library in the classpath
+     (following our own compatibility policies), we will need the `assert` methods
+     to be available at runtime.
+     To achieve this, we keep the Scala 3 signature publicly available.
+     We rely on the fact that it is `inline` and will not be visible in the bytecode.
+     To add the required Scala 2 ones, we define the `scala2Assert`, we use: 
+      - `@targetName` to swap the name in the generated code to `assert` 
+      - `@publicInBinary` to make it available during runtime.
+     As such, we would successfully hijack the definitions of `assert` such as:
+      - At compile time, we would have the definitions of `assert`
+      - At runtime, the definitions of `scala2Assert` as `assert`  
+    NOTE: Tasty-Reader in Scala 2 will have to learn about this swapping if we are to
+    allow loading the full Scala 3 library by it.
+    */
 
   /** Tests an expression, throwing an `AssertionError` if false.
    *  Calls to this method will not be generated if `-Xelide-below`
@@ -285,8 +304,8 @@ object Predef extends LowPriorityImplicits {
    *  @param assertion   the expression to test
    *  @group assertions
    */
-  @elidable(ASSERTION)
-  def assert(assertion: Boolean): Unit = {
+  @elidable(ASSERTION) @publicInBinary
+  @targetName("assert") private[scala] def scala2Assert(assertion: Boolean): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed")
   }
@@ -300,11 +319,21 @@ object Predef extends LowPriorityImplicits {
    *  @param message     a String to include in the failure message
    *  @group assertions
    */
-  @elidable(ASSERTION) @inline
-  final def assert(assertion: Boolean, message: => Any): Unit = {
+  @elidable(ASSERTION) @inline @publicInBinary
+  @targetName("assert") private[scala] final def scala2Assert(assertion: Boolean, message: => Any): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed: "+ message)
   }
+
+  transparent inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
+
+  transparent inline def assert(inline assertion: Boolean): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed()
+
+  // ==============================================================================================
+  // ======================================== ASSUMPTIONS =========================================
+  // ==============================================================================================
 
   /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
