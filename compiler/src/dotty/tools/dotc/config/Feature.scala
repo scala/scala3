@@ -41,7 +41,7 @@ object Feature:
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
-      .filterNot(_ == captureChecking) // TODO is this correct?
+      .filterNot(sym => sym == captureChecking || sym == separationChecking) // TODO is this correct?
 
   val values = List(
     (nme.help, "Display all available features"),
