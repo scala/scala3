@@ -35,6 +35,7 @@ trait C {
   var stringC: String
 }
 
+
 object Foo {
   extension (c: C)
     def reverse: String = c.stringC.reverse
@@ -46,3 +47,29 @@ object Foo {
   var intersection: A & B = ???
   var union: A | B = ???
 }
+
+class F(var x: String, var y: G)
+
+class G(var z: Int)
+
+object F {
+  def unapply(f: F): (String, G) = (f.x, f.y)
+  var many: (List[F] | String | List[Int]) = null
+}
+
+class H {
+  val s: String = null
+}
+
+class I[+A](val value: A)
+
+class J(val a: String) {}
+
+class L[-A](f: A => Unit)
+
+class M {}
+
+object M {
+  def test(input: => String): String = "foo " + input
+}
+

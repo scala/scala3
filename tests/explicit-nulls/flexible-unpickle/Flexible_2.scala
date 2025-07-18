@@ -1,6 +1,6 @@
 import unsafeNulls.Foo.*
 import unsafeNulls.Unsafe_1
-import unsafeNulls.{A, B, C}
+import unsafeNulls.{A, B, C, F, G, H, I, J, L, M}
 import scala.reflect.Selectable.reflectiveSelectable
 
 class Inherit_1 extends Unsafe_1 {
@@ -30,6 +30,9 @@ class Inherit_4 extends Unsafe_1 {
 }
 
 case class cc()
+
+class K(val b: String) extends J(b) {
+}
 
 @main
 def Flexible_2() =
@@ -66,3 +69,31 @@ def Flexible_2() =
   val constructorTest = new Unsafe_1(null)
   val member: String = constructorTest.member
   constructorTest.member = null
+
+  bar match {
+    case str @ null: String => ()
+    case other => ()
+  }
+
+  val f = new F(null, G(12))
+  val F(x, y) = f
+
+  val g: (List[F] | String | List[Int]) = F.many
+  F.many = null :: null :: Nil
+  F.many = null
+
+  val h: H { val s: String } = new H { override val s: String = "foo" }
+
+  val jBox: I[J] = new I(new J(null))
+  val kBox: I[K] = new I(new K("foo"))
+
+  val box: I[J] = kBox
+
+  val jBox2: L[J] = new L[J](j => ())
+  val kBox2: L[K] = new L[K](k => ())
+
+  val box2: L[K] = jBox2
+  val box3: I[J | Null] = box
+
+  val m: String = M.test(null)
+
