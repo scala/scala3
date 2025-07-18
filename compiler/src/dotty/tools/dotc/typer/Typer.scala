@@ -4358,12 +4358,23 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               implicitArgs(formals2, argIndex + 1, pt)
 
             val arg = inferImplicitArg(formal, tree.span.endPos)
+
+            def canProfitFromMoreConstraints =
+              arg.tpe.isInstanceOf[AmbiguousImplicits]
+                    // ambiguity could be decided by more constraints
+              || !isFullyDefined(formal, ForceDegree.none)
+                    // more context might constrain type variables which could make implicit scope larger
+
             arg.tpe match
-              case failed: AmbiguousImplicits =>
+              case failed: SearchFailureType if canProfitFromMoreConstraints =>
                 val pt1 = pt.deepenProtoTrans
                 if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
-                then implicitArgs(formals, argIndex, pt1)
-                else arg :: implicitArgs(formals1, argIndex + 1, pt1)
+                then return implicitArgs(formals, argIndex, pt1)
+              case _ =>
+
+            arg.tpe match
+              case failed: AmbiguousImplicits =>
+                arg :: implicitArgs(formals1, argIndex + 1, pt)
               case failed: SearchFailureType =>
                 lazy val defaultArg = findDefaultArgument(argIndex)
                   .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
