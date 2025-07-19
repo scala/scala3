@@ -61,6 +61,21 @@ object ScriptSourceFile {
   }
 }
 
+object WrappedSourceFile:
+  private val cache: mutable.HashMap[SourceFile, Int] = mutable.HashMap.empty
+  def locateMagicHeader(sourceFile: SourceFile)(using Context): Option[Int] =
+    def findOffset: Int =
+      val magicHeader = ctx.settings.XmagicOffsetHeader.value
+      if magicHeader.isEmpty then
+        -1
+      else
+        val s = new String(sourceFile.content)
+        val regex = ("(?m)^" + java.util.regex.Pattern.quote(magicHeader) + "$").r
+        val pos = regex.findFirstMatchIn(s).map(_.start).map(sourceFile.offsetToLine(_))
+        pos.getOrElse(-1)
+    val result = cache.getOrElseUpdate(sourceFile, findOffset)
+    if result >= 0 then Some(result + 1) else None
+
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile.*
 

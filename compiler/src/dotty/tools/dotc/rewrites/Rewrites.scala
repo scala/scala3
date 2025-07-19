@@ -7,7 +7,7 @@ import core.Contexts.*
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.util.SourcePosition;
+import dotty.tools.dotc.util.SourcePosition
 
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets.UTF_8
