@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/annot-ill-abort/Test_2.scala:1:0 ------------------------------------------------------------
 1 |@crash // error
   |^^^^^^
