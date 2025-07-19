@@ -477,7 +477,10 @@ object SymDenotations {
 
     /** The expanded name of this denotation. */
     final def expandedName(using Context): Name =
-      if (name.is(ExpandedName) || isConstructor) name
+      if name.is(ExpandedName) || isConstructor
+      || name.is(DefaultGetterName) && name.match { case DefaultGetterName(nme.CONSTRUCTOR, _) => true case _ => false }
+      then
+        name
       else name.expandedName(initial.owner)
         // need to use initial owner to disambiguate, as multiple private symbols with the same name
         // might have been moved from different origins into the same class
