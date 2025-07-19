@@ -262,3 +262,68 @@ class HoverDefnSuite extends BaseHoverSuite:
       """|type Numeric: Numeric
          |""".stripMargin.hover
     )
+
+  @Test def i7256 =
+    check(
+      """|object Test:
+         |  def methodA: Unit = ???
+         |export Test.me@@thodA
+         |""".stripMargin,
+      """|**Expression type**:
+         |```scala
+         |=> Unit
+         |```
+         |**Symbol signature**:
+         |```scala
+         |def methodA: Unit
+         |```
+         |""".stripMargin
+    )
+
+  @Test def `annotation` =
+    check(
+      """|
+         |@ma@@in
+         |def example() = 
+         |    println("test")
+         |""".stripMargin,
+      """|```scala
+         |def this(): main
+         |```""".stripMargin.hover
+    )
+
+  @Test def `annotation-2` =
+      check(
+        """|
+          |@ma@@in
+          |def example() = 
+          |    List("test")
+          |""".stripMargin,
+        """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+      )
+
+  @Test def `annotation-3` =
+      check(
+        """|
+          |@ma@@in
+          |def example() = 
+          |    Array("test")
+          |""".stripMargin,
+        """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+      )
+
+  @Test def `annotation-4` =
+      check(
+        """|
+          |@ma@@in
+          |def example() = 
+          |    Array(1, 2)
+          |""".stripMargin,
+        """|```scala
+          |def this(): main
+          |```""".stripMargin.hover
+      )

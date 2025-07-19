@@ -51,7 +51,7 @@ class PcDefinitionProvider(
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
     given ctx: Context = driver.localContext(params)
-    val indexedContext = IndexedContext(ctx)
+    val indexedContext = IndexedContext(pos)(using ctx)
     val result =
       if findTypeDef then findTypeDefinitions(path, pos, indexedContext, uri)
       else findDefinitions(path, pos, indexedContext, uri)

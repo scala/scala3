@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Toplevel Definitions"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/toplevel-definitions.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/toplevel-definitions.html
 ---
 
 All kind of definitions can now be written at the top-level.

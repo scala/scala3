@@ -19,10 +19,10 @@ def useBoxedAsync1(@use x: Box[Async^]): Unit = x.get.read() // ok
 def test(): Unit =
 
   val f: Box[Async^] => Unit = (x:  Box[Async^]) => useBoxedAsync(x) // error
-  val _: Box[Async^] => Unit = useBoxedAsync(_) // error
-  val _: Box[Async^] => Unit = useBoxedAsync // error
-  val _ = useBoxedAsync(_) // error
-  val _ = useBoxedAsync // error
+  val t1: Box[Async^] => Unit = useBoxedAsync(_) // error
+  val t2: Box[Async^] => Unit = useBoxedAsync // error
+  val t3 = useBoxedAsync(_) // was error, now ok
+  val t4 = useBoxedAsync // was error, now ok
 
   def boom(x: Async^): () ->{f} Unit =
     () => f(Box(x))

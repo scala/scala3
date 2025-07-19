@@ -73,7 +73,7 @@ object OrderingConstraint {
           }
           else {
             val prev_es = entries(prev, poly)
-            if (prev_es == null || (es.nn ne prev_es.nn))
+            if (prev_es == null || (es.nn ne prev_es))
               current // can re-use existing entries array.
             else {
               es = es.nn.clone

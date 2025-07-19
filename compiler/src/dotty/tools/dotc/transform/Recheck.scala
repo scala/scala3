@@ -75,7 +75,7 @@ object Recheck:
    *  as by-name arguments of applied types. See note in doc comment for
    *  ElimByName phase. Test case is bynamefun.scala.
    */
-  private def mapExprType(tp: Type)(using Context): Type = tp match
+  def mapExprType(tp: Type)(using Context): Type = tp match
     case ExprType(rt) => defn.ByNameFunction(rt)
     case _ => tp
 
@@ -183,10 +183,10 @@ abstract class Recheck extends Phase, SymTransformer:
 
     /** If true, remember the new types of nodes in this compilation unit
      *  as an attachment in the unit's tpdTree node. By default, this is
-     *  enabled when -Xprint:cc is set. Can be overridden.
+     *  enabled when -Vprint:cc is set. Can be overridden.
      */
     def keepNuTypes(using Context): Boolean =
-      ctx.settings.Xprint.value.containsPhase(thisPhase)
+      ctx.settings.Vprint.value.containsPhase(thisPhase)
 
     def resetNuTypes()(using Context): Unit =
       nuTypes.clear(resetToInitial = false)
@@ -269,7 +269,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       inContext(linkConstructorParams(sym).withOwner(sym)):
         val resType = recheck(tree.tpt)
-        if tree.rhs.isEmpty || sym.isInlineMethod || sym.isEffectivelyErased
+        if tree.rhs.isEmpty || sym.isInlineMethod
         then resType
         else recheck(tree.rhs, resType)
 
@@ -304,7 +304,7 @@ abstract class Recheck extends Phase, SymTransformer:
     /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
-    protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+    protected def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
       recheck(arg, formal)
 
     /** A hook to check all the parts of an application:
@@ -336,7 +336,7 @@ abstract class Recheck extends Phase, SymTransformer:
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>
-              val argType = recheckArg(arg, normalizeByName(formals.head))
+              val argType = recheckArg(arg, normalizeByName(formals.head), prefs.head, tree)
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))
@@ -449,9 +449,11 @@ abstract class Recheck extends Phase, SymTransformer:
       defn.UnitType
 
     def recheckTry(tree: Try, pt: Type)(using Context): Type =
-      val bodyType = recheck(tree.expr, pt)
-      val casesTypes = tree.cases.map(recheckCase(_, defn.ThrowableType, pt))
-      val finalizerType = recheck(tree.finalizer, defn.UnitType)
+      recheckTryRest(recheck(tree.expr, pt), tree.cases, tree.finalizer, pt)
+
+    protected def recheckTryRest(bodyType: Type, cases: List[CaseDef], finalizer: Tree, pt: Type)(using Context): Type =
+      val casesTypes = cases.map(recheckCase(_, defn.ThrowableType, pt))
+      val finalizerType = recheck(finalizer, defn.UnitType)
       TypeComparer.lub(bodyType :: casesTypes)
 
     def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =
@@ -524,12 +526,14 @@ abstract class Recheck extends Phase, SymTransformer:
               if !skipRecheck(sym) then recheckDef(tree, sym)
               sym.termRef
           case tree: TypeDef =>
-            // TODO: Should we allow for completers as for ValDefs or DefDefs?
-            tree.rhs match
-              case impl: Template =>
-                recheckClassDef(tree, impl, sym.asClass)(using ctx.localContext(tree, sym))
-              case _ =>
-                recheckTypeDef(tree, sym)(using ctx.localContext(tree, sym))
+            if !skipRecheck(sym) then
+              // TODO: Should we allow for completers as for ValDefs or DefDefs?
+              tree.rhs match
+                case impl: Template =>
+                  recheckClassDef(tree, impl, sym.asClass)(using ctx.localContext(tree, sym))
+                case _ =>
+                  recheckTypeDef(tree, sym)(using ctx.localContext(tree, sym))
+            sym.typeRef
           case tree: Labeled => recheckLabeled(tree, pt)
 
       def recheckUnnamed(tree: Tree, pt: Type): Type = tree match

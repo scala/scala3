@@ -1,8 +1,3 @@
-type Person = (name: String, age: Int)
 
-trait A:
-  type T
 
-class B:
-  type U =:= A { type T = U }
-
+def foo[T: Singleton](x: T) = x

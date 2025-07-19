@@ -250,7 +250,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         case Some((_, _, args)) => args.iterator
         case _ => Iterator.empty
       def nextArgument() =
-        if argsIt.hasNext then argsIt.next
+        if argsIt.hasNext then argsIt.next()
         else
           assert(
               impl.parents.forall(_.tpe.typeSymbol != mixin),
@@ -264,7 +264,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for
         getter <- mixin.info.decls.toList
         if getter.isGetter
-           && !getter.isEffectivelyErased
            && !wasOneOf(getter, Deferred)
            && !getter.isConstExprFinalVal
       yield

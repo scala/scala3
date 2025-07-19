@@ -29,17 +29,21 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
-    def instArg(tp: Type): Type = tp.stripTypeVar match
-      // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
-      // i16328.scala. The intersection comes from an earlier instantiation
-      // to an upper bound.
-      // The dual situation with unions is harder to trigger because lower
-      // bounds are usually widened during instantiation.
+    def instArg(tp: Type): Type = tp.dealias match
       case tp: AndOrType if tp.tp1 =:= tp.tp2 =>
+        // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
+        // i16328.scala. The intersection comes from an earlier instantiation
+        // to an upper bound.
+        // The dual situation with unions is harder to trigger because lower
+        // bounds are usually widened during instantiation.
         instArg(tp.tp1)
+      case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) =>
+        instArg(
+            if tvar.hasLowerBound then tvar.instantiate(fromBelow = true)
+            else if tvar.hasUpperBound then tvar.instantiate(fromBelow = false)
+            else NoType)
       case _ =>
-        if isFullyDefined(tp, ForceDegree.all) then tp
-        else NoType // this happens in tests/neg/i15372.scala
+        tp
 
     val tag = formal.argInfos match
       case arg :: Nil =>
@@ -53,7 +57,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             if defn.SpecialClassTagClasses.contains(sym) then
               classTagModul.select(sym.name.toTermName).withSpan(span)
             else
-              val ctype = escapeJavaArray(erasure(tp))
+              val ctype = escapeJavaArray(erasure(tp.normalizedTupleType))
               if ctype.exists then
                 classTagModul.select(nme.apply)
                   .appliedToType(tp)
@@ -176,19 +180,6 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           cmpWithBoxed(cls1, cls2)
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
-      else if ctx.mode.is(Mode.SafeNulls) then
-        // If explicit nulls is enabled, and unsafeNulls is not enabled,
-        // we want to disallow comparison between Object and Null.
-        // If we have to check whether a variable with a non-nullable type has null value
-        // (for example, a NotNull java method returns null for some reasons),
-        // we can still cast it to a nullable type then compare its value.
-        //
-        // Example:
-        // val x: String = null.asInstanceOf[String]
-        // if (x == null) {} // error: x is non-nullable
-        // if (x.asInstanceOf[String|Null] == null) {} // ok
-        if cls1 == defn.NullClass || cls2 == defn.NullClass then cls1 == cls2
-        else cls1 == defn.NothingClass || cls2 == defn.NothingClass
       else if cls1 == defn.NullClass then
         cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
       else if cls2 == defn.NullClass then
@@ -232,6 +223,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             withNoErrors(success(Literal(Constant(()))))
           case n: TermRef =>
             withNoErrors(success(ref(n)))
+          case ts: ThisType =>
+            withNoErrors(success(This(ts.cls)))
           case tp =>
             EmptyTreeNoError
       case _ =>
@@ -242,7 +235,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     case PreciseConstrained(tp, true) =>
       if tp.isSingletonBounded(frozen = false) then
         withNoErrors:
-          ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
+          ref(defn.Caps_erasedValue).appliedToType(formal).withSpan(span)
       else
         withErrors(i"$tp is not a singleton")
     case _ =>
@@ -251,7 +244,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedPrecise: SpecialHandler = (formal, span) => formal match
     case PreciseConstrained(tp, false) =>
       withNoErrors:
-        ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
+        ref(defn.Caps_erasedValue).appliedToType(formal).withSpan(span)
     case _ =>
       EmptyTreeNoError
 

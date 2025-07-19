@@ -28,7 +28,8 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       MockLocation("scala/Predef.Ensuring#ensuring(+2).", "Predef.scala"),
       MockLocation("scala/Predef.Ensuring#ensuring(+3).", "Predef.scala"),
       MockLocation("scala/collection/immutable/List#`::`().", "List.scala"),
-      MockLocation("scala/package.List.", "package.scala")
+      MockLocation("scala/package.List.", "package.scala"),
+      MockLocation("scala/collection/immutable/Vector.", "Vector.scala"),
     )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
@@ -611,3 +612,38 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
         |""".stripMargin
     )
 
+  @Test def i7256 =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |export Test.me@@thodA
+         |""".stripMargin
+    )
+
+  @Test def `i7256-2` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{me@@thodA, methodB}
+         |""".stripMargin
+    )
+
+  @Test def `i7256-3` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{methodA, methodB}
+         |
+         |val i = met@@hodA
+         |""".stripMargin
+    )
+
+  @Test def i7427 =
+    check(
+      """|package a
+         |object Repro:
+         |    export scala.collection.immutable.V/*scala/collection/immutable/Vector. Vector.scala*/@@ector
+         |""".stripMargin
+    )

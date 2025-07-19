@@ -34,6 +34,9 @@ object Trees {
 
   val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Property key for marking capture-set variables and members */
+  val CaptureVar: Property.StickyKey[Unit] = Property.StickyKey()
+
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
    *  Untyped trees have type `Tree[Untyped]`.
@@ -509,9 +512,9 @@ object Trees {
 
   /** The kind of application */
   enum ApplyKind:
-    case Regular      // r.f(x)
-    case Using        // r.f(using x)
-    case InfixTuple   // r f (x1, ..., xN) where N != 1;  needs to be treated specially for an error message in typedApply
+    case Regular    // r.f(x)
+    case Using      // r.f(using x)
+    case InfixTuple // r f (x1, ..., xN) where N != 1; needs to be treated specially for an error message in typedApply
 
   /** fun(args) */
   case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
@@ -741,11 +744,11 @@ object Trees {
   }
 
   /** A tree representing a quote pattern `'{ type binding1; ...; body }` or `'[ type binding1; ...; body ]`.
-   *  `QuotePattern`s are created the type checker when typing an `untpd.Quote` in a pattern context.
+   *  `QuotePattern`s are created by the type checker when typing an `untpd.Quote` in a pattern context.
    *
    *  `QuotePattern`s are checked are encoded into `unapply`s  in the `staging` phase.
    *
-   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the oreder in
+   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the order in
    *   which they are defined in the source.
    *
    *   @param  bindings  Type variable definitions (`Bind` tree)

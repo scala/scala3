@@ -1,17 +1,22 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:33 ---------------------------------------
 12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
    |                                 ^
-   |                                 Found:    (f : F)
-   |                                 Required: File^
+   |Found:    (f : F)
+   |Required: File^
+   |
+   |where:    ^ refers to a fresh root capability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |            Found:    (_$1: box File^{files*}) ->{files*} box Logger{val f: File^{_$1}}^{localcap.rd, _$1}
-   |            Required: (_$1: box File^{files*}) ->{fresh} box Logger{val f: File^?}^?
+   |Found:    (_$1: File^?) ->{files*} Logger{val f: File^{_$1}}^{cap.rd, _$1}
+   |Required: File^{files*} => Logger{val f: File^?}^?
    |
-   |            Note that reference <cap of (_$1: box File^{files*}): box Logger{val f: File^?}^?>.rd
-   |            cannot be included in outer capture set ?
+   |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
+   |          cap is a root capability associated with the result type of (_$1: File^?): Logger{val f: File^{_$1}}^{cap.rd, _$1}
+   |
+   |Note that reference <cap of (_$1: File^{files*}): Logger{val f: File^?}^?>.rd
+   |cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`

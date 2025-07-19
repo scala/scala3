@@ -109,7 +109,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     @tailrec
     def loop(remaining: List[String], n: Int): Unit = remaining match
       case part0 :: remaining =>
-        def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage.nn, index = n, offset = 0))
+        def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage, index = n, offset = 0))
         val part = try StringContext.processEscapes(part0) catch badPart
         checkPart(part, n)
         loop(remaining, n + 1)

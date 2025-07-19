@@ -4,7 +4,7 @@ import caps.*
 class Ref extends Mutable:
   private var _data = 0
   def get: Int = _data
-  mut def put(x: Int): Unit = _data = x
+  update def put(x: Int): Unit = _data = x
 
 case class Pair[+A, +B](fst: A, snd: B)
 

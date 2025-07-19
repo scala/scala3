@@ -27,21 +27,21 @@ final class HyArray[Element: Value as elementIsCValue](
 
   /** Reserves enough storage to store `n` elements in `this`. */
   def reserveCapacity(n: Int, assumeUniqueness: Boolean = false): HyArray[Element] =
-    if (n <= capacity) {
+    if n <= capacity then {
       this
     } else {
       var newCapacity = max(1, capacity)
-      while (newCapacity < n) { newCapacity = newCapacity << 1 }
+      while newCapacity < n do { newCapacity = newCapacity << 1 }
 
       val newStorage = new scala.Array[AnyRef | Null](newCapacity)
       val s = _storage.asInstanceOf[scala.Array[AnyRef | Null]]
       var i = 0
-      while (i < count) {
+      while i < count do {
         newStorage(i) = _storage(i).asInstanceOf[Element].copy().asInstanceOf[AnyRef]
         i += 1
       }
 
-      if (assumeUniqueness) {
+      if assumeUniqueness then {
         _storage = newStorage
         this
       } else {
@@ -60,13 +60,13 @@ final class HyArray[Element: Value as elementIsCValue](
   def appendContents[C: Collection { type Element = HyArray.this.Element }](
       source: C, assumeUniqueness: Boolean = false
   ): HyArray[Element] =
-    val result = if (assumeUniqueness) { this } else { copy(count + source.count) }
+    val result = if assumeUniqueness then { this } else { copy(count + source.count) }
     source.reduce(result): (r, e) =>
       r.append(e, assumeUniqueness = true)
 
   /** Removes and returns the last element, or returns `None` if the array is empty. */
   def popLast(assumeUniqueness: Boolean = false): (HyArray[Element], Option[Element]) =
-    if (isEmpty) {
+    if isEmpty then {
       (this, None)
     } else {
       val result = if assumeUniqueness then this else copy()
@@ -79,9 +79,9 @@ final class HyArray[Element: Value as elementIsCValue](
       keepStorage: Boolean = false,
       assumeUniqueness: Boolean = false
   ): HyArray[Element] =
-    if (isEmpty) {
+    if isEmpty then {
       this
-    } else if (keepStorage) {
+    } else if keepStorage then {
       val result = if assumeUniqueness then this else copy()
       Arrays.fill(result._storage, null)
       result._count = 0
@@ -120,8 +120,8 @@ final class HyArray[Element: Value as elementIsCValue](
   override def toString: String =
     var s = "["
     var i = 0
-    while (i < count) {
-      if (i > 0) { s += ", " }
+    while i < count do {
+      if i > 0 then { s += ", " }
       s += s"${at(i)}"
       i += 1
     }
@@ -131,14 +131,14 @@ final class HyArray[Element: Value as elementIsCValue](
     * allocating new storage.
     */
   def copy(minimumCapacity: Int = 0): HyArray[Element] =
-    if (minimumCapacity > capacity) {
+    if minimumCapacity > capacity then {
       // If the requested capacity on the copy is greater than what we have, `reserveCapacity` will
       // create an independent value.
       reserveCapacity(minimumCapacity)
     } else {
       val clone = HyArray[Element]().reserveCapacity(max(minimumCapacity, count))
       var i = 0
-      while (i < count) {
+      while i < count do {
         clone._storage(i) = _storage(i).asInstanceOf[Element].copy().asInstanceOf[AnyRef]
         i += 1
       }
@@ -153,7 +153,7 @@ object HyArray {
   /** Creates an array with the given `elements`. */
   def apply[T: Value](elements: T*): HyArray[T] =
     var a = new HyArray[T](null, 0)
-    for (e <- elements) a = a.append(e, assumeUniqueness = true)
+    for e <- elements do a = a.append(e, assumeUniqueness = true)
     a
 
 }

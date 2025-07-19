@@ -10,6 +10,7 @@ import NameOps.*
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
+import config.Feature
 
 import util.Property
 import util.Spans.Span
@@ -68,7 +69,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       myCaseSymbols = defn.caseClassSynthesized
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
-      myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal
+      myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal :+ defn.Any_hashCode
     }
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
@@ -79,7 +80,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol =
     val existing = sym.matchingMember(clazz.thisType)
-    if ctx.settings.YcompileScala2Library.value && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
+    if Feature.shouldBehaveAsScala2 && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
       NoSymbol
     else if existing != sym && !existing.is(Deferred) then
       existing
@@ -116,6 +117,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def syntheticDefIfMissing(sym: Symbol): List[Tree] =
       if (existingDef(sym, clazz).exists) Nil else syntheticDef(sym) :: Nil
 
+    def identifierRef: Tree =
+      if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
+        ref(clazz.owner.paramSymss.head.find(_.name == nme.nameDollar).get)
+      else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
+        Literal(Constant(clazz.owner.name.toString))
+
     def syntheticDef(sym: Symbol): Tree = {
       val synthetic = sym.copy(
         owner = clazz,
@@ -134,12 +141,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           if ctx.explicitNulls then name.cast(defn.StringType) else name
         else
           identifierRef
-
-      def identifierRef: Tree =
-        if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
-          ref(clazz.owner.paramSymss.head.find(_.name == nme.nameDollar).get)
-        else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
-          Literal(Constant(clazz.owner.name.toString))
 
       def ordinalRef: Tree =
         if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
@@ -168,7 +169,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productPrefix if isEnumValue => nameRef
         case nme.productPrefix => ownNameLit
         case nme.productElement =>
-          if ctx.settings.YcompileScala2Library.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
+          if Feature.shouldBehaveAsScala2 then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
           else productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }
@@ -357,7 +358,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      * For case classes with primitive paramters, see [[caseHashCodeBody]].
      */
     def chooseHashcode(using Context) =
-      if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
+      if (isNonJavaEnumValue) identifierRef.select(nme.hashCode_).appliedToTermArgs(Nil)
+      else if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else
@@ -720,7 +722,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
     val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
-    if ctx.settings.YcompileScala2Library.value then impl1
+    if Feature.shouldBehaveAsScala2 then impl1
     else addMirrorSupport(impl1)
   }
 

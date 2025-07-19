@@ -252,11 +252,16 @@ object SymDenotations {
     final def filterAnnotations(p: Annotation => Boolean)(using Context): Unit =
       annotations = annotations.filterConserve(p)
 
-    def annotationsCarrying(meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
-      annotations.filterConserve(_.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf))
+    def annotationsCarrying(meta: Set[Symbol],
+        orNoneOf: Set[Symbol] = Set.empty,
+        andAlso: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
+      annotations.filterConserve: annot =>
+        annot.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf)
+        || andAlso.contains(annot.symbol)
 
-    def keepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Unit =
-      updateAnnotationsAfter(phase, annotationsCarrying(meta, orNoneOf = orNoneOf))
+    def keepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol],
+        orNoneOf: Set[Symbol] = Set.empty, andAlso: Set[Symbol] = Set.empty)(using Context): Unit =
+      updateAnnotationsAfter(phase, annotationsCarrying(meta, orNoneOf, andAlso))
 
     def updateAnnotationsAfter(phase: DenotTransformer, annots: List[Annotation])(using Context): Unit =
       if annots ne annotations then
@@ -339,8 +344,13 @@ object SymDenotations {
 
       def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
         case info: LambdaType =>
-          val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
-            newSymbol(symbol, pname, SyntheticParam, ptype))
+          val commonFlags =
+            if info.isContextualMethod then Given | SyntheticParam
+            else if info.isImplicitMethod then Implicit | SyntheticParam
+            else SyntheticParam
+          val params = info.paramNames.lazyZip(info.paramInfos).map: (pname, ptype) =>
+            val flags = if ptype.hasAnnotation(defn.ErasedParamAnnot) then commonFlags | Erased else commonFlags
+            newSymbol(symbol, pname, flags, ptype)
           val prefs = params.map(_.namedType)
           for param <- params do
             param.info = param.info.substParams(info, prefs)
@@ -538,7 +548,7 @@ object SymDenotations {
       // doesn't find them it will invalidate whatever referenced them, so
       // any reference to a fake companion will lead to extra recompilations.
       // Instead, use the class name since it's guaranteed to exist at runtime.
-      val clsFlatName = if isOneOf(JavaDefined | ConstructorProxy) then flatName.stripModuleClassSuffix else flatName
+      val clsFlatName = if isOneOf(JavaDefined | PhantomSymbol) then flatName.stripModuleClassSuffix else flatName
       builder.append(clsFlatName.mangledString)
       builder.toString
 
@@ -685,7 +695,7 @@ object SymDenotations {
       isAbstractOrAliasType && !isAbstractOrParamType
 
     /** Is this symbol an abstract or alias type? */
-    final def isAbstractOrAliasType: Boolean = isType & !isClass
+    final def isAbstractOrAliasType: Boolean = isType && !isClass
 
     /** Is this symbol an abstract type or type parameter? */
     final def isAbstractOrParamType(using Context): Boolean = this.isOneOf(DeferredOrTypeParam)
@@ -786,9 +796,14 @@ object SymDenotations {
       *
       * However, a stable member might not yet be initialized (if it is an object or anyhow lazy).
       * So the first call to a stable member might fail and/or produce side effects.
+      *
+      * Note, (f: => T) is treated as a stable TermRef only in Capture Sets.
       */
     final def isStableMember(using Context): Boolean = {
-      def isUnstableValue = isOneOf(UnstableValueFlags) || info.isInstanceOf[ExprType] || isAllOf(InlineParam)
+      def isUnstableValue =
+        isOneOf(UnstableValueFlags)
+        || !ctx.mode.is(Mode.InCaptureSet) && info.isInstanceOf[ExprType]
+        || isAllOf(InlineParam)
       isType || is(StableRealizable) || exists && !isUnstableValue
     }
 
@@ -1036,8 +1051,13 @@ object SymDenotations {
       && owner.ne(defn.StringContextClass)
 
     /** An erased value or an erased inline method or field */
+    def isErased(using Context): Boolean =
+      is(Erased) || defn.erasedValueMethods.contains(symbol)
+
+    /** An erased value, a phantom symbol or an erased inline method or field */
     def isEffectivelyErased(using Context): Boolean =
-      isOneOf(EffectivelyErased)
+      isErased
+      || is(PhantomSymbol)
       || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
 
     /** Is this a member that will become public in the generated binary */
@@ -1141,7 +1161,7 @@ object SymDenotations {
     final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
       private var current = symbol
       def hasNext = current.exists
-      def next: Symbol = {
+      def next(): Symbol = {
         val result = current
         current = current.owner
         result
@@ -1418,7 +1438,7 @@ object SymDenotations {
     final def nextOverriddenSymbol(using Context): Symbol = {
       val overridden = allOverriddenSymbols
       if (overridden.hasNext)
-        overridden.next
+        overridden.next()
       else
         NoSymbol
     }
@@ -1496,10 +1516,10 @@ object SymDenotations {
       val candidates = owner.info.decls.lookupAll(name)
       def test(sym: Symbol): Symbol =
         if (sym == symbol || sym.signature == signature) sym
-        else if (candidates.hasNext) test(candidates.next)
+        else if (candidates.hasNext) test(candidates.next())
         else NoSymbol
       if (candidates.hasNext) {
-        val sym = candidates.next
+        val sym = candidates.next()
         if (candidates.hasNext) test(sym) else sym
       }
       else NoSymbol
@@ -2581,7 +2601,7 @@ object SymDenotations {
               try f.container == chosen.container catch case NonFatal(ex) => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
-                report.warning(em"""${ambiguousFilesMsg(conflicting.nn)}
+                report.warning(em"""${ambiguousFilesMsg(conflicting)}
                                    |Keeping only the definition in $chosen""")
                 ambiguityWarningIssued = true
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
@@ -2705,7 +2725,7 @@ object SymDenotations {
       || owner.isRefinementClass
       || owner.is(Scala2x)
       || owner.unforcedDecls.contains(denot.name, denot.symbol)
-      || (denot.is(Synthetic) && denot.is(ModuleClass) && stillValidInOwner(denot.companionClass))
+      || (denot.is(Synthetic) && denot.is(ModuleClass) && denot.companionClass.exists && stillValidInOwner(denot.companionClass))
       || denot.isSelfSym
       || denot.isLocalDummy)
   catch case ex: StaleSymbol => false
@@ -2920,9 +2940,8 @@ object SymDenotations {
     private var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
-      import scala.language.unsafeNulls
       if (dependent != null) {
-        val it = dependent.keySet.iterator()
+        val it = dependent.nn.keySet.iterator()
         while (it.hasNext()) it.next().invalidate()
       }
       dependent = null

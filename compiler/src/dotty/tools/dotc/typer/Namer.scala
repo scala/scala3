@@ -140,7 +140,7 @@ class Namer { typer: Typer =>
 
     def conflict(conflicting: Symbol) =
       val other =
-        if conflicting.is(ConstructorProxy) then conflicting.companionClass
+        if conflicting.is(PhantomSymbol) then conflicting.companionClass
         else conflicting
       report.error(AlreadyDefined(name, owner, other), ctx.source.atSpan(span))
       conflictsDetected = true
@@ -247,7 +247,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         var flags = checkFlags(tree.mods.flags)
-        if ctx.settings.YcompileScala2Library.value then
+        if Feature.shouldBehaveAsScala2 then
           flags |= Scala2x
         val name = checkNoConflict(tree.name, tree.span).asTypeName
         val cls =
@@ -833,7 +833,9 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+        else
+          valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+            .suppressIntoIfParam(sym)
       case original: DefDef =>
         // For the primary constructor DefDef, it is:
         // * indexed as a part of completing the class, with indexConstructor; and
@@ -945,7 +947,7 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic, butNot = ConstructorProxy) &&
+        denot.is(Synthetic, butNot = PhantomSymbol) &&
         (
           (desugar.isRetractableCaseClassMethodName(denot.name)
             && isCaseClassOrCompanion(denot.owner)
@@ -1132,11 +1134,15 @@ class Namer { typer: Typer =>
       ensureUpToDate(sym.typeRef, dummyInfo1)
       if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
 
+      if original.hasAttachment(Trees.CaptureVar) then
+        addDummyTermCaptureParam(sym)(using ictx)
+
       sym.info
     end typeSig
   }
 
-  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context)
+  extends Completer(original)(ictx), CompleterWithCleanup {
     withDecls(newScope(using ictx))
 
     protected given completerCtx: Context = localContext(cls)
@@ -1195,7 +1201,7 @@ class Namer { typer: Typer =>
           case _ => false
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
-        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
         // if the cls is a subclass or mixes in the owner of the symbol
         // and either
@@ -1223,20 +1229,21 @@ class Namer { typer: Typer =>
           Yes
       }
 
-      def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
+      def foreachDefaultGetterOf(sym: TermSymbol, alias: TermName)(op: (TermSymbol, TermName) => Unit): Unit =
         var n = 0
-        val methodName =
-          if sym.name == nme.apply && sym.is(Synthetic) && sym.owner.companionClass.is(Case) then
-            // The synthesized `apply` methods of case classes use the constructor's default getters
-            nme.CONSTRUCTOR
-          else sym.name
+        // The synthesized `apply` methods of case classes use the constructor's default getters
+        val useConstructor = sym.name == nme.apply && sym.is(Synthetic) && sym.owner.companionClass.is(Case)
+        val methodName     = if useConstructor then nme.CONSTRUCTOR else sym.name
+        val aliasedName    = if useConstructor then nme.CONSTRUCTOR else alias
+        val useAliased     = !useConstructor && methodName != aliasedName
         for params <- sym.paramSymss; param <- params do
           if param.isTerm then
             if param.is(HasDefault) then
               val getterName = DefaultGetterName(methodName, n)
               val getter = pathType.member(getterName).symbol
               assert(getter.exists, i"$path does not have a default getter named $getterName")
-              op(getter.asTerm)
+              val targetName = if useAliased then DefaultGetterName(aliasedName, n) else getterName
+              op(getter.asTerm, targetName)
             n += 1
 
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
@@ -1319,6 +1326,7 @@ class Namer { typer: Typer =>
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if sym.is(Erased) then mbrFlags |= Inline
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1343,7 +1351,7 @@ class Namer { typer: Typer =>
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
               val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
-              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
+              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm).withSpan(span.focus)
               val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
                 .etaExpandCFT(using forwarderCtx)
               if forwarder.isInlineMethod then
@@ -1358,9 +1366,8 @@ class Namer { typer: Typer =>
             })
             buf += ddef.withSpan(span)
             if hasDefaults then
-              foreachDefaultGetterOf(sym.asTerm,
-                getter => addForwarder(
-                  getter.name.asTermName, getter.asSeenFrom(path.tpe), span))
+              foreachDefaultGetterOf(sym.asTerm, alias): (getter, getterName) =>
+                addForwarder(getterName, getter.asSeenFrom(path.tpe), span)
 
             // adding annotations and flags at the parameter level
             // TODO: This probably needs to be filtered to avoid adding some annotation
@@ -1388,7 +1395,7 @@ class Namer { typer: Typer =>
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
-          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|PhantomSymbol).alternatives)
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
@@ -1415,13 +1422,13 @@ class Namer { typer: Typer =>
               addWildcardForwardersNamed(alias, span)
 
       def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
-        case sel :: sels1 =>
+        case sel :: sels =>
           if sel.isWildcard then
             addWildcardForwarders(seen, sel.span)
           else
             if !sel.isUnimport then
               addForwardersNamed(sel.name, sel.rename, sel.span)
-            addForwarders(sels1, sel.name :: seen)
+            addForwarders(sels, sel.name :: seen)
         case _ =>
 
       /** Avoid a clash of export forwarder `forwarder` with other forwarders in `forwarders`.
@@ -1759,6 +1766,7 @@ class Namer { typer: Typer =>
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
+      cleanup()
     }
   }
 
@@ -1901,6 +1909,12 @@ class Namer { typer: Typer =>
         case _ =>
 
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    // Add an erased to the using clause generated from a `: Singleton` context bound
+    mdef.tpt match
+      case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
+        sym.setFlag(Erased)
+        sym.resetFlag(Lazy)
+      case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
@@ -1941,7 +1955,7 @@ class Namer { typer: Typer =>
     if completedTypeParams.forall(_.isType) then
       completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
     completeTrailingParamss(ddef, sym, indexingCtor = false)
-    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
+    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor, Some(ddef.nameSpan.startPos))
     sym.setParamss(paramSymss)
 
     def wrapMethType(restpe: Type): Type =
@@ -2240,8 +2254,9 @@ class Namer { typer: Typer =>
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-    def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
+    def cookedRhsType = dealiasIfUnit(rhsType)
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
+      .deskolemized
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal || isTracked then lhsType else inherited

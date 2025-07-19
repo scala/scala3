@@ -39,6 +39,7 @@ object CapturingType:
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
+        if parent.derivesFromMutable then refs.setMutable()
         AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 
   /** An extractor for CapturingTypes. Capturing types are recognized if
@@ -52,11 +53,11 @@ object CapturingType:
     else decomposeCapturingType(tp)
 
   /** Decompose `tp` as a capturing type without taking IgnoreCaptures into account */
-  def decomposeCapturingType(tp: Type)(using Context): Option[(Type, CaptureSet)] = tp match
+  def decomposeCapturingType(using Context)(tp: Type, alsoRetains: Boolean = isCaptureChecking): Option[(Type, CaptureSet)] = tp match
     case AnnotatedType(parent, ann: CaptureAnnotation)
     if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
-    case AnnotatedType(parent, ann) if ann.symbol.isRetains && isCaptureChecking =>
+    case AnnotatedType(parent, ann) if ann.symbol.isRetains && alsoRetains =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets
@@ -68,6 +69,9 @@ object CapturingType:
       // type `C^{f}` which does not have a capture annotation yet. The transformed
       // type would be in a copy of the dependent function type, but it is useless
       // since we need to check the original reference.
+      //
+      // TODO In other situations we expect that the type is already transformed to a
+      // CapturingType and we should crash if this not the case.
       try Some((parent, ann.tree.toCaptureSet))
       catch case ex: IllegalCaptureRef => None
     case _ =>
@@ -80,5 +84,10 @@ object CapturingType:
     ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined
 
 end CapturingType
+
+object CapturingOrRetainsType:
+   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
+    if ctx.mode.is(Mode.IgnoreCaptures) then None
+    else CapturingType.decomposeCapturingType(tp, alsoRetains = true)
 
 

@@ -36,7 +36,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
         setInnerClasses(classNode)
         serializeClass(classNode)
       catch
-        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.nn.contains("too large!") =>
+        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
           backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Throwable =>
@@ -58,8 +58,8 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   }
 
   private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass) = {
-    val name = clazz.classNode.name.nn
-    val lowerCaseJavaName = name.nn.toLowerCase
+    val name = clazz.classNode.name
+    val lowerCaseJavaName = name.toLowerCase
     val clsPos = clazz.position
     caseInsensitively.putIfAbsent(lowerCaseJavaName, (name, clsPos)) match {
       case null => ()
@@ -71,7 +71,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
         val locationAddendum =
           if pos1.source.path == pos2.source.path then ""
           else s" (defined in ${pos2.source.file.name})"
-        def nicify(name: String): String = name.replace('/', '.').nn
+        def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
           backendReporting.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)

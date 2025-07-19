@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import CaptureSet.{CompareResult, CompareFailure, VarState}
+import CaptureSet.VarState
 import collection.mutable
 import reporting.Message
 import Contexts.Context
@@ -15,24 +15,6 @@ class CCState:
   import CCState.*
 
   // ------ Error diagnostics -----------------------------
-
-  /** Error reprting notes produces since the last call to `test` */
-  var notes: List[ErrorNote] = Nil
-
-  def addNote(note: ErrorNote): Unit =
-    if !notes.exists(_.getClass == note.getClass) then
-      notes = note :: notes
-
-  def test(op: => CompareResult): CompareResult =
-    val saved = notes
-    notes = Nil
-    try op match
-      case res: CompareFailure => res.withNotes(notes)
-      case res => res
-    finally notes = saved
-
-  def testOK(op: => Boolean): CompareResult =
-    test(if op then CompareResult.OK else CompareResult.Fail(Nil))
 
   /** Warnings relating to upper approximations of capture sets with
    *  existentially bound variables.
@@ -88,13 +70,16 @@ class CCState:
 
   // ------ Iteration count of capture checking run
 
-  private var iterCount = 1
+  private var iterCount = 0
 
   def iterationId = iterCount
 
   def nextIteration[T](op: => T): T =
     iterCount += 1
     try op finally iterCount -= 1
+
+  def start(): Unit =
+    iterCount = 1
 
   // ------ Global counters -----------------------
 
@@ -117,6 +102,8 @@ class CCState:
   private var openExistentialScopes: List[MethodType] = Nil
 
   private var capIsRoot: Boolean = false
+
+  private var collapseFresh: Boolean = false
 
 object CCState:
 
@@ -161,5 +148,22 @@ object CCState:
 
   /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
   def capIsRoot(using Context): Boolean = ccState.capIsRoot
+
+  /** Run `op` under the assumption that all FreshCap instances are equal
+   *  to each other and to GlobalCap.
+   *  Needed to make override checking of types containing fresh work.
+   *  Asserted in override checking, tested in maxSubsumes.
+   *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
+   */
+  inline def withCollapsedFresh[T](op: => T)(using Context): T =
+    if isCaptureCheckingOrSetup then
+      val ccs = ccState
+      val saved = ccs.collapseFresh
+      ccs.collapseFresh = true
+      try op finally ccs.collapseFresh = saved
+    else op
+
+  /** Should all FreshCap instances be treated as equal to GlobalCap? */
+  def collapseFresh(using Context): Boolean = ccState.collapseFresh
 
 end CCState

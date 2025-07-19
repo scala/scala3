@@ -4,7 +4,7 @@ import java.nio.file.Paths
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.AutoImportsResultImpl
 import scala.meta.pc.*
 
@@ -44,8 +44,8 @@ final class AutoImportsProvider(
     val path =
       Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
 
-    val indexedContext = IndexedContext(
-      Interactive.contextOfPath(path)(using newctx)
+    val indexedContext = IndexedContext(pos)(
+      using Interactive.contextOfPath(path)(using newctx)
     )
     import indexedContext.ctx
 
@@ -96,7 +96,7 @@ final class AutoImportsProvider(
                 text,
                 tree,
                 unit.comments,
-                indexedContext.importContext,
+                indexedContext,
                 config
               )
             (sym: Symbol) => generator.forSymbol(sym)

@@ -2,6 +2,7 @@
 layout: doc-page
 title: "Preview"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/overview.html
+redirectFrom: overview.html
 ---
 
 ## Preview language features

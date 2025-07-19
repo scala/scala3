@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import core.*, Contexts.*, Decorators.*
 import config.*
 import printing.Formatting.*

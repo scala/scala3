@@ -5,7 +5,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.collection.mutable
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
 import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering, CompletionFuzzy}
 import scala.meta.pc.*
@@ -520,7 +520,7 @@ class Completions(
           config.isCompletionSnippetsEnabled()
         )
         (args, false)
-    val singletonCompletions = InterCompletionType.inferType(path).map(
+    val singletonCompletions = InferCompletionType.inferType(path).map(
       SingletonCompletions.contribute(path, _, completionPos)
     ).getOrElse(Nil)
     (singletonCompletions ++ advanced, exclusive)
@@ -569,6 +569,7 @@ class Completions(
         then
           indexedContext.lookupSym(sym) match
             case IndexedContext.Result.InScope => false
+            case IndexedContext.Result.Missing if indexedContext.rename(sym).isDefined => false
             case _ if completionMode.is(Mode.ImportOrExport) =>
               visit(
                 CompletionValue.Workspace(
@@ -587,7 +588,7 @@ class Completions(
         else false,
       )
       Some(search.search(query, buildTargetIdentifier, visitor).nn)
-    else if completionMode.is(Mode.Member) then
+    else if completionMode.is(Mode.Member) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
         def isExtensionMethod = sym.is(ExtensionMethod) &&
           qualType.widenDealias <:< sym.extensionParam.info.widenDealias

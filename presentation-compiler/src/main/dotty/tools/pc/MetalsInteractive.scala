@@ -135,7 +135,7 @@ object MetalsInteractive:
           (sym, sym.info, None)
         )
 
-      case (imp: Import) :: _ =>
+      case (imp: ImportOrExport) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
           (sym, sym.info, None)
         )
@@ -206,7 +206,7 @@ object MetalsInteractive:
       // Handle select on named tuples
       case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
         if fun.symbol.exists && fun.symbol.name == nme.apply &&
-            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
+            fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
           t.tpe.dealias match
             case AppliedType(_, args) => args.get(i)

@@ -41,8 +41,8 @@ object StdNames {
     inline val Product                    = "Product"
 
     @sharable
-    private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
-    def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
+    private val disallowed = java.util.regex.Pattern.compile("""[<>]""")
+    def sanitize(str: String): String = disallowed.matcher(str).replaceAll("""\$""")
   }
 
   abstract class DefinedNames[N <: Name] {
@@ -132,7 +132,6 @@ object StdNames {
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPORT: N                     = "<import>"
-    val INTO: N                       = "$into"
     val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
@@ -445,7 +444,6 @@ object StdNames {
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
     val caps: N                 = "caps"
-    val capsOf: N               = "capsOf"
     val captureChecking: N      = "captureChecking"
     val checkInitialized: N     = "checkInitialized"
     val classOf: N              = "classOf"
@@ -549,13 +547,12 @@ object StdNames {
     val ManifestFactory: N      = "ManifestFactory"
     val manifestToTypeTag: N    = "manifestToTypeTag"
     val map: N                  = "map"
-    val maybeCapability: N      = "maybeCapability"
     val materializeClassTag: N  = "materializeClassTag"
     val materializeWeakTypeTag: N = "materializeWeakTypeTag"
     val materializeTypeTag: N   = "materializeTypeTag"
+    val maybeCapability: N      = "maybeCapability"
     val mirror : N              = "mirror"
     val moduleClass : N         = "moduleClass"
-    val mut: N                  = "mut"
     val name: N                 = "name"
     val nameDollar: N           = "$name"
     val ne: N                   = "ne"
@@ -565,6 +562,7 @@ object StdNames {
     val next: N                 = "next"
     val nmeNewTermName: N       = "newTermName"
     val nmeNewTypeName: N       = "newTypeName"
+    val nn: N                   = "nn"
     val noAutoTupling: N        = "noAutoTupling"
     val normalize: N            = "normalize"
     val notifyAll_ : N          = "notifyAll"

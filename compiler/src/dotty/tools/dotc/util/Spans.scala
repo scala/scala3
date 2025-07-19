@@ -42,19 +42,19 @@ object Spans {
 
     /** The start of this span. */
     def start: Int = {
-      assert(exists)
+      assert(exists, "start of NoSpan")
       (coords & StartEndMask).toInt
     }
 
     /** The end of this span */
     def end: Int = {
-      assert(exists)
+      assert(exists, "end of NoSpan")
       ((coords >>> StartEndBits) & StartEndMask).toInt
     }
 
     /** The point of this span, returns start for synthetic spans */
     def point: Int = {
-      assert(exists)
+      assert(exists, "point of NoSpan")
       val poff = pointDelta
       if (poff == SyntheticPointDelta) start else start + poff
     }

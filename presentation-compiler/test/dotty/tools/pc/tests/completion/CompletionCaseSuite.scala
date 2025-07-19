@@ -37,7 +37,7 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |class Cat extends Animal
         |class Dog extends Animal
         |object Elephant extends Animal
-        |class HasFeet[A, B](e: T, f: B) extends Animal
+        |class HasFeet[A, B](e: A, f: B) extends Animal
         |class HasMouth[T](e: T) extends Animal
         |case class HasWings[T](e: T) extends Animal
         |case object Seal extends Animal
@@ -146,14 +146,12 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  // TODO: `Left` has conflicting name in Scope, we should fix it so the result is the same as for scala 2
-  // Issue: https://github.com/scalameta/metals/issues/4368
   @Test def `sealed-conflict` =
     check(
       """
         |object A {
         |  val e: Either[Int, String] = ???
-        |  type Left = String
+        |  val Left = 123
         |  e match {
         |    case@@
         |  }

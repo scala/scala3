@@ -1,9 +1,7 @@
-
 // A mini typechecker to experiment with arena allocated contexts
 import compiletime.uninitialized
 import annotation.{experimental, tailrec, constructorOnly}
 import collection.mutable
-import language.`3.3`
 
 case class Symbol(name: String, initOwner: Symbol | Null) extends Pure:
   def owner = initOwner.nn

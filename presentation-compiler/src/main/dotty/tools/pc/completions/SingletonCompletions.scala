@@ -42,7 +42,7 @@ object SingletonCompletions:
     } yield value
 
   private def collectSingletons(tpe: Type)(using Context): List[Constant] =
-    tpe.deepDealias match
+    tpe.deepDealiasAndSimplify match
       case ConstantType(value) => List(value)
       case OrType(tpe1, tpe2) =>
         collectSingletons(tpe1) ++ collectSingletons(tpe2)

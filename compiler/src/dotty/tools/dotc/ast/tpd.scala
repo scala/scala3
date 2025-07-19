@@ -301,7 +301,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.erasedParams).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
@@ -375,7 +375,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *      new parents { termForwarders; typeAliases }
    *
    *  @param parents        a non-empty list of class types
-   *  @param termForwarders a non-empty list of forwarding definitions specified by their name and the definition they forward to.
+   *  @param termForwarders a non-empty list of forwarding definitions specified by their name
+   *                        and the definition they forward to.
    *  @param typeMembers    a possibly-empty list of type members specified by their name and their right hand side.
    *  @param adaptVarargs   if true, allow matching a vararg superclass constructor
    *                        with a missing argument in superArgs, and synthesize an
@@ -841,14 +842,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
   }
-
-  // This is a more fault-tolerant copier that does not cause errors when
-  // function types in applications are undefined.
-  // This was called `Inliner.InlineCopier` before 3.6.3.
-  class ConservativeTreeCopier() extends TypedTreeCopier:
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
-      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
-      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
 
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError
 
@@ -1551,7 +1544,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * @param selectorPredicate A test to find the selector to use.
    * @return The symbols imported.
    */
-  def importedSymbols(imp: Import,
+  def importedSymbols(imp: ImportOrExport,
                       selectorPredicate: untpd.ImportSelector => Boolean = util.common.alwaysTrue)
                      (using Context): List[Symbol] =
     imp.selectors.find(selectorPredicate) match

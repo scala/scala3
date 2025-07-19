@@ -53,3 +53,16 @@ package p11:
 package p12:
   import java.lang.System, java.lang.Runnable
   class C extends Runnable { def run() = System.out.println() }
+
+package p13:
+  import java.lang.{Runnable,
+
+                    System}, System.out
+  class C extends Runnable { def run() = out.println() }
+
+package p14:
+  import collection.mutable
+
+  import mutable.ListBuffer
+
+  def buf = ListBuffer.empty[String]

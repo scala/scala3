@@ -271,7 +271,7 @@ object TypeErasure {
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractOrParamType) TypeAlias(WildcardType)
-    else if sym.is(ConstructorProxy) then NoType
+    else if sym.is(PhantomSymbol) then NoType
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(using preErasureCtx))
     else if (sym.is(Label)) erase.eraseResult(sym.info)(using preErasureCtx)
     else erase.eraseInfo(tp, sym)(using preErasureCtx) match {
@@ -697,7 +697,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         val (names, formals0) = if tp.hasErasedParams then
           tp.paramNames
             .zip(tp.paramInfos)
-            .zip(tp.erasedParams)
+            .zip(tp.paramErasureStatuses)
             .collect{ case (param, isErased) if !isErased => param }
             .unzip
         else (tp.paramNames, tp.paramInfos)

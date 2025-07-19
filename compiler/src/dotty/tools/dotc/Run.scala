@@ -236,7 +236,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     try
       trackProgress(_.cancel())
     finally
-      Thread.currentThread().nn.interrupt()
+      Thread.currentThread().interrupt()
 
   private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
     trackProgress: progress =>
@@ -367,7 +367,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
             profiler.onPhase(phase):
               try units = phase.runOn(units)
               catch case _: InterruptedException => cancelInterrupted()
-            if (ctx.settings.Xprint.value.containsPhase(phase))
+            if (ctx.settings.Vprint.value.containsPhase(phase))
               for (unit <- units)
                 def printCtx(unit: CompilationUnit) = phase.printingContext(
                   ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))

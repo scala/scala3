@@ -26,10 +26,10 @@ on:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
 
-# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag) 
+# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
 # For example it would:
 # - terminate previous PR CI execution after pushing more changes to the same PR branch
-# - terminate previous on-push CI run after merging new PR to main 
+# - terminate previous on-push CI run after merging new PR to main
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -692,7 +692,7 @@ jobs:
       - name: Publish Nightly
         if: "steps.not_yet_published.outcome == 'success'"
         run: |
-          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaRelease"
 
   nightly_documentation:
     runs-on: [self-hosted, Linux]
@@ -862,7 +862,7 @@ jobs:
           scala3-${{ env.RELEASE_TAG }}.msi 
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonaUpload"
 
 
   open_issue_on_failure:

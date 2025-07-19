@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-import scala.language.unsafeNulls
 
 import io.*
 
@@ -30,10 +29,10 @@ class OutputDirs {
 
   /** Check that dir is exists and is a directory. */
   private def checkDir(dir: AbstractFile, name: String, allowJar: Boolean = false): AbstractFile = (
-    if (dir != null && dir.isDirectory)
+    if ((dir ne null) && dir.isDirectory)
       dir
     // was:      else if (allowJar && dir == null && Path.isJarOrZip(name, false))
-    else if (allowJar && dir == null && Jar.isJarOrZip(File(name), false))
+    else if (allowJar && (dir eq null) && Jar.isJarOrZip(File(name), false))
       new PlainFile(Path(name))
     else
       throw new FatalError(name + " does not exist or is not a directory"))

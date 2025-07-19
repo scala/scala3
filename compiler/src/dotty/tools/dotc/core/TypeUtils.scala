@@ -23,13 +23,6 @@ class TypeUtils:
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
-    def isErasedClass(using Context): Boolean =
-      val cls = self.underlyingClassRef(refinementOK = true).typeSymbol
-      cls.is(Flags.Erased)
-       && (cls != defn.SingletonClass || Feature.enabled(Feature.modularity))
-         // Singleton counts as an erased class only under x.modularity
-
-
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to
      *  that definition Throwable is unchecked. That makes sense since you should
@@ -52,6 +45,11 @@ class TypeUtils:
       case Nil => self
       case ps => ps.reduceLeft(AndType(_, _))
     }
+
+    def widenSkolems(using Context): Type =
+      val widenSkolemsMap = new TypeMap:
+        def apply(tp: Type) = mapOver(tp.widenSkolem)
+      widenSkolemsMap(self)
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
      */
@@ -134,7 +132,7 @@ class TypeUtils:
           case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
         val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
         names.zip(values)
-        
+
       (if normalize then self.normalized else self).dealias match
         // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
         case defn.NamedTupleDirect(nmes, vals) => extractNamesTypes(nmes, vals)
@@ -146,6 +144,17 @@ class TypeUtils:
 
     def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
       namedTupleElementTypesUpTo(Int.MaxValue, derived)
+
+    /** If this is a generic tuple type with arity <= MaxTupleArity, return the
+     *  corresponding TupleN type, otherwise return this.
+     */
+    def normalizedTupleType(using Context): Type =
+      if self.isGenericTuple then
+        self.tupleElementTypes match
+          case Some(elems) if elems.size <= Definitions.MaxTupleArity => defn.tupleType(elems)
+          case _ => self
+      else
+        self
 
     def isNamedTupleType(using Context): Boolean = self match
       case defn.NamedTuple(_, _) => true

@@ -229,8 +229,7 @@ object SourceFile {
    *  It relies on SourceFile#virtual implementation to create the virtual file.
    */
   def virtual(uri: URI, content: String): SourceFile =
-    val path = Paths.get(uri).toString
-    SourceFile.virtual(path, content)
+    SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
 
   /** Returns the relative path of `source` within the `reference` path
    *

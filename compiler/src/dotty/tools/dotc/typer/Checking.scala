@@ -512,6 +512,86 @@ object Checking {
     }
   }
 
+  def checkScala2Implicit(sym: Symbol)(using Context): Unit =
+    def migration(msg: Message) =
+      report.errorOrMigrationWarning(msg, sym.srcPos, MigrationVersion.Scala2Implicits)
+    def info = sym match
+      case sym: ClassSymbol => sym.primaryConstructor.info
+      case _ => sym.info
+    def paramName = info.firstParamNames match
+      case pname :: _ => pname.show
+      case _ => "x"
+    def paramTypeStr = info.firstParamTypes match
+      case pinfo :: _ => pinfo.show
+      case _ => "T"
+    def toFunctionStr(info: Type): String = info match
+      case ExprType(resType) =>
+        i"() => $resType"
+      case info: MethodType =>
+        i"(${ctx.printer.paramsText(info).mkString()}) => ${toFunctionStr(info.resType)}"
+      case info: PolyType =>
+        i"[${ctx.printer.paramsText(info).mkString()}] => ${toFunctionStr(info.resType)}"
+      case _ =>
+        info.show
+
+    if sym.isClass then
+      migration(
+        em"""`implicit` classes are no longer supported. They can usually be replaced
+            |by extension methods. Example:
+            |
+            |    extension ($paramName: $paramTypeStr)
+            |      // class methods go here, replace `this` by `$paramName`
+            |
+            |Alternatively, convert to a regular class and define
+            |a given `Conversion` instance into that class. Example:
+            |
+            |    class ${sym.name} ...
+            |    given Conversion[$paramTypeStr, ${sym.name}] = ${sym.name}($paramName)
+            |
+            |""")
+    else if sym.isOldStyleImplicitConversion(directOnly = true) then
+      migration(
+        em"""`implicit` conversion methods are no longer supported. They can usually be
+            |replaced by given instances of class `Conversion`. Example:
+            |
+            |    given Conversion[$paramTypeStr, ${sym.info.finalResultType}] = $paramName => ...
+            |
+            |""")
+    else if sym.is(Method) then
+      if !sym.isOldStyleImplicitConversion(forImplicitClassOnly = true) then
+        migration(
+          em"""`implicit` defs are no longer supported, use a `given` clause instead. Example:
+              |
+              |   given ${sym.name}: ${toFunctionStr(sym.info)} = ...
+              |
+              |""")
+    else if sym.isTerm && !sym.isOneOf(TermParamOrAccessor) then
+      def note =
+        if sym.is(Lazy) then ""
+        else
+          i"""
+              |
+              |Note: given clauses are evaluated lazily unless the right hand side is
+              |a simple reference.  If eager evaluation of the value's right hand side
+              |is important, you can define a regular val and a given instance like this:
+              |
+              |    val ${sym.name} = ...
+              |    given ${sym.info} = ${sym.name}"""
+
+      migration(
+        em"""`implicit` vals are no longer supported, use a `given` clause instead. Example:
+            |
+            |   given ${sym.name}: ${sym.info} = ...$note
+            |
+            |""")
+  end checkScala2Implicit
+
+  def checkErasedOK(sym: Symbol)(using Context): Unit =
+    if sym.is(Method, butNot = Macro)
+        || sym.isOneOf(Mutable | Lazy)
+        || sym.isType
+    then report.error(IllegalErasedDef(sym), sym.srcPos)
+
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(using Context): Unit = {
     def fail(msg: Message) = report.error(msg, sym.srcPos)
@@ -537,11 +617,11 @@ object Checking {
       fail(ParamsNoInline(sym.owner))
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
-    if (sym.is(Implicit)) {
+    if sym.is(Implicit) then
       assert(!sym.owner.is(Package), s"top-level implicit $sym should be wrapped by a package after typer")
       if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
-    }
+      else checkScala2Implicit(sym)
     if sym.is(Transparent) then
       if sym.isType then
         if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits")
@@ -607,10 +687,7 @@ object Checking {
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
       fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
-    checkApplicable(Erased,
-      !sym.is(Lazy, butNot = Given)
-      && !sym.isMutableVarOrAccessor
-      && (!sym.isType || sym.isClass))
+    if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
@@ -631,10 +708,11 @@ object Checking {
    */
   def checkWellFormedModule(mdef: untpd.ModuleDef)(using Context) =
     val mods = mdef.mods
-    def flagSourcePos(flag: FlagSet) =
-      mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    def flagSourcePos(flag: Flag) = untpd.flagSourcePos(mdef, flag)
     if mods.is(Open) then
       report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
+    if mods.is(Into) then
+      report.error(ModifierNotAllowedForDefinition(Into), flagSourcePos(Open))
     if mods.is(Abstract) then
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
@@ -743,7 +821,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -756,6 +834,14 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
+    inline def checkParentIsNotAnyValAlias(): Unit =
+      cdef.rhs match {
+        case impl: Template =>
+          val parent = impl.parents.head
+          if parent.symbol.isAliasType && parent.typeOpt.dealias =:= defn.AnyValType then
+            report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parent.symbol), cdef.srcPos)
+        case _ => ()
+      }
     // We don't check synthesised enum anonymous classes that are generated from
     // enum extending a value class type (AnyVal or an alias of it)
     // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
@@ -770,6 +856,9 @@ object Checking {
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
+
+      checkParentIsNotAnyValAlias()
+
       if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
         report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
@@ -1146,7 +1235,7 @@ trait Checking {
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
-       && !expected.isInto
+       && !expected.isConversionTargetType
     then
       def conv = methPart(tree) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
@@ -1307,8 +1396,8 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
-    Checking.checkDerivedValueClass(clazz, stats)
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit =
+    Checking.checkDerivedValueClass(cdef, clazz, stats)
 
   /** Check that case classes are not inherited by case classes.
    */
@@ -1689,7 +1778,7 @@ trait NoChecking extends ReChecking {
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp

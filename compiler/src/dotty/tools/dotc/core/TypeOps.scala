@@ -18,8 +18,9 @@ import typer.ForceDegree
 import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
+import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
-import CaptureSet.{CompareResult, IdentityCaptRefMap, VarState}
+import CaptureSet.{IdentityCaptRefMap, VarState}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -124,7 +125,9 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
-    pre.isStable
+    // isLegalPrefix is relaxed after typer unless we're doing an implicit
+    // search (this matters when doing summonInline in an inline def like in tests/pos/i17222.8.scala).
+    pre.isStable || !ctx.phase.isTyper && ctx.mode.is(Mode.ImplicitsEnabled)
 
   /** Implementation of Types#simplified */
   def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
@@ -161,7 +164,7 @@ object TypeOps:
         TypeComparer.lub(simplify(l, theMap), simplify(r, theMap), isSoft = tp.isSoft)
       case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
-            && refs.subCaptures(parent.captureSet, VarState.Separate).isOK
+            && refs.subCaptures(parent.captureSet, VarState.Separate)
             && (tp.isBoxed || !parent.isBoxedCapturing)
               // fuse types with same boxed status and outer boxed with any type
         then
@@ -278,7 +281,15 @@ object TypeOps:
           }
         case AndType(tp11, tp12) =>
           mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
-        case tp1: TypeParamRef if tp1 == tp2 => tp1
+        case tp1: TypeParamRef =>
+          tp2.stripTypeVar match
+            case tp2: TypeParamRef if tp1 == tp2 => tp1
+            case _ => fail
+        case tp1: TypeVar =>
+          tp2 match
+            case tp2: TypeVar if tp1 == tp2 => tp1
+            case tp2: TypeParamRef if tp1.stripTypeVar == tp2 => tp2
+            case _ => fail
         case _ => fail
       }
     }
@@ -935,6 +946,28 @@ object TypeOps:
 
   class StripTypeVarsMap(using Context) extends TypeMap:
     def apply(tp: Type) = mapOver(tp).stripTypeVar
+
+  /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
+  def suppressInto(using Context) = new FollowAliasesMap:
+    def apply(t: Type): Type = t match
+      case AppliedType(tycon: TypeRef, arg :: Nil) if variance >= 0 && defn.isInto(tycon.symbol) =>
+        AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
+      case _: MatchType | _: LazyRef =>
+        t
+      case _ =>
+        mapFollowingAliases(t)
+
+  /** Map no-flip covariant occurrences of `T @$into` to `into[T]` */
+  def revealInto(using Context) = new FollowAliasesMap:
+    def apply(t: Type): Type = t match
+      case AnnotatedType(t1, ann) if variance >= 0 && ann.symbol == defn.SilentIntoAnnot =>
+        AppliedType(
+          defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
+          t1 :: Nil)
+      case _: MatchType | _: LazyRef =>
+        t
+      case _ =>
+        mapFollowingAliases(t)
 
   /** Apply [[Type.stripTypeVar]] recursively. */
   def stripTypeVars(tp: Type)(using Context): Type =

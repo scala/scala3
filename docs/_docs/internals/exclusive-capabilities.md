@@ -18,27 +18,27 @@ We introduce a new trait
 trait Mutable
 ```
 It is used as a base trait for types that define _update methods_ using
-a new modifier `mut`.
+a new soft modifier `update`.
 
-`mut` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are  defined locally or passed to it in parameters.
+`update` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are  defined locally or passed to it in parameters.
 
 **Example:**
 ```scala
 class Ref(init: Int) extends Mutable:
   private var current = init
   def get: Int = current
-  mut def put(x: Int): Unit = current = x
+  update def put(x: Int): Unit = current = x
 ```
 Here, `put` needs to be declared as an update method since it accesses the exclusive write capability of the variable `current` in its environment.
-`mut` can also be used on an inner class of a class or object extending `Mutable`. It gives all code in the class the right
+`update` can also be used on an inner class of a class or object extending `Mutable`. It gives all code in the class the right
 to  access exclusive capabilities in the class environment. Normal classes
 can only access exclusive capabilities defined in the class or passed to it in parameters.
 
 ```scala
 object Registry extends Mutable:
   var count = 0
-  mut class Counter:
-    mut def next: Int =
+  update class Counter:
+    update def next: Int =
       count += 1
       count
 ```
@@ -79,22 +79,22 @@ Consider trait `IterableOnce` from the standard library.
 ```scala
 trait IterableOnce[+T] extends Mutable:
   def iterator: Iterator[T]^{this}
-  mut def foreach(op: T => Unit): Unit
-  mut def exists(op: T => Boolean): Boolean
+  update def foreach(op: T => Unit): Unit
+  update def exists(op: T => Boolean): Boolean
   ...
 ```
-The trait is a mutable type with many update methods, among them `foreach` and `exists`. These need to be classified as `mut` because their implementation in the subtrait `Iterator` uses the update method `next`.
+The trait is a mutable type with many update methods, among them `foreach` and `exists`. These need to be classified as `update` because their implementation in the subtrait `Iterator` uses the update method `next`.
 ```scala
 trait Iterator[T] extends IterableOnce[T]:
   def iterator = this
   def hasNext: Boolean
-  mut def next(): T
-  mut def foreach(op: T => Unit): Unit = ...
-  mut def exists(op; T => Boolean): Boolean = ...
+  update def next(): T
+  update def foreach(op: T => Unit): Unit = ...
+  update def exists(op; T => Boolean): Boolean = ...
   ...
 ```
 But there are other implementations of `IterableOnce` that are not mutable types (even though they do indirectly extend the `Mutable` trait). Notably, collection classes implement `IterableOnce` by creating a fresh
-`iterator` each time one is required. The mutation via `next()` is then restricted to the state of that iterator, whereas the underlying collection is unaffected. These implementations would implement each `mut` method in `IterableOnce` by a normal method without the `mut` modifier.
+`iterator` each time one is required. The mutation via `next()` is then restricted to the state of that iterator, whereas the underlying collection is unaffected. These implementations would implement each `update` method in `IterableOnce` by a normal method without the `update` modifier.
 
 ```scala
 trait Iterable[T] extends IterableOnce[T]:
@@ -140,7 +140,7 @@ For instance, a matrix multiplication method can be expressed as follows:
 
 ```scala
 class Matrix(nrows: Int, ncols: Int) extends Mutable:
-  mut def update(i: Int, j: Int, x: Double): Unit = ...
+  update def update(i: Int, j: Int, x: Double): Unit = ...
   def apply(i: Int, j: Int): Double = ...
 
 def mul(a: Matrix, b: Matrix, c: Matrix^): Unit =
@@ -435,7 +435,7 @@ we'd deal with
 ```scala
 val x$ = Ref[T](init)
 def x = x$.get
-mut def x_=(y: T) = x$.put(y)
+update def x_=(y: T) = x$.put(y)
 ```
 
 There should be a way to exclude a mutable variable or field from tracking. Maybe an annotation or modifier such as `transparent` or `untracked`?
