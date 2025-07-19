@@ -307,7 +307,7 @@ object NamerOps:
    *  The context-bound companion has as name the name of `tsym` translated to
    *  a term name. We create a synthetic val of the form
    *
-   *    val A: `<context-bound-companion>`[witnessRef1 | ... | witnessRefN]
+   *    val A: `<context-bound-companion>`[witnessRef1] & ... & `<context-bound-companion>`[witnessRefN]
    *
    *  where
    *
@@ -325,8 +325,7 @@ object NamerOps:
             prefix.select(params.find(_.name == witnessName).get)
       else
         witnessNames.map(TermRef(prefix, _))
-    val cbtype = defn.CBCompanion.typeRef.appliedTo:
-      witnessRefs.reduce[Type](OrType(_, _, soft = false))
+    val cbtype = witnessRefs.map(defn.CBCompanion.typeRef.appliedTo).reduce(AndType.apply)
     val cbc = newSymbol(
         ctx.owner, companionName,
         (tsym.flagsUNSAFE & (AccessFlags)).toTermFlags | Synthetic,
