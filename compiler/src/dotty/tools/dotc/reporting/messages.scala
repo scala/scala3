@@ -3887,3 +3887,30 @@ final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
     i"""A private field shadows an inherited field with the same name.
        |This can lead to confusion as the inherited field becomes inaccessible.
        |Consider renaming the private field to avoid the shadowing."""
+
+class ConcreteClassHasUnimplementedMethods(clazz: ClassSymbol, missingMethods: List[dotty.tools.dotc.core.Symbols.Symbol], val actions: List[CodeAction])(using Context)
+extends Message(ConcreteClassHasUnimplementedMethodsID): 
+
+  def kind = MessageKind.Declaration
+
+  def renderMissingMethods: List[String] = {
+    // Grouping missing methods by the declaring class
+    val regrouped = missingMethods.groupBy(_.owner).toList
+    def membersStrings(members: List[Symbol]) =
+      members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl).map(m => s"- $m")
+
+    (regrouped.sortBy(_._1.name.toString()) map {
+      case (owner, members) =>
+        s"""Members declared in ${owner.fullName}:
+        |${membersStrings(members).mkString("\n")}"""
+    })
+  }
+
+  def msg(using Context) = 
+    s"""$clazz needs to be abstract, since it has ${missingMethods.size} unimplemented members.
+    |
+    |${renderMissingMethods.mkString("\n")}
+    |""".stripMargin
+  
+  def explain(using Context) = ""
+  override def actions(using Context) = this.actions
