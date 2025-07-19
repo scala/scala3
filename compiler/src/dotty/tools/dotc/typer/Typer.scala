@@ -4357,6 +4357,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
+            val pt1 = pt.deepenProtoTrans
+            val approxPt = withMode(Mode.TypevarsMissContext):
+              wildApprox(pt1)
+            if (pt1 `ne` pt)
+              && (pt1 ne sharpenedPt)
+              && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
+              && !isFullyDefined(formal, ForceDegree.none) then
+              constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             def canProfitFromMoreConstraints =
@@ -4367,7 +4375,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
-                val pt1 = pt.deepenProtoTrans
                 if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
                 then return implicitArgs(formals, argIndex, pt1)
               case _ =>
