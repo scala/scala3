@@ -4358,7 +4358,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               implicitArgs(formals2, argIndex + 1, pt)
 
             val pt1 = pt.deepenProtoTrans
-            if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && pt1.isGround then
+            val approxPt = withMode(Mode.TypevarsMissContext):
+              wildApprox(pt1)
+            if (pt1 `ne` pt)
+              && (pt1 ne sharpenedPt)
+              && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
+              && !isFullyDefined(formal, ForceDegree.none) then
               constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
