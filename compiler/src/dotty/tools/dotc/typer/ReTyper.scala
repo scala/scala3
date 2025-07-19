@@ -4,6 +4,7 @@ package typer
 import core.*
 import Contexts.*
 import Types.*
+import TypeApplications.*
 import Symbols.*
 import StdNames.*
 import Decorators.*

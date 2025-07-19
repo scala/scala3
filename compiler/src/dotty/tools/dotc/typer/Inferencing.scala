@@ -5,6 +5,7 @@ package typer
 import core.*
 import ast.*
 import Contexts.*, Types.*, Flags.*, Symbols.*
+import TypeApplications.*
 import ProtoTypes.*
 import NameKinds.UniqueName
 import util.Spans.*

@@ -8,9 +8,9 @@
   |Parents in tree: [class Object, trait Serializer, trait Foo]
   |
   |	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:8)
-  |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:210)
+  |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:211)
+  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:287)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:286)
-  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:285)
   |	at Macros$.makeSerializer(Macro.scala:27)
   |
   |---------------------------------------------------------------------------------------------------------------------

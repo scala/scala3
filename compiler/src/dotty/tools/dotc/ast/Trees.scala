@@ -4,6 +4,7 @@ package ast
 
 import core.*
 import Types.*, Names.*, NameOps.*, Flags.*, util.Spans.*, Contexts.*, Constants.*
+import TypeApplications.*
 import typer.{ ConstFold, ProtoTypes }
 import SymDenotations.*, Symbols.*, Denotations.*, StdNames.*, Comments.*
 import collection.mutable.ListBuffer

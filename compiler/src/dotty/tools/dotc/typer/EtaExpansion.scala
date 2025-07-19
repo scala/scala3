@@ -6,6 +6,7 @@ import core.*
 import ast.{Trees, untpd, tpd}
 import Contexts.*
 import Types.*
+import TypeApplications.*
 import Flags.*
 import Symbols.*
 import Names.*

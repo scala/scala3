@@ -11,6 +11,7 @@ import printing.{Showable, Printer}
 import printing.Texts.*
 import Contexts.*
 import Types.*
+import TypeApplications.*
 import Flags.*
 import Mode.ImplicitsEnabled
 import NameKinds.{LazyImplicitName, ContextBoundParamName}

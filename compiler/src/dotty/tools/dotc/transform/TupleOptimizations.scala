@@ -10,6 +10,7 @@ import StdNames.*
 import Symbols.*
 import MegaPhase.*
 import Types.*
+import TypeApplications.*
 import dotty.tools.dotc.ast.tpd
 
 /** Optimize generic operations on tuples */

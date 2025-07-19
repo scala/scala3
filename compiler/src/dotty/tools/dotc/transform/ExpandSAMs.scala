@@ -5,6 +5,7 @@ package transform
 import core.*
 import Scopes.newScope
 import Contexts.*, Symbols.*, Types.*, Flags.*, Decorators.*, StdNames.*, Constants.*
+import TypeApplications.*
 import MegaPhase.*
 import Names.TypeName
 

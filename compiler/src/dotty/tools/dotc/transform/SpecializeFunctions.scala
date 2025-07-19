@@ -5,6 +5,7 @@ import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*, NameKinds.*
 import MegaPhase.MiniPhase
+import dotty.tools.dotc.core.TypeApplications.*
 
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
