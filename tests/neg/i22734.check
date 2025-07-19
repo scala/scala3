@@ -1,0 +1,9 @@
+-- Error: tests/neg/i22734.scala:5:5 -----------------------------------------------------------------------------------
+ 5 |enum Foo { // error
+   |^
+   |enum class Foo has an abstract member and an unparameterized case
+ 6 |  case Empty // refchecks error
+ 7 |  case NonEmpty(item: String)
+ 8 |  case Decoy // hopefully not here
+ 9 |  def item: String
+10 |}

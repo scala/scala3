@@ -1564,6 +1564,9 @@ trait Checking {
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
     if cls.isEnumClass && !isJavaEnum then
       checkExistingOrdinal
+    if cls.isEnum  && cls.is(Abstract) then
+      if cls.children.exists(!_.isClass) && cls.info.decls.exists(m => m.is(Deferred) && m.isTerm) then
+        report.error(em"enum $cls has an abstract member and an unparameterized case", cdef.srcPos)
   }
 
   /** Check that the firstParent for an enum case derives from the declaring enum class, if not, adds it as a parent
