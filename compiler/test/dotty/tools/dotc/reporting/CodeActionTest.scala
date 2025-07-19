@@ -291,6 +291,36 @@ class CodeActionTest extends DottyTest:
           afterPhase= "erasure"
       )
 
+  @Test def insertMissingMethodsIntoMultilineClassDefinition =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal 
+          |               with Car {
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal 
+          |               with Car {
+          |  def name: String = ???
+          |  def wheels: Int = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =
