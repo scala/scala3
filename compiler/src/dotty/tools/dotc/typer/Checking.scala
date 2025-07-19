@@ -926,6 +926,7 @@ object Checking {
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
         || name == Feature.captureChecking
+        || name == Feature.separationChecking
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match

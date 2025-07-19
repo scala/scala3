@@ -259,7 +259,10 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** The set of symbols that were rechecked via a completer */
     private val completed = new mutable.HashSet[Symbol]
 
-    var needAnotherRun = false
+    /** Set on recheckClassDef since there we see all language imports */
+    private var sepChecksEnabled = false
+
+    private var needAnotherRun = false
 
     def resetIteration()(using Context): Unit =
       needAnotherRun = false
@@ -511,7 +514,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             // The path-use.scala neg test contains an example.
             val underlying = CaptureSet.ofTypeDeeply(c1.widen)
             capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-            if ccConfig.useSepChecks then
+            if sepChecksEnabled then
               recur(underlying.filter(!_.isTerminalCapability), env, null)
                 // we don't want to disallow underlying Fresh instances, since these are typically locally created
                 // fresh capabilities. We don't need to also follow the hidden set since separation
@@ -1144,6 +1147,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  is already done in the TypeApply.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
+      if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
       val localSet = capturedVars(cls)
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
@@ -2014,7 +2018,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      if ccConfig.useSepChecks then SepCheck(this).traverse(unit)
+      if sepChecksEnabled then SepCheck(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

@@ -1604,7 +1604,7 @@ object Build {
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions ++= Seq("-source", "3.8"), // for separation checking
+      scalacOptions += "-language:experimental.separationChecking" // for separation checking
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
