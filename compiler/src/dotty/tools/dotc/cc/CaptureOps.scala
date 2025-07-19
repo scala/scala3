@@ -94,6 +94,8 @@ extension (tp: Type)
   def retainedElementsRaw(using Context): List[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
+    case AnnotatedType(tp1, ann) if tp1.derivesFrom(defn.Caps_CapSet) && ann.symbol.isRetains =>
+      ann.tree.retainedSet.retainedElementsRaw
     case tp =>
       // Nothing is a special type to represent the empty set
       if tp.isNothingType then Nil
