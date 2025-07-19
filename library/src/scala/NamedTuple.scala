@@ -11,7 +11,7 @@ object NamedTuple:
   opaque type NamedTuple[N <: Tuple, +V <: Tuple] >: V <: AnyNamedTuple = V
 
   /** A type which is a supertype of all named tuples */
-  opaque type AnyNamedTuple = Any
+  opaque type AnyNamedTuple >: Tuple <: Product = Product
 
   def apply[N <: Tuple, V <: Tuple](x: V): NamedTuple[N, V] = x
 
