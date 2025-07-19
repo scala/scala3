@@ -24,6 +24,7 @@ import Annotations.Annotation
 import Constants.Constant
 import cc.{stripCapturing, CCState}
 import cc.Mutability.isUpdateMethod
+import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
 
 object RefChecks {
   import tpd.*
@@ -1356,7 +1357,7 @@ object RefChecks {
     val classHasBraces = classText.contains("{") && classText.contains("}")
 
     // Indentation for inserted methods
-    val lineStart = content.lastIndexWhere(c => c == '\n', end = span.end - 1) + 1
+    val lineStart = content.lastIndexWhere(isLineBreakChar, end = span.end - 1) + 1
     val baseIndent = new String(content.slice(lineStart, span.end).takeWhile(c => c == ' ' || c == '\t'))
     val indent = baseIndent + "  "
 
@@ -1373,7 +1374,7 @@ object RefChecks {
       val braceEnd   = classText.lastIndexOf('}')
       val bodyBetweenBraces = classText.slice(braceStart + 1, braceEnd)
       val bodyIsEmpty = bodyBetweenBraces.forall(_.isWhitespace)
-      val bodyContainsNewLine = bodyBetweenBraces.contains(System.lineSeparator())
+      val bodyContainsNewLine = bodyBetweenBraces.exists(isLineBreakChar)
 
       val prefix = if (bodyContainsNewLine) "" else System.lineSeparator()
       val patchText =
