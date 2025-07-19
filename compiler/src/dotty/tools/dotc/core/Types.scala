@@ -6967,11 +6967,15 @@ object Types extends TypeUtils {
   end NamedPartsAccumulator
 
   class isGroundAccumulator(using Context) extends TypeAccumulator[Boolean] {
+    var tparams = util.HashSet[TypeLambda](initialCapacity = 8)
     def apply(x: Boolean, tp: Type): Boolean = x && {
       tp match {
-        case _: TypeParamRef => false
+        case tp: TypeParamRef => tparams.contains(tp.binder)
         case tp: TypeVar => apply(x, tp.underlying)
         case tp: AppliedType => tp.isGround(this)
+        case tp: HKTypeLambda =>
+          tparams.add(tp)
+          apply(x, tp.resType)
         case _ => foldOver(x, tp)
       }
     }

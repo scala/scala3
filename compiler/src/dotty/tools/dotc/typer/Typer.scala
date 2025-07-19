@@ -4357,34 +4357,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
-            // try to constrain type before implicit search. See #18763
-            def tryConstrainType(pt1: Type): Boolean = {
-              // subst dummyArg into FunProto so that we don't have to search for nested implicit
-              val tm = new TypeMap:
-                def apply(t: Type): Type = t match
-                  case fp@FunProto(args, resType) =>
-                    fp.derivedFunProto(
-                      args.map(arg =>
-                        if (arg.isInstanceOf[untpd.TypedSplice]) arg
-                        else dummyArg(arg.typeOpt).withSpan(arg.span)
-                      ),
-                      mapOver(resType)
-                    )
-                  case _ =>
-                    mapOver(t)
-              if !formal.isGround
-                && (formal.simplified `ne` formal)
-                && (pt1 `ne` pt)
-                && (pt1 ne sharpenedPt) then
-                val approxRes = wildApprox(pt1.resultType)
-                val stripedApproxRes = tm(approxRes)
-                if !stripedApproxRes.containsWildcardTypes then
-                  return wtp.resultType <:< stripedApproxRes
-              false
-            }
-
             val pt1 = pt.deepenProtoTrans
-            tryConstrainType(pt1)
+            if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && pt1.isGround then
+              constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             def canProfitFromMoreConstraints =
