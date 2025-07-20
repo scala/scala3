@@ -3671,11 +3671,15 @@ extends Message(ConcreteClassHasUnimplementedMethodsID):
     })
   }
 
-  def msg(using Context) = 
-    s"""$clazz needs to be abstract, since it has ${missingMethods.size} unimplemented members.
-    |
-    |${renderMissingMethods.mkString("\n")}
-    |""".stripMargin
+  def msg(using Context) = missingMethods match 
+    case single :: Nil => 
+      def showDclAndLocation(sym: Symbol) = s"${sym.showDcl} in ${sym.owner.showLocated}"
+      s"$clazz needs to be abstract, since ${showDclAndLocation(single)} is not defined"
+    case _ => 
+      s"""$clazz needs to be abstract, since it has ${missingMethods.size} unimplemented members.
+      |
+      |${renderMissingMethods.mkString("\n")}
+      |""".stripMargin
   
   def explain(using Context) = ""
   override def actions(using Context) = this.actions
