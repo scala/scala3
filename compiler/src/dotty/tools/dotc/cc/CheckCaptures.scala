@@ -427,11 +427,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         i"\nof the enclosing ${owner.showLocated}"
 
-    /** Does the given environment belong to a method that is (a) nested in a term
+    /** Under deferredReaches:
+     *  Does the given environment belong to a method that is (a) nested in a term
      *  and (b) not the method of an anonymous function?
      */
     def isOfNestedMethod(env: Env | Null)(using Context) =
-      env != null
+      ccConfig.deferredReaches
+      && env != null
       && env.owner.is(Method)
       && env.owner.owner.isTerm
       && !env.owner.isAnonymousFunction
@@ -540,7 +542,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             isVisible
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          if !isOfNestedMethod(env) then
+          if !isOfNestedMethod(env) || true then
             recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner), env)
           // Don't propagate out of methods inside terms. The use set of these methods
           // will be charged when that method is called.
