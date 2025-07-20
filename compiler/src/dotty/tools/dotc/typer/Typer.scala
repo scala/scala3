@@ -4364,9 +4364,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val tm = new TypeMap:
               def apply(t: Type): Type = t match
                 case tvar: TypeVar =>
-                  formalConstrained |= ctx.typerState.constraint.contains(tvar) || tvar.instanceOpt.exists
-                  val inst = tvar.instanceOpt
-                  if (inst.exists && !formalConstrained) mapOver(inst) else tvar
+                  formalConstrained |= ctx.typerState.constraint.contains(tvar) || tvar.instanceOpt.isInstanceOf[TypeVar]
+                  tvar
                 case _ =>
                   if formalConstrained then t
                   else mapOver(t)
