@@ -4360,10 +4360,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val pt1 = pt.deepenProtoTrans
             val approxPt = withMode(Mode.TypevarsMissContext):
               wildApprox(pt1)
+            var formalConstrained = false
+            val tm = new TypeMap:
+              def apply(t: Type): Type = t match
+                case tvar: TypeVar =>
+                  formalConstrained |= ctx.typerState.constraint.contains(tvar)
+                  val inst = tvar.instanceOpt
+                  if (inst.exists && !formalConstrained) mapOver(inst) else tvar
+                case _ =>
+                  if formalConstrained then t
+                  else mapOver(t)
+            tm(formal)
             if (pt1 `ne` pt)
               && (pt1 ne sharpenedPt)
               && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
-              && !isFullyDefined(formal, ForceDegree.none) then
+              && !isFullyDefined(formal, ForceDegree.none)
+              && !formalConstrained then
               constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
