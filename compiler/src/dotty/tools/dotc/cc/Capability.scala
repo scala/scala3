@@ -698,6 +698,8 @@ object Capabilities:
             case _ =>
               y.derivesFromSharable
               || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
+        case Restricted(x1, cls) =>
+          y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
           y match
             case ReadOnly(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
