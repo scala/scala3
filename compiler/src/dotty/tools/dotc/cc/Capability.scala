@@ -769,7 +769,7 @@ object Capabilities:
 
   /** The least classifier between `cls1` and `cls2`, which are either
    *  AnyClass, NothingClass, or a class directly extending caps.Classifier.
-   *  @return if oen of cls1, cls2 is a subclass of the other, the subclass
+   *  @return if one of cls1, cls2 is a subclass of the other, the subclass
    *          otherwise NothingClass (which is a subclass of all classes)
    */
   def leastClassifier(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): ClassSymbol =
