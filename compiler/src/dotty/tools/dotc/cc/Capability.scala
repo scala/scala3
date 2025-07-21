@@ -781,13 +781,16 @@ object Capabilities:
 
   def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
     // Drop classes that subclass classes of the other set
-    def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol]) =
-      cs1.filter(cls1 => !cs2.exists(cls2 => cls1.isSubClass(cls2)))
+    // @param proper  If true, only drop proper subclasses of a class of the other set
+    def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol], proper: Boolean) =
+      cs1.filter: cls1 =>
+        !cs2.exists: cls2 =>
+          cls1.isSubClass(cls2) && (!proper || cls1 != cls2)
     (cs1, cs2) match
       case (Unclassified, _) | (_, Unclassified) => Unclassified
       case (UnknownClassifier, _) | (_, UnknownClassifier) => UnknownClassifier
       case (ClassifiedAs(cs1), ClassifiedAs(cs2)) =>
-        ClassifiedAs(filterSub(cs1, cs2) ++ filterSub(cs2, cs1))
+        ClassifiedAs(filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false))
 
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics
