@@ -242,7 +242,7 @@ class CompilationTests {
     end if
     locally {
       val tastyErrorGroup = TestGroup("checkInitGlobal/safe-value-tasty")
-      val options = defaultOptions.and("-Wsafe-init", "-Xfatal-warnings")
+      val options = defaultOptions.and("-Wsafe-init", "-Xfatal-warnings", "-Ysafe-init-global")
       val tastyErrorOptions = options.without("-Xfatal-warnings")
 
       val outDirDef = defaultOutputDir + tastyErrorGroup + "/SafeValuesDef/safe-value-tasty/SafeValuesDef"
