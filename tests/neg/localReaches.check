@@ -1,0 +1,10 @@
+-- Error: tests/neg/localReaches.scala:24:30 ---------------------------------------------------------------------------
+24 |  var x: () ->{xs*} Unit = ys.head // error
+   |                           ^^^^^^^
+   |                           Local reach capability ops* leaks into capture scope of method localReach3.
+   |                           To allow this, the parameter ops should be declared with a @use annotation
+-- Error: tests/neg/localReaches.scala:27:11 ---------------------------------------------------------------------------
+27 |    x = ys.head  // error
+   |        ^^^^^^^
+   |        Local reach capability ops* leaks into capture scope of method localReach3.
+   |        To allow this, the parameter ops should be declared with a @use annotation
