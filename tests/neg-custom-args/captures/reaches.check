@@ -75,7 +75,7 @@
    |                            ^² refers to a root capability associated with the result type of (x: File^): File^²
    |
    |                  Note that the existential capture root in File^
-   |                  cannot subsume the capability x.type since that capability is not a SharedCapability
+   |                  cannot subsume the capability x.type since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------

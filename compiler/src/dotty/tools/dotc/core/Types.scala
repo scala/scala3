@@ -6284,6 +6284,10 @@ object Types extends TypeUtils {
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
+      case Restricted(c1, cls) =>
+        mapCapability(c1) match
+          case c2: Capability => c2.restrict(cls)
+          case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
       case ReadOnly(c1) =>
         assert(!deep)
         mapCapability(c1) match

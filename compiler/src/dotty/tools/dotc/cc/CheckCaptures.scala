@@ -18,14 +18,13 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure, MutAdaptFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
 import Annotations.Annotation
 import Capabilities.*
-import dotty.tools.dotc.cc.CaptureSet.MutAdaptFailure
 import dotty.tools.dotc.util.common.alwaysTrue
 
 /** The capture checker */
@@ -112,6 +111,13 @@ object CheckCaptures:
         if ref.isCapRef then
           report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
       case ReadOnlyCapability(ref) =>
+        check(ref)
+      case OnlyCapability(ref, cls) =>
+        if !cls.isClassifiedCapabilityClass then
+          report.error(
+            em"""${ref.showRef}.only[${cls.name}] is not well-formed since $cls is not a classifier class.
+                |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
+            ann.srcPos)
         check(ref)
       case tpe =>
         report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
@@ -1293,7 +1299,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case ExistentialSubsumesFailure(ex, other) =>
               def since =
                 if other.isTerminalCapability then ""
-                else " since that capability is not a SharedCapability"
+                else " since that capability is not a `Sharable` capability"
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
             case MutAdaptFailure(cs, lo, hi) =>
@@ -2002,13 +2008,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           else if isOfNestedMethod(env) then env.owner.owner
           else if env.owner.isStaticOwner then NoSymbol
           else boxedOwner(nextEnvToCharge(env, alwaysTrue))
-          
+
         def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
             checkUseDeclared(c, tree.srcPos)
-            
+
         def check(cs: CaptureSet): Unit = cs.elems.foreach(checkElem)
-        
+
         def checkElem(c: Capability): Unit =
           if !seen.contains(c) then
             seen += c
@@ -2026,11 +2032,11 @@ class CheckCaptures extends Recheck, SymTransformer:
               case c: FreshCap =>
                 check(c.hiddenSet)
               case _ =>
-              
+
         check(uses)
       end for
     end checkEscapingUses
-    
+
     /** Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
@@ -2063,7 +2069,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       if sepChecksEnabled then
         for (tree, cs, env) <- useInfos do
           usedSet(tree) = tree.markedFree ++ cs
-        SepCheck(this).traverse(unit)
+        ccState.inSepCheck:
+          SepCheck(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
