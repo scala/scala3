@@ -1,5 +1,5 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops.scala:15:4 ---------------------------------
-15 |    () => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops.scala:14:4 ---------------------------------
+14 |    () => // error
    |    ^
    |    Found:    () ->{ops*} Unit
    |    Required: () -> Unit
@@ -8,8 +8,8 @@
 17 |      runOps(ops1)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops.scala:27:4 ---------------------------------
-27 |    () => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops.scala:26:4 ---------------------------------
+26 |    () => // error
    |    ^
    |    Found:    () ->{ops*} Unit
    |    Required: () -> Unit

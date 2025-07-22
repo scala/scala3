@@ -1075,8 +1075,9 @@ class Definitions {
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
-  @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
-  @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
+  @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
+  @tu lazy val ConsumeAnnot: ClassSymbol = requiredClass("scala.caps.consume")
+  @tu lazy val ReserveAnnot: ClassSymbol = requiredClass("scala.caps.reserve")
   @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.internal.refineOverride")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
@@ -1478,7 +1479,7 @@ class Definitions {
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
     // Do not patch the stdlib files if we explicitly disable it
     // This is only to be used during the migration of the stdlib
-    if ctx.settings.YnoStdlibPatches.value then 
+    if ctx.settings.YnoStdlibPatches.value then
       return
 
     def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
@@ -2114,8 +2115,10 @@ class Definitions {
     Caps_Capability, // TODO: Remove when Capability is stabilized
     Caps_Classifier, Caps_SharedCapability, Caps_Control, Caps_ExclusiveCapability, Caps_Mutable, Caps_Read,
     RequiresCapabilityAnnot,
-    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass, UseAnnot,
-    ConsumeAnnot, CapsUnsafeModule, CapsUnsafeModule.moduleClass,
+    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
+    Caps_Mutable, Caps_Sharable, Caps_Control, Caps_Classifier,
+    ConsumeAnnot, UseAnnot, ReserveAnnot,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 

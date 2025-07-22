@@ -12,22 +12,22 @@ class Ref[T](init: T):
   def get: T = x
   def set(y: T) = { x = y }
 
-def runAll0(@use xs: List[Proc]): Unit =
-  var cur: List[() ->{xs*} Unit] = xs
+def runAll0[C^](xs: List[() ->{C} Unit]): Unit =
+  var cur: List[() ->{C} Unit] = xs
   while cur.nonEmpty do
-    val next: () ->{xs*} Unit = cur.head
+    val next: () ->{C} Unit = cur.head
     next()
-    cur = cur.tail: List[() ->{xs*} Unit]
+    cur = cur.tail: List[() ->{C} Unit]
 
   usingFile: f => // error
     cur = (() => f.write()) :: Nil
 
-def runAll1(@use xs: List[Proc]): Unit =
-  val cur = Ref[List[() ->{xs*} Unit]](xs)  // OK, by revised VAR
+def runAll1[C^](xs: List[() ->{C} Unit]): Unit =
+  val cur = Ref[List[() ->{C} Unit]](xs)  // OK, by revised VAR
   while cur.get.nonEmpty do
-    val next: () ->{xs*} Unit = cur.get.head
+    val next: () ->{C} Unit = cur.get.head
     next()
-    cur.set(cur.get.tail: List[() ->{xs*} Unit])
+    cur.set(cur.get.tail: List[() ->{C} Unit])
 
   usingFile: f => // error
     cur.set:
@@ -87,5 +87,5 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
   ps.map((x, y) => compose1(x, y)) // error
 
-def mapCompose2[A](@use ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
+def mapCompose2[A, C^](ps: List[(A ->{C} A, A ->{C} A)]): List[A ->{C} A] =
   ps.map((x, y) => compose1(x, y)) // error

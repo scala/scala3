@@ -1,15 +1,15 @@
-import caps.use
+import caps.reserve
 
-trait A[X]:
-  def foo(@use x: X): X
-  def bar(x: X): X
+trait A:
+  def foo[@reserve C^]: Object^{C}
+  def bar[C^]: Object^{C}
 
-trait B extends A[C]:
-  def foo(x: C): C        // error
-  def bar(@use x: C): C // error
+trait B extends A:
+  def foo[C^]: Object^{C}  // error
+  def bar[@reserve C^]: Object^{C} // error
 
 trait B2:
-  def foo(x: C): C
-  def bar(@use x: C): C
+  def foo[C^]: Object^{C}
+  def bar[@reserve C^]: Object^{C}
 
-abstract class C extends A[C], B2 // error
+abstract class C extends A, B2 // error

@@ -1765,6 +1765,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
             checkAnnot(defn.UseAnnot)
             checkAnnot(defn.ConsumeAnnot)
+            checkAnnot(defn.ReserveAnnot)
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
