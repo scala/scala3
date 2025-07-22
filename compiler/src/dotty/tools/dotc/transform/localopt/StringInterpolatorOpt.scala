@@ -110,22 +110,20 @@ class StringInterpolatorOpt extends MiniPhase:
       result
     end mkConcat
     def lintToString(t: Tree): Unit =
-      def check(tp: Type): Boolean = tp.widen match
+      def checkIsStringify(tp: Type): Boolean = tp.widen match
         case OrType(tp1, tp2) =>
-          check(tp1) || check(tp2)
+          checkIsStringify(tp1) || checkIsStringify(tp2)
         case tp =>
-          if tp =:= defn.StringType then
-            false
-          else if tp =:= defn.UnitType then
-            report.warning("interpolated Unit value", t.srcPos)
-            true
-          else if !tp.isPrimitiveValueType then
-            report.warning("interpolation uses toString", t.srcPos)
-            true
-          else
-            false
-      if ctx.settings.Whas.toStringInterpolated && check(t.tpe) then
-        ()
+          !(tp =:= defn.StringType)
+          && {
+              tp =:= defn.UnitType
+              && { report.warning("interpolated Unit value", t.srcPos); true }
+            ||
+              !tp.isPrimitiveValueType
+              && { report.warning("interpolation uses toString", t.srcPos); true }
+          }
+      if ctx.settings.Whas.toStringInterpolated then
+        checkIsStringify(t.tpe): Unit
     val sym = tree.symbol
     // Test names first to avoid loading scala.StringContext if not used, and common names first
     val isInterpolatedMethod =
