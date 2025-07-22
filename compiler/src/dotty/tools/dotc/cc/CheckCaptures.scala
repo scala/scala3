@@ -120,11 +120,11 @@ object CheckCaptures:
         report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
     ann.retainedSet.retainedElementsRaw.foreach(check)
 
-  /** Under the sealed policy, report an error if some part of `tp` contains the
-   *  root capability in its capture set or if it refers to a type parameter that
-   *  could possibly be instantiated with cap in a way that's visible at the type.
+  /** Disallow bad roots anywhere in type `tp``.
+   *  @param  upto  controls up to which owner local fresh capabilities should be disallowed.
+   *                See disallowBadRoots for details.
    */
-  private def disallowRootCapabilitiesIn(tp: Type, upto: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
+  private def disallowBadRootsIn(tp: Type, upto: Symbol, what: => String, have: => String, addendum: => String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
 
       private val seen = new EqHashSet[TypeRef]
@@ -151,7 +151,7 @@ object CheckCaptures:
           case CapturingType(parent, refs) =>
             if variance >= 0 then
               val openScopes = openExistentialScopes
-              refs.disallowRootCapability(upto): () =>
+              refs.disallowBadRoots(upto): () =>
                 def part =
                   if t eq tp then ""
                   else
@@ -179,7 +179,7 @@ object CheckCaptures:
           case t =>
             traverseChildren(t)
     check.traverse(tp)
-  end disallowRootCapabilitiesIn
+  end disallowBadRootsIn
 
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
@@ -534,8 +534,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           	// Under deferredReaches, don't propagate out of methods inside terms.
           	// The use set of these methods will be charged when that method is called.
 
-      recur(cs, curEnv, null)
-      useInfos += ((tree, cs, curEnv))
+      if !cs.isAlwaysEmpty then
+        recur(cs, curEnv, null)
+        useInfos += ((tree, cs, curEnv))
     end markFree
 
     /** If capability `c` refers to a parameter that is not @use declared, report an error.
@@ -570,16 +571,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           tp
 
-    /** Under the sealed policy, disallow the root capability in type arguments.
-     *  Type arguments come either from a TypeApply node or from an AppliedType
+    /** Type arguments come either from a TypeApply node or from an AppliedType
      *  which represents a trait parent in a template.
-     *  Also, if a corresponding formal type parameter is declared or implied @use,
-     *  charge the deep capture set of the argument to the environent.
+     *   - Disallow global cap and result caps in such arguments.
+     *   - If a corresponding formal type parameter is declared or implied @use,
+     *     charge the deep capture set of the argument to the environent.
      *  @param  fn   the type application, of type TypeApply or TypeTree
      *  @param  sym  the constructor symbol (could be a method or a val or a class)
      *  @param  args the type arguments
      */
-    def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
+    def markFreeTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
       def isExempt = sym.isTypeTestOrCast || defn.capsErasedValueMethods.contains(sym)
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
@@ -592,17 +593,17 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
           def where = if sym.exists then i" in an argument of $sym" else ""
-          val (addendum, errTree) =
+          def addendum =
             if arg.isInferred
-            then (i"\nThis is often caused by a local capability$where\nleaking as part of its result.", fn)
-            else if arg.span.exists then ("", arg)
-            else ("", fn)
-          disallowRootCapabilitiesIn(arg.nuType, NoSymbol,
+            then i"\nThis is often caused by a local capability$where\nleaking as part of its result."
+            else ""
+          def errTree = if !arg.isInferred && arg.span.exists then arg else fn
+          disallowBadRootsIn(arg.nuType, NoSymbol,
             i"Type variable $pname of $sym", "be instantiated to", addendum, errTree.srcPos)
 
           val param = fn.symbol.paramNamed(pname)
           if param.isUseParam then markFree(arg.nuType.deepCaptureSet, errTree)
-    end disallowCapInTypeArgs
+    end markFreeTypeArgs
 
     /** Rechecking idents involves:
      *   - adding call captures for idents referring to methods
@@ -870,7 +871,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
         case fun => fun.symbol
       def methDescr = if meth.exists then i"$meth's type " else ""
-      disallowCapInTypeArgs(tree.fun, meth, tree.args)
+      markFreeTypeArgs(tree.fun, meth, tree.args)
       val funType = super.recheckTypeApply(tree, pt)
       val res = resultToFresh(funType, Origin.ResultInstance(funType, meth))
       includeCallCaptures(tree.symbol, res, tree)
@@ -986,7 +987,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 i"\n\nNote that $sym does not count as local since it is captured by $enclStr"
               case _ =>
                 ""
-            disallowRootCapabilitiesIn(
+            disallowBadRootsIn(
               tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
@@ -1169,7 +1170,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
-              disallowCapInTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
+              markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
         ccState.inNestedLevelUnless(cls.is(Module)):
           super.recheckClassDef(tree, impl, cls)
@@ -1202,7 +1203,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         recheck(tree.expr, pt)
       val tp = recheckTryRest(bodyType, tree.cases, tree.finalizer, pt)
       if Feature.enabled(Feature.saferExceptions) then
-        disallowRootCapabilitiesIn(tp, ctx.owner,
+        disallowBadRootsIn(tp, ctx.owner,
           "The result of `try`", "have type",
           "\nThis is often caused by a locally generated exception capability leaking as part of its result.",
           tree.srcPos)
@@ -1946,7 +1947,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if !(pos.span.isSynthetic && ctx.reporter.errorsReported)
                 && !arg.typeSymbol.name.is(WildcardParamName)
               then
-                CheckCaptures.disallowRootCapabilitiesIn(arg, NoSymbol,
+                CheckCaptures.disallowBadRootsIn(arg, NoSymbol,
                   "Array", "have element type", "",
                   pos)
               traverseChildren(t)

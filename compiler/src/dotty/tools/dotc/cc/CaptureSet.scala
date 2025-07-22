@@ -468,11 +468,11 @@ sealed abstract class CaptureSet extends Showable:
       case elem: FreshCap => elem.ccOwner.isContainedIn(rootLimit)
       case _ => false
 
-  /** Invoke `handler` if this set has (or later aquires) a root capability.
-   *  Excluded are Fresh instances unless their ccOwner is contained in `upto`.
+  /** Invoke `handler` if this set has (or later aquires) a bad root capability.
+   *  Fresh instances count as good as long as their ccOwner is outside `upto`.
    *  If `upto` is NoSymbol, all Fresh instances are admitted.
    */
-  def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
     if elems.exists(isBadRoot(upto, _)) then handler()
     this
 
@@ -840,10 +840,10 @@ object CaptureSet:
       || isConst
       || varState.canRecord && { includeDep(cs); true }
 
-    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
       rootLimit = upto
       rootAddedHandler = handler
-      super.disallowRootCapability(upto)(handler)
+      super.disallowBadRoots(upto)(handler)
 
     override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
       newElemAddedHandler = handler
@@ -945,7 +945,7 @@ object CaptureSet:
    *  Test case: Without that tweak, logger.scala would not compile.
    */
   class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
