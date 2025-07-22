@@ -14,8 +14,21 @@ def mkPair: Pair[Ref^, Ref^] =
   val p_exact: Pair[Ref^{r1}, Ref^{r2}] = Pair(r1, r2)
   p_exact
 
-def copyPair(@consume @use p: Pair[Ref^, Ref^]): Pair[Ref^, Ref^] =
-  val x: Ref^{p.fst*} = p.fst
-  val y: Ref^{p.snd*} = p.snd
+def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^{C}, Ref^{D}] =
+  val x: Ref^{C} = p.fst
+  val y: Ref^{D} = p.snd
+  Pair[Ref^{C}, Ref^{D}](x, y)
+
+/* TODO: The following variants don't work
+
+def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^{C}, Ref^{D}] =
+  val x: Ref^{C} = p.fst
+  val y: Ref^{D} = p.snd
   Pair(x, y)
 
+def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^, Ref^] =
+  val x: Ref^{C} = p.fst
+  val y: Ref^{D} = p.snd
+  Pair(x, y)
+
+*/

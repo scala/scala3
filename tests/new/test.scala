@@ -1,3 +1,1 @@
-
-
-def foo[T: Singleton](x: T) = x
+def test[T] = println(T)

@@ -17,9 +17,9 @@ class Result[+T, +E]:
 case class Err[+E](e: E) extends Result[Nothing, E]
 case class Ok[+T](x: T) extends Result[T, Nothing]
 
-extension [T](@use fs: Seq[Future[T]^])
+extension [T, C^](fs: Seq[Future[T]^{C}])
   def awaitAll =
     val collector//: Collector[T]{val futures: Seq[Future[T]^{fs*}]}
        = Collector(fs)
     // val ch = collector.results // also errors
-    val fut: Future[T]^{fs*} = collector.results.read().get // error
+    val fut: Future[T]^{C} = collector.results.read().get // error
