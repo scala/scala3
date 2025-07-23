@@ -279,6 +279,13 @@ object language {
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
+    /** Experimental support for separation checking; requires captureChecking also to be enabled.
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     */
+    @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
+    object separationChecking
+
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
