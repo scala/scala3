@@ -22,6 +22,8 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
+        
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
       ),
 
       // Additions since last LTS
@@ -45,7 +47,6 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.reachCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedCaptures"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
         ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$ValOrDefDefMethods"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$minusmigration$"),
