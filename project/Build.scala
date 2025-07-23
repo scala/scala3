@@ -1419,6 +1419,7 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-nonboostrapped project */
   lazy val `scala-library-nonbootstrapped` = project.in(file("library"))
+    .enablePlugins(ScalaLibraryPlugin)
     .settings(
       name          := "scala-library-nonbootstrapped",
       moduleName    := "scala-library",
@@ -1448,6 +1449,7 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-boostrapped project */
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
+    .enablePlugins(ScalaLibraryPlugin)
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -1474,8 +1476,11 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-bootstrapped",
+      // we need to have the `scala-library` artifact as a dependency for `ScalaLibraryPlugin` to work
+      // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
+      // NOTE: true is the default value, just making things clearer here
+      managedScalaInstance := true,
       // Configure the nonbootstrapped compiler
-      managedScalaInstance := false,
       scalaInstance := {
         val externalLibraryDeps = (`scala3-library` / Compile / externalDependencyClasspath).value.map(_.data).toSet
         val externalCompilerDeps = (`scala3-compiler` / Compile / externalDependencyClasspath).value.map(_.data).toSet
@@ -1494,7 +1499,7 @@ object Build {
         val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
 
         Defaults.makeScalaInstance(
-          scalaVersion.value,
+          dottyNonBootstrappedVersion,
           libraryJars = libraryJars,
           allCompilerJars = compilerJars,
           allDocJars = Seq.empty,
