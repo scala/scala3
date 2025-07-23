@@ -68,8 +68,7 @@ object CheckCaptures:
         cur = cur.outer
         res
 
-    def ownerString(using Context): String =
-      if owner.isAnonymousFunction then "enclosing function" else owner.show
+    def ownerString(using Context): String = ownerStr(owner)
   end Env
 
   /** Similar normal substParams, but this is an approximating type map that
@@ -183,6 +182,9 @@ object CheckCaptures:
             traverseChildren(t)
     check.traverse(tp)
   end disallowBadRootsIn
+
+  private def ownerStr(owner: Symbol)(using Context): String =
+    if owner.isAnonymousFunction then "enclosing function" else owner.show
 
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
@@ -548,10 +550,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       c.paramPathRoot match
         case ref: NamedType if !ref.symbol.isUseParam =>
           val what = if ref.isType then "Capture set parameter" else "Local reach capability"
-          val owner = ref.symbol.owner
-          val ownerStr = if owner.isAnonymousFunction then "enclosing function" else owner.show
           report.error(
-            em"""$what $c leaks into capture scope of $ownerStr.
+            em"""$what $c leaks into capture scope of ${ownerStr(ref.symbol.owner)}.
                 |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
         case _ =>
 
@@ -925,7 +925,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
               val paramTpt = param.asInstanceOf[ValDef].tpt
-              val paramType = freshToCap(paramTpt.nuType)
+              val paramType = freshToCap(param.symbol, paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
             if ccConfig.preTypeClosureResults && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
@@ -2030,7 +2030,13 @@ class CheckCaptures extends Recheck, SymTransformer:
               case c: DerivedCapability =>
                 checkElem(c.underlying)
               case c: FreshCap =>
-                check(c.hiddenSet)
+                c.origin match
+                  case Origin.Parameter(param) =>
+                    report.error(
+                      em"Local $c created in type of $param leaks into capture scope of ${ownerStr(param.owner)}",
+                      tree.srcPos)
+                  case _ =>
+                    check(c.hiddenSet)
               case _ =>
 
         check(uses)
