@@ -325,8 +325,11 @@ class TailRec extends MiniPhase {
 
         if isRecursiveCall then
           if ctx.settings.Whas.recurseWithDefault then
-            if tree.args.exists(_.symbol.name.is(DefaultGetterName)) then
-              report.warning(RecurseWithDefault(), tree.srcPos)
+            tree.args.find(_.symbol.name.is(DefaultGetterName)) match
+            case Some(arg) =>
+              val DefaultGetterName(_, index) = arg.symbol.name: @unchecked
+              report.warning(RecurseWithDefault(calledMethod.info.firstParamNames(index)), tree.srcPos)
+            case _ =>
 
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
