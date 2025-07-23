@@ -18,4 +18,3 @@
 5 |private def g[C^] = (xs: List[Object^{C}]) => xs.head // error
   |                                              ^^^^^^^
   |                                              Capture set parameter C leaks into capture scope of method g.
-  |                                              To allow this, the type C should be declared with a @use annotation

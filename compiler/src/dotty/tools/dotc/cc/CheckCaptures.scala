@@ -542,16 +542,21 @@ class CheckCaptures extends Recheck, SymTransformer:
         useInfos += ((tree, cs, curEnv))
     end markFree
 
-    /** If capability `c` refers to a parameter that is not @use declared, report an error.
+    /** If capability `c` refers to a parameter that is not implicitly or explicitly
+     *  @use declared, report an error.
      */
     def checkUseDeclared(c: Capability, pos: SrcPos)(using Context): Unit =
       c.paramPathRoot match
         case ref: NamedType if !ref.symbol.isUseParam =>
           val what = if ref.isType then "Capture set parameter" else "Local reach capability"
-          val owner = ref.symbol.owner
+          def mitigation =
+            if ccConfig.allowUse
+            then i"\nTo allow this, the ${ref.symbol} should be declared with a @use annotation."
+            else if !ref.isType then i"\nYou could try to abstract the capabilities referred to by $c in a capset variable."
+            else ""
           report.error(
-            em"""$what $c leaks into capture scope${owner.qualString("of")}.
-                |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
+            em"$what $c leaks into capture scope${owner.qualString("of")}.$mitigation",
+            pos)
         case _ =>
 
     /** Include references captured by the called method in the current environment stack */
@@ -1751,7 +1756,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         override def checkInheritedTraitParameters: Boolean = false
 
-        /** Check that overrides don't change the @use or @consume status of their parameters */
+        /** Check that overrides don't change the @use, @consume, or @reserve status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
           for
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
