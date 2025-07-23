@@ -482,8 +482,13 @@ object Erasure {
       def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
 
       val paramAdaptationNeeded =
-        implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && !autoAdaptedParam(implType))
+        implParamTypes.lazyZip(samParamTypes).exists: (implType, samType) =>
+          !sameClass(implType, samType) && !autoAdaptedParam(implType)
+          || (samType, implType).match {
+            case (defn.ArrayOf(_), defn.ArrayOf(_)) => false
+            case (defn.ArrayOf(_), _) => true // see #23179
+            case _ => false
+          }
       val resultAdaptationNeeded =
         !sameClass(implResultType, samResultType) && !autoAdaptedResult
 
