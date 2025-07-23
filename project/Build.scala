@@ -1476,7 +1476,7 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-bootstrapped",
-      // we need to have the `scala-library` artifact as a dependency for `ScalaLibraryPlugin` to work
+      // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
       // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
       // NOTE: true is the default value, just making things clearer here
       managedScalaInstance := true,
