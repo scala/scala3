@@ -3671,8 +3671,8 @@ final class DefaultShadowsGiven(name: Name)(using Context) extends TypeMsg(Defau
   override protected def explain(using Context): String =
     "Usually the given in scope is intended, but you must specify it after explicit `using`."
 
-final class RecurseWithDefault(using Context) extends TypeMsg(RecurseWithDefaultID):
+final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(RecurseWithDefaultID):
   override protected def msg(using Context): String =
-    i"Recursive call used a default argument."
+    i"Recursive call used a default argument for parameter $name."
   override protected def explain(using Context): String =
     "It's more explicit to pass current or modified arguments in a recursion."
