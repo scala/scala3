@@ -151,10 +151,10 @@ object TypeApplications:
 
 /** Extensions that model type application.
  */
-trait TypeApplications:
+class TypeApplications:
   import TypeApplications.*
 
-  extension (self: Type) { // braces to avoid indent
+  extension (self: Type) { // braces to avoid indenting existing code
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.

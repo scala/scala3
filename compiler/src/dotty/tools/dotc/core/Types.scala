@@ -2169,11 +2169,7 @@ object Types extends TypeUtils {
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
     def hashIsStable: Boolean = true
   }
-  object Type:
-    // Extensions that model type application.
-    given TypeApplications()
-
-  // end Type
+  end Type
 
 // ----- Type categories ----------------------------------------------
 
