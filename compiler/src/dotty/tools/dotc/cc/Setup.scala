@@ -636,17 +636,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def ownerChanges =
           ctx.owner.name.is(TryOwnerName)
 
-        def paramsToCap(mt: Type)(using Context): Type = mt match
+        def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
-                paramInfos = mt.paramInfos.map(freshToCap),
-                resType = paramsToCap(mt.resType))
+                paramInfos =
+                  psymss.head.lazyZip(mt.paramInfos).map(freshToCap),
+                resType = paramsToCap(psymss.tail, mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")
               throw ex
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(mt.resType))
+            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`
@@ -658,7 +659,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 toResultInResults(sym, report.error(_, tree.srcPos)):
                   if sym.is(Method) then
                     inContext(ctx.withOwner(sym)):
-                      paramsToCap(methodType(paramSymss, localReturnType))
+                      paramsToCap(paramSymss, methodType(paramSymss, localReturnType))
                   else tree.tpt.nuType
               if tree.tpt.isInstanceOf[InferredTypeTree]
                   && !sym.is(Param) && !sym.is(ParamAccessor)

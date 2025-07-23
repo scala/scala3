@@ -720,7 +720,7 @@ object CaptureSet:
     private def narrowClassifier(cls: ClassSymbol)(using Context): Unit =
       val newClassifier = leastClassifier(classifier, cls)
       if newClassifier == defn.NothingClass then
-        println(i"conflicting classifications for $this, was $classifier, now $cls")
+        capt.println(i"conflicting classifications for $this, was $classifier, now $cls")
       myClassifier = newClassifier
 
     override def adoptClassifier(cls: ClassSymbol)(using Context): Unit =

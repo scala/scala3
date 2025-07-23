@@ -181,6 +181,9 @@ object CheckCaptures:
     check.traverse(tp)
   end disallowBadRootsIn
 
+  private def ownerStr(owner: Symbol)(using Context): String =
+    if owner.isAnonymousFunction then "enclosing function" else owner.show
+
   trait CheckerAPI:
     /** Complete symbol info of a val or a def */
     def completeDef(tree: ValOrDefDef, sym: Symbol, completer: LazyType)(using Context): Type
@@ -920,7 +923,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
               val paramTpt = param.asInstanceOf[ValDef].tpt
-              val paramType = freshToCap(paramTpt.nuType)
+              val paramType = freshToCap(param.symbol, paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
             if !pt.isInstanceOf[RefinedType]
@@ -1993,7 +1996,13 @@ class CheckCaptures extends Recheck, SymTransformer:
               case c: DerivedCapability =>
                 checkElem(c.underlying)
               case c: FreshCap =>
-                check(c.hiddenSet)
+                c.origin match
+                  case Origin.Parameter(param) =>
+                    report.error(
+                      em"Local $c created in type of $param leaks into capture scope of ${ownerStr(param.owner)}",
+                      tree.srcPos)
+                  case _ =>
+                    check(c.hiddenSet)
               case _ =>
 
         check(uses)
