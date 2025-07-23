@@ -16,7 +16,6 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Flags.{Label => LabelFlag, _}
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure

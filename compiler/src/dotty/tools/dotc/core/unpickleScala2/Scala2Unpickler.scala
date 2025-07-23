@@ -10,7 +10,6 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
 import Contexts.*, Symbols.*, Types.*, Scopes.*, SymDenotations.*, Names.*, NameOps.*
-import TypeApplications.*
 import StdNames.*, Denotations.*, NameOps.*, Flags.*, Constants.*, Annotations.*, Phases.*
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans.*

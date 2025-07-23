@@ -14,7 +14,6 @@ import Denotations.*
 import printing.Texts.*
 import printing.Printer
 import Types.*
-import TypeApplications.*
 import util.Spans.*
 import DenotTransformers.*
 import StdNames.*

@@ -13,7 +13,6 @@ import StdNames.*
 import Symbols.*
 
 import Types.*
-import TypeApplications.*
 
 import util.Spans.Span
 import util.SrcPos

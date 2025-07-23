@@ -15,7 +15,6 @@ import Contexts.*
 import Symbols.defn
 import Names.*
 import Types.*
-import TypeApplications.*
 import ast.Trees.*
 import Decorators.*
 import StdNames.*

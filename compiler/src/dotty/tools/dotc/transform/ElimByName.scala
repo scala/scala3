@@ -6,7 +6,6 @@ import core.*
 import Contexts.*
 import Symbols.*
 import Types.*
-import TypeApplications.*
 import Flags.*
 import SymDenotations.*
 import DenotTransformers.InfoTransformer

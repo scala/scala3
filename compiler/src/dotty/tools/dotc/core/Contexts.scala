@@ -8,7 +8,6 @@ import Periods.*
 import Names.*
 import Phases.*
 import Types.*
-import TypeApplications.*
 import Symbols.*
 import Scopes.*
 import Uniques.*

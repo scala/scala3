@@ -4,7 +4,6 @@ package ast
 
 import core.*
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, NameOps.*, Flags.*
-import TypeApplications.*
 import Symbols.*, StdNames.*, Trees.*, ContextOps.*
 import Decorators.*
 import Annotations.Annotation

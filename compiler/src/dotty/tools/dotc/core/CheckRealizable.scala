@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Contexts.*, Types.*, Symbols.*, Names.*, Flags.*
-import TypeApplications.*
 import Denotations.SingleDenotation
 import Decorators.*
 import collection.mutable

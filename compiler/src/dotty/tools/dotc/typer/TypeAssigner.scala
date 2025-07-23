@@ -6,7 +6,6 @@ import core.*
 import ast.*
 import Contexts.*, ContextOps.*, Constants.*, Types.*, Symbols.*, Names.*, Flags.*, Decorators.*
 import ErrorReporting.*, Annotations.*, Denotations.*, SymDenotations.*, StdNames.*
-import TypeApplications.*
 import util.SrcPos
 import NameOps.*
 import collection.mutable

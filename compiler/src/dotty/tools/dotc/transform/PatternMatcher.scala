@@ -5,7 +5,6 @@ package transform
 import core.*
 import MegaPhase.*
 import Symbols.*, Contexts.*, Types.*, StdNames.*, NameOps.*
-import TypeApplications.*
 import patmat.SpaceEngine
 import util.Spans.*
 import typer.Applications.*

@@ -6,7 +6,6 @@ import core.*
 import Contexts.*
 import Symbols.*
 import Flags.*
-import TypeApplications.*
 
 import Decorators.*
 import MegaPhase.*
