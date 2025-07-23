@@ -21,12 +21,12 @@ def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^{C}, Ref^{D}]
 
 /* TODO: The following variants don't work
 
-def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^{C}, Ref^{D}] =
+def copyPair1[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^{C}, Ref^{D}] =
   val x: Ref^{C} = p.fst
   val y: Ref^{D} = p.snd
   Pair(x, y)
 
-def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^, Ref^] =
+def copyPair2[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^, Ref^] =
   val x: Ref^{C} = p.fst
   val y: Ref^{D} = p.snd
   Pair(x, y)

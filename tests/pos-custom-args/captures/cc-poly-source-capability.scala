@@ -27,7 +27,7 @@ import caps.use
     src.register{lst1}
     src.register(listener(async1))
     lsts.foreach(src.register(_)) // TODO: why we need to use _ explicitly here?
-    others.map(listener[C]).foreach(src.register(_)) // TODO: drop [C] and you get illegal capture reference: CapSet
+    others.map(listener[C]).foreach(src.register(_))
     val ls = src.allListeners
     val _: Set[Listener^{async1, C}] = ls
 
