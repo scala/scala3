@@ -14,7 +14,6 @@ import ProtoTypes.*
 import Contexts.*
 import Symbols.*
 import Types.*
-import TypeApplications.*
 import SymDenotations.*
 import Annotations.*
 import Names.*
@@ -28,7 +27,7 @@ import ErrorReporting.*
 import Checking.*
 import Inferencing.*
 import Dynamic.isDynamicExpansion
-import typer.EtaExpansion.etaExpand
+import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*

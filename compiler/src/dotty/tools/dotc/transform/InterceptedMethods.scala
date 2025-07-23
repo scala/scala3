@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {

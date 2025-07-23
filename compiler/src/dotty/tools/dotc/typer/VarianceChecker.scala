@@ -4,7 +4,6 @@ package typer
 import dotty.tools.dotc.ast.{ Trees, tpd }
 import core.*
 import Types.*, Contexts.*, Flags.*, Symbols.*, Trees.*
-import TypeApplications.*
 import Decorators.*
 import Variances.*
 import NameKinds.*

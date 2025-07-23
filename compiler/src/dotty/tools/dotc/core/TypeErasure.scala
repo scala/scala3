@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, StdNames.*, Phases.*
-import TypeApplications.*
 import Flags.JavaDefined
 import Uniques.unique
 import backend.sjs.JSDefinitions

@@ -3,7 +3,6 @@ package transform
 
 import core.*
 import Contexts.*, Symbols.*, Types.*, Flags.*, StdNames.*
-import TypeApplications.*
 import MegaPhase.*
 import NameKinds.NonLocalReturnKeyName
 import config.SourceVersion.*

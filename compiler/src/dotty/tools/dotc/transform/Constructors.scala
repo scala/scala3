@@ -16,7 +16,6 @@ import Decorators.*
 import DenotTransformers.*
 import collection.mutable
 import Types.*
-import TypeApplications.*
 
 object Constructors {
   val name: String = "constructors"

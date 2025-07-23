@@ -13,7 +13,6 @@ import Flags.*
 import Phases.*
 import Trees.*
 import Types.*
-import TypeApplications.*
 import Symbols.*
 import Names.*
 import StdNames.str

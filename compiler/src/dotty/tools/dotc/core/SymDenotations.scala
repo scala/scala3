@@ -4,10 +4,10 @@ package core
 
 import Periods.*, Contexts.*, Symbols.*, Denotations.*, Names.*, NameOps.*, Annotations.*
 import Types.*, Flags.*, Decorators.*, DenotTransformers.*, StdNames.*, Scopes.*
-import TypeApplications.*
 import NameOps.*, NameKinds.*
 import Phases.{Phase, typerPhase, unfusedPhases}
 import Constants.Constant
+import TypeApplications.TypeParamInfo
 import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators.*

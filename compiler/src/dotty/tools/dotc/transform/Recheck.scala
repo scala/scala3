@@ -4,7 +4,6 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
-import TypeApplications.*
 import Flags.*, NameKinds.*, Denotations.{Denotation, SingleDenotation}
 import ast.*
 import Names.Name

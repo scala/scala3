@@ -13,7 +13,6 @@ import Scopes.*
 import Symbols.*
 import StdNames.*
 import Types.*
-import TypeApplications.*
 import Decorators.em
 
 import dotty.tools.dotc.transform.MegaPhase.*

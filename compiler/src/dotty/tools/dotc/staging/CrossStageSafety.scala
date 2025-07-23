@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.staging.QuoteTypeTags.*
 import dotty.tools.dotc.staging.StagingLevel.*

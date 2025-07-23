@@ -3,7 +3,6 @@ package ast
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, Decorators.*, util.Spans.*, Flags.*, Constants.*
-import TypeApplications.*
 import StdNames.{nme, tpnme}
 import ast.Trees.*
 import Names.Name

@@ -6,7 +6,6 @@ import scala.language.unsafeNulls as _
 
 import core.*
 import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
-import TypeApplications.*
 import ast.untpd
 import Erasure.Boxing.*
 import TypeErasure.*

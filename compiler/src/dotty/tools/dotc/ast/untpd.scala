@@ -4,7 +4,6 @@ package ast
 
 import core.*
 import Types.*, Contexts.*, Constants.*, Names.*, Flags.*
-import TypeApplications.*
 import dotty.tools.dotc.typer.ProtoTypes
 import Symbols.*, StdNames.*, Trees.*
 import util.{Property, SourceFile, NoSource}

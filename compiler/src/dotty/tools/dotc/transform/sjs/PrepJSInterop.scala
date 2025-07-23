@@ -20,7 +20,6 @@ import StdNames.*
 import Symbols.*
 
 import Types.*
-import TypeApplications.*
 
 import JSSymUtils.*
 

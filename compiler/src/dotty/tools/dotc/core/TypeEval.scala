@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Types.*, Contexts.*, Symbols.*, Constants.*, Decorators.*
-import TypeApplications.*
 import config.Printers.typr
 import reporting.trace
 import StdNames.tpnme

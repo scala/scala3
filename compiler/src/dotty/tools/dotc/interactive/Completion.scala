@@ -19,7 +19,6 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
-import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.typer.Implicits.SearchSuccess
 import dotty.tools.dotc.typer.Inferencing

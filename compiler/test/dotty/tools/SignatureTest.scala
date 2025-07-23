@@ -12,7 +12,6 @@ import dotc.core.Flags._
 import dotc.core.Phases._
 import dotc.core.Names._
 import dotc.core.Types._
-import dotc.core.TypeApplications.*
 import dotc.core.Symbols._
 import dotc.core.StdNames._
 import dotc.core.Signature

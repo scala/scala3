@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types.*, Contexts.*, Flags.*, Symbols.*, Annotations.*
-import TypeApplications.*
+import TypeApplications.TypeParamInfo
 import Decorators.*
 
 object Variances {

@@ -9,7 +9,6 @@ import core.SymDenotations.*
 import core.Contexts.*
 import core.Symbols.*
 import core.Types.*
-import core.TypeApplications.*
 import core.Flags.*
 import core.StdNames.*
 import core.NameKinds.{DocArtifactName, OuterSelectName}

@@ -7,7 +7,6 @@ import typer.ProtoTypes
 import core.*
 import Scopes.newScope
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*
-import TypeApplications.*
 import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
 import Decorators.*, DenotTransformers.*
 import collection.{immutable, mutable}

@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Mode.GadtConstraintInference
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.util.optional

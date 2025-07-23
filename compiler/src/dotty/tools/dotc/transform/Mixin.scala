@@ -10,7 +10,6 @@ import Flags.*
 import Symbols.*
 import SymDenotations.*
 import Types.*
-import TypeApplications.*
 import Decorators.*
 import DenotTransformers.*
 import StdNames.*

@@ -5,7 +5,6 @@ package transform
 import core.*
 import StdNames.nme
 import Types.*
-import TypeApplications.*
 import transform.MegaPhase.*
 import Flags.*
 import Contexts.*

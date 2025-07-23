@@ -5,7 +5,6 @@ package reporting
 import core.*
 import Contexts.*
 import Decorators.*, Symbols.*, Names.*, NameOps.*, Types.*, Flags.*, Phases.*
-import TypeApplications.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import NameKinds.{WildcardParamName, ContextFunctionParamName}

@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
-import TypeApplications.*
 import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}

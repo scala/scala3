@@ -4,7 +4,6 @@ package transform
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, Decorators.*, Flags.*, Scopes.*, Phases.*
-import TypeApplications.*
 import DenotTransformers.*
 import ast.untpd
 import collection.{mutable, immutable}

@@ -4,7 +4,6 @@ package transform
 
 import core.*
 import Flags.*, Symbols.*, Contexts.*, Scopes.*, Decorators.*, Types.Type
-import TypeApplications.*
 import NameKinds.DefaultGetterName
 import NullOpsDecorator.*
 import collection.immutable.BitSet

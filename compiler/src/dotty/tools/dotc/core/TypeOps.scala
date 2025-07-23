@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
-import TypeApplications.*
 import SymDenotations.*
 import util.Spans.*
 import util.Stats

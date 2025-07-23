@@ -4,7 +4,6 @@ package core
 
 import TypeErasure.ErasedValueType
 import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*, SymDenotations.*
-import TypeApplications.*
 import Names.{Name, TermName}
 import Constants.Constant
 
