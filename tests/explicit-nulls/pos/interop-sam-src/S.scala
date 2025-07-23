@@ -7,10 +7,14 @@ def m = {
 
   j.g1(f1)
   j.g1((_: String | Null) => null)
+  j.g1(_ => null)
+  j.g1(x => if (x == "") null else null)
   j.g1(null)
 
   j.g2(f2)
   j.g2((_: Int) => ())
+  j.g2(_ => ())
+  j.g2(x => if (x == 1) () else ())
   j.g2(null)
 
   j.h1(f1)
