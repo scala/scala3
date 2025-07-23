@@ -114,4 +114,4 @@
 39 |    val next: () => Unit = cur.head   // error
    |                           ^^^^^^^^
    |                           Local reach capability xs* leaks into capture scope of method runAll2.
-   |                           To allow this, the parameter xs should be declared with a @use annotation
+   |                           You could try to abstract the capabilities referred to by xs* in a capset variable.

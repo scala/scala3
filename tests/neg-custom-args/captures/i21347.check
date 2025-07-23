@@ -9,5 +9,5 @@
 11 |  ops.foreach: op => // error
    |               ^
    |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
-   |               To allow this, the parameter ops should be declared with a @use annotation
+   |               You could try to abstract the capabilities referred to by ops* in a capset variable.
 12 |    op()
