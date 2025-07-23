@@ -16,8 +16,10 @@ import scala.language.`2.13`
 import scala.language.implicitConversions
 
 import scala.collection.{mutable, immutable, ArrayOps, StringOps}, immutable.WrappedString
-import scala.annotation.{elidable, implicitNotFound}, elidable.ASSERTION
+import scala.annotation.{elidable, experimental, implicitNotFound, publicInBinary, targetName }, elidable.ASSERTION
 import scala.annotation.meta.{ companionClass, companionMethod }
+import scala.annotation.internal.{ RuntimeChecked }
+import scala.compiletime.summonFrom
 
 /** The `Predef` object provides definitions that are accessible in all Scala
  *  compilation units without explicit qualification.
@@ -137,6 +139,23 @@ object Predef extends LowPriorityImplicits {
    */
   @inline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
 
+  /**
+   * Retrieve the single value of a type with a unique inhabitant.
+   *
+   * @example {{{
+   * object Foo
+   * val foo = valueOf[Foo.type]
+   * // foo is Foo.type = Foo
+   *
+   * val bar = valueOf[23]
+   * // bar is 23.type = 23
+   * }}}
+   * @group utilities
+   */
+  inline def valueOf[T]: T = summonFrom {
+    case ev: ValueOf[T] => ev.value
+  }
+
   /** The `String` type in Scala has all the methods of the underlying
    *  [[java.lang.String]], of which it is just an alias.
    *
@@ -218,6 +237,13 @@ object Predef extends LowPriorityImplicits {
    */
   @inline def implicitly[T](implicit e: T): T = e // TODO: when dependent method types are on by default, give this result type `e.type`, so that inliner has better chance of knowing which method to inline in calls like `implicitly[MatchingStrategy[Option]].zero`
 
+  /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
+   *
+   *  @tparam T the type of the value to be summoned
+   *  @return the given value typed: the provided type parameter
+   */
+  transparent inline def summon[T](using x: T): x.type = x
+
   /** Used to mark code blocks as being expressions, instead of being taken as part of anonymous classes and the like.
    *  This is just a different name for [[identity]].
    *
@@ -249,7 +275,26 @@ object Predef extends LowPriorityImplicits {
    */
   @inline def locally[T](@deprecatedName("x") x: T): T = x
 
-  // assertions ---------------------------------------------------------
+  // ==============================================================================================
+  // ========================================= ASSERTIONS =========================================
+  // ==============================================================================================
+
+  /* In Scala 3, `assert` are methods that are `transparent` and `inline`.
+     In Scala 2, `assert` are methods that are elidable, inlinable by the optimizer
+     For scala 2 code to be able to run with the scala 3 library in the classpath
+     (following our own compatibility policies), we will need the `assert` methods
+     to be available at runtime.
+     To achieve this, we keep the Scala 3 signature publicly available.
+     We rely on the fact that it is `inline` and will not be visible in the bytecode.
+     To add the required Scala 2 ones, we define the `scala2Assert`, we use: 
+      - `@targetName` to swap the name in the generated code to `assert` 
+      - `@publicInBinary` to make it available during runtime.
+     As such, we would successfully hijack the definitions of `assert` such as:
+      - At compile time, we would have the definitions of `assert`
+      - At runtime, the definitions of `scala2Assert` as `assert`  
+    NOTE: Tasty-Reader in Scala 2 will have to learn about this swapping if we are to
+    allow loading the full Scala 3 library by it.
+    */
 
   /** Tests an expression, throwing an `AssertionError` if false.
    *  Calls to this method will not be generated if `-Xelide-below`
@@ -259,8 +304,8 @@ object Predef extends LowPriorityImplicits {
    *  @param assertion   the expression to test
    *  @group assertions
    */
-  @elidable(ASSERTION)
-  def assert(assertion: Boolean): Unit = {
+  @elidable(ASSERTION) @publicInBinary
+  @targetName("assert") private[scala] def scala2Assert(assertion: Boolean): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed")
   }
@@ -274,11 +319,21 @@ object Predef extends LowPriorityImplicits {
    *  @param message     a String to include in the failure message
    *  @group assertions
    */
-  @elidable(ASSERTION) @inline
-  final def assert(assertion: Boolean, message: => Any): Unit = {
+  @elidable(ASSERTION) @inline @publicInBinary
+  @targetName("assert") private[scala] final def scala2Assert(assertion: Boolean, message: => Any): Unit = {
     if (!assertion)
       throw new java.lang.AssertionError("assertion failed: "+ message)
   }
+
+  transparent inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
+
+  transparent inline def assert(inline assertion: Boolean): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed()
+
+  // ==============================================================================================
+  // ======================================== ASSUMPTIONS =========================================
+  // ==============================================================================================
 
   /** Tests an expression, throwing an `AssertionError` if false.
    *  This method differs from assert only in the intent expressed:
@@ -509,6 +564,67 @@ object Predef extends LowPriorityImplicits {
    */
   // $ to avoid accidental shadowing (e.g. scala/bug#7788)
   implicit def $conforms[A]: A => A = <:<.refl
+
+  // Extension methods for working with explicit nulls
+
+  /** Strips away the nullability from a value. Note that `.nn` performs a checked cast,
+   *  so if invoked on a `null` value it will throw an `NullPointerException`.
+   *  @example {{{
+   *  val s1: String | Null = "hello"
+   *  val s2: String = s1.nn
+   *
+   *  val s3: String | Null = null
+   *  val s4: String = s3.nn // throw NullPointerException
+   *  }}}
+   */
+  extension [T](x: T | Null) inline def nn: x.type & T =
+    if x.asInstanceOf[Any] == null then scala.runtime.Scala3RunTime.nnFail()
+    x.asInstanceOf[x.type & T]
+
+  extension (inline x: AnyRef | Null)
+    /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
+     *  using `eq` rather than only `==`. This is needed because `Null` no longer has
+     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
+    inline infix def eq(inline y: AnyRef | Null): Boolean =
+      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+    /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
+     *  using `ne` rather than only `!=`. This is needed because `Null` no longer has
+     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
+    inline infix def ne(inline y: AnyRef | Null): Boolean =
+      !(x eq y)
+
+  extension (opt: Option.type)
+    @experimental
+    inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
+
+  /** A type supporting Self-based type classes.
+   *
+   *    A is TC
+   *
+   *  expands to
+   *
+   *    TC { type Self = A }
+   *
+   *  which is what is needed for a context bound `[A: TC]`.
+   */
+  @experimental
+  infix type is[A <: AnyKind, B <: Any{type Self <: AnyKind}] = B { type Self = A }
+
+  extension [T](x: T)
+    /**Asserts that a term should be exempt from static checks that can be reliably checked at runtime.
+     * @example {{{
+     * val xs: Option[Int] = Option(1)
+     * xs.runtimeChecked match
+     *    case Some(x) => x // `Some(_)` can be checked at runtime, so no warning
+     * }}}
+     * @example {{{
+     * val xs: List[Int] = List(1,2,3)
+     * val y :: ys = xs.runtimeChecked // `_ :: _` can be checked at runtime, so no warning
+     * }}}
+     */
+    @experimental
+    inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
+
 }
 
 /** The `LowPriorityImplicits` class provides implicit values that
