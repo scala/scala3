@@ -24,6 +24,8 @@ import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import dotty.tools.sbtplugin.ScalaLibraryPlugin
+import dotty.tools.sbtplugin.DottyJSPlugin
+import dotty.tools.sbtplugin.DottyJSPlugin.autoImport._
 
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
@@ -39,58 +41,6 @@ import sbttastymima.TastyMiMaPlugin.autoImport._
 import scala.util.Properties.isJavaAtLeast
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
-import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
-
-object DottyJSPlugin extends AutoPlugin {
-  import Build._
-
-  object autoImport {
-    val switchToESModules: StandardConfig => StandardConfig =
-      config => config.withModuleKind(ModuleKind.ESModule)
-  }
-
-  val writePackageJSON = taskKey[Unit](
-      "Write package.json to configure module type for Node.js")
-
-  override def requires: Plugins = ScalaJSPlugin
-
-  override def projectSettings: Seq[Setting[_]] = Def.settings(
-    commonBootstrappedSettings,
-
-    /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
-     * Instead, in this build, we use `.dependsOn` relationships to depend on
-     * the appropriate, locally-defined, scala3-library-bootstrappedJS.
-     */
-    libraryDependencies ~= {
-      _.filter(!_.name.startsWith("scala3-library_sjs1"))
-    },
-
-    // Replace the JVM JUnit dependency by the Scala.js one
-    libraryDependencies ~= {
-      _.filter(!_.name.startsWith("junit-interface"))
-    },
-    libraryDependencies +=
-      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
-
-    // Typecheck the Scala.js IR found on the classpath
-    scalaJSLinkerConfig ~= (_.withCheckIR(true)),
-
-    Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
-    Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,
-
-    writePackageJSON := {
-      val packageType = scalaJSLinkerConfig.value.moduleKind match {
-        case ModuleKind.NoModule       => "commonjs"
-        case ModuleKind.CommonJSModule => "commonjs"
-        case ModuleKind.ESModule       => "module"
-      }
-
-      val path = target.value / "package.json"
-
-      IO.write(path, s"""{"type": "$packageType"}\n""")
-    },
-  )
-}
 
 object Build {
   import ScaladocConfigs._
@@ -1608,6 +1558,7 @@ object Build {
     asDottyLibrary(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     settings(
+      commonBootstrappedSettings,
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       // NOTE: Until 3.8.0, we pin the source files to be used by the scala3 library
@@ -2055,6 +2006,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      commonBootstrappedSettings,
       // Required to run Scala.js tests.
       Test / fork := false,
 
@@ -2072,6 +2024,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      commonBootstrappedSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation"),
 
@@ -2315,12 +2268,15 @@ object Build {
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
-    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
+    settings(
+      commonBootstrappedSettings,
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
+      commonBootstrappedSettings,
       scalaJSUseMainModuleInitializer := true,
       Test / fork := false
     )
@@ -2329,6 +2285,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
+      commonBootstrappedSettings,
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0")
