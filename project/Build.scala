@@ -1417,7 +1417,7 @@ object Build {
   // =================================== SCALA STANDARD LIBRARY ===================================
   // ==============================================================================================
 
-  /* Configuration of the org.scala-lang:scala-library:*.**.**-nonboostrapped project */
+  /* Configuration of the org.scala-lang:scala-library:*.**.**-nonbootstrapped project */
   lazy val `scala-library-nonbootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(
@@ -1450,7 +1450,42 @@ object Build {
       target := target.value / "scala-library-nonbootstrapped",
     )
 
-  /* Configuration of the org.scala-lang:scala-library:*.**.**-boostrapped project */
+  /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
+  lazy val `scala3-library-nonbootstrapped` = project.in(file("library"))
+    .dependsOn(`scala-library-nonbootstrapped`)
+    .settings(
+      name          := "scala3-library-nonbootstrapped",
+      moduleName    := "scala3-library",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
+      // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
+      managedScalaInstance := false,
+      // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-nonbootstrapped`
+      Compile / sources := Seq(),
+      Compile / resources := Seq(),
+      Test / sources := Seq(),
+      Test / resources := Seq(),
+      // Bridge the common task to call the ones of the actual library project
+      Compile / compile := (`scala-library-nonbootstrapped` / Compile / compile).value,
+      Compile / doc     := (`scala-library-nonbootstrapped` / Compile / doc).value,
+      Compile / run     := (`scala-library-nonbootstrapped` / Compile / run).evaluated,
+      Test / compile := (`scala-library-nonbootstrapped` / Test / compile).value,
+      Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
+      Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
+      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-library-nonbootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(
@@ -1516,6 +1551,43 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge` / Compile / packageBin).value)
       },
+    )
+
+  /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
+  lazy val `scala3-library-bootstrapped-new` = project.in(file("library"))
+    .dependsOn(`scala-library-bootstrapped`)
+    .settings(
+      name          := "scala3-library-bootstrapped",
+      moduleName    := "scala3-library",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
+      crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
+      // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
+      autoScalaLibrary := false,
+      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
+      managedScalaInstance := false,
+      // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-bootstrapped`
+      Compile / sources := Seq(),
+      Compile / resources := Seq(),
+      Test / sources := Seq(),
+      Test / resources := Seq(),
+      // Bridge the common task to call the ones of the actual library project
+      Compile / compile := (`scala-library-bootstrapped` / Compile / compile).value,
+      Compile / doc     := (`scala-library-bootstrapped` / Compile / doc).value,
+      Compile / run     := (`scala-library-bootstrapped` / Compile / run).evaluated,
+      Test / compile := (`scala-library-bootstrapped` / Test / compile).value,
+      Test / doc     := (`scala-library-bootstrapped` / Test / doc).value,
+      Test / run     := (`scala-library-bootstrapped` / Test / run).evaluated,
+      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-library-bootstrapped",
     )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
