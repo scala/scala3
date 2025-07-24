@@ -693,9 +693,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  }
        *  ```
        *
-       *  @param flags extra flags to with which the symbol should be constructed. Can be `Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | JavaStatic | Synthetic | Artifact`
+       *  @param flags extra flags to with which the symbol should be constructed. Can be `Final | Implicit | Lazy | Mutable | Given | Synthetic`
        */
-      // Keep: `flags` doc aligned with QuotesImpl's `validValFlags`
+      // Keep: `flags` doc aligned with QuotesImpl's `validValInLetFlags`
       def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`

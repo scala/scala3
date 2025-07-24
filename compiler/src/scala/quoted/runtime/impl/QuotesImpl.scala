@@ -370,7 +370,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
       def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term =
-        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValFlags) 
+        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValInLetFlags)
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs, flags)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
         Block(List(vdef), body(ref))
@@ -3256,7 +3256,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private[QuotesImpl] def validMethodFlags: Flags = Private | Protected | Override | Deferred | Final | Method | Implicit | Given | Local | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be allowed: Synthetic | ExtensionMethod | Exported | Erased | Infix | Invisible
       // Keep: aligned with Quotes's `newVal` doc
       private[QuotesImpl] def validValFlags: Flags = Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be added: Synthetic | Erased | Invisible
-
+      // Keep: aligned with Quotes's `let` doc
+      private[QuotesImpl] def validValInLetFlags: Flags = Final | Implicit | Lazy | Mutable | Given | Synthetic
       // Keep: aligned with Quotes's `newBind` doc
       private[QuotesImpl] def validBindFlags: Flags = Case // Flags that could be allowed: Implicit | Given | Erased
 
