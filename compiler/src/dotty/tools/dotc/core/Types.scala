@@ -2683,7 +2683,7 @@ object Types extends TypeUtils {
             if (tparams.head.eq(tparam))
               return args.head match {
                 case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
-                case arg => arg
+                case arg => arg.boxedUnlessFun(tycon)
               }
             tparams = tparams.tail
             args = args.tail
