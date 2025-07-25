@@ -592,7 +592,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     */
   // optimisations are not for speed, but for functionality
   // see tickets #153, #498, #2147, and corresponding tests in run/ (as well as run/stream_flatmap_odds.scala)
-  override def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} =
+  override def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f*} =
     if (knownIsEmpty) LazyListIterable.empty
     else LazyListIterable.flatMapImpl(this, f)
 
@@ -600,7 +600,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     *
     * $preservesLaziness
     */
-  override def flatten[B](implicit asIterable: A -> IterableOnce[B]): LazyListIterable[B]^{this} = flatMap(asIterable)
+  override def flatten[B](implicit asIterable: A -> IterableOnce[B]): LazyListIterable[B]^{this, asIterable*} = flatMap(asIterable)
 
   /** @inheritdoc
     *
@@ -1061,11 +1061,11 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     }
   }
 
-  private def flatMapImpl[A, B](ll: LazyListIterable[A]^, f: A => IterableOnce[B]^): LazyListIterable[B]^{ll, f} = {
+  private def flatMapImpl[A, B](ll: LazyListIterable[A]^, f: A => IterableOnce[B]^): LazyListIterable[B]^{ll, f*} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
     var restRef: LazyListIterable[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
-      var it: Iterator[B]^{ll, f} = null
+      var it: Iterator[B]^{ll, f*} = null
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
@@ -1185,7 +1185,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   /** Creates a State from an Iterator, with another State appended after the Iterator
     * is empty.
     */
-  private def stateFromIteratorConcatSuffix[A](it: Iterator[A]^)(suffix: => State[A]^): State[A]^{it, suffix} =
+  private def stateFromIteratorConcatSuffix[A](it: Iterator[A]^)(suffix: => State[A]^): State[A]^{it, suffix*} =
     if (it.hasNext) sCons(it.next(), newLL(stateFromIteratorConcatSuffix(it)(suffix)))
     else suffix
 
@@ -1307,7 +1307,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     extends collection.WithFilter[A, LazyListIterable] {
     private[this] val filtered = lazyList.filter(p)
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
-    def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
+    def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f*} = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
     def withFilter(q: A => Boolean): collection.WithFilter[A, LazyListIterable]^{this, q} = new WithFilter(filtered, q)
   }
@@ -1353,7 +1353,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     final class DeferredState[A] {
       private[this] var _state: (() => State[A]^) @uncheckedCaptures = _
 
-      def eval(): State[A]^ = {
+      def eval(): State[A]^{this} = {
         val state = _state
         if (state == null) throw new IllegalStateException("uninitialized")
         state()
