@@ -3652,3 +3652,34 @@ final class IllegalErasedDef(sym: Symbol)(using Context) extends TypeMsg(Illegal
   override protected def explain(using Context): String =
     "Only non-lazy immutable values can be `erased`"
 end IllegalErasedDef
+
+class ConcreteClassHasUnimplementedMethods(clazz: ClassSymbol, missingMethods: List[dotty.tools.dotc.core.Symbols.Symbol], val actions: List[CodeAction])(using Context)
+extends Message(ConcreteClassHasUnimplementedMethodsID): 
+
+  def kind = MessageKind.Declaration
+
+  def renderMissingMethods: List[String] = {
+    // Grouping missing methods by the declaring class
+    val regrouped = missingMethods.groupBy(_.owner).toList
+    def membersStrings(members: List[Symbol]) =
+      members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl).map(m => s"- $m")
+
+    (regrouped.sortBy(_._1.name.toString()) map {
+      case (owner, members) =>
+        s"""Members declared in ${owner.fullName}:
+        |${membersStrings(members).mkString("\n")}"""
+    })
+  }
+
+  def msg(using Context) = missingMethods match 
+    case single :: Nil => 
+      def showDclAndLocation(sym: Symbol) = s"${sym.showDcl} in ${sym.owner.showLocated}"
+      s"$clazz needs to be abstract, since ${showDclAndLocation(single)} is not defined"
+    case _ => 
+      s"""$clazz needs to be abstract, since it has ${missingMethods.size} unimplemented members.
+      |
+      |${renderMissingMethods.mkString("\n")}
+      |""".stripMargin
+  
+  def explain(using Context) = ""
+  override def actions(using Context) = this.actions

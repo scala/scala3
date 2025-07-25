@@ -179,6 +179,148 @@ class CodeActionTest extends DottyTest:
       ctxx = ctxx
       )
 
+  @Test def insertMissingSingleMethodToNonEmptyClass =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def bbb = 2
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def bbb = 2
+          |  def name: String = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodsFromMultipleSources =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal with Car {
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal with Car {
+          |  def name: String = ???
+          |  def wheels: Int = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodIntoEmptyClassWithBrackets =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def name: String = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodIntoEmptyClassWithoutBrackets =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def name: String = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodIntoNonEmptyClassWithBraclessSyntax =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal:
+          |  def bbb = 2
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal:
+          |  def bbb = 2
+          |  def name: String = ???
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodsIntoMultilineClassDefinition =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal 
+          |               with Car {
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal 
+          |               with Car {
+          |  def name: String = ???
+          |  def wheels: Int = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =
