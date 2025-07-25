@@ -267,8 +267,14 @@ object PatternMatcher {
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
           args match {
             case arg :: args1 =>
-              val sym :: syms1 = syms: @unchecked
-              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
+              if (args.length != syms.length)
+                report.error(UnapplyInvalidNumberOfArguments(tree, tree.tpe :: Nil), arg.srcPos)
+                // Generate a throwaway but type-correct plan.
+                // This plan will never execute because it'll be guarded by a `NonNullTest`.
+                ResultPlan(tpd.Throw(tpd.nullLiteral))
+              else
+                val sym :: syms1 = syms: @unchecked
+                patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
             case Nil =>
               assert(syms.isEmpty)
               onSuccess
