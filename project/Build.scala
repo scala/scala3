@@ -1540,6 +1540,54 @@ object Build {
       target := target.value / "scala3-library-bootstrapped",
     )
 
+  // ==============================================================================================
+  // ===================================== TASTY CORE LIBRARY =====================================
+  // ==============================================================================================
+
+  /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-nonbootstrapped project */
+  lazy val `tasty-core-nonbootstrapped` = project.in(file("tasty"))
+    .dependsOn(`scala3-library-nonbootstrapped`)
+    .settings(
+      name          := "tasty-core-nonbootstrapped",
+      moduleName    := "tasty-core",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:tasty-core has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Only publish compilation artifacts, no test artifacts
+      Compile / publishArtifact := true,
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "tasty-core-nonbootstrapped",
+      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+      // as a workaround, I build it manually by only adding the compiler
+      scalaInstance := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" % 
+          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          Array.empty,
+          comp.toSeq,
+          Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value,
+        )},
+    )
+
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
     case Bootstrapped => `scala3-library-bootstrapped`
