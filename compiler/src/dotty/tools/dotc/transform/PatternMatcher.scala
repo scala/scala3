@@ -343,7 +343,7 @@ object PatternMatcher {
               receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
               Literal(Constant(i)))
 
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
+        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && args.length != 1)
           def tupleSel(sym: Symbol) =
             // If scrutinee is a named tuple, cast to underlying tuple, so that we can
             // continue to select with _1, _2, ...
