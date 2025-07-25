@@ -1,3 +1,4 @@
+//> using options -explain
 object assignments {
 
   var a = Array(1, 2, 3)
@@ -13,9 +14,8 @@ object assignments {
     x = x + 1
     x *= 2
 
-    x_= = 2  // error should give missing arguments
+    x_= = 2  // error should give missing arguments, was: Reassignment to val x_=
   }
-
   var c = new C
   import c._ // error should give: prefix is not stable
   x = x + 1
