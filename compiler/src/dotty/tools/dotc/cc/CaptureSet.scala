@@ -692,6 +692,9 @@ object CaptureSet:
      */
     private[CaptureSet] var rootLimit: Symbol | Null = null
 
+    def isBadRoot(elem: Capability)(using Context): Boolean =
+      isBadRoot(rootLimit, elem)
+
     private var myClassifier: ClassSymbol = defn.AnyClass
     def classifier: ClassSymbol = myClassifier
 
@@ -749,7 +752,7 @@ object CaptureSet:
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
         includeElem(elem)
-        if isBadRoot(rootLimit, elem) then
+        if isBadRoot(elem) then
           rootAddedHandler()
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
@@ -778,7 +781,7 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    private def levelOK(elem: Capability)(using Context): Boolean = elem match
+    def levelOK(elem: Capability)(using Context): Boolean = elem match
       case _: FreshCap =>
         !level.isDefined
         || ccState.symLevel(elem.ccOwner) <= level
@@ -1246,7 +1249,13 @@ object CaptureSet:
    *  when a subsumes check decides that an existential variable `ex` cannot be
    *  instantiated to the other capability `other`.
    */
-  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote
+  case class ExistentialSubsumesFailure(val ex: ResultCap, val other: Capability) extends ErrorNote:
+    def description(using Context): String =
+      def reason =
+        if other.isTerminalCapability then ""
+        else " since that capability is not a `Sharable` capability"
+      i"""the existential capture root in ${ex.originalBinder.resType}
+         |cannot subsume the capability $other$reason."""
 
   /** Failure indicating that `elem` cannot be included in `cs` */
   case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false) extends ErrorNote, Showable:
@@ -1257,6 +1266,29 @@ object CaptureSet:
       val res = IncludeFailure(cs, elem, levelError)
       res.myTrace = cs1 :: this.myTrace
       res
+
+    def description(using Context): String = cs match
+      case cs: Var =>
+        if !cs.levelOK(elem) then
+          val levelStr = elem match
+            case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
+            case _ => ""
+          i"""capability ${elem}$levelStr
+              |cannot be included in outer capture set $cs"""
+        else if !elem.tryClassifyAs(cs.classifier) then
+          i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
+              |cannot be included in capture set $cs of ${cs.classifier} elements"""
+        else if cs.isBadRoot(elem) then
+          elem match
+            case elem: FreshCap =>
+              i"""local capability $elem created in ${elem.ccOwner}
+                 |cannot be included in outer capture set $cs"""
+            case _ =>
+              i"universal capability $elem cannot be included in capture set $cs"
+        else
+          i"capability $elem cannot be included in capture set $cs"
+      case _ =>
+        i"capability $elem is not included in capture set $cs"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
@@ -1274,7 +1306,11 @@ object CaptureSet:
    *  @param  lo    the lower type of the orginal type comparison, or NoType if not known
    *  @param  hi    the upper type of the orginal type comparison, or NoType if not known
    */
-  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends ErrorNote
+  case class MutAdaptFailure(cs: CaptureSet, lo: Type = NoType, hi: Type = NoType) extends ErrorNote:
+    def description(using Context): String =
+      def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
+      i"""$cs is an exclusive capture set ${ofType(hi)},
+          |it cannot subsume a read-only capture set ${ofType(lo)}."""
 
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails

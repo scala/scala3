@@ -7,6 +7,8 @@
   |             where:    ^  refers to a fresh root capability in the type of parameter io
   |                       ^² refers to a fresh root capability in the type of variable myIO
   |
+  |             Note that capability cap is not included in capture set {cap}.
+  |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:11:13 ---------------------------------------
 11 |      myIO = io2  // error, level mismatch
@@ -17,6 +19,8 @@
    |             where:    ^  refers to a fresh root capability in the type of parameter io2
    |                       ^² refers to a fresh root capability in the type of variable myIO
    |
+   |             Note that capability cap is not included in capture set {cap}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:12:12 ---------------------------------------
 12 |    withIO: io3 =>  // error
@@ -26,6 +30,8 @@
    |
    |where:    => refers to a fresh root capability created in anonymous function of type (io1: IO^): Unit when checking argument to parameter op of method withIO
    |          ^  refers to the universal root capability
+   |
+   |Note that capability cap is not included in capture set {cap}.
 13 |      myIO = io3
    |
    | longer explanation available when compiling with `-explain`

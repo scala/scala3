@@ -14,6 +14,8 @@
   |                         where:    ^  refers to the universal root capability
   |                                   ^² refers to a root capability associated with the result type of (x: C^): C^²
   |
+  |                         Note that capability <cap of (x: C^): C^> is not included in capture set {}.
+  |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:12:20 --------------------------
 12 |  val _:  C^ -> C = x2 // error
@@ -22,6 +24,8 @@
    |                    Required: C^ -> C
    |
    |                    where:    ^ refers to the universal root capability
+   |
+   |                    Note that capability x2* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:15:30 --------------------------
@@ -33,6 +37,8 @@
    |                        where:    ^  refers to the universal root capability
    |                                  ^² refers to a root capability associated with the result type of (x: C^): C^²
    |
+   |                        Note that capability <cap of (x: C^): C^> is not included in capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:18:25 --------------------------
 18 |  val _: A^ -> C^ -> C = x4 // error
@@ -41,6 +47,8 @@
    |                         Required: A^ -> C^ -> C
    |
    |                         where:    ^ refers to the universal root capability
+   |
+   |                         Note that capability x4* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:21:30 --------------------------
@@ -52,6 +60,8 @@
    |                        where:    ^  refers to the universal root capability
    |                                  ^² refers to a root capability associated with the result type of (x: C^): C^²
    |
+   |                        Note that capability <cap of (x: C^): C^> is not included in capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:24:30 --------------------------
 24 |  val _: A^ -> (x: C^) => C = x6 // error
@@ -62,6 +72,8 @@
    |                        where:    => refers to a fresh root capability in the type of value _$6
    |                                  ^  refers to the universal root capability
    |                                  ^² refers to a root capability associated with the result type of (x: C^): C^²
+   |
+   |                        Note that capability <cap of (x: C^): C^> is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:27:25 --------------------------
@@ -75,6 +87,8 @@
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
+   |                       Note that capability cap is not included in capture set {cap}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:30:20 --------------------------
 30 |  val _:  C^ => C = y2 // error
@@ -84,6 +98,8 @@
    |
    |                    where:    => refers to a fresh root capability in the type of value _$8
    |                              ^  refers to the universal root capability
+   |
+   |                    Note that capability y2* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:33:30 --------------------------
@@ -97,6 +113,8 @@
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
+   |                       Note that capability <cap of (x: C^): C^> is not included in capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:36:25 --------------------------
 36 |  val _: A^ => C^ => C = y4 // error
@@ -107,6 +125,8 @@
    |                         where:    =>  refers to a fresh root capability in the type of value _$10
    |                                   =>² refers to a fresh root capability in the type of value _$10
    |                                   ^   refers to the universal root capability
+   |
+   |                         Note that capability y4* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:39:30 --------------------------
@@ -120,6 +140,8 @@
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
    |
+   |                       Note that capability cap is not included in capture set {cap}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:42:30 --------------------------
 42 |  val _: A^ => (x: C^) => C = y6 // error
@@ -131,5 +153,7 @@
    |                                 =>² refers to a fresh root capability in the type of value _$12
    |                                 ^   refers to the universal root capability
    |                                 ^²  refers to a root capability associated with the result type of (x: C^): C^²
+   |
+   |                       Note that capability <cap of (x: C^): C^> is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

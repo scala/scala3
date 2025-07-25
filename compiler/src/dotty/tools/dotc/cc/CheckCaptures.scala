@@ -1278,37 +1278,11 @@ class CheckCaptures extends Recheck, SymTransformer:
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
     private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
-      val printableNotes = notes.filter:
-        case IncludeFailure(_, _, true) => true
-        case _: ExistentialSubsumesFailure | _: MutAdaptFailure => true
-        case _ => false
-      if printableNotes.isEmpty then NothingToAdd
+      if notes.isEmpty then NothingToAdd
       else new Addenda:
-        override def toAdd(using Context) = printableNotes.map: note =>
-          val msg = note match
-            case IncludeFailure(cs, ref, _) =>
-              if ref.core.isCapOrFresh then
-                i"""the universal capability $ref
-                   |cannot be included in capture set $cs"""
-              else
-                val levelStr = ref match
-                  case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-                  case _ => ""
-                i"""reference ${ref}$levelStr
-                    |cannot be included in outer capture set $cs"""
-            case ExistentialSubsumesFailure(ex, other) =>
-              def since =
-                if other.isTerminalCapability then ""
-                else " since that capability is not a `Sharable` capability"
-              i"""the existential capture root in ${ex.originalBinder.resType}
-                 |cannot subsume the capability $other$since"""
-            case MutAdaptFailure(cs, lo, hi) =>
-              def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
-              i"""$cs is an exclusive capture set ${ofType(hi)},
-                 |it cannot subsume a read-only capture set ${ofType(lo)}."""
+        override def toAdd(using Context) = notes.map: note =>
           i"""
-             |Note that ${msg.toString}"""
-
+             |Note that ${note.description}."""
 
     /** Addendas for error messages that show where we have under-approximated by
      *  mapping a a capability in contravariant position to the empty set because

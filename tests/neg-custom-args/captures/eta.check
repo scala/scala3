@@ -3,6 +3,7 @@
   |         ^
   |         Found:    (g : () -> A)
   |         Required: () -> Proc^{f}
+  |         Note that capability (f : Proc^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/eta.scala:6:14 -------------------------------------------
@@ -10,5 +11,6 @@
   |              ^^^^^^^
   |              Found:    () ->{f} () ->{f} Unit
   |              Required: () -> () ->? Unit
+  |              Note that capability (f : Proc^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`

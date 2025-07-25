@@ -6,4 +6,6 @@
   |
   |             where:    ^ refers to the universal root capability
   |
+  |             Note that capability cap is not included in capture set {}.
+  |
   | longer explanation available when compiling with `-explain`

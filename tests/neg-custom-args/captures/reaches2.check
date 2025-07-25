@@ -3,5 +3,6 @@
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |          Found:    (x$1: (A^? ->{ps*} A^?, A^? ->{ps*} A^?)^?) ->{ps*} A^? ->{ps*} A^?
    |          Required: ((A ->{ps*} A, A ->{ps*} A)) -> A^? ->? A^?
+   |          Note that capability ps* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

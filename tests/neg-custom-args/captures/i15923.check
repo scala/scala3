@@ -7,8 +7,8 @@
    |where:    =>  refers to a root capability associated with the result type of (using lcap: scala.caps.Capability^{cap.rd}): Cap^{lcap} => Id[Cap^?]^?
    |          cap is the universal root capability
    |
-   |Note that reference <cap of (x$0: Cap^?): Id[Cap^?]^?>.rd
-   |cannot be included in outer capture set ?
+   |Note that capability <cap of (x$0: Cap^?): Id[Cap^?]^?>.rd
+   |cannot be included in outer capture set ?.
    |
    | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg-custom-args/captures/i15923.scala:21:56 ----------------------------------------------------------

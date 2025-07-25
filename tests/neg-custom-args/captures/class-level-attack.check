@@ -13,4 +13,6 @@
    |
    |                          where:    ^ refers to a fresh root capability in the type of value r
    |
+   |                          Note that capability (x : IO^) is not included in capture set {cap}.
+   |
    | longer explanation available when compiling with `-explain`

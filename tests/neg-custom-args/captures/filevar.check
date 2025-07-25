@@ -7,8 +7,8 @@
    |where:    =>  refers to a root capability associated with the result type of (using l: scala.caps.Capability^{cap.rd}): (f: File^{l}) => Unit
    |          cap is the universal root capability
    |
-   |Note that reference l.type
-   |cannot be included in outer capture set ? of parameter f
+   |Note that capability l.type
+   |cannot be included in outer capture set ? of parameter f.
 16 |    val o = Service()
 17 |    o.file = f
 18 |    o.log

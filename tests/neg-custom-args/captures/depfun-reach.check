@@ -6,6 +6,8 @@
    |
    |where:    => refers to a fresh root capability created in anonymous function of type (): Unit when checking argument to parameter op of method foreach
    |
+   |Note that capability op* cannot be included in capture set {} of value f.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:19:4 ----------------------------------
 19 |    op // error
@@ -16,6 +18,8 @@
    |    where:    =>  refers to a fresh root capability in the type of parameter op
    |              =>² refers to a fresh root capability in the result type of method foo
    |
+   |    Note that capability cap is not included in capture set {cap}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:26:60 ---------------------------------
 26 |  val b: (xs: List[() ->{io} Unit]) => List[() ->{} Unit] = a // error
@@ -25,5 +29,7 @@
    |
    |                                          where:    =>  refers to a fresh root capability in the type of value a
    |                                                    =>² refers to a fresh root capability in the type of value b
+   |
+   |                                          Note that capability cap is not included in capture set {cap}.
    |
    | longer explanation available when compiling with `-explain`

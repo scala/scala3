@@ -9,6 +9,8 @@
   |                                  x  is a value in method test
   |                                  x² is a reference to a value parameter
   |
+  |                        Note that capability <cap of (x: A): B^> is not included in capture set {cap}.
+  |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:9:29 --------------------
 9 |  val z: A -> (x: A) -> B^ = y // error
@@ -18,8 +20,7 @@
   |
   |                             where:    ^ refers to a root capability associated with the result type of (x: A): B^
   |
-  |                             Note that the existential capture root in B^
-  |                             cannot subsume the capability y* since that capability is not a `Sharable` capability
+  |                             Note that capability y* is not included in capture set {<cap of (x: A): B^>}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
@@ -33,6 +34,8 @@
    |                             x  is a value in method test2
    |                             x² is a reference to a value parameter
    |
+   |                   Note that capability <cap of (x: A): B^> is not included in capture set {cap}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:14:24 -------------------
 14 |  val z: (x: A) -> B^ = y // error
@@ -42,7 +45,6 @@
    |
    |                        where:    ^ refers to a root capability associated with the result type of (x: A): B^
    |
-   |                        Note that the existential capture root in B^
-   |                        cannot subsume the capability y* since that capability is not a `Sharable` capability
+   |                        Note that capability y* is not included in capture set {<cap of (x: A): B^>}.
    |
    | longer explanation available when compiling with `-explain`
