@@ -189,7 +189,7 @@ class CodeActionTest extends DottyTest:
         title = "Add .nn",
       expected =
         """val s: String|Null = ???
-          | val t: String = (s).nn""".stripMargin,
+          | val t: String = s.nn""".stripMargin,
       ctxx = ctxx
       )
 

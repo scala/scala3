@@ -300,9 +300,10 @@ extends NotFoundMsg(MissingIdentID) {
 class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
-  private var shouldSuggestNN = false
-  // Ensures that shouldSuggestNN will always be correctly computed before `actions` is called
-  msg
+  private val shouldSuggestNN =
+    if expected.isValueType then
+      found frozen_<:< OrNull(expected)
+    else false
 
   def msg(using Context) =
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -348,7 +349,6 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     val (found2, expected2) =
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
-    if found2 frozen_<:< OrNull(expected) then shouldSuggestNN = true
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
     i"""|Found:    $foundStr
         |Required: $expectedStr${reported.notes}"""
@@ -372,7 +372,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
           val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
           val replacement = tree match
             case a @ Apply(fun, args) => "(" + content + ").nn"
-            case _ => content
+            case _ => content + ".nn"
           List(
             CodeAction(title = """Add .nn""",
             description = None,
