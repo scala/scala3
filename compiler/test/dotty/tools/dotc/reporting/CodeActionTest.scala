@@ -193,6 +193,65 @@ class CodeActionTest extends DottyTest:
       ctxx = ctxx
       )
 
+  @Test def addNN2 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s q s""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = (s q s).nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN3 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s q (s, s)""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = (s q (s, s)).nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN4 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s.q(s, s)""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = (s.q(s, s)).nn""".stripMargin,
+      ctxx = ctxx
+      )
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =

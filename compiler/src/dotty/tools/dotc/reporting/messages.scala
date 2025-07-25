@@ -371,7 +371,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
         case Some(tree) if tree != null =>
           val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
           val replacement = tree match
-            case a @ Apply(fun, args) => "(" + content + ").nn"
+            case Apply(fun, args) => "(" + content + ").nn"
             case _ => content + ".nn"
           List(
             CodeAction(title = """Add .nn""",
