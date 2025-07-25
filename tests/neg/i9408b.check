@@ -1,4 +1,3 @@
-
 -- Migration Warning: tests/neg/i9408b/Test_2.scala:8:20 ---------------------------------------------------------------
 8 |  val length: Int = "abc" // warn
   |                    ^^^^^
