@@ -390,7 +390,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareErasedValueType
       case ConstantType(v2) =>
         tp1 match {
-          case ConstantType(v1) => v1.value == v2.value && recur(v1.tpe, v2.tpe)
+          case ConstantType(v1) => v1 == v2 && recur(v1.tpe, v2.tpe)
           case _ => secondTry
         }
       case tp2: AnyConstantType =>
