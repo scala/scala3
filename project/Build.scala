@@ -2420,7 +2420,7 @@ object Build {
 
   // Published on https://dotty.epfl.ch/ by nightly builds
   // Contains additional internal/contributing docs
-  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for snapshot version of the compiler")
+  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for snapshot release")
 
   // Published on https://docs.scala-lang.org/api/all.html
   val generateStableScala3Documentation  = inputKey[Unit]("Generate documentation for stable release")
