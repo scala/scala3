@@ -187,6 +187,9 @@ case class TastyParser(
 
   private given qctx.type = qctx
 
+  protected var ccFlag: Boolean = false
+  def ccEnabled: Boolean = ccFlag
+
   val intrinsicClassDefs = Set(
     defn.AnyClass,
     defn.MatchableClass,
