@@ -1443,7 +1443,7 @@ object Build {
       moduleName    := "scala-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
@@ -1812,7 +1812,7 @@ object Build {
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions += "-language:experimental.separationChecking" // for separation checking
+      scalacOptions ++= List("-language:experimental.separationChecking", "-source", "3.8") // for @use changes
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
