@@ -3,6 +3,8 @@ package dotty.tools.scaladoc.tasty
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
+import dotty.tools.scaladoc.cc.*
+
 import scala.quoted._
 
 import SymOps._
@@ -464,6 +466,8 @@ trait ClassLikeSupport:
       else if symbol.flags.is(Flags.Contravariant) then "-"
       else ""
 
+    val isCaptureVar = ccEnabled && argument.derivesFromCapSet
+
     val name = symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
     val boundsSignature = argument.rhs.asSignature(classDef, symbol.owner)
@@ -479,7 +483,8 @@ trait ClassLikeSupport:
       variancePrefix,
       normalizedName,
       symbol.dri,
-      signature
+      signature,
+      isCaptureVar,
     )
 
   def parseTypeDef(typeDef: TypeDef, classDef: ClassDef): Member =
@@ -489,11 +494,14 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
+
+    val isCaptureVar = ccEnabled && typeDef.derivesFromCapSet
+
     val (generics, tpeTree) = typeDef.rhs match
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
 
-    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), symbol.isOpaque, generics).asInstanceOf[Kind.Type]
+    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), symbol.isOpaque, generics, isCaptureVar).asInstanceOf[Kind.Type]
     val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
 
@@ -527,8 +535,11 @@ trait ClassLikeSupport:
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
       case _ => symbol.getExtraModifiers()
 
-    mkMember(symbol, kind, sig)(
-      modifiers = modifiers,
+    mkMember(valDef.symbol, kind, sig)(
+      // Due to how capture checking encodes update methods (recycling the mutable flag for methods),
+      // we need to filter out the update modifier here. Otherwise, mutable fields will
+      // be documented as having the update modifier, which is not correct.
+      modifiers = modifiers.filterNot(_ == Modifier.Update),
       deprecated = symbol.isDeprecated(),
       experimental = symbol.isExperimental()
     )
