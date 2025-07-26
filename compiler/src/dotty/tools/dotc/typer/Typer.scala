@@ -54,6 +54,7 @@ import transform.CheckUnused.OriginalName
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
 import dotty.tools.dotc.ast.untpd.Mod
+import dotty.tools.dotc.reporting.Reporter.NoReporter
 
 object Typer {
 
@@ -4357,24 +4358,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
+
+            def doesntContainsWildcards = {
+              val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(NoReporter))
+              val pt1 = pt.deepenProtoTrans(using newCtx)
+              try {
+                !pt1.containsWildcardTypes(using newCtx)
+              } catch {
+                case _: UnhandledError => false
+              }
+            }
             val pt1 = pt.deepenProtoTrans
-            val approxPt = withMode(Mode.TypevarsMissContext):
-              wildApprox(pt1)
-            var formalConstrained = false
-            val tm = new TypeMap:
-              def apply(t: Type): Type = t match
-                case tvar: TypeVar =>
-                  formalConstrained |= ctx.typerState.constraint.contains(tvar) || tvar.instanceOpt.isInstanceOf[TypeVar]
-                  tvar
-                case _ =>
-                  if formalConstrained then t
-                  else mapOver(t)
-            tm(formal)
             if (pt1 `ne` pt)
               && (pt1 ne sharpenedPt)
-              && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
+              && formal.typeSymbol != defn.ClassTagClass
               && !isFullyDefined(formal, ForceDegree.none)
-              && !formalConstrained then
+              && doesntContainsWildcards then
               constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
