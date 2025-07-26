@@ -36,6 +36,18 @@
    |                    Note that capability <cap of (x: A^): B^> is not included in capture set {cap}.
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:12:20 ----------------------------------
+12 |  val _: A^ -> B^ = x => g(x)      // error: g is no longer pure, since it contains the ^ of B
+   |                    ^^^^^^^^^
+   |                    Found:    (x: A^) ->{g} B^{g*}
+   |                    Required: A^ -> B^²
+   |
+   |                    where:    ^  refers to the universal root capability
+   |                              ^² refers to a fresh root capability in the type of value _$5
+   |
+   |                    Note that capability (g : A^ -> B^) is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:13:25 ----------------------------------
 13 |  val _: (x: A^) -> B^ = x => f(x) // error: existential in B cannot subsume `x` since `x` is not shared
    |                         ^^^^^^^^^
@@ -63,35 +75,47 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:17:24 ----------------------------------
 17 |  val _: (x: S) -> B^ = (x: S) => h(x)  // error: eta expansion fails
    |                        ^^^^^^^^^^^^^^
-   |                Found:    (x: S^{cap.rd}) ->? B^{h*}
+   |                Found:    (x: S^{cap.rd}) ->{h} B^{h*}
    |                Required: (x: S^{cap.rd}) -> B^
    |
    |                where:    ^   refers to a root capability associated with the result type of (x: S^{cap.rd}): B^
    |                          cap is the universal root capability
    |
-   |                Note that capability h* is not included in capture set {<cap of (x: S^{cap.rd}): B^{h*}>}.
+   |                Note that capability (h : S -> B^) is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:26:19 ----------------------------------
-26 |  val _: S -> B^ = j               // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:21:23 ----------------------------------
+21 |  val _: (x: S) -> S = (x: S) => h2(x)  // error: eta conversion fails since `h2` is now impure (result type S is a capability)
+   |                       ^^^^^^^^^^^^^^^
+   |             Found:    (x: S^{cap.rd}) ->{h2} S^{h2*.rd}
+   |             Required: (x: S^{cap.rd}) -> S^{cap².rd}
+   |
+   |             where:    cap  is the universal root capability
+   |                       cap² is a root capability associated with the result type of (x: S^{cap.rd}): S^{cap².rd}
+   |
+   |             Note that capability (h2 : S -> S) is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:27:19 ----------------------------------
+27 |  val _: S -> B^ = j               // error
    |                   ^
    |                Found:    (j : (x: S) -> B^)
    |                Required: S^{cap.rd} -> B^²
    |
    |                where:    ^   refers to a root capability associated with the result type of (x: S^{cap.rd}): B^
-   |                          ^²  refers to a fresh root capability in the type of value _$13
+   |                          ^²  refers to a fresh root capability in the type of value _$14
    |                          cap is the universal root capability
    |
    |                Note that capability <cap of (x: S^{cap.rd}): B^> is not included in capture set {cap}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:27:19 ----------------------------------
-27 |  val _: S -> B^ = x => j(x)       // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:19 ----------------------------------
+28 |  val _: S -> B^ = x => j(x)       // error
    |                   ^^^^^^^^^
    |                   Found:    (x: S^{cap.rd}) ->? B^{x}
    |                   Required: S^{cap.rd} -> B^
    |
-   |                   where:    ^   refers to a fresh root capability in the type of value _$14
+   |                   where:    ^   refers to a fresh root capability in the type of value _$15
    |                             cap is the universal root capability
    |
    |                   Note that capability x.type is not included in capture set {cap}.

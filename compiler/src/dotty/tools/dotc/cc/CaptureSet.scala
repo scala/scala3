@@ -439,6 +439,15 @@ sealed abstract class CaptureSet extends Showable:
         case fresh: FreshCap => fresh.hiddenSet.adoptClassifier(cls)
         case _ =>
 
+  /** All capabilities of this set except those Termrefs and FreshCaps that
+   *  are boundby `mt`.
+   */
+  def freeInResult(mt: MethodicType)(using Context): CaptureSet =
+    filter:
+      case TermParamRef(binder, _) => binder ne mt
+      case ResultCap(binder) => binder ne mt
+      case _ => true
+
   /** A bad root `elem` is inadmissible as a member of this set. What is a bad roots depends
    *  on the value of `rootLimit`.
    *  If the limit is null, all capture roots are good.
@@ -1523,14 +1532,10 @@ object CaptureSet:
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
     case c: CoreCapability =>
-      ofType(c.underlying, followResult = false)
+      ofType(c.underlying, followResult = true)
 
   /** Capture set of a type
    *  @param followResult  If true, also include capture sets of function results.
-   *                       This mode is currently not used. It could be interesting
-   *                       when we change the system so that the capture set of a function
-   *                       is the union of the capture sets if its span.
-   *                       In this case we should use `followResult = true` in the call in ofInfo above.
    */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):
@@ -1546,13 +1551,9 @@ object CaptureSet:
           recur(parent) ++ refs
         case tp @ AnnotatedType(parent, ann) if ann.symbol.isRetains =>
           recur(parent) ++ ann.tree.toCaptureSet
-        case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
+        case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
-          ++ recur(rinfo.resType)                             // add capture set of result
-              .filter:
-                case TermParamRef(binder, _) => binder ne rinfo
-                case ResultCap(binder) => binder ne rinfo
-                case _ => true
+          ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
         case tpd @ AppliedType(tycon, args) =>
           if followResult && defn.isNonRefinedFunction(tpd) then
             recur(args.last)

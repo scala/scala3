@@ -491,7 +491,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ => c.core match
               case c1: RootCapability => c1.singletonCaptureSet
               case c1: CoreCapability =>
-                CaptureSet.ofType(c1.widen, followResult = false)
+                CaptureSet.ofType(c1.widen, followResult = true)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowRootCapability(NoSymbol): () =>
             report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", tree.srcPos)
