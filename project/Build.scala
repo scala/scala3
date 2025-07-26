@@ -2416,11 +2416,17 @@ object Build {
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
-  // Note: the two tasks below should be one, but a bug in Tasty prevents that
-  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
-  val generateStableScala3Documentation  = inputKey[Unit]("Generate documentation for stable dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, useful for debugging tests")
 
+  // Published on https://dotty.epfl.ch/ by nightly builds
+  // Contains additional internal/contributing docs
+  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for snapshot version of the compiler")
+
+  // Published on https://docs.scala-lang.org/api/all.html
+  val generateStableScala3Documentation  = inputKey[Unit]("Generate documentation for stable release")
+
+  // Published on https://docs.scala-lang.org/scala3/reference/
+  // Does not produce API docs, contains additional redirects for improved stablity
   val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
@@ -2547,19 +2553,78 @@ object Build {
         val outputDirOverride = extraArgs.headOption.fold(identity[GenerationConfig](_))(newDir => {
           config: GenerationConfig => config.add(OutputDir(newDir))
         })
-        val justAPIArg: Option[String] = extraArgs.drop(1).find(_ == "--justAPI")
-        val justAPI = justAPIArg.fold(identity[GenerationConfig](_))(_ => {
-          config: GenerationConfig => config.remove[SiteRoot]
-        })
-        val overrideFunc = outputDirOverride.andThen(justAPI)
+        val justAPI = extraArgs.contains("--justAPI")
+        def setupContentOverrides(config: GenerationConfig): GenerationConfig = {
+          if (justAPI) {
+            val siteRoot = IO.createTemporaryDirectory.getAbsolutePath()
+            config.add(SiteRoot(siteRoot))
+          }
+          else patchSources(config)
+         }
+
+        def patchSources(config: GenerationConfig): GenerationConfig = {
+          // Create a copy of docs and apply patches
+          val docs = IO.createTemporaryDirectory
+          IO.copyDirectory(file("docs"), docs)
+
+          // Generate full sidebar.yml based on template and reference content
+          locally {
+            val outputFile =  docs / "sidebar.yml"
+            val yaml = new org.yaml.snakeyaml.Yaml()
+            type YamlObject = java.util.Map[String, AnyRef]
+            type YamlList[T] = java.util.List[T]
+            def loadYaml(file: File): YamlObject = {
+              val reader = Files.newBufferedReader(file.toPath)
+              try yaml.load(reader).asInstanceOf[YamlObject]
+              finally reader.close()
+            }
+            // Ensure to always operate on original (Map, List) instances
+            val template = loadYaml(docs / "sidebar.nightly.template.yml")
+            template.get("subsection")
+              .asInstanceOf[YamlList[YamlObject]]
+              .stream()
+              .filter(_.get("title") == "Reference")
+              .findFirst()
+              .orElseThrow(() => new IllegalStateException("Reference subsection not found in sidebar.nightly.template.yml"))
+              .putAll(loadYaml(docs / "sidebar.reference.yml"))
+
+            val sidebarWriter = Files.newBufferedWriter(outputFile.toPath)
+            try yaml.dump(template, sidebarWriter)
+            finally sidebarWriter.close()
+          }
+
+          // Add patch about nightly version usage
+          locally {
+            val warningMessage = """{% if page.nightlyOf %}
+              |  <aside class="warning">
+              |    <div class='icon'></div>
+              |    <div class='content'>
+              |      This is a nightly documentation. The content of this page may not be consistent with the current stable version of language. 
+              |      Click <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this page.
+              |    </div>
+              |  </aside>
+              |{% endif %}""".stripMargin
+            val mainStaticSiteLayout = docs / "_layouts" / "static-site-main.html"
+            IO.write(
+              mainStaticSiteLayout,
+              IO.read(mainStaticSiteLayout)
+              .replace("{{ content }}", s"$warningMessage {{ content }}")
+              .ensuring(_.contains(warningMessage), "patch to static-site-main layout not applied!")
+            )
+          }
+
+          config.add(SiteRoot(docs.getAbsolutePath))
+        }
 
         val config = Def.task {
-          overrideFunc(Scala3.value)
+          outputDirOverride
+          .andThen(setupContentOverrides)
+          .apply(Scala3.value)
         }
 
         val writeAdditionalFiles = Def.task {
           val dest = file(config.value.get[OutputDir].get.value)
-          if (justAPIArg.isEmpty) {
+          if (!justAPI) {
             IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
             // This file is used by GitHub Pages when the page is available in a custom domain
             IO.write(dest / "CNAME", "dotty.epfl.ch")
@@ -2571,7 +2636,17 @@ object Build {
 
       generateStableScala3Documentation := Def.inputTaskDyn {
         val extraArgs = spaceDelimited("<version>").parsed
+        val version = extraArgs.head
+
+        val docs = IO.createTemporaryDirectory
+        IO.copyDirectory(file("docs"), docs)
+        IO.delete(docs / "_blog")
+        IO.move(docs / "sidebar.reference.yml", docs / "sidebar.yml")
+
         val config = stableScala3(extraArgs.head)
+        .map {
+          _.add(SiteRoot(docs.getAbsolutePath))
+        }
         generateDocumentation(config)
       }.evaluated,
 
@@ -2586,20 +2661,14 @@ object Build {
         generateStaticAssetsTask.value
 
         // Move all the source files to a temporary directory and apply some changes specific to the reference documentation
-        val temp = IO.createTemporaryDirectory
-        IO.copyDirectory(file("docs"), temp / "docs")
-        IO.delete(temp / "docs" / "_blog")
-
-        // Overwrite the main layout and the sidebar
-        IO.copyDirectory(
-          file("project") / "resources" / "referenceReplacements",
-          temp / "docs",
-          overwrite = true
-        )
+        val docs = IO.createTemporaryDirectory
+        IO.copyDirectory(file("docs"), docs)
+        IO.delete(docs / "_blog")
+        IO.move(docs / "sidebar.reference.yml", docs / "sidebar.yml")
 
         // Add redirections from previously supported URLs, for some pages
         for (name <- Seq("changed-features", "contextual", "dropped-features", "metaprogramming", "other-new-features")) {
-          val path = temp / "docs" / "_docs" / "reference" / name / s"${name}.md"
+          val path = docs / "_docs" / "reference" / name / s"${name}.md"
           val contentLines = IO.read(path).linesIterator.to[collection.mutable.ArrayBuffer]
           contentLines.insert(1, s"redirectFrom: /${name}.html") // Add redirection
           val newContent = contentLines.mkString("\n")
@@ -2609,12 +2678,12 @@ object Build {
         val languageReferenceConfig = Def.task {
           Scala3.value
             .add(OutputDir("scaladoc/output/reference"))
-            .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
+            .add(SiteRoot(docs.getAbsolutePath))
             .add(ProjectName("Scala 3 Reference"))
             .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              s"${temp.getAbsolutePath}=github://scala/scala3/language-reference-stable"
+              s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable"
             )))
             .withTargets(List("___fake___.scala"))
         }
@@ -3292,6 +3361,7 @@ object ScaladocConfigs {
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
         s"$dottyLibRoot/src/scala=compile",
+        s"$dottyLibRoot/src/scala/quoted=compile",
         s"$dottyLibRoot/src/scala/compiletime=compile",
         s"$dottyLibRoot/src/scala/util=compile",
         s"$dottyLibRoot/src/scala/util/control=compile"
