@@ -127,7 +127,8 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context) extends LazyType {
+  class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context)
+  extends LazyType, CompleterWithCleanup {
     import reader.*
     val owner = ctx.owner
     val mode = ctx.mode
@@ -147,6 +148,8 @@ class TreeUnpickler(reader: TastyReader,
             case ex: CyclicReference => throw ex
             case ex: AssertionError => fail(ex)
             case ex: Exception => fail(ex)
+          finally
+            cleanup()
   }
 
   class TreeReader(val reader: TastyReader) {

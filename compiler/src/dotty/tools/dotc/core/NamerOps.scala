@@ -9,6 +9,25 @@ import TypeApplications.EtaExpansion
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
 
+  /** A completer supporting cleanup actions.
+   *  Needed to break the loop between completion of class and companion object.
+   *  If we try to complete the class first, and completion needs the companion
+   *  object (for instance for processing an import) then the companion object
+   *  completion would consult the companion class info for constructor that
+   *  need a constructor proxy in the object. This can lead to a cyclic reference.
+   *  We break the cycle by delaying adding constructor proxies to be a cleanuo
+   *  action instead.
+   */
+  trait CompleterWithCleanup extends LazyType:
+    private var cleanupActions: List[() => Unit] = Nil
+    def addCleanupAction(op: () => Unit): Unit =
+      cleanupActions = op :: cleanupActions
+    def cleanup(): Unit =
+      if cleanupActions.nonEmpty then
+        cleanupActions.reverse.foreach(_())
+        cleanupActions = Nil
+  end CompleterWithCleanup
+
   /** The type of the constructed instance is returned
    *
    *  @param ctor the constructor
@@ -118,8 +137,14 @@ object NamerOps:
         ApplyProxyCompleter(constr),
         cls.privateWithin,
         constr.coord)
-    for dcl <- cls.info.decls do
+    def doAdd() = for dcl <- cls.info.decls do
       if dcl.isConstructor then scope.enter(proxy(dcl))
+    cls.infoOrCompleter match
+      case completer: CompleterWithCleanup if cls.is(Touched) =>
+        // Taking the info would lead to a cyclic reference here - delay instead until cleanup of `cls`
+        completer.addCleanupAction(doAdd)
+      case _ =>
+        doAdd()
     scope
   end addConstructorApplies
 
