@@ -2261,7 +2261,7 @@ object Types extends TypeUtils {
     def _1: Type
     def _2: Designator
 
-    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
+    if !NamedType.validPrefix(prefix) then throw InvalidPrefix()
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -2683,7 +2683,7 @@ object Types extends TypeUtils {
             if (tparams.head.eq(tparam))
               return args.head match {
                 case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
-                case arg => arg.boxedUnlessFun(tycon)
+                case arg => arg
               }
             tparams = tparams.tail
             args = args.tail
@@ -3037,6 +3037,8 @@ object Types extends TypeUtils {
     def apply(prefix: Type, name: TypeName, denot: Denotation)(using Context): TypeRef =
       apply(prefix, designatorFor(prefix, name, denot)).withDenot(denot)
   }
+
+  class InvalidPrefix extends Exception
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
