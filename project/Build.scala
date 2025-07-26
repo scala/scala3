@@ -1396,6 +1396,7 @@ object Build {
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / resourceDirectory := baseDirectory.value / "resources",
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
