@@ -2636,16 +2636,29 @@ object Build {
 
       generateStableScala3Documentation := Def.inputTaskDyn {
         val extraArgs = spaceDelimited("<version>").parsed
-        val version = extraArgs.head
+        val version = baseVersion
+        // In the early days of scaladoc there was a practice to precompile artifacts of Scala 3 and generate docs using different version of scaladoc
+        // It's no longer needed after its stablisation.
+        // Allow to use explcit version check to detect using incorrect revision during release process
+        extraArgs.headOption.foreach { explicitVersion =>
+          assert(
+            explicitVersion == version,
+            s"Version of the build ($version) does not match the explicit verion ($explicitVersion)"
+          )
+        }
 
         val docs = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), docs)
         IO.delete(docs / "_blog")
         IO.move(docs / "sidebar.reference.yml", docs / "sidebar.yml")
 
-        val config = stableScala3(extraArgs.head)
-        .map {
-          _.add(SiteRoot(docs.getAbsolutePath))
+        val config = Def.task {
+          Scala3.value
+          .add(ProjectVersion(version))
+          .add(Revision(version))
+          .add(OutputDir(s"scaladoc/output/${version}"))
+          .add(SiteRoot(docs.getAbsolutePath))
+          .remove[ApiSubdirectory]
         }
         generateDocumentation(config)
       }.evaluated,
@@ -3371,35 +3384,4 @@ object ScaladocConfigs {
       .withTargets(roots)
   }
 
-  def stableScala3(version: String) = Def.task {
-    val scalaLibrarySrc = s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed"
-    val dottyLibrarySrc = "library/src"
-    Scala3.value
-      .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
-      .add(ProjectVersion(version))
-      .add(SnippetCompiler(
-        List(
-          s"$dottyLibrarySrc/scala/quoted=compile",
-          s"$dottyLibrarySrc/scala/compiletime=compile",
-          s"$dottyLibrarySrc/scala/util=compile",
-          s"$dottyLibrarySrc/scala/util/control=compile"
-        )
-      ))
-      .add(CommentSyntax(List(
-        s"$dottyLibrarySrc=markdown",
-        s"$scalaLibrarySrc=wiki",
-        "wiki"
-      )))
-      .add(DocRootContent(s"$scalaLibrarySrc/rootdoc.txt"))
-      .withTargets(
-        Seq(
-          s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
-          s"out/bootstrap/scala3-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
-          s"tmp/interfaces/target/classes",
-          s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
-        )
-      )
-      .remove[SiteRoot]
-      .remove[ApiSubdirectory]
-  }
 }
