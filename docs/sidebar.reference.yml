@@ -28,12 +28,13 @@ subsection:
     directory: contextual
     subsection:
       - page: reference/contextual/givens.md
-      - page: reference/contextual/deferred-givens.md
-      - page: reference/contextual/more-givens.md
-      - page: reference/contextual/previous-givens.md
       - page: reference/contextual/using-clauses.md
       - page: reference/contextual/context-bounds.md
+      - page: reference/contextual/deferred-givens.md
       - page: reference/contextual/given-imports.md
+      - page: reference/contextual/more-givens.md
+      - page: reference/contextual/previous-givens.md
+        hidden: true
       - page: reference/contextual/extension-methods.md
       - page: reference/contextual/right-associative-extension-methods.md
       - page: reference/contextual/type-classes.md
@@ -54,10 +55,10 @@ subsection:
       - page: reference/metaprogramming/macros.md
       - page: reference/metaprogramming/macros-spec.md
         hidden: true
+      - page: reference/metaprogramming/simple-smp.md # description of a simplified metaprogramming language, this might not be the best place for it
       - page: reference/metaprogramming/staging.md
       - page: reference/metaprogramming/reflection.md
       - page: reference/metaprogramming/tasty-inspect.md
-      - page: reference/metaprogramming/simple-smp.md
   - title: Other New Features
     index: reference/other-new-features/other-new-features.md
     subsection:
@@ -67,6 +68,7 @@ subsection:
       - page: reference/other-new-features/export.md
       - page: reference/other-new-features/opaques.md
       - page: reference/other-new-features/opaques-details.md
+      - page: reference/other-new-features/named-tuples.md
       - page: reference/other-new-features/open-classes.md
       - page: reference/other-new-features/parameter-untupling.md
       - page: reference/other-new-features/parameter-untupling-spec.md
@@ -80,7 +82,9 @@ subsection:
       - page: reference/other-new-features/safe-initialization.md
       - page: reference/other-new-features/type-test.md
       - page: reference/other-new-features/experimental-defs.md
+      - page: reference/other-new-features/preview-defs.md
       - page: reference/other-new-features/binary-literals.md
+      - page: reference/other-new-features/toplevel-definitions.md
   - title: Other Changed Features
     directory: changed-features
     index: reference/changed-features/changed-features.md
@@ -118,7 +122,6 @@ subsection:
       - page: reference/dropped-features/type-projection.md
       - page: reference/dropped-features/do-while.md
       - page: reference/dropped-features/procedure-syntax.md
-      - page: reference/dropped-features/package-objects.md
       - page: reference/dropped-features/early-initializers.md
       - page: reference/dropped-features/class-shadowing.md
       - page: reference/dropped-features/class-shadowing-spec.md
@@ -133,6 +136,11 @@ subsection:
       - page: reference/dropped-features/nonlocal-returns.md
       - page: reference/dropped-features/this-qualifier.md
       - page: reference/dropped-features/wildcard-init.md
+  - title: Preview Features
+    directory: preview
+    index: reference/preview/overview.md
+    subsection:
+      - page: reference/preview/better-fors.md
   - title: Experimental Features
     directory: experimental
     index: reference/experimental/overview.md
@@ -149,10 +157,17 @@ subsection:
       - page: reference/experimental/numeric-literals.md
       - page: reference/experimental/explicit-nulls.md
       - page: reference/experimental/main-annotation.md
+      - page: reference/experimental/into.md
       - page: reference/experimental/cc.md
       - page: reference/experimental/cc-advanced.md
         hidden: true
+      - page: reference/experimental/purefuns.md
       - page: reference/experimental/tupled-function.md
+      - page: reference/experimental/modularity.md
+      - page: reference/experimental/typeclasses.md
+      - page: reference/experimental/runtimeChecked.md
+      - page: reference/experimental/unrolled-defs.md
+      - page: reference/experimental/package-object-values.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md
