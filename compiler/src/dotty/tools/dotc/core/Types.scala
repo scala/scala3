@@ -338,6 +338,23 @@ object Types extends TypeUtils {
       case AndType(tpL, tpR) => tpL.isEffectivelySingleton || tpR.isEffectivelySingleton
       case _ => false
 
+    /** Is this upper-bounded by a (possibly aliased) singleton type?
+     *  Overridden in TypeVar
+     */
+    def isSingletonBounded(frozen: Boolean)(using Context): Boolean = this.dealias.normalized match
+      case tp: SingletonType => tp.isStable
+      case tp: TypeParamRef =>
+        ctx.typerState.constraint.bounds(tp).hi.isSingletonBounded(frozen)
+      case tp: TypeRef =>
+        tp.name == tpnme.Singleton && tp.symbol == defn.SingletonClass
+        || tp.superType.isSingletonBounded(frozen)
+      case tp: TypeVar if !tp.isInstantiated =>
+        if frozen then tp frozen_<:< defn.SingletonType else tp <:< defn.SingletonType
+      case tp: HKTypeLambda => false
+      case tp: TypeProxy => tp.superType.isSingletonBounded(frozen)
+      case tp: AndType => tp.tp1.isSingletonBounded(frozen) || tp.tp2.isSingletonBounded(frozen)
+      case _ => false
+
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(using Context): Boolean = {
       @tailrec def loop(tp: Type): Boolean = tp match {
