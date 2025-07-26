@@ -231,10 +231,8 @@ object Inferencing {
     def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
       try {
       val tpd = tp.dealias
-      if tpd ne tp then {
-        (tpd.isInstanceOf[TypeVar] && tp.isInstanceOf[TypeVar])
-         || apply(x, tpd)
-      } else tp match
+      if tpd ne tp then apply(x, tpd)
+      else tp match
         case _: WildcardType | _: ProtoType =>
           false
         case tvar: TypeVar if !tvar.isInstantiated =>
