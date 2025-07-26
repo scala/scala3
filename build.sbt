@@ -1,4 +1,5 @@
 val scala3 = Build.scala3
+val `scala3-nonbootstrapped` = Build.`scala3-nonbootstrapped`
 val `scala3-bootstrapped` = Build.`scala3-bootstrapped`
 val `scala3-interfaces` = Build.`scala3-interfaces`
 val `scala3-compiler` = Build.`scala3-compiler`
@@ -12,6 +13,7 @@ val `scala3-library` = Build.`scala3-library`
 val `scala3-library-bootstrapped` = Build.`scala3-library-bootstrapped`
 val `scala3-library-bootstrappedJS` = Build.`scala3-library-bootstrappedJS`
 val `scala3-sbt-bridge` = Build.`scala3-sbt-bridge`
+val `scala3-sbt-bridge-nonbootstrapped` = Build.`scala3-sbt-bridge-nonbootstrapped`
 val `scala3-sbt-bridge-tests` = Build.`scala3-sbt-bridge-tests`
 val `scala3-staging` = Build.`scala3-staging`
 val `scala3-tasty-inspector` = Build.`scala3-tasty-inspector`

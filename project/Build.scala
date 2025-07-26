@@ -1364,6 +1364,73 @@ object Build {
     )
 
   // ==============================================================================================
+  // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
+  // ==============================================================================================
+
+  lazy val `scala3-nonbootstrapped` = project
+    .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
+      `tasty-core-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
+    .settings(
+      name          := "scala3-nonbootstrapped",
+      moduleName    := "scala3-nonbootstrapped",
+      version       := dottyNonBootstrappedVersion,
+      // Nothing to be published by this project, it is only an aggregate
+      Compile / publishArtifact := false,
+      Test    / publishArtifact := false,
+      // Nothing to be published by this project
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-nonbootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
+  lazy val `scala3-sbt-bridge-nonbootstrapped` = project.in(file("sbt-bridge"))
+    .dependsOn(`scala3-compiler-nonbootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
+    .settings(
+      name          := "scala3-sbt-bridge-nonbootstrapped",
+      moduleName    := "scala3-sbt-bridge",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // non-bootstrapped stdlib is publishable (only locally)
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-sbt-bridge-nonbootstrapped",
+      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+      // as a workaround, I build it manually by only adding the compiler
+      scalaInstance := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          Array.empty,
+          comp.toSeq,
+          Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value,
+        )},
+    )
+
+  // ==============================================================================================
   // =================================== SCALA STANDARD LIBRARY ===================================
   // ==============================================================================================
 
@@ -1391,11 +1458,14 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := true,
+      // non-bootstrapped stdlib is publishable (only locally)
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
     )
@@ -1426,11 +1496,15 @@ object Build {
       Test / compile := (`scala-library-nonbootstrapped` / Test / compile).value,
       Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
+      Test / test    := (`scala-library-nonbootstrapped` / Test / test).value,
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
     )
@@ -1443,7 +1517,7 @@ object Build {
       moduleName    := "scala-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
@@ -1511,7 +1585,7 @@ object Build {
       moduleName    := "scala3-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
       crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
@@ -1562,11 +1636,14 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-nonbootstrapped",
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
@@ -1575,7 +1652,7 @@ object Build {
         val lm = dependencyResolution.value
         val log = streams.value.log
         val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" % 
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
           scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
         Defaults.makeScalaInstance(
@@ -1623,11 +1700,14 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-nonbootstrapped",
       // Generate compiler.properties, used by sbt
@@ -1656,7 +1736,7 @@ object Build {
         val lm = dependencyResolution.value
         val log = streams.value.log
         val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" % 
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
           scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
         Defaults.makeScalaInstance(
