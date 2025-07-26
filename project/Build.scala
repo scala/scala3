@@ -1391,11 +1391,14 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
-      // Do not allow to publish this project for now
-      publish / skip := true,
+      // non-bootstrapped stdlib is publishable (only locally)
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
     )
@@ -1426,11 +1429,14 @@ object Build {
       Test / compile := (`scala-library-nonbootstrapped` / Test / compile).value,
       Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
     )
@@ -1562,11 +1568,14 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-nonbootstrapped",
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
@@ -1623,11 +1632,14 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-compiler-nonbootstrapped",
       // Generate compiler.properties, used by sbt
