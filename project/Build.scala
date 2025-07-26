@@ -2554,47 +2554,54 @@ object Build {
           config: GenerationConfig => config.add(OutputDir(newDir))
         })
         val justAPI = extraArgs.contains("--justAPI")
-        def setupContentOverrides(config: GenerationConfig): GenerationConfig = {
-          if (justAPI) {
+        def justAPIOverride(config: GenerationConfig): GenerationConfig = {
+          if (!justAPI) config
+          else {
             val siteRoot = IO.createTemporaryDirectory.getAbsolutePath()
             config.add(SiteRoot(siteRoot))
           }
-          else patchSources(config)
-         }
+        }
 
-        def patchSources(config: GenerationConfig): GenerationConfig = {
-          // Create a copy of docs and apply patches
-          val docs = IO.createTemporaryDirectory
-          IO.copyDirectory(file("docs"), docs)
-
+        // It would be the easiest to create a temp directory and apply patches there, but this task would be used frequently during development
+        // If we'd build using copy the emitted warnings would point developers to copies instead of original sources. Any fixes made in there would be lost.
+        // Instead let's apply revertable patches to the files as part snapshot doc generation process
+        abstract class SourcePatch(val file: File) {
+          def apply(): Unit
+          def revert(): Unit
+        }
+        val docs = file("docs")
+        val sourcePatches = if (justAPI) Nil else Seq(
           // Generate full sidebar.yml based on template and reference content
-          locally {
-            val outputFile =  docs / "sidebar.yml"
-            val yaml = new org.yaml.snakeyaml.Yaml()
-            type YamlObject = java.util.Map[String, AnyRef]
-            type YamlList[T] = java.util.List[T]
-            def loadYaml(file: File): YamlObject = {
-              val reader = Files.newBufferedReader(file.toPath)
-              try yaml.load(reader).asInstanceOf[YamlObject]
-              finally reader.close()
+          new SourcePatch(docs / "sidebar.yml") {
+            override def apply(): Unit = {
+              val yaml = new org.yaml.snakeyaml.Yaml()
+              type YamlObject = java.util.Map[String, AnyRef]
+              type YamlList[T] = java.util.List[T]
+              def loadYaml(file: File): YamlObject = {
+                val reader = Files.newBufferedReader(file.toPath)
+                try yaml.load(reader).asInstanceOf[YamlObject]
+                finally reader.close()
+              }
+              // Ensure to always operate on original (Map, List) instances
+              val template = loadYaml(docs / "sidebar.nightly.template.yml")
+              template.get("subsection")
+                .asInstanceOf[YamlList[YamlObject]]
+                .stream()
+                .filter(_.get("title") == "Reference")
+                .findFirst()
+                .orElseThrow(() => new IllegalStateException("Reference subsection not found in sidebar.nightly.template.yml"))
+                .putAll(loadYaml(docs / "sidebar.reference.yml"))
+
+              val sidebarWriter = Files.newBufferedWriter(this.file.toPath)
+              try yaml.dump(template, sidebarWriter)
+              finally sidebarWriter.close()
             }
-            // Ensure to always operate on original (Map, List) instances
-            val template = loadYaml(docs / "sidebar.nightly.template.yml")
-            template.get("subsection")
-              .asInstanceOf[YamlList[YamlObject]]
-              .stream()
-              .filter(_.get("title") == "Reference")
-              .findFirst()
-              .orElseThrow(() => new IllegalStateException("Reference subsection not found in sidebar.nightly.template.yml"))
-              .putAll(loadYaml(docs / "sidebar.reference.yml"))
-
-            val sidebarWriter = Files.newBufferedWriter(outputFile.toPath)
-            try yaml.dump(template, sidebarWriter)
-            finally sidebarWriter.close()
-          }
-
+            override def revert(): Unit = IO.delete(file)
+          },
           // Add patch about nightly version usage
-          locally {
+          new SourcePatch(docs / "_layouts" / "static-site-main.html") {
+            lazy val originalContent = IO.read(file)
+
             val warningMessage = """{% if page.nightlyOf %}
               |  <aside class="warning">
               |    <div class='icon'></div>
@@ -2604,21 +2611,21 @@ object Build {
               |    </div>
               |  </aside>
               |{% endif %}""".stripMargin
-            val mainStaticSiteLayout = docs / "_layouts" / "static-site-main.html"
-            IO.write(
-              mainStaticSiteLayout,
-              IO.read(mainStaticSiteLayout)
-              .replace("{{ content }}", s"$warningMessage {{ content }}")
-              .ensuring(_.contains(warningMessage), "patch to static-site-main layout not applied!")
-            )
-          }
 
-          config.add(SiteRoot(docs.getAbsolutePath))
-        }
+            override def apply(): Unit = {
+              IO.write(file,
+                originalContent
+                .replace("{{ content }}", s"$warningMessage {{ content }}")
+                .ensuring(_.contains(warningMessage), "patch to static-site-main layout not applied!")
+              )
+            }
+            override def revert(): Unit = IO.write(file, originalContent)
+          }
+        )
 
         val config = Def.task {
           outputDirOverride
-          .andThen(setupContentOverrides)
+          .andThen(justAPIOverride)
           .apply(Scala3.value)
         }
 
@@ -2630,8 +2637,21 @@ object Build {
             IO.write(dest / "CNAME", "dotty.epfl.ch")
           }
         }
+        val applyPatches = Def.task {
+          streams.value.log.info(s"Generating snapshot scaladoc, would apply patches to ${sourcePatches.map(_.file)}")
+          sourcePatches.foreach(_.apply())
+        }
+        val revertPatches = Def.task {
+          streams.value.log.info(s"Generated snapshot scaladoc, reverting changes made to ${sourcePatches.map(_.file)}")
+          sourcePatches.foreach(_.revert())
+        }
 
-        writeAdditionalFiles.dependsOn(generateDocumentation(config))
+        writeAdditionalFiles.dependsOn(
+          revertPatches.dependsOn(
+            generateDocumentation(config)
+              .dependsOn(applyPatches)
+          )
+        )
       }.evaluated,
 
       generateStableScala3Documentation := Def.inputTaskDyn {
@@ -2696,7 +2716,7 @@ object Build {
             .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable"
+              s"${docs.getParentFile().getAbsolutePath}=github://scala/scala3/language-reference-stable"
             )))
             .withTargets(List("___fake___.scala"))
         }
