@@ -1364,6 +1364,26 @@ object Build {
     )
 
   // ==============================================================================================
+  // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
+  // ==============================================================================================
+
+  lazy val `scala3-nonbootstrapped` = project
+    .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
+      `tasty-core-nonbootstrapped`, `scala3-compiler-nonbootstrapped`)
+    .settings(
+      name          := "scala3-nonbootstrapped",
+      moduleName    := "scala3-nonbootstrapped",
+      version       := dottyNonBootstrappedVersion,
+      // Nothing to be published by this project, it is only an aggregate
+      Compile / publishArtifact := false,
+      Test    / publishArtifact := false,
+      // Nothing to be published by this project
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-nonbootstrapped",
+    )
+
+  // ==============================================================================================
   // =================================== SCALA STANDARD LIBRARY ===================================
   // ==============================================================================================
 
@@ -1429,6 +1449,7 @@ object Build {
       Test / compile := (`scala-library-nonbootstrapped` / Test / compile).value,
       Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
+      Test / test    := (`scala-library-nonbootstrapped` / Test / test).value,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1449,7 +1470,7 @@ object Build {
       moduleName    := "scala-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
@@ -1517,7 +1538,7 @@ object Build {
       moduleName    := "scala3-library",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project 
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
       crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
@@ -1584,7 +1605,7 @@ object Build {
         val lm = dependencyResolution.value
         val log = streams.value.log
         val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" % 
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
           scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
         Defaults.makeScalaInstance(
@@ -1668,7 +1689,7 @@ object Build {
         val lm = dependencyResolution.value
         val log = streams.value.log
         val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
-        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" % 
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
           scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
         Defaults.makeScalaInstance(
