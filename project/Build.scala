@@ -4169,26 +4169,37 @@ object ScaladocConfigs {
   }
 
   lazy val Scala3 = Def.task {
+    val stdlib = { // relative path to the stdlib directory ('library/')
+      val projectRoot = (ThisBuild/baseDirectory).value.toPath
+      val stdlibRoot = (`scala-library-bootstrapped` / baseDirectory).value
+      projectRoot.relativize(stdlibRoot.toPath.normalize())
+    }
+
     DefaultGenerationSettings.value
       .add(ProjectName("Scala 3"))
       .add(OutputDir(file("scaladoc/output/scala3").getAbsoluteFile.getAbsolutePath))
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
-      .add(DocRootContent(((`scala-library-bootstrapped` / baseDirectory).value / "src" / "rootdoc.txt").toString))
+      .add(DocRootContent((stdlib / "src" / "rootdoc.txt").toString))
       .add(CommentSyntax(List(
-        //s"${dottyLibRoot}=markdown",
-        //s"${stdLibRoot}=wiki",
+        // Only the files below use markdown syntax (Scala 3 specific sources)
+        s"$stdlib/src/scala/NamedTuple.scala=markdown",
+        s"$stdlib/src/scala/Tuple.scala=markdown",
+        s"$stdlib/src/scala/compiletime=markdown",
+        s"$stdlib/src/scala/quoted=markdown",
+        s"$stdlib/src/scala/util/boundary.scala=markdown",
+        // Scala 2 sources use wiki syntax, we keep it as the default
         "wiki"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
-      //.add(SnippetCompiler(List(
-        //s"$dottyLibRoot/src/scala=compile",
-        //s"$dottyLibRoot/src/scala/quoted=compile",
-        //s"$dottyLibRoot/src/scala/compiletime=compile",
-        //s"$dottyLibRoot/src/scala/util=compile",
-        //s"$dottyLibRoot/src/scala/util/control=compile"
-      //)))
+      .add(SnippetCompiler(List(
+        s"$stdlib/src/scala/compiletime=compile",
+        s"$stdlib/src/scala/quoted=compile",
+        s"$stdlib/src/scala/util/control=compile",
+        s"$stdlib/src/scala/util=compile",
+        s"$stdlib/src/scala=compile",
+      )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
       .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))
