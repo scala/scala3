@@ -149,7 +149,7 @@ class ScalaSignatureProvider:
     MemberSignature(
       builder.modifiersAndVisibility(typeDef),
       builder.kind(tpe),
-      builder.name(typeDef.name, typeDef.dri),
+      builder.name(typeDef.name, typeDef.dri, isCaptureVar = tpe.isCaptureVar),
       builder.typeParamList(tpe.typeParams).pipe { bdr =>
         if (!tpe.opaque) {
           (if tpe.concreate then bdr.plain(" = ") else bdr)
