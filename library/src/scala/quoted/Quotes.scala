@@ -686,6 +686,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  Usage:
        *  ```
+       *  ValDef.let(owner, "x", rhs1, Flags.Lazy) { x =>
+       *    ValDef.let(x.symbol.owner, "y", rhs2, Flags.Mutable) { y =>
+       *      // use `x` and `y`
+       *    }
+       *  }
+       *  ```
+       *
+       *  @param flags extra flags to with which the symbol should be constructed. Can be `Final | Implicit | Lazy | Mutable | Given | Synthetic`
+       */
+      // Keep: `flags` doc aligned with QuotesImpl's `validValInLetFlags`
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term
+
+      /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
+       *
+       *  Usage:
+       *  ```
        *  ValDef.let(owner, "x", rhs1) { x =>
        *    ValDef.let(x.symbol.owner, "y", rhs2) { y =>
        *      // use `x` and `y`
