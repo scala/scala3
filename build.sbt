@@ -27,6 +27,7 @@ val `scala2-library-cc` = Build.`scala2-library-cc`
 val `scala2-library-cc-tasty` = Build.`scala2-library-cc-tasty`
 val `tasty-core` = Build.`tasty-core`
 val `tasty-core-nonbootstrapped` = Build.`tasty-core-nonbootstrapped`
+val `tasty-core-bootstrapped-new` = Build.`tasty-core-bootstrapped-new`
 val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
 val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val scaladoc = Build.scaladoc
