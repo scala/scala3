@@ -4363,7 +4363,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(NoReporter))
               val pt1 = pt.deepenProtoTrans(using newCtx)
               try {
-                isFullyDefined(pt1, ForceDegree.none, ifProto = true)
+                isFullyDefined(pt1, ForceDegree.none, ifProto = true)(using newCtx)
               } catch {
                 case _: UnhandledError => false
               }
