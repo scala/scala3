@@ -19,7 +19,7 @@
   |                             where:    ^ refers to a root capability associated with the result type of (x: A): B^
   |
   |                             Note that the existential capture root in B^
-  |                             cannot subsume the capability y* since that capability is not a SharedCapability
+  |                             cannot subsume the capability y* since that capability is not a `Sharable` capability
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-existential-conformance.scala:13:19 -------------------
@@ -43,6 +43,6 @@
    |                        where:    ^ refers to a root capability associated with the result type of (x: A): B^
    |
    |                        Note that the existential capture root in B^
-   |                        cannot subsume the capability y* since that capability is not a SharedCapability
+   |                        cannot subsume the capability y* since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`

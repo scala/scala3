@@ -193,7 +193,45 @@ object Scala2LibraryBootstrappedMiMaFilters {
         "scala.util.matching.Regex.Groups", "scala.util.matching.Regex.Match",
         "scala.util.package.chaining",
         "scala.util.Using.Manager", "scala.util.Using.Releasable", "scala.util.Using#Releasable.AutoCloseableIsReleasable",
-      ).map(ProblemFilters.exclude[MissingFieldProblem])
+      ).map(ProblemFilters.exclude[MissingFieldProblem]) ++ Seq(
+        // DirectMissingMethodProblem by flags being changed from ACC_PUBLIC, ACC_BRIDGE, ACC_SYNTHETIC to ACC_PUBLIC in mixin forwarders:
+        // * from java.util.Comparator:
+        Seq("reversed", "thenComparing", "thenComparingInt", "thenComparingLong", "thenComparingInt", "thenComparingDouble").flatMap { method =>
+          Seq(
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.Enumeration#ValueOrdering.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.concurrent.duration.Deadline#DeadlineIsOrdered.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.concurrent.duration.Duration#DurationIsOrdered.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.concurrent.duration.FiniteDuration#FiniteDurationIsOrdered.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.math.Numeric#*.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.math.Ordering#*.$method"),
+          )
+        },
+        // * from java.util.Spliterator:
+        Seq("getExactSizeIfKnown", "hasCharacteristics", "getComparator").flatMap { method =>
+          Seq(
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.collection.DoubleStepper#DoubleStepperSpliterator.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.collection.IntStepper#IntStepperSpliterator.$method"),
+            ProblemFilters.exclude[DirectMissingMethodProblem](s"scala.collection.LongStepper#LongStepperSpliterator.$method"),
+          )
+        },
+        // * from java.util.Enumeration:
+        Seq(
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#IteratorWrapper.asIterator"),
+        ),
+        // * from java.lang.CharSequence:
+        Seq(
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Predef#ArrayCharSequence.isEmpty"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Predef#SeqCharSequence.isEmpty"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.ArrayCharSequence.isEmpty")
+        ),
+        // FinalMethodProblem - seems to be a bug in MiMa, as neither new or old version do not have final modifier.
+        // What did change is that sizeHint, and requireBounds had `final` added, but that does not get reported.
+        Seq(
+          ProblemFilters.exclude[FinalMethodProblem]("scala.**.sizeHint$default$2"),
+          ProblemFilters.exclude[FinalMethodProblem]("scala.collection.mutable.ArrayDeque.requireBounds$default$2")
+        )
+      ).flatten
+
     }
   )
 }

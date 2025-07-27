@@ -9,6 +9,7 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.onlyCapability"),
 
         // Scala.js-only class
         ProblemFilters.exclude[FinalClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
@@ -16,6 +17,8 @@ object MiMaFilters {
 
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.2.13"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$2$u002E13$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.separationChecking"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$separationChecking$"),
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),

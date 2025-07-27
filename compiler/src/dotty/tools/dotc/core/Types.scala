@@ -849,6 +849,8 @@ object Types extends TypeUtils {
           goOr(tp)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
+        case tp: WildcardType =>
+          go(tp.bounds)
         case err: ErrorType =>
           newErrorSymbol(pre.classSymbol.orElse(defn.RootClass), name, err.msg)
         case _ =>
@@ -6282,6 +6284,10 @@ object Types extends TypeUtils {
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
+      case Restricted(c1, cls) =>
+        mapCapability(c1) match
+          case c2: Capability => c2.restrict(cls)
+          case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
       case ReadOnly(c1) =>
         assert(!deep)
         mapCapability(c1) match
@@ -6482,9 +6488,24 @@ object Types extends TypeUtils {
   abstract class ApproximatingTypeMap(using Context) extends TypeMap { thisMap =>
 
     protected def range(lo: Type, hi: Type): Type =
-      if (variance > 0) hi
-      else if (variance < 0) lo
-      else if (lo `eq` hi) lo
+      if variance > 0 then hi
+      else if variance < 0 then
+        if (lo eq defn.NothingType) && hi.hasSimpleKind then
+          // Approximate by Nothing & hi instead of just Nothing, in case the
+          // approximated type is used as the prefix of another type (this would
+          // lead to a type with a `NoDenotation` denot and a possible
+          // MissingType in `TypeErasure#sigName`).
+          //
+          // Note that we cannot simply check for a `Nothing` prefix in
+          // `derivedSelect`, because the substitution might be done lazily (for
+          // example if Nothing is the type of a parameter being depended on in
+          // a MethodType)
+          //
+          // Test case in tests/pos/i23530.scala
+          AndType(lo, hi)
+        else
+          lo
+      else if lo `eq` hi then lo
       else Range(lower(lo), upper(hi))
 
     protected def emptyRange = range(defn.NothingType, defn.AnyType)

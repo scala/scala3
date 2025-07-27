@@ -1,8 +1,8 @@
 
 
-import caps.SharedCapability
+import caps.Sharable
 
-class Async extends SharedCapability
+class Async extends Sharable
 
 def test1(a: Async): Object^ = a // OK
 

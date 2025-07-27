@@ -14,7 +14,7 @@ end boundary
 
 import boundary.{Label, break}
 
-trait Async extends caps.SharedCapability
+trait Async extends caps.Sharable
 object Async:
   def blocking[T](body: Async ?=> T): T = ???
 

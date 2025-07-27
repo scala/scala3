@@ -11,7 +11,7 @@ import scala.quoted.runtime.impl.QuotesImpl
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.Run
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
@@ -53,21 +53,19 @@ object ScaladocInternalTastyInspector:
     tastyFiles.foreach(checkFile(_, "tasty"))
     jars.foreach(checkFile(_, "jar"))
 
-  /**
-  * Added for Scaladoc-only.
-  * Meant to fix regressions introduces by the switch from old to new TastyInspector:
-  *  https://github.com/scala/scala3/issues/18231
-  *  https://github.com/scala/scala3/issues/20476
-  * Stable TastyInspector API does not support passing compiler context.
-  */
+  /** Added for Scaladoc-only.
+   *  Meant to fix regressions introduces by the switch from old to new TastyInspector:
+   *    - https://github.com/scala/scala3/issues/18231
+   *    - https://github.com/scala/scala3/issues/20476
+   *  Stable TastyInspector API does not support passing compiler context.
+   */
   def inspectAllTastyFilesInContext(tastyFiles: List[String], jars: List[String], dependenciesClasspath: List[String])(inspector: Inspector)(using Context): Boolean =
     checkFiles(tastyFiles, jars)
     val classes = tastyFiles ::: jars
-    classes match
-      case Nil => true
-      case _ =>
-        val reporter = inspectorDriver(inspector).process(inspectorArgs(dependenciesClasspath, classes), summon[Context])
-        !reporter.hasErrors
+    classes.isEmpty
+    || !inspectorDriver(inspector)
+        .process(inspectorArgs(dependenciesClasspath, classes), ctx)
+        .hasErrors
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -90,7 +88,7 @@ object ScaladocInternalTastyInspector:
       override def phaseName: String = "tastyInspector"
 
       override def runOn(units: List[CompilationUnit])(using ctx0: Context): List[CompilationUnit] =
-        // NOTE: although this is a phase, do not expect this to be ran with an xsbti.CompileProgress
+        // NOTE: although this is a phase, do not expect this to be run with an xsbti.CompileProgress
         val ctx = QuotesCache.init(ctx0.fresh)
         runOnImpl(units)(using ctx)
 

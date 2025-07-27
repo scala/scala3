@@ -1,6 +1,6 @@
 class A
 class B
-class S extends caps.SharedCapability
+class S extends caps.Sharable
 
 def test(io: Object^): Unit =
   val f: (x: A^) -> B^ = ???
