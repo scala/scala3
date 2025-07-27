@@ -1548,33 +1548,29 @@ object Build {
       managedScalaInstance := true,
       // Configure the nonbootstrapped compiler
       scalaInstance := {
-        val externalLibraryDeps = (`scala3-library` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-        val externalCompilerDeps = (`scala3-compiler` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
         // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
         // just directories containing classfiles because sbt maintains a cache of
         // compiler instances. This cache is invalidated based on timestamps
         // however this is only implemented on jars, directories are never
         // invalidated.
-        val tastyCore = (`tasty-core` / Compile / packageBin).value
-        val scala3Library = (`scala3-library` / Compile / packageBin).value
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
         val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
-        val scala3Compiler = (`scala3-compiler` / Compile / packageBin).value
-
-        val libraryJars = Array(scala3Library) ++ externalLibraryDeps
-        val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
 
         Defaults.makeScalaInstance(
           dottyNonBootstrappedVersion,
-          libraryJars = libraryJars,
-          allCompilerJars = compilerJars,
-          allDocJars = Seq.empty,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
           state.value,
           scalaInstanceTopLoader.value
         )
       },
       scalaCompilerBridgeBinaryJar := {
-        Some((`scala3-sbt-bridge` / Compile / packageBin).value)
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
     )
 
