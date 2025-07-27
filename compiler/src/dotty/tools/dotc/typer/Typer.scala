@@ -4363,7 +4363,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(NoReporter))
               val pt1 = pt.deepenProtoTrans(using newCtx)
               try {
-                !pt1.containsWildcardTypes(using newCtx)
+                isFullyDefined(pt1, ForceDegree.none, ifProto = true)
               } catch {
                 case _: UnhandledError => false
               }
