@@ -4378,7 +4378,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   (dty ne ty) && ty.isInstanceOf[TypeVar] && dty.isInstanceOf[TypeVar]
                 }, StopAt.Static, forceLazy = false)
               && doesntContainsWildcards then
-              constrainResult(tree.symbol, wtp, wildApprox(pt1))
+              withoutMode(Mode.ImplicitsEnabled)(constrainResult(tree.symbol, wtp, wildApprox(pt1)))
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             def canProfitFromMoreConstraints =
