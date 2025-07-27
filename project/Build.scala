@@ -1435,6 +1435,22 @@ object Build {
   // =================================== BOOTSTRAPPED PROJECTS ====================================
   // ==============================================================================================
 
+  lazy val `scala3-bootstrapped-new` = project
+    .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
+      `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`)
+    .settings(
+      name          := "scala3-bootstrapped",
+      moduleName    := "scala3-bootstrapped",
+      version       := dottyVersion,
+      // Nothing to be published by this project, it is only an aggregate
+      Compile / publishArtifact := false,
+      Test    / publishArtifact := false,
+      // Nothing to be published by this project
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-bootstrapped",
+    )
+
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
   lazy val `scala3-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge"))
     .dependsOn(`scala3-compiler-bootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
