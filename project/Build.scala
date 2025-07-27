@@ -1722,7 +1722,7 @@ object Build {
   // ======================================= SCALA COMPILER =======================================
   // ==============================================================================================
 
-   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-nonbootstrapped project */
+  /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-nonbootstrapped project */
   lazy val `scala3-compiler-nonbootstrapped` = project.in(file("compiler"))
     .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`)
     .settings(
@@ -1800,6 +1800,136 @@ object Build {
           state.value,
           scalaInstanceTopLoader.value,
         )},
+      /* Add the sources of scalajs-ir.
+       * To guarantee that dotty can bootstrap without depending on a version
+       * of scalajs-ir built with a different Scala compiler, we add its
+       * sources instead of depending on the binaries.
+       */
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      Compile / sourceGenerators += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (Compile / sourceManaged).value / "scalajs-ir-src"
+
+        val report = updateClassifiers.value
+        val scalaJSIRSourcesJar = report.select(
+            configuration = configurationFilter("sourcedeps"),
+            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+          sys.error(s"Could not fetch scalajs-ir sources")
+        }
+
+        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+          if (trgDir.exists)
+            IO.delete(trgDir)
+          IO.createDirectory(trgDir)
+          IO.unzip(scalaJSIRSourcesJar, trgDir)
+
+          val sjsSources = (trgDir ** "*.scala").get.toSet
+          sjsSources.foreach(f => {
+            val lines = IO.readLines(f)
+            val linesWithPackage = replacePackage(lines) {
+              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
+            }
+            IO.writeLines(f, insertUnsafeNullsImport(linesWithPackage))
+          })
+          sjsSources
+        } (Set(scalaJSIRSourcesJar)).toSeq
+      }.taskValue,
+    )
+
+  /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-bootstrapped project */
+  lazy val `scala3-compiler-bootstrapped-new` = project.in(file("compiler"))
+    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`)
+    .settings(
+      name          := "scala3-compiler-bootstrapped",
+      moduleName    := "scala3-compiler",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // All the dependencies needed by the compiler
+      libraryDependencies ++= Seq(
+        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
+        Dependencies.compilerInterface,
+        "org.jline" % "jline-reader" % "3.29.0",
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0",
+        //("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+      ),
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // TODO: Enable these flags when the new stdlib is explicitelly null checked
+      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-compiler-bootstrapped",
+      // Generate compiler.properties, used by sbt
+      Compile / resourceGenerators += Def.task {
+        import java.util._
+        import java.text._
+        val file = (Compile / resourceManaged).value / "compiler.properties"
+        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
+          s"""version.number=${version.value}
+             |maven.version.number=${version.value}
+             |git.hash=${VersionUtil.gitHash}
+             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
+           """.stripMargin
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
+        Seq(file)
+      }.taskValue,
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its

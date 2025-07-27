@@ -4,6 +4,7 @@ val `scala3-bootstrapped` = Build.`scala3-bootstrapped`
 val `scala3-interfaces` = Build.`scala3-interfaces`
 val `scala3-compiler` = Build.`scala3-compiler`
 val `scala3-compiler-nonbootstrapped` = Build.`scala3-compiler-nonbootstrapped`
+val `scala3-compiler-bootstrapped-new` = Build.`scala3-compiler-bootstrapped-new`
 val `scala3-compiler-bootstrapped` = Build.`scala3-compiler-bootstrapped`
 val `scala-library-nonbootstrapped` = Build.`scala-library-nonbootstrapped`
 val `scala3-library-nonbootstrapped` = Build.`scala3-library-nonbootstrapped`
