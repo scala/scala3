@@ -1616,7 +1616,7 @@ object Build {
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-bootstrapped",
       // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
@@ -1683,7 +1683,7 @@ object Build {
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
-      publish / skip := true,
+      publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
     )
