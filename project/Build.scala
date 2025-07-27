@@ -1612,8 +1612,11 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
       publish / skip := false,
@@ -1679,8 +1682,11 @@ object Build {
       Test / compile := (`scala-library-bootstrapped` / Test / compile).value,
       Test / doc     := (`scala-library-bootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-bootstrapped` / Test / run).evaluated,
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
-      Compile / publishArtifact := true,
       Test    / publishArtifact := false,
       // Do not allow to publish this project for now
       publish / skip := false,
