@@ -2573,6 +2573,9 @@ object Build {
         val sourcePatches = if (justAPI) Nil else Seq(
           // Generate full sidebar.yml based on template and reference content
           new SourcePatch(docs / "sidebar.yml") {
+            val referenceSideBarCopy = IO.temporaryDirectory / "sidebar.yml.copy"
+            IO.copyFile(file, referenceSideBarCopy)
+
             override def apply(): Unit = {
               val yaml = new org.yaml.snakeyaml.Yaml()
               type YamlObject = java.util.Map[String, AnyRef]
@@ -2590,13 +2593,13 @@ object Build {
                 .filter(_.get("title") == "Reference")
                 .findFirst()
                 .orElseThrow(() => new IllegalStateException("Reference subsection not found in sidebar.nightly.template.yml"))
-                .putAll(loadYaml(docs / "sidebar.reference.yml"))
+                .putAll(loadYaml(referenceSideBarCopy))
 
               val sidebarWriter = Files.newBufferedWriter(this.file.toPath)
               try yaml.dump(template, sidebarWriter)
               finally sidebarWriter.close()
             }
-            override def revert(): Unit = IO.delete(file)
+            override def revert(): Unit = IO.move(referenceSideBarCopy, file)
           },
           // Add patch about nightly version usage
           new SourcePatch(docs / "_layouts" / "static-site-main.html") {
@@ -2670,7 +2673,6 @@ object Build {
         val docs = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), docs)
         IO.delete(docs / "_blog")
-        IO.move(docs / "sidebar.reference.yml", docs / "sidebar.yml")
 
         val config = Def.task {
           Scala3.value
@@ -2697,7 +2699,6 @@ object Build {
         val docs = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), docs)
         IO.delete(docs / "_blog")
-        IO.move(docs / "sidebar.reference.yml", docs / "sidebar.yml")
 
         // Add redirections from previously supported URLs, for some pages
         for (name <- Seq("changed-features", "contextual", "dropped-features", "metaprogramming", "other-new-features")) {
