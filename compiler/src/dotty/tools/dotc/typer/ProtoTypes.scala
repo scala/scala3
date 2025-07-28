@@ -396,7 +396,7 @@ object ProtoTypes {
         args: List[untpd.Tree] = this.args,
         resultType: Type = this.resultType,
         typer: Typer = this.typer,
-        constrainResultDeep: Boolean = this.constrainResultDeep)(using Context): FunProto =
+        constrainResultDeep: Boolean = this.constrainResultDeep): FunProto =
       if (args eq this.args)
           && (resultType eq this.resultType)
           && (typer eq this.typer)
