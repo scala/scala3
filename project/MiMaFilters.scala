@@ -22,6 +22,8 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
+        
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
       ),
 
       // Additions since last LTS
