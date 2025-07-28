@@ -20,6 +20,7 @@ import ast.tpd.*
 import Synthesizer.*
 import sbt.ExtractDependencies.*
 import xsbti.api.DependencyContext.*
+import dotty.tools.dotc.core.Definitions.MaxTupleArity
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -105,27 +106,84 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
     formal match
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
+        def doesFunctionTupleInto(baseFun: Type, actualArgs: List[Type],
+            actualRet: Type, tupled: Type) =
+          tupled.dealias =:= constructDependentTupleType(actualArgs, actualRet, defn.isContextFunctionType(baseFun))
+        def doesFunctionUntupleTo(baseFun: Type, actualArgs: List[Type],
+            actualRet: Type, untupled: Type) =
+              untupled.dealias =:= untupleDependentTupleType(actualArgs, actualRet, defn.isContextFunctionType(baseFun))
+
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionNOf(actualArgs, actualRet,
-            defn.isContextFunctionType(baseFun))
+          expected.dealias =:= defn.FunctionNOf(actualArgs, actualRet, defn.isContextFunctionType(baseFun))
+        def untupleDependentTupleType(args: List[Type], ret: Type, contextual: Boolean): Type =
+          val methodKind = if contextual then ContextualMethodType else MethodType
+
+
+          val p = methodKind(args.indices.map(nme.syntheticParamName).toList)(
+            mt => args,
+            mt =>
+              val tpeMap = new TypeMap:
+                def apply(tp: Type): Type =
+                  tp match
+                    case TermRef(TermParamRef(_, paramNum), name) =>
+                      name match
+                        case x: TermName =>
+                          x.toString match
+                            // hack upon hack upon hack
+                            // please make there be a reverse map so i dont have to do this : (
+                            case s"_$id" =>
+                              mt.paramRefs(id.toInt)
+                            case _ => ???
+                        case _ => ???
+                    case _ => mapOver(tp)
+              tpeMap(ret)
+          )
+          p
+
+        def constructDependentTupleType(args: List[Type], ret: Type, contextual: Boolean): Type =
+          val methodKind = if contextual then ContextualMethodType else MethodType
+
+          val p = methodKind(List(nme.syntheticParamName(0)))(
+            mt => List(defn.tupleType(args)),
+            mt =>
+              val tpeMap = new TypeMap:
+                def apply(tp: Type): Type =
+                  tp match
+                    case TermParamRef(binder, paramNum) =>
+                      mt.paramRefs(0).select(nme.selectorName(paramNum))
+                    case _ =>
+                      mapOver(tp)
+              tpeMap(ret)
+          ).toFunctionType()
+          p
+        val dealiasedFun = fun.dealias
+        val dealiasedTupled = tupled.dealias
         val arity: Int =
           if defn.isFunctionNType(fun) then
             // TupledFunction[(...) => R, ?]
-            fun.functionArgInfos match
-              case funArgs :+ funRet
-              if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
-                // TupledFunction[(...funArgs...) => funRet, ?]
-                funArgs.size
-              case _ => -1
+            // dont use functionArgInfos it dealiases and drops dependents
+
+            dealiasedFun match
+              case defn.RefinedFunctionOf(method: MethodType) if doesFunctionTupleInto(dealiasedFun, method.paramInfos, method.resType, dealiasedTupled) =>
+                method.paramInfos.size
+              // poly types are unsupported
+              case defn.RefinedFunctionOf(_) => -1
+              case _ =>
+                fun.functionArgInfos match
+                  case funArgs :+ funRet
+                  if functionTypeEqual(dealiasedFun, defn.tupleType(funArgs) :: Nil, funRet, dealiasedTupled) =>
+                    // TupledFunction[(...funArgs...) => funRet, ?]
+                    funArgs.size
+                  case _ => -1
           else if defn.isFunctionNType(tupled) then
             // TupledFunction[?, (...) => R]
-            tupled.functionArgInfos match
+            dealiasedTupled.argInfos match
               case tupledArgs :: funRet :: Nil =>
+                // TupledFunction[?, ((...)) => R]
                 tupledArgs.tupleElementTypes match
-                  case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
-                    // TupledFunction[?, ((...funArgs...)) => funRet]
-                    funArgs.size
+                  case Some(args) if doesFunctionUntupleTo(dealiasedTupled, args, funRet, dealiasedFun) =>
+                    args.size
                   case _ => -1
               case _ => -1
           else
