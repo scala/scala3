@@ -4367,7 +4367,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     tp.derivedFunProto(resultType = tp.resultType(using newCtx)).withContext(newCtx)
                   )
                   case tp => mapOver(tp)
-              val pt1 = substCtxMap(pt).deepenProtoTrans(using newCtx)
+              val pt1 = substCtxMap(pt.deepenProtoTrans(using newCtx))
               try {
                 isFullyDefined(pt1, ForceDegree.none, ifProto = true)(using newCtx)
               } catch {
