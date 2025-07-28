@@ -42,6 +42,7 @@ object TastyFileUtil {
         s"${className.lastPart.encode}"
       else
         s"${packageName.encode}.${className.lastPart.encode}"
+  }
 }
 
 
