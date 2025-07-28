@@ -178,14 +178,25 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   case _ => -1
           else if defn.isFunctionNType(tupled) then
             // TupledFunction[?, (...) => R]
-            dealiasedTupled.argInfos match
-              case tupledArgs :: funRet :: Nil =>
-                // TupledFunction[?, ((...)) => R]
-                tupledArgs.tupleElementTypes match
-                  case Some(args) if doesFunctionUntupleTo(dealiasedTupled, args, funRet, dealiasedFun) =>
-                    args.size
+            dealiasedTupled match
+              case defn.RefinedFunctionOf(method: MethodType) =>
+                method.argInfos match
+                  case tupledArgs :: funRet :: Nil =>
+                    // TupledFunction[?, ((...)) => R]
+                    tupledArgs.tupleElementTypes match
+                      case Some(args) if doesFunctionUntupleTo(dealiasedTupled, args, funRet, dealiasedFun) =>
+                        args.size
+                      case _ => -1
                   case _ => -1
-              case _ => -1
+              case _ =>
+                tupled.functionArgInfos match
+                  case tupledArgs :: funRet :: Nil =>
+                    // TupledFunction[?, ((...)) => R]
+                    tupledArgs.tupleElementTypes match
+                        case Some(args) if functionTypeEqual(dealiasedTupled, args, funRet, dealiasedFun) =>
+                          args.size
+                        case _ => -1
+                  case _ => -1
           else
             // TupledFunction[?, ?]
             -1
