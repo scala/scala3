@@ -4361,7 +4361,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             def doesntContainsWildcards = {
               val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(NoReporter))
-              val pt1 = pt.deepenProtoTrans(using newCtx)
+              val substCtxMap = new TypeMap():
+                def apply(tp: Type): Type = tp match
+                  case tp: FunProto => mapOver(
+                    tp.derivedFunProto(resultType = tp.resultType(using newCtx)).withContext(newCtx)
+                  )
+                  case tp => mapOver(tp)
+              val pt1 = substCtxMap(pt).deepenProtoTrans(using newCtx)
               try {
                 isFullyDefined(pt1, ForceDegree.none, ifProto = true)(using newCtx)
               } catch {
