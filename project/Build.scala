@@ -1737,10 +1737,17 @@ object Build {
       autoScalaLibrary := false,
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Add all the project's external dependencies
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1768,6 +1775,11 @@ object Build {
           state.value,
           scalaInstanceTopLoader.value,
         )},
+      // Add configuration of the test
+      Test / envVars ++= Map(
+        "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+      ),
+
     )
 
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-bootstrapped project */
@@ -1784,10 +1796,17 @@ object Build {
       autoScalaLibrary := false,
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Add all the project's external dependencies
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1824,6 +1843,10 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Add configuration of the test
+      Test / envVars ++= Map(
+        "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+      ),
     )
 
   // ==============================================================================================
