@@ -1396,14 +1396,25 @@ object Build {
       scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
-      // Add the source directories for the stdlib (non-boostrapped)
+      // Add the source directories for the sbt-bridge (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Add all the project's external dependencies
+      libraryDependencies ++= Seq(
+        ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        ),
+      // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
+      excludeDependencies ++= Seq(
+        "org.scala-lang" % "scala-reflect",
+        "org.scala-lang" % "scala-compiler",
+      ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1455,7 +1466,7 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
   lazy val `scala3-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge"))
-    .dependsOn(`scala3-compiler-bootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
+    .dependsOn(`scala3-compiler-bootstrapped-new`) // TODO: Would this actually evict the reference compiler in scala-tool?
     .settings(
       name          := "scala3-sbt-bridge-bootstrapped",
       moduleName    := "scala3-sbt-bridge",
@@ -1464,15 +1475,27 @@ object Build {
       scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
-      // Add the source directories for the stdlib (non-boostrapped)
+      // Add the source directories for the sbt-bridge (boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
-      // Packaging configuration of the stdlib
+      // Add all the project's external dependencies
+      libraryDependencies ++= Seq(
+        ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        ),
+      // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
+      excludeDependencies ++= Seq(
+        "org.scala-lang" % "scala-reflect",
+        "org.scala-lang" % "scala-compiler",
+      ),
+      //
+      // Packaging configuration of `scala3-sbt-bridge`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
       Compile / packageSrc / publishArtifact := true,
@@ -1714,10 +1737,17 @@ object Build {
       autoScalaLibrary := false,
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Add all the project's external dependencies
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1745,11 +1775,16 @@ object Build {
           state.value,
           scalaInstanceTopLoader.value,
         )},
+      // Add configuration of the test
+      Test / envVars ++= Map(
+        "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+      ),
+
     )
 
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-bootstrapped project */
   lazy val `tasty-core-bootstrapped-new` = project.in(file("tasty"))
-    .dependsOn(`scala3-library-bootstrapped`)
+    .dependsOn(`scala3-library-bootstrapped-new`)
     .settings(
       name          := "tasty-core-bootstrapped",
       moduleName    := "tasty-core",
@@ -1761,10 +1796,17 @@ object Build {
       autoScalaLibrary := false,
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Add all the project's external dependencies
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1801,6 +1843,10 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Add configuration of the test
+      Test / envVars ++= Map(
+        "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+      ),
     )
 
   // ==============================================================================================
@@ -1930,7 +1976,7 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-bootstrapped project */
   lazy val `scala3-compiler-bootstrapped-new` = project.in(file("compiler"))
-    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`)
+    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped-new`, `scala3-library-bootstrapped-new`)
     .settings(
       name          := "scala3-compiler-bootstrapped",
       moduleName    := "scala3-compiler",
