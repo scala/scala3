@@ -495,7 +495,11 @@ object Capabilities:
         def isProvisional = this.core match
           case core: TypeProxy => !core.underlying.exists || core.underlying.isProvisional
           case _ => false
-        if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || isProvisional then
+        if !ccConfig.cacheCaptureSetOfInfo
+            || !isCaptureChecking
+            || ctx.mode.is(Mode.IgnoreCaptures)
+            || isProvisional
+        then
           myCaptureSet = null
         else
           myCaptureSet = computed
