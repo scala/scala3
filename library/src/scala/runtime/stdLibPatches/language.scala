@@ -350,7 +350,7 @@ object language:
   @compileTimeOnly("`3.7` can only be used at compile time in import statements")
   object `3.7`
 
-    /** Set source version to 3.8-migration.
+  /** Set source version to 3.8-migration.
     *
     * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
@@ -364,7 +364,7 @@ object language:
   @compileTimeOnly("`3.8` can only be used at compile time in import statements")
   object `3.8`
 
-      /** Set source version to 3.9-migration.
+  /** Set source version to 3.9-migration.
     *
     * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
