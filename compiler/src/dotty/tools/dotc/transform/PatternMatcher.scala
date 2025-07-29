@@ -343,8 +343,12 @@ object PatternMatcher {
               receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
               Literal(Constant(i)))
 
-        val wasNamedArg = args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && !wasNamedArg)
+        // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
+        // enable selecting the field. See i23131.scala for test cases.
+        val wasSingleNamedArgForNamedTuple =
+          args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined &&
+            isGetMatch(unappType) && unapp.select(nme.get, _.info.isParameterless).tpe.widenDealias.isNamedTupleType
+        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && !wasSingleNamedArgForNamedTuple)
           def tupleSel(sym: Symbol) =
             // If scrutinee is a named tuple, cast to underlying tuple, so that we can
             // continue to select with _1, _2, ...
@@ -387,20 +391,16 @@ object PatternMatcher {
                   }
                 else
                   letAbstract(get) { getResult =>
-                    def isUnaryNamedTupleSelectArg(arg: Tree) =
-                      get.tpe.widenDealias.isNamedTupleType
-                      && wasNamedArg 
                     // Special case: Normally, we pull out the argument wholesale if
                     // there is only one. But if the argument is a named argument for
                     // a single-element named tuple, we have to select the field instead.
                     // NamedArg trees are eliminated in FirstTransform but for named arguments
                     // of patterns we add a WasNamedArg attachment, which is used to guide the
                     // logic here. See i22900.scala for test cases.
-                    val selectors = args match
-                      case arg :: Nil if !isUnaryNamedTupleSelectArg(arg) =>
-                        ref(getResult) :: Nil
-                      case _ =>
-                        productSelectors(getResult.info).map(ref(getResult).select(_))
+                    val selectors = if args.length == 1 && !wasSingleNamedArgForNamedTuple then
+                      ref(getResult) :: Nil
+                    else
+                      productSelectors(getResult.info).map(ref(getResult).select(_))
                     matchArgsPlan(selectors, args, onSuccess)
                   }
               }
