@@ -22,6 +22,7 @@ import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
 import cc.{stripCapturing, isUpdateMethod, CCState}
+import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
 
 object RefChecks {
   import tpd.*
@@ -629,15 +630,15 @@ object RefChecks {
     // Verifying a concrete class has nothing unimplemented.
     if (!clazz.isOneOf(AbstractOrTrait)) {
       val abstractErrors = new mutable.ListBuffer[String]
+      val concreteClassUnimplementedMethodError = new mutable.ListBuffer[Message]
       def abstractErrorMessage =
         // a little formatting polish
         if (abstractErrors.size <= 2) abstractErrors.mkString(" ")
         else abstractErrors.tail.mkString(abstractErrors.head + ":\n", "\n", "")
 
-      def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
+      def abstractClassError(msg: String): Unit = {
         def prelude = (
           if (clazz.isAnonymousClass || clazz.is(Module)) "object creation impossible"
-          else if (mustBeMixin) s"$clazz needs to be a mixin"
           else if clazz.is(Synthetic) then "instance cannot be created"
           else s"$clazz needs to be abstract"
           ) + ", since"
@@ -717,29 +718,14 @@ object RefChecks {
         }
 
         def stubImplementations: List[String] = {
-          // Grouping missing methods by the declaring class
-          val regrouped = missingMethods.groupBy(_.owner).toList
           def membersStrings(members: List[Symbol]) =
             members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl + " = ???")
 
-          if (regrouped.tail.isEmpty)
-            membersStrings(regrouped.head._2)
-          else (regrouped.sortBy(_._1.name.toString()) flatMap {
-            case (owner, members) =>
-              ("// Members declared in " + owner.fullName) +: membersStrings(members) :+ ""
-          }).init
+          membersStrings(missingMethods)
         }
 
-        // If there are numerous missing methods, we presume they are aware of it and
-        // give them a nicely formatted set of method signatures for implementing.
-        if (missingMethods.size > 1) {
-          abstractClassError(false, "it has " + missingMethods.size + " unimplemented members.")
-          val preface =
-            """|/** As seen from %s, the missing signatures are as follows.
-                 | *  For convenience, these are usable as stub implementations.
-                 | */
-                 |""".stripMargin.format(clazz)
-          abstractErrors += stubImplementations.map("  " + _ + "\n").mkString(preface, "", "")
+        if (missingMethods.size >= 1) {
+          concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(clazz, missingMethods, createAddMissingMethodsAction(clazz, stubImplementations))
           return
         }
 
@@ -747,7 +733,7 @@ object RefChecks {
           def showDclAndLocation(sym: Symbol) =
             s"${sym.showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
+            abstractClassError(s"${showDclAndLocation(member)} is not defined $msg")
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -840,7 +826,7 @@ object RefChecks {
               val impl1 = clazz.thisType.nonPrivateMember(decl.name) // DEBUG
               report.log(i"${impl1}: ${impl1.info}") // DEBUG
               report.log(i"${clazz.thisType.memberInfo(decl)}") // DEBUG
-              abstractClassError(false, "there is a deferred declaration of " + infoString(decl) +
+              abstractClassError("there is a deferred declaration of " + infoString(decl) +
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
           }
         if (bc.asClass.superClass.is(Abstract))
@@ -915,6 +901,8 @@ object RefChecks {
 
       if (abstractErrors.nonEmpty)
         report.error(abstractErrorMessage, clazz.srcPos)
+
+      concreteClassUnimplementedMethodError.foreach(report.error(_, clazz.srcPos))
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -1272,6 +1260,79 @@ object RefChecks {
         case tp: NamedType if tp.prefix.typeSymbol != ctx.owner.enclosingClass =>
           report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
         case _ => ()
+
+  private def createAddMissingMethodsAction(clazz: ClassSymbol, methods: List[String])(using Context): List[CodeAction] = {
+    import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+    import dotty.tools.dotc.util.Spans
+    import dotty.tools.dotc.ast.untpd
+
+    val untypedTree = NavigateAST
+      .untypedPath(clazz.span)
+      .head
+      .asInstanceOf[untpd.Tree]
+
+    val classSrcPos = clazz.srcPos
+    val content = classSrcPos.sourcePos.source.content()
+    val span = classSrcPos.endPos.span
+
+    val classText = new String(content.slice(untypedTree.span.start, untypedTree.span.end))
+    val classHasBraces = classText.contains("{") && classText.contains("}")
+
+    // Indentation for inserted methods
+    val lineStart = content.lastIndexWhere(isLineBreakChar, end = span.end - 1) + 1
+    val baseIndent = new String(content.slice(lineStart, span.end).takeWhile(c => c == ' ' || c == '\t'))
+    val indent = baseIndent + "  "
+
+    val formattedMethods = methods.map(m => s"$indent$m").mkString(System.lineSeparator())
+
+    val isBracelessSyntax = untypedTree match
+      case untpd.TypeDef(_, tmpl: untpd.Template) =>
+        !classText.contains("{") && tmpl.body.nonEmpty
+      case _ => false
+
+    if (classHasBraces) {
+      val insertBeforeBrace = untypedTree.sourcePos.withSpan(Span(untypedTree.span.end - 1))
+      val braceStart = classText.indexOf('{')
+      val braceEnd   = classText.lastIndexOf('}')
+      val bodyBetweenBraces = classText.slice(braceStart + 1, braceEnd)
+      val bodyIsEmpty = bodyBetweenBraces.forall(_.isWhitespace)
+      val bodyContainsNewLine = bodyBetweenBraces.exists(isLineBreakChar)
+
+      val prefix = if (bodyContainsNewLine) "" else System.lineSeparator()
+      val patchText =
+        prefix +
+        formattedMethods +
+        System.lineSeparator()
+
+      val patch = ActionPatch(insertBeforeBrace, patchText)
+      List(CodeAction("Add missing methods", None, List(patch)))
+    } else if (isBracelessSyntax) {
+      val insertAfterLastDef = untypedTree match
+        case untpd.TypeDef(_, tmpl: untpd.Template) if tmpl.body.nonEmpty =>
+          val lastDef = tmpl.body.last
+          lastDef.sourcePos.withSpan(Span(lastDef.span.end))
+        case _ =>
+          untypedTree.sourcePos.withSpan(Span(untypedTree.span.end))
+
+      val patchText = System.lineSeparator() + formattedMethods
+
+      val patch = ActionPatch(insertAfterLastDef, patchText)
+      List(CodeAction("Add missing methods", None, List(patch)))
+    } else {
+      // Class has no body – add whole `{ ... }` after class header, same line
+      val insertAfterHeader = untypedTree.sourcePos.withSpan(Span(untypedTree.span.end))
+
+      val patchText =
+        " {" + System.lineSeparator() +
+        formattedMethods + System.lineSeparator() +
+        "}"
+
+      val patch = ActionPatch(insertAfterHeader, patchText)
+      List(CodeAction("Add missing methods", None, List(patch)))
+    }
+  }
+
+
 }
 import RefChecks.*
 

@@ -232,6 +232,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnnecessaryNN // errorNumber: 216
   case ErasedNotPureID // errorNumber: 217
   case IllegalErasedDefID // errorNumber: 218
+  case ConcreteClassHasUnimplementedMethodsID // errorNumer: 219
 
   def errorNumber = ordinal - 1
 
