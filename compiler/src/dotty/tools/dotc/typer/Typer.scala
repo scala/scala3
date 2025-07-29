@@ -684,25 +684,33 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree.withType(checkedType)
       checkLegalValue(toNotNullTermRef(tree1, pt), pt)
 
-    def isLocalExtensionMethodRef: Boolean = rawType match
-      case rawType: TermRef =>
-        rawType.denot.hasAltWith(_.symbol.is(ExtensionMethod))
-        && !pt.isExtensionApplyProto
-        && {
-          val xmethod = ctx.owner.enclosingExtensionMethod
-          rawType.denot.hasAltWith { alt =>
-            alt.symbol.is(ExtensionMethod)
-            && alt.symbol.extensionParam.span == xmethod.extensionParam.span
-          }
-        }
-      case _ =>
-        false
+    // extensionParam
+    def leadParamOf(m: SymDenotation): Symbol =
+      def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
+        case (param :: _) :: paramss if param.isType => leadParam(paramss)
+        case _ :: (param :: Nil) :: _ if m.name.isRightAssocOperatorName => param
+        case (param :: Nil) :: _ => param
+        case _ => NoSymbol
+      leadParam(m.rawParamss)
 
-    if ctx.mode.is(Mode.InExtensionMethod) && isLocalExtensionMethodRef then
-      val xmethod = ctx.owner.enclosingExtensionMethod
-      val qualifier = untpd.ref(xmethod.extensionParam.termRef)
-      val selection = untpd.cpy.Select(tree)(qualifier, name)
-      typed(selection, pt)
+    val localExtensionSelection: untpd.Tree =
+      var select: untpd.Tree = EmptyTree
+      if ctx.mode.is(Mode.InExtensionMethod) then
+        rawType match
+        case rawType: TermRef
+        if rawType.denot.hasAltWith(_.symbol.is(ExtensionMethod)) && !pt.isExtensionApplyProto =>
+          val xmethod = ctx.owner.enclosingExtensionMethod
+          val xparam  = leadParamOf(xmethod)
+          if rawType.denot.hasAltWith: alt =>
+               alt.symbol.is(ExtensionMethod)
+            && alt.symbol.extensionParam.span == xparam.span // forces alt.symbol (which might be xmethod)
+          then
+            select = untpd.cpy.Select(tree)(untpd.ref(xparam), name)
+        case _ =>
+      select
+
+    if !localExtensionSelection.isEmpty then
+      typed(localExtensionSelection, pt)
     else if rawType.exists then
       val ref = setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
       if ref.symbol.name != name then
@@ -839,10 +847,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
     // to the Tuple class of the right arity and select from that one
     def trySmallGenericTuple(qual: Tree, withCast: Boolean) =
-      if qual.tpe.isSmallGenericTuple then
+      val tp = qual.tpe.widenTermRefExpr
+      val tpNormalized = tp.normalizedTupleType
+      if tp ne tpNormalized then
         if withCast then
-          val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
-          typedSelectWithAdapt(tree, pt, qual.cast(defn.tupleType(elems)))
+          typedSelectWithAdapt(tree, pt, qual.cast(tpNormalized))
         else
           typedSelectWithAdapt(tree, pt, qual)
       else EmptyTree
@@ -1085,8 +1094,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if symbol.exists && symbol.owner == defn.ScalaPredefModuleClass && symbol.name == nme.nn then
           tree match
           case Apply(_, args) =>
-            if(args.head.tpe.isNotNull) then report.warning("Unnecessary .nn: qualifier is already not null", tree)
-            if pt.admitsNull then report.warning("Unnecessary .nn: expected type admits null", tree)
+            if(args.head.tpe.isNotNull) then report.warning(UnnecessaryNN("qualifier is already not null", args.head.sourcePos), tree)
+            if pt.admitsNull then report.warning(UnnecessaryNN("expected type admits null", args.head.sourcePos), tree)
           case _ =>
       }
     }
@@ -1930,9 +1939,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // to
           //   (a1, ..., aN) => e
           val params1 = desugar.patternsToParams(elems)
+          val matchCheck = scrut.getAttachment(desugar.CheckIrrefutable)
+            .getOrElse(desugar.MatchCheck.IrrefutablePatDef)
           desugared = if params1.hasSameLengthAs(elems)
             then cpy.Function(tree)(params1, rhs)
-            else desugar.makeCaseLambda(cases, desugar.MatchCheck.IrrefutablePatDef, protoFormals.length)
+            else desugar.makeCaseLambda(cases, matchCheck, protoFormals.length)
         case _ =>
 
     if desugared.isEmpty then

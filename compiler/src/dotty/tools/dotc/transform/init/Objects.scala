@@ -532,7 +532,7 @@ class Objects(using Context @constructorOnly):
       case env: EnvRef =>
         env.initVal(x, value)
       case ref: Ref =>
-        ref.initVal(x, value) // TODO: This is possible for match statement in class body. Report warning?
+        ref.initVal(x, value) // This is possible for match statement in class body.
 
     def setLocalVar(x: Symbol, value: Value)(using scope: Scope, ctx: Context, heap: Heap.MutableData, envMap: EnvMap.EnvMapMutableData): Unit =
       assert(x.is(Flags.Mutable, butNot = Flags.Param), "Only local mutable variable allowed")
@@ -540,7 +540,7 @@ class Objects(using Context @constructorOnly):
       case env: EnvRef =>
         env.initVar(x, value)
       case ref: Ref =>
-        ref.initVar(x, value) // TODO: This is possible for match statement in class body. Report warning?
+        ref.initVar(x, value) // This is possible for match statement in class body.
 
     /**
      * Resolve the environment by searching for a given symbol.
@@ -986,15 +986,7 @@ class Objects(using Context @constructorOnly):
         // Assume such method is pure. Check return type, only try to analyze body if return type is not safe
         val target = resolve(v.typeSymbol.asClass, meth)
         val targetType = target.denot.info
-        assert(targetType.isInstanceOf[ExprType] || targetType.isInstanceOf[MethodType],
-          "Unexpected type! Receiver = " + v.show + ", meth = " + target + ", type = " + targetType)
-        val returnType =
-          if targetType.isInstanceOf[ExprType] then
-            // corresponds to parameterless method like `def meth: ExprType[T]`
-            // See pos/toDouble.scala
-            targetType.asInstanceOf[ExprType].resType
-          else
-            targetType.asInstanceOf[MethodType].resType
+        val returnType = targetType.finalResultType
         val typeSymbol = SafeValue.getSafeTypeSymbol(returnType)
         if typeSymbol.isDefined then
           // since method is pure and return type is safe, no need to analyze method body
@@ -1326,7 +1318,8 @@ class Objects(using Context @constructorOnly):
                 report.warning("[Internal error] top-level class should have `Package` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
                 (Bottom, Env.NoEnv)
               else
-                val outerCls = klass.owner.enclosingClass.asClass
+                // enclosingClass is specially handled for java static terms, so use `lexicallyEnclosingClass` here
+                val outerCls = klass.owner.lexicallyEnclosingClass.asClass
                 // When `klass` is directly nested in `outerCls`, `outerCls`.enclosingMethod returns its primary constructor
                 if klass.owner.enclosingMethod == outerCls.primaryConstructor then
                   (outer, Env.NoEnv)
@@ -1813,6 +1806,7 @@ class Objects(using Context @constructorOnly):
             val toSeqResTp = resultTp.memberInfo(selectors.last).finalResultType
             evalSeqPatterns(toSeqRes, toSeqResTp, elemTp, seqPats)
           end if
+          // TODO: refactor the code of product sequence match, avoid passing NoType to parameter elemTp in evalSeqPatterns
 
         else
           // distribute unapply to patterns
