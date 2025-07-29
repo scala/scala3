@@ -29,7 +29,7 @@ class Mitigations {
 
   def ok = s"$s is ok"
   def jersey = s"number $i"
-  def unitized = s"unfortunately $shown" // maybe tell them about unintended ()?
+  def unitized = s"unfortunately $shown" // warn
 
   def nopct = f"$s is ok"
   def nofmt = f"number $i"
