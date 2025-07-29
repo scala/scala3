@@ -2228,3 +2228,16 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       "test: Int"
     )
+
+  @Test def `macros` =
+    check(
+      """
+        |object Macro:
+        |  import scala.quoted.*
+        |  def dbgImpl[A](a: Expr[A])(using Quotes): Expr[A] =
+        |    import quotes.reflect.*
+        |    a.asTer@@
+        |
+        |""".stripMargin,
+      "asTerm: Term"
+    )
