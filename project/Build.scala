@@ -1848,8 +1848,7 @@ object Build {
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
-    settings(commonBootstrappedSettings).
-    settings(Compile / scalacOptions ++= Seq("-Yexplicit-nulls"))
+    settings(commonBootstrappedSettings)
 
 
   /**
