@@ -377,7 +377,9 @@ object Inferencing {
   }
 
   /** The instantiation decision for given poly param computed from the constraint. */
-  enum Decision { case Min; case Max; case ToMax; case Skip; case Fail }
+  enum Decision:
+    case Min, Max, ToMax, Skip, Fail
+
   private def instDecision(tvar: TypeVar, v: Int, minimizeSelected: Boolean, ifBottom: IfBottom)(using Context): Decision =
     import Decision.*
     val direction = instDirection(tvar.origin)
