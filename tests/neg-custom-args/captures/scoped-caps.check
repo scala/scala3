@@ -8,7 +8,8 @@
   |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
   |                              ^³ refers to a fresh root capability in the type of value g
   |
-  |                    Note that capability <cap of (x: A^): B^> is not included in capture set {cap}.
+  |                    Note that capability <cap of (x: A^): B^> is not included in capture set {cap}
+  |                    because <cap of (x: A^): B^> is not visible from cap in value g.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:9:25 -----------------------------------
@@ -33,7 +34,8 @@
    |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
    |                              ^³ refers to a fresh root capability in the type of value _$3
    |
-   |                    Note that capability <cap of (x: A^): B^> is not included in capture set {cap}.
+   |                    Note that capability <cap of (x: A^): B^> is not included in capture set {cap}
+   |                    because <cap of (x: A^): B^> is not visible from cap in value _$3.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:12:20 ----------------------------------
@@ -106,7 +108,8 @@
    |                          ^²  refers to a fresh root capability in the type of value _$14
    |                          cap is the universal root capability
    |
-   |                Note that capability <cap of (x: S^{cap.rd}): B^> is not included in capture set {cap}.
+   |                Note that capability <cap of (x: S^{cap.rd}): B^> is not included in capture set {cap}
+   |                because <cap of (x: S^{cap.rd}): B^> is not visible from cap in value _$14.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:19 ----------------------------------
@@ -118,6 +121,7 @@
    |                   where:    ^   refers to a fresh root capability in the type of value _$15
    |                             cap is the universal root capability
    |
-   |                   Note that capability x.type is not included in capture set {cap}.
+   |                   Note that capability x.type is not included in capture set {cap}
+   |                   because x.type is not visible from cap in value _$15.
    |
    | longer explanation available when compiling with `-explain`

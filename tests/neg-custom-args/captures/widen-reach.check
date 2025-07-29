@@ -14,7 +14,8 @@
   |                        where:    ^  refers to the universal root capability
   |                                  ^² refers to a fresh root capability in the type of value foo
   |
-  |                        Note that capability x.type is not included in capture set {cap}.
+  |                        Note that capability x.type is not included in capture set {cap}
+  |                        because x.type is not visible from cap in value foo.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------

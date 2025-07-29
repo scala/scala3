@@ -15,7 +15,8 @@
    |          ^  refers to the universal root capability
    |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method handle
    |
-   |Note that capability x.type is not included in capture set {cap}.
+   |Note that capability x.type is not included in capture set {cap}
+   |because x.type is not visible from cap in value a.
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |

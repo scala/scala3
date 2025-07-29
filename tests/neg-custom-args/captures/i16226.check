@@ -9,7 +9,8 @@
    |          =>³ refers to a fresh root capability in the result type of method mapc
    |          ^   refers to a fresh root capability in the result type of method mapc
    |
-   |Note that capability f1.type is not included in capture set {cap}.
+   |Note that capability f1.type is not included in capture set {cap}
+   |because f1.type is not visible from cap in method mapc.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:4 ----------------------------------------

@@ -467,7 +467,6 @@ extension (tp: Type)
 
   def classifier(using Context): ClassSymbol =
     tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
-
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
@@ -598,6 +597,11 @@ extension (sym: Symbol)
   def isInReadOnlyMethod(using Context): Boolean =
     if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
     else sym.owner.isInReadOnlyMethod
+
+  def qualString(prefix: String)(using Context): String =
+    if !sym.exists then ""
+    else if sym.isAnonymousFunction then i" $prefix enclosing function"
+    else i" $prefix $sym"
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

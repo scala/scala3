@@ -20,6 +20,7 @@
    |
    |                               where:    ^ refers to a fresh root capability in the type of value backdoor
    |
-   |                               Note that capability cap is not included in capture set {cap}.
+   |                               Note that capability cap is not included in capture set {cap}
+   |                               because cap is not visible from cap in value backdoor.
    |
    | longer explanation available when compiling with `-explain`

@@ -156,6 +156,14 @@ object Capabilities:
       case that: FreshCap => this eq that
       case _ => false
 
+    def acceptsLevelOf(ref: Capability)(using Context): Boolean =
+      if ccConfig.useFreshLevels && !CCState.collapseFresh then
+        val refOwner = ref.levelOwner
+        refOwner.isStaticOwner || ccOwner.isContainedIn(refOwner)
+      else ref.core match
+        case ResultCap(_) | _: ParamRef => false
+        case _ => true
+
     def descr(using Context) =
       val originStr = origin match
         case Origin.InDecl(sym) if sym.exists =>
@@ -681,7 +689,7 @@ object Capabilities:
               case _ => true
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
-          || levelOK
+          || x.acceptsLevelOf(y)
               && ( y.tryClassifyAs(x.hiddenSet.classifier)
                    || { capt.println(i"$y cannot be classified as $x"); false }
               )

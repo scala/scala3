@@ -22,7 +22,8 @@
    |          ^  refers to the universal root capability
    |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
    |
-   |Note that capability x.type is not included in capture set {cap}.
+   |Note that capability x.type is not included in capture set {cap}
+   |because x.type is not visible from cap in value a.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
@@ -55,6 +56,7 @@
    |                                              where:    ^  refers to the universal root capability
    |                                                        ^² refers to a fresh root capability created in value x²
    |
-   |                                              Note that capability x* is not included in capture set {cap}.
+   |                                              Note that capability x* is not included in capture set {cap}
+   |                                              because x* is not visible from cap in value x.
    |
    | longer explanation available when compiling with `-explain`

@@ -67,9 +67,6 @@ object CheckCaptures:
         val res = cur
         cur = cur.outer
         res
-
-    def ownerString(using Context): String =
-      if owner.isAnonymousFunction then "enclosing function" else owner.show
   end Env
 
   /** Similar normal substParams, but this is an approximating type map that
@@ -494,7 +491,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 CaptureSet.ofType(c1.widen, followResult = true)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowRootCapability(NoSymbol): () =>
-            report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", tree.srcPos)
+            report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `cap` as underlying capture set", tree.srcPos)
           recur(underlying, env, lastEnv)
 
       /** Avoid locally defined capability if it is a reach capability or capture set
@@ -548,9 +545,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         case ref: NamedType if !ref.symbol.isUseParam =>
           val what = if ref.isType then "Capture set parameter" else "Local reach capability"
           val owner = ref.symbol.owner
-          val ownerStr = if owner.isAnonymousFunction then "enclosing function" else owner.show
           report.error(
-            em"""$what $c leaks into capture scope of $ownerStr.
+            em"""$what $c leaks into capture scope${owner.qualString("of")}.
                 |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
         case _ =>
 

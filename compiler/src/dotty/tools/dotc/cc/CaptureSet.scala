@@ -263,7 +263,13 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: Capability)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      CCState.withCollapsedFresh: // OK here since we opportunistically choose an alternative which gets checked later
+      CCState.withCollapsedFresh:
+        // withCollapsedFresh should be dropped. The problem is that since our level checking
+        // does not deal with classes well, we get false negatives here. Observed in the line
+        //
+        //     stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state))))
+        //
+        // in cc-lib's LazyListIterable.scala.
         TypeComparer.noNotes:
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
@@ -1276,28 +1282,37 @@ object CaptureSet:
       res.myTrace = cs1 :: this.myTrace
       res
 
-    def description(using Context): String = cs match
-      case cs: Var =>
-        if !cs.levelOK(elem) then
-          val levelStr = elem match
-            case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-            case _ => ""
-          i"""capability ${elem}$levelStr
-              |cannot be included in outer capture set $cs"""
-        else if !elem.tryClassifyAs(cs.classifier) then
-          i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
-              |cannot be included in capture set $cs of ${cs.classifier} elements"""
-        else if cs.isBadRoot(elem) then
-          elem match
-            case elem: FreshCap =>
-              i"""local capability $elem created in ${elem.ccOwner}
-                 |cannot be included in outer capture set $cs"""
-            case _ =>
-              i"universal capability $elem cannot be included in capture set $cs"
-        else
-          i"capability $elem cannot be included in capture set $cs"
-      case _ =>
-        i"capability $elem is not included in capture set $cs"
+    def description(using Context): String =
+      def why =
+        val reasons = cs.elems.toList.collect:
+          case c: FreshCap if !c.acceptsLevelOf(elem) =>
+            i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
+          case c: FreshCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
+            i"$c is classified as ${c.hiddenSet.classifier} but $elem is not"
+        if reasons.isEmpty then ""
+        else reasons.mkString("\nbecause ", "\nand ", "")
+      cs match
+        case cs: Var =>
+          if !cs.levelOK(elem) then
+            val levelStr = elem match
+              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
+              case _ => ""
+            i"""capability ${elem}$levelStr
+                |cannot be included in outer capture set $cs"""
+          else if !elem.tryClassifyAs(cs.classifier) then
+            i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
+                |cannot be included in capture set $cs of ${cs.classifier} elements"""
+          else if cs.isBadRoot(elem) then
+            elem match
+              case elem: FreshCap =>
+                i"""local capability $elem created in ${elem.ccOwner}
+                  |cannot be included in outer capture set $cs"""
+              case _ =>
+                i"universal capability $elem cannot be included in capture set $cs"
+          else
+            i"capability $elem cannot be included in capture set $cs"
+        case _ =>
+          i"capability $elem is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):

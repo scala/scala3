@@ -41,7 +41,8 @@
    |                           where:    =>  refers to the universal root capability
    |                                     =>² refers to a fresh root capability in the type of value next
    |
-   |                           Note that capability cap is not included in capture set {cap}.
+   |                           Note that capability cap is not included in capture set {cap}
+   |                           because cap is not visible from cap in value next.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:48:20 --------------------------------------
@@ -53,7 +54,8 @@
    |            where:    =>  refers to the universal root capability
    |                      =>² refers to a fresh root capability created in method runAll3
    |
-   |            Note that capability cap is not included in capture set {cap}.
+   |            Note that capability cap is not included in capture set {cap}
+   |            because cap is not visible from cap in method runAll3.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:54:51 -----------------------------------------------------------
@@ -72,7 +74,8 @@
    |                           where:    ^  refers to the universal root capability
    |                                     ^² refers to a fresh root capability in the type of value id
    |
-   |                           Note that capability x.type is not included in capture set {cap}.
+   |                           Note that capability x.type is not included in capture set {cap}
+   |                           because x.type is not visible from cap in value id.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:32 --------------------------------------
