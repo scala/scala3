@@ -245,7 +245,7 @@ class CompilationTests {
       val options = defaultOptions.and("-Wsafe-init", "-Xfatal-warnings", "-Ysafe-init-global")
       val tastyErrorOptions = options.without("-Xfatal-warnings")
 
-      val outDirDef = defaultOutputDir + tastyErrorGroup + "/SafeValuesDef/safe-value-tasty/SafeValuesDef"
+      val outDirDef = defaultOutputDir + tastyErrorGroup + "/SafeValuesDef/def/SafeValuesDef"
 
       val tests = List(
         compileFile("tests/init-global/pos-tasty/safe-value-tasty/def/SafeValuesDef.scala", tastyErrorOptions)(tastyErrorGroup),
