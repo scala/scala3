@@ -4369,7 +4369,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   case tp => mapOver(tp)
               val pt1 = substCtxMap(pt.deepenProtoTrans(using newCtx))
               try {
-                isFullyDefined(pt1, ForceDegree.none, ifProto = true)(using newCtx)
+                !pt1.containsWildcardTypes(using newCtx)
               } catch {
                 case _: UnhandledError => false
               }
