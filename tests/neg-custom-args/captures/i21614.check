@@ -10,13 +10,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |Found:    (_$1: box File^{files*}) ->{files*} box Logger{val f: File^{_$1}}^{cap.rd, _$1}
-   |Required: (_$1: box File^{files*}) => box Logger{val f: File^?}^?
+   |Found:    (_$1: File^?) ->{files*} Logger{val f: File^{_$1}}^{cap.rd, _$1}
+   |Required: File^{files*} => Logger{val f: File^?}^?
    |
    |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
-   |          cap is a root capability associated with the result type of (_$1: box File^{files*}): box Logger{val f: File^{_$1}}^{cap.rd, _$1}
+   |          cap is a root capability associated with the result type of (_$1: File^?): Logger{val f: File^{_$1}}^{cap.rd, _$1}
    |
-   |Note that reference <cap of (_$1: box File^{files*}): box Logger{val f: File^?}^?>.rd
+   |Note that reference <cap of (_$1: File^{files*}): Logger{val f: File^?}^?>.rd
    |cannot be included in outer capture set ?
    |
    | longer explanation available when compiling with `-explain`

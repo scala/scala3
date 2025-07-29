@@ -2,7 +2,7 @@ import caps.{cap, consume, Mutable}
 import language.experimental.captureChecking
 
 class Buffer[T] extends Mutable:
-  @consume mut def append(x: T): Buffer[T]^ = this // ok
+  @consume update def append(x: T): Buffer[T]^ = this // ok
 
 def app[T](@consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
   buf.append(elem)

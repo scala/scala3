@@ -148,7 +148,8 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context) extends LazyType {
+  class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context)
+  extends LazyType, CompleterWithCleanup {
     import reader.*
     val owner = ctx.owner
     val mode = ctx.mode
@@ -168,6 +169,8 @@ class TreeUnpickler(reader: TastyReader,
             case ex: CyclicReference => throw ex
             case ex: AssertionError => fail(ex)
             case ex: Exception => fail(ex)
+          finally
+            cleanup()
   }
 
   class TreeReader(val reader: TastyReader) {
@@ -668,7 +671,7 @@ class TreeUnpickler(reader: TastyReader,
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
       var annots = annotFns.map(_(annotOwner))
-      if annots.exists(_.symbol == defn.SilentIntoAnnot) then
+      if annots.exists(_.hasSymbol(defn.SilentIntoAnnot)) then
         // Temporary measure until we can change TastyFormat to include an INTO tag
         sym.setFlag(Into)
         annots = annots.filterNot(_.symbol == defn.SilentIntoAnnot)
@@ -1190,7 +1193,6 @@ class TreeUnpickler(reader: TastyReader,
     inline def readImportOrExport(inline mkTree:
         (Tree, List[untpd.ImportSelector]) => Tree)()(using Context): Tree = {
       val start = currentAddr
-      assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
       val expr = readTree()

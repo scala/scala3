@@ -23,13 +23,6 @@ class TypeUtils:
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
-    def isErasedClass(using Context): Boolean =
-      val cls = self.underlyingClassRef(refinementOK = true).typeSymbol
-      cls.is(Flags.Erased)
-       && (cls != defn.SingletonClass || Feature.enabled(Feature.modularity))
-         // Singleton counts as an erased class only under x.modularity
-
-
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to
      *  that definition Throwable is unchecked. That makes sense since you should
@@ -152,6 +145,17 @@ class TypeUtils:
     def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
       namedTupleElementTypesUpTo(Int.MaxValue, derived)
 
+    /** If this is a generic tuple type with arity <= MaxTupleArity, return the
+     *  corresponding TupleN type, otherwise return this.
+     */
+    def normalizedTupleType(using Context): Type =
+      if self.isGenericTuple then
+        self.tupleElementTypes match
+          case Some(elems) if elems.size <= Definitions.MaxTupleArity => defn.tupleType(elems)
+          case _ => self
+      else
+        self
+
     def isNamedTupleType(using Context): Boolean = self match
       case defn.NamedTuple(_, _) => true
       case _ => false
@@ -255,6 +259,10 @@ class TypeUtils:
         recur(constr.info)
 
       self.decl(nme.CONSTRUCTOR).altsWith(isApplicable).map(_.symbol)
+
+    def showRef(using Context): String = self match
+      case self: SingletonType => ctx.printer.toTextRef(self).show
+      case _ => self.show
 
 end TypeUtils
 

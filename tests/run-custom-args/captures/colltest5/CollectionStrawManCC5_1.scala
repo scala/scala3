@@ -8,6 +8,8 @@ import annotation.tailrec
 import caps.cap
 import caps.unsafe.unsafeAssumeSeparate
 
+import language.experimental.captureChecking
+
 /** A strawman architecture for new collections. It contains some
  *  example collection classes and methods with the intent to expose
  *  some key issues. It would be good to compare this to other
@@ -448,7 +450,6 @@ object CollectionStrawMan5 {
     }
 
     case class Filter[A](val underlying: Iterable[A]^, p: A => Boolean) extends View[A] {
-      this: Filter[A]^{underlying, p} =>
       def iterator: Iterator[A]^{this} = underlying.iterator.filter(p)
     }
 
@@ -466,37 +467,31 @@ object CollectionStrawMan5 {
           case _ => new Filter(underlying, pp)
 
     case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
-      self: Partition[A]^{underlying, p} =>
-
       class Partitioned(expected: Boolean) extends View[A]:
-        this: Partitioned^{self} =>
+        this: Partitioned^{Partition.this} =>
         def iterator: Iterator[A]^{this} =
           underlying.iterator.filter((x: A) => p(x) == expected)
 
-      val left: Partitioned^{self} = Partitioned(true)
-      val right: Partitioned^{self} = Partitioned(false)
+      val left: Partitioned^{this} = Partitioned(true)
+      val right: Partitioned^{this} = Partitioned(false)
     }
 
     case class Drop[A](underlying: Iterable[A]^, n: Int) extends View[A] {
-      this: Drop[A]^{underlying} =>
       def iterator: Iterator[A]^{this} = underlying.iterator.drop(n)
       override def knownLength =
         if (underlying.knownLength >= 0) underlying.knownLength - n max 0 else -1
     }
 
     case class Map[A, B](underlying: Iterable[A]^, f: A => B) extends View[B] {
-      this: Map[A, B]^{underlying, f} =>
       def iterator: Iterator[B]^{this} = underlying.iterator.map(f)
       override def knownLength = underlying.knownLength
     }
 
     case class FlatMap[A, B](underlying: Iterable[A]^, f: A => IterableOnce[B]^) extends View[B] {
-      this: FlatMap[A, B]^{underlying, f} =>
       def iterator: Iterator[B]^{this} = underlying.iterator.flatMap(f)
     }
 
     case class Concat[A](underlying: Iterable[A]^, other: IterableOnce[A]^) extends View[A] {
-      this: Concat[A]^{underlying, other} =>
       def iterator: Iterator[A]^{this} = underlying.iterator ++ other
       override def knownLength = other match {
         case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
@@ -507,7 +502,6 @@ object CollectionStrawMan5 {
     }
 
     case class Zip[A, B](underlying: Iterable[A]^, other: IterableOnce[B]^) extends View[(A, B)] {
-      this: Zip[A, B]^{underlying, other} =>
       def iterator: Iterator[(A, B)]^{this} = underlying.iterator.zip(other)
       override def knownLength = other match {
         case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>

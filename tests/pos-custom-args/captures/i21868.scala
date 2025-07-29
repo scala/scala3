@@ -1,14 +1,16 @@
 import language.experimental.captureChecking
 import caps.*
 
+class U
+
 trait AbstractWrong:
-  type C <: CapSet
-  def f(): Unit^{C}
+  type C^ <: CapSet // no longer an error, the lower bound becomes CapSet now
+  def f(): U^{C}
 
 trait Abstract1:
-  type C^
-  def f(): Unit^{C}
+  type C^ >: CapSet <: CapSet^
+  def f(): U^{C}
 
-// class Abstract2:
-//   type C^
-//   def f(): Unit^{C^}
+trait Abstract2:
+  type C^ <: {cap}
+  def f(): U^{C}

@@ -434,13 +434,12 @@ object RefChecks {
         }
 
       def emitOverrideError(fullmsg: Message) =
-        if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
-          // suppress errors relating toi synthetic companion objects if other override
+        if !(hasErrors && member.is(Synthetic) && member.is(Module) || member.isDummyCaptureParam) then
+          // suppress errors relating to synthetic companion objects and capture parameters if other override
           // errors (e.g. relating to the companion class) have already been reported.
           if (member.owner == clazz) report.error(fullmsg, member.srcPos)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
-        }
 
       def overrideError(msg: String, compareTypes: Boolean = false) =
         if trueMatch && noErrorType then
@@ -704,10 +703,16 @@ object RefChecks {
         // to consolidate getters and setters.
         val grouped = missing.groupBy(_.underlyingSymbol.name)
 
+        def isDuplicateSetter(sym: Symbol): Boolean =
+          sym.isSetter && {
+            val field = sym.accessedFieldOrGetter
+            grouped.getOrElse(field.name, Nil).contains(field)
+          }
+
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
             lastOverrides(syms)
-              .filterConserve(!_.isSetter)
+              .filterConserve(!isDuplicateSetter(_)) // Avoid reporting override error for both `x` and setter `x_=`
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 

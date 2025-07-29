@@ -336,7 +336,7 @@ trait ImportSuggestions:
         if ref.symbol.is(ExtensionMethod) then
           s"${ctx.printer.toTextPrefixOf(ref).show}${ref.symbol.name}"
         else
-          ctx.printer.toTextRef(ref).show
+         ref.showRef
       s"  import $imported"
     val suggestions = suggestedRefs
       .zip(suggestedRefs.map(importString))

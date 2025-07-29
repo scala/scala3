@@ -206,7 +206,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Var()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
-    case class Mut()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
+    case class Update()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
     case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
 
@@ -388,6 +388,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** Property key for contextual Apply trees of the form `fn given arg` */
   val KindOfApply: Property.StickyKey[ApplyKind] = Property.StickyKey()
 
+  val RetainsAnnot: Property.StickyKey[Unit] = Property.StickyKey()
+
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
@@ -530,10 +532,32 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
-    Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
+    var annot: Tree = scalaAnnotationDot(annotName)
+    if annotName == tpnme.retainsCap then
+      annot = New(annot, Nil)
+    else
+      val trefs =
+        if refs.isEmpty then
+          // The NothingType is used to represent the empty capture set.
+          ref(defn.NothingType)
+        else
+          // Treat all references as term references before typing.
+          // A dummy term symbol will be created for each capture variable,
+          // and references to them will be replaced with the corresponding
+          // type references during typing.
+          refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
+      annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
+      annot.putAttachment(RetainsAnnot, ())
+    Annotated(parent, annot)
 
-  def makeCapsOf(tp: RefTree)(using Context): Tree =
-    TypeApply(capsInternalDot(nme.capsOf), tp :: Nil)
+  def makeReachAnnot()(using Context): Tree =
+    New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil)
+
+  def makeReadOnlyAnnot()(using Context): Tree =
+    New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil)
+
+  def makeOnlyAnnot(qid: Tree)(using Context) =
+    New(AppliedTypeTree(ref(defn.OnlyCapabilityAnnot.typeRef), qid :: Nil), Nil :: Nil)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
@@ -556,6 +580,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def makeAndType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
     AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
+
+  def makeOrType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
+    AppliedTypeTree(ref(defn.orType.typeRef), left :: right :: Nil)
 
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(using Context): ValDef = {
     val vdef = ValDef(pname, tpe, EmptyTree)

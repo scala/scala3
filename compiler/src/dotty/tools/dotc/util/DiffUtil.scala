@@ -103,7 +103,6 @@ object DiffUtil {
         case Deleted(str) => deleted(str)
       }.mkString
 
-    (expectedDiff, actualDiff)
     val pad = " " * 0.max(expectedSize - expected.length)
 
     expectedDiff + pad + "  |  " + actualDiff

@@ -129,3 +129,4 @@ class RightAssocExtension extends SignatureTest("rightAssocExtension", Signature
 
 class NamedTuples extends SignatureTest("namedTuples", SignatureTest.all)
 
+class InnerClasses extends SignatureTest("innerClasses", SignatureTest.all)

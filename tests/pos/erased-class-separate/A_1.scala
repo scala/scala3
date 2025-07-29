@@ -1,3 +1,3 @@
 import language.experimental.erasedDefinitions
-erased class A
+class A extends compiletime.Erased
 

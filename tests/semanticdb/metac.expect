@@ -2007,6 +2007,89 @@ Occurrences:
 Diagnostics:
 [0:26..0:34): [warning] unused import
 
+expect/InfoMacro.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => InfoMacro.scala
+Text => empty
+Language => Scala
+Symbols => 7 entries
+Occurrences => 23 entries
+Synthetics => 6 entries
+
+Symbols:
+_empty_/InfoMacro. => final object InfoMacro extends Object { self: InfoMacro.type => +3 decls }
+_empty_/InfoMacro.reportInfo(). => inline macro reportInfo (param msg: String): Unit
+_empty_/InfoMacro.reportInfo().(msg) => param msg: String
+_empty_/InfoMacro.reportInfoMacro(). => method reportInfoMacro (param msg: Expr[String])(implicit given param x$2: Quotes): Expr[Unit]
+_empty_/InfoMacro.reportInfoMacro().(msg) => param msg: Expr[String]
+_empty_/InfoMacro.reportInfoMacro().(x$2) => implicit given param x$2: Quotes
+local0 => implicit given param contextual$1: Quotes
+
+Occurrences:
+[0:7..0:12): scala -> scala/
+[0:13..0:19): quoted -> scala/quoted/
+[2:7..2:16): InfoMacro <- _empty_/InfoMacro.
+[3:13..3:23): reportInfo <- _empty_/InfoMacro.reportInfo().
+[3:24..3:27): msg <- _empty_/InfoMacro.reportInfo().(msg)
+[3:29..3:35): String -> scala/Predef.String#
+[3:38..3:42): Unit -> scala/Unit#
+[3:48..3:63): reportInfoMacro -> _empty_/InfoMacro.reportInfoMacro().
+[5:6..5:21): reportInfoMacro <- _empty_/InfoMacro.reportInfoMacro().
+[5:22..5:25): msg <- _empty_/InfoMacro.reportInfoMacro().(msg)
+[5:27..5:31): Expr -> scala/quoted/Expr#
+[5:32..5:38): String -> scala/Predef.String#
+[5:47..5:53): Quotes -> scala/quoted/Quotes#
+[5:56..5:60): Expr -> scala/quoted/Expr#
+[5:61..5:65): Unit -> scala/Unit#
+[6:11..6:17): quotes -> scala/quoted/Quotes$package.quotes().
+[6:18..6:25): reflect -> scala/quoted/Quotes#reflect.
+[6:26..6:32): report -> scala/quoted/Quotes#reflectModule#report.
+[9:4..9:10): report -> scala/quoted/Quotes#reflectModule#report.
+[9:11..9:15): info -> scala/quoted/Quotes#reflectModule#reportModule#info().
+[9:16..9:17): s -> scala/StringContext#s().
+[9:37..9:40): msg -> _empty_/InfoMacro.reportInfoMacro().(msg)
+[9:41..9:53): valueOrAbort -> scala/quoted/Quotes#valueOrAbort().
+
+Synthetics:
+[3:48..3:69):reportInfoMacro('msg) => *(contextual$1)
+[3:64..3:68):'msg => orig()(contextual$1)
+[6:11..6:17):quotes => *(x$2)
+[9:37..9:53):msg.valueOrAbort => *(StringFromExpr[String])
+[9:41..9:53):valueOrAbort => *[String]
+[11:4..11:11):'{ () } => orig(())(x$2)
+
+expect/InfoMacroTest.scala
+--------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => InfoMacroTest.scala
+Text => empty
+Language => Scala
+Symbols => 2 entries
+Occurrences => 7 entries
+Diagnostics => 2 entries
+
+Symbols:
+_empty_/InfoMacroTest. => final object InfoMacroTest extends Object { self: InfoMacroTest.type => +2 decls }
+_empty_/InfoMacroTest.main(). => method main (): Unit
+
+Occurrences:
+[1:7..1:20): InfoMacroTest <- _empty_/InfoMacroTest.
+[2:6..2:10): main <- _empty_/InfoMacroTest.main().
+[2:14..2:18): Unit -> scala/Unit#
+[3:4..3:13): InfoMacro -> _empty_/InfoMacro.
+[3:14..3:24): reportInfo -> _empty_/InfoMacro.reportInfo().
+[4:4..4:13): InfoMacro -> _empty_/InfoMacro.
+[4:14..4:24): reportInfo -> _empty_/InfoMacro.reportInfo().
+
+Diagnostics:
+[3:4..3:55): [info] Info from macro: This is a test info message
+[4:4..4:48): [info] Info from macro: Another info message
+
 expect/InstrumentTyper.scala
 ----------------------------
 
@@ -2974,6 +3057,7 @@ Text => empty
 Language => Scala
 Symbols => 16 entries
 Occurrences => 12 entries
+Diagnostics => 2 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments extends Object { self: NamedArguments => +4 decls }
@@ -3006,6 +3090,10 @@ Occurrences:
 [5:2..5:6): User -> example/NamedArguments#User.
 [5:7..5:12): apply -> example/NamedArguments#User.apply().
 [5:13..5:17): name -> example/NamedArguments#User.apply().(name)
+
+Diagnostics:
+[4:2..4:21): [warning] A pure expression does nothing in statement position
+[5:2..5:27): [warning] A pure expression does nothing in statement position
 
 expect/NewModifiers.scala
 -------------------------
@@ -3654,7 +3742,7 @@ Text => empty
 Language => Scala
 Symbols => 62 entries
 Occurrences => 165 entries
-Diagnostics => 3 entries
+Diagnostics => 4 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3890,6 +3978,7 @@ Occurrences:
 
 Diagnostics:
 [19:21..19:22): [warning] unused pattern variable
+[28:4..28:9): [warning] A pure expression does nothing in statement position
 [41:4..41:5): [warning] unused pattern variable
 [63:10..63:11): [warning] unused explicit parameter
 

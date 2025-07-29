@@ -139,7 +139,8 @@ object Texts {
 
     def mkString(width: Int = Int.MaxValue, withLineNumbers: Boolean = false): String = {
       val sb = new StringBuilder
-      val numberWidth = if (withLineNumbers) (2 * maxLine.toString.length) + 2 else 0
+      // width display can be upto a range "n-n" where 1 <= n <= maxLine+1
+      val numberWidth = if (withLineNumbers) (2 * (maxLine + 1).toString.length) + 2 else 0
       layout(width - numberWidth).print(sb, numberWidth)
       sb.toString
     }

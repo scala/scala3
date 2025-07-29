@@ -6,6 +6,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login != 'dependabot'
     steps:
       - name: Verify CLA
         uses: scala/cla-checker@v1

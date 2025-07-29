@@ -1,7 +1,5 @@
 package dotty.tools.dotc.profile
 
-import scala.language.unsafeNulls
-
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger

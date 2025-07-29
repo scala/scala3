@@ -120,8 +120,6 @@ object StdNames {
     val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
-    val CC_REACH: N                   = "$reach"
-    val CC_READONLY: N                = "$readOnly"
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -444,7 +442,6 @@ object StdNames {
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
     val caps: N                 = "caps"
-    val capsOf: N               = "capsOf"
     val captureChecking: N      = "captureChecking"
     val checkInitialized: N     = "checkInitialized"
     val classOf: N              = "classOf"
@@ -548,13 +545,12 @@ object StdNames {
     val ManifestFactory: N      = "ManifestFactory"
     val manifestToTypeTag: N    = "manifestToTypeTag"
     val map: N                  = "map"
-    val maybeCapability: N      = "maybeCapability"
     val materializeClassTag: N  = "materializeClassTag"
     val materializeWeakTypeTag: N = "materializeWeakTypeTag"
     val materializeTypeTag: N   = "materializeTypeTag"
+    val maybeCapability: N      = "maybeCapability"
     val mirror : N              = "mirror"
     val moduleClass : N         = "moduleClass"
-    val mut: N                  = "mut"
     val name: N                 = "name"
     val nameDollar: N           = "$name"
     val ne: N                   = "ne"
@@ -564,6 +560,7 @@ object StdNames {
     val next: N                 = "next"
     val nmeNewTermName: N       = "newTermName"
     val nmeNewTypeName: N       = "newTypeName"
+    val nn: N                   = "nn"
     val noAutoTupling: N        = "noAutoTupling"
     val normalize: N            = "normalize"
     val notifyAll_ : N          = "notifyAll"
@@ -571,6 +568,7 @@ object StdNames {
     val null_ : N               = "null"
     val ofDim: N                = "ofDim"
     val on: N                   = "on"
+    val only: N                 = "only"
     val opaque: N               = "opaque"
     val open: N                 = "open"
     val ordinal: N              = "ordinal"

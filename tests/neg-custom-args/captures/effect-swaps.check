@@ -2,7 +2,7 @@
 63 |      Result:
 64 |        Future: // error, type mismatch
    |      ^
-   |      Found:    Result.Ok[box Future[box T^?]^{fr, contextual$1}]
+   |      Found:    Result.Ok[Future[T^?]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
@@ -17,9 +17,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:69:10 ---------------------------------
 69 |          Future: fut ?=> // error, type mismatch
    |          ^
-   |Found:    (contextual$9: boundary.Label[box Result[box Future[box T^?]^?, box E^?]^?]^{cap.rd}) ?->{fr, async}
-   |  box Future[box T^?]^{fr, contextual$9}
-   |Required: (contextual$9: boundary.Label[Result[box Future[box T^?]^?, box E^?]]^{cap.rd}) ?=> box Future[box T^?]^?
+   |Found:    (contextual$9: boundary.Label[Result[Future[T^?]^?, E^?]^?]^?) ?->{fr, async} Future[T^?]^{fr, contextual$9}
+   |Required: (boundary.Label[Result[Future[T^?]^?, E^?]]^{cap.rd}) ?=> Future[T^?]^?
    |
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          cap is the universal root capability
@@ -32,8 +31,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:73:35 ---------------------------------
 73 |        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
    |                                   ^
-   |Found:    (lbl: boundary.Label[box Result[box Future[box T^?]^?, box E^?]^?]^{cap.rd}) ?->{fr, async} Future[box T^?]^{fr, lbl}
-   |Required: (lbl: boundary.Label[Result[Future[T], E]]^{cap.rd}) ?=> Future[T]
+   |Found:    (lbl: boundary.Label[Result[Future[T^?]^?, E^?]^?]^?) ?->{fr, async} Future[T^?]^{fr, lbl}
+   |Required: (boundary.Label[Result[Future[T], E]]^{cap.rd}) ?=> Future[T]
    |
    |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
    |          cap is the universal root capability

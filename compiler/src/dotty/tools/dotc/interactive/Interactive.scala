@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.language.unsafeNulls
-
 import scala.collection.*
 
 import ast.{NavigateAST, Trees, tpd, untpd}

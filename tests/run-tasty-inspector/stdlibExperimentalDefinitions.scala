@@ -30,16 +30,17 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
   "scala.annotation.retainsCap",
-  "scala.annotation.retainsArg",
   "scala.Pure",
   "scala.caps.CapSet",
   "scala.caps.Capability",
+  "scala.caps.Classifier",
   "scala.caps.Contains",
   "scala.caps.Contains$",
   "scala.caps.Contains$.containsImpl",
   "scala.caps.Exists",
   "scala.caps.Mutable",
-  "scala.caps.SharedCapability",
+  "scala.caps.Sharable",
+  "scala.caps.Control",
   "scala.caps.consume",
   "scala.caps.internal",
   "scala.caps.internal$",
@@ -106,7 +107,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
 
   // New feature: SIP 61 - @unroll annotation
-  "scala.annotation.unroll"
+  "scala.annotation.unroll",
+
+  // New feature: Erased trait
+  "scala.compiletime.Erased",
 )
 
 

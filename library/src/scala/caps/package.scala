@@ -25,19 +25,32 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
 @experimental
 trait Capability extends Any
 
+/** A marker trait for classifier capabilities that can appear in `.only`
+ *  qualifiers. Capability classes directly extending `Classifier` are treated
+ *  as classifier capbilities
+ */
+@experimental
+trait Classifier
+
 /** The universal capture reference. */
 @experimental
 object cap extends Capability
 
 /** Marker trait for classes with methods that requires an exclusive reference. */
 @experimental
-trait Mutable extends Capability
+trait Mutable extends Capability, Classifier
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
   * During separation checking, shared capabilities are not taken into account.
   */
 @experimental
-trait SharedCapability extends Capability
+trait Sharable extends Capability, Classifier
+
+/** Base trait for capabilities that capture some continuation or return point in
+ *  the stack. Examples are exceptions, labels, Async, CanThrow.
+ */
+@experimental
+trait Control extends Sharable, Classifier
 
 /** Carrier trait for capture set type parameters */
 @experimental
@@ -88,24 +101,6 @@ sealed trait Exists extends Capability
 @experimental
 object internal:
 
-  /** A wrapper indicating a type variable in a capture argument list of a
-   *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
-   */
-  @compileTimeOnly("Should be be used only internally by the Scala compiler")
-  def capsOf[CS >: CapSet <: CapSet @retainsCap]: Any = ???
-
-  /** Reach capabilities x* which appear as terms in @retains annotations are encoded
-   *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.reachCapability`.
-   */
-  extension (x: Any) def reachCapability: Any = x
-
-  /** Read-only capabilities x.rd which appear as terms in @retains annotations are encoded
-   *  as `caps.readOnlyCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
-   */
-  extension (x: Any) def readOnlyCapability: Any = x
-
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.
@@ -127,6 +122,13 @@ object internal:
    *  Such function types should not map roots to result variables.
    */
   final class inferredDepFun extends annotation.StaticAnnotation
+
+  /** An erasedValue issued internally by the compiler. Unlike the
+   *  user-accessible compiletime.erasedValue, this version is assumed
+   *  to be a pure expression, hence capability safe. The compiler generates this
+   *  version only where it is known that a value can be generated.
+   */
+  def erasedValue[T]: T = ???
 
 end internal
 
@@ -152,5 +154,12 @@ object unsafe:
   /** A wrapper around code for which separation checks are suppressed.
    */
   def unsafeAssumeSeparate(op: Any): op.type = op
+
+  /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the
+   *  user-accessible compiletime.erasedValue, this version is assumed
+   *  to be a pure expression, hence capability safe. But there is no proof
+   *  of realizability, hence it is unsafe.
+   */
+  def unsafeErasedValue[T]: T = ???
 
 end unsafe

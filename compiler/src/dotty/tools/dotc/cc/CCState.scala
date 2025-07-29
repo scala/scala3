@@ -70,13 +70,26 @@ class CCState:
 
   // ------ Iteration count of capture checking run
 
-  private var iterCount = 1
+  private var iterCount = 0
 
   def iterationId = iterCount
 
   def nextIteration[T](op: => T): T =
     iterCount += 1
     try op finally iterCount -= 1
+
+  def start(): Unit =
+    iterCount = 1
+
+  private var mySepCheck = false
+
+  /** Are we currently running separation checks? */
+  def isSepCheck = mySepCheck
+
+  def inSepCheck(op: => Unit): Unit =
+    val saved = mySepCheck
+    mySepCheck = true
+    try op finally mySepCheck = saved
 
   // ------ Global counters -----------------------
 

@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Scopes.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
@@ -2287,7 +2288,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
-        def erasedParams: List[Boolean] = self.erasedParams
+        def erasedParams: List[Boolean] = self.paramErasureStatuses
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
     end MethodTypeMethods
@@ -2823,7 +2824,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           modFlags | dotc.core.Flags.ModuleValCreationFlags,
           clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
           parents,
-          dotc.core.Scopes.newScope,
+          newScope,
           privateWithin,
           NoCoord,
           compUnitInfo = null
@@ -2839,7 +2840,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validMethodFlags)
-        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
+        val method = dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
+        method.setParamss(method.paramSymss)
+        method
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
@@ -3066,7 +3069,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def asQuotes: Nested =
           assert(self.ownersIterator.contains(ctx.owner), s"$self is not owned by ${ctx.owner}")
-          new QuotesImpl(using ctx.withOwner(self))
+          val newCtx = if ctx.owner eq self then ctx else
+            val newCtx = ctx.fresh.setOwner(self)
+            if !self.flags.is(Flags.Method) then newCtx
+            else newCtx.setScope(newScopeWith(self.paramSymss.flatten*))
+          new QuotesImpl(using newCtx)
 
       end extension
 

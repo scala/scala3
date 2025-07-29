@@ -92,4 +92,4 @@ object UnwrapTyped:
     error("Compiler bug: `codeOf` was not evaluated by the compiler")
 
 object `default usage`:
-  def f(i: Int)(j: Int = i * 2) = j // warn I guess
+  def f(i: Int)(j: Int = i * 2) = j // ~warn~ I guess (see tests/warn/i23349.scala)

@@ -1,11 +1,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:13:4 ----------------------------------------
 13 |    (ref1, f1) => map[A, B](ref1, f1) // error
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (ref1: LazyRef[box A^?]{val elem: () => A^?}^{io}, f1: A^? => B^?) ->? LazyRef[box B^?]{val elem: () =>² B^?}^{f1, ref1}
-   |Required: (ref1: LazyRef[A]^{io}, f1: A => B) =>³ LazyRef[B]^
+   |Found:    (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?) ->? LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
+   |Required: (LazyRef[A]^{io}, A =>² B) =>³ LazyRef[B]^
    |
-   |where:    =>  refers to the universal root capability
-   |          =>² refers to a root capability associated with the result type of (ref1: LazyRef[box A^?]{val elem: () => A^?}^{io}, f1: A^? => B^?): LazyRef[box B^?]{val elem: () =>² B^?}^{f1, ref1}
+   |where:    =>  refers to a root capability associated with the result type of (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?): LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
+   |          =>² refers to the universal root capability
    |          =>³ refers to a fresh root capability in the result type of method mapc
    |          ^   refers to a fresh root capability in the result type of method mapc
    |
@@ -13,15 +13,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:4 ----------------------------------------
 15 |    (ref1, f1) => map[A, B](ref1, f1) // error
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (ref1: LazyRef[box A^?]{val elem: () => A^?}^{io}, f1: A^? => B^?) ->? LazyRef[box B^?]{val elem: () =>² B^?}^{f1, ref1}
-   |Required: (ref: LazyRef[A]^{io}, f: A => B) =>³ LazyRef[B]^
+   |Found:    (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?) ->? LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
+   |Required: (ref: LazyRef[A]^{io}, f: A =>² B) =>³ LazyRef[B]^
    |
-   |where:    =>  refers to the universal root capability
-   |          =>² refers to a root capability associated with the result type of (ref1: LazyRef[box A^?]{val elem: () => A^?}^{io}, f1: A^? => B^?): LazyRef[box B^?]{val elem: () =>² B^?}^{f1, ref1}
+   |where:    =>  refers to a root capability associated with the result type of (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?): LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
+   |          =>² refers to the universal root capability
    |          =>³ refers to a fresh root capability in the result type of method mapd
-   |          ^   refers to a root capability associated with the result type of (ref: LazyRef[A]^{io}, f: A => B): LazyRef[B]^
+   |          ^   refers to a root capability associated with the result type of (ref: LazyRef[A]^{io}, f: A =>² B): LazyRef[B]^
    |
    |Note that the existential capture root in LazyRef[B]^
-   |cannot subsume the capability f1.type since that capability is not a SharedCapability
+   |cannot subsume the capability f1.type since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`

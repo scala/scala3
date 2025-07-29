@@ -19,7 +19,7 @@
   |                                   ^² refers to a root capability associated with the result type of (x: A^): B^²
   |
   |                         Note that the existential capture root in B^
-  |                         cannot subsume the capability g* since that capability is not a SharedCapability
+  |                         cannot subsume the capability g* since that capability is not a `Sharable` capability
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:10:20 ----------------------------------
@@ -36,14 +36,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:13:25 ----------------------------------
 13 |  val _: (x: A^) -> B^ = x => f(x) // error: existential in B cannot subsume `x` since `x` is not shared
    |                         ^^^^^^^^^
-   |                        Found:    (x: A^) ->? B^{x}
-   |                        Required: (x: A^) -> B^²
+   |                       Found:    (x: A^) ->? B^{x}
+   |                       Required: (x: A^) -> B^²
    |
-   |                        where:    ^  refers to the universal root capability
-   |                                  ^² refers to a root capability associated with the result type of (x: A^): B^²
+   |                       where:    ^  refers to the universal root capability
+   |                                 ^² refers to a root capability associated with the result type of (x: A^): B^²
    |
-   |                        Note that the existential capture root in B^
-   |                        cannot subsume the capability x.type since that capability is not a SharedCapability
+   |                       Note that the existential capture root in B^
+   |                       cannot subsume the capability x.type since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:16:24 ----------------------------------
@@ -56,7 +56,7 @@
    |                          cap is the universal root capability
    |
    |                Note that the existential capture root in B^
-   |                cannot subsume the capability h* since that capability is not a SharedCapability
+   |                cannot subsume the capability h* since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:17:24 ----------------------------------
@@ -69,7 +69,7 @@
    |                          cap is the universal root capability
    |
    |                Note that the existential capture root in B^
-   |                cannot subsume the capability h* since that capability is not a SharedCapability
+   |                cannot subsume the capability h* since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:26:19 ----------------------------------
@@ -87,7 +87,7 @@
 27 |  val _: S -> B^ = x => j(x)       // error
    |                   ^^^^^^^^^
    |                   Found:    (x: S^{cap.rd}) ->? B^{x}
-   |                   Required: (x: S^{cap.rd}) -> B^
+   |                   Required: S^{cap.rd} -> B^
    |
    |                   where:    ^   refers to a fresh root capability in the type of value _$14
    |                             cap is the universal root capability

@@ -24,6 +24,8 @@ import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import dotty.tools.sbtplugin.ScalaLibraryPlugin
+import dotty.tools.sbtplugin.DottyJSPlugin
+import dotty.tools.sbtplugin.DottyJSPlugin.autoImport._
 
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
@@ -39,58 +41,6 @@ import sbttastymima.TastyMiMaPlugin.autoImport._
 import scala.util.Properties.isJavaAtLeast
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
-import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
-
-object DottyJSPlugin extends AutoPlugin {
-  import Build._
-
-  object autoImport {
-    val switchToESModules: StandardConfig => StandardConfig =
-      config => config.withModuleKind(ModuleKind.ESModule)
-  }
-
-  val writePackageJSON = taskKey[Unit](
-      "Write package.json to configure module type for Node.js")
-
-  override def requires: Plugins = ScalaJSPlugin
-
-  override def projectSettings: Seq[Setting[_]] = Def.settings(
-    commonBootstrappedSettings,
-
-    /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
-     * Instead, in this build, we use `.dependsOn` relationships to depend on
-     * the appropriate, locally-defined, scala3-library-bootstrappedJS.
-     */
-    libraryDependencies ~= {
-      _.filter(!_.name.startsWith("scala3-library_sjs1"))
-    },
-
-    // Replace the JVM JUnit dependency by the Scala.js one
-    libraryDependencies ~= {
-      _.filter(!_.name.startsWith("junit-interface"))
-    },
-    libraryDependencies +=
-      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
-
-    // Typecheck the Scala.js IR found on the classpath
-    scalaJSLinkerConfig ~= (_.withCheckIR(true)),
-
-    Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
-    Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,
-
-    writePackageJSON := {
-      val packageType = scalaJSLinkerConfig.value.moduleKind match {
-        case ModuleKind.NoModule       => "commonjs"
-        case ModuleKind.CommonJSModule => "commonjs"
-        case ModuleKind.ESModule       => "module"
-      }
-
-      val path = target.value / "package.json"
-
-      IO.write(path, s"""{"type": "$packageType"}\n""")
-    },
-  )
-}
 
 object Build {
   import ScaladocConfigs._
@@ -102,7 +52,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.1"
+  val referenceVersion = "3.7.2-RC2"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -113,7 +63,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.7.2"
+  val developedVersion = "3.7.3"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -187,7 +137,7 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.8.0"
+  val scalaCliLauncherVersion = "1.8.4"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.24"
 
@@ -344,9 +294,6 @@ object Build {
           buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
-            .withTag(if (isInsideCI) "CI" else "Local")
-            .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
-            .withValues(buildScan.values ++ GithubEnv.develocityValues)
             .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
         )
         .withBuildCache(
@@ -1130,7 +1077,8 @@ object Build {
     libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
-      "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+      // NOTE: Do not use `sourceDirectories` since `sources` are currently pinned until `3.8.0`
+      "-sourcepath", (Compile / sources).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       "-Yexplicit-nulls",
     ),
     (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
@@ -1141,7 +1089,974 @@ object Build {
   )
 
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
+    .settings(
+      // Note: extracted using `print scala3-library / Compile / sources`
+      // Only keep scala3 files until 3.8.0
+      Compile / sources := Seq(
+        file(s"${baseDirectory.value}/src/scala/Precise.scala"),
+        file(s"${baseDirectory.value}/src/scala/CanEqual.scala"),
+        file(s"${baseDirectory.value}/src/scala/Conversion.scala"),
+        file(s"${baseDirectory.value}/src/scala/PolyFunction.scala"),
+        file(s"${baseDirectory.value}/src/scala/Pure.scala"),
+        file(s"${baseDirectory.value}/src/scala/IArray.scala"),
+        file(s"${baseDirectory.value}/src/scala/CanThrow.scala"),
+        file(s"${baseDirectory.value}/src/scala/Tuple.scala"),
+        file(s"${baseDirectory.value}/src/scala/Selectable.scala"),
+        file(s"${baseDirectory.value}/src/scala/main.scala"),
+        file(s"${baseDirectory.value}/src/scala/NamedTuple.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/FromDigits.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/CommandLineParser.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/TupledFunction.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/NotGiven.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/boundary.scala"),
+        file(s"${baseDirectory.value}/src/scala/caps/package.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/TypeTest.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/Selectable.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/Typeable.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/Enum.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TupleMirror.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TypeBox.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/Arrays.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TupledFunctions.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/FunctionXXL.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/Scala3RunTime.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/$$throws.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/LazyVals.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/EnumValue.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TupleXXL.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/Tuples.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/MatchCase.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/retains.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/capability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/static.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/transparentTrait.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/RefiningAnnotation.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/retainsByName.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/threadUnsafe.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/constructorOnly.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/experimental.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/MacroAnnotation.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/alpha.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/publicInBinary.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/init.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/unroll.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/targetName.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/stableNull.scala"),
+        file(s"${baseDirectory.value}/src/scala/deriving/Mirror.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/package.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Type.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Varargs.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Quotes.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Expr.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/ExprMap.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/FromExpr.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Exprs.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/ToExpr.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/control/NonLocalReturns.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/language.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/Predef.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure8.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure10.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure4.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure5.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure11.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure9.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure2.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure20.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure16.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure17.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure3.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure21.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure18.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure22.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure0.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure14.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure15.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure1.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure19.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure12.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure6.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure7.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure13.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/coverage/Invoker.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/ErasedParam.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/RuntimeChecked.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/CaptureChecked.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/ContextResultCount.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYSignature.java"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Alias.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/MappedAlternative.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Repeated.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/WithPureFuns.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Child.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/ProvisionalSuperClass.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/WitnessNames.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/AssignedNonLocally.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/preview.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/InlineParam.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/SourceFile.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/reachCapability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/$$into.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYLongSignature.java"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/readOnlyCapability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/unshared.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/AnnotationDefault.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/sharable.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Body.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/requiresCapability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCaptures.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/testing/Error.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/testing/ErrorKind.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/testing/package.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/long.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/any.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/int.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/string.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/double.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/boolean.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/float.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteUnpickler.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteMatching.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Expr.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Patterns.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/SplicedType.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/StopMacroExpansion.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/Erased.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/onlyCapability.scala"),
+      )
+    )
   lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
+    .settings(
+      // Note: extracted using `print scala3-library-bootstrapped / Compile / sources`
+      // Only keep scala3 files until 3.8.0
+      Compile / sources := Seq(
+        file(s"${baseDirectory.value}/src/scala/Precise.scala"),
+        file(s"${baseDirectory.value}/src/scala/CanEqual.scala"),
+        file(s"${baseDirectory.value}/src/scala/Conversion.scala"),
+        file(s"${baseDirectory.value}/src/scala/PolyFunction.scala"),
+        file(s"${baseDirectory.value}/src/scala/Pure.scala"),
+        file(s"${baseDirectory.value}/src/scala/IArray.scala"),
+        file(s"${baseDirectory.value}/src/scala/CanThrow.scala"),
+        file(s"${baseDirectory.value}/src/scala/Tuple.scala"),
+        file(s"${baseDirectory.value}/src/scala/Selectable.scala"),
+        file(s"${baseDirectory.value}/src/scala/main.scala"),
+        file(s"${baseDirectory.value}/src/scala/NamedTuple.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/FromDigits.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/CommandLineParser.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/TupledFunction.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/NotGiven.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/boundary.scala"),
+        file(s"${baseDirectory.value}/src/scala/caps/package.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/TypeTest.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/Selectable.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/Typeable.scala"),
+        file(s"${baseDirectory.value}/src/scala/reflect/Enum.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TupleMirror.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TypeBox.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/Arrays.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TupledFunctions.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/FunctionXXL.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/Scala3RunTime.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/$$throws.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/LazyVals.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/EnumValue.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/TupleXXL.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/Tuples.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/MatchCase.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/retains.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/capability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/static.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/transparentTrait.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/RefiningAnnotation.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/retainsByName.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/threadUnsafe.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/constructorOnly.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/experimental.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/MacroAnnotation.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/alpha.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/publicInBinary.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/init.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/unroll.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/targetName.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/stableNull.scala"),
+        file(s"${baseDirectory.value}/src/scala/deriving/Mirror.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/package.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Type.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Varargs.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Quotes.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Expr.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/ExprMap.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/FromExpr.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/Exprs.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/ToExpr.scala"),
+        file(s"${baseDirectory.value}/src/scala/util/control/NonLocalReturns.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/language.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/stdLibPatches/Predef.scala"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure8.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure10.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure4.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure5.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure11.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure9.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure2.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure20.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure16.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure17.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure3.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure21.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure18.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure22.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure0.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure14.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure15.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure1.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure19.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure12.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure6.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure7.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/function/JProcedure13.java"),
+        file(s"${baseDirectory.value}/src/scala/runtime/coverage/Invoker.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/ErasedParam.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/RuntimeChecked.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/CaptureChecked.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/ContextResultCount.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYSignature.java"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Alias.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/MappedAlternative.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Repeated.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/WithPureFuns.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Child.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/ProvisionalSuperClass.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/WitnessNames.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/AssignedNonLocally.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/preview.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/InlineParam.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/SourceFile.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/reachCapability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/$$into.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/TASTYLongSignature.java"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/readOnlyCapability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/unshared.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/AnnotationDefault.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/sharable.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/Body.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/requiresCapability.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCaptures.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/testing/Error.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/testing/ErrorKind.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/testing/package.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/long.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/any.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/int.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/string.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/double.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/boolean.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/ops/float.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteUnpickler.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/QuoteMatching.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Expr.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/Patterns.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/SplicedType.scala"),
+        file(s"${baseDirectory.value}/src/scala/quoted/runtime/StopMacroExpansion.scala"),
+        file(s"${baseDirectory.value}/src/scala/compiletime/Erased.scala"),
+        file(s"${baseDirectory.value}/src/scala/annotation/internal/onlyCapability.scala"),
+      )
+    )
+
+  // ==============================================================================================
+  // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
+  // ==============================================================================================
+
+  lazy val `scala3-nonbootstrapped` = project
+    .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
+      `tasty-core-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
+    .settings(
+      name          := "scala3-nonbootstrapped",
+      moduleName    := "scala3-nonbootstrapped",
+      version       := dottyNonBootstrappedVersion,
+      // Nothing to be published by this project, it is only an aggregate
+      Compile / publishArtifact := false,
+      Test    / publishArtifact := false,
+      // Nothing to be published by this project
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-nonbootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
+  lazy val `scala3-sbt-bridge-nonbootstrapped` = project.in(file("sbt-bridge"))
+    .dependsOn(`scala3-compiler-nonbootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
+    .settings(
+      name          := "scala3-sbt-bridge-nonbootstrapped",
+      moduleName    := "scala3-sbt-bridge",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / resourceDirectory := baseDirectory.value / "resources",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // non-bootstrapped stdlib is publishable (only locally)
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-sbt-bridge-nonbootstrapped",
+      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+      // as a workaround, I build it manually by only adding the compiler
+      scalaInstance := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          Array.empty,
+          comp.toSeq,
+          Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value,
+        )},
+    )
+
+  // ==============================================================================================
+  // =================================== BOOTSTRAPPED PROJECTS ====================================
+  // ==============================================================================================
+
+  lazy val `scala3-bootstrapped-new` = project
+    .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
+      `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`)
+    .settings(
+      name          := "scala3-bootstrapped",
+      moduleName    := "scala3-bootstrapped",
+      version       := dottyVersion,
+      // Nothing to be published by this project, it is only an aggregate
+      Compile / publishArtifact := false,
+      Test    / publishArtifact := false,
+      // Nothing to be published by this project
+      publish / skip := true,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-bootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
+  lazy val `scala3-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge"))
+    .dependsOn(`scala3-compiler-bootstrapped`) // TODO: Would this actually evict the reference compiler in scala-tool?
+    .settings(
+      name          := "scala3-sbt-bridge-bootstrapped",
+      moduleName    := "scala3-sbt-bridge",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / resourceDirectory := baseDirectory.value / "resources",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // non-bootstrapped stdlib is publishable (only locally)
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-sbt-bridge-bootstrapped",
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+    )
+
+  // ==============================================================================================
+  // =================================== SCALA STANDARD LIBRARY ===================================
+  // ==============================================================================================
+
+  /* Configuration of the org.scala-lang:scala-library:*.**.**-nonbootstrapped project */
+  lazy val `scala-library-nonbootstrapped` = project.in(file("library"))
+    .enablePlugins(ScalaLibraryPlugin)
+    .settings(
+      name          := "scala-library-nonbootstrapped",
+      moduleName    := "scala-library",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
+      autoScalaLibrary := false, // do not add a dependency to stdlib
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions ++= Seq(
+        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
+        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+      ),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // non-bootstrapped stdlib is publishable (only locally)
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala-library-nonbootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
+  lazy val `scala3-library-nonbootstrapped` = project.in(file("library"))
+    .dependsOn(`scala-library-nonbootstrapped`)
+    .settings(
+      name          := "scala3-library-nonbootstrapped",
+      moduleName    := "scala3-library",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
+      // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
+      managedScalaInstance := false,
+      // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-nonbootstrapped`
+      Compile / sources := Seq(),
+      Compile / resources := Seq(),
+      Test / sources := Seq(),
+      Test / resources := Seq(),
+      // Bridge the common task to call the ones of the actual library project
+      Compile / compile := (`scala-library-nonbootstrapped` / Compile / compile).value,
+      Compile / doc     := (`scala-library-nonbootstrapped` / Compile / doc).value,
+      Compile / run     := (`scala-library-nonbootstrapped` / Compile / run).evaluated,
+      Test / compile := (`scala-library-nonbootstrapped` / Test / compile).value,
+      Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
+      Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
+      Test / test    := (`scala-library-nonbootstrapped` / Test / test).value,
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-library-nonbootstrapped",
+    )
+
+  /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
+  lazy val `scala-library-bootstrapped` = project.in(file("library"))
+    .enablePlugins(ScalaLibraryPlugin)
+    .settings(
+      name          := "scala-library-bootstrapped",
+      moduleName    := "scala-library",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
+      crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions ++= Seq(
+        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
+        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+      ),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala-library-bootstrapped",
+      // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
+      // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
+      // NOTE: true is the default value, just making things clearer here
+      managedScalaInstance := true,
+      // Configure the nonbootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+    )
+
+  /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
+  lazy val `scala3-library-bootstrapped-new` = project.in(file("library"))
+    .dependsOn(`scala-library-bootstrapped`)
+    .settings(
+      name          := "scala3-library-bootstrapped",
+      moduleName    := "scala3-library",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
+      crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
+      // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
+      autoScalaLibrary := false,
+      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
+      managedScalaInstance := false,
+      // This Project only has a dependency to `org.scala-lang:scala-library:*.**.**-bootstrapped`
+      Compile / sources := Seq(),
+      Compile / resources := Seq(),
+      Test / sources := Seq(),
+      Test / resources := Seq(),
+      // Bridge the common task to call the ones of the actual library project
+      Compile / compile := (`scala-library-bootstrapped` / Compile / compile).value,
+      Compile / doc     := (`scala-library-bootstrapped` / Compile / doc).value,
+      Compile / run     := (`scala-library-bootstrapped` / Compile / run).evaluated,
+      Test / compile := (`scala-library-bootstrapped` / Test / compile).value,
+      Test / doc     := (`scala-library-bootstrapped` / Test / doc).value,
+      Test / run     := (`scala-library-bootstrapped` / Test / run).evaluated,
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-library-bootstrapped",
+    )
+
+  // ==============================================================================================
+  // ===================================== TASTY CORE LIBRARY =====================================
+  // ==============================================================================================
+
+  /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-nonbootstrapped project */
+  lazy val `tasty-core-nonbootstrapped` = project.in(file("tasty"))
+    .dependsOn(`scala3-library-nonbootstrapped`)
+    .settings(
+      name          := "tasty-core-nonbootstrapped",
+      moduleName    := "tasty-core",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:tasty-core has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "tasty-core-nonbootstrapped",
+      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+      // as a workaround, I build it manually by only adding the compiler
+      scalaInstance := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          Array.empty,
+          comp.toSeq,
+          Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value,
+        )},
+    )
+
+  /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-bootstrapped project */
+  lazy val `tasty-core-bootstrapped-new` = project.in(file("tasty"))
+    .dependsOn(`scala3-library-bootstrapped`)
+    .settings(
+      name          := "tasty-core-bootstrapped",
+      moduleName    := "tasty-core",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:tasty-core has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "tasty-core-bootstrapped",
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+    )
+
+  // ==============================================================================================
+  // ======================================= SCALA COMPILER =======================================
+  // ==============================================================================================
+
+  /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-nonbootstrapped project */
+  lazy val `scala3-compiler-nonbootstrapped` = project.in(file("compiler"))
+    .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`)
+    .settings(
+      name          := "scala3-compiler-nonbootstrapped",
+      moduleName    := "scala3-compiler",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      // All the dependencies needed by the compiler
+      libraryDependencies ++= Seq(
+        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
+        Dependencies.compilerInterface,
+        "org.jline" % "jline-reader" % "3.29.0",
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0",
+        //("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+      ),
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // TODO: Enable these flags when the new stdlib is explicitelly null checked
+      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-compiler-nonbootstrapped",
+      // Generate compiler.properties, used by sbt
+      Compile / resourceGenerators += Def.task {
+        import java.util._
+        import java.text._
+        val file = (Compile / resourceManaged).value / "compiler.properties"
+        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
+          s"""version.number=${version.value}
+             |maven.version.number=${version.value}
+             |git.hash=${VersionUtil.gitHash}
+             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
+           """.stripMargin
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
+        Seq(file)
+      }.taskValue,
+      // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
+      // as a workaround, I build it manually by only adding the compiler
+      scalaInstance := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
+          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Defaults.makeScalaInstance(
+          scalaVersion.value,
+          Array.empty,
+          comp.toSeq,
+          Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value,
+        )},
+      /* Add the sources of scalajs-ir.
+       * To guarantee that dotty can bootstrap without depending on a version
+       * of scalajs-ir built with a different Scala compiler, we add its
+       * sources instead of depending on the binaries.
+       */
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      Compile / sourceGenerators += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (Compile / sourceManaged).value / "scalajs-ir-src"
+
+        val report = updateClassifiers.value
+        val scalaJSIRSourcesJar = report.select(
+            configuration = configurationFilter("sourcedeps"),
+            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+          sys.error(s"Could not fetch scalajs-ir sources")
+        }
+
+        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+          if (trgDir.exists)
+            IO.delete(trgDir)
+          IO.createDirectory(trgDir)
+          IO.unzip(scalaJSIRSourcesJar, trgDir)
+
+          val sjsSources = (trgDir ** "*.scala").get.toSet
+          sjsSources.foreach(f => {
+            val lines = IO.readLines(f)
+            val linesWithPackage = replacePackage(lines) {
+              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
+            }
+            IO.writeLines(f, insertUnsafeNullsImport(linesWithPackage))
+          })
+          sjsSources
+        } (Set(scalaJSIRSourcesJar)).toSeq
+      }.taskValue,
+    )
+
+  /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-bootstrapped project */
+  lazy val `scala3-compiler-bootstrapped-new` = project.in(file("compiler"))
+    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`)
+    .settings(
+      name          := "scala3-compiler-bootstrapped",
+      moduleName    := "scala3-compiler",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // All the dependencies needed by the compiler
+      libraryDependencies ++= Seq(
+        "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
+        Dependencies.compilerInterface,
+        "org.jline" % "jline-reader" % "3.29.0",
+        "org.jline" % "jline-terminal" % "3.29.0",
+        "org.jline" % "jline-terminal-jni" % "3.29.0",
+        //("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+      ),
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      // TODO: Enable these flags when the new stdlib is explicitelly null checked
+      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-compiler-bootstrapped",
+      // Generate compiler.properties, used by sbt
+      Compile / resourceGenerators += Def.task {
+        import java.util._
+        import java.text._
+        val file = (Compile / resourceManaged).value / "compiler.properties"
+        val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+        val contents =                //2.11.11.v20170413-090219-8a413ba7cc
+          s"""version.number=${version.value}
+             |maven.version.number=${version.value}
+             |git.hash=${VersionUtil.gitHash}
+             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
+           """.stripMargin
+
+        if (!(file.exists && IO.read(file) == contents)) {
+          IO.write(file, contents)
+        }
+
+        Seq(file)
+      }.taskValue,
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      /* Add the sources of scalajs-ir.
+       * To guarantee that dotty can bootstrap without depending on a version
+       * of scalajs-ir built with a different Scala compiler, we add its
+       * sources instead of depending on the binaries.
+       */
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      Compile / sourceGenerators += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (Compile / sourceManaged).value / "scalajs-ir-src"
+
+        val report = updateClassifiers.value
+        val scalaJSIRSourcesJar = report.select(
+            configuration = configurationFilter("sourcedeps"),
+            module = (_: ModuleID).name.startsWith("scalajs-ir_"),
+            artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+          sys.error(s"Could not fetch scalajs-ir sources")
+        }
+
+        FileFunction.cached(cacheDir / s"fetchScalaJSIRSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking scalajs-ir sources to $trgDir...")
+          if (trgDir.exists)
+            IO.delete(trgDir)
+          IO.createDirectory(trgDir)
+          IO.unzip(scalaJSIRSourcesJar, trgDir)
+
+          val sjsSources = (trgDir ** "*.scala").get.toSet
+          sjsSources.foreach(f => {
+            val lines = IO.readLines(f)
+            val linesWithPackage = replacePackage(lines) {
+              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
+            }
+            IO.writeLines(f, insertUnsafeNullsImport(linesWithPackage))
+          })
+          sjsSources
+        } (Set(scalaJSIRSourcesJar)).toSeq
+      }.taskValue,
+    )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
@@ -1161,8 +2076,16 @@ object Build {
     asDottyLibrary(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     settings(
+      commonBootstrappedSettings,
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
+      // NOTE: Until 3.8.0, we pin the source files to be used by the scala3 library
+      Compile / sources := (`scala3-library-bootstrapped` / Compile / sources).value,
+      Compile / sources ++= Seq(
+        file(s"${baseDirectory.value}/src/scala/scalajs/js/internal/UnitOps.scala"),
+        file(s"${baseDirectory.value}/src/scala/scalajs/runtime/AnonFunctionXXL.scala"),
+      ),
+      // NOTE: We keep this so that the mappings are correct when packaging
       Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
@@ -1237,7 +2160,7 @@ object Build {
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions ++= Seq("-source", "3.8"), // for separation checking
+      scalacOptions += "-language:experimental.separationChecking" // for separation checking
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
@@ -1601,6 +2524,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      commonBootstrappedSettings,
       // Required to run Scala.js tests.
       Test / fork := false,
 
@@ -1618,6 +2542,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      commonBootstrappedSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation"),
 
@@ -1861,12 +2786,15 @@ object Build {
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
-    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
+    settings(
+      commonBootstrappedSettings,
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
+      commonBootstrappedSettings,
       scalaJSUseMainModuleInitializer := true,
       Test / fork := false
     )
@@ -1875,6 +2803,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
+      commonBootstrappedSettings,
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0")

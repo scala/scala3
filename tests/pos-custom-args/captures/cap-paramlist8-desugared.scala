@@ -11,14 +11,14 @@
         val z: Any^{cap} = ???
       }
       val baz3:
-        Int -> [C >: caps.CapSet <: caps.CapSet^,
-          D >: caps.CapSet <: caps.CapSet^{C}, E >: caps.CapSet <:
-          caps.CapSet^{C, x}] => () -> [F >: caps.CapSet^{x, y} <:
+        Int -> [C^ >: caps.CapSet <: caps.CapSet^,
+          D^ >: caps.CapSet <: caps.CapSet^{C}, E^ >: caps.CapSet <:
+          caps.CapSet^{C, x}] => () -> [F^ >: caps.CapSet^{x, y} <:
           caps.CapSet^{C, E}] => (x: Int) -> (Ctx[F]) ?-> Int
         = (i: Int) => [
-        C >: _root_.scala.caps.CapSet <: _root_.scala.caps.CapSet^{cap},
-        D >: _root_.scala.caps.CapSet <: _root_.scala.caps.CapSet^{C},
-        E >: _root_.scala.caps.CapSet <: _root_.scala.caps.CapSet^{C, x}] =>
+        C^ >: _root_.scala.caps.CapSet <: _root_.scala.caps.CapSet^{cap},
+        D^ >: _root_.scala.caps.CapSet <: _root_.scala.caps.CapSet^{C},
+        E^ >: _root_.scala.caps.CapSet <: _root_.scala.caps.CapSet^{C, x}] =>
         () => [
         F
             >: _root_.scala.caps.CapSet^{x, y} <:
