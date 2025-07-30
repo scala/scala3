@@ -343,11 +343,12 @@ object PatternMatcher {
               receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
               Literal(Constant(i)))
 
+        def getOfGetMatch(gm: Tree) = gm.select(nme.get, _.info.isParameterless)
         // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
         // enable selecting the field. See i23131.scala for test cases.
         val wasUnaryNamedTupleSelectArgForNamedTuple =
           args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined &&
-            isGetMatch(unappType) && unapp.select(nme.get, _.info.isParameterless).tpe.widenDealias.isNamedTupleType
+            isGetMatch(unappType) && getOfGetMatch(unapp).tpe.widenDealias.isNamedTupleType
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && !wasUnaryNamedTupleSelectArgForNamedTuple)
           def tupleSel(sym: Symbol) =
             // If scrutinee is a named tuple, cast to underlying tuple, so that we can
@@ -381,7 +382,7 @@ object PatternMatcher {
             else {
               assert(isGetMatch(unappType))
               val argsPlan = {
-                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
+                val get = getOfGetMatch(ref(unappResult))
                 val arity = productArity(get.tpe.stripNamedTuple, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
