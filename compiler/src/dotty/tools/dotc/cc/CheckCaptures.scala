@@ -1550,11 +1550,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def improveCaptures(widened: Type, prefix: Type)(using Context): Type = prefix match
       case ref: Capability if ref.isTracked =>
         widened match
-          case widened @ CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
-            val improvedCs =
-              if widened.isBoxed then ref.reach.singletonCaptureSet
-              else ref.singletonCaptureSet
-            widened.derivedCapturingType(p, improvedCs)
+          case widened @ CapturingType(p, refs)
+          if ref.singletonCaptureSet.mightSubcapture(refs) && !widened.isBoxed =>
+            widened.derivedCapturingType(p, ref.singletonCaptureSet)
               .showing(i"improve $widened to $result", capt)
           case _ => widened
       case _ => widened

@@ -401,9 +401,12 @@ extension (tp: Type)
           if variance <= 0 then t
           else t.dealias match
             case t @ CapturingType(p, cs) if cs.containsCapOrFresh =>
-              change = true
               val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
-              t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
+              if reachRef.singletonCaptureSet.mightSubcapture(cs) then
+                change = true
+                t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
+              else
+                t
             case t @ AnnotatedType(parent, ann) =>
               // Don't map annotations, which includes capture sets
               t.derivedAnnotatedType(this(parent), ann)

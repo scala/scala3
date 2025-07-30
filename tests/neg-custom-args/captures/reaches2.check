@@ -1,12 +1,8 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches2.scala:10:8 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches2.scala:10:10 -------------------------------------
 10 |  ps.map((x, y) => compose1(x, y)) // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Found:    List[A^? ->{ps*, cap, cap²} A^?]
-   |  Required: List[A ->{ps*} A]
-   |
-   |  where:    cap  is a fresh root capability created in method mapCompose when computing deep capture set of A
-   |            cap² is a fresh root capability created in method mapCompose when computing deep capture set of A
-   |
-   |  Note that capability cap is not included in capture set {ps*}.
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |          Found:    (x$1: (A^? ->{ps*} A^?, A^? ->{ps*} A^?)^?) ->{ps*} A^? ->{ps*} A^?
+   |          Required: ((A ->{ps*} A, A ->{ps*} A)) -> A^? ->? A^?
+   |          Note that capability ps* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
