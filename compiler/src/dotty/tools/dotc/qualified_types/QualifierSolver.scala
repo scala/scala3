@@ -1,79 +1,61 @@
 package dotty.tools.dotc.qualified_types
 
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.{closureDef, singleton, Apply, Ident, Literal, Select, Tree, given}
+import ENode.{Lambda, OpApply, Op}
+
 import dotty.tools.dotc.config.Printers
-import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.{ctx, Context}
-import dotty.tools.dotc.core.Decorators.i
-import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
-import dotty.tools.dotc.core.Types.TermRef
 import dotty.tools.dotc.reporting.trace
-import dotty.tools.dotc.transform.BetaReduce
+import dotty.tools.dotc.core.Contexts.{ctx, Context}
+import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.Types.{Type, TypeVar, TypeMap}
 
 class QualifierSolver(using Context):
-  val d = defn // Need a stable path to match on `defn` members
 
-  def implies(tree1: Tree, tree2: Tree) =
-    trace(i"implies $tree1 -> $tree2", Printers.qualifiedTypes):
-      (tree1, tree2) match
-        case (closureDef(defDef1), closureDef(defDef2)) =>
-          val tree1ArgSym = defDef1.symbol.paramSymss.head.head
-          val tree2ArgSym = defDef2.symbol.paramSymss.head.head
-          val rhs = defDef1.rhs
-          val lhs = defDef2.rhs
-          if tree1ArgSym.info frozen_<:< tree2ArgSym.info then
-            impliesRec1(rhs, lhs.subst(List(tree2ArgSym), List(tree1ArgSym)))
-          else if tree2ArgSym.info frozen_<:< tree1ArgSym.info then
-            impliesRec1(rhs.subst(List(tree1ArgSym), List(tree2ArgSym)), lhs)
-          else
-            false
-        case _ =>
-          throw IllegalArgumentException("Qualifiers must be closures")
+  def implies(node1: ENode.Lambda, node2: ENode.Lambda) =
+    trace(s"QualifierSolver.implies ${node1.body} -> ${node2.body}", Printers.qualifiedTypes):
+      val paramTp1 = node1.paramTps.head
+      val paramTp2 = node2.paramTps.head
+      if paramTp1.underlying frozen_<:< paramTp2.underlying then
+        impliesRec(
+          node1.body.mapTypes(SubstTypeMap(paramTp1, paramTp2)),
+          node2.body.mapTypes(InstantiateMap())
+        )
+      else if paramTp1.underlying frozen_<:< paramTp2.underlying then
+        impliesRec(
+          node1.body.mapTypes(InstantiateMap()),
+          node2.body.mapTypes(SubstTypeMap(paramTp2, paramTp1))
+        )
+      else
+        false
 
-  private def impliesRec1(tree1: Tree, tree2: Tree): Boolean =
-    // tree1 = lhs || rhs
-    tree1 match
-      case Apply(select @ Select(lhs, name), List(rhs)) =>
-        select.symbol match
-          case d.Boolean_|| =>
-            return impliesRec1(lhs, tree2) && impliesRec1(rhs, tree2)
-          case _ => ()
+  /** Instantiates type variables when possible.
+    *
+    * See `TypeMap.mapOverTypeVar`.
+    */
+  private class InstantiateMap extends TypeMap:
+    override def mapOverTypeVar(tp: TypeVar): Type =
+      val res = super.mapOverTypeVar(tp)
+      if res eq tp then res else ENode.normalizeType(res)
+
+    def apply(tp: Type): Type = mapOver(tp)
+
+  private class SubstTypeMap(from: Type, to: Type) extends InstantiateMap:
+    override def apply(tp: Type): Type = if tp eq from then to else mapOver(tp)
+
+  private def impliesRec(node1: ENode, node2: ENode): Boolean =
+    node1 match
+      case OpApply(Op.Or, List(lhs, rhs)) =>
+        return impliesRec(lhs, node2) && impliesRec(rhs, node2)
       case _ => ()
 
-    // tree2 = lhs && rhs, or tree2 = lhs || rhs
-    tree2 match
-      case Apply(select @ Select(lhs, name), List(rhs)) =>
-        select.symbol match
-          case d.Boolean_&& =>
-            return impliesRec1(tree1, lhs) && impliesRec1(tree1, rhs)
-          case d.Boolean_|| =>
-            return impliesRec1(tree1, lhs) || impliesRec1(tree1, rhs)
-          case _ => ()
+    node2 match
+      case OpApply(Op.And, List(lhs, rhs)) =>
+        return impliesRec(node1, lhs) && impliesRec(node1, rhs)
       case _ => ()
 
     val egraph = EGraph(ctx)
-    // println(s"tree implies $tree1 -> $tree2")
-    (egraph.toNode(QualifierEvaluator.evaluate(tree1)), egraph.toNode(QualifierEvaluator.evaluate(tree2))) match
-      case (Some(node1), Some(node2)) =>
-        // println(s"node implies $node1 -> $node2")
-        egraph.merge(node1, egraph.trueNode)
-        egraph.repair()
-        egraph.equiv(node2, egraph.trueNode)
-      case _ =>
-        false
-
-  private def topLevelEqualities(tree: Tree): List[(Tree, Tree)] =
-    trace(i"topLevelEqualities $tree", Printers.qualifiedTypes):
-      topLevelEqualitiesImpl(tree)
-
-  private def topLevelEqualitiesImpl(tree: Tree): List[(Tree, Tree)] =
-    val d = defn
-    tree match
-      case Apply(select @ Select(lhs, name), List(rhs)) =>
-        select.symbol match
-          case d.Int_== | d.Any_== | d.Boolean_== => List((lhs, rhs))
-          case d.Boolean_&&                       => topLevelEqualitiesImpl(lhs) ++ topLevelEqualitiesImpl(rhs)
-          case _                                  => Nil
-      case _ =>
-        Nil
+    val canonicalNode1 = egraph.canonicalize(node1)
+    val canonicalNode2 = egraph.canonicalize(node2)
+    trace(s"QualifierSolver.impliesRec $canonicalNode1 -> $canonicalNode2", Printers.qualifiedTypes):
+      egraph.merge(canonicalNode1, egraph.trueNode)
+      egraph.repair()
+      egraph.equiv(canonicalNode2, egraph.trueNode)

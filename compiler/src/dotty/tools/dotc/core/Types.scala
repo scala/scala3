@@ -41,7 +41,7 @@ import compiletime.uninitialized
 import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
-import qualified_types.QualifiedType
+import qualified_types.{QualifiedType, QualifiedAnnotation}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
@@ -5833,7 +5833,8 @@ object Types extends TypeUtils {
     def make(underlying: Type, annots: List[Annotation])(using Context): Type =
       annots.foldLeft(underlying)(apply(_, _))
     def apply(parent: Type, annot: Annotation)(using Context): AnnotatedType =
-      unique(CachedAnnotatedType(parent, annot))
+      val annot1 = if annot.symbol == defn.QualifiedAnnot then QualifiedAnnotation(annot) else annot
+      unique(CachedAnnotatedType(parent, annot1))
   end AnnotatedType
 
   // Special type objects and classes -----------------------------------------------------

@@ -33,6 +33,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.{
   AppliedType,
+  CachedConstantType,
   CachedProxyType,
   ConstantType,
   LambdaType,
@@ -48,209 +49,265 @@ import dotty.tools.dotc.core.Types.{
   TypeVar,
   ValueType
 }
+import dotty.tools.dotc.core.Uniques
 import dotty.tools.dotc.qualified_types.ENode.Op
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
+import dotty.tools.dotc.util.{EqHashMap, HashMap}
 import dotty.tools.dotc.util.Spans.Span
 
-final class EGraph(rootCtx: Context):
+import annotation.threadUnsafe as tu
+import reflect.ClassTag
 
-  private val represententOf = mutable.Map.empty[ENode, ENode]
+object EGraph:
+  /** Are costly (non-constant-time) assertions enabled? */
+  final val checksEnabled = true
 
-  private def representent(node: ENode): ENode =
-    represententOf.get(node) match
-      case None => node
-      case Some(repr) =>
-        assert(repr ne node, s"Node $node has itself as representent")
-        representent(repr)
+final class EGraph(rootContext: Context):
 
-  /** Map from child nodes to their parent nodes */
-  private val usedBy = mutable.Map.empty[ENode, mutable.Set[ENode]]
+  /** Cache for unique E-Nodes
+   *
+   *  Invariant: Each key is `eq` to its associated value.
+   *
+   *  Invariant: If a node is in this map, then its children also are.
+   */
+  private val index: HashMap[ENode, ENode] = HashMap()
 
-  private def uses(node: ENode): mutable.Set[ENode] =
-    usedBy.getOrElseUpdate(node, mutable.Set.empty)
+  /** Map from nodes to their unique, canonical representations.
+   *
+   *  Invariant: After a call to [[repair]], if a node is in the index but not
+   *  in this map, then it is its own representant and it is canonical.
+   *
+   *  Invariant: After a call to [[repair]], values of this map are canonical.
+   */
+  private val representantOf: EqHashMap[ENode, ENode] = EqHashMap()
 
-  private def addUse(node: ENode, parent: ENode): Unit =
-    require(!represententOf.contains(node), s"Reference $node is not normalized")
-    uses(node) += parent
+  /** Map from child nodes to their parent nodes
+   *
+   *  Invariant: After a call to [[repair]], values of this map are canonical.
+   */
+  private val usedBy: EqHashMap[ENode, mutable.Set[ENode]] = EqHashMap()
 
-  /** Map used for hash-consing nodes, keys and values are the same */
-  private val index = mutable.Map.empty[ENode, ENode]
-
-  final val trueNode: ENode.Atom = ENode.Atom(ConstantType(Constant(true))(using rootCtx))
-  index(trueNode) = trueNode
-
-  final val falseNode: ENode.Atom = ENode.Atom(ConstantType(Constant(false))(using rootCtx))
-  index(falseNode) = falseNode
-
-  final val minusOneIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(-1))(using rootCtx))
-  index(minusOneIntNode) = minusOneIntNode
-
-  final val zeroIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(0))(using rootCtx))
-  index(zeroIntNode) = zeroIntNode
-
-  final val oneIntNode: ENode.Atom = ENode.Atom(ConstantType(Constant(1))(using rootCtx))
-  index(oneIntNode) = oneIntNode
-
-  private val d = defn(using rootCtx) // Need a stable path to match on `defn` members
-  private val builtinOps = Map(
-    d.Int_== -> Op.Equal,
-    d.Boolean_== -> Op.Equal,
-    d.String_== -> Op.Equal,
-    d.Boolean_&& -> Op.And,
-    d.Boolean_|| -> Op.Or,
-    d.Boolean_! -> Op.Not,
-    d.Int_+ -> Op.IntSum,
-    d.Int_* -> Op.IntProduct
-  )
-
+  /** Worklist for nodes that need to be repairedConstantType(Constant(value).
+   *
+   *  This queue is filled by [[merge]] and processed by [[repair]].
+   *
+   *  Invariant: After a call to [[repair]], this queue is empty.
+   */
   private val worklist = mutable.Queue.empty[ENode]
 
+  val trueNode: ENode.Atom = constant(true)
+  val falseNode: ENode.Atom = constant(false)
+  val minusOneIntNode: ENode.Atom = constant(-1)
+  val zeroIntNode: ENode.Atom = constant(0)
+  val oneIntNode: ENode.Atom = constant(1)
+
+  /** Returns the canonical node for the given constant value */
+  def constant(value: Any): ENode.Atom =
+    val node = ENode.Atom(ConstantType(Constant(value))(using rootContext))
+    index.getOrElseUpdate(node, node).asInstanceOf[ENode.Atom]
+
+  def registered(node: ENode): Boolean =
+    index.contains(node)
+
+  /** Adds the given node to the E-Graph, returning its canonical representant.
+   *
+   *  Pre-condition: The node must be normalized, and its children must be
+   *  canonical.
+   */
+  private def unique(node: ENode): ENode =
+    if index.contains(node) then
+      representant(index(node))
+    else
+      index.update(node, node)
+      node match
+        case ENode.Atom(tp) =>
+          ()
+        case ENode.Constructor(sym) =>
+          ()
+        case ENode.Select(qual, member) =>
+          addUse(qual, node)
+        case ENode.Apply(fn, args) =>
+          addUse(fn, node)
+          for arg <- args do
+            addUse(arg, node)
+        case ENode.OpApply(op, args) =>
+          for arg <- args do
+            addUse(arg, node)
+        case ENode.TypeApply(fn, args) =>
+          addUse(fn, node)
+        case ENode.Lambda(paramTps, retTp, body) =>
+          addUse(body, node)
+          node
+      node
+
+  private def representant(node: ENode): ENode =
+    representantOf.get(node) match
+      case None => node
+      case Some(repr) =>
+        // There must be no cycles in the `representantOf` map.
+        // If a node is canonical, it must have no representant.
+        assert(repr ne node, s"Node $node has itself as representant ($repr)")
+        representant(repr)
+
+  def assertCanonical(node: ENode): Unit =
+    if EGraph.checksEnabled then
+      // By the invariants, if a node is in the index (meaning it is tracked by
+      // this E-Graph), and has no representant, then it is itself a canonical
+      // node. We double-check by forcing a deep canonicalization.
+      assert(index.contains(node) && index(node) == node, s"Node $node is not unique in this E-Graph")
+      assert(!representantOf.contains(node), s"Node $node has a representant: ${representantOf(node)}")
+      val canonical = canonicalize(node)
+      assert(node eq canonical, s"Recanonicalization of $node did not return itself, but $canonical")
+
+  private def addUse(child: ENode, parent: ENode): Unit =
+    usedBy.getOrElseUpdate(child, mutable.Set.empty) += parent
+
   override def toString(): String =
-    val represententsString = represententOf.map((node, repr) => s" $node -> $repr").mkString("\n")
-    s"EGraph:\n$represententsString\n"
+    s"EGraph{\nindex = $index,\nrepresentantOf = $representantOf,\nusedBy = $usedBy,\nworklist = $worklist}\n"
+
+  def toDot(): String =
+    val sb = new StringBuilder()
+    sb.append("digraph EGraph {\nnode [height=.1 shape=record]\n")
+    for node <- index.valuesIterator do
+      sb.append(node.toDot())
+    for (node, repr) <- representantOf.iterator do
+      sb.append(s"${node.dotId()} -> ${repr.dotId()} [style=dotted]\n")
+    for (child, parents) <- usedBy.iterator do
+      for parent <- parents do
+        sb.append(s"${child.dotId()} -> ${parent.dotId()} [style=dashed]\n")
+    sb.append("}\n")
+    sb.toString()
 
   def equiv(node1: ENode, node2: ENode)(using Context): Boolean =
     trace(i"EGraph.equiv", Printers.qualifiedTypes):
       // val margin = ctx.base.indentTab * (ctx.base.indent)
       // println(s"$margin node1: $node1\n$margin node2: $node2")
-      val repr1 = representent(node1)
-      val repr2 = representent(node2)
+      val repr1 = representant(node1)
+      val repr2 = representant(node2)
       repr1 eq repr2
 
-  private def unique(node: ENode): node.type =
-    index.getOrElseUpdate(
-      node, {
+  def merge(a: ENode, b: ENode): Unit =
+    //println(s"EGraph.merge $a and $b")
+    if EGraph.checksEnabled then
+      assert(index.contains(a) && index(a) == a, s"Node $a is not unique in this E-Graph")
+      assert(index.contains(b) && index(b) == b, s"Node $b is not unique in this E-Graph")
+    val aRepr = representant(a)
+    val bRepr = representant(b)
+    if aRepr eq bRepr then return
+    if EGraph.checksEnabled then
+      assert(aRepr != bRepr, s"$aRepr and $bRepr are `equals` but not `eq`")
+
+    /// Update representantOf and usedBy maps
+    val (newRepr, oldRepr) = order(aRepr, bRepr)
+    representantOf(oldRepr) = newRepr
+    val oldUses = usedBy.getOrElse(oldRepr, mutable.Set.empty)
+    usedBy.getOrElseUpdate(newRepr, mutable.Set.empty) ++= oldUses
+    usedBy.remove(oldRepr)
+
+    // Propagate truth values over disjunctions, conjunctions and equalities
+    oldRepr match
+      case ENode.OpApply(Op.And, args) if newRepr eq trueNode =>
+        args.foreach(merge(_, trueNode))
+      case ENode.OpApply(Op.Or, args) if newRepr eq falseNode =>
+        args.foreach(merge(_, falseNode))
+      case ENode.OpApply(Op.Equal, args) if newRepr eq trueNode =>
+        merge(args(0), args(1))
+      case _ =>
+        ()
+
+    // Enqueue all nodes that use the oldRepr for repair
+    worklist.enqueueAll(oldUses)
+
+  private def order(a: ENode, b: ENode): (ENode, ENode) =
+    (a, b) match
+      case (ENode.Atom(_: ConstantType), _) => (a, b)
+      case (_, ENode.Atom(_: ConstantType)) => (b, a)
+      case (_: ENode.Constructor, _) => (a, b)
+      case (_, _: ENode.Constructor) => (b, a)
+      case (_: ENode.Atom, _) => (a, b)
+      case (_, _: ENode.Atom) => (b, a)
+      case (_: ENode.Select, _) => (a, b)
+      case (_, _: ENode.Select) => (b, a)
+      case (_: ENode.Apply, _) => (a, b)
+      case (_, _: ENode.Apply) => (b, a)
+      case (_: ENode.TypeApply, _) => (a, b)
+      case (_, _: ENode.TypeApply) => (b, a)
+      case _ => (a, b)
+
+  def repair(): Unit =
+    while !worklist.isEmpty do
+      val head = worklist.dequeue()
+      val headRepr = representant(head)
+      val headCanonical = canonicalize(head, deep = false)
+      if headRepr ne headCanonical then
+        merge(headRepr, headCanonical)
+
+    assertInvariants()
+
+  def assertInvariants(): Unit =
+    if EGraph.checksEnabled then
+      //println(s"EGraph.assertInvariants")
+      //println(toDot())
+
+      assert(worklist.isEmpty, "Worklist is not empty")
+
+      // Check that all nodes in the index are canonical
+      for (node, node2) <- index.iterator do
+        assert(node eq node2, s"Key and value in index are not equal: $node ne $node2")
+
+        val repr = representant(node)
+        assertCanonical(repr)
+
+        def uses(node: ENode): mutable.Set[ENode] =
+          usedBy.getOrElse(node, mutable.Set.empty)
+
         node match
-          case ENode.Atom(tp) =>
-            ()
-          case ENode.Constructor(sym) =>
-            ()
+          case ENode.Atom(tp) => ()
+          case ENode.Constructor(sym) => ()
           case ENode.Select(qual, member) =>
-            addUse(qual, node)
+            index.contains(qual) && uses(qual).contains(node)
           case ENode.Apply(fn, args) =>
-            addUse(fn, node)
-            args.foreach(addUse(_, node))
+            index.contains(fn) && uses(fn).contains(node)
+            args.forall(arg => index.contains(arg) && uses(arg).contains(node))
           case ENode.OpApply(op, args) =>
-            args.foreach(addUse(_, node))
+            args.forall(arg => index.contains(arg) && uses(arg).contains(node))
           case ENode.TypeApply(fn, args) =>
-            addUse(fn, node)
+            index.contains(fn) && uses(fn).contains(node)
           case ENode.Lambda(paramTps, retTp, body) =>
-            addUse(body, node)
-        node
-      }
-    ).asInstanceOf[node.type]
+            index.contains(body) && uses(body).contains(node)
 
-  // TODO(mbovel): Memoize this
-  def toNode(tree: Tree, paramSyms: List[Symbol] = Nil, paramTps: List[ENode.ArgRefType] = Nil)(using
-      Context
-  ): Option[ENode] =
-    trace(i"EGraph.toNode $tree", Printers.qualifiedTypes):
-      computeToNode(tree, paramSyms, paramTps).map(node => representent(unique(node)))
+      for (node, repr) <- representantOf.iterator do
+        assert(index.contains(node), s"Node $node is not in the index")
 
-  private def computeToNode(
-      tree: Tree,
-      paramSyms: List[Symbol] = Nil,
-      paramTps: List[ENode.ArgRefType] = Nil
-  )(using currentCtx: Context): Option[ENode] =
-    trace(i"ENode.computeToNode $tree", Printers.qualifiedTypes):
-      def normalizeType(tp: Type): Type =
-        tp match
-          case tp: TypeVar if tp.isPermanentlyInstantiated =>
-            tp.permanentInst
-          case tp: NamedType =>
-            if tp.symbol.isStatic then tp.symbol.termRef
-            else normalizeType(tp.prefix).select(tp.symbol)
-          case tp => tp
+      for (child, parents) <- usedBy.iterator do
+        assertCanonical(child)
 
-      def mapType(tp: Type): Type =
-        normalizeType(tp.subst(paramSyms, paramTps))
+  // -----------------------------------
+  // Canonicalization
+  // -----------------------------------
 
-      tree match
-        case Literal(_) | Ident(_) | This(_) if tree.tpe.isInstanceOf[SingletonType] =>
-          Some(ENode.Atom(mapType(tree.tpe).asInstanceOf[SingletonType]))
-        case Select(New(_), nme.CONSTRUCTOR) =>
-          constructorNode(tree.symbol)
-        case tree: Select if isCaseClassApply(tree.symbol) =>
-          constructorNode(tree.symbol.owner.linkedClass.primaryConstructor)
-        case Select(qual, name) =>
-          for qualNode <- toNode(qual, paramSyms, paramTps) yield normalizeSelect(qualNode, tree.symbol)
-        case BinaryOp(lhs, op, rhs) if builtinOps.contains(op) =>
-          for
-            lhsNode <- toNode(lhs, paramSyms, paramTps)
-            rhsNode <- toNode(rhs, paramSyms, paramTps)
-          yield normalizeOp(builtinOps(op), List(lhsNode, rhsNode))
-        case BinaryOp(lhs, d.Int_-, rhs) =>
-          for
-            lhsNode <- toNode(lhs, paramSyms, paramTps)
-            rhsNode <- toNode(rhs, paramSyms, paramTps)
-          yield normalizeOp(Op.IntSum, List(lhsNode, normalizeOp(Op.IntProduct, List(minusOneIntNode, rhsNode))))
-        case Apply(fun, args) =>
-          for
-            funNode <- toNode(fun, paramSyms, paramTps)
-            argsNodes <- args.map(toNode(_, paramSyms, paramTps)).sequence
-          yield ENode.Apply(funNode, argsNodes)
-        case TypeApply(fun, args) =>
-          for funNode <- toNode(fun, paramSyms, paramTps)
-          yield ENode.TypeApply(funNode, args.map(tp => mapType(tp.tpe)))
-        case closureDef(defDef) =>
-          defDef.symbol.info.dealias match
-            case mt: MethodType =>
-              assert(defDef.termParamss.size == 1, "closures have a single parameter list, right?")
-              val myParamSyms: List[Symbol] = defDef.termParamss.head.map(_.symbol)
-              val myParamTps: ListBuffer[ENode.ArgRefType] = ListBuffer.empty
-              val paramTpsSize = paramTps.size
-              for myParamSym <- myParamSyms do
-                val underlying = mapType(myParamSym.info.subst(myParamSyms.take(myParamTps.size), myParamTps.toList))
-                myParamTps += ENode.ArgRefType(paramTpsSize + myParamTps.size, underlying)
-              val myRetTp = mapType(defDef.tpt.tpe.subst(myParamSyms, myParamTps.toList))
-              for body <- toNode(defDef.rhs, myParamSyms ::: paramSyms, myParamTps.toList ::: paramTps)
-              yield ENode.Lambda(myParamTps.toList, myRetTp, body)
-            case _ => None
-        case _ =>
-          None
-
-  // TODO(mbovel): Memoize this
-  private def constructorNode(constr: Symbol)(using Context): Option[ENode.Constructor] =
-    val clazz = constr.owner
-    if hasStructuralEquality(clazz) then
-      val isPrimaryConstructor = constr.denot.isPrimaryConstructor
-      val fieldsRaw = clazz.denot.asClass.paramAccessors.filter(isPrimaryConstructor && _.isStableMember)
-      val constrParams = constr.paramSymss.flatten.filter(_.isTerm)
-      val fields = constrParams.map(p => fieldsRaw.find(_.name == p.name).getOrElse(NoSymbol))
-      Some(ENode.Constructor(constr)(fields))
-    else
-      None
-
-  private def hasStructuralEquality(clazz: Symbol)(using Context): Boolean =
-    val equalsMethod = clazz.info.decls.lookup(nme.equals_)
-    val equalsNotOverriden = !equalsMethod.exists || equalsMethod.is(Flags.Synthetic)
-    clazz.isClass && clazz.is(Flags.Case) && equalsNotOverriden
-
-  private def isCaseClassApply(meth: Symbol)(using Context): Boolean =
-    meth.name == nme.apply
-      && meth.flags.is(Flags.Synthetic)
-      && meth.owner.linkedClass.is(Flags.Case)
-
-  private def canonicalize(node: ENode): ENode =
-    // println(s"canonicalize $node")
-    representent(unique(
+  def canonicalize(node: ENode, deep: Boolean = true): ENode =
+    def recur(node: ENode): ENode = if deep then canonicalize(node, deep) else representant(node)
+    val res = representant(unique(
       node match
         case ENode.Atom(tp) =>
           node
         case ENode.Constructor(sym) =>
           node
         case ENode.Select(qual, member) =>
-          normalizeSelect(representent(qual), member)
+          normalizeSelect(recur(qual), member)
         case ENode.Apply(fn, args) =>
-          ENode.Apply(representent(fn), args.map(representent))
+          ENode.Apply(recur(fn), args.map(recur))
         case ENode.OpApply(op, args) =>
-          normalizeOp(op, args.map(representent))
+          normalizeOp(op, args.map(recur))
         case ENode.TypeApply(fn, args) =>
-          ENode.TypeApply(representent(fn), args)
+          ENode.TypeApply(recur(fn), args)
         case ENode.Lambda(paramTps, retTp, body) =>
-          ENode.Lambda(paramTps, retTp, representent(body))
+          ENode.Lambda(paramTps, retTp, recur(body))
     ))
+    //println(s"Canonicalized $node to $res")
+    res
 
   private def normalizeSelect(qual: ENode, member: Symbol): ENode =
     getAppliedConstructor(qual) match
@@ -268,19 +325,19 @@ final class EGraph(rootCtx: Context):
 
   private def getAppliedConstructor(node: ENode): Option[ENode.Constructor] =
     node match
-      case ENode.Apply(fn, args)     => getAppliedConstructor(fn)
+      case ENode.Apply(fn, args) => getAppliedConstructor(fn)
       case ENode.TypeApply(fn, args) => getAppliedConstructor(fn)
-      case node: ENode.Constructor   => Some(node)
-      case _                         => None
+      case node: ENode.Constructor => Some(node)
+      case _ => None
 
   private def getTermArguments(node: ENode): List[ENode] =
     node match
-      case ENode.Apply(fn, args)     => getTermArguments(fn) ::: args
+      case ENode.Apply(fn, args) => getTermArguments(fn) ::: args
       case ENode.TypeApply(fn, args) => getTermArguments(fn)
-      case _                         => Nil
+      case _ => Nil
 
   private def normalizeOp(op: ENode.Op, args: List[ENode]): ENode =
-    op match
+    val res = op match
       case Op.Equal =>
         assert(args.size == 2, s"Expected 2 arguments for equality, got $args")
         if args(0) eq args(1) then
@@ -298,12 +355,24 @@ final class EGraph(rootCtx: Context):
         else if args(0) eq falseNode then args(1)
         else if args(1) eq falseNode then args(0)
         else ENode.OpApply(op, args)
-      case Op.IntProduct =>
-        val (consts, nonConsts) = decomposeIntProduct(args)
-        makeIntProduct(consts, nonConsts)
       case Op.IntSum =>
         val (const, nonConsts) = decomposeIntSum(args)
         makeIntSum(const, nonConsts)
+      case Op.IntProduct =>
+        val (consts, nonConsts) = decomposeIntProduct(args)
+        makeIntProduct(consts, nonConsts)
+      case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
+      case Op.IntLessEqual => constFoldBinaryOp[Int, Boolean](op, args, _ <= _)
+      case Op.IntGreaterThan => constFoldBinaryOp[Int, Boolean](op, args, _ > _)
+      case Op.IntGreaterEqual => constFoldBinaryOp[Int, Boolean](op, args, _ >= _)
+      case _ =>
+        ENode.OpApply(op, args)
+    res
+
+  private def constFoldBinaryOp[T: ClassTag, S](op: ENode.Op, args: List[ENode], fn: (T, T) => S): ENode =
+    args match
+      case List(ENode.Atom(ConstantType(Constant(c1: T))), ENode.Atom(ConstantType(Constant(c2: T)))) =>
+        constant(fn(c1, c2))
       case _ =>
         ENode.OpApply(op, args)
 
@@ -311,11 +380,11 @@ final class EGraph(rootCtx: Context):
     val factors =
       args.flatMap:
         case ENode.OpApply(Op.IntProduct, innerFactors) => innerFactors
-        case arg                                        => List(arg)
+        case arg => List(arg)
     val (consts, nonConsts) =
       factors.partitionMap:
         case ENode.Atom(ConstantType(Constant(c: Int))) => Left(c)
-        case factor                                     => Right(factor)
+        case factor => Right(factor)
     (consts.product, nonConsts.sortBy(_.hashCode()))
 
   private def makeIntProduct(const: Int, nonConsts: List[ENode]): ENode =
@@ -326,12 +395,15 @@ final class EGraph(rootCtx: Context):
       else if nonConsts.size == 1 then nonConsts.head
       else ENode.OpApply(Op.IntProduct, nonConsts)
     else
-      val constNode = unique(ENode.Atom(ConstantType(Constant(const))(using rootCtx)))
+      val constNode = constant(const)
       nonConsts match
         case Nil =>
           constNode
-        case List(ENode.OpApply(Op.IntSum, summands)) =>
-          ENode.OpApply(Op.IntSum, summands.map(summand => normalizeOp(Op.IntProduct, List(constNode, summand))))
+        //case List(ENode.OpApply(Op.IntSum, summands)) =>
+        //  ENode.OpApply(
+        //    Op.IntSum,
+        //    summands.map(summand => unique(makeIntProduct(const, List(summand))))
+        //  )
         case _ =>
           ENode.OpApply(Op.IntProduct, constNode :: nonConsts)
 
@@ -339,15 +411,15 @@ final class EGraph(rootCtx: Context):
     val summands: List[ENode] =
       args.flatMap:
         case ENode.OpApply(Op.IntSum, innerSummands) => innerSummands
-        case arg                                     => List(arg)
+        case arg => List(arg)
     val decomposed: List[(Int, List[ENode])] =
       summands.map:
         case ENode.OpApply(Op.IntProduct, args) =>
           args match
             case ENode.Atom(ConstantType(Constant(const: Int))) :: nonConsts => (const, nonConsts)
-            case nonConsts                                                   => (1, nonConsts)
+            case nonConsts => (1, nonConsts)
         case ENode.Atom(ConstantType(Constant(const: Int))) => (const, Nil)
-        case other                                          => (1, List(other))
+        case other => (1, List(other))
     val grouped = decomposed.groupMapReduce(_._2)(_._1)(_ + _)
     val const = grouped.getOrElse(Nil, 0)
     val nonConsts =
@@ -355,7 +427,7 @@ final class EGraph(rootCtx: Context):
         .toList
         .filter((nonConsts, const) => const != 0 && !nonConsts.isEmpty)
         .sortBy((nonConsts, const) => nonConsts.hashCode())
-        .map((nonConsts, const) => makeIntProduct(const, nonConsts))
+        .map((nonConsts, const) => unique(makeIntProduct(const, nonConsts)))
     (const, nonConsts)
 
   private def makeIntSum(const: Int, nonConsts: List[ENode]): ENode =
@@ -364,88 +436,6 @@ final class EGraph(rootCtx: Context):
       else if nonConsts.size == 1 then nonConsts.head
       else ENode.OpApply(Op.IntSum, nonConsts)
     else
-      val constNode = unique(ENode.Atom(ConstantType(Constant(const))(using rootCtx)))
+      val constNode = constant(const)
       if nonConsts.isEmpty then constNode
       else ENode.OpApply(Op.IntSum, constNode :: nonConsts)
-
-  private def order(a: ENode, b: ENode): (ENode, ENode) =
-    (a, b) match
-      case (ENode.Atom(_: ConstantType), _) => (a, b)
-      case (_, ENode.Atom(_: ConstantType)) => (b, a)
-      case (_: ENode.Constructor, _)        => (a, b)
-      case (_, _: ENode.Constructor)        => (b, a)
-      case (_: ENode.Atom, _)               => (a, b)
-      case (_, _: ENode.Atom)               => (b, a)
-      case (_: ENode.Select, _)             => (a, b)
-      case (_, _: ENode.Select)             => (b, a)
-      case (_: ENode.Apply, _)              => (a, b)
-      case (_, _: ENode.Apply)              => (b, a)
-      case (_: ENode.TypeApply, _)          => (a, b)
-      case (_, _: ENode.TypeApply)          => (b, a)
-      case _                                => (a, b)
-
-  def merge(a: ENode, b: ENode): Unit =
-    val aRepr = representent(a)
-    val bRepr = representent(b)
-    if aRepr eq bRepr then return
-    assert(aRepr != bRepr, s"$aRepr and $bRepr are `equals` but not `eq`")
-
-    /// Update represententOf and usedBy maps
-    val (newRepr, oldRepr) = order(aRepr, bRepr)
-    represententOf(oldRepr) = newRepr
-    uses(newRepr) ++= uses(oldRepr)
-    val oldUses = uses(oldRepr)
-    usedBy.remove(oldRepr)
-
-    // Propagate truth values over disjunctions, conjunctions and equalities
-    oldRepr match
-      case ENode.OpApply(Op.And, args) if newRepr eq trueNode =>
-        args.foreach(merge(_, trueNode))
-      case ENode.OpApply(Op.Or, args) if newRepr eq falseNode =>
-        args.foreach(merge(_, falseNode))
-      case ENode.OpApply(Op.Equal, args) if newRepr eq trueNode =>
-        args.foreach(arg => merge(args(0), args(1)))
-      case _ =>
-        ()
-
-    // Enqueue all nodes that use the oldRepr for repair
-    worklist.enqueueAll(oldUses)
-
-  def repair(): Unit =
-    while !worklist.isEmpty do
-      val head = worklist.dequeue()
-      val headRepr = representent(head)
-      val headCanonical = canonicalize(head)
-      if headRepr ne headCanonical then
-        merge(headRepr, headCanonical)
-
-  private def toTree(node: ENode, paramRefs: List[Tree])(using Context): Tree =
-    node match
-      case ENode.Atom(tp) =>
-        singleton(tp)
-      case ENode.Constructor(sym) =>
-        val tycon = sym.owner.info.typeConstructor
-        New(tycon).select(TermRef(tycon, sym))
-      case ENode.Select(qual, member) =>
-        toTree(qual, paramRefs).select(member)
-      case ENode.Apply(fn, args) =>
-        Apply(toTree(fn, paramRefs), args.map(toTree(_, paramRefs)))
-      case ENode.OpApply(op, args) =>
-        ???
-      case ENode.TypeApply(fn, args) =>
-        TypeApply(toTree(fn, paramRefs), args.map(TypeTree(_, false)))
-      case ENode.Lambda(paramTps, retTp, body) =>
-        ???
-
-  extension [T](xs: List[Option[T]])
-    private def sequence: Option[List[T]] =
-      var result = List.newBuilder[T]
-      var current = xs
-      while current.nonEmpty do
-        current.head match
-          case Some(x) =>
-            result += x
-            current = current.tail
-          case None =>
-            return None
-      Some(result.result())

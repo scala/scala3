@@ -93,4 +93,13 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
         val key = oldTable(idx).asInstanceOf[Key]
         if key != null then addOld(key, oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
+
+  override def clone(): EqHashMap[Key, Value] =
+    // Inverse from the computation of `limit` in `allocate`.
+    val initialCapacity = if isDense then limit + 1 else limit * capacityMultiple
+    val cloned = EqHashMap[Key, Value](initialCapacity, capacityMultiple)
+    cloned.copyFrom(table)
+    cloned.used = used
+    cloned
+
 end EqHashMap

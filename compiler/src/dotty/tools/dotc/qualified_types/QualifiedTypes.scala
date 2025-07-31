@@ -37,6 +37,7 @@ import dotty.tools.dotc.core.Types.{
   Type,
   TypeProxy
 }
+import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.trace
 
@@ -48,14 +49,21 @@ object QualifiedTypes:
    *  Note: the logic here is similar to [[Type#derivesAnnotWith]] but
    *  additionally handle comparisons with [[SingletonType]]s.
    */
-  def typeImplies(tp1: Type, qualifier2: Tree)(using Context): Boolean =
+  def typeImplies(tp1: Type, qualifier2: ENode.Lambda)(using Context): Boolean =
+    val solver = QualifierSolver()
+    def trySelfifyType() =
+      val ENode.Lambda(List(paramTp), _, _) = qualifier2: @unchecked
+      ENode.selfify(tpd.singleton(tp1)) match
+        case Some(qualifier1) => solver.implies(qualifier1, qualifier2)
+        case None => false
     trace(i"typeImplies $tp1  -->  $qualifier2", Printers.qualifiedTypes):
       tp1 match
         case QualifiedType(parent1, qualifier1) =>
-          QualifierSolver().implies(qualifier1, qualifier2)
-        case tp1: (ConstantType | TermRef) =>
-          QualifierSolver().implies(equalToPredicate(tpd.singleton(tp1)), qualifier2)
-          || typeImplies(tp1.underlying, qualifier2)
+          solver.implies(qualifier1, qualifier2)
+        case tp1: TermRef =>
+          typeImplies(tp1.underlying, qualifier2) || trySelfifyType()
+        case tp1: ConstantType =>
+          trySelfifyType()
         case tp1: TypeProxy =>
           typeImplies(tp1.underlying, qualifier2)
         case AndType(tp11, tp12) =>
@@ -64,7 +72,6 @@ object QualifiedTypes:
           typeImplies(tp11, qualifier2) && typeImplies(tp12, qualifier2)
         case _ =>
           false
-          // QualifierSolver().implies(truePredicate(), qualifier2)
 
   /** Try to adapt the tree to the given type `pt`
    *
@@ -74,10 +81,10 @@ object QualifiedTypes:
    *  Used by [[dotty.tools.dotc.core.Typer]].
    */
   def adapt(tree: Tree, pt: Type)(using Context): Tree =
-    trace(i"adapt $tree to $pt", Printers.qualifiedTypes):
-      if containsQualifier(pt) then
+    if containsQualifier(pt) then
+      trace(i"adapt $tree to qualified type $pt", Printers.qualifiedTypes):
         if tree.tpe.hasAnnotation(defn.RuntimeCheckedAnnot) then
-          if checkContainsSkolem(pt) then
+          if checkContainsSkolem(pt, tree.srcPos) then
             tpd.evalOnce(tree): e =>
               If(
                 e.isInstance(pt),
@@ -86,11 +93,13 @@ object QualifiedTypes:
               )
           else
             tree.withType(ErrorType(em""))
-        else if isSimple(tree) then
-          val selfifiedTp = QualifiedType(tree.tpe, equalToPredicate(tree))
-          if selfifiedTp <:< pt then tree.cast(selfifiedTp) else EmptyTree
         else
-          EmptyTree
+          ENode.selfify(tree) match
+            case Some(qualifier) =>
+              val selfifiedTp = QualifiedType(tree.tpe, qualifier)
+              if selfifiedTp <:< pt then tree.cast(selfifiedTp) else EmptyTree
+            case None =>
+              EmptyTree
       else
         EmptyTree
 
@@ -111,27 +120,15 @@ object QualifiedTypes:
       case OrType(tp1, tp2)    => containsQualifier(tp1) || containsQualifier(tp2)
       case _                   => false
 
-  def checkContainsSkolem(tp: Type)(using Context): Boolean =
+  def checkContainsSkolem(tp: Type, pos: SrcPos)(using Context): Boolean =
     var res = true
     tp.foreachPart:
       case QualifiedType(_, qualifier) =>
-        qualifier.foreachSubTree: subTree =>
-          subTree.tpe.foreachPart:
+        qualifier.foreachType: rootTp =>
+          rootTp.foreachPart:
             case tp: SkolemType =>
-              report.error(em"The qualified type $qualifier cannot be checked at runtime", qualifier.srcPos)
+              report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
               res = false
             case _ => ()
       case _ => ()
     res
-
-  private def equalToPredicate(tree: Tree)(using Context): Tree =
-    Lambda(
-      MethodType(List("v".toTermName))(_ => List(tree.tpe), _ => defn.BooleanType),
-      (args) => Ident(args(0).symbol.termRef).equal(tree)
-    )
-
-  private def truePredicate()(using Context): Tree =
-    Lambda(
-      MethodType(List("v".toTermName))(_ => List(defn.AnyType), _ => defn.BooleanType),
-      (args) => Literal(Constant(true))
-    )
