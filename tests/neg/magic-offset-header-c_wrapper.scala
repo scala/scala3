@@ -1,4 +1,4 @@
-//> using options -Xmagic-offset-header:SOURCE_CODE_START_MARKER
+//> using options -Ymagic-offset-header:SOURCE_CODE_START_MARKER
 
 val generatedCode = 123
 
