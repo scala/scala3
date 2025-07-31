@@ -52,6 +52,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
+    refInfos.isAssignment = tree.hasAttachment(AssignmentTarget)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
@@ -68,10 +69,12 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject)
     else if tree.hasType then
       resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject)
+    refInfos.isAssignment = false
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
   override def transformSelect(tree: Select)(using Context): tree.type =
+    refInfos.isAssignment = tree.hasAttachment(AssignmentTarget)
     val name = tree.removeAttachment(OriginalName).getOrElse(nme.NO_NAME)
     inline def isImportable = tree.qualifier.srcPos.isSynthetic
       && tree.qualifier.tpe.match
@@ -92,6 +95,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         resolveUsage(tree.symbol, name, tree.qualifier.tpe)
     else if !ignoreTree(tree) then
       refUsage(tree.symbol)
+    refInfos.isAssignment = false
     tree
 
   override def transformLiteral(tree: Literal)(using Context): tree.type =
@@ -113,13 +117,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     ctx
 
   override def prepareForAssign(tree: Assign)(using Context): Context =
-    tree.lhs.putAttachment(Ignore, ()) // don't take LHS reference as a read
+    tree.lhs.putAttachment(AssignmentTarget, ()) // don't take LHS reference as a read
     ctx
   override def transformAssign(tree: Assign)(using Context): tree.type =
-    tree.lhs.removeAttachment(Ignore)
-    val sym = tree.lhs.symbol
-    if sym.exists then
-      refInfos.asss.addOne(sym)
+    tree.lhs.removeAttachment(AssignmentTarget)
     tree
 
   override def prepareForMatch(tree: Match)(using Context): Context =
@@ -171,9 +172,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       refInfos.register(tree)
-    tree.tpt match
-    case RefinedTypeTree(_, refinements) => relax(tree.rhs, refinements)
-    case _ =>
+    relax(tree.rhs, tree.tpt.tpe)
     ctx
   override def transformValDef(tree: ValDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
@@ -197,9 +196,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       refInfos.inliners += 1
     else if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       refInfos.register(tree)
-    tree.tpt match
-    case RefinedTypeTree(_, refinements) => relax(tree.rhs, refinements)
-    case _ =>
+    relax(tree.rhs, tree.tpt.tpe)
     ctx
   override def transformDefDef(tree: DefDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
@@ -291,7 +288,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   // if sym is not an enclosing element, record the reference
   def refUsage(sym: Symbol)(using Context): Unit =
     if !ctx.outersIterator.exists(cur => cur.owner eq sym) then
-      refInfos.refs.addOne(sym)
+      refInfos.addRef(sym)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -341,7 +338,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       && ctxsym.thisType.member(sym.name).hasAltWith(d => d.containsSym(sym) && !name.exists(_ != d.name))
 
     // Avoid spurious NoSymbol and also primary ctors which are never warned about.
-    // Selections C.this.toString should be already excluded, but backtopped here for eq, etc.
+    // Selections C.this.toString should be already excluded, but backstopped here for eq, etc.
     if !sym.exists || sym.isPrimaryConstructor || sym.isEffectiveRoot || defn.topClasses(sym.owner) then return
 
     // Find the innermost, highest precedence. Contexts have no nesting levels but assume correctness.
@@ -392,7 +389,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     end while
     // record usage and possibly an import
     if !enclosed then
-      refInfos.refs.addOne(sym)
+      refInfos.addRef(sym)
     if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
@@ -416,6 +413,9 @@ object CheckUnused:
 
   /** Ignore reference. */
   val Ignore = Property.StickyKey[Unit]
+
+  /** Tree is LHS of Assign. */
+  val AssignmentTarget = Property.StickyKey[Unit]
 
   class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper")
 
@@ -461,6 +461,14 @@ object CheckUnused:
 
     val inlined = Stack.empty[SrcPos] // enclosing call.srcPos of inlined code (expansions)
     var inliners = 0 // depth of inline def (not inlined yet)
+
+    // instead of refs.addOne, use addRef to distinguish a read from a write to var
+    var isAssignment = false
+    def addRef(sym: Symbol): Unit =
+      if isAssignment then
+        asss.addOne(sym)
+      else
+        refs.addOne(sym)
   end RefInfos
 
   // Names are resolved by definitions and imports, which have four precedence levels:
@@ -522,12 +530,15 @@ object CheckUnused:
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
         // A local param accessor warns as a param; a private accessor as a private member.
-        // Avoid warning for case class elements because they are aliased via unapply.
+        // Avoid warning for case class elements because they are aliased via unapply (i.e. may be extracted).
         if m.isPrimaryConstructor then
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor) && !infos.refs(alias.symbol) then
+            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits then
                   warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
@@ -536,13 +547,14 @@ object CheckUnused:
                   warnAt(pos)(UnusedSymbol.privateMembers)
         else if ctx.settings.WunusedHas.explicits
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
-          && !(sym.owner.is(ExtensionMethod) && {
-            m.paramSymss.dropWhile(_.exists(_.isTypeParam)) match
-            case (h :: Nil) :: Nil => h == sym // param is the extended receiver
+          && !(sym.owner.is(ExtensionMethod) &&
+            m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
+            case (h :: Nil) :: _ => h == sym // param is the extended receiver
             case _ => false
-          })
+          )
           && !sym.name.isInstanceOf[DerivedName]
           && !ctx.platform.isMainMethod(m)
+          && !usedByDefaultGetter(sym, m)
         then
           warnAt(pos)(UnusedSymbol.explicitParams(sym))
       end checkExplicit
@@ -554,6 +566,16 @@ object CheckUnused:
         checkExplicit()
     end checkParam
 
+    // does the param have an alias in a default arg method that is used?
+    def usedByDefaultGetter(param: Symbol, meth: Symbol): Boolean =
+      val cls = if meth.isConstructor then meth.enclosingClass.companionModule else meth.enclosingClass
+      val MethName = meth.name
+      cls.info.decls.exists: d =>
+        d.name match
+        case DefaultGetterName(MethName, _) =>
+          d.paramSymss.exists(_.exists(p => p.name == param.name && infos.refs(p)))
+        case _ => false
+
     def checkImplicit(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
       def allowed =
@@ -563,14 +585,14 @@ object CheckUnused:
         || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
         || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
         || sym.isCanEqual
-        || sym.info.typeSymbol.match                // more ubiquity
+        || sym.info.dealias.typeSymbol.match        // more ubiquity
            case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
            case tps =>
              tps.isMarkerTrait // no members to use; was only if sym.name.is(ContextBoundParamName)
              ||                // but consider NotGiven
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
-        || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
@@ -583,9 +605,12 @@ object CheckUnused:
             val checking =
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
-            if checking && !infos.refs(alias.symbol) then
+            if checking
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
-        else
+        else if !usedByDefaultGetter(sym, m) then
           warnAt(pos)(UnusedSymbol.implicitParams(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
@@ -635,6 +660,7 @@ object CheckUnused:
       else
         // If the rest of the line is blank, include it in the final edit position. (Delete trailing whitespace.)
         // If for deletion, and the prefix of the line is also blank, then include that, too. (Del blank line.)
+        // If deleting a blank line and surrounded by blank lines, remove an adjoining blank line.
         def editPosAt(srcPos: SrcPos, forDeletion: Boolean): SrcPos =
           val start = srcPos.span.start
           val end = srcPos.span.end
@@ -647,7 +673,21 @@ object CheckUnused:
           val bump = if (deleteLine) 1 else 0 // todo improve to include offset of next line, endline + 1
           val p0 = srcPos.span
           val p1 = if (next >= 0 && emptyRight) p0.withEnd(next + bump) else p0
-          val p2 = if (deleteLine) p1.withStart(prev + 1) else p1
+          val p2 =
+            if deleteLine then
+              var newStart = prev + 1
+              if srcPos.line > 1 then
+                val source = srcPos.sourcePos.source
+                import source.{lineToOffset, lineToOffsetOpt, offsetToLine}
+                val startLine = offsetToLine(start)
+                val endLine = offsetToLine(end)
+                val preceding = lineToOffset(startLine - 1)
+                lineToOffsetOpt(endLine + 2) match
+                case Some(succeeding) if lineToOffset(startLine) - preceding == 1 && succeeding - end == 2 =>
+                  newStart = preceding
+                case _ =>
+              p1.withStart(newStart)
+            else p1
           srcPos.sourcePos.withSpan(p2)
         def actionsOf(actions: (SrcPos, String)*): List[CodeAction] =
           val patches = actions.map((srcPos, replacement) => ActionPatch(srcPos.sourcePos, replacement)).toList
@@ -815,7 +855,7 @@ object CheckUnused:
           val ok = fun.symbol.info match
             case PolyType(tycon, MethodTpe(_, _, AppliedType(_, tprefs))) =>
               tprefs.collect:
-                case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase.nn)
+                case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase)
             case _ => Nil
           allowVariableBindings(ok, args)
         else if fun.symbol == defn.TypeTest_unapply then
@@ -837,15 +877,21 @@ object CheckUnused:
       case tree => traverseChildren(tree)
 
   // NoWarn members in tree that correspond to refinements; currently uses only names.
-  def relax(tree: Tree, refinements: List[Tree])(using Context): Unit =
-    val names = refinements.collect { case named: NamedDefTree => named.name }.toSet
-    val relaxer = new TreeTraverser:
-      def traverse(tree: Tree)(using Context) =
-        tree match
-        case tree: NamedDefTree if names(tree.name) => tree.withAttachment(NoWarn, ())
-        case _ =>
-        traverseChildren(tree)
-    relaxer.traverse(tree)
+  def relax(tree: Tree, tpe: Type)(using Context): Unit =
+    def refinements(tpe: Type, names: List[Name]): List[Name] =
+      tpe match
+      case RefinedType(parent, refinedName, refinedInfo) => refinedName :: refinements(parent, names)
+      case _ => names
+    val refinedNames = refinements(tpe, Nil)
+    if !refinedNames.isEmpty then
+      val names = refinedNames.toSet
+      val relaxer = new TreeTraverser:
+        def traverse(tree: Tree)(using Context) =
+          tree match
+          case tree: NamedDefTree if names(tree.name) => tree.withAttachment(NoWarn, ())
+          case _ =>
+          traverseChildren(tree)
+      relaxer.traverse(tree)
 
   extension (nm: Name)
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
@@ -878,7 +924,7 @@ object CheckUnused:
     def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
     def isMarkerTrait: Boolean =
-      sym.isClass && sym.info.allMembers.forall: d =>
+      sym.info.hiBound.resultType.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
     def isEffectivelyPrivate: Boolean =

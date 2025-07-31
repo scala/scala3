@@ -5,7 +5,7 @@ import scala.annotation.internal.sharable
 object Texts {
 
   @sharable
-  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m").nn
+  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m")
 
   sealed abstract class Text {
 
@@ -74,7 +74,7 @@ object Texts {
       else appendIndented(that)(width)
 
     private def lengthWithoutAnsi(str: String): Int =
-      ansi.matcher(str).nn.replaceAll("").nn.length
+      ansi.matcher(str).replaceAll("").length
 
     def layout(width: Int): Text = this match {
       case Str(s, _) =>
@@ -137,9 +137,10 @@ object Texts {
       case _ => relems.foldLeft(-1)((acc, relem) => acc max relem.maxLine)
     }
 
-    def mkString(width: Int, withLineNumbers: Boolean): String = {
+    def mkString(width: Int = Int.MaxValue, withLineNumbers: Boolean = false): String = {
       val sb = new StringBuilder
-      val numberWidth = if (withLineNumbers) (2 * maxLine.toString.length) + 2 else 0
+      // width display can be upto a range "n-n" where 1 <= n <= maxLine+1
+      val numberWidth = if (withLineNumbers) (2 * (maxLine + 1).toString.length) + 2 else 0
       layout(width - numberWidth).print(sb, numberWidth)
       sb.toString
     }

@@ -59,3 +59,20 @@ package p11:
 package p12:
   import collection.mutable, java.lang.System, java.lang.Runnable
   class C extends Runnable { def run() = System.out.println() }
+
+package p13:
+  import java.lang.{Runnable,
+
+                    Thread, // leave one blank line instead of two
+
+                    System}, System.out
+  class C extends Runnable { def run() = out.println() }
+
+package p14:
+  import collection.mutable
+
+  import java.lang.{Runnable, Thread}
+
+  import mutable.ListBuffer
+
+  def buf = ListBuffer.empty[String]

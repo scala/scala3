@@ -10,6 +10,8 @@
    |  The result of `try` cannot have type () ->{cap.rd} Unit since
    |  that type captures the root capability `cap`.
    |  This is often caused by a locally generated exception capability leaking as part of its result.
+   |
+   |  where:    cap is a fresh root capability in the type of given instance canThrow$1
 15 |    () => foo(1)
 16 |  catch
 17 |    case _: Ex1 => ???
@@ -20,6 +22,8 @@
    |          The result of `try` cannot have type () ->{cap.rd} Unit since
    |          that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
+   |
+   |          where:    cap is a fresh root capability in the type of given instance canThrow$2
 21 |    () => foo(1)
 22 |  catch
 23 |    case _: Ex1 => ???
@@ -30,6 +34,8 @@
    |          The result of `try` cannot have type () ->{cap.rd} Cell[Unit]^? since
    |          that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
+   |
+   |          where:    cap is a fresh root capability in the type of given instance canThrow$3
 27 |    () => Cell(foo(1))
 28 |  catch
 29 |    case _: Ex1 => ???
@@ -37,9 +43,11 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:32:10 ----------------------------------------------------------
 32 |  val b = try // error
    |          ^
-   |          The result of `try` cannot have type Cell[box () ->{cap.rd} Unit]^? since
-   |          the part box () ->{cap.rd} Unit of that type captures the root capability `cap`.
+   |          The result of `try` cannot have type Cell[() ->{cap.rd} Unit]^? since
+   |          the part () ->{cap.rd} Unit of that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
+   |
+   |          where:    cap is a fresh root capability in the type of given instance canThrow$4
 33 |    Cell(() => foo(1))
 34 |  catch
 35 |    case _: Ex1 => ???

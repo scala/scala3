@@ -10,3 +10,17 @@
   |                      Not found: A
   |
   | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/i15784.scala:7:7 ---------------------------------------------------------------------------------
+7 |  case X: Int => X  // warn
+  |       ^
+  |       Type ascriptions after patterns other than:
+  |         * variable pattern, e.g. `case x: String =>`
+  |         * number literal pattern, e.g. `case 10.5: Double =>`
+  |       are no longer supported. Remove the type ascription or move it to a separate variable pattern.
+-- Warning: tests/neg/i15784.scala:10:7 --------------------------------------------------------------------------------
+10 |  case `Int`: Int => `Int` // warn
+   |       ^^^^^
+   |       Type ascriptions after patterns other than:
+   |         * variable pattern, e.g. `case x: String =>`
+   |         * number literal pattern, e.g. `case 10.5: Double =>`
+   |       are no longer supported. Remove the type ascription or move it to a separate variable pattern.

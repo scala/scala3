@@ -102,7 +102,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.7.0"
+  val referenceVersion = "3.7.1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -113,7 +113,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.7.1"
+  val developedVersion = "3.7.2"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -175,7 +175,6 @@ object Build {
    *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
-   *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
   val mimaPreviousDottyVersion = "3.7.0"
 
@@ -188,7 +187,7 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.8.0"
+  val scalaCliLauncherVersion = "1.8.4"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.24"
 
@@ -535,7 +534,7 @@ object Build {
     "scala2-library-tasty"
   )
 
-  val enableBspAllProjects = false
+  val enableBspAllProjects = sys.env.get("ENABLE_BSP_ALL_PROJECTS").map(_.toBoolean).getOrElse(false)
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
@@ -1236,7 +1235,10 @@ object Build {
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(scala2LibraryBootstrappedSettings).
-    settings(moduleName := "scala2-library-cc")
+    settings(
+      moduleName := "scala2-library-cc",
+      scalacOptions ++= Seq("-source", "3.8"), // for separation checking
+    )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
@@ -1495,7 +1497,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.5.1"
+    val mtagsVersion = "1.5.3"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -1509,6 +1511,10 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
+      publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
+        `scala3-compiler-bootstrapped` / publishLocal,
+        `scala3-library-bootstrapped` / publishLocal,
+      ).value,
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       Compile / sourceGenerators += Def.task {
         val s = streams.value

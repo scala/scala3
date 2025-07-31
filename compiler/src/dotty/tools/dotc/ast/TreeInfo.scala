@@ -10,6 +10,7 @@ import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
 import config.Feature
+import util.SrcPos
 
 import Decorators.*
 import Constants.Constant
@@ -264,6 +265,19 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case CaseDef(pat, EmptyTree, _) => isWildcardArg(pat)
     case _                            => false
   }
+
+  /** Expression was written `e: Unit` to quell warnings. Looks into adapted tree. */
+  def isAscribedToUnit(tree: Tree): Boolean =
+    import typer.Typer.AscribedToUnit
+       tree.hasAttachment(AscribedToUnit)
+    || {
+      def loop(tree: Tree): Boolean = tree match
+        case Apply(fn, _)     => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case TypeApply(fn, _) => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case Block(_, expr)   => expr.hasAttachment(AscribedToUnit) || loop(expr)
+        case _                => false
+      loop(tree)
+    }
 
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
@@ -523,6 +537,10 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
+
+  /** The position of the modifier associated with given flag in this definition. */
+  def flagSourcePos(mdef: DefTree, flag: FlagSet): SrcPos =
+    mdef.mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
@@ -847,7 +865,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
-      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+      case Block((meth: DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
       case Block(Nil, expr) =>
         unapply(expr)

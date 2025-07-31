@@ -463,3 +463,11 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |  end <<foo>>/*class,definition*/
          |""".stripMargin
    )
+
+  @Test def i7256 =
+    check(
+      """|object <<Test>>/*class*/:
+         |  def <<methodA>>/*method,definition*/: <<Unit>>/*class,abstract*/ = <<???>>/*method*/
+         |export <<Test>>/*class*/.<<methodA>>/*method*/
+         |""".stripMargin
+    )

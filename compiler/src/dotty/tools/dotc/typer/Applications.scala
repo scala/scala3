@@ -37,6 +37,7 @@ import annotation.threadUnsafe
 import scala.util.control.NonFatal
 import dotty.tools.dotc.inlines.Inlines
 import scala.annotation.tailrec
+import dotty.tools.dotc.cc.isRetains
 
 object Applications {
   import tpd.*
@@ -130,8 +131,11 @@ object Applications {
     else productSelectorTypes(tp, NoSourcePosition)
 
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
-    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
-    sels.takeWhile(_.exists).toList
+    if tp.isError then
+      Nil
+    else
+      val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
+      sels.takeWhile(_.exists).toList
   }
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
@@ -725,11 +729,14 @@ trait Applications extends Compatibility {
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
             addArg(typedArg(arg, formal), formal)
-            if methodType.isParamDependent && typeOfArg(arg).exists then
-              // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
-            else
-              formals1
+            if methodType.looksParamDependent
+                  // need to handle also false dependencies since we generate TypeTrees from
+                  // formal parameters in makeVarArg. These are not de-aliased, so they might contain
+                  // stray parameter references. Test case is i23266.scala.
+                && typeOfArg(arg).exists
+                  // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            else formals1
 
           def missingArg(n: Int): Unit =
             fail(MissingArgument(methodType.paramNames(n), methString))
@@ -1282,6 +1289,10 @@ trait Applications extends Compatibility {
         }
       else {
         val app = tree.fun match
+          case _ if ctx.mode.is(Mode.Type) && Feature.enabled(Feature.modularity) && !ctx.isAfterTyper =>
+            untpd.methPart(tree.fun) match
+              case Select(nw @ New(_), _) => typedAppliedConstructorType(nw, tree.args, tree)
+              case _ => realApply
           case untpd.TypeApply(_: untpd.SplicePattern, _) if Feature.quotedPatternsWithPolymorphicFunctionsEnabled =>
             typedAppliedSpliceWithTypes(tree, pt)
           case _: untpd.SplicePattern => typedAppliedSplice(tree, pt)
@@ -1715,6 +1726,28 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.UnApply, selType: Type)(using Context): UnApply =
     throw new UnsupportedOperationException("cannot type check an UnApply node")
 
+  /** Typecheck an applied constructor type – An Apply node in Type mode.
+   *  This expands to the type this term would have if it were typed as an expression.
+   *
+   * e.g.
+   * ```scala
+   * // class C(tracked val v: Any)
+   * val c: C(42) = ???
+   * ```
+   */
+  def typedAppliedConstructorType(nw: untpd.New, args: List[untpd.Tree], tree: untpd.Apply)(using Context) =
+    val tree1 = typedExpr(tree)
+    val preciseTp = tree1.tpe.widenSkolems
+    val classTp = typedType(nw.tpt).tpe
+    def classSymbolHasOnlyTrackedParameters =
+      !classTp.classSymbol.primaryConstructor.paramSymss.nestedExists: param =>
+        param.isTerm && !param.is(Tracked)
+    if !preciseTp.isError && !classSymbolHasOnlyTrackedParameters then
+      report.warning(OnlyFullyDependentAppliedConstructorType(), tree.srcPos)
+    if !preciseTp.isError && (preciseTp frozen_=:= classTp) then
+      report.warning(PointlessAppliedConstructorType(nw.tpt, args, classTp), tree.srcPos)
+    TypeTree(preciseTp)
+
   /** Is given method reference applicable to argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
@@ -2083,8 +2116,8 @@ trait Applications extends Compatibility {
             else 0
     end compareWithTypes
 
-    if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
-    else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
+    if alt1.symbol.is(PhantomSymbol) && !alt2.symbol.is(PhantomSymbol) then -1
+    else if alt2.symbol.is(PhantomSymbol) && !alt1.symbol.is(PhantomSymbol) then 1
     else
       val fullType1 = widenGiven(alt1.widen, alt1)
       val fullType2 = widenGiven(alt2.widen, alt2)

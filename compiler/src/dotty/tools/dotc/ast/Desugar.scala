@@ -642,7 +642,7 @@ object desugar {
       .withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked) | Param)
   }
 
-  /** Desugar type def (not param): Under x.moduliity this can expand
+  /** Desugar type def (not param): Under x.modularity this can expand
    *  context bounds, which are expanded to evidence ValDefs. These will
    *  ultimately map to deferred givens.
    */
@@ -652,6 +652,8 @@ object desugar {
         tdef, evidenceBuf,
         (tdef.mods.flags.toTermFlags & AccessFlags) | Lazy | DeferredGivenFlags,
         inventGivenName, Nil)
+    if tdef.mods.flags.is(Into, butNot = Opaque) then
+      report.error(ModifierNotAllowedForDefinition(Into), flagSourcePos(tdef, Into))
     if evidenceBuf.isEmpty then result else Thicket(result :: evidenceBuf.toList)
 
   /** The expansion of a class definition. See inline comments for what is involved */
@@ -1868,18 +1870,18 @@ object desugar {
   /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
    *
    *    (x$1: (T1, ..., Tn)) => {
-   *      def x1: T1 = x$1._1
+   *      val x1: T1 = x$1._1
    *      ...
-   *      def xn: Tn = x$1._n
+   *      val xn: Tn = x$1._n
    *      body
    *    }
    *
    *  or if `isGenericTuple`
    *
    *    (x$1: (T1, ... Tn) => {
-   *      def x1: T1 = x$1.apply(0)
+   *      val x1: T1 = x$1.apply(0)
    *      ...
-   *      def xn: Tn = x$1.apply(n-1)
+   *      val xn: Tn = x$1.apply(n-1)
    *      body
    *    }
    *
@@ -2261,18 +2263,15 @@ object desugar {
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
         else if op.name == nme.CC_REACH then
-          Apply(ref(defn.Caps_reachCapability), t :: Nil)
+          Annotated(t, New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil))
         else if op.name == nme.CC_READONLY then
-          Apply(ref(defn.Caps_readOnlyCapability), t :: Nil)
+          Annotated(t, New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil))
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
       case PrefixOp(op, t) =>
-        if op.name == tpnme.into then
-          Annotated(t, New(ref(defn.IntoAnnot.typeRef), Nil :: Nil))
-        else
-          val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
-          Select(t, nspace.UNARY_PREFIX ++ op.name)
+        val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+        Select(t, nspace.UNARY_PREFIX ++ op.name)
       case ForDo(enums, body) =>
         makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
       case ForYield(enums, body) =>

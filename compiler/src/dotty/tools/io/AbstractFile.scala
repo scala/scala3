@@ -115,7 +115,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def container : AbstractFile
 
   /** Returns the underlying File if any and null otherwise. */
-  def file: JFile = try {
+  def file: JFile | Null = try {
     if (jpath == null) null
     else jpath.toFile
   } catch {
@@ -123,7 +123,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns the underlying Path if any and null otherwise. */
-  def jpath: JPath
+  def jpath: JPath | Null
 
   /** An underlying source, if known.  Mostly, a zip/jar file. */
   def underlyingSource: Option[AbstractFile] = None
@@ -196,12 +196,12 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Returns all abstract subfiles of this abstract directory. */
-  def iterator(): Iterator[AbstractFile]
+  def iterator: Iterator[AbstractFile]
 
   /** Drill down through subdirs looking for the target, as in lookupName.
    *  Ths target name is the last of parts.
    */
-  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile =
+  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile | Null =
     var file: AbstractFile = this
     var i = 0
     val n = parts.length - 1

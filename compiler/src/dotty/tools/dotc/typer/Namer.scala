@@ -140,7 +140,7 @@ class Namer { typer: Typer =>
 
     def conflict(conflicting: Symbol) =
       val other =
-        if conflicting.is(ConstructorProxy) then conflicting.companionClass
+        if conflicting.is(PhantomSymbol) then conflicting.companionClass
         else conflicting
       report.error(AlreadyDefined(name, owner, other), ctx.source.atSpan(span))
       conflictsDetected = true
@@ -833,7 +833,9 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+        else
+          valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+            .suppressIntoIfParam(sym)
       case original: DefDef =>
         // For the primary constructor DefDef, it is:
         // * indexed as a part of completing the class, with indexConstructor; and
@@ -945,7 +947,7 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic, butNot = ConstructorProxy) &&
+        denot.is(Synthetic, butNot = PhantomSymbol) &&
         (
           (desugar.isRetractableCaseClassMethodName(denot.name)
             && isCaseClassOrCompanion(denot.owner)
@@ -1132,6 +1134,9 @@ class Namer { typer: Typer =>
       ensureUpToDate(sym.typeRef, dummyInfo1)
       if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
 
+      if original.hasAttachment(Trees.CaptureVar) then
+        addDummyTermCaptureParam(sym)(using ictx)
+
       sym.info
     end typeSig
   }
@@ -1195,7 +1200,7 @@ class Namer { typer: Typer =>
           case _ => false
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
-        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
         // if the cls is a subclass or mixes in the owner of the symbol
         // and either
@@ -1344,7 +1349,7 @@ class Namer { typer: Typer =>
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
               val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
-              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
+              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm).withSpan(span.focus)
               val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
                 .etaExpandCFT(using forwarderCtx)
               if forwarder.isInlineMethod then
@@ -1388,7 +1393,7 @@ class Namer { typer: Typer =>
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
-          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|PhantomSymbol).alternatives)
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
@@ -1941,7 +1946,7 @@ class Namer { typer: Typer =>
     if completedTypeParams.forall(_.isType) then
       completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
     completeTrailingParamss(ddef, sym, indexingCtor = false)
-    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
+    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor, Some(ddef.nameSpan.startPos))
     sym.setParamss(paramSymss)
 
     def wrapMethType(restpe: Type): Type =

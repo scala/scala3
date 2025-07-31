@@ -53,9 +53,9 @@ object Completion:
     val completionContext = Interactive.contextOfPath(tpdPath).withPhase(Phases.typerPhase)
     inContext(completionContext):
       val untpdPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)
-      val mode = completionMode(untpdPath, pos, forSymbolSearch = true)
       val rawPrefix = completionPrefix(untpdPath, pos)
-      val completer = new Completer(mode, pos, untpdPath, _ => true)
+      // Lazy mode is to avoid too many checks as it's mostly for printing types
+      val completer = new Completer(Mode.Lazy, pos, untpdPath, _ => true)
       completer.scopeCompletions
 
   /** Get possible completions from tree at `pos`
@@ -98,7 +98,7 @@ object Completion:
    *
    * Otherwise, provide no completion suggestion.
    */
-  def completionMode(path: List[untpd.Tree], pos: SourcePosition, forSymbolSearch: Boolean = false): Mode = path match
+  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode = path match
     // Ignore `package foo@@` and `package foo.bar@@`
     case ((_: tpd.Select) | (_: tpd.Ident)):: (_ : tpd.PackageDef) :: _  => Mode.None
     case GenericImportSelector(sel) =>
@@ -111,14 +111,9 @@ object Completion:
     case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
     case (ref: untpd.RefTree) :: _ =>
       val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
-      if (forSymbolSearch) then Mode.Term | Mode.Type | maybeSelectMembers
-      else if (ref.name.isTermName) Mode.Term | maybeSelectMembers
+      if (ref.name.isTermName) Mode.Term | maybeSelectMembers
       else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
       else Mode.None
-
-    case (_: tpd.TypeTree | _: tpd.MemberDef) :: _ if forSymbolSearch => Mode.Type | Mode.Term
-    case (_: tpd.CaseDef) :: _ if forSymbolSearch => Mode.Type | Mode.Term
-    case Nil if forSymbolSearch =>  Mode.Type | Mode.Term
     case _ => Mode.None
 
   /** When dealing with <errors> in varios palces we check to see if they are
@@ -245,9 +240,7 @@ object Completion:
       case tpd.Select(qual @ tpd.This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions.names
       case StringContextApplication(qual) =>
         completer.scopeCompletions.names ++ completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _               if qual.typeOpt.hasSimpleKind =>
-        completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _                                             => Map.empty
+      case tpd.Select(qual, _) :: _                                             => completer.selectionCompletions(qual)
       case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
       case _                                                                    => completer.scopeCompletions.names
 
@@ -331,15 +324,15 @@ object Completion:
    *   8. symbol is not a constructor proxy module when in type completion mode
    *   9. have same term/type kind as name prefix given so far
    */
-  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean =
-
+  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean = try
     lazy val isEnum = sym.is(Enum) ||
       (sym.companionClass.exists && sym.companionClass.is(Enum))
 
     sym.exists &&
-    !sym.isAbsent() &&
+    !sym.isAbsent(canForce = false) &&
     !sym.isPrimaryConstructor &&
-    sym.sourceSymbol.exists &&
+      // running sourceSymbol on ExportedTerm will force a lot of computation from collectSubTrees
+    (sym.is(ExportedTerm) || sym.sourceSymbol.exists) &&
     (!sym.is(Package) || sym.is(ModuleClass)) &&
     !sym.isAllOf(Mutable | Accessor) &&
     !sym.isPackageObject &&
@@ -350,6 +343,9 @@ object Completion:
          (completionMode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
       || (completionMode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
     )
+  catch
+    case NonFatal(ex) =>
+      false
   end isValidCompletionSymbol
 
   given ScopeOrdering(using Context): Ordering[Seq[SingleDenotation]] with
@@ -370,7 +366,7 @@ object Completion:
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: List[untpd.Tree], matches: Name => Boolean):
+  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: List[untpd.Tree], matches: Name => Boolean)(using Context):
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -384,7 +380,7 @@ object Completion:
      *    (even if the import follows it syntactically)
      *  - a more deeply nested import shadowing a member or a local definition causes an ambiguity
      */
-    def scopeCompletions(using context: Context): CompletionResult =
+    lazy val scopeCompletions: CompletionResult =
 
       /** Temporary data structure representing denotations with the same name introduced in a given scope
        *  as a member of a type, by a local definition or by an import clause
@@ -478,17 +474,16 @@ object Completion:
     def selectionCompletions(qual: tpd.Tree)(using Context): CompletionMap =
       val adjustedQual = widenQualifier(qual)
 
-      val implicitConversionMembers = implicitConversionMemberCompletions(adjustedQual)
-      val extensionMembers = extensionCompletions(adjustedQual)
-      val directMembers = directMemberCompletions(adjustedQual)
-      val namedTupleMembers = namedTupleCompletions(adjustedQual)
+      if qual.symbol.is(Package) then
+        directMemberCompletions(adjustedQual)
+      else if qual.typeOpt.hasSimpleKind then
+        implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual) ++
+        namedTupleCompletions(adjustedQual)
+      else
+        Map.empty
 
-      List(
-        implicitConversionMembers,
-        extensionMembers,
-        directMembers,
-        namedTupleMembers
-      ).reduce(_ ++ _)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
@@ -619,8 +614,7 @@ object Completion:
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val termCompleter = new Completer(Mode.Term, pos, untpdPath, matches)
-      val extMethodsInScope = termCompleter.scopeCompletions.names.toList.flatMap:
+      val extMethodsInScope = scopeCompletions.names.toList.flatMap:
         case (name, denots) => denots.collect:
           case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
 
@@ -655,7 +649,7 @@ object Completion:
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
       matches(nameInScope) &&
       completionsFilter(NoType, nameInScope) &&
-      isValidCompletionSymbol(denot.symbol, mode, isNew)
+      (mode.is(Mode.Lazy) || isValidCompletionSymbol(denot.symbol, mode, isNew))
 
     private def extractRefinements(site: Type)(using Context): Seq[SingleDenotation] =
       site match
@@ -685,7 +679,7 @@ object Completion:
 
       val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
         case mbr if include(mbr, mbr.name)
-                    && mbr.symbol.isAccessibleFrom(site) => mbr
+                    && (mode.is(Mode.Lazy) || mbr.symbol.isAccessibleFrom(site)) => mbr
       }
       val refinements = extractRefinements(site).filter(mbr => include(mbr, mbr.name))
 
@@ -747,4 +741,6 @@ object Completion:
     val Scope: Mode = new Mode(8)
 
     val Member: Mode = new Mode(16)
+
+    val Lazy: Mode = new Mode(32)
 

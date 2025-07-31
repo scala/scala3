@@ -6,7 +6,7 @@ import java.net.URI
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -93,7 +93,7 @@ object CaseKeywordCompletion:
                     case (Ident(v), tpe) => v.decoded == value
                     case (Select(_, v), tpe) => v.decoded == value
                     case t => false
-                  .map((_, id) => argPts(id).widen.deepDealias)
+                  .map((_, id) => argPts(id).widen.deepDealiasAndSimplify)
           /* Parent is a function expecting a case match expression */
           case TreeApply(fun, _) if !fun.tpe.isErroneous =>
             fun.tpe.paramInfoss match
@@ -103,12 +103,12 @@ object CaseKeywordCompletion:
                   ) =>
                 val args = head.argTypes.init
                 if args.length > 1 then
-                  Some(definitions.tupleType(args).widen.deepDealias)
-                else args.headOption.map(_.widen.deepDealias)
+                  Some(definitions.tupleType(args).widen.deepDealiasAndSimplify)
+                else args.headOption.map(_.widen.deepDealiasAndSimplify)
               case _ => None
           case _ => None
       case sel =>
-          Some(sel.tpe.widen.deepDealias)
+          Some(sel.tpe.widen.deepDealiasAndSimplify)
 
     selTpe
       .collect { case selTpe if selTpe != NoType =>
@@ -279,8 +279,8 @@ object CaseKeywordCompletion:
       clientSupportsSnippets
     )
 
-    val tpeStr = printer.tpe(selector.tpe.widen.deepDealias.bounds.hi)
-    val tpe = selector.typeOpt.widen.deepDealias.bounds.hi match
+    val tpeStr = printer.tpe(selector.tpe.widen.deepDealiasAndSimplify.bounds.hi)
+    val tpe = selector.typeOpt.widen.deepDealiasAndSimplify.bounds.hi match
       case tr @ TypeRef(_, _) => tr.underlying
       case t => t
 

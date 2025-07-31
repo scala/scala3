@@ -236,7 +236,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     try
       trackProgress(_.cancel())
     finally
-      Thread.currentThread().nn.interrupt()
+      Thread.currentThread().interrupt()
 
   private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
     trackProgress: progress =>

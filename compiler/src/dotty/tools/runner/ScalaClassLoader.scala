@@ -1,7 +1,6 @@
 package dotty.tools
 package runner
 
-import scala.language.unsafeNulls
 
 import java.lang.ClassLoader
 import java.lang.invoke.{MethodHandles, MethodType}
@@ -64,7 +63,7 @@ object ScalaClassLoader {
   def fromURLsParallelCapable(urls: Seq[URL], parent: ClassLoader | Null = null): URLClassLoader =
     new URLClassLoader(urls.toArray, if parent == null then bootClassLoader else parent)
 
-  @sharable private val bootClassLoader: ClassLoader =
+  @sharable private val bootClassLoader: ClassLoader | Null =
     if scala.util.Properties.isJavaAtLeast("9") then
       try
         ClassLoader.getSystemClassLoader.getParent

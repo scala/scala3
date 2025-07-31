@@ -156,20 +156,25 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else simpleNameString(tsym)
     }
 
-  private def arrow(isGiven: Boolean, isPure: Boolean): String =
+  protected def arrow(isGiven: Boolean, isPure: Boolean): String =
     (if isGiven then "?" else "") + (if isPure then "->" else "=>")
 
-  private def toTextFunction(tp: AppliedType, refs: Text = Str("")): Text =
+  private def toTextFunction(tp: AppliedType, refs: GeneralCaptureSet | Null): Text =
     val AppliedType(tycon, args) = (tp: @unchecked)
     val tsym = tycon.typeSymbol
-    val isContextual = tsym.name.isContextFunction
-    val capturesRoot = refs == rootSetText
-    val isPure =
-      Feature.pureFunsEnabled && !tsym.name.isImpureFunction && !capturesRoot
-    toTextFunction(args.init, args.last, tp, refs.provided(!capturesRoot), isContextual, isPure)
+    toTextFunction(args.init, args.last, tp, refs,
+      isContextual = tsym.name.isContextFunction,
+      isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
 
-  private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType, refs: Text,
-      isContextual: Boolean, isPure: Boolean): Text =
+  protected def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
+    val (printPure, refsText) =
+      if refs == null then (isPure, Str(""))
+      else if isUniversalCaptureSet(refs) then (false, Str(""))
+      else (isPure, toTextGeneralCaptureSet(refs))
+    arrow(isContextual, printPure) ~ refsText
+
+  private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType,
+      refs: GeneralCaptureSet | Null, isContextual: Boolean, isPure: Boolean): Text =
     changePrec(GlobalPrec):
       val argStr: Text = args match
         case arg :: Nil if !defn.isDirectTupleNType(arg) && !isContextual =>
@@ -179,30 +184,29 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           "("
           ~ argsText(args)
           ~ ")"
-      argStr ~ " " ~ arrow(isContextual, isPure) ~ refs ~ " "
+      argStr ~ " "
+      ~ funMiddleText(isContextual, isPure, refs) ~ " "
       ~ fn.match
           case fn: MethodType => CCState.inNewExistentialScope(fn)(argText(res))
           case _ => argText(res)
 
-  protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text =
+  protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
     def recur(tp: Type, enclInfo: MethodType | Null): Text = tp match
       case tp: MethodType =>
         val isContextual = tp.isImplicitMethod
-        val capturesRoot = refs == rootSetText
         if cc.isCaptureCheckingOrSetup
             && tp.allParamNamesSynthetic
             && !tp.looksResultDependent && !tp.looksParamDependent
-            && !showUniqueIds && !printDebug && !printFresh
-          then
+            && !showUniqueIds && !printDebug && !ccVerbose
+        then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
-          toTextFunction(tp.paramInfos, tp.resType, tp, refs.provided(!capturesRoot), isContextual, isPure && !capturesRoot)
+          toTextFunction(tp.paramInfos, tp.resType, tp, refs, isContextual, isPure)
         else
           changePrec(GlobalPrec):
             "("
             ~ paramsText(tp)
             ~ ") "
-            ~ arrow(isContextual, isPure && !capturesRoot)
-            ~ refs.provided(!capturesRoot)
+            ~ funMiddleText(isContextual, isPure, refs)
             ~ " "
             ~ recur(tp.resultType, tp)
       case tp: PolyType =>
@@ -274,7 +278,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             val tsym = tycon.typeSymbol
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
-            else if defn.isFunctionSymbol(tsym) then toTextFunction(tp)
+            else if defn.isFunctionSymbol(tsym) then toTextFunction(tp, null)
             else if isInfixType(tp) then
               val l :: r :: Nil = args: @unchecked
               val opName = tyconName(tycon)
@@ -303,8 +307,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextMethodAsFunction(tp.refinedInfo,
           isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction,
           refs = tp.parent match
-            case CapturingType(_, cs) => toTextCaptureSet(cs)
-            case _ => "")
+            case CapturingType(_, cs) => cs
+            case _ => null)
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
@@ -320,7 +324,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ClassInfo =>
         if tp.cls.derivesFrom(defn.PolyFunctionClass) then
           tp.member(nme.apply).info match
-            case info: PolyType => toTextMethodAsFunction(info, isPure = false)
+            case info: PolyType => toTextMethodAsFunction(info, isPure = false, refs = null)
             case _ => toTextParents(tp.parents) ~~ "{...}"
         else toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
@@ -347,8 +351,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
       case tp @ PolyProto(targs, resType) =>
         "[applied to [" ~ toTextGlobal(targs, ", ") ~ "] returning " ~ toText(resType)
-      case tp: AnnotatedType if tp.isTrackableRef =>
-        toTextCaptureRef(tp)
       case _ =>
         super.toText(tp)
     }
@@ -700,9 +702,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && Feature.ccEnabled && !printDebug
             && Phases.checkCapturesPhase.exists // might be missing on -Ytest-pickler
         then toTextRetainsAnnot
-        else if annot.symbol.enclosingClass == defn.IntoAnnot && !printDebug then
-          atPrec(GlobalPrec):
-            Str("into ") ~ toText(arg)
         else toTextAnnot
       case EmptyTree =>
         "<empty>"
@@ -849,13 +848,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  override protected def toTextCapturing(tp: Type, refsText: Text, boxText: Text): Text = tp match
+  override protected def toTextCapturing(tp: Type, refs: GeneralCaptureSet, boxText: Text): Text = tp match
     case tp: AppliedType if defn.isFunctionSymbol(tp.typeSymbol) && !printDebug =>
-      boxText ~ toTextFunction(tp, refsText)
+      boxText ~ toTextFunction(tp, refs)
     case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
-      boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refsText)
+      boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refs)
     case _ =>
-      super.toTextCapturing(tp, refsText, boxText)
+      super.toTextCapturing(tp, refs, boxText)
 
   override def toText[T <: Untyped](tree: Tree[T]): Text = controlled {
     import untpd.*

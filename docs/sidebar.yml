@@ -161,8 +161,10 @@ subsection:
           - page: reference/experimental/numeric-literals.md
           - page: reference/experimental/explicit-nulls.md
           - page: reference/experimental/main-annotation.md
-          - page: reference/experimental/into-modifier.md
+          - page: reference/experimental/into.md
           - page: reference/experimental/cc.md
+          - page: reference/experimental/cc-advanced.md
+            hidden: true
           - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
           - page: reference/experimental/modularity.md
@@ -170,6 +172,7 @@ subsection:
           - page: reference/experimental/runtimeChecked.md
           - page: reference/experimental/unrolled-defs.md
           - page: reference/experimental/package-object-values.md
+          - page: reference/experimental/quoted-patterns-with-polymorphic-functions.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

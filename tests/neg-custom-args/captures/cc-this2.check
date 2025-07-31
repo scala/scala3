@@ -9,4 +9,6 @@
   |      illegal inheritance: self type D^ of class D does not conform to self type C
   |      of parent class C
   |
+  |      where:    ^ refers to the universal root capability
+  |
   | longer explanation available when compiling with `-explain`

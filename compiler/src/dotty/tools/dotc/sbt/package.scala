@@ -39,6 +39,6 @@ extension (sym: Symbol)
       // names in the global chars array. But we would need to restructure
       // ExtractDependencies caches to avoid expensive `toString` on
       // each member reference.
-      termName(sym.owner.fullName.mangledString.replace(".", ";").nn ++ ";init;")
+      termName(sym.owner.fullName.mangledString.replace(".", ";") ++ ";init;")
     else
       sym.name.stripModuleClassSuffix

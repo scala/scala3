@@ -8,6 +8,8 @@ import ContextOps.enter
 import TypeApplications.EtaExpansion
 import collection.mutable
 import config.Printers.typr
+import rewrites.Rewrites.patch
+import util.Spans.Span
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -39,14 +41,12 @@ object NamerOps:
    */
   extension (tp: Type)
     def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null)(using Context): Type =
-      val widenSkolemsMap = new TypeMap:
-        def apply(tp: Type) = mapOver(tp.widenSkolem)
       tp match
         case RefinedType(tp1, rname, rinfo) =>
           try tp1.separateRefinements(cls, refinements)
           finally
             if refinements != null then
-              val rinfo1 = widenSkolemsMap(rinfo)
+              val rinfo1 = rinfo.widenSkolems
               refinements(rname) = refinements.get(rname) match
                 case Some(tp) => tp & rinfo1
                 case None => rinfo1
@@ -61,12 +61,19 @@ object NamerOps:
    *  This is done by adding a () in front of a leading old style implicit parameter,
    *  or by adding a () as last -- or only -- parameter list if the constructor has
    *  only using clauses as parameters.
+   *
+   * implicitRewritePosition, if included, will point to where `()` should be added if rewriting
+   * with -Yimplicit-to-given
    */
-  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
+  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): List[List[Symbol]] =
     if !isConstructor then paramss
     else paramss match
-      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) =>
+        implicitRewritePosition match
+          case Some(position) if ctx.settings.YimplicitToGiven.value => patch(position, "()")
+          case _ => ()
+        Nil :: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
@@ -116,10 +123,10 @@ object NamerOps:
   private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
 
   /** The flags of a constructor companion */
-  private val ConstructorCompanionFlags = Synthetic | ConstructorProxy
+  private val ConstructorCompanionFlags = Synthetic | PhantomSymbol
 
   /** The flags of an `apply` method that serves as a constructor proxy */
-  val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
+  val ApplyProxyFlags = Synthetic | PhantomSymbol | Inline | Method
 
   /** If this is a reference to a class and the reference has a stable prefix, the reference
    *  otherwise NoType
@@ -219,7 +226,7 @@ object NamerOps:
             underlyingStableClassRef(mbr.info.loBound): @unchecked match
               case ref: TypeRef =>
                 val proxy = ref.symbol.registeredCompanion
-                if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then
+                if proxy.is(PhantomSymbol) && !memberExists(cls, mbr.name.toTermName) then
                   typeConstructorCompanion(mbr, ref.prefix, proxy).entered
 
     if cls.is(Module)
@@ -317,4 +324,25 @@ object NamerOps:
             ann.tree match
               case ast.tpd.WitnessNamesAnnot(witnessNames) =>
                 addContextBoundCompanionFor(sym, witnessNames, Nil)
+
+  /** Add a dummy term symbol for a type def that has capture parameter flag.
+   *  The dummy symbol has the same name as the original type symbol and is stable.
+   *  The underlying info stores the corresponding type reference.
+   *
+   *  @param param the original type symbol of the capture parameter
+   */
+  def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
+    val name = param.name.toTermName
+    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
+    val dummy = newSymbol(param.owner, name, flags, param.typeRef)
+    typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
+    ctx.enter(dummy)
+
+  /** if `sym` is a term parameter or parameter accessor, map all occurrences of
+   *  `into[T]` in its type to `T @$into`.
+   */
+  extension (tp: Type)
+    def suppressIntoIfParam(sym: Symbol)(using Context): Type =
+      if sym.isOneOf(TermParamOrAccessor) then TypeOps.suppressInto(tp) else tp
+
 end NamerOps

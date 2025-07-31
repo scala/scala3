@@ -135,7 +135,7 @@ object Contexts {
     def outersIterator: Iterator[Context] = new Iterator[Context] {
       var current = thiscontext
       def hasNext = current != NoContext
-      def next = { val c = current; current = current.outer; c }
+      def next() = { val c = current; current = current.outer; c }
     }
 
     def period: Period

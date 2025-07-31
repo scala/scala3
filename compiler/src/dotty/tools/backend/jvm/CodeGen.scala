@@ -1,6 +1,5 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
@@ -71,7 +70,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
-        def registerGeneratedClass(classNode: ClassNode, isArtifact: Boolean): Unit =
+        def registerGeneratedClass(classNode: ClassNode | Null, isArtifact: Boolean): Unit =
           if classNode ne null then
             generatedClasses += GeneratedClass(classNode,
               sourceClassName = sym.javaClassName,
@@ -131,7 +130,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
     }
     clsFile => {
       val className = cls.name.replace('/', '.')
-      if (ctx.compilerCallback != null)
+      if (ctx.compilerCallback ne null)
         ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
 
       ctx.withIncCallback: cb =>

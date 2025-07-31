@@ -258,7 +258,7 @@ class Pickler extends Phase {
   }
 
   private def computeInternalName(cls: ClassSymbol)(using Context): String =
-    if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX).nn
+    if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX)
     else cls.binaryClassName
 
   override def run(using Context): Unit = {
@@ -413,11 +413,11 @@ class Pickler extends Phase {
       )
     if ctx.isBestEffort then
       val outpath =
-        ctx.settings.outputDir.value.jpath.toAbsolutePath.nn.normalize.nn
-          .resolve("META-INF").nn
+        ctx.settings.outputDir.value.jpath.nn.toAbsolutePath.normalize
+          .resolve("META-INF")
           .resolve("best-effort")
       Files.createDirectories(outpath)
-      BestEffortTastyWriter.write(outpath.nn, result)
+      BestEffortTastyWriter.write(outpath, result)
     result
   }
 

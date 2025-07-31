@@ -5,8 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.RandomAccessFile
 import java.nio.file.*
 import java.net.{URI, URL}
@@ -46,7 +44,7 @@ object Path {
   def fileName(name: String): String = {
     val i = name.lastIndexOf('.')
     if (i < 0) name
-    else name.substring(0, i).nn
+    else name.substring(0, i)
   }
 
   def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)

@@ -23,7 +23,7 @@ import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
-import printing.Formatting.hl
+import Formatting.{hl, delay}
 import ast.Trees.*
 import ast.untpd
 import ast.tpd
@@ -37,6 +37,7 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
+import Message.Disambiguation
 
 /**  Messages
   *  ========
@@ -61,7 +62,7 @@ trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
     super.msgPostscript ++ matchReductionAddendum(tps*)
 
-abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
   def kind = MessageKind.TypeMismatch
   def explain(using Context) = err.whyNoMatchStr(found, expected)
@@ -92,7 +93,7 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
 
   protected def debugInfo =
     if ctx.settings.YdebugCyclic.value then
-      "\n\nStacktrace:" ++ ex.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+      "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
   protected def context: String = ex.optTrace match
@@ -356,7 +357,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     ++ addenda.dropWhile(_.isEmpty).headOption.getOrElse(importSuggestions)
 
   override def explain(using Context) =
-    val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
+    val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
     treeStr + "\n" + super.explain
 
 end TypeMismatch
@@ -541,7 +542,6 @@ extends SyntaxMsg(RepeatedModifierID) {
   }
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     List(
       CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
         description = None,
@@ -886,7 +886,6 @@ extends Message(PatternMatchExhaustivityID) {
         |"""
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     val endPos = tree.cases.lastOption.map(_.endPos)
       .getOrElse(tree.selector.endPos)
     val startColumn = tree.cases.lastOption
@@ -909,7 +908,6 @@ extends Message(PatternMatchExhaustivityID) {
 
 
   private def indent(text:String, margin: Int): String = {
-    import scala.language.unsafeNulls
     " " * margin + text
   }
 }
@@ -1172,6 +1170,7 @@ class OverrideError(
     member: Symbol, other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
+  withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
       (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
@@ -1181,8 +1180,8 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
             |(Note that ${err.infoStringWithLocation(other, base)} is abstract,
             |and is therefore overridden by concrete ${err.infoStringWithLocation(member, base)})"""
         else ""
-    i"""error overriding ${err.infoStringWithLocation(other, base)};
-        |  ${err.infoString(member, base, showLocation = member.owner != base.typeSymbol)} $core$addendum"""
+    i"""error overriding ${delay(err.infoStringWithLocation(other, base))};
+        |  ${delay(err.infoString(member, base, showLocation = member.owner != base.typeSymbol))} $core$addendum"""
   override def canExplain =
     memberTp.exists && otherTp.exists
   def explain(using Context) =
@@ -1989,7 +1988,6 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
         |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
     List(
       CodeAction(title = "Rewrite to function value",
@@ -2019,7 +2017,6 @@ class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
   }
 
   override def actions(using Context) =
-    import scala.language.unsafeNulls
     List(
       CodeAction(title = "Insert ()",
         description = None,
@@ -3140,7 +3137,7 @@ extends ReferenceMsg(CannotBeAccessedID):
       case _ =>
         i"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
-    val whyNot = new StringBuffer
+    val whyNot = new StringBuilder
     for alt <- alts do
       val cls = alt.owner.enclosingSubClass
       val owner = if cls.exists then cls else alt.owner
@@ -3148,10 +3145,10 @@ extends ReferenceMsg(CannotBeAccessedID):
         if alt.is(Protected) then
           if alt.privateWithin.exists && alt.privateWithin != owner then
             if owner.is(Final) then alt.privateWithin.showLocated
-            else alt.privateWithin.showLocated + ", or " + owner.showLocated + " or one of its subclasses"
+            else s"${alt.privateWithin.showLocated}, or ${owner.showLocated} or one of its subclasses"
           else
             if owner.is(Final) then owner.showLocated
-            else owner.showLocated + " or one of its subclasses"
+            else s"${owner.showLocated} or one of its subclasses"
         else
           alt.privateWithin.orElse(owner).showLocated
       val accessMod = if alt.is(Protected) then "protected" else "private"
@@ -3275,7 +3272,7 @@ extends SyntaxMsg(VolatileOnValID):
   protected def explain(using Context): String = ""
 
 class ConstructorProxyNotValue(sym: Symbol)(using Context)
-extends TypeMsg(ConstructorProxyNotValueID):
+extends TypeMsg(PhantomSymbolNotValueID):
   protected def msg(using Context): String =
     i"constructor proxy $sym cannot be used as a value"
   protected def explain(using Context): String =
@@ -3290,7 +3287,7 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |but not as a stand-alone value."""
 
 class ContextBoundCompanionNotValue(sym: Symbol)(using Context)
-extends TypeMsg(ConstructorProxyNotValueID):
+extends TypeMsg(PhantomSymbolNotValueID):
   protected def msg(using Context): String =
     i"context bound companion $sym cannot be used as a value"
   protected def explain(using Context): String =
@@ -3308,6 +3305,22 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |the selection `A.unit`, which works because the compiler created a context bound
        |companion value with the (term-)name `A`. However, these context bound companions
        |are not values themselves, they can only be referred to in selections."""
+
+class DummyCaptureParamNotValue(sym: Symbol)(using Context)
+extends TypeMsg(PhantomSymbolNotValueID):
+  protected def msg(using Context): String =
+    i"dummy term capture parameter $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A term capture parameter is a symbol made up by the compiler to represent a reference
+       |to a real capture parameter in capture sets. For instance, in
+       |
+       |   class A:
+       |     type C^
+       |
+       |there is just a type `A` declared but not a value `A`. Nevertheless, one can write
+       |the selection `(a: A).C` and use a a value, which works because the compiler created a
+       |term capture parameter for `C`. However, these term capture parameters are not real values,
+       |they can only be referred in capture sets."""
 
 class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
 extends Message(UnusedSymbolID):
@@ -3493,3 +3506,32 @@ class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotParti
        |
        |Efficient operations will use `applyOrElse` to avoid computing the match twice,
        |but the `apply` body would be executed "per element" in the example."""
+
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    val act = i"$tpt(${args.map(_.show).mkString(", ")})"
+    i"""|Applied constructor type $act has no effect.
+        |The resulting type of $act is the same as its base type, namely: $tpe""".stripMargin
+
+  override protected def explain(using Context): String =
+    i"""|Applied constructor types are used to ascribe specialized types of constructor applications.
+        |To benefit from this feature, the constructor in question has to have a more specific type than the class itself.
+        |
+        |If you want to track a precise type of any of the class parameters, make sure to mark the parameter as `tracked`.
+        |Otherwise, you can safely remove the argument list from the type.
+        |"""
+
+final class OnlyFullyDependentAppliedConstructorType()(using Context)
+  extends TypeMsg(OnlyFullyDependentAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    i"Applied constructor type can only be used with classes where all parameters in the first parameter list are tracked"
+
+  override protected def explain(using Context): String = ""
+
+final class IllegalContextBounds(using Context) extends SyntaxMsg(IllegalContextBoundsID):
+  override protected def msg(using Context): String =
+    i"Context bounds are not allowed in this position"
+
+  override protected def explain(using Context): String = ""
+
+end IllegalContextBounds

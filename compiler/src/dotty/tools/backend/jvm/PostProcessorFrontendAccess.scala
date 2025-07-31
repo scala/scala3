@@ -146,7 +146,7 @@ object PostProcessorFrontendAccess {
      override def backendReporting: BackendReporting = {
        val local = localReporter.get()
        if local eq null then directBackendReporting
-       else local.nn
+       else local
      }
 
     override object directBackendReporting extends BackendReporting {

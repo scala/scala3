@@ -4,6 +4,8 @@
   |          Separation failure: Illegal access to {io} which is hidden by the previous definition
   |          of value x with type () => Unit.
   |          This type hides capabilities  {io}
+  |
+  |          where:    => refers to a fresh root capability in the type of value x
 -- Error: tests/neg-custom-args/captures/sep-use.scala:12:12 -----------------------------------------------------------
 12 |  def x: () => Unit = () => println(io)  // error
    |         ^^^^^^^^^^
@@ -14,6 +16,8 @@
    |          Separation failure: Illegal access to {io} which is hidden by the previous definition
    |          of method x with result type () => Unit.
    |          This type hides capabilities  {io}
+   |
+   |          where:    => refers to a fresh root capability in the result type of method x
 -- Error: tests/neg-custom-args/captures/sep-use.scala:18:10 -----------------------------------------------------------
 18 |  def xx: (y: Int) => Unit = _ => println(io)  // error
    |          ^^^^^^^^^^^^^^^^
@@ -24,6 +28,8 @@
    |          Separation failure: Illegal access to {io} which is hidden by the previous definition
    |          of method xx with result type (y: Int) => Unit.
    |          This type hides capabilities  {io}
+   |
+   |          where:    => refers to a fresh root capability in the result type of method xx
 -- Error: tests/neg-custom-args/captures/sep-use.scala:24:19 -----------------------------------------------------------
 24 |  def xxx(y: Int): Object^ = io  // error
    |                   ^^^^^^^
@@ -34,3 +40,5 @@
    |          Separation failure: Illegal access to {io} which is hidden by the previous definition
    |          of method xxx with result type Object^.
    |          This type hides capabilities  {io}
+   |
+   |          where:    ^ refers to a fresh root capability in the result type of method xxx

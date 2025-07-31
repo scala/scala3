@@ -24,7 +24,7 @@ on:
       CONSUMER-KEY:
         required: true
       CONSUMER-TOKEN:
-        required: true
+        required: true 
 
 env:
   RELEASE-URL: 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}'
@@ -54,7 +54,7 @@ jobs:
           VERSION        : ${{ inputs.version }}
           URL            : '${{ env.RELEASE-URL }}/${{ matrix.archive }}'
           PLATFORM       : ${{ matrix.platform }}
-
+  
   default:
     runs-on: ubuntu-latest
     needs: publish

@@ -2,7 +2,7 @@ package dotty.tools.pc.printer
 
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
@@ -174,14 +174,13 @@ class ShortenedTypePrinter(
         res.toPrefixText
     }
 
-
   override def toTextPrefixOf(tp: NamedType): Text = controlled {
     val maybeRenamedPrefix: Option[Text] = findRename(tp)
     def trimmedPrefix: Text =
       if !tp.designator.isInstanceOf[Symbol] && tp.typeSymbol == NoSymbol then
         super.toTextPrefixOf(tp)
       else
-        indexedCtx.lookupSym(tp.symbol) match
+        indexedCtx.lookupSym(tp.symbol, Some(tp.prefix)) match
           case _ if indexedCtx.rename(tp.symbol).isDefined => Text()
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
@@ -215,7 +214,9 @@ class ShortenedTypePrinter(
       case ConstantType(const) => toText(const)
       case _ => toTextRef(tp) ~ ".type"
 
-  def tpe(tpe: Type): String = toText(tpe).mkString(defaultWidth, false)
+  def tpe(tpe: Type): String =
+    val dealiased = if (tpe.isNamedTupleType) tpe.deepDealiasAndSimplify else tpe
+    toText(dealiased).mkString(defaultWidth, false)
 
   def hoverSymbol(sym: Symbol, info: Type)(using Context): String =
     val typeSymbol = info.typeSymbol
@@ -350,7 +351,9 @@ class ShortenedTypePrinter(
     val paramLabelss = label(methodParams)
     val extLabelss = label(extParams)
 
-    val returnType = tpe(gtpe.finalResultType)
+    val retType = gtpe.finalResultType
+    val simplified = if (retType.typeSymbol.isAliasType) retType else retType.deepDealiasAndSimplify
+    val returnType = tpe(simplified)
     def extensionSignatureString =
       val extensionSignature = paramssString(extLabelss, extParams)
       if extParams.nonEmpty then

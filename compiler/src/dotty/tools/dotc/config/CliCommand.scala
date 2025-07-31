@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package config
 
-import scala.language.unsafeNulls
-
 import Settings.*
 import core.Contexts.*
 import printing.Highlighting

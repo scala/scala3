@@ -657,14 +657,13 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |object O{
          |  val <<foo>> = A.Foo(new A.`x-x`)
          |}""".stripMargin,
-      """|import A.Foo
-         |import A.`x-x`
+      """|import A.`x-x`
          |object A{
          |  class `x-x`
          |  case class Foo[A](i: A)
          |}
          |object O{
-         |  val foo: Foo[`x-x`] = A.Foo(new A.`x-x`)
+         |  val foo: A.Foo[`x-x`] = A.Foo(new A.`x-x`)
          |}
          |""".stripMargin
     )
@@ -967,6 +966,92 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    val ! = 1
          |    ! : Int
          |}
+         |""".stripMargin
+    )
+
+  @Test def `named-tuples` =
+    checkEdit(
+      """|def hello = (path = ".", num = 5)
+         |
+         |def <<test>> =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin,
+      """|def hello = (path = ".", num = 5)
+         |
+         |def test: (path : String, num : Int, line : Int) =
+         |  hello ++ (line = 1)
+         |
+         |@main def bla =
+         |   val x: (path: String, num: Int, line: Int) = test
+         |""".stripMargin
+    )
+
+  @Test def `enums` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val <<d>> =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  def day(d: Day.Value): Unit = ???
+         |  val d: EnumerationValue.Day.Value =
+         |    if (true) Day.Weekday
+         |    else Day.Weekend
+         |""".stripMargin
+    )
+
+  @Test def `enums2` =
+    checkEdit(
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val <<b>> =
+         |    if (true) True
+         |    else False
+         |""".stripMargin,
+      """|object EnumerationValue:
+         |  object Day extends Enumeration {
+         |    type Day = Value
+         |    val Weekday, Weekend = Value
+         |  }
+         |  object Bool extends Enumeration {
+         |    type Bool = Value
+         |    val True, False = Value
+         |  }
+         |  import Bool._
+         |  val b: Value =
+         |    if (true) True
+         |    else False
          |""".stripMargin
     )
 

@@ -196,6 +196,43 @@ LocalModifier     ::=  ‘tracked’
 
 The (soft) `tracked` modifier is allowed as a local modifier.
 
+## Applied constructor types
+
+A new syntax is also introduced, to make classes with `tracked` parameters
+easier to use. The new syntax is essentially the ability to use an application
+of a class constructor as a type, we call such types applied constructor types.
+
+With this new feature the following example compiles correctly and the type in
+the comment is the resulting type of the applied constructor types.
+
+```scala
+import scala.language.experimental.modularity
+
+class C(tracked val v: Any)
+
+val c: C(42) /* C { val v: 42 } */ = C(42)
+```
+
+### Syntax change
+
+```
+SimpleType        ::=  SimpleLiteral
+                    |  ‘?’ TypeBounds
+---                 |  SimpleType1
++++                 |  SimpleType1 {ParArgumentExprs}
+```
+
+A `SimpleType` can now optionally be followed by `ParArgumentExprs`.
+
+The arguments are used to typecheck the whole type, as if it was a normal
+constructor application. For classes with `tracked` parameters this will mean
+that the resulting type will have a refinement for each `tracked` parameter.
+
+For example, given the following class definition:
+```scala
+class Person(tracked val name: String, tracked val age: Int)
+```
+**Type** `Person("Kasia", 27)` will be translated to `Person { val name: "Kasia"; val age: 27 }`.
 
 ## Allow Class Parents to be Refined Types
 

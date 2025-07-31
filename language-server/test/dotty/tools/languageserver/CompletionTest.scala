@@ -32,7 +32,9 @@ class CompletionTest {
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "Conversion"))
+      .completion(
+        ("Conversion", Class, "Conversion"),
+        ("Conversion", Module, "Conversion"))
   }
 
   @Test def implicitSearchCrash: Unit =

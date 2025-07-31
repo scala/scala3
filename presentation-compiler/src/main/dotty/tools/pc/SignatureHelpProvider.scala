@@ -13,7 +13,7 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j as l
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
@@ -84,7 +84,7 @@ object SignatureHelpProvider:
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
-                  paramDoc.nn.displayName()
+                  paramDoc.displayName()
                 else head.name
               head.copy(name = newName.nn, doc = Some(paramDoc.docstring.nn)) :: rest
             case _ => head :: rest

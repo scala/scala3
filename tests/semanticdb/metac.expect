@@ -3484,6 +3484,93 @@ Diagnostics:
 [10:29..10:33): [warning] with as a type operator has been deprecated; use & instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
+expect/ShadowedParameters.scala
+-------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => ShadowedParameters.scala
+Text => empty
+Language => Scala
+Symbols => 20 entries
+Occurrences => 31 entries
+Diagnostics => 14 entries
+Synthetics => 1 entries
+
+Symbols:
+example/Shadow# => class Shadow extends Object { self: Shadow => +5 decls }
+example/Shadow#`<init>`(). => primary ctor <init> (): Shadow
+example/Shadow#curriedParams(). => method curriedParams (param x: Int)(param y: List[Int]): Unit
+example/Shadow#curriedParams().(x) => param x: Int
+example/Shadow#curriedParams().(y) => param y: List[Int]
+example/Shadow#multiParams(). => method multiParams (param x: List[Int], param y: String): Unit
+example/Shadow#multiParams().(x) => param x: List[Int]
+example/Shadow#multiParams().(y) => param y: String
+example/Shadow#shadowInParamBlock(). => method shadowInParamBlock (param x: Int, param y: Int): Unit
+example/Shadow#shadowInParamBlock().(x) => param x: Int
+example/Shadow#shadowInParamBlock().(y) => param y: Int
+example/Shadow#shadowParam(). => method shadowParam (param x: Int): Unit
+example/Shadow#shadowParam().(x) => param x: Int
+local0 => val local x: Boolean
+local1 => val local x: String
+local2 => val local y: Int
+local3 => val local x: Int
+local4 => val local y: List[Int]
+local5 => val local y: Int
+local6 => val local x: Int
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:6..2:12): Shadow <- example/Shadow#
+[4:4..4:4): <- example/Shadow#`<init>`().
+[4:8..4:19): shadowParam <- example/Shadow#shadowParam().
+[4:20..4:21): x <- example/Shadow#shadowParam().(x)
+[4:23..4:26): Int -> scala/Int#
+[5:12..5:13): x <- local0
+[8:8..8:21): curriedParams <- example/Shadow#curriedParams().
+[8:22..8:23): x <- example/Shadow#curriedParams().(x)
+[8:25..8:28): Int -> scala/Int#
+[8:30..8:31): y <- example/Shadow#curriedParams().(y)
+[8:33..8:37): List -> scala/package.List#
+[8:38..8:41): Int -> scala/Int#
+[9:12..9:13): x <- local1
+[10:12..10:13): y <- local2
+[14:8..14:19): multiParams <- example/Shadow#multiParams().
+[14:20..14:21): x <- example/Shadow#multiParams().(x)
+[14:23..14:27): List -> scala/package.List#
+[14:28..14:31): Int -> scala/Int#
+[14:34..14:35): y <- example/Shadow#multiParams().(y)
+[14:37..14:43): String -> scala/Predef.String#
+[15:12..15:13): x <- local3
+[16:12..16:13): y <- local4
+[16:16..16:20): List -> scala/package.List.
+[20:8..20:26): shadowInParamBlock <- example/Shadow#shadowInParamBlock().
+[20:27..20:28): x <- example/Shadow#shadowInParamBlock().(x)
+[20:30..20:33): Int -> scala/Int#
+[20:35..20:36): y <- example/Shadow#shadowInParamBlock().(y)
+[20:38..20:41): Int -> scala/Int#
+[21:12..21:13): y <- local5
+[23:16..23:17): x <- local6
+
+Diagnostics:
+[4:20..4:21): [warning] unused explicit parameter
+[5:12..5:13): [warning] unused local definition
+[8:22..8:23): [warning] unused explicit parameter
+[8:30..8:31): [warning] unused explicit parameter
+[9:12..9:13): [warning] unused local definition
+[10:12..10:13): [warning] unused local definition
+[14:20..14:21): [warning] unused explicit parameter
+[14:34..14:35): [warning] unused explicit parameter
+[15:12..15:13): [warning] unused local definition
+[16:12..16:13): [warning] unused local definition
+[20:27..20:28): [warning] unused explicit parameter
+[20:35..20:36): [warning] unused explicit parameter
+[21:12..21:13): [warning] unused local definition
+[23:16..23:17): [warning] unused local definition
+
+Synthetics:
+[16:16..16:20):List => *.apply[Int]
+
 expect/StructuralTypes.scala
 ----------------------------
 

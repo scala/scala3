@@ -46,12 +46,16 @@ object ccConfig:
    */
   inline val postCheckCapturesets = false
 
-  /** If true, turn on separation checking */
-  def useSepChecks(using Context): Boolean =
+  /** If true, do level checking for FreshCap instances */
+  def useFreshLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
-  /** Not used currently. Handy for trying out new features */
-  def newScheme(using Context): Boolean =
+  /** If true, turn on separation checking */
+  def useSepChecks(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
+
+  /** Not used currently. Handy for trying out new features */
+  def newScheme(using ctx: Context): Boolean =
+    ctx.settings.XdropComments.value
 
 end ccConfig

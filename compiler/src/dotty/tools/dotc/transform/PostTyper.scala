@@ -196,7 +196,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try
+        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet) else ctx
+        transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
 
@@ -252,10 +255,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
               unusing.foreach(sym.addAnnotation)
             else if sym.is(ParamAccessor) then
-              // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
-              val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
-              for publicInBinaryAnnot <- publicInBinaryAnnotOpt do sym.addAnnotation(publicInBinaryAnnot)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot),
+                andAlso = defn.NonBeanParamAccessorAnnots)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value &&
@@ -346,8 +347,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(ConstructorProxy) then
-        unusable(ConstructorProxyNotValue(_))
+      if tree.symbol.is(PhantomSymbol) then
+        if tree.symbol.isDummyCaptureParam then
+          unusable(DummyCaptureParamNotValue(_))
+        else
+          unusable(ConstructorProxyNotValue(_))
       else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
       else

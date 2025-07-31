@@ -53,6 +53,7 @@ import transform.CheckUnused.OriginalName
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.dotc.ast.untpd.Mod
 
 object Typer {
 
@@ -210,7 +211,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       altImports: mutable.ListBuffer[TermRef] | Null = null)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
-    def suppressErrors = excluded.is(ConstructorProxy)
+    def suppressErrors = excluded.is(PhantomSymbol)
       // when searching for references shadowed by a constructor proxy, do not report errors
     def fail(msg: Message) =
       if !suppressErrors then report.error(msg, pos)
@@ -649,8 +650,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      */
     def checkNotShadowed(ownType: Type): Type =
       ownType match
-        case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
-          findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
+        case ownType: TermRef
+          if ownType.symbol.is(PhantomSymbol)
+            && !(ctx.mode.is(Mode.InCaptureSet) && ownType.symbol.isDummyCaptureParam) =>
+          findRef(name, pt, EmptyFlags, PhantomSymbol, tree.srcPos) match
             case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
               pt match
                 case pt: FunOrPolyProto =>
@@ -670,7 +673,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val checkedType = checkNotShadowed(ownType)
       val tree1 = checkedType match
         case checkedType: NamedType if !prefixIsElidable(checkedType) =>
-          ref(checkedType).withSpan(tree.span)
+          ref(checkedType).withSpan(tree.span).withAttachmentsFrom(tree)
         case _ =>
           def isScalaModuleRef = checkedType match
             case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) => true
@@ -1076,7 +1079,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         errorTree(tree, em"cannot convert to type selection") // will never be printed due to fallback
     }
 
-    if (tree.qualifier.isType) {
+    def warnUnnecessaryNN(tree: Tree): Unit = {
+      if ctx.explicitNulls then {
+        val symbol = tree.symbol
+        if symbol.exists && symbol.owner == defn.ScalaPredefModuleClass && symbol.name == nme.nn then
+          tree match
+          case Apply(_, args) =>
+            if(args.head.tpe.isNotNull) then report.warning("Unnecessary .nn: qualifier is already not null", tree)
+            if pt.admitsNull then report.warning("Unnecessary .nn: expected type admits null", tree)
+          case _ =>
+      }
+    }
+
+    val tree1 = if (tree.qualifier.isType) {
       val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       assignType(cpy.Select(tree)(qual1, tree.name), qual1)
     }
@@ -1086,6 +1101,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       tryAlternatively(typeSelectOnTerm)(tryJavaSelectOnType)
     else
       typeSelectOnTerm
+
+    warnUnnecessaryNN(tree1)
+    tree1
   }
 
   def typedThis(tree: untpd.This)(using Context): Tree = {
@@ -2018,7 +2036,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case mt: MethodType =>
             pt.findFunctionType match {
               case SAMType(samMeth, samParent)
-              if !defn.isFunctionNType(samParent) && mt <:< samMeth =>
+              if !ctx.erasedTypes && !defn.isFunctionNType(samParent)
+                  && mt <:< samMeth && !mt.isImplicitMethod =>
                 if defn.isContextFunctionType(mt.resultType) then
                   report.error(
                     em"""Implementation restriction: cannot convert this expression to `$samParent`
@@ -2512,6 +2531,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tycon = typedType(tree.tycon)
     def spliced(tree: Tree) = untpd.TypedSplice(tree)
     val tparam = untpd.Ident(tree.paramName).withSpan(tree.span.withEnd(tree.span.point))
+    if Feature.ccEnabled && typed(tparam).tpe.derivesFrom(defn.Caps_CapSet) then
+      report.error(em"Capture variable `${tree.paramName}` cannot have a context bound.", tycon.srcPos)
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
       typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))
@@ -2526,8 +2547,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       errorTree(tree,
         em"Illegal context bound: ${tycon.tpe} does not take type parameters$selfNote.")
 
-  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): SingletonTypeTree = {
+  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): Tree = {
     val ref1 = typedExpr(tree.ref, SingletonTypeProto)
+    if ctx.mode.is(Mode.InCaptureSet) && ref1.symbol.isDummyCaptureParam then
+      // When a dummy term capture variable is found, it is replaced with
+      // the corresponding type references (stored in the underling types).
+      return Ident(ref1.tpe.widen.asInstanceOf[TypeRef]).withSpan(tree.span)
     checkStable(ref1.tpe, tree.srcPos, "singleton type")
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
@@ -2557,17 +2582,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
-    tree.args match
-      case arg :: _ if arg.isTerm =>
-        if Feature.dependentEnabled then
-          return errorTree(tree, em"Not yet implemented: T(...)")
-        else
-          return errorTree(tree, dependentMsg)
-      case _ =>
-
-    val tpt1 = withoutMode(Mode.Pattern) {
+    val tpt1 = withoutMode(Mode.Pattern):
       typed(tree.tpt, AnyTypeConstructorProto)
-    }
+
     val tparams = tpt1.tpe.typeParams
      if tpt1.tpe.isError then
        val args1 = tree.args.mapconserve(typedType(_))
@@ -2691,7 +2708,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     typeIndexedLambdaTypeTree(tree, tparams, body)
 
   def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
-    if Feature.dependentEnabled then
+    if Feature.enabled(Feature.modularity) then
       errorTree(tree, em"Not yet implemented: (...) =>> ...")
     else
       errorTree(tree, dependentMsg)
@@ -2730,13 +2747,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assignType(cpy.ByNameTypeTree(tree)(result1), result1)
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(using Context): Tree =
+    lazy val CapSetBot = untpd.TypeTree(defn.Caps_CapSet.typeRef)
+    lazy val CapSetTop = untpd.makeRetaining(untpd.TypeTree(defn.Caps_CapSet.typeRef), Nil, tpnme.retainsCap).withSpan(tree.span)
+
     val TypeBoundsTree(lo, hi, alias) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
     val alias1 = typed(alias)
-    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
-    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
+    val isCap = tree.hasAttachment(CaptureVar)
+    val lo2 =
+      if lo1.isEmpty then
+        if Feature.ccEnabled && (isCap || hi1.tpe.derivesFrom(defn.Caps_CapSet)) then
+          typed(CapSetBot)
+        else typed(untpd.TypeTree(defn.NothingType))
+      else lo1
+    val hi2 =
+      if hi1.isEmpty then
+        if Feature.ccEnabled && (isCap || lo1.tpe.derivesFrom(defn.Caps_CapSet)) then
+          typed(CapSetTop)
+        else typed(untpd.TypeTree(defn.AnyType))
+      else hi1
     assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
+  end typedTypeBoundsTree
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
@@ -2805,10 +2837,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
-    val savedGadt = nestedCtx.gadt
-    val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
+    val preGadt = nestedCtx.gadt
+    var gadtConstrs: mutable.ArrayBuffer[GadtConstraint] = mutable.ArrayBuffer.empty
+    val trees1 = tree.trees.mapconserve: t =>
+        nestedCtx.gadtState.restore(preGadt)
+        val res = typed(t, pt)(using nestedCtx)
+        gadtConstrs += nestedCtx.gadt
+        res
       .mapconserve(ensureValueTypeOrWildcard)
-    nestedCtx.gadtState.restore(savedGadt)  // Disable GADT reasoning for pattern alternatives
+    // Look for the necessary constraint that is subsumed by all alternatives.
+    // Use that constraint as the outcome if possible, otherwise fallback to not using
+    // GADT reasoning for soundness.
+    TypeComparer.necessaryGadtConstraint(gadtConstrs.toList, preGadt) match
+      case Some(constr) => nestedCtx.gadtState.restore(constr)
+      case None => nestedCtx.gadtState.restore(preGadt)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
@@ -2891,6 +2933,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(vdef1, sym)
     vdef1.setDefTree
+
+    migrate(ImplicitToGiven.valDef(vdef1))
+
     val nnInfo = rhs1.notNullInfo
     vdef1.withNotNullInfo(if sym.is(Lazy) then nnInfo.retractedInfo else nnInfo)
   }
@@ -3003,6 +3048,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
+    migrate(ImplicitToGiven.defDef(ddef2))
+
     postProcessInfo(ddef2, sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
@@ -3032,7 +3079,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.isOpaqueAlias then
       checkFullyAppliedType(rhs1, "Opaque type alias must be fully applied, but ")
       checkNoContextFunctionType(rhs1)
-    assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    var attachCap = false
+    if Feature.ccEnabled then
+      val isCap = tdef.hasAttachment(CaptureVar)
+      rhs1 match
+        case TypeBoundsTree(lo, hi, _) =>
+          val loIsCap = lo.tpe.derivesFrom(defn.Caps_CapSet)
+          val hiIsCap = hi.tpe.derivesFrom(defn.Caps_CapSet)
+          if !isCap && (loIsCap ^ hiIsCap) then
+            report.error(em"Illegal type bounds: >: $lo <: $hi. Capture-set bounds cannot be mixed with type bounds of other kinds", rhs.srcPos)
+          if isCap && !(loIsCap && hiIsCap) then
+            report.error(em"Illegal type bounds: >: $lo <: $hi. $name^ can only have capture sets as bounds", rhs.srcPos)
+          attachCap = !isCap && loIsCap && hiIsCap
+        case LambdaTypeTree(_, _) if isCap =>
+          report.error(em"`$name` cannot have type parameters, because it ranges over capture sets", rhs.srcPos)
+        case _ =>
+    val res = assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    if Feature.ccEnabled && attachCap then
+      res.putAttachment(CaptureVar, ())
+    res
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = ctx.profiler.onTypedDef(cls) {
@@ -3166,9 +3231,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val usingParamAccessors = cls.paramAccessors.filter(_.is(Given))
           val paramScope = newScopeWith(usingParamAccessors*)
           val searchCtx = ctx.outer.fresh.setScope(paramScope)
+
+          // Before losing the reference to ctx.owner
+          // when calling implicitArgTree with searchCtx,
+          // let's store ctx.owner as the fallback "responsibleForImports"
+          // in DependencyRecorder.  That way, if we end up recording any dependencies
+          // we use ctx.owner as the "fromClass" rather than emitting a warning
+          // (because ctx.compilationUnit.tpdTree is still EmptyTree during typer).
+          // For example, to record mirror dependencies, see i23049.
+          val depRecorder = ctx.compilationUnit.depRecorder
+          val responsibleForImports = depRecorder._responsibleForImports
+          if responsibleForImports == null then
+            depRecorder._responsibleForImports = ctx.owner
+
           val rhs = implicitArgTree(target, cdef.span,
               where = i"inferring the implementation of the deferred ${dcl.showLocated}"
             )(using searchCtx)
+
+          if responsibleForImports == null then
+            depRecorder._responsibleForImports = null
 
           val impl = dcl.copy(cls,
             flags = dcl.flags &~ (HasDefault | Deferred) | Final | Override,
@@ -3365,7 +3446,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    val annot0 = withMode(Mode.InAnnotation)(typedExpr(tree.annot))
+    var annotCtx = ctx.addMode(Mode.InAnnotation)
+    if tree.annot.hasAttachment(untpd.RetainsAnnot) then
+      annotCtx = annotCtx.addMode(Mode.InCaptureSet)
+    val annot0 = typedExpr(tree.annot)(using annotCtx)
     val annot1 = checkAnnotClass(annot0)
     val annotCls = Annotations.annotClass(annot1)
     if annotCls == defn.NowarnAnnot then
@@ -4200,6 +4284,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
         if matchingApply(wtp, pt) then
+          migrate(ImplicitToGiven.implicitParams(tree, wtp, pt))
           migrate(contextBoundParams(tree, wtp, pt))
           migrate(implicitParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
@@ -4477,15 +4562,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             true
           }
 
-      def isRetainsArg(pt: Type) = pt match
-        case AnnotatedType(arg, annot) => annot.symbol == defn.RetainsArgAnnot
-        case _ => false
-
       if (implicitFun || caseCompanion)
           && !isApplyProto(pt)
           && pt != SingletonTypeProto
           && pt != LhsProto
-          && !isRetainsArg(pt)
           && !ctx.mode.is(Mode.Pattern)
           && !tree.isInstanceOf[SplicePattern]
           && !ctx.isAfterTyper
@@ -4526,7 +4606,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree
           }
         else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-          case CompareResult.Fail =>
+          case CompareResult.Fail(_) =>
             wtp match
               case wtp: MethodType => missingArgs(wtp)
               case _ =>
@@ -4663,7 +4743,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
            && !ctx.isAfterTyper
            && !tree.isInstanceOf[Inlined]
            && !isThisTypeResult(tree)
-           && !tree.hasAttachment(AscribedToUnit) then
+           && !isAscribedToUnit(tree)
+        then
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
 
         return tpd.Block(tree1 :: Nil, unitLiteral)

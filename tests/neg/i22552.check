@@ -1,7 +1,7 @@
--- [E040] Syntax Error: tests/neg/i22552.scala:3:10 --------------------------------------------------------------------
+-- [E214] Syntax Error: tests/neg/i22552.scala:3:14 --------------------------------------------------------------------
 3 |  type A[X: TC]                     // error
-  |          ^
-  |          ']' expected, but ':' found
+  |            ^^
+  |            Context bounds are not allowed in this position
 -- Error: tests/neg/i22552.scala:4:15 ----------------------------------------------------------------------------------
 4 |  type C = [X: TC] =>> List[X]      // error
   |               ^^
