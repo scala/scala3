@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import dotty.tools.io.*
 import Spans.*
 import core.Contexts.*
+import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
@@ -62,19 +63,34 @@ object ScriptSourceFile {
 }
 
 object WrappedSourceFile:
-  private val cache: mutable.HashMap[SourceFile, Int] = mutable.HashMap.empty
-  def locateMagicHeader(sourceFile: SourceFile)(using Context): Option[Int] =
-    def findOffset: Int =
-      val magicHeader = ctx.settings.XmagicOffsetHeader.value
-      if magicHeader.isEmpty then
-        -1
+  enum MagicHeaderInfo:
+    case HasHeader(offset: Int, originalFile: SourceFile)
+    case NoHeader
+  import MagicHeaderInfo.*
+
+  private val cache: mutable.HashMap[SourceFile, MagicHeaderInfo] = mutable.HashMap.empty
+
+  def locateMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
+    def findOffset: MagicHeaderInfo =
+      val magicHeader = ctx.settings.YmagicOffsetHeader.value
+      if magicHeader.isEmpty then NoHeader
       else
-        val s = new String(sourceFile.content)
-        val regex = ("(?m)^" + java.util.regex.Pattern.quote(magicHeader) + "$").r
-        val pos = regex.findFirstMatchIn(s).map(_.start).map(sourceFile.offsetToLine(_))
-        pos.getOrElse(-1)
+        val text = new String(sourceFile.content)
+        val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+        val regex = s"(?m)^$headerQuoted:(.+)$$".r
+        regex.findFirstMatchIn(text) match
+          case Some(m) =>
+            val markerOffset = m.start
+            val sourceStartOffset = sourceFile.nextLine(markerOffset)
+            val file = ctx.getFile(m.group(1))
+            if file.exists then
+              HasHeader(sourceStartOffset, ctx.getSource(file))
+            else
+              report.warning(em"original source file not found: ${file.path}")
+              NoHeader
+          case None => NoHeader
     val result = cache.getOrElseUpdate(sourceFile, findOffset)
-    if result >= 0 then Some(result + 1) else None
+    result
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile.*
