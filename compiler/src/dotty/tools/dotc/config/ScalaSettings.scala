@@ -443,8 +443,7 @@ private sealed trait YSettings:
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
 
-  val YmagicOffsetHeader: Setting[String] = StringSetting(AdvancedSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START", "")
-  val YoriginalSourceHeader: Setting[String] = StringSetting(AdvancedSetting, "Yoriginal-source-header", "header", "Specify the magic header comment that marks the path of the original code in generated wrapper scripts. Example: -Ymagic-offset-header:ORIGINAL_SOURCE_CODE_PATH", "")
+  val YmagicOffsetHeader: Setting[String] = StringSetting(AdvancedSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START. Then, in the source, the magic comment `///SOURCE_CODE_START` marks the start of user code. The comment can be optionally suffixed by `:<ORIGINAL_FILE_PATH>` to indicate the original file.", "")
 
   // Experimental language features
   @deprecated(message = "This flag has no effect and will be removed in a future version.", since = "3.7.0")
