@@ -25,12 +25,13 @@ import language.experimental.captureChecking
 */
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
-  /** Convert value `x` of type `T` to type `U` */
-  def apply(x: T): U
+  self =>
+    /** Convert value `x` of type `T` to type `U` */
+    def apply(x: T): U
 
-  extension (x: T)
-    /** `x.convert` converts a value `x` of type `T` to type `U` */
-    def convert = this(x)
+    extension (x: T)
+      /** `x.convert` converts a value `x` of type `T` to type `U` */
+      def convert = this(x)
 
 object Conversion:
   import annotation.experimental
@@ -46,5 +47,4 @@ object Conversion:
   /** Unwrap an `into` */
   extension [T](x: into[T])
     @experimental def underlying: T = x
-
 end Conversion
