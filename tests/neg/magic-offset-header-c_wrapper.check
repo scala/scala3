@@ -1,6 +1,5 @@
-bad option '-Xmagic-offset-header:SOURCE_CODE_START_MARKER' was ignored
--- [E007] Type Mismatch Error: tests/neg/magic-offset-header-c_wrapper.scala:8:18 --------------------------------------
-8 |  val x: String = 0  // anypos-error
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-c.scala:3:18 ----------------------------------------------
+3 |  val x: String = 0  // error
   |                  ^
   |                  Found:    (0 : Int)
   |                  Required: String
