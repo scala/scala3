@@ -1,5 +1,3 @@
-//> using options -preview
-
 enum MyOption[+A]:
   case MySome(x: A)
   case MyNone

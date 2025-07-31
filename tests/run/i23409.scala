@@ -1,4 +1,3 @@
-//> using options -preview
 
 // dropForMap should be aware of conversions to receiver
 
