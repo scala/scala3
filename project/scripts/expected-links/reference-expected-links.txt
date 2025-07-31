@@ -42,7 +42,7 @@
 ./contextual/type-classes.html
 ./contextual/using-clauses.html
 ./docs/reference/experimental/package-object-values.html
-./docs/reference/other-new-features/into-modifier.html
+./docs/reference/other-new-features/into.html
 ./docs/reference/other-new-features/named-typeargs.html
 ./dropped-features.html
 ./dropped-features/auto-apply.html
@@ -76,7 +76,7 @@
 ./experimental/explicit-nulls.html
 ./experimental/fewer-braces.html
 ./experimental/index.html
-./experimental/into-modifier.html
+./experimental/into.html
 ./experimental/main-annotation.html
 ./experimental/modularity.html
 ./experimental/named-typeargs-spec.html
@@ -85,6 +85,7 @@
 ./experimental/overview.html
 ./experimental/package-object-values.html
 ./experimental/purefuns.html
+./experimental/quoted-patterns-with-polymorphic-functions.html
 ./experimental/runtimeChecked.html
 ./experimental/tupled-function.html
 ./experimental/typeclasses.html
