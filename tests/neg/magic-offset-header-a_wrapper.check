@@ -1,5 +1,5 @@
--- [E007] Type Mismatch Error: tests/neg/magic-offset-header-a.scala:6:19 ----------------------------------------------
-1 |def test1(): Int = "无穷"  // error
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-a.scala:2:19 ----------------------------------------------
+2 |def test1(): Int = "无穷"  // error
   |                   ^^^^
   |                   Found:    ("无穷" : String)
   |                   Required: Int
