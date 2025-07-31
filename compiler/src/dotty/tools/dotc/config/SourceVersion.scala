@@ -43,7 +43,7 @@ enum SourceVersion:
   def enablesClauseInterleaving = isAtLeast(`3.6`)
   def enablesNewGivens = isAtLeast(`3.6`)
   def enablesNamedTuples = isAtLeast(`3.7`)
-  def enablesBetterFors(using Context) = isAtLeast(`3.7`) && isPreviewEnabled
+  def enablesBetterFors = isAtLeast(`3.8`)
 
   def requiresNewSyntax = isAtLeast(future)
 
