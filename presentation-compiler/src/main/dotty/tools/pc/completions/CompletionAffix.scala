@@ -56,6 +56,7 @@ case class CompletionAffix(
   private def loopPrefix(prefixes: List[PrefixKind]): String =
     prefixes match
       case PrefixKind.New :: tail => "new " + loopPrefix(tail)
+      case PrefixKind.Using :: tail => "using " + loopPrefix(tail)
       case _ => ""
 
   /**
@@ -87,7 +88,7 @@ enum SuffixKind:
   case Brace, Bracket, Template, NoSuffix
 
 enum PrefixKind:
-  case New
+  case New, Using
 
 type Suffix = Affix[SuffixKind]
 type Prefix = Affix[PrefixKind]
