@@ -663,7 +663,7 @@ object SpaceEngine {
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
           def containsUninhabitedField(tp: Type): Boolean =
-            tp.fields.exists { field =>
+            !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
               !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
             }
 
