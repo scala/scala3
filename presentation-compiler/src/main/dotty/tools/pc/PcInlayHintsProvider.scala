@@ -19,6 +19,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.fieldName
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -457,6 +458,13 @@ object Parameters:
         case TypeApply(fun, _) => getUnderlyingFun(fun)
         case t => t
 
+    @tailrec
+    def isDefaultArg(arg: Tree): Boolean = arg match
+      case Ident(name) => name.is(DefaultGetterName)
+      case Select(_, name) => name.is(DefaultGetterName)
+      case Apply(fun, _) => isDefaultArg(fun)
+      case _ => false
+
     if (params.namedParameters() || params.byNameParameters()) then
       tree match
         case Apply(fun, args) if isRealApply(fun) => 
@@ -467,15 +475,16 @@ object Parameters:
             val funTp = fun.typeOpt.widenTermRefExpr
             val paramNames = funTp.paramNamess.flatten
             val paramInfos = funTp.paramInfoss.flatten
+            
             Some(
-              // Check if the function is an infix function or the underlying function is an infix function
               isInfixFun(fun, args) || underlyingFun.isInfix,
               (
                 args
                 .zip(paramNames)
                 .zip(paramInfos)
                 .collect {
-                  case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent => (paramName.fieldName, arg.sourcePos, paramInfo.isByName)
+                  case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent && !isDefaultArg(arg) => 
+                    (paramName.fieldName, arg.sourcePos, paramInfo.isByName)
                 }
               )
             )
