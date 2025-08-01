@@ -167,6 +167,7 @@ private sealed trait WarningSettings:
   private val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
   private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   private val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
+  private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -309,6 +310,7 @@ private sealed trait WarningSettings:
     def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
     def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
     def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
+    def recurseWithDefault(using Context): Boolean = allOr(WrecurseWithDefault)
     def checkInit(using Context): Boolean = allOr(WcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
