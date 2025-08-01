@@ -13,6 +13,7 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
@@ -221,12 +222,16 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.typeOpt.widen.deepDealiasAndSimplify match
-        case r: RefinedType => Some(r)
-        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.deepDealiasAndSimplify)
-        case _ => None
+      def extractRefinements(t: Type): List[Type] = t match
+        case r: RefinedType => List(r)
+        case t: TypeRef => extractRefinements(t.deepDealiasAndSimplify)
+        case t: (TermRef | TypeProxy) => List(t.termSymbol.info.deepDealiasAndSimplify)
+        case AndType(l , r) => List(extractRefinements(l), extractRefinements(r)).flatten
+        case _ => Nil
 
-      refTpe.flatMap(findRefinement).asJava
+      val refTpe: List[Type] = extractRefinements(sel.typeOpt.widen)
+
+      refTpe.flatMap(findRefinement).headOption.asJava
     case _ =>
       ju.Optional.empty().nn
 
