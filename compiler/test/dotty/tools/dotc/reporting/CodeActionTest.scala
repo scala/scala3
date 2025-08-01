@@ -179,7 +179,7 @@ class CodeActionTest extends DottyTest:
       ctxx = ctxx
       )
 
-  @Test def addNN =
+  @Test def addNN1 =
     val ctxx = newContext
     ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
     checkCodeAction(
@@ -252,6 +252,57 @@ class CodeActionTest extends DottyTest:
           | val t: String = (s.q(s, s)).nn""".stripMargin,
       ctxx = ctxx
       )
+
+  @Test def addNN5 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """val s: String | Null = ???
+          |val t: String = s match {
+          | case _: String => "foo"
+          | case _ => s
+          |}""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """val s: String | Null = ???
+          |val t: String = s match {
+          | case _: String => "foo"
+          | case _ => s.nn
+          |}""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN6 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """val s: String | Null = ???
+          |val t: String = if (s != null) "foo" else s""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """val s: String | Null = ???
+          |val t: String = if (s != null) "foo" else s.nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN7 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """given ctx: String | Null = null
+          |def f(using c: String): String = c
+          |val s: String = f(using ctx)""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """given ctx: String | Null = null
+          |def f(using c: String): String = c
+          |val s: String = f(using ctx.nn)""".stripMargin,
+      ctxx = ctxx
+      )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =

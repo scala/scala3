@@ -301,7 +301,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   private val shouldSuggestNN =
-    if expected.isValueType then
+    if ctx.mode.is(Mode.SafeNulls) && expected.isValueType then
       found frozen_<:< OrNull(expected)
     else false
 
@@ -366,27 +366,25 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     treeStr + "\n" + super.explain
 
   override def actions(using Context) =
-    if shouldSuggestNN then
-      inTree match {
-        case Some(tree) if tree != null =>
-          val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
-          val replacement = tree match
-            case Apply(fun, args) => "(" + content + ").nn"
-            case _ => content + ".nn"
-          List(
-            CodeAction(title = """Add .nn""",
+    inTree match {
+      case Some(tree) if shouldSuggestNN =>
+        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val replacement = tree match
+          case a @ Apply(_, _) if a.applyKind == ApplyKind.Using =>
+            content + ".nn"
+          case _ @ (Select(_, _) | Ident(_)) => content + ".nn"
+          case _ => "(" + content + ").nn"
+        List(
+          CodeAction(title = """Add .nn""",
             description = None,
             patches = List(
               ActionPatch(tree.srcPos.sourcePos, replacement)
             )
-            )
           )
-        case _ =>
-          List()
-      }
-    else
-      List()
-
+        )
+      case _ =>
+        List()
+    }
 end TypeMismatch
 
 class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
