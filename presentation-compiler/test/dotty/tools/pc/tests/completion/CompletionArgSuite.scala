@@ -238,6 +238,65 @@ class CompletionArgSuite extends BaseCompletionSuite:
       ""
     )
 
+  @Test def `using` =
+    checkEdit(
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(st@@)
+          |""".stripMargin,
+          s"""|def hello(using String): Unit = ???
+              |@main def main1(): Unit =
+              |  val str = "hello"
+              |  hello(using str)
+              |""".stripMargin,
+          assertSingleItem = false)
+
+  @Test def `using2` =
+    checkEdit(
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(using st@@)
+          |""".stripMargin,
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(using str)
+          |""".stripMargin,
+          assertSingleItem = false)
+
+  @Test def `using3` =
+    checkEdit(
+      s"""|def hello(using String, Int): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  val int = 4
+          |  hello(str, in@@)
+          |""".stripMargin,
+      s"""|def hello(using String, Int): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  val int = 4
+          |  hello(using str, int)
+          |""".stripMargin,
+          assertSingleItem = false)
+
+  @Test def `using4` =
+    checkEdit(
+      s"""|def hello(name: String)(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello("name")(str@@)
+          |""".stripMargin,
+      s"""|def hello(name: String)(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello("name")(using str)
+          |""".stripMargin,
+          assertSingleItem = false
+          )
+
   @Test def `default-args` =
     check(
       s"""|object Main {
