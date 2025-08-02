@@ -274,8 +274,8 @@ sealed abstract class CaptureSet extends Showable:
           elems.exists(_.subsumes(x)(using ctx)(using VarState.ClosedUnrecorded))
       || !x.isTerminalCapability
         && {
-          val elems = x.captureSetOfInfo.elems
-          !elems.isEmpty && elems.forall(mightAccountFor)
+          val xelems = x.captureSetOfInfo.elems
+          !xelems.isEmpty && xelems.forall(mightAccountFor)
         }
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
@@ -442,7 +442,7 @@ sealed abstract class CaptureSet extends Showable:
   def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
     for elem <- elems do
       elem.stripReadOnly match
-        case fresh: FreshCap => fresh.hiddenSet.adoptClassifier(cls)
+        case fresh: FreshCap => fresh.adoptClassifier(cls, freeze = isConst)
         case _ =>
 
   /** All capabilities of this set except those Termrefs and FreshCaps that
@@ -761,6 +761,7 @@ object CaptureSet:
       else if !levelOK(elem) then
         failWith(IncludeFailure(this, elem, levelError = true))    // or `elem` is not visible at the level of the set.
       else if !elem.tryClassifyAs(classifier) then
+        //println(i"cannot classify $elem as $classifier, ${elem.asInstanceOf[CoreCapability].classifier}")
         failWith(IncludeFailure(this, elem))
       else
         // id == 108 then assert(false, i"trying to add $elem to $this")

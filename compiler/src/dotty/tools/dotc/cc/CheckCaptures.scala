@@ -700,7 +700,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
 
         if qualCs.mightSubcapture(selCs)
-            //&& !selCs.mightSubcapture(qualCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
         then
           selWiden.stripCapturing.capturing(qualCs)

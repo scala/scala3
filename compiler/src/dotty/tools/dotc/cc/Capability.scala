@@ -152,6 +152,8 @@ object Capabilities:
     val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
       // fails initialization check without the @unchecked
 
+    private[Capabilities] var isClassified = false
+
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that
       case _ => false
@@ -163,6 +165,11 @@ object Capabilities:
       else ref.core match
         case ResultCap(_) | _: ParamRef => false
         case _ => true
+
+    def adoptClassifier(cls: ClassSymbol, freeze: Boolean)(using Context): Unit =
+      if !isClassified then
+        hiddenSet.adoptClassifier(cls)
+        if freeze then isClassified = true
 
     def descr(using Context) =
       val originStr = origin match
@@ -536,7 +543,8 @@ object Capabilities:
           case Reach(_) =>
             captureSetOfInfo.transClassifiers
           case self: CoreCapability =>
-            joinClassifiers(toClassifiers(self.classifier), captureSetOfInfo.transClassifiers)
+            if self.derivesFromCapability then toClassifiers(self.classifier)
+            else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
           classifiersValid == currentId
       myClassifiers
@@ -546,7 +554,8 @@ object Capabilities:
       cls == defn.AnyClass
       || this.match
         case self: FreshCap =>
-          self.hiddenSet.tryClassifyAs(cls)
+          if self.isClassified then self.hiddenSet.classifier.derivesFrom(cls)
+          else self.hiddenSet.tryClassifyAs(cls)
         case self: RootCapability =>
           true
         case Restricted(_, cls1) =>
@@ -559,8 +568,8 @@ object Capabilities:
         case Reach(_) =>
           captureSetOfInfo.tryClassifyAs(cls)
         case self: CoreCapability =>
-          self.classifier.isSubClass(cls)
-          && captureSetOfInfo.tryClassifyAs(cls)
+          if self.derivesFromCapability then self.derivesFrom(cls)
+          else captureSetOfInfo.tryClassifyAs(cls)
 
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
       transClassifiers match

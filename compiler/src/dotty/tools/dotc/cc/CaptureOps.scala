@@ -470,6 +470,7 @@ extension (tp: Type)
 
   def classifier(using Context): ClassSymbol =
     tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
+
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
@@ -654,7 +655,9 @@ object OnlyCapability:
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
-      Some((parent, ann.tree.tpe.argTypes.head.classSymbol.asClass))
+      ann.tree.tpe.argTypes.head.classSymbol match
+        case cls: ClassSymbol => Some((parent, cls))
+        case _ => None
     case _ => None
 end OnlyCapability
 
