@@ -492,7 +492,7 @@ object Capabilities:
 
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
     def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-    def derivesFromSharable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Sharable)
+    def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -707,7 +707,7 @@ object Capabilities:
         case x: ResultCap =>
           val result = y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromSharable
+            case _ => y.derivesFromShared
           if !result then
             TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
           result
@@ -717,7 +717,7 @@ object Capabilities:
             case _: ResultCap => false
             case _: FreshCap if CCState.collapseFresh => true
             case _ =>
-              y.derivesFromSharable
+              y.derivesFromShared
               || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)

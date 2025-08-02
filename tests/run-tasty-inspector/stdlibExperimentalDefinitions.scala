@@ -39,7 +39,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.Contains$.containsImpl",
   "scala.caps.Exists",
   "scala.caps.Mutable",
-  "scala.caps.Sharable",
+  "scala.caps.SharedCapability",
   "scala.caps.Control",
   "scala.caps.consume",
   "scala.caps.internal",

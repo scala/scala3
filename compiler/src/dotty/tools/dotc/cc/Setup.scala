@@ -375,14 +375,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fntpe
 
       /** 1. Check that parents of capturing types are not pure.
-       *  2. Check that types extending caps.Sharable don't have a `cap` in their capture set.
-       *     TODO: Is this enough?
-       *     We need to also track that we cannot get exclusive capabilities in paths
-       *     where some prefix derives from Sharable. Also, can we just
-       *     exclude `cap`, or do we have to extend this to all exclusive capabilties?
-       *     The problem is that we know what is exclusive in general only after capture
-       *     checking, not before.
-       *     But maybe the rules for classification already cover these cases.
        */
       def checkRetainsOK(tp: Type): tp.type =
         tp match
@@ -393,8 +385,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // an explicit result type in the override, the inherited capture set
               // will be ignored anyway.
               fail(em"$parent is a pure type, it makes no sense to add a capture set to it")
-            else if refs.isUniversal && parent.derivesFromSharedCapability then
-              fail(em"$tp extends Sharable, so it cannot capture `cap`")
           case _ =>
         tp
 

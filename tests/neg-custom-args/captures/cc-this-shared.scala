@@ -1,6 +1,6 @@
 import caps.consume
 
-class Cap extends caps.ExclusiveCapability
+class Cap extends caps.SharedCapability
 
 def eff(using Cap): Unit = ()
 
@@ -30,6 +30,6 @@ def test2(using @consume cc: Cap) =
 
   def c1 = new C(f)
   def c2 = c1
-  def c3 = c2.y // error
+  def c3 = c2.y // was sepcheck error, but OK since we changed to SharedCapability
   val c4: C^ = c3
   val _ = c3: C^

@@ -1,13 +1,13 @@
 import language.experimental.modularity
 import language.experimental.captureChecking
-import caps.Capability
+import caps.SharedCapability
 
 class F:
   val f: AnyRef^ = ???
 
-case class B(tracked val a: A) extends F, Capability
+case class B(tracked val a: A) extends F, SharedCapability
 
-class A extends F, Capability:
+class A extends F, SharedCapability:
   val b: B { val a: A.this.type } = B(this)
 
 def test(a: A) =

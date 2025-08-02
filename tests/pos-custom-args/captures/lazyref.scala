@@ -1,7 +1,7 @@
 
 import caps.consume
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 class LazyRef[T](val elem: () => T):
   val get: () ->{elem} T = elem
@@ -25,3 +25,4 @@ def test(@consume cap1: Cap, @consume cap2: Cap) =
   val ref3c: LazyRef[Int]^{cap2, ref1} = ref3
   val ref4 = (if cap1 == cap2 then ref1 else ref2).map(g)
   val ref4c: LazyRef[Int]^{cap1, cap2} = ref4
+

@@ -6,7 +6,7 @@ trait A:
 class B extends A:
   type T = C
 
-class C extends caps.Capability
+class C extends caps.SharedCapability
 
 
 trait A2:

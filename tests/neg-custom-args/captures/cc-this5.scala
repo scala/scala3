@@ -1,7 +1,7 @@
 class C:
   val x: C = this
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def foo(c: Cap) =
   object D extends C:   // error

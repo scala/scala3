@@ -1,4 +1,3 @@
-// was a neg test before
 import language.experimental.saferExceptions
 import language.experimental.erasedDefinitions
 import language.experimental.captureChecking
@@ -7,7 +6,7 @@ class Ex1 extends Exception("Ex1")
 class Ex2 extends Exception("Ex2")
 class Ex3 extends Exception("Ex3")
 
-class CT[-E <: Exception] extends caps.ExclusiveCapability, compiletime.Erased
+class CT[-E <: Exception] extends caps.SharedCapability, compiletime.Erased
 
 def Throw[Ex <: Exception](ex: Ex)(using CT[Ex]^): Nothing = ???
 
