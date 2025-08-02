@@ -460,7 +460,7 @@ class Definitions {
   @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
     enterPermanentSymbol(tpnme.CBCompanion,
       TypeBounds(NothingType,
-        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil, Contravariant :: Nil)(
+        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil)(
           tl => TypeBounds.empty :: Nil,
           tl => AnyType))).asType
 
