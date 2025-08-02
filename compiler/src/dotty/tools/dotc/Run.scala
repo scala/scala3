@@ -92,14 +92,21 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       mySuspendedMessages.getOrElseUpdate(warning.pos.source, mutable.LinkedHashSet.empty) += warning
 
     def nowarnAction(dia: Diagnostic): Action.Warning.type | Action.Verbose.type | Action.Silent.type =
-      mySuppressions.getOrElse(dia.pos.source, Nil).find(_.matches(dia)) match {
-        case Some(s) =>
+      mySuppressions.get(dia.pos.source) match
+      case Some(suppressions) =>
+        val matching = suppressions.iterator.filter(_.matches(dia))
+        if matching.hasNext then
+          val s = matching.next()
+          for other <- matching do
+            if !other.used then
+              other.markSuperseded() // superseded unless marked used later
           s.markUsed()
-          if (s.verbose) Action.Verbose
+          if s.verbose then Action.Verbose
           else Action.Silent
-        case _ =>
+        else
           Action.Warning
-      }
+      case none =>
+        Action.Warning
 
     def registerNowarn(annotPos: SourcePosition, range: Span)(conf: String, pos: SrcPos)(using Context): Unit =
       var verbose = false
@@ -118,12 +125,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
           .merge
       addSuppression:
         Suppression(annotPos, filters, range.start, range.end, verbose)
-          .tap: sup =>
-            if filters == List(MessageFilter.None) then sup.markUsed() // invalid suppressions, don't report as unused
 
     def addSuppression(sup: Suppression): Unit =
       val suppressions = mySuppressions.getOrElseUpdate(sup.annotPos.source, ListBuffer.empty)
-      if sup.start != sup.end && suppressions.forall(x => x.start != sup.start || x.end != sup.end) then
+      if sup.start != sup.end then
         suppressions += sup
 
     def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
@@ -134,7 +139,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       mySuspendedMessages.remove(source).foreach(_.foreach(ctx.reporter.issueIfNotSuppressed))
     }
 
-    def runFinished(hasErrors: Boolean): Unit =
+    def runFinished()(using Context): Unit =
+      val hasErrors = ctx.reporter.hasErrors
       // report suspended messages (in case the run finished before typer)
       mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
       // report unused nowarns only if all all phases are done
@@ -142,10 +148,16 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
         for
           source <- mySuppressions.keysIterator.toList
           sups   <- mySuppressions.remove(source)
-          sup    <- sups.reverse
-          if !sup.used
         do
-          report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
+          val suppressions = sups.reverse.toList
+          for sup <- suppressions do
+            if !sup.used
+            && !suppressions.exists(s => s.ne(sup) && s.used && s.annotPos == sup.annotPos) // duplicate
+            && sup.filters != List(MessageFilter.None) // invalid suppression, don't report as unused
+            then
+              val more = if sup.superseded then " but matches a diagnostic" else ""
+              report.warning("@nowarn annotation does not suppress any warnings"+more, sup.annotPos)
+  end suppressions
 
   /** The compilation units currently being compiled, this may return different
    *  results over time.
@@ -411,7 +423,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
-    suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
+    suppressions.runFinished()
     while (finalizeActions.nonEmpty && canProgress()) {
       val action = finalizeActions.remove(0)
       action()
