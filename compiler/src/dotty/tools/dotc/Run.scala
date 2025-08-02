@@ -123,8 +123,13 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     def addSuppression(sup: Suppression): Unit =
       val suppressions = mySuppressions.getOrElseUpdate(sup.annotPos.source, ListBuffer.empty)
-      if sup.start != sup.end && suppressions.forall(x => x.start != sup.start || x.end != sup.end) then
-        suppressions += sup
+      if sup.start != sup.end then
+        suppressions.find(sup.matches(_)) match
+        case Some(other) =>
+          if sup.annotPos != other.annotPos then
+            report.warning("@nowarn annotation is duplicate", sup.annotPos)
+        case none =>
+          suppressions += sup
 
     def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
       // sort suppressions. they are not added in any particular order because of lazy type completion

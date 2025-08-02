@@ -10,6 +10,7 @@ import dotty.tools.dotc.interfaces.SourceFile
 import dotty.tools.dotc.reporting.MessageFilter.SourcePattern
 
 import java.util.regex.PatternSyntaxException
+import scala.PartialFunction.cond
 import scala.annotation.internal.sharable
 import scala.util.matching.Regex
 
@@ -136,7 +137,7 @@ object WConf:
       if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
       else Right(WConf(configs))
 
-class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
+class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
   private var _used = false
   def used: Boolean = _used
   def markUsed(): Unit =
@@ -144,5 +145,30 @@ class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], va
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
     pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+  def matches(other: Suppression): Boolean =
+       start == other.start
+    && end == other.end
+    && verbose == other.verbose
+    && filters.lengthCompare(other.filters) == 0
+    && filters.forall(other.hasFilter)
+    && other.filters.forall(hasFilter)
+
+  private def hasFilter(filter: MessageFilter): Boolean =
+    import MessageFilter.*
+    filters.exists:
+      case MessageID(errorId) =>
+        cond(filter):
+          case MessageID(otherId) => errorId == otherId
+      case MessagePattern(pattern) =>
+        cond(filter):
+          case MessagePattern(otherPattern) => pattern.toString == otherPattern.toString
+      case SourcePattern(pattern) =>
+        cond(filter):
+          case SourcePattern(otherPattern) => pattern.toString == otherPattern.toString
+      case Origin(pattern) =>
+        cond(filter):
+          case Origin(otherPattern) => pattern.toString == otherPattern.toString
+      case x => x == filter // Any, Deprecated, Feature, Unchecked, None
 
   override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
+end Suppression
