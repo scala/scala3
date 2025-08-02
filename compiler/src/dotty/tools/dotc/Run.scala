@@ -118,18 +118,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
           .merge
       addSuppression:
         Suppression(annotPos, filters, range.start, range.end, verbose)
-          .tap: sup =>
-            if filters == List(MessageFilter.None) then sup.markUsed() // invalid suppressions, don't report as unused
 
     def addSuppression(sup: Suppression): Unit =
       val suppressions = mySuppressions.getOrElseUpdate(sup.annotPos.source, ListBuffer.empty)
       if sup.start != sup.end then
-        suppressions.find(sup.matches(_)) match
-        case Some(other) =>
-          if sup.annotPos != other.annotPos then
-            report.warning("@nowarn annotation is duplicate", sup.annotPos)
-        case none =>
-          suppressions += sup
+        suppressions += sup
 
     def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
       // sort suppressions. they are not added in any particular order because of lazy type completion
@@ -147,10 +140,14 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
         for
           source <- mySuppressions.keysIterator.toList
           sups   <- mySuppressions.remove(source)
-          sup    <- sups.reverse
-          if !sup.used
         do
-          report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
+          val suppressions = sups.reverse.toList
+          for sup <- suppressions do
+            if !sup.used
+            && !suppressions.exists(s => s.ne(sup) && s.used && s.annotPos == sup.annotPos) // duplicate
+            && sup.filters != List(MessageFilter.None) // invalid suppression, don't report as unused
+            then
+              report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
 
   /** The compilation units currently being compiled, this may return different
    *  results over time.

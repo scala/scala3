@@ -9,7 +9,7 @@ class A
 class B
 
 @nowarn("msg=class A is deprecated")
-@nowarn("cat=deprecation&msg=class A is deprecated") // warn unused redundant
+@nowarn("cat=deprecation&msg=class A is deprecated") // warn @nowarn annotation does not suppress any warnings
 @nowarn("cat=deprecation&msg=class B is deprecated")
 trait C1 {
   def a: A
@@ -17,7 +17,7 @@ trait C1 {
 }
 
 @nowarn("cat=deprecation&msg=class B is deprecated")
-@nowarn("cat=deprecation&msg=class B is deprecated") // warn duplicate
+@nowarn("cat=deprecation&msg=class B is deprecated") // warn @nowarn annotation does not suppress any warnings
 @nowarn("cat=deprecation&msg=class A is deprecated")
 trait C2 {
   def a: A
