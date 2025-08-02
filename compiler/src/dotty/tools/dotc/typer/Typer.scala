@@ -602,7 +602,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
     record("typedIdent")
     val name = tree.name
-    def kind = if (name.isTermName) "" else "type "
+    def kind =
+      if name.isTermName then
+        if ctx.mode.is(Mode.InCaptureSet) then "capability "
+        else ""
+      else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if ctx.mode.is(Mode.Pattern) then
       if name == nme.WILDCARD then

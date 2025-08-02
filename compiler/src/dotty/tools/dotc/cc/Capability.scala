@@ -152,6 +152,8 @@ object Capabilities:
     val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
       // fails initialization check without the @unchecked
 
+    //assert(rootId != 6, origin)
+
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that
       case _ => false
@@ -808,6 +810,7 @@ object Capabilities:
     case LambdaActual(restp: Type)
     case OverriddenType(member: Symbol)
     case DeepCS(ref: TypeRef)
+    case Parameter(param: Symbol)
     case Unknown
 
     def explanation(using Context): String = this match
@@ -841,6 +844,8 @@ object Capabilities:
         i" when instantiating upper bound of member overridden by $member"
       case DeepCS(ref: TypeRef) =>
         i" when computing deep capture set of $ref"
+      case Parameter(param) =>
+        i" of parameter $param of ${param.owner}"
       case Unknown =>
         ""
   end Origin
@@ -907,8 +912,8 @@ object Capabilities:
       CapToFresh(origin)(tp)
 
   /** Maps fresh to cap */
-  def freshToCap(tp: Type)(using Context): Type =
-    CapToFresh(Origin.Unknown).inverse(tp)
+  def freshToCap(param: Symbol, tp: Type)(using Context): Type =
+    CapToFresh(Origin.Parameter(param)).inverse(tp)
 
   /** Map top-level free existential variables one-to-one to Fresh instances */
   def resultToFresh(tp: Type, origin: Origin)(using Context): Type =

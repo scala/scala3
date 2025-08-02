@@ -49,6 +49,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.unsafe",
   "scala.caps.unsafe$",
   "scala.caps.use",
+  "scala.caps.reserve",
 
   //// New feature: into
   "scala.Conversion$.into",

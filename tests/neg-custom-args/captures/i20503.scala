@@ -8,7 +8,7 @@ class List[+A]:
   def foreach[U](f: A => U): Unit = ???
   def nonEmpty: Boolean = ???
 
-def runOps(@use ops: List[() => Unit]): Unit =
+def runOps[C^](ops: List[() ->{C} Unit]): Unit =
   // See i20156, due to limitation in expressiveness of current system,
   // we could map over the list of impure elements. OK with existentials.
   ops.foreach(op => op())
