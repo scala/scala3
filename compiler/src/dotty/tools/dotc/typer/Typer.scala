@@ -54,6 +54,7 @@ import transform.CheckUnused.OriginalName
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
 import dotty.tools.dotc.ast.untpd.Mod
+import dotty.tools.dotc.reporting.Reporter.NoReporter
 
 object Typer {
 
@@ -4360,6 +4361,33 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
+
+            def doesntContainsWildcards = {
+              val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(NoReporter))
+              val substCtxMap = new TypeMap():
+                def apply(tp: Type): Type = tp match
+                  case tp: FunProto => mapOver(
+                    tp.derivedFunProto(resultType = tp.resultType(using newCtx)).withContext(newCtx)
+                  )
+                  case tp => mapOver(tp)
+              val pt1 = substCtxMap(pt.deepenProtoTrans(using newCtx))
+              try {
+                !pt1.containsWildcardTypes(using newCtx)
+              } catch {
+                case _: UnhandledError => false
+              }
+            }
+            val pt1 = pt.deepenProtoTrans
+            if (pt1 `ne` pt)
+              && (pt1 ne sharpenedPt)
+              && formal.typeSymbol != defn.ClassTagClass
+              && !isFullyDefined(formal, ForceDegree.none)
+              && !formal.existsPart(ty => {
+                  val dty = ty.dealias
+                  (dty ne ty) && ty.isInstanceOf[TypeVar] && dty.isInstanceOf[TypeVar]
+                }, StopAt.Static, forceLazy = false)
+              && doesntContainsWildcards then
+              withoutMode(Mode.ImplicitsEnabled)(constrainResult(tree.symbol, wtp, wildApprox(pt1)))
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             def canProfitFromMoreConstraints =
@@ -4370,7 +4398,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
-                val pt1 = pt.deepenProtoTrans
                 if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
                 then return implicitArgs(formals, argIndex, pt1)
               case _ =>
