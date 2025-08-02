@@ -3,6 +3,7 @@ package tasty
 
 import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc._
+import dotty.tools.scaladoc.cc.CaptureDefs
 import scala.quoted._
 
 import SymOps._
@@ -52,7 +53,9 @@ trait BasicSupport:
         "scala.annotation.static",
         "scala.annotation.targetName",
         "scala.annotation.threadUnsafe",
-        "scala.annotation.varargs"
+        "scala.annotation.varargs",
+        CaptureDefs.useAnnotFullName,
+        CaptureDefs.consumeAnnotFullName,
       )
       val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
       val annotations = sym.annotations.filter { a =>
