@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/i23008/Test_2.scala:1:24 --------------------------------------------------------------------
 1 |@main def Test = Macros.buildString // error
   |                 ^^^^^^^^^^^^^^^^^^
