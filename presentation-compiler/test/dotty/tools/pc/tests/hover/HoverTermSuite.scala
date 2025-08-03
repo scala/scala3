@@ -913,3 +913,16 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "val aa: Int".hover
     )
+
+  @Test def `intersection_of_selectable-5` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type AL = List[Int] & Record { val aa: Int }
+         |
+         |val al: AL = ???.asInstanceOf[ABC]
+         |val al_a = al.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )

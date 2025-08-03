@@ -224,12 +224,17 @@ object HoverProvider:
 
       def extractRefinements(t: Type): List[Type] = t match
         case r: RefinedType => List(r)
-        case t: TypeRef => extractRefinements(t.deepDealiasAndSimplify)
-        case t: (TermRef | TypeProxy) => List(t.termSymbol.info.deepDealiasAndSimplify)
+        case t: (TypeRef | AppliedType) =>
+          // deepDealiasAndSimplify can succeed with no progress, so we have to avoid infinite loops
+          val t1 = t.deepDealiasAndSimplify
+          if t1 == t then Nil
+          else extractRefinements(t1)
+        case t: TermRef => extractRefinements(t.widen)
+        case t: TypeProxy => List(t.termSymbol.info.deepDealiasAndSimplify)
         case AndType(l , r) => List(extractRefinements(l), extractRefinements(r)).flatten
         case _ => Nil
 
-      val refTpe: List[Type] = extractRefinements(sel.typeOpt.widen)
+      val refTpe: List[Type] = extractRefinements(sel.typeOpt)
 
       refTpe.flatMap(findRefinement).headOption.asJava
     case _ =>
