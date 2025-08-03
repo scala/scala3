@@ -10,12 +10,6 @@ object ccConfig:
   /** If enabled, cache capture sets of infos capabilties */
   inline val cacheCaptureSetOfInfo = false
 
-  /** If enabled, use a special path in recheckClosure for closures
-   *  to compare the result tpt of the anonymous functon with the expected
-   *  result type. This can narrow the scope of error messages.
-   */
-  inline val preTypeClosureResults = false
-
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
    *  for eta expansions. This can improve some error messages.
    */

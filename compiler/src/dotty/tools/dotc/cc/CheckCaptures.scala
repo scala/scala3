@@ -922,28 +922,22 @@ class CheckCaptures extends Recheck, SymTransformer:
               val paramType = freshToCap(paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
-            if ccConfig.preTypeClosureResults && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
-              // Check whether the closure's result conforms to the expected type
-              // This constrains parameter types of the closure which can give better
-              // error messages.
-              // But if the closure is an eta expanded method reference it's better to not constrain
+            if !pt.isInstanceOf[RefinedType]
+                && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially)
+            then
+              // If the closure is not an eta expansion and the expected type is a parametric
+              // function type, check whether the closure's result conforms to the expected
+              // result type. This constrains parameter types of the closure which can give better
+              // error messages. It also prevents mapping fresh to result caps in the closure's
+              // result type.
+              // If the closure is an eta expanded method reference it's better to not constrain
               // its internals early since that would give error messages in generated code
               // which are less intelligible. An example is the line `a = x` in
               // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
               // to apply only to closures that are not eta expansions.
               assert(paramss1.isEmpty)
-              val respt0 = pt match
-                case defn.RefinedFunctionOf(rinfo) =>
-                  val paramTypes = params.map(_.asInstanceOf[ValDef].tpt.nuType)
-                  rinfo.instantiate(paramTypes)
-                case _ =>
-                  resType
-              val respt = resultToFresh(respt0, Origin.LambdaExpected(respt0))
-              val res = resultToFresh(mdef.tpt.nuType, Origin.LambdaActual(mdef.tpt.nuType))
-              // We need to open existentials here in order not to get vars mixed up in them
-              // We do the proper check with existentials when we are finished with the closure block.
-              capt.println(i"pre-check closure $expr of type $res against $respt")
-              checkConformsExpr(res, respt, expr)
+              capt.println(i"pre-check closure $expr of type ${mdef.tpt.nuType} against $resType")
+              checkConformsExpr(mdef.tpt.nuType, resType, expr)
           case _ =>
         case Nil =>
 

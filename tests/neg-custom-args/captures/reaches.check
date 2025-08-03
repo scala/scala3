@@ -133,3 +133,15 @@
    |                           ^^^^^^^^
    |                           Local reach capability xs* leaks into capture scope of method runAll2.
    |                           To allow this, the parameter xs should be declared with a @use annotation
+-- Error: tests/neg-custom-args/captures/reaches.scala:62:36 -----------------------------------------------------------
+62 |  val leaked = usingFile[File^{id*}]: f => // error: separation
+   |               ^
+   |               Separation failure: Illegal access to cap of value id which is hidden by the previous definition
+   |               of value id with type File^ -> File^².
+   |               This type hides capabilities  {cap}
+   |
+   |               where:    ^   refers to the universal root capability
+   |                         ^²  refers to a fresh root capability in the type of value id
+   |                         cap is a fresh root capability created in value id
+63 |    val f1: File^{id*} = id(f)
+64 |    f1

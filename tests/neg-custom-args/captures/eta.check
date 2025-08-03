@@ -10,7 +10,7 @@
 6 |         bar( () => f )  // error
   |              ^^^^^^^
   |              Found:    () ->{f} () ->{f} Unit
-  |              Required: () -> () ->? Unit
+  |              Required: () -> () ->{f} Unit
   |              Note that capability (f : Proc^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
