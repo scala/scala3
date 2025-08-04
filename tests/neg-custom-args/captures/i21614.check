@@ -6,7 +6,7 @@
    |
    |where:    ^ refers to a fresh root capability classified as SharedCapability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
    |
-   |Note that capability cap.rd is not included in capture set {cap}.
+   |Note that capability cap is not included in capture set {cap}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------

@@ -400,7 +400,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         then
           normalizeCaptures(mapOver(t)) match
             case t1 @ CapturingType(_, _) => t1
-            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(), boxed = false)
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =

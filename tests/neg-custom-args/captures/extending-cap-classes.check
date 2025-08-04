@@ -25,6 +25,6 @@
    |               ^^
    |               Found:    (y2 : C2)
    |               Required: C1
-   |               Note that capability cap.rd is not included in capture set {}.
+   |               Note that capability cap is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

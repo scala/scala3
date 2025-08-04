@@ -626,9 +626,13 @@ object CaptureSet:
       then i" under-approximating the result of mapping $ref to $mapped"
       else ""
 
+  private def capImpliedByCapability(parent: Type)(using Context): Capability =
+    if parent.derivesFromExclusive then GlobalCap.readOnly else GlobalCap
+
   /* The same as {cap.rd} but generated implicitly for references of Capability subtypes.
    */
-  case class CSImpliedByCapability() extends Const(SimpleIdentitySet(GlobalCap.readOnly))
+  class CSImpliedByCapability(parent: Type)(using @constructorOnly ctx: Context)
+  extends Const(SimpleIdentitySet(capImpliedByCapability(parent)))
 
   /** A special capture set that gets added to the types of symbols that were not
    *  themselves capture checked, in order to admit arbitrary corresponding capture

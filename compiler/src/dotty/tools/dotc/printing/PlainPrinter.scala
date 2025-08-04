@@ -284,9 +284,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed && ccVerbose
         if elideCapabilityCaps
-            && parent.derivesFrom(defn.Caps_Capability)
+            && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && refs.isReadOnly
+            && (!parent.derivesFromExclusive || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refSet) =>
