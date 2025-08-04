@@ -152,12 +152,23 @@ object Capabilities:
     val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
       // fails initialization check without the @unchecked
 
+    /** Is this fresh cap (definitely) classified? If that's the case, the
+     *  classifier cannot be changed anymore.
+     *  We need to distinguish `FreshCap`s that can still be classified from
+     *  ones that cannot. Once a `FreshCap` is part of a constant capture set,
+     *  it gets classified by the type that prefixes the set and that classification
+     *  cannot be changed anymore. But other `FreshCap`s are created as members of
+     *  variable sets and then their classification status is open and can be
+     *  constrained further.
+     */
     private[Capabilities] var isClassified = false
 
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that
       case _ => false
 
+    /** Is this fresh cap at the right level to be able to subsume `ref`?
+     */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
         val refOwner = ref.levelOwner
@@ -166,6 +177,9 @@ object Capabilities:
         case ResultCap(_) | _: ParamRef => false
         case _ => true
 
+    /** Classify this FreshCap as `cls`, provided `isClassified` is still false.
+     *  @param  freeze  Deterermines future `isClassified` state.
+     */
     def adoptClassifier(cls: ClassSymbol, freeze: Boolean)(using Context): Unit =
       if !isClassified then
         hiddenSet.adoptClassifier(cls)

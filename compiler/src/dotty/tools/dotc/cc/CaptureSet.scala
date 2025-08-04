@@ -446,7 +446,7 @@ sealed abstract class CaptureSet extends Showable:
         case _ =>
 
   /** All capabilities of this set except those Termrefs and FreshCaps that
-   *  are boundby `mt`.
+   *  are bound by `mt`.
    */
   def freeInResult(mt: MethodicType)(using Context): CaptureSet =
     filter:
