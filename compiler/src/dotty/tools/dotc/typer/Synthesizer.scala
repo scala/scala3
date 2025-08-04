@@ -436,13 +436,24 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       makeProductMirror(typeElems, elemLabels, tpnme.NamedTuple, mirrorRef)
     end makeNamedTupleProductMirror
 
+    def makeTupleProductMirror(tps: List[Type]): TreeWithErrors =
+      val arity = tps.size
+      if arity <= Definitions.MaxTupleArity then
+        val tupleCls = defn.TupleType(arity).nn.classSymbol
+        makeClassProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
+      else
+        val elemLabels = (for i <- 1 to arity yield ConstantType(Constant(s"_$i"))).toList
+        val mirrorRef: Type => Tree = _ => newTupleMirror(arity)
+        makeProductMirror(tps, elemLabels, tpnme.Tuple, mirrorRef)
+    end makeTupleProductMirror
+
     def makeClassProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]) =
       val accessors = cls.caseAccessors
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
       val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
       val mirrorRef = (monoType: Type) =>
         if cls.useCompanionAsProductMirror then companionPath(pre, cls, span)
-        else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
+        else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size)
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
       makeProductMirror(typeElems, elemLabels, cls.name, mirrorRef)
     end makeClassProductMirror
@@ -482,14 +493,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             }
             withNoErrors(singletonPath.cast(mirrorType).withSpan(span))
         case MirrorSource.GenericTuple(tps) =>
-          val maxArity = Definitions.MaxTupleArity
-          val arity = tps.size
-          if tps.size <= maxArity then
-            val tupleCls = defn.TupleType(arity).nn.classSymbol
-            makeClassProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
-          else
-            val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
-            withErrors(i"${defn.PairClass} is not a generic product because $reason")
+          makeTupleProductMirror(tps)
         case MirrorSource.NamedTuple(nameTypePairs) =>
           makeNamedTupleProductMirror(nameTypePairs)
         case MirrorSource.ClassSymbol(pre, cls) =>
