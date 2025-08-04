@@ -111,6 +111,23 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
     tpe.isCapSet && tpe.match
       case CapturingType(_, List(ref)) => ref.isCaptureRoot
       case _ => false
+
+  def isPureClass(from: qctx.reflect.ClassDef): Boolean =
+    import qctx.reflect._
+    def check(sym: Tree): Boolean = sym match
+      case ClassDef(name, _, _, Some(ValDef(_, tt, _)), _) => tt.tpe match
+        case CapturingType(_, refs) => refs.isEmpty
+        case _ => true
+      case _ => false
+
+    // Horrible hack to basically grab tpe1.asSeenFrom(from)
+    val tpe1 = from.symbol.typeRef.select(tpe.typeSymbol).simplified
+    val tpe2 = tpe1.classSymbol.map(_.typeRef).getOrElse(tpe1)
+
+    // println(s"${tpe.show} -> (${tpe.typeSymbol} from ${from.symbol}) ${tpe1.show} -> ${tpe2} -> ${tpe2.baseClasses.filter(_.isClassDef)}")
+    val res = tpe2.baseClasses.exists(c => c.isClassDef && check(c.tree))
+    // println(s"${tpe.show} is pure class = $res")
+    res
 end extension
 
 extension (using qctx: Quotes)(typedef: qctx.reflect.TypeDef)
