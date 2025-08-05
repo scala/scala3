@@ -609,7 +609,7 @@ object IArray:
    *  @return true if corresponding elements are equal
    */
    def equals(xs: IArray[AnyRef^], ys: IArray[AnyRef^]): Boolean =
-    Array.equals(xs.asInstanceOf[Array[AnyRef^{xs*}]], ys.asInstanceOf[Array[AnyRef^{ys*}]])
+    Array.equals(xs.asInstanceOf[Array[AnyRef^{xs}]], ys.asInstanceOf[Array[AnyRef^{ys}]])
 
   /** Returns a decomposition of the array into a sequence. This supports
    *  a pattern match like `{ case IArray(x,y,z) => println('3 elements')}`.
