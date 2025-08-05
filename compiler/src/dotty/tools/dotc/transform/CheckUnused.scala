@@ -142,13 +142,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case _ =>
     tree
 
+  // bindings and expansion are always transformed.
+  // Inlined.call was not necessarily witnessed, due to transparent inline or macros at inlining.
   override def prepareForInlined(tree: Inlined)(using Context): Context =
     refInfos.inlined.push(tree.call.srcPos)
     ctx
   override def transformInlined(tree: Inlined)(using Context): tree.type =
-    //transformAllDeep(tree.expansion) // traverse expansion with nonempty inlined stack to avoid registering defs
     val _ = refInfos.inlined.pop()
-    if !tree.call.isEmpty && phaseMode.eq(PhaseMode.Aggregate) then
+    if !tree.call.isEmpty then
       transformAllDeep(tree.call)
     tree
 
