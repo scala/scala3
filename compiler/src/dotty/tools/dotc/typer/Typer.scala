@@ -4368,11 +4368,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               || !isFullyDefined(formal, ForceDegree.none)
                     // more context might constrain type variables which could make implicit scope larger
 
+            // Try to constrain the result using `pt1`, but back out if a BadTyperStateAssertion
+            // is thrown. TODO Find out why the bad typer state arises and prevent it. The try-catch
+            // is a temporary hack to keep projects compiling that would fail otherwise due to
+            // searching more arguments to instantiate implicits (PR #23532). A failing project
+            // is described in issue #23609.
+            def tryConstrainResult(pt: Type): Boolean =
+              try constrainResult(tree.symbol, wtp, pt)
+              catch case ex: TyperState.BadTyperStateAssertion => false
+
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
                 val pt1 = pt.deepenProtoTrans
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
-                then return implicitArgs(formals, argIndex, pt1)
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
+                  return implicitArgs(formals, argIndex, pt1)
               case _ =>
 
             arg.tpe match
