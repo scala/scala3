@@ -45,7 +45,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       	//   3. Otherwise leave argument uninstantiated.
       	// The reason for (2) is that we observed complicated constraints in i23611.scala
       	// that get better types if a fully defined type is computed than if several type
-      	// variables are approximated incrementally. This is a minimization of some ZIP code.
+      	// variables are approximated incrementally. This is a minimization of some ZIO code.
       	// So in order to keep backwards compatibility (where before we _only_ did 2) we
       	// add that special case.
         def isGroundConstr(tp: Type): Boolean = tp.dealias match
