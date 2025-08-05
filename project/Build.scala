@@ -1647,6 +1647,73 @@ object Build {
       },
     )
 
+  /* Configuration of the org.scala-lang:scala-library-cc:*.**.**-bootstrapped */
+  lazy val `scala-library-cc` = project.in(file("library"))
+    .enablePlugins(ScalaLibraryPlugin)
+    .settings(
+      name          := "scala-library-cc",
+      moduleName    := "scala-library-cc",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions ++= Seq(
+        // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
+        "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
+      ),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala-library-cc",
+      // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
+      // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
+      // NOTE: true is the default value, just making things clearer here
+      managedScalaInstance := true,
+      // Configure the nonbootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+    )
+
   // ==============================================================================================
   // =================================== SCALA STANDARD LIBRARY ===================================
   // ==============================================================================================
