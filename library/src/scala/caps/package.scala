@@ -53,7 +53,7 @@ type Shared = SharedCapability
 trait ExclusiveCapability extends Capability, Classifier
 
 @experimental
-type Exclusive = SharedCapability
+type Exclusive = ExclusiveCapability
 
 /** Base trait for capabilities that capture some continuation or return point in
  *  the stack. Examples are exceptions, labels, Async, CanThrow.
