@@ -27,8 +27,8 @@ object Inferencing {
    *  but only if the overall result of `isFullyDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean =
-    withFreshTyperState(new IsFullyDefinedAccumulator(force).process(tp), x => x)
+  def isFullyDefined(tp: Type, force: ForceDegree.Value, ifProto: Boolean = false)(using Context): Boolean =
+    withFreshTyperState(new IsFullyDefinedAccumulator(force, ifProto = ifProto).process(tp), x => x)
 
   /** Try to fully define `tp`. Return whether constraint has changed.
    *  Any changed constraint is kept.
@@ -161,7 +161,7 @@ object Inferencing {
    *  Instance types can be improved by replacing covariant occurrences of Nothing
    *  with fresh type variables, if `force` allows this in its `canImprove` implementation.
    */
-  private class IsFullyDefinedAccumulator(force: ForceDegree.Value, minimizeSelected: Boolean = false)
+  private class IsFullyDefinedAccumulator(force: ForceDegree.Value, minimizeSelected: Boolean = false, ifProto: Boolean = false)
     (using Context) extends TypeAccumulator[Boolean] {
 
     /** Replace toplevel-covariant occurrences (i.e. covariant without double flips)
@@ -233,8 +233,10 @@ object Inferencing {
       val tpd = tp.dealias
       if tpd ne tp then apply(x, tpd)
       else tp match
-        case _: WildcardType | _: ProtoType =>
+        case _: WildcardType =>
           false
+        case tp: ProtoType =>
+          ifProto && foldOver(x, tp)
         case tvar: TypeVar if !tvar.isInstantiated =>
           force.appliesTo(tvar)
           && ctx.typerState.constraint.contains(tvar)
