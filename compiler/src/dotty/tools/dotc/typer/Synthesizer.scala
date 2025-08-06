@@ -20,6 +20,7 @@ import ast.tpd.*
 import Synthesizer.*
 import sbt.ExtractDependencies.*
 import xsbti.api.DependencyContext.*
+import TypeComparer.{fullLowerBound, fullUpperBound}
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -50,18 +51,20 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       	// add that special case.
         def isGroundConstr(tp: Type): Boolean = tp.dealias match
           case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) => false
+          case pref: TypeParamRef if ctx.typerState.constraint.contains(pref) => false
           case tp: AndOrType => isGroundConstr(tp.tp1) && isGroundConstr(tp.tp2)
           case _ => true
         instArg(
             if tvar.hasLowerBound then
-              if isGroundConstr(tvar.lowerBound) then tvar.instantiate(fromBelow = true)
+              if isGroundConstr(fullLowerBound(tvar.origin)) then tvar.instantiate(fromBelow = true)
               else if isFullyDefined(tp, ForceDegree.all) then tp
               else NoType
             else if tvar.hasUpperBound then
-              if isGroundConstr(tvar.upperBound) then tvar.instantiate(fromBelow = false)
+              if isGroundConstr(fullUpperBound(tvar.origin)) then tvar.instantiate(fromBelow = false)
               else if isFullyDefined(tp, ForceDegree.all) then tp
               else NoType
-            else NoType)
+            else
+              NoType)
       case _ =>
         tp
 
@@ -593,9 +596,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   resType <:< target
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
+                  val instanceTypes = tparams.lazyZip(variances).map: (tparam, variance) =>
                     TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
-                  )
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,
                   // because type parameters are not correctly inferred.
