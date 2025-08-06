@@ -958,6 +958,7 @@ class Definitions {
   def TupleClass(using Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
   @tu lazy val TupleModule: Symbol = requiredModule("scala.Tuple")
+    @tu lazy val Tuple_Elem: Symbol = TupleModule.requiredType("Elem")
   @tu lazy val EmptyTupleClass: Symbol = requiredClass("scala.EmptyTuple")
   @tu lazy val EmptyTupleModule: Symbol = requiredModule("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = requiredClassRef("scala.NonEmptyTuple")
@@ -1273,6 +1274,32 @@ class Definitions {
       else None
   }
 
+  // Pattern matcher of tuple selectors at the type level
+  // Matches Tuple.Elem[x, constant] and x._1.type
+  object TupleSelectorOf:
+    def unapply(tp: Type)(using Context): Option[(Type, Int)] =
+      if tp.isRef(Tuple_Elem) then
+        // get the arg infos for tuple elem
+        tp.argInfos match
+          case tupleType :: ConstantType(c) :: Nil
+            if c.isIntRange && (isTupleNType(tupleType) || tupleType.isRef(PairClass)) =>
+              Some((tupleType, c.intValue))
+          // we should probably report an error here, but its probably handled elsewhere
+          case _ => None
+      else
+        tp.dealias match
+          // very explicitly ONLY check for isTupleNType
+          // pair class doesn't have selector fields
+          case TermRef(tupleType, field) if isTupleNType(tupleType) =>
+            field match
+              case name: SimpleName =>
+                name.toString match
+                  case s"_$id" =>
+                    id.toIntOption.map(it => (tupleType, it - 1))
+                  case _ => None
+              case _ => None
+          case _ => None
+
   object ArrayOf {
     def apply(elem: Type)(using Context): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
@@ -1476,7 +1503,7 @@ class Definitions {
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
     // Do not patch the stdlib files if we explicitly disable it
     // This is only to be used during the migration of the stdlib
-    if ctx.settings.YnoStdlibPatches.value then 
+    if ctx.settings.YnoStdlibPatches.value then
       return
 
     def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =

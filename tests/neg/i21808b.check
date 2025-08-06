@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/i21808b.scala:9:63 ---------------------------------------------------------------------
+9 |  summon[TupledFunction[(T, T) => T, (x: (T, T)) => x._1.type]] // error
+  |                                                               ^
+  |                           (Test.T, Test.T) => Test.T cannot be tupled as (x: (Test.T, Test.T)) => (x._1 : Test.T)
