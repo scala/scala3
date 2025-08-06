@@ -10,6 +10,7 @@ import dotty.tools.dotc.interfaces.SourceFile
 import dotty.tools.dotc.reporting.MessageFilter.SourcePattern
 
 import java.util.regex.PatternSyntaxException
+import scala.PartialFunction.cond
 import scala.annotation.internal.sharable
 import scala.util.matching.Regex
 
@@ -136,13 +137,20 @@ object WConf:
       if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
       else Right(WConf(configs))
 
-class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
-  private var _used = false
-  def used: Boolean = _used
+class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
+  inline def unusedState = 0
+  inline def usedState = 1
+  inline def supersededState = 2
+  private var _used = unusedState
+  def used: Boolean = _used == usedState
+  def superseded: Boolean = _used == supersededState
   def markUsed(): Unit =
-    _used = true
+    _used = usedState
+  def markSuperseded(): Unit =
+    _used = supersededState
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
     pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
 
   override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
+end Suppression
