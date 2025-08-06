@@ -1451,7 +1451,7 @@ object Build {
   lazy val `scala3-bootstrapped-new` = project
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
-      `scala3-staging-new`, `scala3-tasty-inspector-new`)
+      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -1831,6 +1831,94 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
+    )
+
+  /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
+  lazy val `scala-library-sjs` = project.in(file("library-js"))
+    // We add a dependency to the JVM library to have the classfile available
+    // (as they are not part of this artifact)
+    .dependsOn(`scala3-library-bootstrapped-new`)
+    .settings(
+      name          := "scala-library-sjs",
+      organization  := "org.scala-js",
+      // This is very tricky here since this is a Scala 3 project, but to be able to smoothly
+      // migrate the ecosystem, we need to be able to evict the Scala 2 library from the classpath.
+      // The problem is that the Scala 2 library for Scala.js has a _2.13 in the module's name, so we need
+      // to release Scala 3 for Scala.js with the same _2.13 instead of the _3.
+      // Yes, I know, this is weird and feels wrong.
+      moduleName    := "scalajs-scalalib_2.13",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      crossPaths    := false,
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
+      // Add the source directories for the stdlib (non-boostrapped)
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories ++=
+        (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
+      // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
+      Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions += "-scalajs",
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Take into account the source files from the `library` folder
+      // but give the priority to the files in `library-js` that override files in `library`
+      Compile / sources := {
+        val files = (Compile / sources).value
+        val overwrittenSources =
+          (files ++ Seq(
+              baseDirectory.value / "src" / "scala" / "runtime" / "BoxesRunTime.java",
+              baseDirectory.value / "src" / "scala" / "math" / "ScalaNumber.java",
+          ))
+          .flatMap(_.relativeTo(baseDirectory.value / "src")).toSet
+
+        files.filterNot(file =>
+          file.relativeTo((`scala-library-bootstrapped` / baseDirectory).value / "src")
+            .exists(overwrittenSources.contains))
+
+      },
+      libraryDependencies += ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
+      libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala-library",
+      // we need to have the `scala-library` artifact in the classpath for `ScalaLibraryPlugin` to work
+      // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
+      // NOTE: true is the default value, just making things clearer here
+      managedScalaInstance := true,
+      // Configure the nonbootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
     )
 
   // ==============================================================================================
