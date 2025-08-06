@@ -1,7 +1,7 @@
 import language.experimental.modularity
 import compiletime.uninitialized
 
-class IO extends caps.Capability
+class IO extends caps.SharedCapability
 
 class File:
   def write(x: String): Unit = ???

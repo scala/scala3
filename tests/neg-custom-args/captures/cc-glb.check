@@ -3,5 +3,6 @@
   |                   ^^
   |                   Found:    (x1 : (Foo[T] & Foo[Any])^{io})
   |                   Required: Foo[T]
+  |                   Note that capability (io : Cap^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`

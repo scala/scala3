@@ -1,7 +1,7 @@
 package test.runnable
 import language.experimental.captureChecking
 
-case class A() extends caps.Capability:
+case class A() extends caps.SharedCapability:
   def print() = println("leaking...")
 
 class Transform(fun: Any => Any):

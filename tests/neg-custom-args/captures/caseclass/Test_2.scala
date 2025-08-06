@@ -1,4 +1,4 @@
-class C extends caps.Capability
+class C extends caps.SharedCapability
 def test(c: C) =
   val pure: () -> Unit = () => ()
   val impure: () => Unit = pure

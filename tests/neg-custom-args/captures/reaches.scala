@@ -59,7 +59,7 @@ def attack2 =
   val id: File^ -> File^ = x => x // error
     // val id: File^ -> File^{fresh}
 
-  val leaked = usingFile[File^{id*}]: f => // now ok
+  val leaked = usingFile[File^{id*}]: f => // error: separation
     val f1: File^{id*} = id(f)
     f1
 

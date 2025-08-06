@@ -1,12 +1,12 @@
 import language.experimental.captureChecking
-import caps.Capability
+import caps.SharedCapability
 import caps.use
 
 trait List[+T]:
   def map[U](f: T => U): List[U]
 
-trait File extends Capability
-class Logger(f: File^) extends Capability // <- will work if we remove the extends clause
+trait File extends SharedCapability
+class Logger(f: File^) extends SharedCapability // <- will work if we remove the extends clause
 
 def mkLoggers1[F <: File^](@use files: List[F]): List[Logger^] =
   files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?

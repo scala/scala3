@@ -51,7 +51,7 @@ def compose2[A, B, C](@consume f: A => B, @consume g: B => C): A => C =
 //def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
 //  ps.map((x, y) => compose1(x, y)) // Does not work, see neg-customargs/../reaches2.scala
 
-class IO extends caps.Capability
+class IO extends caps.SharedCapability
 
 def test(io: IO) =
   val a: () ->{io} Unit = () => ()

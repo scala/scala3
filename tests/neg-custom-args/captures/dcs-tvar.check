@@ -3,6 +3,7 @@
   |  ^^^^^^^^^^^^^^^^
   |  Found:    () ->{xs*} Unit
   |  Required: () -> Unit
+  |  Note that capability xs* is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/dcs-tvar.scala:9:2 ---------------------------------------
@@ -10,5 +11,6 @@
   |  ^^^^^^^^^^^^^^^^
   |  Found:    () ->{xs*} Unit
   |  Required: () -> Unit
+  |  Note that capability xs* is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`

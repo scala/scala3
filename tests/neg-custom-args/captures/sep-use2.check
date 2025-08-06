@@ -47,15 +47,15 @@
 24 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{f} Object^{f*}
+   |to a function of type Object^ ->{c} Object^{f*}
    |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {f*}
-   |  Footprint set of function prefix      : {f*, c}
+   |  Capture set of function prefix        : {c, f*}
+   |  Footprint set of function prefix      : {c, f*}
    |  The two sets overlap at               : {c}
    |
    |where:    ^  refers to a fresh root capability in the type of parameter c
@@ -69,15 +69,15 @@
 28 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{f} Object^{f*}
+   |to a function of type Object^ ->{c} Object^{f*}
    |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {f*}
-   |  Footprint set of function prefix      : {f*, c}
+   |  Capture set of function prefix        : {c, f*}
+   |  Footprint set of function prefix      : {c, f*}
    |  The two sets overlap at               : {c}
    |
    |where:    ^  refers to a fresh root capability in the type of parameter c

@@ -774,6 +774,11 @@ trait Applications extends Compatibility {
               methodType.isImplicitMethod && (applyKind == ApplyKind.Using || failEmptyArgs)
 
             if !defaultArg.isEmpty then
+              if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled)
+              && !inferImplicitArg(formal, appPos.span).tpe.isError
+              then
+                report.warning(DefaultShadowsGiven(methodType.paramNames(n)), appPos)
+
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)

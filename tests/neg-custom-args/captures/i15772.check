@@ -29,12 +29,15 @@
    |          ^   refers to a fresh root capability in the type of value arg
    |          ^²  refers to a fresh root capability created in value boxed2 when instantiating method c's type -> C^{cap}
    |
+   |Note that capability cap is not included in capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------
 46 |  x: (() -> Unit) // error
    |  ^
    |  Found:    (x : () ->{filesList, sayHello} Unit)
    |  Required: () -> Unit
+   |  Note that capability (filesList : List[File]^{io}) is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:34:10 ------------------------------------------------------------

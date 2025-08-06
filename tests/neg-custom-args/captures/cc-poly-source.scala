@@ -1,11 +1,11 @@
 import language.experimental.captureChecking
 import annotation.experimental
-import caps.{CapSet, Capability}
+import caps.{CapSet, SharedCapability}
 import caps.use
 
 @experimental object Test:
 
-  class Label //extends Capability
+  class Label //extends SharedCapability
 
   class Listener
 
@@ -30,7 +30,7 @@ import caps.use
     val listeners = lbls.map(makeListener) // error
       // we get an error here because we no longer allow contravariant cap
       // to subsume other capabilities. The problem can be solved by declaring
-      // Label a Sharable, see cc-poly-source-capability.scala
+      // Label a SharedCapability, see cc-poly-source-capability.scala
     val src = Source[{lbls*}]
     for l <- listeners do
       src.register(l)

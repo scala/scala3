@@ -3361,6 +3361,9 @@ object TypeComparer {
      */
     def kind: Class[?] = getClass
 
+    def description(using Context): String
+  end ErrorNote
+
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
     case OK, OKwithGADTUsed, OKwithOpaquesUsed

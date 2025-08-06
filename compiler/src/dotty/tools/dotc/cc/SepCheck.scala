@@ -186,7 +186,7 @@ object SepCheck:
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
           else newElem.stripRestricted.stripReadOnly match
-            case elem: FreshCap =>
+            case elem: FreshCap if !elem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
               if elem.hiddenSet.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
                 val superCaps =
@@ -612,7 +612,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- refsToCheck.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe)) do
-      if !hiddenRef.derivesFromSharable then
+      if !hiddenRef.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
           case ref: TermRef =>
             val refSym = ref.symbol
@@ -649,7 +649,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.derivesFromSharable then
+          if !ref.isKnownClassifiedAs(defn.Caps_SharedCapability) then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs

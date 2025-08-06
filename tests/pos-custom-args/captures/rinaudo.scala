@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import caps.*
 
-trait FileSystem extends Capability:
+trait FileSystem extends SharedCapability:
   def print(msg: String): Unit
 
 class Logger(using fs: FileSystem):

@@ -8,6 +8,7 @@
    |    ^
    |    Found:    () ->{t} Logger^{t*}
    |    Required: x.T
+   |    Note that capability (t : () => Logger^) is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:22:22 ---------------------------------------
@@ -18,6 +19,9 @@
    |
    |                   where:    => refers to a fresh root capability in the type of value bad
    |                             ^  refers to a fresh root capability in the type of value bad
+   |
+   |                   Note that capability cap is not included in capture set {cap}
+   |                   because cap in class Bar is not visible from cap in value bad.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------

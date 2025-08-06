@@ -1,7 +1,7 @@
-import caps.{cap, Classifier, Capability}
+import caps.{cap, Classifier, SharedCapability}
 
-trait Read extends Capability, Classifier
-trait Write extends Capability, Classifier
+trait Read extends SharedCapability, Classifier
+trait Write extends SharedCapability, Classifier
 
 trait A extends Read
 trait B extends Write

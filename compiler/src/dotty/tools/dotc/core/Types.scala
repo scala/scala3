@@ -3743,6 +3743,7 @@ object Types extends TypeUtils {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
+  /** Common base trait of MethodType, PolyType and ExprType */
   trait MethodicType extends TermType:
     def resType: Type
 

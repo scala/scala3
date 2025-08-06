@@ -20,6 +20,7 @@ import ast.tpd.*
 import Synthesizer.*
 import sbt.ExtractDependencies.*
 import xsbti.api.DependencyContext.*
+import TypeComparer.{fullLowerBound, fullUpperBound}
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -38,10 +39,32 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         // bounds are usually widened during instantiation.
         instArg(tp.tp1)
       case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) =>
+      	// If tvar has a lower or upper bound:
+      	//   1. If the bound is not another type variable, use this as approximation.
+      	//   2. Otherwise, if the type can be forced to be fully defined, use that type
+      	//      as approximation.
+      	//   3. Otherwise leave argument uninstantiated.
+      	// The reason for (2) is that we observed complicated constraints in i23611.scala
+      	// that get better types if a fully defined type is computed than if several type
+      	// variables are approximated incrementally. This is a minimization of some ZIO code.
+      	// So in order to keep backwards compatibility (where before we _only_ did 2) we
+      	// add that special case.
+        def isGroundConstr(tp: Type): Boolean = tp.dealias match
+          case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) => false
+          case pref: TypeParamRef if ctx.typerState.constraint.contains(pref) => false
+          case tp: AndOrType => isGroundConstr(tp.tp1) && isGroundConstr(tp.tp2)
+          case _ => true
         instArg(
-            if tvar.hasLowerBound then tvar.instantiate(fromBelow = true)
-            else if tvar.hasUpperBound then tvar.instantiate(fromBelow = false)
-            else NoType)
+            if tvar.hasLowerBound then
+              if isGroundConstr(fullLowerBound(tvar.origin)) then tvar.instantiate(fromBelow = true)
+              else if isFullyDefined(tp, ForceDegree.all) then tp
+              else NoType
+            else if tvar.hasUpperBound then
+              if isGroundConstr(fullUpperBound(tvar.origin)) then tvar.instantiate(fromBelow = false)
+              else if isFullyDefined(tp, ForceDegree.all) then tp
+              else NoType
+            else
+              NoType)
       case _ =>
         tp
 
@@ -573,9 +596,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   resType <:< target
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
+                  val instanceTypes = tparams.lazyZip(variances).map: (tparam, variance) =>
                     TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
-                  )
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,
                   // because type parameters are not correctly inferred.

@@ -67,9 +67,6 @@ object CheckCaptures:
         val res = cur
         cur = cur.outer
         res
-
-    def ownerString(using Context): String =
-      if owner.isAnonymousFunction then "enclosing function" else owner.show
   end Env
 
   /** Similar normal substParams, but this is an approximating type map that
@@ -491,10 +488,10 @@ class CheckCaptures extends Recheck, SymTransformer:
             case _ => c.core match
               case c1: RootCapability => c1.singletonCaptureSet
               case c1: CoreCapability =>
-                CaptureSet.ofType(c1.widen, followResult = false)
+                CaptureSet.ofType(c1.widen, followResult = true)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowRootCapability(NoSymbol): () =>
-            report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", tree.srcPos)
+            report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `cap` as underlying capture set", tree.srcPos)
           recur(underlying, env, lastEnv)
 
       /** Avoid locally defined capability if it is a reach capability or capture set
@@ -548,9 +545,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         case ref: NamedType if !ref.symbol.isUseParam =>
           val what = if ref.isType then "Capture set parameter" else "Local reach capability"
           val owner = ref.symbol.owner
-          val ownerStr = if owner.isAnonymousFunction then "enclosing function" else owner.show
           report.error(
-            em"""$what $c leaks into capture scope of $ownerStr.
+            em"""$what $c leaks into capture scope${owner.qualString("of")}.
                 |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
         case _ =>
 
@@ -704,7 +700,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
 
         if qualCs.mightSubcapture(selCs)
-            //&& !selCs.mightSubcapture(qualCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
         then
           selWiden.stripCapturing.capturing(qualCs)
@@ -927,28 +922,22 @@ class CheckCaptures extends Recheck, SymTransformer:
               val paramType = freshToCap(paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
-            if ccConfig.preTypeClosureResults && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
-              // Check whether the closure's result conforms to the expected type
-              // This constrains parameter types of the closure which can give better
-              // error messages.
-              // But if the closure is an eta expanded method reference it's better to not constrain
+            if !pt.isInstanceOf[RefinedType]
+                && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially)
+            then
+              // If the closure is not an eta expansion and the expected type is a parametric
+              // function type, check whether the closure's result conforms to the expected
+              // result type. This constrains parameter types of the closure which can give better
+              // error messages. It also prevents mapping fresh to result caps in the closure's
+              // result type.
+              // If the closure is an eta expanded method reference it's better to not constrain
               // its internals early since that would give error messages in generated code
               // which are less intelligible. An example is the line `a = x` in
               // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
               // to apply only to closures that are not eta expansions.
               assert(paramss1.isEmpty)
-              val respt0 = pt match
-                case defn.RefinedFunctionOf(rinfo) =>
-                  val paramTypes = params.map(_.asInstanceOf[ValDef].tpt.nuType)
-                  rinfo.instantiate(paramTypes)
-                case _ =>
-                  resType
-              val respt = resultToFresh(respt0, Origin.LambdaExpected(respt0))
-              val res = resultToFresh(mdef.tpt.nuType, Origin.LambdaActual(mdef.tpt.nuType))
-              // We need to open existentials here in order not to get vars mixed up in them
-              // We do the proper check with existentials when we are finished with the closure block.
-              capt.println(i"pre-check closure $expr of type $res against $respt")
-              checkConformsExpr(res, respt, expr)
+              capt.println(i"pre-check closure $expr of type ${mdef.tpt.nuType} against $resType")
+              checkConformsExpr(mdef.tpt.nuType, resType, expr)
           case _ =>
         case Nil =>
 
@@ -1278,37 +1267,11 @@ class CheckCaptures extends Recheck, SymTransformer:
     type BoxErrors = mutable.ListBuffer[Message] | Null
 
     private def errorNotes(notes: List[TypeComparer.ErrorNote])(using Context): Addenda =
-      val printableNotes = notes.filter:
-        case IncludeFailure(_, _, true) => true
-        case _: ExistentialSubsumesFailure | _: MutAdaptFailure => true
-        case _ => false
-      if printableNotes.isEmpty then NothingToAdd
+      if notes.isEmpty then NothingToAdd
       else new Addenda:
-        override def toAdd(using Context) = printableNotes.map: note =>
-          val msg = note match
-            case IncludeFailure(cs, ref, _) =>
-              if ref.core.isCapOrFresh then
-                i"""the universal capability $ref
-                   |cannot be included in capture set $cs"""
-              else
-                val levelStr = ref match
-                  case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-                  case _ => ""
-                i"""reference ${ref}$levelStr
-                    |cannot be included in outer capture set $cs"""
-            case ExistentialSubsumesFailure(ex, other) =>
-              def since =
-                if other.isTerminalCapability then ""
-                else " since that capability is not a `Sharable` capability"
-              i"""the existential capture root in ${ex.originalBinder.resType}
-                 |cannot subsume the capability $other$since"""
-            case MutAdaptFailure(cs, lo, hi) =>
-              def ofType(tp: Type) = if tp.exists then i"of the mutable type $tp" else "of a mutable type"
-              i"""$cs is an exclusive capture set ${ofType(hi)},
-                 |it cannot subsume a read-only capture set ${ofType(lo)}."""
+        override def toAdd(using Context) = notes.map: note =>
           i"""
-             |Note that ${msg.toString}"""
-
+             |Note that ${note.description}."""
 
     /** Addendas for error messages that show where we have under-approximated by
      *  mapping a a capability in contravariant position to the empty set because
@@ -1580,11 +1543,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def improveCaptures(widened: Type, prefix: Type)(using Context): Type = prefix match
       case ref: Capability if ref.isTracked =>
         widened match
-          case widened @ CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
-            val improvedCs =
-              if widened.isBoxed then ref.reach.singletonCaptureSet
-              else ref.singletonCaptureSet
-            widened.derivedCapturingType(p, improvedCs)
+          case widened @ CapturingType(p, refs)
+          if ref.singletonCaptureSet.mightSubcapture(refs) && !widened.isBoxed =>
+            widened.derivedCapturingType(p, ref.singletonCaptureSet)
               .showing(i"improve $widened to $result", capt)
           case _ => widened
       case _ => widened
