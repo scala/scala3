@@ -5116,17 +5116,11 @@ object Types extends TypeUtils {
      */
     private def currentEntry(using Context): Type = ctx.typerState.constraint.entry(origin)
 
-    /** For uninstantiated type variables: the lower bound */
-    def lowerBound(using Context): Type = currentEntry.loBound
-
-    /** For uninstantiated type variables: the upper bound */
-    def upperBound(using Context): Type = currentEntry.hiBound
-
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
-    def hasLowerBound(using Context): Boolean = !lowerBound.isExactlyNothing
+    def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean = !upperBound.isTopOfSomeKind
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isTopOfSomeKind
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
