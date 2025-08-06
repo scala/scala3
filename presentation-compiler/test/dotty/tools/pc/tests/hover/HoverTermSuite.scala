@@ -783,3 +783,78 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "val thisIsAVeryLongName: Int".hover
     )
+
+  @Test def `intersection_of_selectable-1` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-2` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val aa: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.a@@a
+         |""".stripMargin,
+      "val aa: Int & String".hover
+    )
+
+  @Test def `intersection_of_selectable-3` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type AB = A & B
+         |
+         |val ab: AB = Record().asInstanceOf[AB]
+         |val ab_a = ab.b@@b
+         |""".stripMargin,
+      "val bb: String".hover
+    )
+
+  @Test def `intersection_of_selectable-4` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type A = Record { val aa: Int }
+         |type B = Record { val bb: String }
+         |type C = Record { val cc: Float }
+         |type AB = A & B
+         |type ABC = AB & C
+         |
+         |val abc: ABC = Record().asInstanceOf[ABC]
+         |val abc_a = abc.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
+
+  @Test def `intersection_of_selectable-5` =
+    check(
+      """|class Record extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |
+         |type AL = List[Int] & Record { val aa: Int }
+         |
+         |val al: AL = ???.asInstanceOf[ABC]
+         |val al_a = al.a@@a
+         |""".stripMargin,
+      "val aa: Int".hover
+    )
