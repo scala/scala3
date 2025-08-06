@@ -152,9 +152,38 @@ object Capabilities:
     val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
       // fails initialization check without the @unchecked
 
+    /** Is this fresh cap (definitely) classified? If that's the case, the
+     *  classifier cannot be changed anymore.
+     *  We need to distinguish `FreshCap`s that can still be classified from
+     *  ones that cannot. Once a `FreshCap` is part of a constant capture set,
+     *  it gets classified by the type that prefixes the set and that classification
+     *  cannot be changed anymore. But other `FreshCap`s are created as members of
+     *  variable sets and then their classification status is open and can be
+     *  constrained further.
+     */
+    private[Capabilities] var isClassified = false
+
     override def equals(that: Any) = that match
       case that: FreshCap => this eq that
       case _ => false
+
+    /** Is this fresh cap at the right level to be able to subsume `ref`?
+     */
+    def acceptsLevelOf(ref: Capability)(using Context): Boolean =
+      if ccConfig.useFreshLevels && !CCState.collapseFresh then
+        val refOwner = ref.levelOwner
+        refOwner.isStaticOwner || ccOwner.isContainedIn(refOwner)
+      else ref.core match
+        case ResultCap(_) | _: ParamRef => false
+        case _ => true
+
+    /** Classify this FreshCap as `cls`, provided `isClassified` is still false.
+     *  @param  freeze  Deterermines future `isClassified` state.
+     */
+    def adoptClassifier(cls: ClassSymbol, freeze: Boolean)(using Context): Unit =
+      if !isClassified then
+        hiddenSet.adoptClassifier(cls)
+        if freeze then isClassified = true
 
     def descr(using Context) =
       val originStr = origin match
@@ -477,7 +506,7 @@ object Capabilities:
 
     def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
     def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-    def derivesFromSharable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Sharable)
+    def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -495,7 +524,11 @@ object Capabilities:
         def isProvisional = this.core match
           case core: TypeProxy => !core.underlying.exists || core.underlying.isProvisional
           case _ => false
-        if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || isProvisional then
+        if !ccConfig.cacheCaptureSetOfInfo
+            || !isCaptureChecking
+            || ctx.mode.is(Mode.IgnoreCaptures)
+            || isProvisional
+        then
           myCaptureSet = null
         else
           myCaptureSet = computed
@@ -524,7 +557,8 @@ object Capabilities:
           case Reach(_) =>
             captureSetOfInfo.transClassifiers
           case self: CoreCapability =>
-            joinClassifiers(toClassifiers(self.classifier), captureSetOfInfo.transClassifiers)
+            if self.derivesFromCapability then toClassifiers(self.classifier)
+            else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
           classifiersValid == currentId
       myClassifiers
@@ -534,7 +568,8 @@ object Capabilities:
       cls == defn.AnyClass
       || this.match
         case self: FreshCap =>
-          self.hiddenSet.tryClassifyAs(cls)
+          if self.isClassified then self.hiddenSet.classifier.derivesFrom(cls)
+          else self.hiddenSet.tryClassifyAs(cls)
         case self: RootCapability =>
           true
         case Restricted(_, cls1) =>
@@ -547,8 +582,8 @@ object Capabilities:
         case Reach(_) =>
           captureSetOfInfo.tryClassifyAs(cls)
         case self: CoreCapability =>
-          self.classifier.isSubClass(cls)
-          && captureSetOfInfo.tryClassifyAs(cls)
+          if self.derivesFromCapability then self.derivesFrom(cls)
+          else captureSetOfInfo.tryClassifyAs(cls)
 
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
       transClassifiers match
@@ -677,7 +712,7 @@ object Capabilities:
               case _ => true
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
-          || levelOK
+          || x.acceptsLevelOf(y)
               && ( y.tryClassifyAs(x.hiddenSet.classifier)
                    || { capt.println(i"$y cannot be classified as $x"); false }
               )
@@ -686,7 +721,7 @@ object Capabilities:
         case x: ResultCap =>
           val result = y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromSharable
+            case _ => y.derivesFromShared
           if !result then
             TypeComparer.addErrorNote(CaptureSet.ExistentialSubsumesFailure(x, y))
           result
@@ -696,7 +731,7 @@ object Capabilities:
             case _: ResultCap => false
             case _: FreshCap if CCState.collapseFresh => true
             case _ =>
-              y.derivesFromSharable
+              y.derivesFromShared
               || canAddHidden && vs != VarState.HardSeparate && CCState.capIsRoot
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)

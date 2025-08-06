@@ -1,4 +1,4 @@
-trait Async extends caps.Capability
+trait Async extends caps.SharedCapability
 
 class Future[+T](x: () => T)(using val a: Async)
 

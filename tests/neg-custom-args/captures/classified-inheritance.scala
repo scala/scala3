@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 
-class C1 extends caps.Control, caps.Sharable // OK
+class C1 extends caps.Control, caps.SharedCapability // OK
 
 class C2 extends caps.Control, caps.Mutable // error
 

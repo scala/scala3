@@ -5,8 +5,8 @@ import caps.*
 // Test inspired by the "Gentrification Gone too Far?" paper
 object Levels:
 
-  trait Read extends Classifier, Capability
-  trait ReadWrite extends Classifier, Capability
+  trait Read extends Classifier, SharedCapability
+  trait ReadWrite extends Classifier, SharedCapability
 
   trait File(val name: String):
     val r: Read^

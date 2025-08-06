@@ -1,6 +1,6 @@
 import annotation.{capability, constructorOnly}
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 class C(x: Cap, @constructorOnly y: Cap)
 

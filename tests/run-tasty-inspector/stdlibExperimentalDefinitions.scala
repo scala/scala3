@@ -38,8 +38,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.Contains$",
   "scala.caps.Contains$.containsImpl",
   "scala.caps.Exists",
+  "scala.caps.SharedCapability",
+  "scala.caps.ExclusiveCapability",
   "scala.caps.Mutable",
-  "scala.caps.Sharable",
+  "scala.caps.Read",
   "scala.caps.Control",
   "scala.caps.consume",
   "scala.caps.internal",
@@ -49,6 +51,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.unsafe",
   "scala.caps.unsafe$",
   "scala.caps.use",
+  "scala.caps.package$package$.Exclusive",
+  "scala.caps.package$package$.Shared",
 
   //// New feature: into
   "scala.Conversion$.into",
