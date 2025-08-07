@@ -1,5 +1,6 @@
 package scala
 
+import language.experimental.captureChecking
 
 /** A marker trait for objects that support structural selection via
  *  `selectDynamic` and `applyDynamic`

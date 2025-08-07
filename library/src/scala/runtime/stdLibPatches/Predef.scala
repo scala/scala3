@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.language.experimental.captureChecking
+
 import scala.annotation.experimental
 import scala.annotation.internal.RuntimeChecked
 
