@@ -4386,7 +4386,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             arg.tpe match
               case failed: AmbiguousImplicits =>
-                arg :: implicitArgs(formals1, argIndex + 1, pt)
+                arg :: implicitArgs(formals1, argIndex + 1, pt.deepenProtoTrans)
               case failed: SearchFailureType =>
                 lazy val defaultArg = findDefaultArgument(argIndex)
                   .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
