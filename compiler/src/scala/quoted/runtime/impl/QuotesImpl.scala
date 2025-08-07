@@ -369,6 +369,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term =
+        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValInLetFlags)
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs, flags)(using ctx.withOwner(owner))
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
+        Block(List(vdef), body(ref))
+
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
@@ -2863,7 +2869,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
-      private inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
+      private[QuotesImpl] inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
         xCheckMacroAssert(
           flags <= valid,
           s"Received invalid flags. Expected flags ${flags.show} to only contain a subset of ${valid.show}."
@@ -3250,7 +3256,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private[QuotesImpl] def validMethodFlags: Flags = Private | Protected | Override | Deferred | Final | Method | Implicit | Given | Local | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be allowed: Synthetic | ExtensionMethod | Exported | Erased | Infix | Invisible
       // Keep: aligned with Quotes's `newVal` doc
       private[QuotesImpl] def validValFlags: Flags = Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be added: Synthetic | Erased | Invisible
-
+      // Keep: aligned with Quotes's `let` doc
+      private[QuotesImpl] def validValInLetFlags: Flags = Final | Implicit | Lazy | Mutable | Given | Synthetic
       // Keep: aligned with Quotes's `newBind` doc
       private[QuotesImpl] def validBindFlags: Flags = Case // Flags that could be allowed: Implicit | Given | Erased
 

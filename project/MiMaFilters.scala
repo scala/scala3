@@ -22,8 +22,10 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
-        
+
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ValDefModule.let"),
       ),
 
       // Additions since last LTS
@@ -129,6 +131,7 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ValDefModule.let"),
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),
