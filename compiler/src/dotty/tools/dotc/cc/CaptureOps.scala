@@ -103,7 +103,7 @@ extension (tp: Type)
         case tp: TypeRef if tp.symbol == defn.Caps_CapSet =>
           // This can happen in cases where we try to type an eta expansion `$x => f($x)`
           // from a polymorphic target type using capture sets. In that case the parameter type
-          // of $x is not treated as inferred is approximated to CapSet. An example is
+          // of $x is not treated as inferred and is approximated to CapSet. An example is
           // capset-problem.scala. We handle these cases by appromxating to the empty set.
           Nil
         case _ =>

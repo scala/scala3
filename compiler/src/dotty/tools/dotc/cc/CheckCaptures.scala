@@ -2004,7 +2004,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 c.origin match
                   case Origin.Parameter(param) =>
                     report.error(
-                      em"Local $c created in type of $param leaks into capture scope of ${ownerStr(param.owner)}",
+                      em"Local $c created in type of $param leaks into capture scope${param.owner.qualString("of")}",
                       tree.srcPos)
                   case _ =>
                     check(c.hiddenSet)
