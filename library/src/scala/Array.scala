@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 //import scala.collection.generic._
 import scala.collection.{Factory, immutable, mutable}
@@ -71,7 +72,7 @@ object Array {
    *  @param  it the iterable collection
    *  @return    an array consisting of elements of the iterable collection
    */
-  def from[A : ClassTag](it: IterableOnce[A]): Array[A] = it match {
+  def from[A : ClassTag](it: IterableOnce[A]^): Array[A] = it match {
     case it: Iterable[A] => it.toArray[A]
     case _ => it.iterator.toArray[A]
   }

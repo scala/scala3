@@ -1,6 +1,6 @@
 - [ ] library/src/scala/AnyValCompanion.scala
 - [ ] library/src/scala/App.scala
-- [ ] library/src/scala/Array.scala
+- [x] library/src/scala/Array.scala
 - [ ] library/src/scala/Boolean.scala
 - [ ] library/src/scala/Byte.scala
 - [x] library/src/scala/CanEqual.scala
