@@ -1,4 +1,7 @@
 package scala
+
+import language.experimental.captureChecking
+
 import annotation.experimental
 import language.experimental.erasedDefinitions
 
