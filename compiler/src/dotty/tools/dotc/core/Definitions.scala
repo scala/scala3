@@ -2116,7 +2116,6 @@ class Definitions {
     Caps_Classifier, Caps_SharedCapability, Caps_Control, Caps_ExclusiveCapability, Caps_Mutable, Caps_Read,
     RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
-    Caps_Mutable, Caps_Sharable, Caps_Control, Caps_Classifier,
     ConsumeAnnot, UseAnnot, ReserveAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass,
     CapsInternalModule, CapsInternalModule.moduleClass,

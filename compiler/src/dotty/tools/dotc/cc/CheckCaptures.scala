@@ -493,7 +493,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case c1: CoreCapability =>
                 CaptureSet.ofType(c1.widen, followResult = true)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-          underlying.disallowRootCapability(NoSymbol): () =>
+          underlying.disallowBadRoots(NoSymbol): () =>
             report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `cap` as underlying capture set", tree.srcPos)
           recur(underlying, env, lastEnv)
 
@@ -555,7 +555,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             else if !ref.isType then i"\nYou could try to abstract the capabilities referred to by $c in a capset variable."
             else ""
           report.error(
-            em"$what $c leaks into capture scope${owner.qualString("of")}.$mitigation",
+            em"$what $c leaks into capture scope${ref.symbol.owner.qualString("of")}.$mitigation",
             pos)
         case _ =>
 
