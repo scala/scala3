@@ -19,6 +19,6 @@
    |          cap is a root capability associated with the result type of (_$1: File^?): Logger{val f: File^{_$1}}^{cap.rd, _$1}
    |
    |Note that capability C is not classified as trait SharedCapability, therefore it
-   |cannot be included in capture set ? of parameter _$1 of trait SharedCapability elements.
+   |cannot be included in capture set ? of parameter _$1 of SharedCapability elements.
    |
    | longer explanation available when compiling with `-explain`

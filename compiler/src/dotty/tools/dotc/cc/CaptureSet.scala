@@ -1306,7 +1306,7 @@ object CaptureSet:
                 |cannot be included in outer capture set $cs"""
           else if !elem.tryClassifyAs(cs.classifier) then
             i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
-                |cannot be included in capture set $cs of ${cs.classifier} elements"""
+                |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
           else if cs.isBadRoot(elem) then
             elem match
               case elem: FreshCap =>
