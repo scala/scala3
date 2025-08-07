@@ -1,0 +1,644 @@
+- [ ] library/src/scala/AnyValCompanion.scala
+- [ ] library/src/scala/App.scala
+- [ ] library/src/scala/Array.scala
+- [ ] library/src/scala/Boolean.scala
+- [ ] library/src/scala/Byte.scala
+- [x] library/src/scala/CanEqual.scala
+- [x] library/src/scala/CanThrow.scala
+- [ ] library/src/scala/Char.scala
+- [ ] library/src/scala/Console.scala
+- [x] library/src/scala/Conversion.scala
+- [ ] library/src/scala/DelayedInit.scala
+- [ ] library/src/scala/Double.scala
+- [ ] library/src/scala/DummyImplicit.scala
+- [ ] library/src/scala/Dynamic.scala
+- [ ] library/src/scala/Enumeration.scala
+- [ ] library/src/scala/Equals.scala
+- [ ] library/src/scala/Float.scala
+- [ ] library/src/scala/Function.scala
+- [ ] library/src/scala/Function0.scala
+- [ ] library/src/scala/Function1.scala
+- [ ] library/src/scala/Function10.scala
+- [ ] library/src/scala/Function11.scala
+- [ ] library/src/scala/Function12.scala
+- [ ] library/src/scala/Function13.scala
+- [ ] library/src/scala/Function14.scala
+- [ ] library/src/scala/Function15.scala
+- [ ] library/src/scala/Function16.scala
+- [ ] library/src/scala/Function17.scala
+- [ ] library/src/scala/Function18.scala
+- [ ] library/src/scala/Function19.scala
+- [ ] library/src/scala/Function2.scala
+- [ ] library/src/scala/Function20.scala
+- [ ] library/src/scala/Function21.scala
+- [ ] library/src/scala/Function22.scala
+- [ ] library/src/scala/Function3.scala
+- [ ] library/src/scala/Function4.scala
+- [ ] library/src/scala/Function5.scala
+- [ ] library/src/scala/Function6.scala
+- [ ] library/src/scala/Function7.scala
+- [ ] library/src/scala/Function8.scala
+- [ ] library/src/scala/Function9.scala
+- [x] library/src/scala/IArray.scala
+- [ ] library/src/scala/Int.scala
+- [ ] library/src/scala/Long.scala
+- [ ] library/src/scala/MatchError.scala
+- [x] library/src/scala/NamedTuple.scala
+- [ ] library/src/scala/NotImplementedError.scala
+- [ ] library/src/scala/Option.scala
+- [ ] library/src/scala/PartialFunction.scala
+- [x] library/src/scala/PolyFunction.scala
+- [x] library/src/scala/Precise.scala
+- [ ] library/src/scala/Predef.scala
+- [ ] library/src/scala/Product.scala
+- [ ] library/src/scala/Product1.scala
+- [ ] library/src/scala/Product10.scala
+- [ ] library/src/scala/Product11.scala
+- [ ] library/src/scala/Product12.scala
+- [ ] library/src/scala/Product13.scala
+- [ ] library/src/scala/Product14.scala
+- [ ] library/src/scala/Product15.scala
+- [ ] library/src/scala/Product16.scala
+- [ ] library/src/scala/Product17.scala
+- [ ] library/src/scala/Product18.scala
+- [ ] library/src/scala/Product19.scala
+- [ ] library/src/scala/Product2.scala
+- [ ] library/src/scala/Product20.scala
+- [ ] library/src/scala/Product21.scala
+- [ ] library/src/scala/Product22.scala
+- [ ] library/src/scala/Product3.scala
+- [ ] library/src/scala/Product4.scala
+- [ ] library/src/scala/Product5.scala
+- [ ] library/src/scala/Product6.scala
+- [ ] library/src/scala/Product7.scala
+- [ ] library/src/scala/Product8.scala
+- [ ] library/src/scala/Product9.scala
+- [ ] library/src/scala/Proxy.scala
+- [x] library/src/scala/Pure.scala
+- [x] library/src/scala/Selectable.scala
+- [ ] library/src/scala/SerialVersionUID.scala
+- [ ] library/src/scala/Short.scala
+- [ ] library/src/scala/Specializable.scala
+- [ ] library/src/scala/StringContext.scala
+- [ ] library/src/scala/Symbol.scala
+- [x] library/src/scala/Tuple.scala
+- [ ] library/src/scala/Tuple1.scala
+- [ ] library/src/scala/Tuple10.scala
+- [ ] library/src/scala/Tuple11.scala
+- [ ] library/src/scala/Tuple12.scala
+- [ ] library/src/scala/Tuple13.scala
+- [ ] library/src/scala/Tuple14.scala
+- [ ] library/src/scala/Tuple15.scala
+- [ ] library/src/scala/Tuple16.scala
+- [ ] library/src/scala/Tuple17.scala
+- [ ] library/src/scala/Tuple18.scala
+- [ ] library/src/scala/Tuple19.scala
+- [ ] library/src/scala/Tuple2.scala
+- [ ] library/src/scala/Tuple20.scala
+- [ ] library/src/scala/Tuple21.scala
+- [ ] library/src/scala/Tuple22.scala
+- [ ] library/src/scala/Tuple3.scala
+- [ ] library/src/scala/Tuple4.scala
+- [ ] library/src/scala/Tuple5.scala
+- [ ] library/src/scala/Tuple6.scala
+- [ ] library/src/scala/Tuple7.scala
+- [ ] library/src/scala/Tuple8.scala
+- [ ] library/src/scala/Tuple9.scala
+- [ ] library/src/scala/UninitializedError.scala
+- [ ] library/src/scala/UninitializedFieldError.scala
+- [ ] library/src/scala/Unit.scala
+- [ ] library/src/scala/ValueOf.scala
+- [ ] library/src/scala/annotation/Annotation.scala
+- [ ] library/src/scala/annotation/ClassfileAnnotation.scala
+- [ ] library/src/scala/annotation/ConstantAnnotation.scala
+- [x] library/src/scala/annotation/MacroAnnotation.scala
+- [x] library/src/scala/annotation/RefiningAnnotation.scala
+- [ ] library/src/scala/annotation/StaticAnnotation.scala
+- [ ] library/src/scala/annotation/TypeConstraint.scala
+- [x] library/src/scala/annotation/alpha.scala
+- [x] library/src/scala/annotation/capability.scala
+- [ ] library/src/scala/annotation/compileTimeOnly.scala
+- [x] library/src/scala/annotation/constructorOnly.scala
+- [ ] library/src/scala/annotation/elidable.scala
+- [x] library/src/scala/annotation/experimental.scala
+- [ ] library/src/scala/annotation/implicitAmbiguous.scala
+- [ ] library/src/scala/annotation/implicitNotFound.scala
+- [x] library/src/scala/annotation/init.scala
+- [x] library/src/scala/annotation/internal/$into.scala
+- [x] library/src/scala/annotation/internal/Alias.scala
+- [x] library/src/scala/annotation/internal/AnnotationDefault.scala
+- [x] library/src/scala/annotation/internal/AssignedNonLocally.scala
+- [x] library/src/scala/annotation/internal/Body.scala
+- [x] library/src/scala/annotation/internal/CaptureChecked.scala
+- [x] library/src/scala/annotation/internal/Child.scala
+- [x] library/src/scala/annotation/internal/ContextResultCount.scala
+- [x] library/src/scala/annotation/internal/ErasedParam.scala
+- [x] library/src/scala/annotation/internal/InlineParam.scala
+- [x] library/src/scala/annotation/internal/MappedAlternative.scala
+- [x] library/src/scala/annotation/internal/ProvisionalSuperClass.scala
+- [x] library/src/scala/annotation/internal/Repeated.scala
+- [x] library/src/scala/annotation/internal/RuntimeChecked.scala
+- [x] library/src/scala/annotation/internal/SourceFile.scala
+- [x] library/src/scala/annotation/internal/WithPureFuns.scala
+- [x] library/src/scala/annotation/internal/WitnessNames.scala
+- [ ] library/src/scala/annotation/internal/onlyCapability.scala
+- [x] library/src/scala/annotation/internal/preview.scala
+- [x] library/src/scala/annotation/internal/reachCapability.scala
+- [x] library/src/scala/annotation/internal/readOnlyCapability.scala
+- [x] library/src/scala/annotation/internal/requiresCapability.scala
+- [x] library/src/scala/annotation/internal/sharable.scala
+- [x] library/src/scala/annotation/internal/unshared.scala
+- [ ] library/src/scala/annotation/meta/beanGetter.scala
+- [ ] library/src/scala/annotation/meta/beanSetter.scala
+- [ ] library/src/scala/annotation/meta/companionClass.scala
+- [ ] library/src/scala/annotation/meta/companionMethod.scala
+- [ ] library/src/scala/annotation/meta/companionObject.scala
+- [ ] library/src/scala/annotation/meta/defaultArg.scala
+- [ ] library/src/scala/annotation/meta/field.scala
+- [ ] library/src/scala/annotation/meta/getter.scala
+- [ ] library/src/scala/annotation/meta/languageFeature.scala
+- [ ] library/src/scala/annotation/meta/package.scala
+- [ ] library/src/scala/annotation/meta/param.scala
+- [ ] library/src/scala/annotation/meta/setter.scala
+- [ ] library/src/scala/annotation/meta/superArg.scala
+- [ ] library/src/scala/annotation/migration.scala
+- [ ] library/src/scala/annotation/nowarn.scala
+- [x] library/src/scala/annotation/publicInBinary.scala
+- [x] library/src/scala/annotation/retains.scala
+- [x] library/src/scala/annotation/retainsByName.scala
+- [ ] library/src/scala/annotation/showAsInfix.scala
+- [ ] library/src/scala/annotation/stableNull.scala
+- [x] library/src/scala/annotation/static.scala
+- [ ] library/src/scala/annotation/strictfp.scala
+- [ ] library/src/scala/annotation/switch.scala
+- [ ] library/src/scala/annotation/tailrec.scala
+- [x] library/src/scala/annotation/targetName.scala
+- [x] library/src/scala/annotation/threadUnsafe.scala
+- [x] library/src/scala/annotation/transparentTrait.scala
+- [ ] library/src/scala/annotation/unchecked/uncheckedCapabilityLeaks.scala
+- [x] library/src/scala/annotation/unchecked/uncheckedCaptures.scala
+- [ ] library/src/scala/annotation/unchecked/uncheckedStable.scala
+- [ ] library/src/scala/annotation/unchecked/uncheckedVariance.scala
+- [x] library/src/scala/annotation/unroll.scala
+- [ ] library/src/scala/annotation/unspecialized.scala
+- [ ] library/src/scala/annotation/unused.scala
+- [ ] library/src/scala/annotation/varargs.scala
+- [ ] library/src/scala/beans/BeanProperty.scala
+- [ ] library/src/scala/beans/BooleanBeanProperty.scala
+- [x] library/src/scala/caps/package.scala
+- [ ] library/src/scala/collection/ArrayOps.scala
+- [ ] library/src/scala/collection/BitSet.scala
+- [ ] library/src/scala/collection/BufferedIterator.scala
+- [ ] library/src/scala/collection/BuildFrom.scala
+- [ ] library/src/scala/collection/DefaultMap.scala
+- [ ] library/src/scala/collection/Factory.scala
+- [ ] library/src/scala/collection/Hashing.scala
+- [ ] library/src/scala/collection/IndexedSeq.scala
+- [ ] library/src/scala/collection/IndexedSeqView.scala
+- [ ] library/src/scala/collection/Iterable.scala
+- [ ] library/src/scala/collection/IterableOnce.scala
+- [ ] library/src/scala/collection/Iterator.scala
+- [ ] library/src/scala/collection/JavaConverters.scala
+- [ ] library/src/scala/collection/LazyZipOps.scala
+- [ ] library/src/scala/collection/LinearSeq.scala
+- [ ] library/src/scala/collection/Map.scala
+- [ ] library/src/scala/collection/MapView.scala
+- [ ] library/src/scala/collection/Searching.scala
+- [ ] library/src/scala/collection/Seq.scala
+- [ ] library/src/scala/collection/SeqMap.scala
+- [ ] library/src/scala/collection/SeqView.scala
+- [ ] library/src/scala/collection/Set.scala
+- [ ] library/src/scala/collection/SortedMap.scala
+- [ ] library/src/scala/collection/SortedOps.scala
+- [ ] library/src/scala/collection/SortedSet.scala
+- [ ] library/src/scala/collection/Stepper.scala
+- [ ] library/src/scala/collection/StepperShape.scala
+- [ ] library/src/scala/collection/StrictOptimizedIterableOps.scala
+- [ ] library/src/scala/collection/StrictOptimizedMapOps.scala
+- [ ] library/src/scala/collection/StrictOptimizedSeqOps.scala
+- [ ] library/src/scala/collection/StrictOptimizedSetOps.scala
+- [ ] library/src/scala/collection/StrictOptimizedSortedMapOps.scala
+- [ ] library/src/scala/collection/StrictOptimizedSortedSetOps.scala
+- [ ] library/src/scala/collection/StringOps.scala
+- [ ] library/src/scala/collection/StringParsers.scala
+- [ ] library/src/scala/collection/View.scala
+- [ ] library/src/scala/collection/WithFilter.scala
+- [ ] library/src/scala/collection/concurrent/Map.scala
+- [ ] library/src/scala/collection/concurrent/TrieMap.scala
+- [ ] library/src/scala/collection/convert/AsJavaConverters.scala
+- [ ] library/src/scala/collection/convert/AsJavaExtensions.scala
+- [ ] library/src/scala/collection/convert/AsScalaConverters.scala
+- [ ] library/src/scala/collection/convert/AsScalaExtensions.scala
+- [ ] library/src/scala/collection/convert/ImplicitConversions.scala
+- [ ] library/src/scala/collection/convert/JavaCollectionWrappers.scala
+- [ ] library/src/scala/collection/convert/StreamExtensions.scala
+- [ ] library/src/scala/collection/convert/impl/ArrayStepper.scala
+- [ ] library/src/scala/collection/convert/impl/BinaryTreeStepper.scala
+- [ ] library/src/scala/collection/convert/impl/BitSetStepper.scala
+- [ ] library/src/scala/collection/convert/impl/ChampStepper.scala
+- [ ] library/src/scala/collection/convert/impl/InOrderStepperBase.scala
+- [ ] library/src/scala/collection/convert/impl/IndexedSeqStepper.scala
+- [ ] library/src/scala/collection/convert/impl/IndexedStepperBase.scala
+- [ ] library/src/scala/collection/convert/impl/IteratorStepper.scala
+- [ ] library/src/scala/collection/convert/impl/NumericRangeStepper.scala
+- [ ] library/src/scala/collection/convert/impl/RangeStepper.scala
+- [ ] library/src/scala/collection/convert/impl/StringStepper.scala
+- [ ] library/src/scala/collection/convert/impl/TableStepper.scala
+- [ ] library/src/scala/collection/convert/impl/VectorStepper.scala
+- [ ] library/src/scala/collection/generic/BitOperations.scala
+- [ ] library/src/scala/collection/generic/CommonErrors.scala
+- [ ] library/src/scala/collection/generic/DefaultSerializationProxy.scala
+- [ ] library/src/scala/collection/generic/IsIterable.scala
+- [ ] library/src/scala/collection/generic/IsIterableOnce.scala
+- [ ] library/src/scala/collection/generic/IsMap.scala
+- [ ] library/src/scala/collection/generic/IsSeq.scala
+- [ ] library/src/scala/collection/generic/Subtractable.scala
+- [ ] library/src/scala/collection/generic/package.scala
+- [ ] library/src/scala/collection/immutable/ArraySeq.scala
+- [ ] library/src/scala/collection/immutable/BitSet.scala
+- [ ] library/src/scala/collection/immutable/ChampCommon.scala
+- [ ] library/src/scala/collection/immutable/HashMap.scala
+- [ ] library/src/scala/collection/immutable/HashSet.scala
+- [ ] library/src/scala/collection/immutable/IntMap.scala
+- [ ] library/src/scala/collection/immutable/Iterable.scala
+- [ ] library/src/scala/collection/immutable/LazyList.scala
+- [ ] library/src/scala/collection/immutable/List.scala
+- [ ] library/src/scala/collection/immutable/ListMap.scala
+- [ ] library/src/scala/collection/immutable/ListSet.scala
+- [ ] library/src/scala/collection/immutable/LongMap.scala
+- [ ] library/src/scala/collection/immutable/Map.scala
+- [ ] library/src/scala/collection/immutable/NumericRange.scala
+- [ ] library/src/scala/collection/immutable/Queue.scala
+- [ ] library/src/scala/collection/immutable/Range.scala
+- [ ] library/src/scala/collection/immutable/RedBlackTree.scala
+- [ ] library/src/scala/collection/immutable/Seq.scala
+- [ ] library/src/scala/collection/immutable/SeqMap.scala
+- [ ] library/src/scala/collection/immutable/Set.scala
+- [ ] library/src/scala/collection/immutable/SortedMap.scala
+- [ ] library/src/scala/collection/immutable/SortedSet.scala
+- [ ] library/src/scala/collection/immutable/Stream.scala
+- [ ] library/src/scala/collection/immutable/StrictOptimizedSeqOps.scala
+- [ ] library/src/scala/collection/immutable/TreeMap.scala
+- [ ] library/src/scala/collection/immutable/TreeSeqMap.scala
+- [ ] library/src/scala/collection/immutable/TreeSet.scala
+- [ ] library/src/scala/collection/immutable/Vector.scala
+- [ ] library/src/scala/collection/immutable/VectorMap.scala
+- [ ] library/src/scala/collection/immutable/WrappedString.scala
+- [ ] library/src/scala/collection/immutable/package.scala
+- [ ] library/src/scala/collection/mutable/AnyRefMap.scala
+- [ ] library/src/scala/collection/mutable/ArrayBuffer.scala
+- [ ] library/src/scala/collection/mutable/ArrayBuilder.scala
+- [ ] library/src/scala/collection/mutable/ArrayDeque.scala
+- [ ] library/src/scala/collection/mutable/ArraySeq.scala
+- [ ] library/src/scala/collection/mutable/BitSet.scala
+- [ ] library/src/scala/collection/mutable/Buffer.scala
+- [ ] library/src/scala/collection/mutable/Builder.scala
+- [ ] library/src/scala/collection/mutable/CheckedIndexedSeqView.scala
+- [ ] library/src/scala/collection/mutable/Cloneable.scala
+- [ ] library/src/scala/collection/mutable/CollisionProofHashMap.scala
+- [ ] library/src/scala/collection/mutable/Growable.scala
+- [ ] library/src/scala/collection/mutable/GrowableBuilder.scala
+- [ ] library/src/scala/collection/mutable/HashMap.scala
+- [ ] library/src/scala/collection/mutable/HashSet.scala
+- [ ] library/src/scala/collection/mutable/HashTable.scala
+- [ ] library/src/scala/collection/mutable/ImmutableBuilder.scala
+- [ ] library/src/scala/collection/mutable/IndexedSeq.scala
+- [ ] library/src/scala/collection/mutable/Iterable.scala
+- [ ] library/src/scala/collection/mutable/LinkedHashMap.scala
+- [ ] library/src/scala/collection/mutable/LinkedHashSet.scala
+- [ ] library/src/scala/collection/mutable/ListBuffer.scala
+- [ ] library/src/scala/collection/mutable/ListMap.scala
+- [ ] library/src/scala/collection/mutable/LongMap.scala
+- [ ] library/src/scala/collection/mutable/Map.scala
+- [ ] library/src/scala/collection/mutable/MultiMap.scala
+- [ ] library/src/scala/collection/mutable/MutationTracker.scala
+- [ ] library/src/scala/collection/mutable/OpenHashMap.scala
+- [ ] library/src/scala/collection/mutable/PriorityQueue.scala
+- [ ] library/src/scala/collection/mutable/Queue.scala
+- [ ] library/src/scala/collection/mutable/RedBlackTree.scala
+- [ ] library/src/scala/collection/mutable/ReusableBuilder.scala
+- [ ] library/src/scala/collection/mutable/Seq.scala
+- [ ] library/src/scala/collection/mutable/SeqMap.scala
+- [ ] library/src/scala/collection/mutable/Set.scala
+- [ ] library/src/scala/collection/mutable/Shrinkable.scala
+- [ ] library/src/scala/collection/mutable/SortedMap.scala
+- [ ] library/src/scala/collection/mutable/SortedSet.scala
+- [ ] library/src/scala/collection/mutable/Stack.scala
+- [ ] library/src/scala/collection/mutable/StringBuilder.scala
+- [ ] library/src/scala/collection/mutable/TreeMap.scala
+- [ ] library/src/scala/collection/mutable/TreeSet.scala
+- [ ] library/src/scala/collection/mutable/UnrolledBuffer.scala
+- [ ] library/src/scala/collection/mutable/WeakHashMap.scala
+- [ ] library/src/scala/collection/mutable/package.scala
+- [ ] library/src/scala/collection/package.scala
+- [ ] library/src/scala/compat/Platform.scala
+- [ ] library/src/scala/compiletime/Erased.scala
+- [x] library/src/scala/compiletime/ops/any.scala
+- [x] library/src/scala/compiletime/ops/boolean.scala
+- [x] library/src/scala/compiletime/ops/double.scala
+- [x] library/src/scala/compiletime/ops/float.scala
+- [x] library/src/scala/compiletime/ops/int.scala
+- [x] library/src/scala/compiletime/ops/long.scala
+- [x] library/src/scala/compiletime/ops/string.scala
+- [x] library/src/scala/compiletime/package.scala
+- [x] library/src/scala/compiletime/testing/Error.scala
+- [x] library/src/scala/compiletime/testing/ErrorKind.scala
+- [x] library/src/scala/compiletime/testing/package.scala
+- [ ] library/src/scala/concurrent/Awaitable.scala
+- [ ] library/src/scala/concurrent/BatchingExecutor.scala
+- [ ] library/src/scala/concurrent/BlockContext.scala
+- [ ] library/src/scala/concurrent/Channel.scala
+- [ ] library/src/scala/concurrent/DelayedLazyVal.scala
+- [ ] library/src/scala/concurrent/ExecutionContext.scala
+- [ ] library/src/scala/concurrent/Future.scala
+- [ ] library/src/scala/concurrent/JavaConversions.scala
+- [ ] library/src/scala/concurrent/Promise.scala
+- [ ] library/src/scala/concurrent/SyncChannel.scala
+- [ ] library/src/scala/concurrent/SyncVar.scala
+- [ ] library/src/scala/concurrent/duration/Deadline.scala
+- [ ] library/src/scala/concurrent/duration/Duration.scala
+- [ ] library/src/scala/concurrent/duration/DurationConversions.scala
+- [ ] library/src/scala/concurrent/duration/package.scala
+- [ ] library/src/scala/concurrent/impl/ExecutionContextImpl.scala
+- [ ] library/src/scala/concurrent/impl/FutureConvertersImpl.scala
+- [ ] library/src/scala/concurrent/impl/Promise.scala
+- [ ] library/src/scala/concurrent/package.scala
+- [ ] library/src/scala/deprecated.scala
+- [ ] library/src/scala/deprecatedInheritance.scala
+- [ ] library/src/scala/deprecatedName.scala
+- [ ] library/src/scala/deprecatedOverriding.scala
+- [ ] library/src/scala/inline.scala
+- [ ] library/src/scala/io/AnsiColor.scala
+- [ ] library/src/scala/io/BufferedSource.scala
+- [ ] library/src/scala/io/Codec.scala
+- [ ] library/src/scala/io/Position.scala
+- [ ] library/src/scala/io/Source.scala
+- [ ] library/src/scala/io/StdIn.scala
+- [ ] library/src/scala/jdk/Accumulator.scala
+- [ ] library/src/scala/jdk/AnyAccumulator.scala
+- [ ] library/src/scala/jdk/CollectionConverters.scala
+- [ ] library/src/scala/jdk/DoubleAccumulator.scala
+- [ ] library/src/scala/jdk/DurationConverters.scala
+- [ ] library/src/scala/jdk/FunctionConverters.scala
+- [ ] library/src/scala/jdk/FunctionExtensions.scala
+- [ ] library/src/scala/jdk/FunctionWrappers.scala
+- [ ] library/src/scala/jdk/FutureConverters.scala
+- [ ] library/src/scala/jdk/IntAccumulator.scala
+- [ ] library/src/scala/jdk/LongAccumulator.scala
+- [ ] library/src/scala/jdk/OptionConverters.scala
+- [ ] library/src/scala/jdk/OptionShape.scala
+- [ ] library/src/scala/jdk/StreamConverters.scala
+- [ ] library/src/scala/jdk/javaapi/CollectionConverters.scala
+- [ ] library/src/scala/jdk/javaapi/DurationConverters.scala
+- [ ] library/src/scala/jdk/javaapi/FunctionConverters.scala
+- [ ] library/src/scala/jdk/javaapi/FutureConverters.scala
+- [ ] library/src/scala/jdk/javaapi/OptionConverters.scala
+- [ ] library/src/scala/jdk/javaapi/StreamConverters.scala
+- [ ] library/src/scala/jdk/package.scala
+- [ ] library/src/scala/language.scala
+- [ ] library/src/scala/languageFeature.scala
+- [x] library/src/scala/main.scala
+- [ ] library/src/scala/math/BigDecimal.scala
+- [ ] library/src/scala/math/BigInt.scala
+- [ ] library/src/scala/math/Equiv.scala
+- [ ] library/src/scala/math/Fractional.scala
+- [ ] library/src/scala/math/Integral.scala
+- [ ] library/src/scala/math/Numeric.scala
+- [ ] library/src/scala/math/Ordered.scala
+- [ ] library/src/scala/math/Ordering.scala
+- [ ] library/src/scala/math/PartialOrdering.scala
+- [ ] library/src/scala/math/PartiallyOrdered.scala
+- [ ] library/src/scala/math/ScalaNumericConversions.scala
+- [ ] library/src/scala/math/package.scala
+- [ ] library/src/scala/native.scala
+- [ ] library/src/scala/noinline.scala
+- [ ] library/src/scala/package.scala
+- [x] library/src/scala/quoted/Expr.scala
+- [x] library/src/scala/quoted/ExprMap.scala
+- [x] library/src/scala/quoted/Exprs.scala
+- [x] library/src/scala/quoted/FromExpr.scala
+- [x] library/src/scala/quoted/Quotes.scala
+- [x] library/src/scala/quoted/ToExpr.scala
+- [x] library/src/scala/quoted/Type.scala
+- [x] library/src/scala/quoted/Varargs.scala
+- [x] library/src/scala/quoted/runtime/Expr.scala
+- [x] library/src/scala/quoted/runtime/Patterns.scala
+- [x] library/src/scala/quoted/runtime/QuoteMatching.scala
+- [x] library/src/scala/quoted/runtime/QuoteUnpickler.scala
+- [x] library/src/scala/quoted/runtime/SplicedType.scala
+- [x] library/src/scala/quoted/runtime/StopMacroExpansion.scala
+- [ ] library/src/scala/ref/PhantomReference.scala
+- [ ] library/src/scala/ref/Reference.scala
+- [ ] library/src/scala/ref/ReferenceQueue.scala
+- [ ] library/src/scala/ref/ReferenceWrapper.scala
+- [ ] library/src/scala/ref/SoftReference.scala
+- [ ] library/src/scala/ref/WeakReference.scala
+- [ ] library/src/scala/reflect/ClassManifestDeprecatedApis.scala
+- [ ] library/src/scala/reflect/ClassTag.scala
+- [x] library/src/scala/reflect/Enum.scala
+- [ ] library/src/scala/reflect/Manifest.scala
+- [ ] library/src/scala/reflect/NameTransformer.scala
+- [ ] library/src/scala/reflect/NoManifest.scala
+- [ ] library/src/scala/reflect/OptManifest.scala
+- [x] library/src/scala/reflect/Selectable.scala
+- [x] library/src/scala/reflect/TypeTest.scala
+- [x] library/src/scala/reflect/Typeable.scala
+- [ ] library/src/scala/reflect/macros/internal/macroImpl.scala
+- [ ] library/src/scala/reflect/package.scala
+- [x] library/src/scala/runtime/$throws.scala
+- [ ] library/src/scala/runtime/AbstractFunction0.scala
+- [ ] library/src/scala/runtime/AbstractFunction1.scala
+- [ ] library/src/scala/runtime/AbstractFunction10.scala
+- [ ] library/src/scala/runtime/AbstractFunction11.scala
+- [ ] library/src/scala/runtime/AbstractFunction12.scala
+- [ ] library/src/scala/runtime/AbstractFunction13.scala
+- [ ] library/src/scala/runtime/AbstractFunction14.scala
+- [ ] library/src/scala/runtime/AbstractFunction15.scala
+- [ ] library/src/scala/runtime/AbstractFunction16.scala
+- [ ] library/src/scala/runtime/AbstractFunction17.scala
+- [ ] library/src/scala/runtime/AbstractFunction18.scala
+- [ ] library/src/scala/runtime/AbstractFunction19.scala
+- [ ] library/src/scala/runtime/AbstractFunction2.scala
+- [ ] library/src/scala/runtime/AbstractFunction20.scala
+- [ ] library/src/scala/runtime/AbstractFunction21.scala
+- [ ] library/src/scala/runtime/AbstractFunction22.scala
+- [ ] library/src/scala/runtime/AbstractFunction3.scala
+- [ ] library/src/scala/runtime/AbstractFunction4.scala
+- [ ] library/src/scala/runtime/AbstractFunction5.scala
+- [ ] library/src/scala/runtime/AbstractFunction6.scala
+- [ ] library/src/scala/runtime/AbstractFunction7.scala
+- [ ] library/src/scala/runtime/AbstractFunction8.scala
+- [ ] library/src/scala/runtime/AbstractFunction9.scala
+- [ ] library/src/scala/runtime/AbstractPartialFunction.scala
+- [ ] library/src/scala/runtime/ArrayCharSequence.scala
+- [x] library/src/scala/runtime/Arrays.scala
+- [ ] library/src/scala/runtime/ClassValueCompat.scala
+- [x] library/src/scala/runtime/EnumValue.scala
+- [x] library/src/scala/runtime/FunctionXXL.scala
+- [ ] library/src/scala/runtime/LambdaDeserialize.scala
+- [ ] library/src/scala/runtime/LambdaDeserializer.scala
+- [ ] library/src/scala/runtime/LazyRef.scala
+- [x] library/src/scala/runtime/LazyVals.scala
+- [x] library/src/scala/runtime/MatchCase.scala
+- [ ] library/src/scala/runtime/MethodCache.scala
+- [ ] library/src/scala/runtime/ModuleSerializationProxy.scala
+- [ ] library/src/scala/runtime/NonLocalReturnControl.scala
+- [ ] library/src/scala/runtime/Nothing$.scala
+- [ ] library/src/scala/runtime/Null$.scala
+- [ ] library/src/scala/runtime/PStatics.scala
+- [ ] library/src/scala/runtime/RichBoolean.scala
+- [ ] library/src/scala/runtime/RichByte.scala
+- [ ] library/src/scala/runtime/RichChar.scala
+- [ ] library/src/scala/runtime/RichDouble.scala
+- [ ] library/src/scala/runtime/RichFloat.scala
+- [ ] library/src/scala/runtime/RichInt.scala
+- [ ] library/src/scala/runtime/RichLong.scala
+- [ ] library/src/scala/runtime/RichShort.scala
+- [x] library/src/scala/runtime/Scala3RunTime.scala
+- [ ] library/src/scala/runtime/ScalaNumberProxy.scala
+- [ ] library/src/scala/runtime/ScalaRunTime.scala
+- [ ] library/src/scala/runtime/StructuralCallSite.scala
+- [ ] library/src/scala/runtime/Tuple2Zipped.scala
+- [ ] library/src/scala/runtime/Tuple3Zipped.scala
+- [x] library/src/scala/runtime/TupleMirror.scala
+- [x] library/src/scala/runtime/TupleXXL.scala
+- [x] library/src/scala/runtime/TupledFunctions.scala
+- [x] library/src/scala/runtime/Tuples.scala
+- [x] library/src/scala/runtime/TypeBox.scala
+- [x] library/src/scala/runtime/coverage/Invoker.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcB$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcC$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcS$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcV$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction0$mcZ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcDF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcFD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcFF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcFI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcFJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcIF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcJF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcJJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcVD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcVF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcVI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcVJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcZD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcZF$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcZI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction1$mcZJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcDJJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcFJJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcIJJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcJJJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcVJJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZDD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZDI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZDJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZID$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZII$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZIJ$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZJD$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZJI$sp.scala
+- [ ] library/src/scala/runtime/java8/JFunction2$mcZJJ$sp.scala
+- [x] library/src/scala/runtime/stdLibPatches/Predef.scala
+- [x] library/src/scala/runtime/stdLibPatches/language.scala
+- [ ] library/src/scala/specialized.scala
+- [ ] library/src/scala/sys/BooleanProp.scala
+- [ ] library/src/scala/sys/Prop.scala
+- [ ] library/src/scala/sys/PropImpl.scala
+- [ ] library/src/scala/sys/ShutdownHookThread.scala
+- [ ] library/src/scala/sys/SystemProperties.scala
+- [ ] library/src/scala/sys/package.scala
+- [ ] library/src/scala/sys/process/BasicIO.scala
+- [ ] library/src/scala/sys/process/Parser.scala
+- [ ] library/src/scala/sys/process/Process.scala
+- [ ] library/src/scala/sys/process/ProcessBuilder.scala
+- [ ] library/src/scala/sys/process/ProcessBuilderImpl.scala
+- [ ] library/src/scala/sys/process/ProcessIO.scala
+- [ ] library/src/scala/sys/process/ProcessImpl.scala
+- [ ] library/src/scala/sys/process/ProcessLogger.scala
+- [ ] library/src/scala/sys/process/package.scala
+- [ ] library/src/scala/throws.scala
+- [ ] library/src/scala/transient.scala
+- [ ] library/src/scala/typeConstraints.scala
+- [ ] library/src/scala/unchecked.scala
+- [ ] library/src/scala/util/ChainingOps.scala
+- [x] library/src/scala/util/CommandLineParser.scala
+- [ ] library/src/scala/util/DynamicVariable.scala
+- [ ] library/src/scala/util/Either.scala
+- [x] library/src/scala/util/FromDigits.scala
+- [x] library/src/scala/util/NotGiven.scala
+- [ ] library/src/scala/util/Properties.scala
+- [ ] library/src/scala/util/Random.scala
+- [ ] library/src/scala/util/Sorting.scala
+- [ ] library/src/scala/util/Try.scala
+- [x] library/src/scala/util/TupledFunction.scala
+- [ ] library/src/scala/util/Using.scala
+- [x] library/src/scala/util/boundary.scala
+- [ ] library/src/scala/util/control/Breaks.scala
+- [ ] library/src/scala/util/control/ControlThrowable.scala
+- [ ] library/src/scala/util/control/Exception.scala
+- [ ] library/src/scala/util/control/NoStackTrace.scala
+- [ ] library/src/scala/util/control/NonFatal.scala
+- [x] library/src/scala/util/control/NonLocalReturns.scala
+- [ ] library/src/scala/util/control/TailCalls.scala
+- [ ] library/src/scala/util/hashing/ByteswapHashing.scala
+- [ ] library/src/scala/util/hashing/Hashing.scala
+- [ ] library/src/scala/util/hashing/MurmurHash3.scala
+- [ ] library/src/scala/util/hashing/package.scala
+- [ ] library/src/scala/util/matching/Regex.scala
+- [ ] library/src/scala/util/package.scala
+- [ ] library/src/scala/volatile.scala
