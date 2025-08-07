@@ -1525,18 +1525,34 @@ class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion
        |are possible expansions of $tree"""
   def explain(using Context) = ""
 
-class ReassignmentToVal(name: Name)(using Context)
-  extends TypeMsg(ReassignmentToValID) {
-  def msg(using Context) = i"""Reassignment to val $name"""
+class ReassignmentToVal(sym: Symbol, usage: Name, rhs: untpd.Tree)(using Context) extends TypeMsg(ReassignmentToValID):
+  val isSetter = usage.isSetterName && sym.info.firstParamTypes.nonEmpty
+  def msg(using Context) =
+    if isSetter then i"Bad assignment to setter should use $usage($rhs)"
+    else if sym.exists then i"Assignment to $sym"
+    else i"Bad assignment to $usage"
   def explain(using Context) =
-    i"""|You can not assign a new value to $name as values can't be changed.
-        |Keep in mind that every statement has a value, so you may e.g. use
-        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
-        |In case you need a reassignable name, you can declare it as
-        |variable
-        |  ${hl("var")} $name ${hl("=")} ...
-        |"""
-}
+    val name =
+      if isSetter then usage.asSimpleName.dropRight(2)
+      else if sym.exists then sym.name
+      else usage
+    if isSetter then
+      i"""|$usage is a setter name and can be used with assignment syntax:
+          |  $name = $rhs
+          |"""
+    else
+      val addendum = if !sym.exists || !sym.owner.isClass || sym.isSetter then "" else
+        i"""|
+            |Assignment syntax can be used if there is a corresponding setter of the form:
+            |  ${hl("def")} ${name}${hl(i"_=(x: ${sym.info.resultType}): Unit = ???")}
+            |"""
+      i"""|Members defined using `val` or `def` can't be assigned to.
+          |If you need to change the value of $name, use `var` instead:
+          |  ${hl("var")} $name ${hl("=")} ???
+          |However, it's more common to initialize a variable just once
+          |with a complex expression or even a block with many statements:
+          |  ${hl("val")} $name ${hl("= if (condition) 1 else -1")}$addendum
+          |"""
 
 class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
   extends TypeMsg(TypeDoesNotTakeParametersID) {
