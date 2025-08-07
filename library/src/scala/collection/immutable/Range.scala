@@ -91,10 +91,11 @@ sealed abstract class Range(
   def isInclusive: Boolean
 
   final override val isEmpty: Boolean = (
-    (start > end && step > 0)
-      || (start < end && step < 0)
-      || (start == end && !isInclusive)
-    )
+    if (isInclusive)
+      (if (step >= 0) start > end else start < end)
+    else
+      (if (step >= 0) start >= end else start <= end)
+  )
 
   private[this] val numRangeElements: Int = {
     if (step == 0) throw new IllegalArgumentException("step cannot be 0.")
