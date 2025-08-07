@@ -1243,4 +1243,61 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin
     )
+
+  @Test def `default-parameter` =
+    check(
+      """|object Main {
+         |  def foo(a: Int, b: Int = 2) = a + b
+         |  val x = foo(1)
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def foo(a: Int, b: Int = 2)/*: Int<<scala/Int#>>*/ = a + b
+         |  val x/*: Int<<scala/Int#>>*/ = foo(/*a = */1)
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `default-parameter-2` =
+    check(
+      """|object Main {
+         |  def foo(a: Int = 10, b: Int = 2) = a + b
+         |  val x = foo(b = 1)
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def foo(a: Int = 10, b: Int = 2)/*: Int<<scala/Int#>>*/ = a + b
+         |  val x/*: Int<<scala/Int#>>*/ = foo(b = 1)
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `default-parameter-3` =
+    check(
+      """|object Main {
+         |  def foo(a: Int, b: Int = 2, c: Int) = a + b + c
+         |  val x = foo(a = 1, c = 2)
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def foo(a: Int, b: Int = 2, c: Int)/*: Int<<scala/Int#>>*/ = a + b + c
+         |  val x/*: Int<<scala/Int#>>*/ = foo(a = 1, c = 2)
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `default-parameter-4` =
+    check(
+      """|object Main {
+         |  def foo(a: Int, b: Int = 2, c: Int) = a + b + c
+         |  val x = foo(1, 2, 3)
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  def foo(a: Int, b: Int = 2, c: Int)/*: Int<<scala/Int#>>*/ = a + b + c
+         |  val x/*: Int<<scala/Int#>>*/ = foo(/*a = */1, /*b = */2, /*c = */3)
+         |}
+         |""".stripMargin
+    )
+
 }
