@@ -89,7 +89,7 @@ object NamedTuple:
   /** The type of the named tuple `X` mapped with the type-level function `F`.
    *  If `X = (n1 : T1, ..., ni : Ti)` then `Map[X, F] = `(n1 : F[T1], ..., ni : F[Ti])`.
    */
-  type Map[X <: AnyNamedTuple, F[_]] =
+  type Map[X <: AnyNamedTuple, F[_ <: Tuple.Union[DropNames[X]]]] =
     NamedTuple[Names[X], Tuple.Map[DropNames[X], F]]
 
   /** A named tuple with the elements of tuple `X` in reversed order */
