@@ -24,14 +24,12 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
  *
  * Capability has exactly two subtraits: Shared and Exclusive.
  */
-@experimental
 sealed trait Capability extends Any
 
 /** A marker trait for classifier capabilities that can appear in `.only`
  *  qualifiers. Capability classes directly extending `Classifier` are treated
  *  as classifier capbilities
  */
-@experimental
 trait Classifier
 
 /** The universal capture reference. */
@@ -41,7 +39,6 @@ object cap extends Capability
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  * During separation checking, shared capabilities are not taken into account.
  */
-@experimental
 trait SharedCapability extends Capability, Classifier
 
 @experimental
@@ -58,7 +55,6 @@ type Exclusive = ExclusiveCapability
 /** Base trait for capabilities that capture some continuation or return point in
  *  the stack. Examples are exceptions, labels, Async, CanThrow.
  */
-@experimental
 trait Control extends SharedCapability, Classifier
 
 /** Marker trait for classes with methods that require an exclusive reference. */
