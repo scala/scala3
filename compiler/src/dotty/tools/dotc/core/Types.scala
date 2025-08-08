@@ -6073,7 +6073,7 @@ object Types extends TypeUtils {
     protected def range(lo: Type, hi: Type): Type =
       if variance > 0 then hi
       else if variance < 0 then
-        if (lo eq defn.NothingType) && hi.hasSimpleKind then
+        if (lo eq defn.NothingType) then
           // Approximate by Nothing & hi instead of just Nothing, in case the
           // approximated type is used as the prefix of another type (this would
           // lead to a type with a `NoDenotation` denot and a possible
@@ -6084,8 +6084,14 @@ object Types extends TypeUtils {
           // example if Nothing is the type of a parameter being depended on in
           // a MethodType)
           //
-          // Test case in tests/pos/i23530.scala
-          AndType(lo, hi)
+          // Test case in tests/pos/i23530.scala (and tests/pos/i23627.scala for
+          // the higher-kinded case which requires eta-expansion)
+          hi.etaExpand match
+            case expandedHi: HKTypeLambda =>
+              expandedHi.derivedLambdaType(resType = AndType(lo, expandedHi.resType))
+            case _ =>
+              // simple-kinded case
+              AndType(lo, hi)
         else
           lo
       else if lo `eq` hi then lo
