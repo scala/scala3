@@ -198,7 +198,7 @@ object Capabilities:
       i"a fresh root capability$classifierStr$originStr"
 
   object FreshCap:
-    def apply(origin: Origin)(using Context): FreshCap | GlobalCap.type =
+    def apply(origin: Origin)(using Context): FreshCap =
       FreshCap(ctx.owner, origin)
 
   /** A root capability associated with a function type. These are conceptually
@@ -837,6 +837,7 @@ object Capabilities:
     case Formal(pref: ParamRef, app: tpd.Apply)
     case ResultInstance(methType: Type, meth: Symbol)
     case UnapplyInstance(info: MethodType)
+    case LocalInstance(restpe: Type)
     case NewMutable(tp: Type)
     case NewCapability(tp: Type)
     case LambdaExpected(respt: Type)
@@ -865,6 +866,8 @@ object Capabilities:
         i" when instantiating $methDescr$mt"
       case UnapplyInstance(info) =>
         i" when instantiating argument of unapply with type $info"
+      case LocalInstance(restpe) =>
+        i" when instantiating expected result type $restpe of function literal"
       case NewMutable(tp) =>
         i" when constructing mutable $tp"
       case NewCapability(tp) =>
@@ -977,78 +980,76 @@ object Capabilities:
     subst(tp)
   end resultToFresh
 
+  abstract class CapMap(using Context) extends BiTypeMap:
+    override def mapOver(t: Type): Type = t match
+      case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
+        t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
+      case t: (LazyRef | TypeVar) =>
+        mapConserveSuper(t)
+      case _ =>
+        super.mapOver(t)
+
+  class ToResult(localResType: Type, mt: MethodicType, fail: Message => Unit)(using Context) extends CapMap:
+
+    def apply(t: Type) = t match
+      case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
+        if variance > 0 then
+          super.mapOver:
+            defn.FunctionNOf(args, res, contextual)
+              .capturing(ResultCap(mt).singletonCaptureSet)
+        else mapOver(t)
+      case _ =>
+        mapOver(t)
+
+    override def mapCapability(c: Capability, deep: Boolean) = c match
+      case c: (FreshCap | GlobalCap.type) =>
+        if variance > 0 then
+          val res = ResultCap(mt)
+          c match
+            case c: FreshCap => res.setOrigin(c)
+            case _ =>
+          res
+        else
+          if variance == 0 then
+            fail(em"""$localResType captures the root capability `cap` in invariant position.
+                      |This capability cannot be converted to an existential in the result type of a function.""")
+          // we accept variance < 0, and leave the cap as it is
+          c
+      case _ =>
+        super.mapCapability(c, deep)
+
+      //.showing(i"mapcap $t = $result")
+    override def toString = "toVar"
+
+    object inverse extends BiTypeMap:
+      def apply(t: Type) = mapOver(t)
+
+      override def mapCapability(c: Capability, deep: Boolean) = c match
+        case c @ ResultCap(`mt`) =>
+          // do a reverse getOrElseUpdate on `seen` to produce the
+          // `Fresh` assosicated with `t`
+          val primary = c.primaryResultCap
+          primary.origin match
+            case GlobalCap =>
+              val fresh = FreshCap(Origin.LocalInstance(mt.resType))
+              primary.setOrigin(fresh)
+              fresh
+            case origin: FreshCap =>
+              origin
+        case _ =>
+          super.mapCapability(c, deep)
+
+      def inverse = ToResult.this
+      override def toString = "toVar.inverse"
+    end inverse
+  end ToResult
+
   /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
    *  variable bound by `mt`.
    *  Stop at function or method types since these have been mapped before.
    */
   def toResult(tp: Type, mt: MethodicType, fail: Message => Unit)(using Context): Type =
-
-    abstract class CapMap extends BiTypeMap:
-      override def mapOver(t: Type): Type = t match
-        case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
-          t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
-        case t: (LazyRef | TypeVar) =>
-          mapConserveSuper(t)
-        case _ =>
-          super.mapOver(t)
-
-    object toVar extends CapMap:
-
-      def apply(t: Type) = t match
-        case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
-          if variance > 0 then
-            super.mapOver:
-              defn.FunctionNOf(args, res, contextual)
-                .capturing(ResultCap(mt).singletonCaptureSet)
-          else mapOver(t)
-        case _ =>
-          mapOver(t)
-
-      override def mapCapability(c: Capability, deep: Boolean) = c match
-        case c: (FreshCap | GlobalCap.type) =>
-          if variance > 0 then
-            val res = ResultCap(mt)
-            c match
-              case c: FreshCap => res.setOrigin(c)
-              case _ =>
-            res
-          else
-            if variance == 0 then
-              fail(em"""$tp captures the root capability `cap` in invariant position.
-                       |This capability cannot be converted to an existential in the result type of a function.""")
-            // we accept variance < 0, and leave the cap as it is
-            c
-        case _ =>
-          super.mapCapability(c, deep)
-
-        //.showing(i"mapcap $t = $result")
-      override def toString = "toVar"
-
-      object inverse extends BiTypeMap:
-        def apply(t: Type) = mapOver(t)
-
-        override def mapCapability(c: Capability, deep: Boolean) = c match
-          case c @ ResultCap(`mt`) =>
-            // do a reverse getOrElseUpdate on `seen` to produce the
-            // `Fresh` assosicated with `t`
-            val primary = c.primaryResultCap
-            primary.origin match
-              case GlobalCap =>
-                val fresh = FreshCap(Origin.Unknown)
-                primary.setOrigin(fresh)
-                fresh
-              case origin: FreshCap =>
-                origin
-          case _ =>
-            super.mapCapability(c, deep)
-
-        def inverse = toVar.this
-        override def toString = "toVar.inverse"
-      end inverse
-    end toVar
-
-    toVar(tp)
-  end toResult
+    ToResult(tp, mt, fail)(tp)
 
   /** Map global roots in function results to result roots. Also,
    *  map roots in the types of def methods that are parameterless
