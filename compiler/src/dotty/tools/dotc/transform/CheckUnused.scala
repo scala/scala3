@@ -82,7 +82,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       && tree.qualifier.tpe.match
         case ThisType(_) | SuperType(_, _) => false
         case qualtpe => qualtpe.isStable
-    if tree.srcPos.isSynthetic && tree.symbol == defn.TypeTest_unapply then
+    val sym = tree.symbol
+            .orElse:
+              tree.typeOpt.resultType.typeSymbol
+    if tree.srcPos.isSynthetic && sym == defn.TypeTest_unapply then
       tree.qualifier.tpe.underlying.finalResultType match
       case AppliedType(tycon, args) =>
         val res =
@@ -92,11 +95,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         val target = res.dealias.typeSymbol
         resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
       case _ =>
-    else if isImportable || name.exists(_ != tree.symbol.name) then
+    else if isImportable || name.exists(_ != sym.name) then
       if !ignoreTree(tree) then
-        resolveUsage(tree.symbol, name, tree.qualifier.tpe)
+        resolveUsage(sym, name, tree.qualifier.tpe)
     else if !ignoreTree(tree) then
-      refUsage(tree.symbol)
+      refUsage(sym)
     refInfos.isAssignment = false
     tree
 
@@ -124,6 +127,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
       resolveScoped(caneq)
     case _ =>
+    tree
+
+  override def transformTypeApply(tree: TypeApply)(using Context): tree.type =
+    if tree.symbol.exists && tree.symbol.isConstructor then
+      refUsage(tree.symbol.owner) // redundant with use of resultType in transformSelect of fun
     tree
 
   override def prepareForAssign(tree: Assign)(using Context): Context =
