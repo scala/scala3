@@ -3,6 +3,7 @@ import scala.math.{BigInt}
 import quoted.*
 import annotation.internal.sharable
 
+import language.experimental.captureChecking
 
 /** A type class for types that admit numeric literals.
  */

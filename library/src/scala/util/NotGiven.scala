@@ -1,5 +1,7 @@
 package scala.util
 
+import language.experimental.captureChecking
+
 /** A special class used to implement negation in implicit search.
  *
  *  Consider the problem of using implicit `i1` for a query type `D` if an implicit

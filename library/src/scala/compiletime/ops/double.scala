@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object double:
   /** Addition of two `Double` singleton types.
    *  ```scala

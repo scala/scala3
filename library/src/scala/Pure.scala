@@ -1,4 +1,7 @@
 package scala
+
+import language.experimental.captureChecking
+
 import annotation.experimental
 
 /** A marker trait that declares that all inheriting classes are "pure" in the

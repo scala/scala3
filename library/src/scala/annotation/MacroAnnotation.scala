@@ -2,6 +2,8 @@
 package scala
 package annotation
 
+import language.experimental.captureChecking
+
 import scala.quoted.*
 
 /** Base trait for macro annotation implementation.

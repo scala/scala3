@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 @experimental("under review as part of SIP-61")
 /**The `@unroll` annotation is reserved for parameters of classes and methods.
  *

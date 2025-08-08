@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import language.experimental.captureChecking
+
 object string:
   /** Concatenation of two `String` singleton types.
    *  ```scala

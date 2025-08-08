@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 /** A type class for types that can convert a `quoted.Expr[T]` to a `T`.
  *
  *  - Converts expression containing literal values to their values:
