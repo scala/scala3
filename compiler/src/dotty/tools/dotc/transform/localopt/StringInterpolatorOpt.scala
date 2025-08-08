@@ -10,6 +10,8 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.printing.Formatting.*
+import dotty.tools.dotc.reporting.BadFormatInterpolation
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.ConstFold
 
@@ -22,8 +24,9 @@ import dotty.tools.dotc.typer.ConstFold
  */
 class StringInterpolatorOpt extends MiniPhase:
   import tpd.*
+  import StringInterpolatorOpt.*
 
-  override def phaseName: String = StringInterpolatorOpt.name
+  override def phaseName: String = name
 
   override def description: String = StringInterpolatorOpt.description
 
@@ -31,7 +34,7 @@ class StringInterpolatorOpt extends MiniPhase:
     tree match
       case tree: RefTree =>
         val sym = tree.symbol
-        assert(!StringInterpolatorOpt.isCompilerIntrinsic(sym),
+        assert(!isCompilerIntrinsic(sym),
           i"$tree in ${ctx.owner.showLocated} should have been rewritten by phase $phaseName")
       case _ =>
 
@@ -117,10 +120,10 @@ class StringInterpolatorOpt extends MiniPhase:
           !(tp =:= defn.StringType)
           && {
               tp =:= defn.UnitType
-              && { report.warning("interpolated Unit value", t.srcPos); true }
+              && { report.warning(bfi"interpolated Unit value", t.srcPos); true }
             ||
               !tp.isPrimitiveValueType
-              && { report.warning("interpolation uses toString", t.srcPos); true }
+              && { report.warning(bfi"interpolation uses toString", t.srcPos); true }
           }
       if ctx.settings.Whas.toStringInterpolated then
         checkIsStringify(t.tpe): Unit
@@ -186,3 +189,7 @@ object StringInterpolatorOpt:
     sym == defn.StringContext_s ||
     sym == defn.StringContext_f ||
     sym == defn.StringContext_raw
+
+  extension (sc: StringContext)
+    def bfi(args: Shown*)(using Context): BadFormatInterpolation =
+      BadFormatInterpolation(i(sc)(args*))
