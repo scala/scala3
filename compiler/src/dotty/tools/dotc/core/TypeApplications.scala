@@ -310,6 +310,34 @@ class TypeApplications(val self: Type) extends AnyVal {
   def ensureLambdaSub(using Context): Type =
     if (isLambdaSub) self else EtaExpansion(self)
 
+
+  /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
+   *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
+   */
+  def etaExpand(using Context): Type =
+    val tparams = self.typeParams
+    val resType = self.appliedTo(tparams.map(_.paramRef))
+    self.dealias match
+      case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
+        val owner = self.symbol.owner
+        // Calling asSeenFrom on the type parameter infos is important
+        // so that class type references within another prefix have
+        // their type parameters' info fixed.
+        // e.g. from pos/i18569:
+        //    trait M1:
+        //      trait A
+        //      trait F[T <: A]
+        //    object M2 extends M1
+        // Type parameter T in M1.F has an upper bound of M1#A
+        // But eta-expanding M2.F should have type parameters with an upper-bound of M2.A.
+        // So we take the prefix M2.type and the F symbol's owner, M1,
+        // to call asSeenFrom on T's info.
+        HKTypeLambda(tparams.map(_.paramName))(
+          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(self.prefix, owner)))),
+          tl => tl.integrate(tparams, resType))
+      case _ =>
+        HKTypeLambda.fromParams(tparams, resType)
+
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
   def EtaExpandIfHK(bound: Type)(using Context): Type = {
     val hkParams = bound.hkTypeParams
