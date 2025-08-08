@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd, untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
 import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
@@ -80,7 +81,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       && tree.qualifier.tpe.match
         case ThisType(_) | SuperType(_, _) => false
         case qualtpe => qualtpe.isStable
-    if tree.srcPos.isSynthetic && tree.symbol == defn.TypeTest_unapply then
+    val sym = tree.symbol.orElse(tree.typeOpt.resultType.typeSymbol)
+    if tree.srcPos.isSynthetic && sym == defn.TypeTest_unapply then
       tree.qualifier.tpe.underlying.finalResultType match
       case AppliedType(tycon, args) =>
         val res =
@@ -90,11 +92,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         val target = res.dealias.typeSymbol
         resolveUsage(target, target.name, res.importPrefix.skipPackageObject) // case _: T =>
       case _ =>
-    else if isImportable || name.exists(_ != tree.symbol.name) then
+    else if isImportable || name.exists(_ != sym.name) then
       if !ignoreTree(tree) then
-        resolveUsage(tree.symbol, name, tree.qualifier.tpe)
+        resolveUsage(sym, name, tree.qualifier.tpe)
     else if !ignoreTree(tree) then
-      refUsage(tree.symbol)
+      refUsage(sym)
     refInfos.isAssignment = false
     tree
 
