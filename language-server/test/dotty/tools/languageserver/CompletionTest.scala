@@ -27,7 +27,7 @@ class CompletionTest {
 
   @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }"
-      .completion(("summon", Method, "[T](using x: T): x.type"))
+      .completion(("summon", Method, "[T](using x: T): (x : T)"))
   }
 
   @Test def completionFromScalaPackage: Unit = {
