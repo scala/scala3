@@ -50,13 +50,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:67 ---------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
    |                                                                   ^^^^^^
-   |                                              Found:    (x: Boxed[IO^]^?) ->? Boxed[IO^{x*}]^?
-   |                                              Required: Boxed[IO^] -> Boxed[IO^²]
+   |      Found:    (x: Boxed[IO^]^?) ->? Boxed[IO^²]
+   |      Required: Boxed[IO^] -> Boxed[IO^³]
    |
-   |                                              where:    ^  refers to the universal root capability
-   |                                                        ^² refers to a fresh root capability created in value x²
+   |      where:    ^  refers to the universal root capability
+   |                ^² refers to a root capability associated with the result type of (x: Boxed[IO^]^?): Boxed[IO^²]
+   |                ^³ refers to a fresh root capability created in value x²
    |
-   |                                              Note that capability x* is not included in capture set {cap}
-   |                                              because x* is not visible from cap in value x.
+   |      Note that capability <cap of (x: Boxed[IO^]^?): Boxed[IO^]> is not included in capture set {cap}
+   |      because <cap of (x: Boxed[IO^]^?): Boxed[IO^]> is not visible from cap in value x.
    |
    | longer explanation available when compiling with `-explain`
