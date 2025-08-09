@@ -47,12 +47,11 @@ object ccConfig:
   def useFreshLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
-  /** If true, turn on separation checking */
-  def useSepChecks(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
-
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+
+  def allowUse(using Context): Boolean =
+    Feature.sourceVersion.stable.isAtMost(SourceVersion.`3.7`)
 
 end ccConfig

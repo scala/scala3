@@ -11,14 +11,14 @@ class Collector[T](val futures: Seq[Future[T]^]):
   val results: Channel[Future[T]^{futures*}] = ???
 end Collector
 
-extension [T](@use fs: Seq[Future[T]^])
+extension [T, C^](fs: Seq[Future[T]^{C}])
   def awaitAll =
-    val collector: Collector[T]{val futures: Seq[Future[T]^{fs*}]}
+    val collector: Collector[T]{val futures: Seq[Future[T]^{C}]}
        = Collector(fs)
     // val ch = collector.results // also errors
-    val fut: Future[T]^{fs*} = collector.results.read().right.get // error
+    val fut: Future[T]^{C} = collector.results.read().right.get // error
 
     val ch = collector.results
     val item = ch.read()
     val r = item.right
-    val fut2: Future[T]^{fs*} = r.get // error
+    val fut2: Future[T]^{C} = r.get // error

@@ -15,7 +15,6 @@
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/use-capset.scala:5:49 ---------------------------------------------------------
-5 |private def g[C^] = (xs: List[Object^{C}]) => xs.head // error
+5 |private def g[C^] = (xs: List[Object^{C}]) => xs.head // error TODO: allow this
   |                                              ^^^^^^^
   |                                              Capture set parameter C leaks into capture scope of method g.
-  |                                              To allow this, the type C should be declared with a @use annotation

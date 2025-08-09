@@ -87,13 +87,23 @@ object Contains:
   @experimental
   given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
-/** An annotation on parameters `x` stating that the method's body makes
- *  use of the reach capability `x*`. Consequently, when calling the method
- *  we need to charge the deep capture set of the actual argiment to the
+/** An annotation on capset parameters `C` stating that the method's body does not
+ *  have `C` in its use-set. `C` might be accessed under a box in the method
+ *  or in the result type of the method. Consequently, when calling the method
+ *  we do not need to charge the capture set of the actual argiment to the
  *  environment.
  *
  *  Note: This should go into annotations. For now it is here, so that we
  *  can experiment with it quickly between minor releases
+ */
+@experimental
+final class reserve extends annotation.StaticAnnotation
+
+/** Allowed only for source versions up to 3.7:
+ *  An annotation on parameters `x` stating that the method's body makes
+ *  use of the reach capability `x*`. Consequently, when calling the method
+ *  we need to charge the deep capture set of the actual argiment to the
+ *  environment.
  */
 @experimental
 final class use extends annotation.StaticAnnotation
