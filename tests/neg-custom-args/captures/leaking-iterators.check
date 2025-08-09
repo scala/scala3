@@ -7,8 +7,7 @@
    |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability log.type
-   |cannot be included in outer capture set ?.
+   |Note that capability log cannot be included in outer capture set ?.
 57 |    xs.iterator.map: x =>
 58 |      log.write(x)
 59 |      x * x

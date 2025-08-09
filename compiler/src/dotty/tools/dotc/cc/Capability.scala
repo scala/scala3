@@ -788,6 +788,9 @@ object Capabilities:
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
+    def showAsCapability(using Context) =
+      i"capability ${ctx.printer.toTextCapability(this).show}"
+
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability
 

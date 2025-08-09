@@ -7,8 +7,7 @@
    |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability
    |
-   |Note that capability c.type
-   |cannot be included in outer capture set ?.
+   |Note that capability c cannot be included in outer capture set ?.
 11 |    () => { c.use() }
 12 |  }
    |
@@ -22,7 +21,7 @@
    |    where:    => refers to a root capability associated with the result type of (c: Capp^): () => Unit
    |              ^  refers to the universal root capability
    |
-   |    Note that capability x$0.type is not included in capture set {<cap of (x$0: Capp^?): () ->{x$0} Unit>}.
+   |    Note that capability x$0 is not included in capture set {<cap of (x$0: Capp^?): () ->{x$0} Unit>}.
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }
    |
@@ -32,7 +31,7 @@
    |    ^
    |    Found:    (x$0: Capp^?) ->? () ->{x$0} Unit
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
-   |    Note that capability x$0.type is not included in capture set {net}.
+   |    Note that capability x$0 is not included in capture set {net}.
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
    |
@@ -42,7 +41,7 @@
    |          ^^^^^^^^^^^^^^
    |          Found:    () ->{io} Unit
    |          Required: () -> Unit
-   |          Note that capability (io : Capp^) is not included in capture set {}.
+   |          Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:10 -------------------------------
@@ -50,6 +49,6 @@
    |          ^^^^^^^^^^^^^^
    |          Found:    () ->{io} Unit
    |          Required: () -> Unit
-   |          Note that capability (io : Capp^) is not included in capture set {}.
+   |          Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
