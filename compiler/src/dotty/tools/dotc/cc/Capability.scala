@@ -959,7 +959,7 @@ object Capabilities:
     assert(sym.isAnonymousFunction)
     val paramSyms = atPhase(ctx.phase.prev):
       // We need to ask one phase before since `sym` should not be completed as a side effect.
-      // The result of Internalize is used to se the result type of an anonymous function, and
+      // The result of Internalize is used to see the result type of an anonymous function, and
       // the new info of that function is built with the result.
       sym.paramSymss.head
     val resultToFresh = EqHashMap[ResultCap, FreshCap]()
