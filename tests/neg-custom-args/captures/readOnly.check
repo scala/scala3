@@ -11,7 +11,7 @@
    |                       ^^^^
    |                       Found:    (putA : Int ->{a} Unit)
    |                       Required: Int -> Unit
-   |                       Note that capability (a : Ref^) is not included in capture set {}.
+   |                       Note that capability a is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/readOnly.scala:20:23 ----------------------------------------------------------

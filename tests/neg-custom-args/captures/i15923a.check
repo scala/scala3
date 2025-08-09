@@ -8,7 +8,6 @@
   |          =>² refers to a root capability associated with the result type of (lcap: Cap^): () =>² Id[Cap^?]^?
   |          ^   refers to the universal root capability
   |
-  |Note that capability <cap of (): Id[Cap^?]^?>
-  |cannot be included in outer capture set ?.
+  |Note that capability <cap of (): Id[Cap^?]^?> cannot be included in outer capture set ?.
   |
   | longer explanation available when compiling with `-explain`

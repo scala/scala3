@@ -10,6 +10,6 @@
    |
    |where:    ^ refers to a fresh root capability created in method test when checking argument to parameter src of method await
    |
-   |Note that capability (ac1 : Async^) cannot be included in capture set {ac2} of value src2.
+   |Note that capability ac1 cannot be included in capture set {ac2} of value src2.
    |
    | longer explanation available when compiling with `-explain`

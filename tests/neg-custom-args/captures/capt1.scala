@@ -34,7 +34,7 @@ def foo() =
   def h[X](a: X)(b: X) = a
 
   val z2 = h[() -> Cap](() => x) // error // error
-    (() => C())
+    (() => C()) // error
   val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
 
   val z1: () => Cap = f1(x)

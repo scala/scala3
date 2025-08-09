@@ -4,7 +4,7 @@
    |      ^
    |      Found:    Result.Ok[Future[T^?]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
-   |      Note that capability (fr : Future[Result[T, E]]^) is not included in capture set {}.
+   |      Note that capability fr is not included in capture set {}.
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
@@ -24,8 +24,7 @@
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
    |
-   |Note that capability contextual$9.type
-   |cannot be included in outer capture set ?.
+   |Note that capability contextual$9 cannot be included in outer capture set ?.
 70 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
@@ -38,7 +37,7 @@
    |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
    |
-   |Note that capability (fr : Future[Result[T, E]]^) is not included in capture set {}.
+   |Note that capability fr is not included in capture set {}.
 74 |          Future: fut ?=>
 75 |            fr.await.ok
    |
