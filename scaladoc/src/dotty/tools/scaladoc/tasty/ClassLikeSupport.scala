@@ -443,14 +443,15 @@ trait ClassLikeSupport:
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
+    val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
       inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
-      argument.tpt.asSignature(classDef, symbol.owner),
-      isExtendedSymbol,
-      isGrouped
+      argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,
+      isExtendedSymbol = isExtendedSymbol,
+      isGrouped = isGrouped
     )
 
   def mkTypeArgument(
