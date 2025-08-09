@@ -920,13 +920,13 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       val anonfun = mdef.symbol
 
-      def matchParams(paramss: List[ParamClause], pt: Type): Unit =
+      def matchParamsAndResult(paramss: List[ParamClause], pt: Type): Unit =
         //println(i"match $mdef against $pt")
         paramss match
         case params :: paramss1 => pt match
           case defn.PolyFunctionOf(poly: PolyType) =>
             assert(params.hasSameLengthAs(poly.paramInfos))
-            matchParams(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
+            matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             for (argType, param) <- argTypes.lazyZip(params) do
@@ -934,34 +934,17 @@ class CheckCaptures extends Recheck, SymTransformer:
               val paramType = freshToCap(param.symbol, paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
-            if ccConfig.newScheme then
-              if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
-                val localResType = pt match
-                  case RefinedType(_, _, mt: MethodType) =>
-                    inContext(ctx.withOwner(anonfun)):
-                      Internalize(mt)(resType)
-                  case _ => resType
-                mdef.tpt.updNuType(localResType)
-                // Make sure we affect the info of the anonfun by the previous updNuType
-                // unless the info is already defined in a previous phase and does not change.
-                assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
-                //println(i"updating ${mdef.tpt} to $localResType/${mdef.tpt.nuType}")
-            else if !pt.isInstanceOf[RefinedType]
-                && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially)
-            then
-              // If the closure is not an eta expansion and the expected type is a parametric
-              // function type, check whether the closure's result conforms to the expected
-              // result type. This constrains parameter types of the closure which can give better
-              // error messages. It also prevents mapping fresh to result caps in the closure's
-              // result type.
-              // If the closure is an eta expanded method reference it's better to not constrain
-              // its internals early since that would give error messages in generated code
-              // which are less intelligible. An example is the line `a = x` in
-              // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
-              // to apply only to closures that are not eta expansions.
-              assert(paramss1.isEmpty)
-              capt.println(i"pre-check closure $expr of type ${mdef.tpt.nuType} against $resType")
-              checkConformsExpr(mdef.tpt.nuType, resType, expr)
+            if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
+              val localResType = pt match
+                case RefinedType(_, _, mt: MethodType) =>
+                  inContext(ctx.withOwner(anonfun)):
+                    Internalize(mt)(resType)
+                case _ => resType
+              mdef.tpt.updNuType(localResType)
+              // Make sure we affect the info of the anonfun by the previous updNuType
+              // unless the info is already defined in a previous phase and does not change.
+              assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
+              //println(i"updating ${mdef.tpt} to $localResType/${mdef.tpt.nuType}")
           case _ =>
         case Nil =>
 
@@ -969,13 +952,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         // openClosures is needed for errors but currently makes no difference
         // TODO follow up on this
       try
-        matchParams(mdef.paramss, pt)
+        matchParamsAndResult(mdef.paramss, pt)
         capt.println(i"recheck closure block $mdef: ${anonfun.infoOrCompleter}")
-        if !anonfun.isCompleted then
-          anonfun.ensureCompleted() // this will recheck def
-        else
-          recheckDef(mdef, anonfun)
-
+        if !anonfun.isCompleted
+        then anonfun.ensureCompleted() // this will recheck def
+        else recheckDef(mdef, anonfun)
         recheckClosure(expr, pt, forceDependent = true)
       finally
         openClosures = openClosures.tail
