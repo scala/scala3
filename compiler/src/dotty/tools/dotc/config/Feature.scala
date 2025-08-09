@@ -137,6 +137,10 @@ object Feature:
     enabledBySetting(captureChecking)
     || ctx.originalCompilationUnit.needsCaptureChecking
 
+  /** Are capture-checking annotations emitted in the resulting TASTy tree? */
+  def ccAnnotationsEnabled(using Context) =
+    ccEnabled && !ctx.settings.YccNoTasty.value
+
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
     enabledBySetting(pureFunctions)

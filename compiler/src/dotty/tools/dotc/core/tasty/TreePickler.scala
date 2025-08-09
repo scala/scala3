@@ -20,6 +20,7 @@ import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
 import quoted.QuotePatterns
+import dotty.tools.dotc.config.Feature
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
@@ -282,9 +283,11 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         pickleVariances(tpe.hi)
       }
     case tpe: AnnotatedType =>
-      writeByte(ANNOTATEDtype)
-      withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
-      annotatedTypeTrees += tpe.annot.tree
+      if !isSkippedCCAnnot(tpe.annot) then
+        writeByte(ANNOTATEDtype)
+        withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
+        annotatedTypeTrees += tpe.annot.tree
+      else pickleType(tpe.parent, richTypes)
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -749,8 +752,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           writeByte(BYNAMEtpt)
           pickleTree(tp)
         case Annotated(tree, annot) =>
-          writeByte(ANNOTATEDtpt)
-          withLength { pickleTree(tree); pickleTree(annot) }
+          if !isSkippedCCAnnot(annot.symbol) then
+            writeByte(ANNOTATEDtpt)
+            withLength { pickleTree(tree); pickleTree(annot) }
+          else pickleTree(tree)
         case LambdaTypeTree(tparams, body) =>
           writeByte(LAMBDAtpt)
           withLength { pickleParams(tparams); pickleTree(body) }
@@ -927,8 +932,16 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
   }
 
+  private def isSkippedCCAnnot(ann: Annotation)(using Context): Boolean = isSkippedCCAnnot(ann.symbol)
+  private def isSkippedCCAnnot(ann: Symbol)(using Context): Boolean =
+    if Feature.ccEnabled && !Feature.ccAnnotationsEnabled then
+      // an annotation symbol can be either a class symbol or a constructor symbol
+      val ccAnnot = defn.CCAnnots.find(annot => annot == ann || annot.primaryConstructor == ann)
+      ccAnnot.isDefined
+    else false
+
   def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =
-    if !isUnpicklable(owner, ann) then
+    if !isUnpicklable(owner, ann) && !isSkippedCCAnnot(ann) then
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
       var treeBuf = annotTrees.lookup(mdef)
