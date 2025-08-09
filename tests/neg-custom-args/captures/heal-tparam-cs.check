@@ -37,22 +37,19 @@
 27 |    }
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:41:4 --------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:41:10 -------------------------------
 41 |    io => () => io.use()  // error
-   |    ^^^^^^^^^^^^^^^^^^^^
-   |    Found:    (io: Capp^) ->? () ->{io} Unit
-   |    Required: (io: Capp^) -> () -> Unit
-   |
-   |    where:    ^ refers to the universal root capability
-   |
-   |    Note that capability io.type is not included in capture set {}.
+   |          ^^^^^^^^^^^^^^
+   |          Found:    () ->{io} Unit
+   |          Required: () -> Unit
+   |          Note that capability (io : Capp^) is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:10 -------------------------------
 44 |    io => () => io.use()  // error
    |          ^^^^^^^^^^^^^^
    |          Found:    () ->{io} Unit
-   |          Required: () ->? Unit
+   |          Required: () -> Unit
    |          Note that capability (io : Capp^) is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

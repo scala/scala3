@@ -10,6 +10,8 @@ import config.Printers.{capt, recheckr, noPrinter}
 import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
+import typer.ForceDegree
+import typer.Inferencing.isFullyDefined
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, NothingToAdd, err}
@@ -25,7 +27,7 @@ import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
 import Annotations.Annotation
 import Capabilities.*
-import dotty.tools.dotc.util.common.alwaysTrue
+import util.common.alwaysTrue
 
 /** The capture checker */
 object CheckCaptures:
@@ -916,6 +918,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      { def $anonfun(...) = ...; closure($anonfun, ...)}
      */
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
+      val anonfun = mdef.symbol
 
       def matchParams(paramss: List[ParamClause], pt: Type): Unit =
         //println(i"match $mdef against $pt")
@@ -931,7 +934,19 @@ class CheckCaptures extends Recheck, SymTransformer:
               val paramType = freshToCap(param.symbol, paramTpt.nuType)
               checkConformsExpr(argType, paramType, param)
                 .showing(i"compared expected closure formal $argType against $param with ${paramTpt.nuType}", capt)
-            if !pt.isInstanceOf[RefinedType]
+            if ccConfig.newScheme then
+              if resType.isValueType && isFullyDefined(resType, ForceDegree.none) then
+                val localResType = pt match
+                  case RefinedType(_, _, mt: MethodType) =>
+                    inContext(ctx.withOwner(anonfun)):
+                      Internalize(mt)(resType)
+                  case _ => resType
+                mdef.tpt.updNuType(localResType)
+                // Make sure we affect the info of the anonfun by the previous updNuType
+                // unless the info is already defined in a previous phase and does not change.
+                assert(!anonfun.isCompleted || anonfun.denot.validFor.firstPhaseId != thisPhase.id)
+                //println(i"updating ${mdef.tpt} to $localResType/${mdef.tpt.nuType}")
+            else if !pt.isInstanceOf[RefinedType]
                 && !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially)
             then
               // If the closure is not an eta expansion and the expected type is a parametric
@@ -950,16 +965,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         case Nil =>
 
-      openClosures = (mdef.symbol, pt) :: openClosures
+      openClosures = (anonfun, pt) :: openClosures
         // openClosures is needed for errors but currently makes no difference
         // TODO follow up on this
       try
         matchParams(mdef.paramss, pt)
-        capt.println(i"recheck closure block $mdef: ${mdef.symbol.infoOrCompleter}")
-        if !mdef.symbol.isCompleted then
-          mdef.symbol.ensureCompleted() // this will recheck def
+        capt.println(i"recheck closure block $mdef: ${anonfun.infoOrCompleter}")
+        if !anonfun.isCompleted then
+          anonfun.ensureCompleted() // this will recheck def
         else
-          recheckDef(mdef, mdef.symbol)
+          recheckDef(mdef, anonfun)
 
         recheckClosure(expr, pt, forceDependent = true)
       finally
@@ -1463,7 +1478,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case FunctionOrMethod(aargs, ares) =>
             val saved = curEnv
             curEnv = Env(
-              curEnv.owner, EnvKind.NestedInOwner,
+              curEnv.owner,
+              if boxed then EnvKind.Boxed else EnvKind.NestedInOwner,
               CaptureSet.Var(curEnv.owner, level = ccState.currentLevel),
               if boxed then null else curEnv)
             try
