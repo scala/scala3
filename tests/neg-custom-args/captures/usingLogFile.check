@@ -7,8 +7,7 @@
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability f.type
-   |cannot be included in outer capture set ?.
+   |Note that capability f cannot be included in outer capture set ?.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:36 ---------------------------------
@@ -20,8 +19,7 @@
    |where:    => refers to a fresh root capability created in value later2 when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability f.type
-   |cannot be included in outer capture set ?.
+   |Note that capability f cannot be included in outer capture set ?.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
@@ -33,8 +31,7 @@
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability f.type
-   |cannot be included in outer capture set ?.
+   |Note that capability f cannot be included in outer capture set ?.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:52:6 ----------------------------------
@@ -46,7 +43,6 @@
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability _$1.type
-   |cannot be included in outer capture set ?.
+   |Note that capability _$1 cannot be included in outer capture set ?.
    |
    | longer explanation available when compiling with `-explain`

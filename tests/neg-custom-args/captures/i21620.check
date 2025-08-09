@@ -15,7 +15,7 @@
   |                               ^
   |                               Found:    (f : () ->{x} () ->{x} Unit)
   |                               Required: () -> () ->{x} Unit
-  |                               Note that capability (x : C^) is not included in capture set {}.
+  |                               Note that capability x is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21620.scala:20:33 ---------------------------------------
@@ -23,6 +23,6 @@
    |                                 ^
    |                                 Found:    (f : () ->{x} () ->{x} Unit)
    |                                 Required: () -> () ->{x} Unit
-   |                                 Note that capability (x : C^) is not included in capture set {}.
+   |                                 Note that capability x is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

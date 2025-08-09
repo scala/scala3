@@ -3,7 +3,7 @@
    |        ^^^^^^^^^
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1} String
-   |        Note that capability (cap3 : CC^), defined in method scope
+   |        Note that capability cap3, defined in method scope
    |        cannot be included in outer capture set {cap1} of variable a.
    |
    | longer explanation available when compiling with `-explain`
@@ -12,7 +12,7 @@
    |        ^
    |        Found:    (x: String) ->{cap3} String
    |        Required: String ->{cap1} String
-   |        Note that capability (cap3 : CC^), defined in method scope
+   |        Note that capability cap3, defined in method scope
    |        cannot be included in outer capture set {cap1} of variable a.
    |
    | longer explanation available when compiling with `-explain`
@@ -21,7 +21,7 @@
    |        ^^^^^^^
    |        Found:    List[String ->{cap3} String]
    |        Required: List[String ->{cap1, cap2} String]
-   |        Note that capability (cap3 : CC^) is not included in capture set {cap1, cap2}.
+   |        Note that capability cap3 is not included in capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:36:8 ------------------------------------------
@@ -34,8 +34,7 @@
    |          =>² refers to a fresh root capability created in method test of parameter parameter cap3² of method $anonfun
    |          ^   refers to the universal root capability
    |
-   |Note that capability <cap of (cap3: CC^): String => String>
-   |cannot be included in outer capture set {cap}.
+   |      Note that capability <cap of (cap3: CC^): String => String> cannot be included in outer capture set {cap}.
 37 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 38 |    g
 39 |  }

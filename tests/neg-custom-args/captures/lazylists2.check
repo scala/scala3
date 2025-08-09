@@ -3,7 +3,7 @@
    |    ^
    |    Found:    LazyList[B^?]^{f, xs}
    |    Required: LazyList[B]^{f}
-   |    Note that capability (xs : LazyList[A]^) is not included in capture set {f}.
+   |    Note that capability xs is not included in capture set {f}.
 19 |      this: (Mapped^{xs, f}) =>
 20 |      def isEmpty = false
 21 |      def head: B = f(xs.head)
@@ -16,7 +16,7 @@
    |    ^
    |    Found:    LazyList[B^?]^{f, xs}
    |    Required: LazyList[B]^{xs}
-   |    Note that capability (f : A => B) is not included in capture set {xs}.
+   |    Note that capability f is not included in capture set {xs}.
 28 |      this: Mapped^{xs, f} =>
 29 |      def isEmpty = false
 30 |      def head: B = f(xs.head)
@@ -37,7 +37,7 @@
    |    ^
    |    Found:    LazyList[B^?]^{f, xs}
    |    Required: LazyList[B]^{xs}
-   |    Note that capability (f : A => B) is not included in capture set {xs}.
+   |    Note that capability f is not included in capture set {xs}.
 46 |      this: (Mapped^{xs, f}) =>
 47 |      def isEmpty = false
 48 |      def head: B = f(xs.head)

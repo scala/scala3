@@ -1300,24 +1300,23 @@ object CaptureSet:
         case cs: Var =>
           if !cs.levelOK(elem) then
             val levelStr = elem match
-              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-              case _ => ""
-            i"""capability ${elem}$levelStr
-                |cannot be included in outer capture set $cs"""
+              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}\n"
+              case _ => " "
+            i"""${elem.showAsCapability}${levelStr}cannot be included in outer capture set $cs"""
           else if !elem.tryClassifyAs(cs.classifier) then
-            i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
+            i"""${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
                 |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
           else if cs.isBadRoot(elem) then
             elem match
               case elem: FreshCap =>
-                i"""local capability $elem created in ${elem.ccOwner}
+                i"""local ${elem.showAsCapability} created in ${elem.ccOwner}
                   |cannot be included in outer capture set $cs"""
               case _ =>
-                i"universal capability $elem cannot be included in capture set $cs"
+                i"universal ${elem.showAsCapability} cannot be included in capture set $cs"
           else
-            i"capability $elem cannot be included in capture set $cs"
+            i"${elem.showAsCapability} cannot be included in capture set $cs"
         case _ =>
-          i"capability $elem is not included in capture set $cs$why"
+          i"${elem.showAsCapability} is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):

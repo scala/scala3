@@ -43,10 +43,12 @@ followed by `^`. We'll see that this turns the parameter into a _capability_ who
 
 If we now try to define the problematic value `later`, we get a static error:
 ```
-   |  val later = usingLogFile { f => () => f.write(0) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |The expression's type () => Unit is not allowed to capture the root capability `cap`.
-   |This usually means that a capability persists longer than its allowed lifetime.
+   |val later = usingLogFile { f => () => f.write(0) } // error
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (f: java.io.FileOutputStream^?) ->? () ->{f} Unit
+   |Required: java.io.FileOutputStream^ => () ->? Unit
+   |
+   |Note that capability f cannot be included in outer capture set ?.
 ```
 In this case, it was easy to see that the `logFile` capability escapes in the closure passed to `usingLogFile`. But capture checking also works for more complex cases.
 For instance, capture checking is able to distinguish between the following safe code:

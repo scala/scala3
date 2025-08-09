@@ -18,7 +18,6 @@
    |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
    |          cap is a root capability associated with the result type of (_$1: File^?): Logger{val f: File^{_$1}}^{cap.rd, _$1}
    |
-   |Note that capability C is not classified as trait SharedCapability, therefore it
-   |cannot be included in capture set ? of parameter _$1 of SharedCapability elements.
+   |Note that capability <cap of (_$1: File^{files*}): Logger{val f: File^?}^?>.rd cannot be included in outer capture set ?.
    |
    | longer explanation available when compiling with `-explain`
