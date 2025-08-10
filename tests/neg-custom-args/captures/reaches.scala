@@ -36,7 +36,7 @@ def runAll1[C^](xs: List[() ->{C} Unit]): Unit =
 def runAll2(@consume xs: List[Proc]): Unit =
   var cur: List[Proc] = xs
   while cur.nonEmpty do
-    val next: () => Unit = cur.head   // error
+    val next: () => Unit = cur.head   // error, use
     next()
     cur = cur.tail
 
@@ -64,8 +64,7 @@ def attack2 =
     f1
 
 def attack3 =
-  val id: (x: File^) -> File^ = x => x // error
-    // val id: File^ -> EX C.File^C
+  val id: (x: File^) -> File^ = x => x // was error, now OK
 
   val leaked = usingFile[File^{id*}]: f => // error
     val f1: File^{id*} = id(f)

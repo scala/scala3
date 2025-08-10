@@ -6,11 +6,3 @@
   |         Note that capability (f : Proc^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/eta.scala:6:14 -------------------------------------------
-6 |         bar( () => f )  // error
-  |              ^^^^^^^
-  |              Found:    () ->{f} () ->{f} Unit
-  |              Required: () -> () ->{f} Unit
-  |              Note that capability (f : Proc^) is not included in capture set {}.
-  |
-  | longer explanation available when compiling with `-explain`

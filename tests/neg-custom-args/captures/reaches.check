@@ -68,30 +68,19 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:27 --------------------------------------
 59 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
-   |                           Found:    (x: File^) ->? File^{x}
-   |                           Required: File^ -> File^²
-   |
-   |                           where:    ^  refers to the universal root capability
-   |                                     ^² refers to a fresh root capability in the type of value id
-   |
-   |                           Note that capability x.type is not included in capture set {cap}
-   |                           because x.type is not visible from cap in value id.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:32 --------------------------------------
-67 |  val id: (x: File^) -> File^ = x => x // error
-   |                                ^^^^^^
-   |                  Found:    (x: File^) ->? File^{x}
-   |                  Required: (x: File^) -> File^²
+   |                  Found:    (x: File^) ->? File^²
+   |                  Required: File^ -> File^³
    |
    |                  where:    ^  refers to the universal root capability
    |                            ^² refers to a root capability associated with the result type of (x: File^): File^²
+   |                            ^³ refers to a fresh root capability in the type of value id
    |
-   |                  Note that capability x.type is not included in capture set {<cap of (x: File^): File^{x}>}.
+   |                  Note that capability <cap of (x: File^): File^> is not included in capture set {cap}
+   |                  because <cap of (x: File^): File^> is not visible from cap in value id.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
-70 |  val leaked = usingFile[File^{id*}]: f => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:69:38 --------------------------------------
+69 |  val leaked = usingFile[File^{id*}]: f => // error
    |                                      ^
    |Found:    (f: File^?) ->? File^{id*}
    |Required: File^ => File^{id*}
@@ -100,12 +89,12 @@
    |          ^  refers to the universal root capability
    |
    |Note that capability cap is not included in capture set {id*}.
-71 |    val f1: File^{id*} = id(f)
-72 |    f1
+70 |    val f1: File^{id*} = id(f)
+71 |    f1
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:88:10 --------------------------------------
-88 |  ps.map((x, y) => compose1(x, y)) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:87:10 --------------------------------------
+87 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (A^ ->? A^?, A^ ->? A^?)^?) ->? A^? ->? A^?
    |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^? ->? A^?
@@ -116,8 +105,8 @@
    |Note that capability ps* cannot be included in capture set {} of value x.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:91:10 --------------------------------------
-91 |  ps.map((x, y) => compose1(x, y)) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:90:10 --------------------------------------
+90 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (A^ ->? A^?, A^ ->? A^?)^?) ->? A^? ->? A^?
    |Required: ((A ->{C} A, A ->{C} A)) => A^? ->? A^?
@@ -129,7 +118,7 @@
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------
-39 |    val next: () => Unit = cur.head   // error
+39 |    val next: () => Unit = cur.head   // error, use
    |                           ^^^^^^^^
    |                           Local reach capability xs* leaks into capture scope of method runAll2.
    |                           You could try to abstract the capabilities referred to by xs* in a capset variable.

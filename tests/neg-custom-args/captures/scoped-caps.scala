@@ -10,7 +10,7 @@ def test(io: Object^): Unit =
   val _: A^ -> B^ = f // error
   val _: A^ -> B^ = g
   val _: A^ -> B^ = x => g(x)      // error: g is no longer pure, since it contains the ^ of B
-  val _: (x: A^) -> B^ = x => f(x) // error: existential in B cannot subsume `x` since `x` is not shared
+  val _: (x: A^) -> B^ = x => f(x) // now OK, was error: existential in B cannot subsume `x` since `x` is not shared
 
   val h: S -> B^ = ???
   val _: (x: S) -> B^ = h          // error: direct conversion fails
