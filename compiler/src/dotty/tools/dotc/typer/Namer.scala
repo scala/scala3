@@ -2045,13 +2045,15 @@ class Namer { typer: Typer =>
     (owningSym.isClass || owningSym.isAllOf(Given | Method))
       && !accessorSyms.exists(_.is(Mutable))
       && (param.hasAttachment(ContextBoundParam) || accessorSyms.exists(!_.isOneOf(PrivateLocal)))
-      && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
+      && psym.infoDontForceAnnotsAndInferred(param).memberNames(abstractTypeNameFilter).nonEmpty
 
   extension (sym: Symbol)
-    private def infoWithForceNonInferingCompleter(using Context): Type = sym.infoOrCompleter match
-      case tpe: LazyType if tpe.isExplicit => sym.info
-      case tpe if sym.isType => sym.info
-      case info => info
+    private def infoDontForceAnnotsAndInferred(tree: DefTree)(using Context): Type =
+      sym.infoOrCompleter match
+        case tpe if tree.mods.annotations.nonEmpty => tpe
+        case tpe: LazyType if tpe.isExplicit => sym.info
+        case tpe if sym.isType => sym.info
+        case info => info
 
   private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] = owner.infoOrCompleter match
     case info: ClassInfo =>

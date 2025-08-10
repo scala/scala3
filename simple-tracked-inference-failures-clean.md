@@ -40,7 +40,6 @@
 - tests/pos/i2997.scala failed
 
 ## Non-experimental related tests:
-- tests/pos/i12953.scala failed
 - tests/pos/i2997.scala failed
 - tests/pos/i20901 failed
 
@@ -246,41 +245,6 @@ index 82e95946f9..90cfcf8e95 100644
  Attributes (2 bytes, starting from <elided base index>):
 -  SOURCEFILEattr 32 [<elided source file name>]
 +  SOURCEFILEattr 42 [<elided source file name>]
-```
-
-### One problem with typing annotations too early:
-- tests/pos/i12953.scala
-
-source:
-```scala
-class Schema(impl: Class[_]) extends scala.annotation.StaticAnnotation
-
-class Ann[A] extends scala.annotation.StaticAnnotation
-
-case class Foo[A](@Schema(classOf[List[A]]) foo: String)
-case class Bar[A](@Ann[A] foo: String)
-def baz[A](@Ann[A] foo: String) = ()
-```
-
-error:
-```scala
--- [E006] Not Found Error: tests/pos/i12953.scala:5:39 -------------------------
-5 |case class Foo[A](@Schema(classOf[List[A]]) foo: String)
-  |                                       ^
-  |                                       Not found: type A
-  |
-  | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/pos/i12953.scala:6:23 -------------------------
-6 |case class Bar[A](@Ann[A] foo: String)
-  |                       ^
-  |                       Not found: type A
-  |
-  | longer explanation available when compiling with `-explain`
--- Warning: tests/pos/i12953.scala:1:25 ----------------------------------------
-1 |class Schema(impl: Class[_]) extends scala.annotation.StaticAnnotation
-  |                         ^
-  |`_` is deprecated for wildcard arguments of types: use `?` instead
-  |This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 ```
 
 ### One type checking error involving Selectable:
