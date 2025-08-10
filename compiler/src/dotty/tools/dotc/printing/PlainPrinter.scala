@@ -137,6 +137,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     keywordText("erased ").provided(isErased)
     ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
+    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -378,7 +379,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     finally elideCapabilityCaps = saved
 
   /** Print the annotation that are meant to be on the parameter symbol but was moved
-   * to parameter types. Examples are `@use` and `@consume`. */
+   * to parameter types. Examples are `@use` and `@consume`.
+   */
   protected def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
     Str(s"@${sym.name} ").provided(tp.hasAnnotation(sym))
 

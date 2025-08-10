@@ -468,11 +468,11 @@ sealed abstract class CaptureSet extends Showable:
       case elem: FreshCap => elem.ccOwner.isContainedIn(rootLimit)
       case _ => false
 
-  /** Invoke `handler` if this set has (or later aquires) a root capability.
-   *  Excluded are Fresh instances unless their ccOwner is contained in `upto`.
+  /** Invoke `handler` if this set has (or later aquires) a bad root capability.
+   *  Fresh instances count as good as long as their ccOwner is outside `upto`.
    *  If `upto` is NoSymbol, all Fresh instances are admitted.
    */
-  def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+  def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
     if elems.exists(isBadRoot(upto, _)) then handler()
     this
 
@@ -720,7 +720,7 @@ object CaptureSet:
     private def narrowClassifier(cls: ClassSymbol)(using Context): Unit =
       val newClassifier = leastClassifier(classifier, cls)
       if newClassifier == defn.NothingClass then
-        println(i"conflicting classifications for $this, was $classifier, now $cls")
+        capt.println(i"conflicting classifications for $this, was $classifier, now $cls")
       myClassifier = newClassifier
 
     override def adoptClassifier(cls: ClassSymbol)(using Context): Unit =
@@ -840,10 +840,10 @@ object CaptureSet:
       || isConst
       || varState.canRecord && { includeDep(cs); true }
 
-    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context): this.type =
       rootLimit = upto
       rootAddedHandler = handler
-      super.disallowRootCapability(upto)(handler)
+      super.disallowBadRoots(upto)(handler)
 
     override def ensureWellformed(handler: Capability => (Context) ?=> Unit)(using Context): this.type =
       newElemAddedHandler = handler
@@ -945,7 +945,7 @@ object CaptureSet:
    *  Test case: Without that tweak, logger.scala would not compile.
    */
   class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowRootCapability(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -1306,7 +1306,7 @@ object CaptureSet:
                 |cannot be included in outer capture set $cs"""
           else if !elem.tryClassifyAs(cs.classifier) then
             i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
-                |cannot be included in capture set $cs of ${cs.classifier} elements"""
+                |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
           else if cs.isBadRoot(elem) then
             elem match
               case elem: FreshCap =>

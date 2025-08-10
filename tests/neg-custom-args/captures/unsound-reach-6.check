@@ -18,12 +18,12 @@
 7 |  println(xs.head) // error
   |          ^^^^^^^
   |          Local reach capability xs* leaks into capture scope of method f.
-  |          To allow this, the parameter xs should be declared with a @use annotation
+  |          You could try to abstract the capabilities referred to by xs* in a capset variable.
 -- Error: tests/neg-custom-args/captures/unsound-reach-6.scala:11:14 ---------------------------------------------------
 11 |    val z = f(ys)   // error @consume failure
    |              ^^
    |              Local reach capability ys* leaks into capture scope of method test.
-   |              To allow this, the parameter ys should be declared with a @use annotation
+   |              You could try to abstract the capabilities referred to by ys* in a capset variable.
 -- Error: tests/neg-custom-args/captures/unsound-reach-6.scala:19:14 ---------------------------------------------------
 19 |    val z = f(ys)  // error @consume failure
    |              ^^

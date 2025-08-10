@@ -7,7 +7,7 @@
    |where:    => refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability cap is not included in capture set {xs*}.
+   |Note that capability cap is not included in capture set {C}.
 23 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
@@ -20,7 +20,7 @@
    |where:    => refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability cap cannot be included in capture set {xs*} of value cur.
+   |Note that capability cap cannot be included in capture set {C} of value cur.
 33 |    cur.set:
 34 |      (() => f.write()) :: Nil
    |
@@ -120,28 +120,24 @@
 91 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (A^ ->? A^?, A^ ->? A^?)^?) ->? A^? ->? A^?
-   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^? ->? A^?
+   |Required: ((A ->{C} A, A ->{C} A)) => A^? ->? A^?
    |
    |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
    |          ^  refers to the universal root capability
    |
-   |Note that capability ps* cannot be included in capture set {} of value x.
+   |Note that capability C cannot be included in capture set {} of value x.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------
 39 |    val next: () => Unit = cur.head   // error
    |                           ^^^^^^^^
    |                           Local reach capability xs* leaks into capture scope of method runAll2.
-   |                           To allow this, the parameter xs should be declared with a @use annotation
+   |                           You could try to abstract the capabilities referred to by xs* in a capset variable.
 -- Error: tests/neg-custom-args/captures/reaches.scala:62:36 -----------------------------------------------------------
 62 |  val leaked = usingFile[File^{id*}]: f => // error: separation
    |               ^
-   |               Separation failure: Illegal access to cap of value id which is hidden by the previous definition
-   |               of value id with type File^ -> File^².
-   |               This type hides capabilities  {cap}
+   |        Local cap created in type of parameter x leaks into capture scope of enclosing function
    |
-   |               where:    ^   refers to the universal root capability
-   |                         ^²  refers to a fresh root capability in the type of value id
-   |                         cap is a fresh root capability created in value id
+   |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
 63 |    val f1: File^{id*} = id(f)
 64 |    f1
