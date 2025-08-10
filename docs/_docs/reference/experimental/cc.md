@@ -43,12 +43,12 @@ followed by `^`. We'll see that this turns the parameter into a _capability_ who
 
 If we now try to define the problematic value `later`, we get a static error:
 ```
-   |val later = usingLogFile { f => () => f.write(0) } // error
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.FileOutputStream^?) ->? () ->{f} Unit
-   |Required: java.io.FileOutputStream^ => () ->? Unit
+   |  val later = usingLogFile { f => () => f.write(0) }
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
+   |  Required: java.io.FileOutputStream^ => () ->'s3 Unit
    |
-   |Note that capability f cannot be included in outer capture set ?.
+   |  Note that capability f cannot be included in outer capture set 's3.
 ```
 In this case, it was easy to see that the `logFile` capability escapes in the closure passed to `usingLogFile`. But capture checking also works for more complex cases.
 For instance, capture checking is able to distinguish between the following safe code:
@@ -60,11 +60,11 @@ val xs = usingLogFile { f =>
 and the following unsafe one:
 ```scala
 val xs = usingLogFile { f =>
-  LazyList(1, 2, 3).map { x => f.write(x); x * x }
+  LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
 An error would be issued in the second case, but not the first one (this assumes a capture-aware
-formulation of `LazyList` which we will present later in this page).
+formulation `LzyList` of lazily evaluated lists, which we will present later in this page).
 
 It turns out that capture checking has very broad applications. Besides the various
 try-with-resources patterns, it can also be a key part to the solutions of many other long standing problems in programming languages. Among them:
@@ -89,12 +89,12 @@ The capture checker extension introduces a new kind of types and it enforces som
 Capture checking is done in terms of _capturing types_ of the form
 `T^{c₁, ..., cᵢ}`. Here `T` is a type, and `{c₁, ..., cᵢ}` is a _capture set_ consisting of references to capabilities `c₁, ..., cᵢ`.
 
-A _capability_ is syntactically a method- or class-parameter, a local variable, or the `this` of an enclosing class. The type of a capability
+An _object capability_ is syntactically a method- or class-parameter, a local variable, or the `this` of an enclosing class. The type of a capability
 must be a capturing type with a non-empty capture set. We also say that
 variables that are capabilities are _tracked_.
 
 In a sense, every
-capability gets its authority from some other, more sweeping capability which it captures. The most sweeping capability, from which ultimately all others are derived is written `cap`. We call it the _universal capability_.
+capability gets its authority from some other, more sweeping capability which it captures. The recursion stops with a _universal capability_,  written `cap`, from which all other capabilities are ultimately derived.
 If `T` is a type, then `T^` is a shorthand for `T^{cap}`, meaning `T` can capture arbitrary capabilities.
 
 Here is an example:
@@ -107,8 +107,8 @@ class Logger(fs: FileSystem^):
 def test(fs: FileSystem^) =
   val l: Logger^{fs} = Logger(fs)
   l.log("hello world!")
-  val xs: LazyList[Int]^{l} =
-    LazyList.from(1)
+  val xs: LzyList[Int]^{l} =
+    LzyList.from(1)
       .map { i =>
         l.log(s"computing elem # $i")
         i * i
@@ -120,9 +120,9 @@ and retained as a field in class `Logger`. Hence, the local variable `l` has typ
 `Logger^{fs}`: it is a `Logger` which retains the `fs` capability.
 
 The second variable defined in `test` is `xs`, a lazy list that is obtained from
-`LazyList.from(1)` by logging and mapping consecutive numbers. Since the list is lazy,
+`LzyList.from(1)` by logging and mapping consecutive numbers. Since the list is lazy,
 it needs to retain the reference to the logger `l` for its computations. Hence, the
-type of the list is `LazyList[Int]^{l}`. On the other hand, since `xs` only logs but does
+type of the list is `LzyList[Int]^{l}`. On the other hand, since `xs` only logs but does
 not do other file operations, it retains the `fs` capability only indirectly. That's why
 `fs` does not show up in the capture set of `xs`.
 
@@ -140,7 +140,7 @@ This type is a shorthand for `(A -> B)^{c, d}`, i.e. the function type `A -> B` 
 The impure function type `A => B` is treated as an alias for `A ->{cap} B`. That is, impure functions are functions that can capture anything.
 
 A capture annotation `^` binds more strongly than a function arrow. So
-`A -> B^{c}` is read as `A -> (B^{c})`.
+`A -> B^{c}` is read as `A -> (B^{c})` and `A -> B^` is read as `A -> (B^{cap})`.
 
 Analogous conventions apply to context function types. `A ?=> B` is an impure context function, with `A ?-> B` as its pure complement.
 
@@ -205,15 +205,15 @@ we have
 The set consisting of the root capability `{cap}` covers every other capture set. This is
 a consequence of the fact that, ultimately, every capability is created from `cap`.
 
-**Example 2.** Consider again the FileSystem/Logger example from before. `LazyList[Int]` is a proper subtype of `LazyList[Int]^{l}`. So if the `test` method in that example
-was declared with a result type `LazyList[Int]`, we'd get a type error. Here is the error message:
+**Example 2.** Consider again the FileSystem/Logger example from before. `LzyList[Int]` is a proper subtype of `LzyList[Int]^{l}`. So if the `test` method in that example
+was declared with a result type `LzyList[Int]`, we'd get a type error. Here is the error message:
 ```
-11 |def test(using fs: FileSystem^): LazyList[Int] = {
+11 |def test(using fs: FileSystem^): LzyList[Int] = {
    |                                                 ^
-   |                                        Found:    LazyList[Int]^{fs}
-   |                                        Required: LazyList[Int]
+   |                                        Found:    LzyList[Int]^{fs}
+   |                                        Required: LzyList[Int]
 ```
-Why does it say `LazyList[Int]^{fs}` and not `LazyList[Int]^{l}`, which is, after all, the type of the returned value `xs`? The reason is that `l` is a local variable in the body of `test`, so it cannot be referred to in a type outside that body. What happens instead is that the type is _widened_ to the smallest supertype that does not mention `l`. Since `l` has capture set `fs`, we have that `{fs}` covers `{l}`, and `{fs}` is acceptable in a result type of `test`, so `{fs}` is the result of that widening.
+Why does it say `LzyList[Int]^{fs}` and not `LzyList[Int]^{l}`, which is, after all, the type of the returned value `xs`? The reason is that `l` is a local variable in the body of `test`, so it cannot be referred to in a type outside that body. What happens instead is that the type is _widened_ to the smallest supertype that does not mention `l`. Since `l` has capture set `fs`, we have that `{fs}` covers `{l}`, and `{fs}` is acceptable in a result type of `test`, so `{fs}` is the result of that widening.
 This widening is called _avoidance_; it is not specific to capture checking but applies to all variable references in Scala types.
 
 ## Capability Classes
@@ -363,16 +363,11 @@ This principle plays an important part in making capture checking concise and pr
 
 ## Escape Checking
 
-Some capture sets are restricted so that
-they are not allowed to contain the universal capability.
 
-Specifically, if a capturing type is an instance of a type variable, that capturing type
-is not allowed to carry the universal capability `cap`. There's a connection to tunnelling here.
-The capture set of a type has to be present in the environment when a type is instantiated from
-a type variable. But `cap` is not itself available as a global entity in the environment. Hence,
-an error should result.
+Capabilities follow the usual scoping discipline, which means that capture sets
+can contain only capabilities that are visible at the point where the set is defined.
 
-We can now reconstruct how this principle produced the error in the introductory example, where
+We now reconstruct how this principle produced the error in the introductory example, where
 `usingLogFile` was declared like this:
 ```scala
 def usingLogFile[T](op: FileOutputStream^ => T): T = ...
@@ -380,22 +375,25 @@ def usingLogFile[T](op: FileOutputStream^ => T): T = ...
 The error message was:
 ```
    |  val later = usingLogFile { f => () => f.write(0) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |The expression's type () => Unit is not allowed to capture the root capability `cap`.
-   |This usually means that a capability persists longer than its allowed lifetime.
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
+   |  Required: java.io.FileOutputStream^ => () ->'s3 Unit
+   |
+   |  Note that capability f cannot be included in outer capture set 's3.
 ```
 This error message was produced by the following logic:
 
  - The `f` parameter has type `FileOutputStream^`, which makes it a capability.
  - Therefore, the type of the expression `() => f.write(0)` is `() ->{f} Unit`.
  - This makes the type of the whole closure passed to `usingLogFile` the dependent function type
-   `(f: FileOutputStream^) -> () ->{f} Unit`.
+   `(f: FileOutputStream^'s1) ->'s2 () ->{f} Unit`,
+   for some as yet uncomputed capture sets `'s1` and `'s2`.
  - The expected type of the closure is a simple, parametric, impure function type `FileOutputStream^ => T`,
    for some instantiation of the type variable `T`.
- - The smallest supertype of the closure's dependent function type that is a parametric function type is
-   `FileOutputStream^ => () ->{cap} Unit`
- - Hence, the type variable `T` is instantiated to `() ->{cap} Unit`, or abbreviated `() => Unit`,
- which causes the error.
+ - Matching with the found type, `T` must have the shape `() ->'s3 Unit`, for
+   some capture set `'s3` defined at the level of value `later`.
+ - That capture set cannot include the capability `f` since `f` is locally bound.
+   This causes the error.
 
 An analogous restriction applies to the type of a mutable variable.
 Another way one could try to undermine capture checking would be to
@@ -408,23 +406,8 @@ usingLogFile { f =>
 }
 loophole()
 ```
-But this will not compile either, since mutable variables cannot have universal capture sets.
-
-One also needs to prevent returning or assigning a closure with a local capability in an argument of a parametric type. For instance, here is a
-slightly more refined attack:
-```scala
-class Cell[+A](x: A)
-val sneaky = usingLogFile { f => Cell(() => f.write(0)) }
-sneaky.x()
-```
-At the point where the `Cell` is created, the capture set of the argument is `f`, which
-is OK. But at the point of use, it is `cap` (because `f` is no longer in scope), which causes again an error:
-```
-   |  sneaky.x()
-   |  ^^^^^^^^
-   |The expression's type () => Unit is not allowed to capture the root capability `cap`.
-   |This usually means that a capability persists longer than its allowed lifetime.
-```
+But this will not compile either, since the capture set of the mutable variable `loophole` cannot refer to variable `f`, which is not visible
+where `loophole` is defined.
 
 Looking at object graphs, we observe a monotonicity property: The capture set of an object `x` covers the capture sets of all objects reachable through `x`. This property is reflected in the type system by the following _monotonicity rule_:
 
