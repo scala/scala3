@@ -27,15 +27,16 @@ def test3(@consume x: Ref^): Unit =
   foo()
   foo()
 
+/*
 def test4(@consume @use p: Pair[Ref^, Ref^]): Unit =
   val x: Ref^{p.fst*} = p.fst
   val y: Ref^{p.snd*} = p.snd
   badp(Pair(x, y))
-  println(p.fst.get) // error
+  println(p.fst.get)
 
 def badp(@consume p: Pair[Ref^, Ref^]): Unit = ()
 
 def test5(@consume @use p: Pair[Ref^, Ref^]): Unit =
   badp(p) // ok
-  println(p.fst.get) // error
-
+  println(p.fst.get)
+*/

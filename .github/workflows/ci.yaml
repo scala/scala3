@@ -898,7 +898,7 @@ jobs:
       # Ensure that version starts with prefix 3.
       # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
       version: "3."
-      java-version: 8
+      java-version: 17
 
   build-sdk-package:
     uses: ./.github/workflows/build-sdk.yml
@@ -909,7 +909,7 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'merge_group'
     with:
-      java-version: 8
+      java-version: 17
 
   build-chocolatey-package:
     uses: ./.github/workflows/build-chocolatey.yml
@@ -923,6 +923,6 @@ jobs:
     uses: ./.github/workflows/test-chocolatey.yml
     with:
       version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
-      java-version: 8
+      java-version: 17
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
     needs: [ build-chocolatey-package ]

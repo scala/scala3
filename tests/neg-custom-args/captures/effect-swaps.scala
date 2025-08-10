@@ -2,7 +2,7 @@
 
 object boundary:
 
-  final class Label[-T] extends caps.Capability
+  final class Label[-T] extends caps.SharedCapability
 
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.

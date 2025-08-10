@@ -1,8 +1,9 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:5:2 ------------------------------------------
 5 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    () ->{x} C^?
+  |  Found:    () ->{x} C
   |  Required: () -> C
+  |  Note that capability (x : C^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:8:2 ------------------------------------------
@@ -10,6 +11,7 @@
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |  Found:    () ->{x} C^?
   |  Required: Matchable
+  |  Note that capability (x : C^) is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:15:2 -----------------------------------------
@@ -17,6 +19,7 @@
    |  ^
    |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
+   |  Note that capability (x : C^) is not included in capture set {}.
 16 |  f
    |
    | longer explanation available when compiling with `-explain`
@@ -25,6 +28,7 @@
    |  ^
    |  Found:    A^{x}
    |  Required: A
+   |  Note that capability (x : C^) is not included in capture set {}.
 23 |    def m() = if x == null then y else y
 24 |  F(22)
    |
@@ -34,6 +38,7 @@
    |  ^
    |  Found:    A^{x}
    |  Required: A
+   |  Note that capability (x : C^) is not included in capture set {}.
 28 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
@@ -47,10 +52,27 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                        ^^^^^^^
-   |Found:    () ->{x} C^{x}
-   |Required: () -> C^
+   |Found:    () ->? C^
+   |Required: () -> C^²
    |
-   |where:    ^ refers to a fresh root capability created in value z2 when checking argument to parameter a of method h
+   |where:    ^  refers to a root capability associated with the result type of (): C^
+   |          ^² refers to a fresh root capability created in value z2 when checking argument to parameter a of method h
+   |
+   |Note that capability <cap of (): C^> is not included in capture set {cap}
+   |because <cap of (): C^> is not visible from cap in value z2.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:37:5 -----------------------------------------
+37 |    (() => C()) // error
+   |     ^^^^^^^^^
+   |Found:    () ->? C^
+   |Required: () -> C^²
+   |
+   |where:    ^  refers to a root capability associated with the result type of (): C^
+   |          ^² refers to a fresh root capability created in value z2 when checking argument to parameter b of method h
+   |
+   |Note that capability <cap of (): C^> is not included in capture set {cap}
+   |because <cap of (): C^> is not visible from cap in value z2.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------

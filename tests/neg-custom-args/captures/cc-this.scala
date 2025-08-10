@@ -1,6 +1,6 @@
 import caps.consume
 
-class Cap extends caps.Capability
+class Cap extends caps.ExclusiveCapability
 
 def eff(using Cap): Unit = ()
 

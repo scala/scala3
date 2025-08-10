@@ -33,12 +33,16 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Pure",
   "scala.caps.CapSet",
   "scala.caps.Capability",
+  "scala.caps.Classifier",
   "scala.caps.Contains",
   "scala.caps.Contains$",
   "scala.caps.Contains$.containsImpl",
   "scala.caps.Exists",
-  "scala.caps.Mutable",
   "scala.caps.SharedCapability",
+  "scala.caps.ExclusiveCapability",
+  "scala.caps.Mutable",
+  "scala.caps.Read",
+  "scala.caps.Control",
   "scala.caps.consume",
   "scala.caps.internal",
   "scala.caps.internal$",
@@ -47,6 +51,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.unsafe",
   "scala.caps.unsafe$",
   "scala.caps.use",
+  "scala.caps.reserve",
+  "scala.caps.package$package$.Exclusive",
+  "scala.caps.package$package$.Shared",
 
   //// New feature: into
   "scala.Conversion$.into",
@@ -100,9 +107,6 @@ val experimentalDefinitionInLibrary = Set(
   // New feature: functions with erased parameters.
   // Need quotedPatternsWithPolymorphicFunctions enabled.
   "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
-
-  // New feature: SIP 57 - runtimeChecked replacement of @unchecked
-  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
 
   // New feature: SIP 61 - @unroll annotation
   "scala.annotation.unroll",

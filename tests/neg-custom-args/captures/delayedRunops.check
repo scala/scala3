@@ -1,14 +1,29 @@
--- Error: tests/neg-custom-args/captures/delayedRunops.scala:17:13 -----------------------------------------------------
-17 |      runOps(ops1)  // error
-   |             ^^^^
-   |             Local reach capability ops* leaks into capture scope of method delayedRunOps1.
-   |             To allow this, the parameter ops should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/delayedRunops.scala:29:13 -----------------------------------------------------
-29 |      runOps(ops1)  // error
-   |             ^^^^
-   |             Local reach capability ops* leaks into capture scope of method delayedRunOps3.
-   |             To allow this, the parameter ops should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/delayedRunops.scala:22:16 -----------------------------------------------------
-22 |      val ops1: List[() => Unit] = ops // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops.scala:14:4 ---------------------------------
+14 |    () => // error
+   |    ^
+   |    Found:    () ->{ops*} Unit
+   |    Required: () -> Unit
+   |    Note that capability ops* is not included in capture set {}.
+15 |      val ops1 = ops
+16 |      runOps(ops1)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops.scala:26:4 ---------------------------------
+26 |    () => // error
+   |    ^
+   |    Found:    () ->{ops*} Unit
+   |    Required: () -> Unit
+   |    Note that capability ops* is not included in capture set {}.
+27 |      val ops1: List[() ->{ops*} Unit] = ops
+28 |      runOps(ops1)
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:22:6 ------------------------------------------------------
+22 |      runOps(ops1)  // error
+   |      ^^^^^^
+   |      Local reach capability ops* leaks into capture scope of method delayedRunOps2.
+   |      You could try to abstract the capabilities referred to by ops* in a capset variable.
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:21:16 -----------------------------------------------------
+21 |      val ops1: List[() => Unit] = ops // error
    |                ^^^^^^^^^^^^^^^^
    |                Separation failure: value ops1's type List[() => Unit] hides non-local parameter ops

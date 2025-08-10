@@ -137,6 +137,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     keywordText("erased ").provided(isErased)
     ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
+    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -284,9 +285,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed && ccVerbose
         if elideCapabilityCaps
-            && parent.derivesFrom(defn.Caps_Capability)
+            && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && refs.isReadOnly
+            && (!parent.derivesFromExclusive || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refSet) =>
@@ -378,7 +379,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     finally elideCapabilityCaps = saved
 
   /** Print the annotation that are meant to be on the parameter symbol but was moved
-   * to parameter types. Examples are `@use` and `@consume`. */
+   * to parameter types. Examples are `@use` and `@consume`.
+   */
   protected def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
     Str(s"@${sym.name} ").provided(tp.hasAnnotation(sym))
 
@@ -471,6 +473,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
+    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalCap => "cap"
@@ -484,7 +487,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
     case c: FreshCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
-      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ ">"
+      def classified =
+        if c.hiddenSet.classifier == defn.AnyClass then ""
+        else s" classified as ${c.hiddenSet.classifier.name.show}"
+      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
       else "cap"
     case tp: TypeProxy =>
       homogenize(tp) match

@@ -23,12 +23,12 @@ extension [A](x: A) def :: (xs: List[A]): List[A] = ???
 
 object Nil extends List[Nothing]
 
-def runAll(@use xs: List[Proc]): Unit =
-  var cur: List[() ->{xs*} Unit] = xs  // OK, by revised VAR
+def runAll[C^](xs: List[() ->{C} Unit]): Unit =
+  var cur: List[() ->{C} Unit] = xs  // OK, by revised VAR
   while cur.nonEmpty do
-    val next: () ->{xs*} Unit = cur.head
+    val next: () ->{C} Unit = cur.head
     next()
-    cur = cur.tail: List[() ->{xs*} Unit]
+    cur = cur.tail: List[() ->{C} Unit]
 
 def id1(x: Proc): () ->{x} Unit = x
 def id2(xs: List[Proc]): List[() ->{xs*} Unit] = xs
@@ -51,7 +51,7 @@ def compose2[A, B, C](@consume f: A => B, @consume g: B => C): A => C =
 //def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
 //  ps.map((x, y) => compose1(x, y)) // Does not work, see neg-customargs/../reaches2.scala
 
-class IO extends caps.Capability
+class IO extends caps.SharedCapability
 
 def test(io: IO) =
   val a: () ->{io} Unit = () => ()

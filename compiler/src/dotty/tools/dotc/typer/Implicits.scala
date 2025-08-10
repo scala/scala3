@@ -558,8 +558,8 @@ object Implicits:
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
       if str1 == str2 then
-        str1 = ctx.printer.toTextRef(alt1.ref).show
-        str2 = ctx.printer.toTextRef(alt2.ref).show
+        str1 = alt1.ref.showRef
+        str2 = alt2.ref.showRef
       em"both $str1 and $str2 $qualify".withoutDisambiguation()
 
     override def toAdd(using Context) =
@@ -844,6 +844,10 @@ trait ImplicitRunInfo:
             case t: TypeVar => apply(t.underlying)
             case t: ParamRef => applyToUnderlying(t)
             case t: ConstantType => apply(t.underlying)
+            case t @ AppliedType(tycon, args) if !tycon.typeSymbol.isClass =>
+              // To prevent arguments to be reduced away when re-applying the tycon bounds,
+              // we collect all parts as elements of a tuple. See i21951.scala for a test case.
+              apply(defn.tupleType(tycon :: args))
             case t => mapOver(t)
         end liftToAnchors
         val liftedTp = liftToAnchors(tp)
@@ -1728,7 +1732,7 @@ trait Implicits:
                     "argument"
 
                 def showResult(r: SearchResult) = r match
-                  case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
+                  case r: SearchSuccess => r.ref.showRef
                   case r => r.show
 
                 result match

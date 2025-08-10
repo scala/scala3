@@ -3435,6 +3435,18 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
 
 end QuotedTypeMissing
 
+final class CannotInstantiateQuotedTypeVar(symbol: Symbol)(using patternCtx: Context) extends StagingMessage(CannotInstantiateQuotedTypeVarID):
+  override protected def msg(using Context): String =
+    i"""Quoted pattern type variable `${symbol.name}` cannot be instantiated.
+      |If you meant to refer to a class named `${symbol.name}`, wrap it in backticks.
+      |If you meant to introduce a binding, this is not allowed after `new`. You might
+      |want to use the lower-level `quotes.reflect` API instead.
+      |Read more about type variables in quoted pattern in the Scala documentation:
+      |https://docs.scala-lang.org/scala3/guides/macros/quotes.html#type-variables-in-quoted-patterns
+    """
+
+  override protected def explain(using Context): String = ""
+
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
     i"""Deprecated syntax: since 3.7 this is interpreted as a named tuple with one element,
@@ -3653,7 +3665,19 @@ final class IllegalErasedDef(sym: Symbol)(using Context) extends TypeMsg(Illegal
     "Only non-lazy immutable values can be `erased`"
 end IllegalErasedDef
 
-class ConcreteClassHasUnimplementedMethods(clazz: ClassSymbol, missingMethods: List[dotty.tools.dotc.core.Symbols.Symbol], val actions: List[CodeAction])(using Context)
+final class DefaultShadowsGiven(name: Name)(using Context) extends TypeMsg(DefaultShadowsGivenID):
+  override protected def msg(using Context): String =
+    i"Argument for implicit parameter $name was supplied using a default argument."
+  override protected def explain(using Context): String =
+    "Usually the given in scope is intended, but you must specify it after explicit `using`."
+
+final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(RecurseWithDefaultID):
+  override protected def msg(using Context): String =
+    i"Recursive call used a default argument for parameter $name."
+  override protected def explain(using Context): String =
+    "It's more explicit to pass current or modified arguments in a recursion."
+
+final class ConcreteClassHasUnimplementedMethods(clazz: ClassSymbol, missingMethods: List[dotty.tools.dotc.core.Symbols.Symbol], val actions: List[CodeAction])(using Context)
 extends Message(ConcreteClassHasUnimplementedMethodsID): 
 
   def kind = MessageKind.Declaration

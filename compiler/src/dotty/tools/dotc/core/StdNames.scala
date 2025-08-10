@@ -120,8 +120,6 @@ object StdNames {
     val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
-    val CC_REACH: N                   = "$reach"
-    val CC_READONLY: N                = "$readOnly"
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -396,6 +394,7 @@ object StdNames {
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
     val Tuple2: N               = "Tuple2"
+    val Tuple: N                = "Tuple"
     val TYPE_ : N               = "TYPE"
     val TypeApply: N            = "TypeApply"
     val TypeRef: N              = "TypeRef"
@@ -570,6 +569,7 @@ object StdNames {
     val null_ : N               = "null"
     val ofDim: N                = "ofDim"
     val on: N                   = "on"
+    val only: N                 = "only"
     val opaque: N               = "opaque"
     val open: N                 = "open"
     val ordinal: N              = "ordinal"

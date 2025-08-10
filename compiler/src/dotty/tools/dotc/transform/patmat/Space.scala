@@ -455,8 +455,8 @@ object SpaceEngine {
         val inArray = tycon.isRef(defn.ArrayClass) || tp.translucentSuperType.isRef(defn.ArrayClass)
         val args2 =
           if isTyped && !inArray then args.map(_ => WildcardType)
-          else args.map(arg => erase(arg, inArray = inArray, isValue = false))
-        tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
+          else args.map(arg => erase(arg, inArray = inArray, isValue = false, isTyped = false))
+        tp.derivedAppliedType(erase(tycon, inArray = inArray, isValue = false, isTyped = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
         OrType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped), tp.isSoft)
@@ -685,7 +685,7 @@ object SpaceEngine {
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
           def containsUninhabitedField(tp: Type): Boolean =
-            tp.fields.exists { field =>
+            !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
               !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
             }
 

@@ -505,15 +505,14 @@ object Phases {
       * Enrich crash messages.
       */
     final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Boolean =
-      val unit = ctx.compilationUnit
-      if ctx.run.enterUnit(unit) then
+      ctx.run.enterUnit(ctx.compilationUnit)
+      && {
         try {body; true}
         catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
-          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing $unit"))
+          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
         finally ctx.run.advanceUnit()
-      else
-        false
+      }
 
     inline def runSubPhase[T](id: Run.SubPhase)(inline body: (Run.SubPhase, Context) ?=> T)(using Context): T =
       given Run.SubPhase = id

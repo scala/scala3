@@ -14,6 +14,9 @@
    |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |
+   |Note that capability x.type is not included in capture set {cap}
+   |because x.type is not visible from cap in value a.
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |
@@ -26,6 +29,8 @@
    |
    |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
+   |
+   |Note that capability x.type is not included in capture set {}.
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -39,8 +44,8 @@
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
-   |Note that reference x.type
-   |cannot be included in outer capture set ?
+   |Note that capability x.type
+   |cannot be included in outer capture set ?.
 36 |    (x: CanThrow[Exception]) =>
 37 |      () =>
 38 |        raise(new Exception)(using x)
@@ -57,8 +62,8 @@
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
-   |Note that reference x.type
-   |cannot be included in outer capture set ?
+   |Note that capability x.type
+   |cannot be included in outer capture set ?.
 48 |  (x: CanThrow[Exception]) =>
 49 |    () =>
 50 |      raise(new Exception)(using x)

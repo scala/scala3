@@ -3361,6 +3361,9 @@ object TypeComparer {
      */
     def kind: Class[?] = getClass
 
+    def description(using Context): String
+  end ErrorNote
+
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
     case OK, OKwithGADTUsed, OKwithOpaquesUsed
@@ -3537,16 +3540,16 @@ object TypeComparer {
     comparing(_.subCaptures(refs1, refs2, vs))
 
   def logUndoAction(action: () => Unit)(using Context): Unit =
-    comparer.logUndoAction(action)
+    currentComparer.logUndoAction(action)
 
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
-    comparer.inNestedLevel(op)
+    currentComparer.inNestedLevel(op)
 
   def addErrorNote(note: ErrorNote)(using Context): Unit =
-    comparer.addErrorNote(note)
+    currentComparer.addErrorNote(note)
 
   def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
-    comparer.errorNotes = comparer.errorNotes.mapConserve: p =>
+    currentComparer.errorNotes = currentComparer.errorNotes.mapConserve: p =>
       val (level, note) = p
       if f.isDefinedAt(note) then (level, f(note)) else p
 
@@ -3554,7 +3557,7 @@ object TypeComparer {
     comparing(_.compareResult(op))
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
-    comparer.isolated(op, x => x)
+    currentComparer.isolated(op, x => x)
 }
 
 object MatchReducer:

@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/closure-result-typing.scala:2:30 -------------------------
+2 |  val x: () -> Object = () => c // error
+  |                              ^
+  |                              Found:    (c : Object^)
+  |                              Required: Object
+  |
+  |                              where:    ^ refers to a fresh root capability in the type of parameter c
+  |
+  |                              Note that capability cap is not included in capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`

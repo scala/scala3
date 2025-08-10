@@ -80,6 +80,8 @@ extension (tp: Type)
       tp1.toCapability.reach
     case ReadOnlyCapability(tp1) =>
       tp1.toCapability.readOnly
+    case OnlyCapability(tp1, cls) =>
+      tp1.toCapability.restrict(cls)
     case ref: TermRef if ref.isCapRef =>
       GlobalCap
     case ref: Capability if ref.isTrackableRef =>
@@ -94,10 +96,20 @@ extension (tp: Type)
   def retainedElementsRaw(using Context): List[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
+    case AnnotatedType(tp1, ann) if tp1.derivesFrom(defn.Caps_CapSet) && ann.symbol.isRetains =>
+      ann.tree.retainedSet.retainedElementsRaw
     case tp =>
-      // Nothing is a special type to represent the empty set
-      if tp.isNothingType then Nil
-      else tp :: Nil // should be checked by wellformedness
+      tp.dealiasKeepAnnots match
+        case tp: TypeRef if tp.symbol == defn.Caps_CapSet =>
+          // This can happen in cases where we try to type an eta expansion `$x => f($x)`
+          // from a polymorphic target type using capture sets. In that case the parameter type
+          // of $x is not treated as inferred and is approximated to CapSet. An example is
+          // capset-problem.scala. We handle these cases by appromxating to the empty set.
+          Nil
+        case _ =>
+          // Nothing is a special type to represent the empty set
+          if tp.isNothingType then Nil
+          else tp :: Nil // should be checked by wellformedness
 
   /** A list of capabilities of a retained set. */
   def retainedElements(using Context): List[Capability] =
@@ -288,7 +300,7 @@ extension (tp: Type)
   def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
       val refs1 = tp match
-        case ref: Capability if ref.isTracked || ref.isReach || ref.isReadOnly =>
+        case ref: Capability if ref.isTracked || ref.isInstanceOf[DerivedCapability] =>
           ref.singletonCaptureSet
         case _ => refs
       CapturingType(parent, refs1, boxed)
@@ -374,7 +386,8 @@ extension (tp: Type)
 
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
   def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-  def derivesFromSharedCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+  def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+  def derivesFromExclusive(using Context): Boolean = derivesFromCapTrait(defn.Caps_ExclusiveCapability)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -397,9 +410,12 @@ extension (tp: Type)
           if variance <= 0 then t
           else t.dealias match
             case t @ CapturingType(p, cs) if cs.containsCapOrFresh =>
-              change = true
               val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
-              t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
+              if reachRef.singletonCaptureSet.mightSubcapture(cs) then
+                change = true
+                t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
+              else
+                t
             case t @ AnnotatedType(parent, ann) =>
               // Don't map annotations, which includes capture sets
               t.derivedAnnotatedType(this(parent), ann)
@@ -440,6 +456,30 @@ extension (tp: Type)
   def dropUseAndConsumeAnnots(using Context): Type =
     tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)
 
+  /** If `tp` is a function or method, a type of the same kind with the given
+   *  argument and result types.
+  */
+  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = tp match
+    case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
+      val args1 = argTypes :+ resType
+      if args.corresponds(args1)(_ eq _) then tp
+      else tp.derivedAppliedType(tycon, args1)
+    case tp @ defn.RefinedFunctionOf(rinfo) =>
+      val rinfo1 = rinfo.derivedFunctionOrMethod(argTypes, resType)
+      if rinfo1 eq rinfo then tp
+      else if rinfo1.isInstanceOf[PolyType] then tp.derivedRefinedType(refinedInfo = rinfo1)
+      else rinfo1.toFunctionType(alwaysDependent = true)
+    case tp: MethodType =>
+      tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
+    case tp: PolyType =>
+      assert(argTypes.isEmpty)
+      tp.derivedLambdaType(resType = resType)
+    case _ =>
+      tp
+
+  def classifier(using Context): ClassSymbol =
+    tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
+
 extension (tp: MethodType)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
@@ -470,6 +510,16 @@ extension (cls: ClassSymbol)
     cls.baseClasses.tail.exists: bc =>
       val selfType = bc.givenSelfType
       bc.is(CaptureChecked) && selfType.exists && selfType.captureSet.elems == refs.elems
+
+  def isClassifiedCapabilityClass(using Context): Boolean =
+    cls.derivesFrom(defn.Caps_Capability) && cls.parentSyms.contains(defn.Caps_Classifier)
+
+  def classifier(using Context): ClassSymbol =
+    if cls.derivesFrom(defn.Caps_Capability) then
+      cls.baseClasses
+        .filter(_.parentSyms.contains(defn.Caps_Classifier))
+        .foldLeft(defn.AnyClass)(leastClassifier)
+    else defn.AnyClass
 
 extension (sym: Symbol)
 
@@ -533,18 +583,30 @@ extension (sym: Symbol)
   def hasTrackedParts(using Context): Boolean =
     !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
-  /** `sym` itself or its info is annotated @use or it is a type parameter with a matching
-   *  @use-annotated term parameter that contains `sym` in its deep capture set.
+  /** Until 3.7:
+   *    `sym` itself or its info is annotated @use or it is a type parameter with a matching
+   *    @use-annotated term parameter that contains `sym` in its deep capture set.
+   *  From 3.8:
+   *    `sym` is a capset parameter without a `@reserve` annotation that
+   *      - belongs to a class in a class, or
+   *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
    */
   def isUseParam(using Context): Boolean =
     sym.hasAnnotation(defn.UseAnnot)
     || sym.info.hasAnnotation(defn.UseAnnot)
     || sym.is(TypeParam)
-        && sym.owner.rawParamss.nestedExists: param =>
-            param.is(TermParam) && param.hasAnnotation(defn.UseAnnot)
-            && param.info.deepCaptureSet.elems.exists:
-                case c: TypeRef => c.symbol == sym
-                case _ => false
+        && !sym.info.hasAnnotation(defn.ReserveAnnot)
+        && (sym.owner.isClass
+            || sym.owner.rawParamss.nestedExists: param =>
+                param.is(TermParam)
+                && (!ccConfig.allowUse || param.hasAnnotation(defn.UseAnnot))
+                && param.info.deepCaptureSet.elems.exists:
+                    case c: TypeRef => c.symbol == sym
+                    case _ => false
+            || {
+              //println(i"not is use param $sym")
+              false
+            })
 
   /** `sym` or its info is annotated with `@consume`. */
   def isConsumeParam(using Context): Boolean =
@@ -560,6 +622,11 @@ extension (sym: Symbol)
   def isInReadOnlyMethod(using Context): Boolean =
     if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
     else sym.owner.isInReadOnlyMethod
+
+  def qualString(prefix: String)(using Context): String =
+    if !sym.exists then ""
+    else if sym.isAnonymousFunction then i" $prefix enclosing function"
+    else i" $prefix $sym"
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
@@ -585,7 +652,6 @@ abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def unapply(tree: AnnotatedType)(using Context): Option[Type] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(annotCls) => Some(parent)
     case _ => None
-
 end AnnotatedCapability
 
 /** An extractor for `ref @readOnlyCapability`, which is used to express
@@ -603,6 +669,19 @@ object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
+object OnlyCapability:
+  def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
+    AnnotatedType(tp,
+      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+
+  def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
+      ann.tree.tpe.argTypes.head.classSymbol match
+        case cls: ClassSymbol => Some((parent, cls))
+        case _ => None
+    case _ => None
+end OnlyCapability
+
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?
  *  @return  1st half: The argument types or empty if this is a type function
@@ -615,28 +694,6 @@ object FunctionOrMethod:
     case mt: PolyType => Some((Nil, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
     case _ => None
-
-/** If `tp` is a function or method, a type of the same kind with the given
- *  argument and result types.
- */
-extension (self: Type)
-  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = self match
-    case self @ AppliedType(tycon, args) if defn.isNonRefinedFunction(self) =>
-      val args1 = argTypes :+ resType
-      if args.corresponds(args1)(_ eq _) then self
-      else self.derivedAppliedType(tycon, args1)
-    case self @ defn.RefinedFunctionOf(rinfo) =>
-      val rinfo1 = rinfo.derivedFunctionOrMethod(argTypes, resType)
-      if rinfo1 eq rinfo then self
-      else if rinfo1.isInstanceOf[PolyType] then self.derivedRefinedType(refinedInfo = rinfo1)
-      else rinfo1.toFunctionType(alwaysDependent = true)
-    case self: MethodType =>
-      self.derivedLambdaType(paramInfos = argTypes, resType = resType)
-    case self: PolyType =>
-      assert(argTypes.isEmpty)
-      self.derivedLambdaType(resType = resType)
-    case _ =>
-      self
 
 /** An extractor for a contains argument */
 object ContainsImpl:

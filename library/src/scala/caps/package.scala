@@ -21,23 +21,53 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
  * is turned on.
  * But even without capture checking, extending this trait can be useful for documenting the intended purpose
  * of a class.
+ *
+ * Capability has exactly two subtraits: Shared and Exclusive.
  */
 @experimental
-trait Capability extends Any
+sealed trait Capability extends Any
+
+/** A marker trait for classifier capabilities that can appear in `.only`
+ *  qualifiers. Capability classes directly extending `Classifier` are treated
+ *  as classifier capbilities
+ */
+@experimental
+trait Classifier
 
 /** The universal capture reference. */
 @experimental
 object cap extends Capability
 
-/** Marker trait for classes with methods that requires an exclusive reference. */
-@experimental
-trait Mutable extends Capability
-
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
-  * During separation checking, shared capabilities are not taken into account.
-  */
+ * During separation checking, shared capabilities are not taken into account.
+ */
 @experimental
-trait SharedCapability extends Capability
+trait SharedCapability extends Capability, Classifier
+
+@experimental
+type Shared = SharedCapability
+
+/** Marker trait for exclusive capabilities that are separation-checked
+ */
+@experimental
+trait ExclusiveCapability extends Capability, Classifier
+
+@experimental
+type Exclusive = ExclusiveCapability
+
+/** Base trait for capabilities that capture some continuation or return point in
+ *  the stack. Examples are exceptions, labels, Async, CanThrow.
+ */
+@experimental
+trait Control extends SharedCapability, Classifier
+
+/** Marker trait for classes with methods that require an exclusive reference. */
+@experimental
+trait Mutable extends ExclusiveCapability, Classifier
+
+/** Marker trait for classes with reader methods, typically extended by Mutable classes */
+@experimental
+trait Read extends Mutable, Classifier
 
 /** Carrier trait for capture set type parameters */
 @experimental
@@ -57,13 +87,23 @@ object Contains:
   @experimental
   given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
-/** An annotation on parameters `x` stating that the method's body makes
- *  use of the reach capability `x*`. Consequently, when calling the method
- *  we need to charge the deep capture set of the actual argiment to the
+/** An annotation on capset parameters `C` stating that the method's body does not
+ *  have `C` in its use-set. `C` might be accessed under a box in the method
+ *  or in the result type of the method. Consequently, when calling the method
+ *  we do not need to charge the capture set of the actual argiment to the
  *  environment.
  *
  *  Note: This should go into annotations. For now it is here, so that we
  *  can experiment with it quickly between minor releases
+ */
+@experimental
+final class reserve extends annotation.StaticAnnotation
+
+/** Allowed only for source versions up to 3.7:
+ *  An annotation on parameters `x` stating that the method's body makes
+ *  use of the reach capability `x*`. Consequently, when calling the method
+ *  we need to charge the deep capture set of the actual argiment to the
+ *  environment.
  */
 @experimental
 final class use extends annotation.StaticAnnotation

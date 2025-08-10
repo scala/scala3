@@ -8,7 +8,7 @@ import annotation.{implicitNotFound, experimental, capability}
  */
 @experimental
 @implicitNotFound("The capability to throw exception ${E} is missing.\nThe capability can be provided by one of the following:\n - Adding a using clause `(using CanThrow[${E}])` to the definition of the enclosing method\n - Adding `throws ${E}` clause after the result type of the enclosing method\n - Wrapping this piece of code with a `try` block that catches ${E}")
-class CanThrow[-E <: Exception] extends caps.SharedCapability, compiletime.Erased
+class CanThrow[-E <: Exception] extends caps.Control, compiletime.Erased
 
 @experimental
 object unsafeExceptions:

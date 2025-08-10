@@ -6,11 +6,14 @@
    |
    |                   where:    ^ refers to a fresh root capability in the type of value d
    |
+   |                   Note that capability cap is not included in capture set {c1}.
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-poly-2.scala:16:20 ------------------------------------
 16 |    val _: D^{c1} = x // error
    |                    ^
    |                    Found:    (x : Test.D^{d})
    |                    Required: Test.D^{c1}
+   |                    Note that capability (d : Test.D^) is not included in capture set {c1}.
    |
    | longer explanation available when compiling with `-explain`

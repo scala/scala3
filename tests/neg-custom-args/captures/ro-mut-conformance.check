@@ -9,9 +9,8 @@
    |                     Found:    (a : Ref)
    |                     Required: Ref^
    |
-   |                     where:    ^ refers to a fresh root capability in the type of value t
+   |                     where:    ^ refers to a fresh root capability classified as Mutable in the type of value t
    |
-   |                     Note that {cap} is an exclusive capture set of the mutable type Ref^,
-   |                     it cannot subsume a read-only capture set of the mutable type (a : Ref).
+   |                     Note that capability (a : Ref) is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
