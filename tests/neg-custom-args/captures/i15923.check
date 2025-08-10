@@ -1,25 +1,25 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:27:23 ---------------------------------------
 27 |    val leak = withCap(cap => mkId(cap))  // error (was: no error here since type aliases don't box)
    |                       ^^^^^^^^^^^^^^^^
-   |Found:    (cap: test2.Cap^?) ->? [T] => (op: test2.Cap^? ->? T) ->? T
-   |Required: test2.Cap^{lcap} => [T] => (op²: test2.Cap^? ->? T) ->? T
+   |Found:    (cap: test2.Cap^'s1) ->'s2 [T] => (op: test2.Cap^'s3 ->'s4 T) ->'s5 T
+   |Required: test2.Cap^{lcap} => [T] => (op²: test2.Cap^'s6 ->'s7 T) ->'s8 T
    |
-   |where:    =>  refers to a fresh root capability created in anonymous function of type (using lcap²: scala.caps.Capability): test2.Cap^{lcap²} -> [T] => (op³: test2.Cap^{lcap²} => T) -> T when instantiating expected result type test2.Cap^{lcap} ->{cap²} [T] => (op²: test2.Cap^? ->? T) ->? T of function literal
+   |where:    =>  refers to a fresh root capability created in anonymous function of type (using lcap²: scala.caps.Capability): test2.Cap^{lcap²} -> [T] => (op³: test2.Cap^{lcap²} => T) -> T when instantiating expected result type test2.Cap^{lcap} ->{cap²} [T] => (op²: test2.Cap^'s6 ->'s7 T) ->'s8 T of function literal
    |          op  is a reference to a value parameter
    |          op² is a reference to a value parameter
    |
-   |Note that capability lcap cannot be included in outer capture set ? of parameter cap.
+   |Note that capability lcap cannot be included in outer capture set 's1 of parameter cap.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
    |                     ^^^^^^^^^^^^^^^^
-   |Found:    (cap: Cap^?) ->? Id[Cap^?]^?
-   |Required: Cap^{lcap} => Id[Cap^?]^?
+   |Found:    (cap: Cap^'s9) ->'s10 Id[Cap^'s11]^'s12
+   |Required: Cap^{lcap} => Id[Cap^'s13]^'s14
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap²: scala.caps.Capability): Cap^{lcap²} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^?]^? of function literal
+   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap²: scala.caps.Capability): Cap^{lcap²} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^'s13]^'s14 of function literal
    |
-   |Note that capability lcap cannot be included in outer capture set ? of parameter cap.
+   |Note that capability lcap cannot be included in outer capture set 's9 of parameter cap.
    |
    | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg-custom-args/captures/i15923.scala:21:56 ----------------------------------------------------------

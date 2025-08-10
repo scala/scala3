@@ -1,48 +1,48 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:27 ---------------------------------
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.FileOutputStream^?) ->? () ->{f} Unit
-   |Required: java.io.FileOutputStream^ => () ->? Unit
+   |Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
+   |Required: java.io.FileOutputStream^ => () ->'s3 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability f cannot be included in outer capture set ?.
+   |Note that capability f cannot be included in outer capture set 's3.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:36 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.FileOutputStream^?) ->? Test2.Cell[() ->{f} Unit]^?
-   |Required: java.io.FileOutputStream^ => Test2.Cell[() ->? Unit]^?
+   |Found:    (f: java.io.FileOutputStream^'s4) ->'s5 Test2.Cell[() ->{f} Unit]^'s6
+   |Required: java.io.FileOutputStream^ => Test2.Cell[() ->'s7 Unit]^'s8
    |
    |where:    => refers to a fresh root capability created in value later2 when checking argument to parameter op of method usingLogFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability f cannot be included in outer capture set ?.
+   |Note that capability f cannot be included in outer capture set 's7.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
 43 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: java.io.OutputStream^?) ->? Int ->{f} Unit
-   |Required: java.io.OutputStream^ => Int ->? Unit
+   |Found:    (f: java.io.OutputStream^'s9) ->'s10 Int ->{f} Unit
+   |Required: java.io.OutputStream^ => Int ->'s11 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability f cannot be included in outer capture set ?.
+   |Note that capability f cannot be included in outer capture set 's11.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:52:6 ----------------------------------
 52 |      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (_$1: java.io.OutputStream^?) ->? () ->{_$1} Unit
-   |Required: java.io.OutputStream^ => () ->? Unit
+   |Found:    (_$1: java.io.OutputStream^'s12) ->'s13 () ->{_$1} Unit
+   |Required: java.io.OutputStream^ => () ->'s14 Unit
    |
    |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the universal root capability
    |
-   |Note that capability _$1 cannot be included in outer capture set ?.
+   |Note that capability _$1 cannot be included in outer capture set 's14.
    |
    | longer explanation available when compiling with `-explain`

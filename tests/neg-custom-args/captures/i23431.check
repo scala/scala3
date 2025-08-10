@@ -27,7 +27,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23431.scala:12:12 ---------------------------------------
 12 |    withIO: io3 =>  // error
    |            ^
-   |Found:    (io3: IO^?) ->? Unit
+   |Found:    (io3: IO^'s1) ->'s2 Unit
    |Required: IO^ => Unit
    |
    |where:    => refers to a fresh root capability created in anonymous function of type (io1: IO^): Unit when checking argument to parameter op of method withIO

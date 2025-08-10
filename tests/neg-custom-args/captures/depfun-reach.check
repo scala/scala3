@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:12:27 ---------------------------------
 12 |    List(() => op.foreach((f,g) => { f(); g() })) // error (???)
    |                           ^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (() ->? Unit, () ->? Unit)^?) ->? Unit
+   |Found:    (x$1: (() ->'s1 Unit, () ->'s2 Unit)^'s3) ->'s4 Unit
    |Required: ((() ->{op*} Unit, () ->{op*} Unit)) => Unit
    |
    |where:    => refers to a fresh root capability created in anonymous function of type (): Unit when checking argument to parameter op of method foreach

@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:13 --------------------------------------
 22 |  usingFile: f => // error
    |             ^
-   |Found:    (f: File^?) ->? Unit
+   |Found:    (f: File^'s1) ->'s2 Unit
    |Required: File^ => Unit
    |
    |where:    => refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
@@ -14,7 +14,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:32:13 --------------------------------------
 32 |  usingFile: f => // error
    |             ^
-   |Found:    (f: File^?) ->? Unit
+   |Found:    (f: File^'s3) ->'s4 Unit
    |Required: File^ => Unit
    |
    |where:    => refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
@@ -68,7 +68,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:27 --------------------------------------
 59 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
-   |                  Found:    (x: File^) ->? File^²
+   |                  Found:    (x: File^) ->'s5 File^²
    |                  Required: File^ -> File^³
    |
    |                  where:    ^  refers to the universal root capability
@@ -82,7 +82,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:69:38 --------------------------------------
 69 |  val leaked = usingFile[File^{id*}]: f => // error
    |                                      ^
-   |Found:    (f: File^?) ->? File^{id*}
+   |Found:    (f: File^'s6) ->'s7 File^{id*}
    |Required: File^ => File^{id*}
    |
    |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
@@ -96,8 +96,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:87:10 --------------------------------------
 87 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (A^ ->? A^?, A^ ->? A^?)^?) ->? A^? ->? A^?
-   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^? ->? A^?
+   |Found:    (x$1: (A^ ->'s8 A^'s9, A^ ->'s10 A^'s11)^'s12) ->'s13 A^'s14 ->'s15 A^'s16
+   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s17 ->'s18 A^'s19
    |
    |where:    => refers to a fresh root capability created in method mapCompose when checking argument to parameter f of method map
    |          ^  refers to the universal root capability

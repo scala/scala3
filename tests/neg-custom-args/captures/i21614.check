@@ -16,8 +16,8 @@
    |Required: File^{C} => Logger{val f: File^?}^?
    |
    |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
-   |          cap is a root capability associated with the result type of (_$1: File^?): Logger{val f: File^{_$1}}^{cap.rd, _$1}
+   |          cap is a root capability associated with the result type of (_$1: File^'s1): Logger{val f: File^{_$1}}^{cap.rd, _$1}
    |
-   |Note that capability <cap of (_$1: File^{files*}): Logger{val f: File^?}^?>.rd cannot be included in outer capture set ?.
+   |Note that capability <cap of (_$1: File^{files*}): Logger{val f: File^'s2}^'s3>.rd cannot be included in outer capture set 's3.
    |
    | longer explanation available when compiling with `-explain`

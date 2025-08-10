@@ -9,7 +9,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:8:2 ------------------------------------------
 8 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    () ->{x} C^?
+  |  Found:    () ->{x} C^'s1
   |  Required: Matchable
   |  Note that capability x is not included in capture set {}.
   |
@@ -52,7 +52,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                        ^^^^^^^
-   |Found:    () ->? C^
+   |Found:    () ->'s2 C^
    |Required: () -> C^²
    |
    |where:    ^  refers to a root capability associated with the result type of (): C^
@@ -65,7 +65,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:37:5 -----------------------------------------
 37 |    (() => C()) // error
    |     ^^^^^^^^^
-   |Found:    () ->? C^
+   |Found:    () ->'s3 C^
    |Required: () -> C^²
    |
    |where:    ^  refers to a root capability associated with the result type of (): C^

@@ -18,7 +18,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:19:5 ----------------------------------------
 19 |  h(g()) // error
    |    ^^^
-   |    Found:    () ?->{cap2} I^?
+   |    Found:    () ?->{cap2} I^'s1
    |    Required: () ?->{cap1} I
    |    Note that capability cap2 is not included in capture set {cap1}.
    |
@@ -26,7 +26,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:22:5 ----------------------------------------
 22 |  h2(() => g())() // error
    |     ^^^^^^^^^
-   |     Found:    () ->{cap2} I^?
+   |     Found:    () ->{cap2} I^'s2
    |     Required: () ->{cap1} I
    |     Note that capability cap2 is not included in capture set {cap1}.
    |

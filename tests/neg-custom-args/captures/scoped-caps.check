@@ -106,7 +106,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:19 ----------------------------------
 28 |  val _: S -> B^ = x => j(x)       // error
    |                   ^^^^^^^^^
-   |                   Found:    (x: S^) ->? B^²
+   |                   Found:    (x: S^) ->'s1 B^²
    |                   Required: S^ -> B^³
    |
    |                   where:    ^  refers to the universal root capability

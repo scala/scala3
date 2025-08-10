@@ -20,6 +20,8 @@ import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
 import Capabilities.*
+import Names.Name
+import NameKinds.CapsetName
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -738,6 +740,17 @@ object CaptureSet:
 
     var description: String = ""
 
+    private var myRepr: Name | Null = null
+
+    /** A represtentation of this capture set as a unique name. We print
+     *  empty capture set variables in this representation. Bimapped sets have
+     *  the representation of their source set.
+     */
+    def repr(using Context): Name = {
+      if (myRepr == null) myRepr = CapsetName.fresh()
+      myRepr.nn
+    }
+
     /** Check that all maps recorded in skippedMaps map `elem` to itself
      *  or something subsumed by it.
      */
@@ -1028,6 +1041,7 @@ object CaptureSet:
     override def isMaybeSet: Boolean = bimap.isInstanceOf[MaybeMap]
     override def toString = s"BiMapped$id($source, elems = $elems)"
     override def summarize = bimap.getClass.toString
+    override def repr(using Context): Name = source.repr
   end BiMapped
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
