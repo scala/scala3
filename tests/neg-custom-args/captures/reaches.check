@@ -108,8 +108,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:90:10 --------------------------------------
 90 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (x$1: (A^ ->? A^?, A^ ->? A^?)^?) ->? A^? ->? A^?
-   |Required: ((A ->{C} A, A ->{C} A)) => A^? ->? A^?
+   |Found:    (x$1: (A^ ->'s20 A^'s21, A^ ->'s22 A^'s23)^'s24) ->'s25 A^'s26 ->'s27 A^'s28
+   |Required: ((A ->{C} A, A ->{C} A)) => A^'s29 ->'s30 A^'s31
    |
    |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
    |          ^  refers to the universal root capability

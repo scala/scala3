@@ -703,14 +703,6 @@ object Capabilities:
       (this eq y)
       || this.match
         case x: FreshCap =>
-          def levelOK =
-            if ccConfig.useFreshLevels && !CCState.collapseFresh then
-              val yOwner = y.levelOwner
-              yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
-            else y.core match
-              case ResultCap(_) | _: ParamRef => false
-              case _ => true
-
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
           || x.acceptsLevelOf(y)
               && ( y.tryClassifyAs(x.hiddenSet.classifier)
@@ -953,69 +945,6 @@ object Capabilities:
   /** Maps fresh to cap */
   def freshToCap(param: Symbol, tp: Type)(using Context): Type =
     CapToFresh(Origin.Parameter(param)).inverse(tp)
-
-  /** The local dual of a result type of a closure type.
-   *  @param binder  the method type of the anonymous function whose result is mapped
-   *  @pre           the context's owner is the anonymous function
-   */
-  class Internalize(binder: MethodType)(using Context) extends BiTypeMap:
-    thisMap =>
-
-    val sym = ctx.owner
-    assert(sym.isAnonymousFunction)
-    val paramSyms = atPhase(ctx.phase.prev):
-      // We need to ask one phase before since `sym` should not be completed as a side effect.
-      // The result of Internalize is used to se the result type of an anonymous function, and
-      // the new info of that function is built with the result.
-      sym.paramSymss.head
-    val resultToFresh = EqHashMap[ResultCap, FreshCap]()
-    val freshToResult = EqHashMap[FreshCap, ResultCap]()
-
-    override def apply(t: Type) =
-      if variance < 0 then t
-      else t match
-        case t: ParamRef =>
-          if t.binder == this.binder then paramSyms(t.paramNum).termRef else t
-        case _ => mapOver(t)
-
-    override def mapCapability(c: Capability, deep: Boolean): Capability = c match
-      case r: ResultCap if r.binder == this.binder =>
-        resultToFresh.get(r) match
-          case Some(f) => f
-          case None =>
-            val f = FreshCap(Origin.LocalInstance(binder.resType))
-            resultToFresh(r) = f
-            freshToResult(f) = r
-            f
-      case _ =>
-        super.mapCapability(c, deep)
-
-    class Inverse extends BiTypeMap:
-      def apply(t: Type): Type =
-        if variance < 0 then t
-        else t match
-          case t: TermRef if paramSyms.contains(t) =>
-            binder.paramRefs(paramSyms.indexOf(t.symbol))
-          case _ => mapOver(t)
-
-      override def mapCapability(c: Capability, deep: Boolean): Capability = c match
-        case f: FreshCap if f.owner == sym =>
-          freshToResult.get(f) match
-            case Some(r) => r
-            case None =>
-              val r = ResultCap(binder)
-              resultToFresh(r) = f
-              freshToResult(f) = r
-              r
-        case _ => super.mapCapability(c, deep)
-
-      def inverse = thisMap
-      override def toString = thisMap.toString + ".inverse"
-    end Inverse
-
-    override def toString = "InternalizeClosureResult"
-    def inverse = Inverse()
-  end Internalize
 
   /** The local dual of a result type of a closure type.
    *  @param binder  the method type of the anonymous function whose result is mapped
