@@ -3765,7 +3765,7 @@ object ScaladocConfigs {
 
   lazy val Scala3 = Def.task {
     val dottyJars: Seq[java.io.File] = Seq(
-      (`scala2-library-bootstrapped`/Compile/products).value,
+      (`scala2-library-cc`/Compile/products).value,
       (`scala3-library-bootstrapped`/Compile/products).value,
       (`scala3-interfaces`/Compile/products).value,
       (`tasty-core-bootstrapped`/Compile/products).value,
@@ -3774,7 +3774,7 @@ object ScaladocConfigs {
     val roots = dottyJars.map(_.getAbsolutePath)
 
     val managedSources =
-      (`scala2-library-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
+      (`scala2-library-cc`/Compile/sourceManaged).value / "scala-library-src"
     val projectRoot = (ThisBuild/baseDirectory).value.toPath
     val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
     val docRootFile = stdLibRoot.resolve("rootdoc.txt")
@@ -3810,7 +3810,7 @@ object ScaladocConfigs {
   }
 
   def stableScala3(version: String) = Def.task {
-    val scalaLibrarySrc = s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed"
+    val scalaLibrarySrc = s"out/bootstrap/scala2-library-cc/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed"
     val dottyLibrarySrc = "library/src"
     Scala3.value
       .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
@@ -3831,7 +3831,7 @@ object ScaladocConfigs {
       .add(DocRootContent(s"$scalaLibrarySrc/rootdoc.txt"))
       .withTargets(
         Seq(
-          s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"out/bootstrap/scala2-library-cc/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"out/bootstrap/scala3-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"tmp/interfaces/target/classes",
           s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
