@@ -1,3 +1,5 @@
+package dotty.tools
+
 /*
  * Scala (https://www.scala-lang.org)
  *
@@ -338,13 +340,16 @@ object GenerateFunctionConverters {
     sams.toSeq.map(generate)
   }
 
-  def sourceFile(subPack: String, body: String): String =
+  def sourceFile(subPack: String, body: String): String = {
+    val body1 = if (body.startsWith("import "))body else  "\n" + body
     s"""$copyright
        |
        |$packaging$subPack
        |
-       |$body
+       |import scala.language.`2.13`
+       |$body1
        |""".stripMargin
+  }
 
   def sameText(f: java.io.File, text: String): Boolean = {
     val x = scala.io.Source.fromFile(f)

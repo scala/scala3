@@ -1,4 +1,4 @@
-package scala.build
+package dotty.tools
 
 /** Code generation of the AnyVal types and their companions. */
 trait GenerateAnyValReps {
@@ -295,6 +295,8 @@ trait GenerateAnyValTemplates {
 
 package scala
 
+import scala.language.`2.13`
+
 """
 
   def classDocTemplate = ("""
@@ -465,7 +467,7 @@ override def getClass(): Class[Boolean] = ???
  *  runtime system. A method with return type `Unit` is analogous to a Java
  *  method which is declared `void`.
  */
-"""
+""".trim + "\n"
     def classLines  = List(
       "// Provide a more specific return type for Scaladoc",
       "override def getClass(): Class[Unit] = ???"
