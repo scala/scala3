@@ -1,6 +1,6 @@
 package scala.deriving
 
-import language.experimental.captureChecking
+// import language.experimental.captureChecking
 
 /** Mirrors allows typelevel access to enums, case classes and objects, and their sealed parents.
  */
