@@ -91,9 +91,6 @@ try-with-resources patterns, it can also be a key part to the solutions of many 
 
 The following sections explain in detail how capture checking works in Scala 3.
 
-Overvow
-
-
 
 ## Capabilities and Capturing Types
 

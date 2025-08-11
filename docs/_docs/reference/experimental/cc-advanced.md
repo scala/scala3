@@ -75,4 +75,4 @@ By leveraging capability polymorphism, capability members, and path-dependent ca
 * `Label`s store the free capabilities `C` of the `block` passed to `boundary` in their capability member `Fv`.
 * When suspending on a given label, the suspension handler can capture at most the capabilities that occur freely at the `boundary` that introduced the label. That prevents mentioning nested bound labels.
 
-[Back to Capture Checking](cc.md)
+[Back to Capability Polymorphism](cc-polymorphism.md)
