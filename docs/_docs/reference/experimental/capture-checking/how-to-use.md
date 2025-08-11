@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "How to Use the Capture Checker"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc-how-to-use.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/how-to-use.html
 ---
 
 ## Enabling Capture Checking

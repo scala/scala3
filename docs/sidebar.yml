@@ -162,19 +162,19 @@ subsection:
           - page: reference/experimental/explicit-nulls.md
           - page: reference/experimental/main-annotation.md
           - page: reference/experimental/into.md
-          - title: Capture checking
-            index: reference/experimental/cc.md
+          - title: Capture Checking
+            index: reference/experimental/capture-checking/cc.md
             subsection:
-              - page: reference/experimental/cc-classes.md
-              - page: reference/experimental/cc-polymorphism.md
-              - page: reference/experimental/cc-advanced.md
+              - page: reference/experimental/capture-checking/classes.md
+              - page: reference/experimental/capture-checking/polymorphism.md
+              - page: reference/experimental/capture-checking/advanced.md
                 hidden: true
-              - page: reference/experimental/cc-scoped-caps.md
-              - page: reference/experimental/cc-classifiers.md
-              - page: reference/experimental/cc-checked-exceptions.md
-              - page: reference/experimental/cc-separation-checking.md
-              - page: reference/experimental/cc-how-to-use.md
-              - page: reference/experimental/cc-internals.md
+              - page: reference/experimental/capture-checking/scoped-caps.md
+              - page: reference/experimental/capture-checking/classifiers.md
+              - page: reference/experimental/capture-checking/checked-exceptions.md
+              - page: reference/experimental/capture-checking/separation-checking.md
+              - page: reference/experimental/capture-checking/how-to-use.md
+              - page: reference/experimental/capture-checking/internals.md
           - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
           - page: reference/experimental/modularity.md
