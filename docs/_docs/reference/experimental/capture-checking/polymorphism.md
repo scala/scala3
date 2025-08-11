@@ -4,6 +4,8 @@ title: "Capability Polymorphism"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/polymorphism.html
 ---
 
+## Introduction
+
 It is sometimes convenient to write operations that are parameterized with a capture set of capabilities. For instance consider a type of event sources
 `Source` on which `Listener`s can be registered. Listeners can hold certain capabilities, which show up as a parameter to `Source`:
 ```scala

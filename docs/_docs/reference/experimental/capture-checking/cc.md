@@ -4,7 +4,11 @@ title: "Capture Checking"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/cc.html
 ---
 
-Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It can be enabled by the language import
+Capture checking is a research project that modifies the Scala type system to track references to capabilities in values.
+
+## Introduction
+
+Capture checking can be enabled by the language import
 ```scala
 import language.experimental.captureChecking
 ```

@@ -4,6 +4,7 @@ title: "Capture Checking of Classes"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/classes.html
 ---
 
+## Introduction
 
 The principles for capture checking closures also apply to classes. For instance, consider:
 ```scala
