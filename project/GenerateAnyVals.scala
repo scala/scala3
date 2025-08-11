@@ -36,12 +36,13 @@ import scala.language.implicitConversions"""
     }
 
     def isInteger: Boolean = isIntegerType(this)
+
     def unaryOps = {
       val ops = List(
         Op("+", "/** Returns this value, unmodified. */"),
         Op("-", "/** Returns the negation of this value. */"))
 
-      if(isInteger)
+      if (isInteger)
         Op("~", "/**\n" +
                 " * Returns the bitwise negation of this value.\n" +
                 " * @example {{{\n" +
@@ -135,16 +136,19 @@ import scala.language.implicitConversions"""
       Op("/", "/** Returns the quotient of this value and `x`. */"),
       Op("%", "/** Returns the remainder of the division of this value by `x`. */"))
 
-    // Given two numeric value types S and T , the operation type of S and T is defined as follows:
+    // Given two numeric value types S and T, the operation type of S and T is defined as follows:
     // If both S and T are subrange types then the operation type of S and T is Int.
-    // Otherwise the operation type of S and T is the larger of the two types wrt ranking.
+    // Otherwise the operation type of S and T is the larger of the two types w.r.t. the ordering
+    // of numeric types defined in `fullTypes` below.
     // Given two numeric values v and w the operation type of v and w is the operation type
     // of their run-time types.
     def opType(that: AnyValNum): AnyValNum = {
-      val rank = IndexedSeq(I, L, F, D)
-      (rank indexOf this, rank indexOf that) match {
-        case (-1, -1)   => I
-        case (r1, r2)   => rank apply (r1 max r2)
+      val fullTypes = IndexedSeq(I, L, F, D)
+      (fullTypes.indexOf(this), fullTypes.indexOf(that)) match {
+        case (-1, -1) => I // both are subrange types
+        case (-1, _) => that // one is subrange
+        case (_, -1) => this
+        case (r1, r2) => fullTypes(r1.max(r2)) // use the larger type
       }
     }
 
