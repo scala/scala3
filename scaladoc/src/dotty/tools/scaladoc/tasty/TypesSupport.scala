@@ -10,7 +10,6 @@ import dotty.tools.scaladoc.cc.*
 
 import NameNormalizer._
 import SyntheticsSupport._
-import java.awt.RenderingHints.Key
 
 trait TypesSupport:
   self: TastyParser =>
@@ -41,13 +40,13 @@ trait TypesSupport:
   private def keyword(str: String): SignaturePart = Keyword(str)
 
   private def tpe(str: String, dri: DRI)(using inCC: Option[Any]): SignaturePart =
-    if inCC.isDefined then
+    if ccEnabled && inCC.isDefined then
       dotty.tools.scaladoc.Plain(str)
     else
       dotty.tools.scaladoc.Type(str, Some(dri))
 
   private def tpe(str: String)(using inCC: Option[Any]): SignaturePart =
-    if inCC.isDefined then
+    if ccEnabled && inCC.isDefined then
       dotty.tools.scaladoc.Plain(str)
     else
       dotty.tools.scaladoc.Type(str, None)
@@ -60,7 +59,7 @@ trait TypesSupport:
   private def tpe(using Quotes)(symbol: reflect.Symbol)(using inCC: Option[Any]): SSignature =
     import SymOps._
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
-    if inCC.isDefined then // we are in the context of a capture set and want paths to be rendered plainly
+    if ccEnabled && inCC.isDefined then // we are in the context of a capture set and want paths to be rendered plainly
       dotty.tools.scaladoc.Plain(symbol.normalizedName).l
     else
       dotty.tools.scaladoc.Type(symbol.normalizedName, dri).l
@@ -135,7 +134,7 @@ trait TypesSupport:
         inner(tpe, skipThisTypePrefix) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, skipThisTypePrefix) :+ plain("*")
-      case CapturingType(base, refs) =>
+      case CapturingType(base, refs) if ccEnabled =>
         base match
           case t @ AppliedType(base, args) if t.isFunctionType =>
             functionType(base, args, skipThisTypePrefix)(using inCC = Some(refs))
@@ -283,7 +282,7 @@ trait TypesSupport:
           case _ => topLevelProcess(t, skipThisTypePrefix)
         }) ++ plain("]").l
 
-      case t : TypeRef if t.isCapSet => emitCaptureSet(Nil, skipThisTypePrefix)
+      case t : TypeRef if ccEnabled && t.isCapSet => emitCaptureSet(Nil, skipThisTypePrefix)
 
       case tp @ TypeRef(qual, typeName) =>
         inline def wrapping = shouldWrapInParens(inner = qual, outer = tp, isLeft = true)

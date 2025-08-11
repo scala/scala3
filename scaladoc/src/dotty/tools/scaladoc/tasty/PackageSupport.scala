@@ -15,7 +15,7 @@ trait PackageSupport:
 
     def parsePackage(pck: PackageClause): (String, Member) =
       val name = pck.symbol.fullName
-      ccFlag = false // FIXME: would be better if we had access to the tasty attribute
+      ccFlag = false
       pck.stats.foreach {
           case CCImport() => ccFlag = true
           case _ =>
