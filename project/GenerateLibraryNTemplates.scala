@@ -1,3 +1,5 @@
+package dotty.tools
+
 /*
  * Scala (https://www.scala-lang.org)
  *
@@ -14,7 +16,7 @@
  * This program generates the ProductN, TupleN, FunctionN, and AbstractFunctionN,
  * where 0 <= N <= MaxArity. Usage: sbt generateSources
  */
-object genprod {
+object GenerateLibraryNTemplates {
   final val MaxArity = 22
   def arities = (1 to MaxArity).toList
 
@@ -74,8 +76,10 @@ object genprod {
 // GENERATED CODE: DO NOT EDIT.%s
 
 package %s
+
+import scala.language.`2.13`
 %s
-""".trim.format(genprodString, packageDef, imports)
+""".format(genprodString, packageDef, imports).trim
   }
 
   def run(outDir: java.io.File): Unit = {
@@ -90,7 +94,7 @@ package %s
   }
 }
 
-import genprod._
+import GenerateLibraryNTemplates._
 
 
 /* zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
@@ -131,7 +135,7 @@ object FunctionOne extends Function(1) {
  *  is that the latter can specify inputs which it will not handle."""
 
   override def moreMethods = """
-  /** Composes two instances of Function1 in a new Function1, with this function applied last.
+  /** Composes two instances of `Function1` in a new `Function1`, with this function applied last.
    *
    *  @tparam   A   the type to which function `g` can be applied
    *  @param    g   a function A => T1
@@ -139,7 +143,7 @@ object FunctionOne extends Function(1) {
    */
   @annotation.unspecialized def compose[A](g: A => T1): A => R = { x => apply(g(x)) }
 
-  /** Composes two instances of Function1 in a new Function1, with this function applied first.
+  /** Composes two instances of `Function1` in a new `Function1`, with this function applied first.
    *
    *  @tparam   A   the result type of function `g`
    *  @param    g   a function R => A
@@ -413,6 +417,7 @@ class Product(val i: Int) extends Group("Product") with Arity {
 
   def apply() = {
 <file name={fileName}>{header}
+
 object {className} {{
   def unapply{invariantArgs}(x: {className}{invariantArgs}): Option[{className}{invariantArgs}] =
     Some(x)
@@ -461,6 +466,7 @@ class AbstractFunction(val i: Int) extends Group("AbstractFunction") with Arity
 
   def apply() = {
 <file name={"runtime/" + fileName}>{header}
+
 abstract class {className}{contraCoArgs} extends Function{i}{superTypeArgs} {{
 {moreMethods}
 }}
@@ -477,3 +483,4 @@ object AbstractFunction
     case _    => new AbstractFunction(i)
   }
 }
+

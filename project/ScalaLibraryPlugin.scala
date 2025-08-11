@@ -110,7 +110,19 @@ object ScalaLibraryPlugin extends AutoPlugin {
       previous
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
         .withHasModified(true)  // mark it as updated for sbt to update its caches
-    }
+    },
+
+    // Generate (Product|TupleN|Function|AbstractFunction)*.scala files and scaladoc stubs for all AnyVal sources.
+    // They should really go into a managedSources dir instead of overwriting sources checked into git but scaladoc
+    // source links (could be fixed by shipping these sources with the scaladoc bundles) and scala-js source maps
+    // rely on them being on github.
+    commands += Command.command("generateSources") { state =>
+      val dir = ((ThisBuild / baseDirectory).value / "library" / "src" / "scala").getAbsoluteFile
+      dotty.tools.GenerateLibraryNTemplates.run(dir)
+      dotty.tools.GenerateAnyVals.run(dir)
+      dotty.tools.GenerateFunctionConverters.run(dir)
+      state
+    },
   )
 
   private lazy val filesToCopy = Set(
