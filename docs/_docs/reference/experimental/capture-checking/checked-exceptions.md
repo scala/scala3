@@ -1,13 +1,11 @@
 ---
 layout: doc-page
 title: "Checked Exceptions"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc-checked-exceptions.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/checked-exceptions.html
 ---
 
-## Checked Exceptions
-
 Scala enables checked exceptions through a language import. Here is an example,
-taken from the [safer exceptions page](./canthrow.md), and also described in a
+taken from the [safer exceptions page](../canthrow.md), and also described in a
 [paper](https://infoscience.epfl.ch/record/290885) presented at the
  2021 Scala Symposium.
 ```scala

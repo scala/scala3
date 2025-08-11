@@ -1,10 +1,8 @@
 ---
 layout: doc-page
 title: "Scoped Caps"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc-scoped-caps.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/scoped-caps.html
 ---
-
-## Scoped Caps
 
 When discussing escape checking, we referred to a scoping discipline. That is, capture sets can contain only capabilities that are visible at the point where the set is defined. But that raises the question where a universal capability `cap` is defined? In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. Usually a `cap` refers to a universal capability defined in the scope where the `cap` appears.
 

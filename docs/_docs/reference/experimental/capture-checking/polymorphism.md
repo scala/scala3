@@ -1,10 +1,8 @@
 ---
 layout: doc-page
 title: "Capability Polymorphism"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc-polymorphism.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/polymorphism.html
 ---
-
-## Capability Polymorphism
 
 It is sometimes convenient to write operations that are parameterized with a capture set of capabilities. For instance consider a type of event sources
 `Source` on which `Listener`s can be registered. Listeners can hold certain capabilities, which show up as a parameter to `Source`:
@@ -92,4 +90,4 @@ upper bound: `type Cap^ >: {cudaMalloc, cudaFree}`.
 
 ----
 
-[More Advanced Use Cases](cc-advanced.md)
+[More Advanced Use Cases](advanced.md)

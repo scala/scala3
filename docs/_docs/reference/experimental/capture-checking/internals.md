@@ -1,13 +1,8 @@
 ---
 layout: doc-page
 title: "Capture Checking Internals"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc-internals.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/internals.html
 ---
-
-
-
-
-## Capture Checking Internals
 
 The capture checker is architected as a propagation constraint solver, which runs as a separate phase after type-checking and some initial transformations.
 

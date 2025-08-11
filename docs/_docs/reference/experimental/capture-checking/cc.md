@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Capture Checking"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/cc.html
 ---
 
 Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It can be enabled by the language import
@@ -13,14 +13,14 @@ Before trying it out, make sure you have the latest version of Scala.
 
 The rest of this page explains the basics capture checking. Further topics are described in the following pages:
 
- - [Capture Checking of Classes](./cc-classes.md)
- - [Capability Polymorphism](./cc-polymorphism.md)
- - [Scoped Caps](./cc-scoped-caps.md)
- - [Capability Classifiers](./cc-classifiers.md)
- - [Checked Exceptions](./cc-checked-exceptions.md)
- - [Separation Checking](./cc-separation-checking.md)
- - [How to Use the Capture Checker](./cc-how-to-use.md)
- - [Capture Checking Internals](./cc-internals.md)
+ - [Capture Checking of Classes](./classes.md)
+ - [Capability Polymorphism](./polymorphism.md)
+ - [Scoped Caps](./scoped-caps.md)
+ - [Capability Classifiers](./classifiers.md)
+ - [Checked Exceptions](./checked-exceptions.md)
+ - [Separation Checking](./separation-checking.md)
+ - [How to Use the Capture Checker](./how-to-use.md)
+ - [Capture Checking Internals](./internals.md)
 
 
 To get an idea what capture checking can do, let's start with a small example:
