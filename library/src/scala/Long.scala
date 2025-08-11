@@ -452,7 +452,7 @@ object Long extends AnyValCompanion {
   /** The largest value representable as a Long. */
   final val MaxValue = java.lang.Long.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToLong`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -461,7 +461,7 @@ object Long extends AnyValCompanion {
    */
   def box(x: Long): java.lang.Long = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Long.
    *
