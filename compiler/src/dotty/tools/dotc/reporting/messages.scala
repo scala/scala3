@@ -3381,11 +3381,13 @@ extends Message(UnusedSymbolID):
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def localVars(using Context): UnusedSymbol = UnusedSymbol(i"local variable was mutated but not read")
   def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
   def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def privateVars(using Context): UnusedSymbol = UnusedSymbol(i"private variable was mutated but not read")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
   def unsetLocals(using Context): UnusedSymbol =
     UnusedSymbol(i"unset local variable, consider using an immutable val instead")
