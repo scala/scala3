@@ -1,6 +1,6 @@
 //> using options -Wtostring-interpolated
 
-// verify warning messages and runtime result
+// verify warning messages; cf run test; we must verify runtime while warning.
 
 case class K(i: Int):
   def show: Unit = ()
