@@ -1,0 +1,27 @@
+package dummy
+import language.experimental.captureChecking
+import caps.Mutable
+import caps.{cap, consume, use}
+
+class Ref extends Mutable:
+  var x = 0
+  def get: Int = x
+  update def put(y: Int): Unit = x = y
+
+case class Pair[+A, +B](fst: A, snd: B)
+
+def mkPair: Pair[Ref^, Ref^] =
+  val r1 = Ref()
+  val r2 = Ref()
+  val p_exact: Pair[Ref^{r1}, Ref^{r2}] = Pair(r1, r2)
+  p_exact
+
+def copyPair[C^, D^](@consume p: Pair[Ref^{C}, Ref^{D}]): Pair[Ref^{C}, Ref^{D}] =
+  val x: Ref^{C} = p.fst
+  val y: Ref^{D} = p.snd
+  Pair[Ref^{C}, Ref^{D}](x, y)
+
+trait TestRd:
+  @consume def copyPair(p: Pair[Ref^, Ref^]): Pair[Ref^{p.fst*}, Ref^{p.snd*}]
+  def rdPair(@consume p: Pair[Ref^, Ref^]): Int ->{p.fst*.rd} Int
+  val rdPairV: (p: Pair[Ref^, Ref^]) => Int ->{p.fst*, p.snd*.rd} Int

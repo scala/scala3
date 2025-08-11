@@ -1,0 +1,46 @@
+package dummy
+
+import language.experimental.captureChecking
+// Showing a problem with recursive references
+object CollectionStrawMan5 {
+
+  /** Base trait for generic collections */
+  trait Iterable[+A] extends IterableLike[A] {
+    def iterator: Iterator[A]^{this}
+    def coll: Iterable[A]^{this} = this
+  }
+
+  trait IterableLike[+A]:
+    def coll: Iterable[A]^{this}
+    def partition(p: A => Boolean): Unit =
+      val pn = Partition(coll, p)
+      ()
+
+  /** Concrete collection type: View */
+  trait View[+A] extends Iterable[A] with IterableLike[A]
+
+  case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
+
+    class Partitioned(expected: Boolean) extends View[A]:
+      this: Partitioned^{Partition.this} =>
+      def iterator: Iterator[A]^{this} =
+        underlying.iterator.filter((x: A) => p(x) == expected)
+
+    val left: Partitioned^{Partition.this} = Partitioned(true)
+    val right: Partitioned^{Partition.this} = Partitioned(false)
+  }
+
+}
+
+object CollectionWithPureSelf {
+  trait Concat[+A, CC[_]] {
+    def concat[B >: A](other: CC[B]^): CC[B]^{this, other}
+    def apply[B](f: A => B): CollectionStrawMan5.Iterable[B]^{f, this}
+  }
+  
+  trait Seq[+A] extends Concat[A, Seq] {
+    self: Seq[A] =>
+  }
+
+  trait ImmutSeq[+A] extends Seq[A] { }
+}

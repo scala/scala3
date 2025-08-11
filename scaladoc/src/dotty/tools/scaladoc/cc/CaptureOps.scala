@@ -36,6 +36,8 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.readOnlyCapability")
   def RequiresCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.requiresCapability")
+  def OnlyCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.onlyCapability")
 
   def LanguageExperimental(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredPackage("scala.language.experimental")
@@ -71,6 +73,9 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
 
   def isReadOnlyCapabilityAnnot: Boolean =
     ann == CaptureDefs.ReadOnlyCapabilityAnnot
+
+  def isOnlyCapabilityAnnot: Boolean =
+    ann == CaptureDefs.OnlyCapabilityAnnot
 end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and have versions on Symbol for those
@@ -171,6 +176,17 @@ object ReadOnlyCapability:
       case _ => None
 end ReadOnlyCapability
 
+object OnlyCapability:
+  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, qctx.reflect.Symbol)] =
+    import qctx.reflect._
+    ty match
+      case AnnotatedType(base, app @ Apply(TypeApply(Select(New(annot), _), _), Nil)) if annot.tpe.typeSymbol.isOnlyCapabilityAnnot =>
+        app.tpe.typeArgs.head.classSymbol.match
+          case Some(clazzsym) => Some((base, clazzsym))
+          case None => None
+      case _ => None
+end OnlyCapability
+
 /** Decompose capture sets in the union-type-encoding into the sequence of atomic `TypeRepr`s.
  *  Returns `None` if the type is not a capture set.
 */
@@ -187,8 +203,9 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
       case t @ ParamRef(_, _)        => include(t)
       case t @ ReachCapability(_)    => include(t)
       case t @ ReadOnlyCapability(_) => include(t)
-      case t : TypeRef               => include(t) // FIXME: does this need a more refined check?
-      case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false // TODO remove warning eventually
+      case t @ OnlyCapability(_, _)  => include(t)
+      case t : TypeRef               => include(t)
+      case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false
   if traverse(typ0) then Some(buffer.toList) else None
 end decomposeCaptureRefs
 
