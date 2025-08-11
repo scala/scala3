@@ -118,7 +118,3 @@ def f(ops: List[A => B])
   ...
 ```
 Reach capabilities take the form `x*` where `x` is syntactically a regular capability. If `x: T` then `x*` stands for any capability that appears covariantly in `T` and that is accessed through `x`. The least supertype of this capability is the set of all capabilities appearing covariantly in `T`.
-
----
-
-Next: [Capability Classifiers](./cc-classifiers.md)

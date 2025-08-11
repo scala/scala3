@@ -86,7 +86,3 @@ To integrate exception and capture checking, only two changes are needed:
  - `CanThrow` is declared as a class extending `Control`, so all references to `CanThrow` instances are tracked.
  - Escape checking is extended to `try` expressions. The result type of a `try` is not allowed to
    capture capabilities defined in the body of the `try`.
-
----
-
-Next: [How to Use the Capture Checker](./cc-how-to-use.md)

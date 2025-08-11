@@ -93,7 +93,3 @@ upper bound: `type Cap^ >: {cudaMalloc, cudaFree}`.
 ----
 
 [More Advanced Use Cases](cc-advanced.md)
-
-----
-
-Next: [Scoped Caps](./cc-scoped-caps.md)

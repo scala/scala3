@@ -231,7 +231,3 @@ That variant would not require any capture annotations either.
 To summarize, there are two "sweet spots" of data structure design: strict lists in
 side-effecting or resource-aware code and lazy lists in purely functional code.
 Both are already correctly capture-typed without requiring any explicit annotations. Capture annotations only come into play where the semantics gets more complicated because we deal with delayed effects such as in impure lazy lists or side-effecting iterators over strict lists. This property is probably one of the greatest plus points of our approach to capture checking compared to previous techniques which tend to be more noisy.
-
-----
-
-Next: [Capability Polymorphism](./cc-polymorphism.md)
