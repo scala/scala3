@@ -201,10 +201,10 @@ object FunctionTwo extends Function(2) {
 object Function {
   def make(i: Int) = apply(i)()
   def apply(i: Int) = i match {
-    case 0    => FunctionZero
-    case 1    => FunctionOne
-    case 2    => FunctionTwo
-    case _    => new Function(i)
+    case 0 => FunctionZero
+    case 1 => FunctionOne
+    case 2 => FunctionTwo
+    case _ => new Function(i)
   }
 }
 
