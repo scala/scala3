@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -32,7 +32,7 @@ jobs:
     ##needs: [scala-library-nonbootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -50,7 +50,7 @@ jobs:
     needs  : [scala3-compiler-nonbootstrapped, scala3-sbt-bridge-nonbootstrapped, scala-library-nonbootstrapped, scala3-library-nonbootstrapped]
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -68,7 +68,7 @@ jobs:
     ##needs: [scala-library-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -86,7 +86,7 @@ jobs:
     ##needs: [scala3-library-nonbootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -103,7 +103,7 @@ jobs:
     ##needs: [tasty-core-nonbootstrapped, scala3-library-nonbootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -120,7 +120,7 @@ jobs:
     ##needs: [scala3-compiler-nonbootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -137,7 +137,7 @@ jobs:
     ##needs: [scala3-library-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -154,7 +154,7 @@ jobs:
     ##needs: [tasty-core-bootstrapped, scala3-library-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -171,7 +171,7 @@ jobs:
     ##needs: [scala3-compiler-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -188,7 +188,7 @@ jobs:
     ##needs: [scala3-compiler-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -205,7 +205,7 @@ jobs:
     ##needs: [scala3-compiler-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -228,7 +228,7 @@ jobs:
     ##needs: [scala3-sbt-bridge-nonbootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -245,7 +245,7 @@ jobs:
     ##needs: [scala3-sbt-bridge-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -262,7 +262,7 @@ jobs:
     ##needs: [tasty-core-nonbootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -279,7 +279,7 @@ jobs:
     ##needs: [tasty-core-bootstrapped] Add when we add support for caching here
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
