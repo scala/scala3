@@ -21,6 +21,15 @@ trait ClassLikeSupport:
 
   private given qctx.type = qctx
 
+  extension (symbol: Symbol) {
+    def getExtraModifiers(): Seq[Modifier] =
+      val mods = SymOps.getExtraModifiers(symbol)()
+      if ccEnabled && symbol.flags.is(Flags.Mutable)then
+        mods :+ Modifier.Update
+      else
+        mods
+  }
+
   private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
     import reflect._
     if symbol.flags.is(Flags.Module) then Kind.Object
