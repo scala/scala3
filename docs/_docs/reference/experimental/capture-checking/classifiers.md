@@ -4,6 +4,8 @@ title: "Capability Classifiers"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/classifiers.html
 ---
 
+## Introduction
+
 Capabilities are extremely versatile. They can express concepts from many different domains. Exceptions, continuations, I/O, mutation, information flow, security permissions, are just some examples, the list goes on.
 
 Sometimes it is important to restrict, or: _classify_ what kind of capabilities are expected or returned in a context. For instance, we might want to allow only control capabilities such as `CanThrow`s or boundary `Label`s but no
