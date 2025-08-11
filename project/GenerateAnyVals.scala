@@ -35,13 +35,13 @@ import scala.language.implicitConversions"""
       else coercionComment.linesIterator.toList ++ coercions
     }
 
-    def isCardinal: Boolean = isIntegerType(this)
+    def isInteger: Boolean = isIntegerType(this)
     def unaryOps = {
       val ops = List(
         Op("+", "/** Returns this value, unmodified. */"),
         Op("-", "/** Returns the negation of this value. */"))
 
-      if(isCardinal)
+      if(isInteger)
         Op("~", "/**\n" +
                 " * Returns the bitwise negation of this value.\n" +
                 " * @example {{{\n" +
@@ -54,7 +54,7 @@ import scala.language.implicitConversions"""
     }
 
     def bitwiseOps =
-      if (isCardinal)
+      if (isInteger)
         List(
           Op("|", "/**\n" +
                      "  * Returns the bitwise OR of this value and `x`.\n" +
@@ -89,7 +89,7 @@ import scala.language.implicitConversions"""
       else Nil
 
     def shiftOps =
-      if (isCardinal)
+      if (isInteger)
         List(
           Op("<<",  "/**\n" +
                        "  * Returns this value bit-shifted left by the specified number of bits,\n" +
@@ -164,7 +164,7 @@ import scala.language.implicitConversions"""
       val xs1 = List(mkCoercions, mkUnaryOps, mkStringOps, mkShiftOps) map (xs => if (xs.isEmpty) xs else xs :+ "")
       val xs2 = List(
         mkBinOpsGroup(comparisonOps, numeric, _ => Z),
-        mkBinOpsGroup(bitwiseOps, cardinal, this opType _),
+        mkBinOpsGroup(bitwiseOps, integer, this opType _),
         mkBinOpsGroup(otherOps, numeric, this opType _)
       )
       xs1 ++ xs2
@@ -179,7 +179,7 @@ import scala.language.implicitConversions"""
         res ++ xs
     }
     def objectLines = {
-      val comp = if (isCardinal) cardinalCompanion else floatingCompanion
+      val comp = if (isInteger) integerCompanion else floatingCompanion
       interpolate(comp + allCompanions + "\n" + nonUnitCompanions).trim.linesIterator.toList ++ (implicitCoercions map interpolate)
     }
 
@@ -333,7 +333,7 @@ override def toString = "object scala.@name@"
 
   def nonUnitCompanions = ""  // todo
 
-  def cardinalCompanion = """
+  def integerCompanion = """
 /** The smallest value representable as @article@ @name@. */
 final val MinValue = @boxed@.MIN_VALUE
 
@@ -497,7 +497,7 @@ override def getClass(): Class[Boolean] = ???
   def isFloatingType = Set(F, D)
   def isWideType     = Set(L, D)
 
-  def cardinal = numeric filter isIntegerType
+  def integer = numeric filter isIntegerType
   def numeric  = List(B, S, C, I, L, F, D)
   def values   = List(U, Z) ++ numeric
 
