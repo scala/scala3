@@ -13,6 +13,8 @@ package dotty.tools
  */
 
 object GenerateFunctionConverters {
+  import scala.tools.nsc._
+
   case class Artifact(name: String, content: String)
 
   val copyright =
@@ -33,7 +35,6 @@ object GenerateFunctionConverters {
 
   val packaging = "package scala.jdk"
 
-  import scala.tools.nsc._
   val settings = new Settings(msg => sys.error(msg))
   def us(cl: ClassLoader): List[String] = cl match {
     case ucl: java.net.URLClassLoader => ucl.getURLs.map(u => new java.io.File(u.toURI).getAbsolutePath).toList ::: us(ucl.getParent)
@@ -44,6 +45,7 @@ object GenerateFunctionConverters {
   val run = new compiler.Run
 
   import compiler._, definitions._
+
   locally {
     // make sure `java.lang.Double` prints as `java.lang.Double`, not just `Double` (which resolves to `scala.Double`)
     val f = classOf[scala.reflect.internal.Definitions#DefinitionsClass].getDeclaredField("UnqualifiedOwners")
@@ -65,43 +67,50 @@ object GenerateFunctionConverters {
   }
 
   implicit class IndentMe(v: Vector[String]) {
+    /** Adds indentation to every line in the vector. */
     def indent: Vector[String] = v.map("  " + _)
   }
 
+  implicit class WriteToBuilder(v: Vector[Vector[String]]) {
+    /** Writes the vector into a builder, with `join` inserted between each group. */
+    def writeTo(builder: collection.mutable.Builder[String, Vector[String]], join: String = "") = {
+      var first = true
+      for (vi <- v) {
+        if (!first) builder += join
+        first = false
+        builder ++= vi
+      }
+    }
+  }
+
   implicit class FlattenMe(v: Vector[Vector[String]]) {
+    /** Joins the given `Vector[Vector[String]]`, with `join` inserted in between. */
     def mkVec(join: String = ""): Vector[String] = {
       val vb = Vector.newBuilder[String]
-      var first = true
-      v.foreach{ vi =>
-        if (!first) vb += join
-        first = false
-        vb ++= vi
-      }
+      v.writeTo(vb)
       vb.result()
     }
   }
 
   implicit class DoubleFlattenMe(v: Vector[Vector[Vector[String]]]) {
+    /** Like `mkVec`, but done twice, with `join` inserted twice between outer blocks. */
     def mkVecVec(join: String = ""): Vector[String] = {
       val vb = Vector.newBuilder[String]
       var first = true
-      v.foreach{ vi =>
+      for (vi <- v) {
         if (!first) { vb += join; vb += join }
         first = false
-        var ifirst = true
-        vi.foreach{ vj =>
-          if (!ifirst) vb += join
-          ifirst = false
-          vb ++= vj
-        }
+        vi.writeTo(vb, join)
       }
       vb.result()
     }
   }
 
-  implicit class SplitMyLinesAndStuff(s: String) {
+  implicit class StringExtensions(s: String) {
     // work around scala/bug#11125
+    /** Splits the string into a `Vector` of lines. */
     def toVec = Predef.augmentString(s).lines.toVector
+    /** Is the string a blank line? */
     def nonBlank = s.trim.length > 0
   }
 
