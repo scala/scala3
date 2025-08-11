@@ -737,12 +737,12 @@ class Completions(
     // NOTE(olafur) IntelliJ does not complete the root package and without this filter
     // then `_root_` would appear as a completion result in the code `foobar(_<COMPLETE>)`
     defn.RootPackage,
+    // NOTE(gabro) valueOf was added as a Predef member in 2.13. We filter it out since is a niche
+    // use case and it would appear upon typing 'val'
+    defn.ValueOfClass
   ) ++ (
     Set(
       defn.ObjectClass.info.member(nme.wait_),
-      // NOTE(gabro) valueOf was added as a Predef member in 2.13. We filter it out since is a niche
-      // use case and it would appear upon typing 'val'
-      defn.ValueOfClass.info.member(nme.valueOf),
       defn.ScalaPredefModule.info.member(nme.valueOf)
     ).flatMap(_.alternatives.map(_.symbol)).toSet
   )
