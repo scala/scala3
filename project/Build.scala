@@ -3062,7 +3062,7 @@ object Build {
         val overrideFunc = outputDirOverride.andThen(justAPI)
 
         val config = Def.task {
-          overrideFunc(Scala3.value)
+          overrideFunc(Scala3.value) // .add(SuppressCC(true)) // <- turns off CC rendering completely
         }
 
         val writeAdditionalFiles = Def.task {

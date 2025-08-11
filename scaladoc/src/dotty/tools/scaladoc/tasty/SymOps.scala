@@ -100,7 +100,6 @@ object SymOps:
         Flags.Case -> Modifier.Case,
         Flags.Opaque -> Modifier.Opaque,
         Flags.AbsOverride -> Modifier.AbsOverride,
-        Flags.Mutable -> Modifier.Update, // under CC
       ).collect {
         case (flag, mod) if sym.flags.is(flag) => mod
       }
