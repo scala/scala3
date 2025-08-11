@@ -10,6 +10,7 @@ import dotty.tools.scaladoc.cc.*
 
 import NameNormalizer._
 import SyntheticsSupport._
+import java.awt.RenderingHints.Key
 
 trait TypesSupport:
   self: TastyParser =>
@@ -514,10 +515,11 @@ trait TypesSupport:
   private def emitCapability(using Quotes)(ref: reflect.TypeRepr, skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     ref match
-      case ReachCapability(c)    => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
-      case ReadOnlyCapability(c) => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
-      case ThisType(_)           => List(Keyword("this"))
-      case t                     => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
+      case ReachCapability(c)     => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
+      case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
+      case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
+      case ThisType(_)            => List(Keyword("this"))
+      case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
 
   private def emitCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean, omitCap: Boolean = true)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
