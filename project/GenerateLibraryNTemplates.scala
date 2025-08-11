@@ -209,6 +209,8 @@ object Function {
 }
 
 class Function(val i: Int) extends Group("Function") with Arity {
+  // override def imports: String = "import language.experimental.captureChecking\n" + super.imports
+  // def selfType = className + (targs ++ List("R")).mkString("[", ",", "]") + "^"
   def descriptiveComment  = ""
   def functionNTemplate =
 """
@@ -228,7 +230,7 @@ class Function(val i: Int) extends Group("Function") with Arity {
 /** A function of {i} parameter{s}.
  *{descriptiveComment}
  */
-{classAnnotation}trait {className}{contraCoArgs} extends AnyRef {{ self =>
+{classAnnotation}trait {className}{contraCoArgs} extends AnyRef {{
   /** Apply the body of this function to the argument{s}.
    *  @return   the result of function application.
    */
@@ -247,11 +249,11 @@ class Function(val i: Int) extends Group("Function") with Arity {
     (xdefs, targs).zipped.map("(%s: %s) => ".format(_, _)).mkString("", "", body)
   }
 
-  // (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7) => self.apply(x1,x2,x3,x4,x5,x6,x7)).curried
+  // (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7) => this.apply(x1,x2,x3,x4,x5,x6,x7)).curried
   def longCurry = ((xdefs, targs).zipped.map(_ + ": " + _) drop 1).mkString(
     "(x1: T1) => ((",
     ", ",
-    ") => self.apply%s).curried".format(commaXs)
+    ") => this.apply%s).curried".format(commaXs)
   )
 
   // f(x1,x2,x3,x4,x5,x6)  == (f.curried)(x1)(x2)(x3)(x4)(x5)(x6)
