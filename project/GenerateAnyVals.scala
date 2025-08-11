@@ -152,11 +152,14 @@ import scala.language.implicitConversions"""
       }
     }
 
-    def mkCoercions = numeric map (x => "def to%s: %s".format(x, x))
-    def mkUnaryOps  = unaryOps map (x => "%s\n  def unary_%s : %s".format(x.doc, x.op, this opType I))
+    def mkCoercions = numeric.map(x => "def to%s: %s".format(x, x))
+
+    def mkUnaryOps  = unaryOps.map(x => "%s\n  def unary_%s : %s".format(x.doc, x.op, this opType I))
+
     def mkStringOps = List(
       "@deprecated(\"Adding a number and a String is deprecated. Use the string interpolation `s\\\"$num$str\\\"`\", \"2.13.0\")\n  def +(x: String): String"
     )
+
     def mkShiftOps  = (
       for (op <- shiftOps ; arg <- List(I, L)) yield {
         val doc = op.doc + (if (this == L || arg == I) "" else "\n  @deprecated(\"shifting a value by a `Long` argument is deprecated (except when the value is a `Long`).\\nCall `toInt` on the argument to maintain the current behavior and avoid the deprecation warning.\", \"2.12.7\")")
@@ -165,7 +168,9 @@ import scala.language.implicitConversions"""
     )
 
     def clumps: List[List[String]] = {
-      val xs1 = List(mkCoercions, mkUnaryOps, mkStringOps, mkShiftOps) map (xs => if (xs.isEmpty) xs else xs :+ "")
+      val xs1 = List(mkCoercions, mkUnaryOps, mkStringOps, mkShiftOps)
+        .filter(!_.isEmpty)
+        .map(_ :+ "") // add a trailing empty line
       val xs2 = List(
         mkBinOpsGroup(comparisonOps, numeric, _ => Z),
         mkBinOpsGroup(bitwiseOps, integer, this opType _),
@@ -173,15 +178,16 @@ import scala.language.implicitConversions"""
       )
       xs1 ++ xs2
     }
-    def classLines = (clumps :+ commonClassLines).foldLeft(List[String]()) {
-      case (res, Nil)   => res
-      case (res, lines) =>
-        val xs = lines map {
-          case ""   => ""
-          case s    => interpolate(s)
-        }
-        res ++ xs
+
+    def classLines = {
+      val groups = (clumps :+ commonClassLines).filter(!_.isEmpty)
+      val interpolated = groups.map(_.map {
+        case "" => ""
+        case s => interpolate(s)
+      })
+      interpolated.flatten
     }
+
     def objectLines = {
       val comp = if (isInteger) integerCompanion else floatingCompanion
       interpolate(comp + allCompanions + "\n" + nonUnitCompanions).trim.linesIterator.toList ++ (implicitCoercions map interpolate)
@@ -260,9 +266,9 @@ import scala.language.implicitConversions"""
     def objectDoc = ""
     def mkImports = ""
 
-    def mkClass       = assemble("final abstract class " + name + " private extends AnyVal", classLines)
-    def mkObject      = assemble("object " + name + " extends AnyValCompanion", objectLines)
-    def make()    = List[String](
+    def mkClass = assemble("final abstract class " + name + " private extends AnyVal", classLines)
+    def mkObject = assemble("object " + name + " extends AnyValCompanion", objectLines)
+    def make() = List[String](
       headerTemplate,
       mkImports,
       classDoc,
@@ -272,10 +278,10 @@ import scala.language.implicitConversions"""
     ) mkString ""
 
     def assemble(decl: String, lines: List[String]): String = {
-      val body = if (lines.isEmpty) " { }\n\n" else lines map indent mkString (" {\n", "\n", "\n}\n")
-
+      val body = if (lines.isEmpty) " { }\n\n" else lines.map(indent).mkString(" {\n", "\n", "\n}\n")
       decl + body + "\n"
     }
+
     override def toString = name
   }
 }
@@ -314,14 +320,14 @@ import scala.language.`2.13`
 """.trim + "\n")
 
   def allCompanions = """
-/** Transform a value type into a boxed reference type.
+/** Transforms a value type into a boxed reference type.
  *@boxRunTimeDoc@
  *  @param  x   the @name@ to be boxed
  *  @return     a @boxed@ offering `x` as its underlying value.
  */
 def box(x: @name@): @boxed@ = @boxImpl@
 
-/** Transform a boxed type into a value type.  Note that this
+/** Transforms a boxed type into a value type.  Note that this
  *  method is not typesafe: it accepts any Object, but will throw
  *  an exception if the argument is not a @boxed@.
  *@unboxRunTimeDoc@
