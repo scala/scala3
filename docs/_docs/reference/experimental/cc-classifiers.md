@@ -107,7 +107,3 @@ def test(io: IO, async: Async, proc: () => Unit) =
     // code accessing `io`, `async`, and `proc` and returning an `Int.
   val _: Try[Int]^{async, proc} = r
 ```
-
----
-
-Next: [Checked exceptions](./cc-checked-exceptions.md)

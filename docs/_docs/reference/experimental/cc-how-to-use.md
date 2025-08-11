@@ -17,7 +17,3 @@ The following options are relevant for capture checking.
  - **-Ycc-debug** Gives more detailed, implementation-oriented information about capture checking, as described in the next section.
 
  The implementation supporting capture checking with these options is currently in branch `cc-experiment` on dotty.epfl.ch.
-
----
-
-To find out more about the internal workings of the capture checker: [Capture Checking Internals](./cc-internals.md)
