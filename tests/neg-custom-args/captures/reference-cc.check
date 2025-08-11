@@ -1,0 +1,43 @@
+-- Error: tests/neg-custom-args/captures/reference-cc.scala:42:20 ------------------------------------------------------
+42 |    def f = println(c)  // error
+   |                    ^
+   |                    reference (c : Cap) is not included in the allowed capture set {}
+   |                    of the enclosing class A
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:27 ---------------------------------
+44 |  val later = usingLogFile { file => () => file.write(0) } // error
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (file: java.io.FileOutputStream^'s1) ->'s2 () ->{file} Unit
+   |Required: java.io.FileOutputStream^ => () ->'s3 Unit
+   |
+   |where:    => refers to a fresh root capability created in value later when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the universal root capability
+   |
+   |Note that capability file cannot be included in outer capture set 's3.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:47:25 ---------------------------------
+47 |  val xs = usingLogFile: f => // error
+   |                         ^
+   |Found:    (f: java.io.FileOutputStream^'s4) ->'s5 LzyList[Int]^{f}
+   |Required: java.io.FileOutputStream^ => LzyList[Int]^'s6
+   |
+   |where:    => refers to a fresh root capability created in value xs when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the universal root capability
+   |
+   |Note that capability f cannot be included in outer capture set 's6.
+48 |    LzyList(1, 2, 3).map { x => f.write(x); x * x }
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:58:8 ----------------------------------
+58 |    try () => xs.map(f).sum  // error TODO improve error message
+   |        ^^^^^^^^^^^^^^^^^^^
+   |Found:    () => Double
+   |Required: () =>² Double
+   |
+   |where:    =>  refers to a fresh root capability classified as Control in the type of given instance canThrow$1
+   |          =>² refers to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap} Double of function literal
+   |
+   |Note that capability cap is not included in capture set {cap}
+   |because cap in method try$1 is not visible from cap in enclosing function.
+   |
+   | longer explanation available when compiling with `-explain`
