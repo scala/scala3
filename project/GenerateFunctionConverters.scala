@@ -119,10 +119,12 @@ object GenerateFunctionConverters {
     def text = Predef.augmentString(showCode(t).replace("$", "")).lines.toVector
   }
 
+  /** Blocks of code with priority (lower priority has higher precedence in implicit search). */
   case class Prioritized(lines: Vector[String], priority: Int) {
     def withPriority(i: Int) = copy(priority = i)
   }
 
+  /** Contains code for conversion between functions and SAMs (single abstract methods). */
   case class SamConversionCode(
       base: String,
       wrappedAsScala: Vector[String],
@@ -140,20 +142,21 @@ object GenerateFunctionConverters {
   }
   object SamConversionCode {
     def apply(scc: SamConversionCode*): (Vector[String], Vector[String], Vector[Vector[String]]) = {
-      val sccDepthSet = scc.map(_.implicitToJava.priority).toSet
+      val sccDepthSet = scc.map(_.implicitToJava.priority).to[collection.SortedSet]
       val codes =
         {
-          if (sccDepthSet != (0 to sccDepthSet.max).toSet) {
-            val sccDepthMap = sccDepthSet.toList.sorted.zipWithIndex.toMap
+          val size = sccDepthSet.size
+          // normalize the elements to a fix [0..size-1] range
+          if (sccDepthSet.firstKey != 0 || sccDepthSet.lastKey != size - 1) {
+            val sccDepthMap = sccDepthSet.iterator.zipWithIndex.toMap
             scc.map(x => x.withPriority(sccDepthMap(x.implicitToJava.priority)))
           }
           else scc
         }.toVector.sortBy(_.base)
-      def priorityName(n: Int, pure: Boolean = false): String = {
-        val pre =
-          if (pure) s"Priority${n}FunctionExtensions"
-          else s"trait ${priorityName(n, pure = true)}"
-        if (!pure && n < (sccDepthSet.size-1)) s"$pre extends ${priorityName(n+1, pure = true)}" else pre
+      def priorityName(n: Int): String =  s"Priority${n}FunctionExtensions"
+      def priorityHeader(n: Int): String = {
+        val pre = s"trait ${priorityName(n)}"
+        if (n < sccDepthSet.size - 1) s"$pre extends ${priorityName(n+1)}" else pre
       }
       val impls =
         "object FunctionWrappers {" +: {
@@ -163,7 +166,7 @@ object GenerateFunctionConverters {
       val traits = codes.groupBy(_.implicitToJava.priority).toVector.sortBy(- _._1).map{ case (k,vs) =>
         s"import language.implicitConversions" +:
         "" +:
-        s"${priorityName(k)} {" +:
+        s"${priorityHeader(k)} {" +:
           s"  import FunctionWrappers._" +:
           s"  " +:
           {
