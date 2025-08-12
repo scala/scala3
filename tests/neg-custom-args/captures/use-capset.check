@@ -3,6 +3,7 @@
    |                      ^
    |                      Found:    (h : () ->{io} Unit)
    |                      Required: () -> Unit
+   |
    |                      Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
    |                                                  ^^
    |                                                Found:    (h2 : () ->{} List[Object^{io}]^{} ->{io} Object^{io})
    |                                                Required: () -> List[Object^{io}] -> Object^{io}
+   |
    |                                                Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

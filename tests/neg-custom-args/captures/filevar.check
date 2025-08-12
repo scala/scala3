@@ -4,9 +4,9 @@
    |Found:    (f: File^'s1) ->'s2 Unit
    |Required: (f: File^{l}) => Unit
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using l: scala.caps.Capability): File^{l} -> Unit when instantiating expected result type (f: File^{l}) ->{cap} Unit of function literal
-   |
    |Note that capability l cannot be included in outer capture set 's1 of parameter f.
+   |
+   |where:    => refers to a fresh root capability created in anonymous function of type (using l: scala.caps.Capability): File^{l} -> Unit when instantiating expected result type (f: File^{l}) ->{cap} Unit of function literal
 16 |    val o = Service()
 17 |    o.file = f
 18 |    o.log

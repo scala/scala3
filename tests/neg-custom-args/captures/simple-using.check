@@ -4,9 +4,9 @@
   |Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
   |Required: java.io.FileOutputStream^ => () ->'s3 Unit
   |
+  |Note that capability f cannot be included in outer capture set 's3.
+  |
   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
   |          ^  refers to the universal root capability
-  |
-  |Note that capability f cannot be included in outer capture set 's3.
   |
   | longer explanation available when compiling with `-explain`

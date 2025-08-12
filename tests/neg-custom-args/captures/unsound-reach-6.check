@@ -3,6 +3,7 @@
    |                      ^
    |                      Found:    (x : () ->{ys*} Unit)
    |                      Required: () -> Unit
+   |
    |                      Note that capability ys* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
    |                      ^
    |                      Found:    (x : () ->{io} Unit)
    |                      Required: () -> Unit
+   |
    |                      Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

@@ -4,6 +4,7 @@
    |      ^
    |      Found:    Result.Ok[Future[T^'s1]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
+   |
    |      Note that capability fr is not included in capture set {}.
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
@@ -21,10 +22,10 @@
    |Found:    (contextual$9: boundary.Label[Result[Future[T^'s2]^'s3, E^'s4]^'s5]^'s6) ?->{fr, async} Future[T^'s7]^{fr, contextual$9}
    |Required: (boundary.Label[Result[Future[T^'s8]^'s9, E^'s10]]^) ?=> Future[T^'s8]^'s9
    |
+   |Note that capability contextual$9 cannot be included in outer capture set 's9.
+   |
    |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
-   |
-   |Note that capability contextual$9 cannot be included in outer capture set 's9.
 70 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
@@ -34,10 +35,10 @@
    |Found:    (lbl: boundary.Label[Result[Future[T^'s11]^'s12, E^'s13]^'s14]^'s15) ?->{fr, async} Future[T^'s16]^{fr, lbl}
    |Required: (boundary.Label[Result[Future[T], E]]^) ?=> Future[T]
    |
+   |Note that capability fr is not included in capture set {}.
+   |
    |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
    |          ^   refers to the universal root capability
-   |
-   |Note that capability fr is not included in capture set {}.
 74 |          Future: fut ?=>
 75 |            fr.await.ok
    |

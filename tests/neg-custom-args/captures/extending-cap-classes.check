@@ -4,9 +4,9 @@
   |Found:    C2^{cap.rd}
   |Required: C1
   |
-  |where:    cap is a fresh root capability classified as SharedCapability created in value x2 when constructing Capability instance C2
-  |
   |Note that capability cap.rd is not included in capture set {}.
+  |
+  |where:    cap is a fresh root capability classified as SharedCapability created in value x2 when constructing Capability instance C2
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/extending-cap-classes.scala:8:15 -------------------------
@@ -15,9 +15,9 @@
   |Found:    C3^{cap.rd}
   |Required: C1
   |
-  |where:    cap is a fresh root capability classified as SharedCapability created in value x3 when constructing Capability instance C3
-  |
   |Note that capability cap.rd is not included in capture set {}.
+  |
+  |where:    cap is a fresh root capability classified as SharedCapability created in value x3 when constructing Capability instance C3
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/extending-cap-classes.scala:13:15 ------------------------
@@ -25,6 +25,9 @@
    |               ^^
    |               Found:    (y2 : C2)
    |               Required: C1
+   |
    |               Note that capability cap is not included in capture set {}.
+   |
+   |               where:    cap is a fresh root capability classified as SharedCapability in the type of value y2
    |
    | longer explanation available when compiling with `-explain`

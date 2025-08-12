@@ -11,12 +11,13 @@
    |Found:    (x: CT[Exception]^) ->'s1 CT[Exception]^{x}
    |Required: CT[Exception]^ => CT[Exception]^²
    |
-   |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method handle
-   |          ^  refers to the universal root capability
-   |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method handle
-   |
    |Note that capability x is not included in capture set {cap}
    |because (x : CT[Exception]^) is not visible from cap in value a.
+   |
+   |where:    =>  refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |          ^   refers to the universal root capability
+   |          ^²  refers to a fresh root capability created in value a when checking argument to parameter op of method handle
+   |          cap is a fresh root capability created in value a when checking argument to parameter op of method handle
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |
@@ -27,10 +28,10 @@
    |Found:    (x: CT[Exception]^) ->'s2 () ->{x} Nothing
    |Required: CT[Exception]^ => () -> Nothing
    |
+   |Note that capability x is not included in capture set {}.
+   |
    |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
-   |
-   |Note that capability x is not included in capture set {}.
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -41,10 +42,10 @@
    |Found:    (x: CT[Exception]^) ->'s3 () ->{x} Int
    |Required: CT[Exception]^ => () ->'s4 Int
    |
+   |Note that capability x cannot be included in outer capture set 's4.
+   |
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
-   |
-   |Note that capability x cannot be included in outer capture set 's4.
 36 |    (x: CanThrow[Exception]) =>
 37 |      () =>
 38 |        raise(new Exception)(using x)
@@ -58,10 +59,10 @@
    |Found:    (x: CT[Exception]^) ->'s5 () ->{x} Int
    |Required: CT[Exception]^ => () ->'s6 Int
    |
+   |Note that capability x cannot be included in outer capture set 's6.
+   |
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
-   |
-   |Note that capability x cannot be included in outer capture set 's6.
 48 |  (x: CanThrow[Exception]) =>
 49 |    () =>
 50 |      raise(new Exception)(using x)

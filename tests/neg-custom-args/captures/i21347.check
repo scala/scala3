@@ -3,6 +3,7 @@
   |  ^^^^^^^^^^^^^^^^^^^^^^
   |  Found:    () ->{f} Unit
   |  Required: () -> Unit
+  |
   |  Note that capability f is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`

@@ -1079,16 +1079,15 @@ class CheckCaptures extends Recheck, SymTransformer:
               | Externally visible type: $expected""",
           tree.srcPos)
 
-      def addenda(expected: Type) = new Addenda:
-        override def toAdd(using Context) =
-          def result = if tree.isInstanceOf[ValDef] then"" else " result"
-          i"""
-           |
-           |Note that the expected type $expected
-           |is the previously inferred$result type of $sym
-           |which is also the type seen in separately compiled sources.
-           |The new inferred type $tp
-           |must conform to this type.""" :: Nil
+      def addenda(expected: Type) = Addenda:
+        def result = if tree.isInstanceOf[ValDef] then"" else " result"
+        i"""
+          |
+          |Note that the expected type $expected
+          |is the previously inferred$result type of $sym
+          |which is also the type seen in separately compiled sources.
+          |The new inferred type $tp
+          |must conform to this type."""
 
       tree.tpt match
         case tpt: InferredTypeTree if !canUseInferred =>
@@ -1276,6 +1275,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       else new Addenda:
         override def toAdd(using Context) = notes.map: note =>
           i"""
+             |
              |Note that ${note.description}."""
 
     /** Addendas for error messages that show where we have under-approximated by
@@ -1291,13 +1291,11 @@ class CheckCaptures extends Recheck, SymTransformer:
                 (parent, " deep")
               case _ =>
                 (original, "")*/
-            add ++ new Addenda:
-              override def toAdd(using Context): List[String] =
+            add ++ Addenda:
                 i"""
                    |
                    |Note that a capability $ref in a capture set appearing in contravariant position
                    |was mapped to $mapped which is not a capability. Therefore, it was under-approximated to the empty set."""
-                :: Nil
           case _ =>
             foldOver(add, t)
 

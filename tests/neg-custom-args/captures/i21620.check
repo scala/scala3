@@ -15,6 +15,7 @@
   |                               ^
   |                               Found:    (f : () ->{x} () ->{x} Unit)
   |                               Required: () -> () ->{x} Unit
+  |
   |                               Note that capability x is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
@@ -23,6 +24,7 @@
    |                                 ^
    |                                 Found:    (f : () ->{x} () ->{x} Unit)
    |                                 Required: () -> () ->{x} Unit
+   |
    |                                 Note that capability x is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

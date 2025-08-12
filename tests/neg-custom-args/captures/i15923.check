@@ -4,9 +4,9 @@
    |Found:    (cap: test2.Cap^'s1) ->'s2 [T] => (op: test2.Cap^'s3 ->'s4 T) ->'s5 T
    |Required: test2.Cap^{lcap} => [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): test2.Cap^{lcap} -> [T] => (op: test2.Cap^{lcap} => T) -> T when instantiating expected result type test2.Cap^{lcap} ->{cap²} [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T of function literal
-   |
    |Note that capability lcap cannot be included in outer capture set 's1 of parameter cap.
+   |
+   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): test2.Cap^{lcap} -> [T] => (op: test2.Cap^{lcap} => T) -> T when instantiating expected result type test2.Cap^{lcap} ->{cap²} [T] => (op: test2.Cap^'s6 ->'s7 T) ->'s8 T of function literal
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
@@ -15,9 +15,9 @@
    |Found:    (cap: Cap^'s9) ->'s10 Id[Cap^'s11]^'s12
    |Required: Cap^{lcap} => Id[Cap^'s13]^'s14
    |
-   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): Cap^{lcap} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^'s13]^'s14 of function literal
-   |
    |Note that capability lcap cannot be included in outer capture set 's9 of parameter cap.
+   |
+   |where:    => refers to a fresh root capability created in anonymous function of type (using lcap: scala.caps.Capability): Cap^{lcap} -> Id[Cap] when instantiating expected result type Cap^{lcap} ->{cap²} Id[Cap^'s13]^'s14 of function literal
    |
    | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg-custom-args/captures/i15923.scala:21:56 ----------------------------------------------------------

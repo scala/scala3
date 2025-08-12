@@ -2,9 +2,6 @@
 1 |val f: [T] => (x: T) => x.type = [T] => (x: Int) => x // error
   |                                 ^^^^^^^^^^^^^^^^^^^^
   |                                 Found:    [T] => (x: Int) => (x : Int)
-  |                                 Required: [T] => (x²: T) => (x² : T)
-  |
-  |                                 where:    x  is a reference to a value parameter
-  |                                           x² is a reference to a value parameter
+  |                                 Required: [T] => (x: T) => (x : T)
   |
   | longer explanation available when compiling with `-explain`

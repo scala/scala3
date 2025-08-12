@@ -3,6 +3,7 @@
    |    ^
    |    Found:    () ->{ops*} Unit
    |    Required: () -> Unit
+   |
    |    Note that capability ops* is not included in capture set {}.
 15 |      val ops1 = ops
 16 |      runOps(ops1)
@@ -13,6 +14,7 @@
    |    ^
    |    Found:    () ->{ops*} Unit
    |    Required: () -> Unit
+   |
    |    Note that capability ops* is not included in capture set {}.
 27 |      val ops1: List[() ->{ops*} Unit] = ops
 28 |      runOps(ops1)

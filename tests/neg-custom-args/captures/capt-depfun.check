@@ -4,8 +4,8 @@
    |                                         Found:    Str^{} ->{ac, y, z} Str^{y, z}
    |                                         Required: Str^{y, z} => Str^{y, z}
    |
-   |                                         where:    => refers to a fresh root capability in the type of value dc
-   |
    |                                         Note that capability y is not included in capture set {}.
+   |
+   |                                         where:    => refers to a fresh root capability in the type of value dc
    |
    | longer explanation available when compiling with `-explain`

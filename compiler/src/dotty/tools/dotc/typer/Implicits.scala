@@ -481,6 +481,8 @@ object Implicits:
         if (argument.isEmpty) i"match type ${clarify(expectedType)}"
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
+
+    def toAdd(using Context) = Nil
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
