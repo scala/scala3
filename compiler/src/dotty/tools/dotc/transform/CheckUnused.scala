@@ -498,8 +498,11 @@ object CheckUnused:
     val warnings = ArrayBuilder.make[MessageInfo]
     def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
     val infos = refInfos
-    //println(infos.defs.mkString("DEFS\n", "\n", "\n---"))
-    //println(infos.refs.mkString("REFS\n", "\n", "\n---"))
+
+    // non-local sym was target of assignment or has a sibling setter that was referenced
+    def isMutated(sym: Symbol): Boolean =
+         infos.asss(sym)
+      || infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
 
     def checkUnassigned(sym: Symbol, pos: SrcPos) =
       if sym.isLocalToBlock then
@@ -509,8 +512,7 @@ object CheckUnused:
         && sym.is(Mutable)
         && (sym.is(Private) || sym.isEffectivelyPrivate)
         && !sym.isSetter // tracks sym.underlyingSymbol sibling getter, check setter below
-        && !infos.asss(sym)
-        && !infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
+        && !isMutated(sym)
       then
         warnAt(pos)(UnusedSymbol.unsetPrivates)
 
@@ -526,7 +528,10 @@ object CheckUnused:
         )
         && !infos.nowarn(sym)
       then
-        warnAt(pos)(UnusedSymbol.privateMembers)
+        if sym.is(Mutable) && isMutated(sym) then
+          warnAt(pos)(UnusedSymbol.privateVars)
+        else
+          warnAt(pos)(UnusedSymbol.privateMembers)
 
     def checkParam(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
@@ -629,7 +634,10 @@ object CheckUnused:
         && !sym.is(InlineProxy)
         && !sym.isCanEqual
       then
-        warnAt(pos)(UnusedSymbol.localDefs)
+        if sym.is(Mutable) && infos.asss(sym) then
+          warnAt(pos)(UnusedSymbol.localVars)
+        else
+          warnAt(pos)(UnusedSymbol.localDefs)
 
     def checkPatvars() =
       // convert the one non-synthetic span so all are comparable; filter NoSpan below
