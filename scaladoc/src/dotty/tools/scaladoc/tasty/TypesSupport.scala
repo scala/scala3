@@ -4,9 +4,10 @@ package tasty
 import scala.jdk.CollectionConverters._
 
 import scala.quoted._
+import scala.annotation.*
 
-import NameNormalizer._
-import SyntheticsSupport._
+import NameNormalizer.*
+import SyntheticsSupport.*
 
 trait TypesSupport:
   self: TastyParser =>
@@ -76,6 +77,7 @@ trait TypesSupport:
       case tpe => inner(tpe)
 
   // TODO #23 add support for all types signatures that make sense
+  @nowarn("id=E219")
   private def inner(
     using Quotes,
   )(
