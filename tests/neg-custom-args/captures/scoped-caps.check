@@ -48,7 +48,7 @@
    |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
    |                              ^³ refers to a fresh root capability in the type of value _$5
    |
-   |                    Note that capability (g : A^ -> B^) is not included in capture set {}.
+   |                    Note that capability g is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:16:24 ----------------------------------
@@ -73,7 +73,7 @@
    |                                  ^² refers to a root capability associated with the result type of (x: S^): B^²
    |                                  ^³ refers to a root capability associated with the result type of (x: S^): B^³
    |
-   |                        Note that capability (h : S -> B^) is not included in capture set {}.
+   |                        Note that capability h is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:21:23 ----------------------------------
@@ -86,7 +86,7 @@
    |                                 ^² refers to a root capability associated with the result type of (x: S^): S^²
    |                                 ^³ refers to a root capability associated with the result type of (x: S^): S^³
    |
-   |                       Note that capability (h2 : S -> S) is not included in capture set {}.
+   |                       Note that capability h2 is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:27:19 ----------------------------------
@@ -106,7 +106,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:19 ----------------------------------
 28 |  val _: S -> B^ = x => j(x)       // error
    |                   ^^^^^^^^^
-   |                   Found:    (x: S^) ->? B^²
+   |                   Found:    (x: S^) ->'s1 B^²
    |                   Required: S^ -> B^³
    |
    |                   where:    ^  refers to the universal root capability

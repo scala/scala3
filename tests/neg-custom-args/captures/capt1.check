@@ -3,15 +3,15 @@
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |  Found:    () ->{x} C
   |  Required: () -> C
-  |  Note that capability (x : C^) is not included in capture set {}.
+  |  Note that capability x is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:8:2 ------------------------------------------
 8 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    () ->{x} C^?
+  |  Found:    () ->{x} C^'s1
   |  Required: Matchable
-  |  Note that capability (x : C^) is not included in capture set {}.
+  |  Note that capability x is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:15:2 -----------------------------------------
@@ -19,7 +19,7 @@
    |  ^
    |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
-   |  Note that capability (x : C^) is not included in capture set {}.
+   |  Note that capability x is not included in capture set {}.
 16 |  f
    |
    | longer explanation available when compiling with `-explain`
@@ -28,7 +28,7 @@
    |  ^
    |  Found:    A^{x}
    |  Required: A
-   |  Note that capability (x : C^) is not included in capture set {}.
+   |  Note that capability x is not included in capture set {}.
 23 |    def m() = if x == null then y else y
 24 |  F(22)
    |
@@ -38,7 +38,7 @@
    |  ^
    |  Found:    A^{x}
    |  Required: A
-   |  Note that capability (x : C^) is not included in capture set {}.
+   |  Note that capability x is not included in capture set {}.
 28 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
@@ -52,7 +52,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:36:24 ----------------------------------------
 36 |  val z2 = h[() -> Cap](() => x) // error // error
    |                        ^^^^^^^
-   |Found:    () ->? C^
+   |Found:    () ->'s2 C^
    |Required: () -> C^²
    |
    |where:    ^  refers to a root capability associated with the result type of (): C^
@@ -65,7 +65,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:37:5 -----------------------------------------
 37 |    (() => C()) // error
    |     ^^^^^^^^^
-   |Found:    () ->? C^
+   |Found:    () ->'s3 C^
    |Required: () -> C^²
    |
    |where:    ^  refers to a root capability associated with the result type of (): C^

@@ -173,10 +173,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
       val core: Text =
-        if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
+        if !cs.isConst && cs.elems.isEmpty then cs.asVar.repr.show
+        else
+          Str("'").provided(ccVerbose && !cs.isConst)
+           ~ "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
-           ~ Str("?").provided(ccVerbose && !cs.isConst)
            ~ Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
       core ~ cs.optionalInfo
 
@@ -243,8 +244,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           selectionString(tp)
         else
           toTextPrefixOf(tp) ~ selectionString(tp)
-      case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
         val suffix =
           if showNestingLevel then

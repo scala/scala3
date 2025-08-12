@@ -703,14 +703,6 @@ object Capabilities:
       (this eq y)
       || this.match
         case x: FreshCap =>
-          def levelOK =
-            if ccConfig.useFreshLevels && !CCState.collapseFresh then
-              val yOwner = y.levelOwner
-              yOwner.isStaticOwner || x.ccOwner.isContainedIn(yOwner)
-            else y.core match
-              case ResultCap(_) | _: ParamRef => false
-              case _ => true
-
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
           || x.acceptsLevelOf(y)
               && ( y.tryClassifyAs(x.hiddenSet.classifier)
@@ -787,6 +779,9 @@ object Capabilities:
           case _: Reach => ReachCapability(c1)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
+
+    def showAsCapability(using Context) =
+      i"capability ${ctx.printer.toTextCapability(this).show}"
 
     def toText(printer: Printer): Text = printer.toTextCapability(this)
   end Capability

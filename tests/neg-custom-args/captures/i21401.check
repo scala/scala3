@@ -15,15 +15,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:15:23 ---------------------------------------
 15 |  val a = usingIO[IO^](x => x) // error // error
    |                       ^^^^^^
-   |Found:    (x: IO^?) ->? IO^{x}
+   |Found:    (x: IO^'s1) ->'s2 IO^{x}
    |Required: IO^ => IO^²
    |
    |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
    |          ^  refers to the universal root capability
    |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method usingIO
    |
-   |Note that capability x.type is not included in capture set {cap}
-   |because x.type is not visible from cap in value a.
+   |Note that capability x is not included in capture set {cap}
+   |because (x : IO^'s1) is not visible from cap in value a.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
@@ -50,14 +50,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:67 ---------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error // error
    |                                                                   ^^^^^^
-   |      Found:    (x: Boxed[IO^]^?) ->? Boxed[IO^²]
-   |      Required: Boxed[IO^] -> Boxed[IO^³]
+   |    Found:    (x: Boxed[IO^]^'s3) ->'s4 Boxed[IO^²]
+   |    Required: Boxed[IO^] -> Boxed[IO^³]
    |
-   |      where:    ^  refers to the universal root capability
-   |                ^² refers to a root capability associated with the result type of (x: Boxed[IO^]^?): Boxed[IO^²]
-   |                ^³ refers to a fresh root capability created in value x²
+   |    where:    ^  refers to the universal root capability
+   |              ^² refers to a root capability associated with the result type of (x: Boxed[IO^]^'s3): Boxed[IO^²]
+   |              ^³ refers to a fresh root capability created in value x²
    |
-   |      Note that capability <cap of (x: Boxed[IO^]^?): Boxed[IO^]> is not included in capture set {cap}
-   |      because <cap of (x: Boxed[IO^]^?): Boxed[IO^]> is not visible from cap in value x.
+   |    Note that capability <cap of (x: Boxed[IO^]^'s3): Boxed[IO^]> is not included in capture set {cap}
+   |    because <cap of (x: Boxed[IO^]^'s3): Boxed[IO^]> is not visible from cap in value x.
    |
    | longer explanation available when compiling with `-explain`

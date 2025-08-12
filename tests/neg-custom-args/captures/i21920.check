@@ -1,13 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21920.scala:34:35 ---------------------------------------
 34 |  val cell: Cell[File] = File.open(f => Cell(() => Seq(f))) // error
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (f: File^?) ->? Cell[File^?]{val head: () ->? IterableOnce[File^?]^?}^?
-   |Required: File^ => Cell[File^?]{val head: () ->? IterableOnce[File^?]^?}^?
+   |Found:    (f: File^'s1) ->'s2 Cell[File^'s3]{val head: () ->'s4 IterableOnce[File^'s5]^'s6}^'s7
+   |Required: File^ => Cell[File^'s8]{val head: () ->'s9 IterableOnce[File^'s10]^'s11}^'s12
    |
    |where:    => refers to a fresh root capability created in value cell when checking argument to parameter f of method open
    |          ^  refers to the universal root capability
    |
-   |Note that capability <cap of (): IterableOnce[File^?]^>
-   |cannot be included in outer capture set ?.
+   |Note that capability <cap of (): IterableOnce[File^'s13]^> cannot be included in outer capture set 's13.
    |
    | longer explanation available when compiling with `-explain`

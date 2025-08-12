@@ -8,15 +8,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error // error
    |                                                 ^
-   |Found:    (x: CT[Exception]^) ->? CT[Exception]^{x}
+   |Found:    (x: CT[Exception]^) ->'s1 CT[Exception]^{x}
    |Required: CT[Exception]^ => CT[Exception]^²
    |
    |where:    => refers to a fresh root capability created in value a when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |          ^² refers to a fresh root capability created in value a when checking argument to parameter op of method handle
    |
-   |Note that capability x.type is not included in capture set {cap}
-   |because x.type is not visible from cap in value a.
+   |Note that capability x is not included in capture set {cap}
+   |because (x : CT[Exception]^) is not visible from cap in value a.
 24 |    (x: CanThrow[Exception]) => x
 25 |  }{
    |
@@ -24,13 +24,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
 29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^
-   |Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
+   |Found:    (x: CT[Exception]^) ->'s2 () ->{x} Nothing
    |Required: CT[Exception]^ => () -> Nothing
    |
    |where:    => refers to a fresh root capability created in value b when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
-   |Note that capability x.type is not included in capture set {}.
+   |Note that capability x is not included in capture set {}.
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -38,14 +38,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:35:18 ------------------------------------------
 35 |  val xx = handle {  // error
    |                  ^
-   |Found:    (x: CT[Exception]^) ->? () ->{x} Int
-   |Required: CT[Exception]^ => () ->? Int
+   |Found:    (x: CT[Exception]^) ->'s3 () ->{x} Int
+   |Required: CT[Exception]^ => () ->'s4 Int
    |
    |where:    => refers to a fresh root capability created in value xx when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
-   |Note that capability x.type
-   |cannot be included in outer capture set ?.
+   |Note that capability x cannot be included in outer capture set 's4.
 36 |    (x: CanThrow[Exception]) =>
 37 |      () =>
 38 |        raise(new Exception)(using x)
@@ -56,14 +55,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:47:31 ------------------------------------------
 47 |val global: () -> Int = handle { // error
    |                               ^
-   |Found:    (x: CT[Exception]^) ->? () ->{x} Int
-   |Required: CT[Exception]^ => () ->? Int
+   |Found:    (x: CT[Exception]^) ->'s5 () ->{x} Int
+   |Required: CT[Exception]^ => () ->'s6 Int
    |
    |where:    => refers to a fresh root capability created in value global when checking argument to parameter op of method handle
    |          ^  refers to the universal root capability
    |
-   |Note that capability x.type
-   |cannot be included in outer capture set ?.
+   |Note that capability x cannot be included in outer capture set 's6.
 48 |  (x: CanThrow[Exception]) =>
 49 |    () =>
 50 |      raise(new Exception)(using x)

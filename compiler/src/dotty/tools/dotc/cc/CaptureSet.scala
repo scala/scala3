@@ -20,6 +20,8 @@ import CCState.*
 import TypeOps.AvoidMap
 import compiletime.uninitialized
 import Capabilities.*
+import Names.Name
+import NameKinds.CapsetName
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -738,6 +740,17 @@ object CaptureSet:
 
     var description: String = ""
 
+    private var myRepr: Name | Null = null
+
+    /** A represtentation of this capture set as a unique name. We print
+     *  empty capture set variables in this representation. Bimapped sets have
+     *  the representation of their source set.
+     */
+    def repr(using Context): Name = {
+      if (myRepr == null) myRepr = CapsetName.fresh()
+      myRepr.nn
+    }
+
     /** Check that all maps recorded in skippedMaps map `elem` to itself
      *  or something subsumed by it.
      */
@@ -1028,6 +1041,7 @@ object CaptureSet:
     override def isMaybeSet: Boolean = bimap.isInstanceOf[MaybeMap]
     override def toString = s"BiMapped$id($source, elems = $elems)"
     override def summarize = bimap.getClass.toString
+    override def repr(using Context): Name = source.repr
   end BiMapped
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
@@ -1300,24 +1314,23 @@ object CaptureSet:
         case cs: Var =>
           if !cs.levelOK(elem) then
             val levelStr = elem match
-              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-              case _ => ""
-            i"""capability ${elem}$levelStr
-                |cannot be included in outer capture set $cs"""
+              case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}\n"
+              case _ => " "
+            i"""${elem.showAsCapability}${levelStr}cannot be included in outer capture set $cs"""
           else if !elem.tryClassifyAs(cs.classifier) then
-            i"""capability ${elem} is not classified as ${cs.classifier}, therefore it
+            i"""${elem.showAsCapability} is not classified as ${cs.classifier}, therefore it
                 |cannot be included in capture set $cs of ${cs.classifier.name} elements"""
           else if cs.isBadRoot(elem) then
             elem match
               case elem: FreshCap =>
-                i"""local capability $elem created in ${elem.ccOwner}
+                i"""local ${elem.showAsCapability} created in ${elem.ccOwner}
                   |cannot be included in outer capture set $cs"""
               case _ =>
-                i"universal capability $elem cannot be included in capture set $cs"
+                i"universal ${elem.showAsCapability} cannot be included in capture set $cs"
           else
-            i"capability $elem cannot be included in capture set $cs"
+            i"${elem.showAsCapability} cannot be included in capture set $cs"
         case _ =>
-          i"capability $elem is not included in capture set $cs$why"
+          i"${elem.showAsCapability} is not included in capture set $cs$why"
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
