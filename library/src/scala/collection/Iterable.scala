@@ -479,7 +479,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return An iterator producing ${coll}s of size `size`, except the
    *          last will be less than size `size` if the elements don't divide evenly.
    */
-  def grouped(size: Int): Iterator[C] =
+  def grouped(size: Int): Iterator[C]^{this} =
     iterator.grouped(size).map(fromSpecific)
 
   /** Groups elements in fixed size blocks by passing a "sliding window"
@@ -501,7 +501,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     *  @example `List(1, 2).sliding(2) = Iterator(List(1, 2))`
     *  @example `List(1, 2, 3).sliding(2) = Iterator(List(1, 2), List(2, 3))`
     */
-  def sliding(size: Int): Iterator[C] = sliding(size, 1)
+  def sliding(size: Int): Iterator[C]^{this} = sliding(size, 1)
 
   /** Groups elements in fixed size blocks by passing a "sliding window"
     *  over them (as opposed to partitioning them, as is done in `grouped`).
@@ -522,7 +522,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     *  @example `List(1, 2, 3, 4, 5).sliding(2, 2) = Iterator(List(1, 2), List(3, 4), List(5))`
     *  @example `List(1, 2, 3, 4, 5, 6).sliding(2, 3) = Iterator(List(1, 2), List(4, 5))`
     */
-  def sliding(size: Int, step: Int): Iterator[C] =
+  def sliding(size: Int, step: Int): Iterator[C]^{this} =
     iterator.sliding(size, step).map(fromSpecific)
 
   /** The rest of the collection without its first element. */
@@ -747,7 +747,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return        a new $ccoll containing pairs consisting of corresponding elements of this $coll and `that`.
    *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
    */
-  def zip[B](that: IterableOnce[B]^): CC[(A @uncheckedVariance, B)]^{that} = iterableFactory.from(that match { // sound bcs of VarianceNote
+  def zip[B](that: IterableOnce[B]^): CC[(A @uncheckedVariance, B)]^{this, that} = iterableFactory.from(that match { // sound bcs of VarianceNote
     case that: Iterable[B] => new View.Zip(this, that)
     case _ => iterator.zip(that)
   })
