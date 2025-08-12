@@ -14,6 +14,7 @@ import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
+import ast.desugar
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
@@ -370,7 +371,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       case Some(tree) if shouldSuggestNN =>
         val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
         val replacement = tree match
-          case a @ Apply(_, _) if a.applyKind == ApplyKind.Using =>
+          case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
             content + ".nn"
           case _ @ (Select(_, _) | Ident(_)) => content + ".nn"
           case _ => "(" + content + ").nn"
