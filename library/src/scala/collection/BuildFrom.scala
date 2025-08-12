@@ -86,7 +86,7 @@ object BuildFrom extends BuildFromLowPriority1 {
 
   implicit def buildFromView[A, B]: BuildFrom[View[A], B, View[B]] =
     new BuildFrom[View[A], B, View[B]] {
-      def fromSpecific(from: View[A])(it: IterableOnce[B]^): View[B] = View.from(it)
+      def fromSpecific(from: View[A])(it: IterableOnce[B]^): View[B]^{it} = View.from(it)
       def newBuilder(from: View[A]): Builder[B, View[B]] = View.newBuilder
     }
 

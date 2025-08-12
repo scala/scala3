@@ -32,7 +32,7 @@ import scala.reflect.ClassTag
   * @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
   * @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
   */
-trait Factory[-A, +C] extends Any { this: Factory[A, C] =>
+trait Factory[-A, +C] extends Pure {
 
   /**
     * @return A collection of type `C` containing the same elements
@@ -83,7 +83,7 @@ object Factory {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait IterableFactory[+CC[_]] extends Serializable { this: IterableFactory[CC] =>
+trait IterableFactory[+CC[_]] extends Serializable, Pure {
 
   /** Creates a target $coll from an existing source collection
     *
@@ -457,9 +457,9 @@ object MapFactory {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable { this: EvidenceIterableFactory[CC, Ev] =>
+trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, Pure {
 
-  def from[E : Ev](it: IterableOnce[E]^): CC[E]^{it}
+  def from[E : Ev](it: IterableOnce[E]^): CC[E]
 
   def empty[A : Ev]: CC[A]
 
