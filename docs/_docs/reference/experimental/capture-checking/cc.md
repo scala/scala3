@@ -15,7 +15,7 @@ import language.experimental.captureChecking
 At present, capture checking is still highly experimental and unstable, and it evolves quickly.
 Before trying it out, make sure you have the latest version of Scala.
 
-The rest of this page explains the basics capture checking. Further topics are described in the following pages:
+The rest of this page explains the basics of capture checking. Further topics are described in the following pages:
 
  - [Capture Checking of Classes](./classes.md)
  - [Capability Polymorphism](./polymorphism.md)
@@ -90,7 +90,7 @@ try-with-resources patterns, it can also be a key part to the solutions of many 
  - How to address the problem of effect polymorphism in general.
  - How to solve the "what color is your function?" problem of mixing synchronous
    and asynchronous computations.
- - How to do region-based allocation, safely,
+ - How to do region-based allocation, safely.
  - How to reason about capabilities associated with memory locations.
 
 The following sections explain in detail how capture checking works in Scala 3.
@@ -194,8 +194,8 @@ analogous _subcapturing_ relation applies to capture sets. If `C₁` and `C₂` 
 
 Subtyping extends as follows to capturing types:
 
- - Pure types are subtypes of capturing types. That is, `T <: C T`, for any type `T`, capturing set `C`.
- - For capturing types, smaller capturing sets produce subtypes: `C₁ T₁ <: C₂ T₂` if
+ - Pure types are subtypes of capturing types. That is, `T <: T ^ C`, for any type `T`, capturing set `C`.
+ - For capturing types, smaller capturing sets produce subtypes: `T₁ ^ C₁ <: T₂ ^ C₂` if
    `C₁ <: C₂` and `T₁ <: T₂`.
 
 A subcapturing relation `C₁ <: C₂` holds if `C₂` _accounts for_ every element `c` in `C₁`. This means one of the following three conditions must be true:
