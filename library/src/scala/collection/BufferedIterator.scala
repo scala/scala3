@@ -13,7 +13,6 @@
 package scala.collection
 
 import scala.language.`2.13`
-import language.experimental.captureChecking
 
 /** Buffered iterators are iterators which provide a method `head`
  *  that inspects the next element without discarding it.
