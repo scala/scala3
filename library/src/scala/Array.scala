@@ -50,7 +50,7 @@ object Array {
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
-    def fromSpecific(it: IterableOnce[A]): Array[A] = Array.from[A](it)
+    def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
@@ -660,7 +660,7 @@ object Array {
  *  @define collectExample
  *  @define undefinedorder
  */
-final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable {
+final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self: Array[T] =>
 
   /** The length of the array */
   def length: Int = throw new Error()

@@ -115,11 +115,11 @@ trait BuildFromLowPriority2 {
   implicit def buildFromIterableOps[CC[X] <: Iterable[X] with IterableOps[X, CC, _], A0, A]: BuildFrom[CC[A0], A, CC[A]] = new BuildFrom[CC[A0], A, CC[A]] {
     //TODO: Reuse a prototype instance
     def newBuilder(from: CC[A0]): Builder[A, CC[A]] = (from: IterableOps[A0, CC, _]).iterableFactory.newBuilder[A]
-    def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A] = (from: IterableOps[A0, CC, _]).iterableFactory.from(it)
+    def fromSpecific(from: CC[A0])(it: IterableOnce[A]^): CC[A]^{it} = (from: IterableOps[A0, CC, _]).iterableFactory.from(it)
   }
 
   implicit def buildFromIterator[A]: BuildFrom[Iterator[_], A, Iterator[A]] = new BuildFrom[Iterator[_], A, Iterator[A]] {
     def newBuilder(from: Iterator[_]): mutable.Builder[A, Iterator[A]] = Iterator.newBuilder
-    def fromSpecific(from: Iterator[_])(it: IterableOnce[A]^): Iterator[A] = Iterator.from(it)
+    def fromSpecific(from: Iterator[_])(it: IterableOnce[A]^): Iterator[A]^{it} = Iterator.from(it)
   }
 }

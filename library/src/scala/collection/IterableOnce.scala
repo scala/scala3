@@ -45,7 +45,7 @@ import scala.runtime.{AbstractFunction1, AbstractFunction2}
   * @define coll collection
   * @define ccoll $coll
   */
-trait IterableOnce[+A] extends Any {
+trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
 
   /** An [[scala.collection.Iterator]] over the elements of this $coll.
     *
@@ -142,7 +142,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   def collectFirst[B](f: PartialFunction[A, B]^): Option[B] = it.iterator.collectFirst(f)
 
   @deprecated("Use .iterator.filter(...) instead", "2.13.0")
-  def filter(f: A => Boolean): Iterator[A] = it.iterator.filter(f)
+  def filter(f: A => Boolean): Iterator[A]^{f} = it.iterator.filter(f)
 
   @deprecated("Use .iterator.exists(...) instead", "2.13.0")
   def exists(f: A => Boolean): Boolean = it.iterator.exists(f)
@@ -248,13 +248,13 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   @`inline` def :\ [B](z: B)(op: (A, B) => B): B = foldRight[B](z)(op)
 
   @deprecated("Use .iterator.map instead or consider requiring an Iterable", "2.13.0")
-  def map[B](f: A => B): IterableOnce[B] = it match {
-    case it: Iterable[A] => it.map(f)
+  def map[B](f: A => B): IterableOnce[B]^{f} = it match {
+    case it: Iterable[A]^{f} => it.map(f)
     case _ => it.iterator.map(f)
   }
 
   @deprecated("Use .iterator.flatMap instead or consider requiring an Iterable", "2.13.0")
-  def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B] = it match {
+  def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f} = it match {
     case it: Iterable[A] => it.flatMap(f)
     case _ => it.iterator.flatMap(f)
   }
@@ -541,7 +541,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  @return  a pair consisting of the longest prefix of this $coll whose
    *           elements all satisfy `p`, and the rest of this $coll.
    */
-  def span(p: A => Boolean): (C^{this}, C^{this})
+  def span(p: A => Boolean): (C^{this, p}, C^{this, p})
 
   /** Splits this $coll into a prefix/suffix pair at a given position.
    *
@@ -1435,7 +1435,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *      xs.to(BitSet) // for xs: Iterable[Int]
    *  }}}
    */
-  def to[C1](factory: Factory[A, C1]): C1 = factory.fromSpecific(this)
+  def to[C1](factory: Factory[A, C1]): C1^{this} = factory.fromSpecific(this)
 
   @deprecated("Use .iterator instead of .toIterator", "2.13.0")
   @`inline` final def toIterator: Iterator[A]^{this} = iterator
@@ -1487,7 +1487,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
     * @tparam B The type of elements of the result, a supertype of `A`.
     * @return This $coll as a `Buffer[B]`.
     */
-  @inline final def toBuffer[B >: A]: mutable.Buffer[B] = mutable.Buffer.from(this)
+  @inline final def toBuffer[B >: A]: mutable.Buffer[B] = caps.unsafe.unsafeAssumePure(mutable.Buffer.from(this)) // TODO will go away when buffer is fixed
 
   /** Converts this $coll to an `Array`.
     *

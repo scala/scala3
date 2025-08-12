@@ -728,7 +728,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return       a new $coll which contains all elements
    *                of this $coll followed by all elements of `suffix`.
    */
-  def concat[B >: A](suffix: IterableOnce[B]^): CC[B] = iterableFactory.from {
+  def concat[B >: A](suffix: IterableOnce[B]^): CC[B]^{this, suffix} = iterableFactory.from {
     suffix match {
       case suffix: Iterable[B] => new View.Concat(this, suffix)
       case suffix => iterator ++ suffix.iterator
@@ -736,7 +736,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
   }
 
   /** Alias for `concat` */
-  @inline final def ++ [B >: A](suffix: IterableOnce[B]^): CC[B] = concat(suffix)
+  @inline final def ++ [B >: A](suffix: IterableOnce[B]^): CC[B]^{this, suffix} = concat(suffix)
 
   /** Returns a $ccoll formed from this $coll and another iterable collection
    *  by combining corresponding elements in pairs.
@@ -747,7 +747,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return        a new $ccoll containing pairs consisting of corresponding elements of this $coll and `that`.
    *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
    */
-  def zip[B](that: IterableOnce[B]^): CC[(A @uncheckedVariance, B)] = iterableFactory.from(that match { // sound bcs of VarianceNote
+  def zip[B](that: IterableOnce[B]^): CC[(A @uncheckedVariance, B)]^{that} = iterableFactory.from(that match { // sound bcs of VarianceNote
     case that: Iterable[B] => new View.Zip(this, that)
     case _ => iterator.zip(that)
   })
@@ -855,7 +855,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
   }
 
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
-  def ++:[B >: A](that: IterableOnce[B]^): CC[B] = iterableFactory.from(that match {
+  def ++:[B >: A](that: IterableOnce[B]^): CC[B]^{this, that} = iterableFactory.from(that match {
     case xs: Iterable[B] => new View.Concat(xs, this)
     case _ => that.iterator ++ iterator
   })
@@ -971,7 +971,7 @@ trait IterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]]] extends I
 trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], Ev[_]] extends IterableOps[A, CC, CC[A @uncheckedVariance]] {
   protected def evidenceIterableFactory: EvidenceIterableFactory[CC, Ev]
   implicit protected def iterableEvidence: Ev[A @uncheckedVariance]
-  override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{this} = evidenceIterableFactory.from(coll)
+  override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll} = evidenceIterableFactory.from(coll)
   override protected def newSpecificBuilder: Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = evidenceIterableFactory.newBuilder[A]
   override def empty: CC[A @uncheckedVariance] = evidenceIterableFactory.empty
 }
