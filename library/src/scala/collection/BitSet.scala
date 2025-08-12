@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.io.{ObjectInputStream, ObjectOutputStream}
 
 import scala.annotation.nowarn
@@ -33,8 +35,8 @@ import scala.collection.mutable.Builder
   * @define coll bitset
   * @define Coll `BitSet`
   */
-trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] {
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] { self: BitSet =>
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
@@ -298,9 +300,9 @@ transparent trait BitSetOps[+C <: BitSet with BitSetOps[C]]
     */
   def map(f: Int => Int): C = fromSpecific(new View.Map(this, f))
 
-  def flatMap(f: Int => IterableOnce[Int]): C = fromSpecific(new View.FlatMap(this, f))
+  def flatMap(f: Int => IterableOnce[Int]^): C = fromSpecific(new View.FlatMap(this, f))
 
-  def collect(pf: PartialFunction[Int, Int]): C = fromSpecific(super[SortedSetOps].collect(pf))
+  def collect(pf: PartialFunction[Int, Int]^): C = fromSpecific(super[SortedSetOps].collect(pf))
 
   override def partition(p: Int => Boolean): (C, C) = {
     val left = filter(p)
