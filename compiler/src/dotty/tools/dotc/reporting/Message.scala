@@ -62,13 +62,6 @@ object Message:
    */
   private class Seen(disambiguate: Disambiguation):
 
-    /** The set of lambdas that were opened at some point during printing. */
-    private val openedLambdas = new collection.mutable.HashSet[LambdaType]
-
-    /** Register that `tp` was opened during printing. */
-    def openLambda(tp: LambdaType): Unit =
-      openedLambdas += tp
-
     val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
 
     var nonSensical = false
@@ -109,16 +102,17 @@ object Message:
         lazy val dealiased = followAlias(entry)
 
         /** All lambda parameters with the same name are given the same superscript as
-         *  long as their corresponding binder has been printed.
-         *  See tests/neg/lambda-rename.scala for test cases.
+         *  long as their corresponding binders have the same parameter name lists.
+         *  This avoids spurious distinctions between parameters of mapped lambdas at
+         *  the risk that sometimes we cannot distinguish parameters of distinct functions
+         *  that have the same parameter names. See tests/neg/lambda-rename.scala for test cases.
          */
         def sameSuperscript(cur: Recorded, existing: Recorded) =
           (cur eq existing) ||
           (cur, existing).match
             case (cur: ParamRef, existing: ParamRef) =>
-              (cur.paramName eq existing.paramName) &&
-              openedLambdas.contains(cur.binder) &&
-              openedLambdas.contains(existing.binder)
+              (cur.paramName eq existing.paramName)
+              && cur.binder.paramNames == existing.binder.paramNames
             case _ =>
               false
 
@@ -266,20 +260,10 @@ object Message:
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
 
-    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
-      info match
-        case info: LambdaType =>
-          seen.openLambda(info)
-        case _ =>
-      super.toTextMethodAsFunction(info, isPure, refs)
-
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true
       tp match
         case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
-        case tp: LambdaType =>
-          seen.openLambda(tp)
-          super.toText(tp)
         case _ => super.toText(tp)
 
     override def toText(sym: Symbol): Text =
