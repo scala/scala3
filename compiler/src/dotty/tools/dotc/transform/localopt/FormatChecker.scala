@@ -116,7 +116,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       case Nil =>
 
     loop(parts, n = 0)
-    if reported then (Nil, Nil)
+    if reported then (Nil, Nil) // on error, Transform.checked will revert to unamended inputs
     else
       assert(argc == actuals.size, s"Expected ${argc} args but got ${actuals.size} for [${parts.mkString(", ")}]")
       (amended.toList, actuals.toList)
@@ -320,5 +320,4 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
         .tap(_ => reported = true)
     def partWarning(message: String, index: Int, offset: Int, end: Int): Unit =
       r.warning(BadFormatInterpolation(message), partPosAt(index, offset, end))
-        .tap(_ => reported = true)
 end TypedFormatChecker
