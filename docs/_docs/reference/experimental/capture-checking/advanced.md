@@ -1,9 +1,10 @@
 ---
 layout: doc-page
-title: "Capability Polymorphism -- Advanced Use Cases"
+title: "Capability Polymorphism"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/advanced.html
 ---
 
+Advanced use cases.
 
 ## Access Control
 Analogously to type parameters, we can lower- and upper-bound capability parameters where the bounds consist of concrete capture sets:

@@ -64,13 +64,12 @@ class ConcatIterator[A, C^](var iterators: mutable.List[IterableOnce[A]^{C}]):
     this                                         // track contents of `it` in the result
 ```
 In such a scenario, we also should ensure that any pre-existing alias of a `ConcatIterator` object should become
-inaccessible after invoking its `concat` method. This is achieved with mutation and separation tracking which are
-currently in development.
+inaccessible after invoking its `concat` method. This is achieved with [mutation and separation tracking](separation-checking.md) which are currently in development.
 
 ## Capability Members
 
 Just as parametrization by types can be equally expressed with type members, we could
-also define the `Source[X^]` class above could using a _capability member_:
+also define the `Source[X^]` class above using a _capability member_:
 ```scala
 class Source:
   type X^
@@ -90,6 +89,4 @@ trait GPUThread extends Thread:
 Since `caps.cap` is the top element for subcapturing, we could have also left out the
 upper bound: `type Cap^ >: {cudaMalloc, cudaFree}`.
 
-----
-
-[More Advanced Use Cases](advanced.md)
+**Advanced uses:** We discuss more advanced uses cases for capability members [here](advanced.md).
