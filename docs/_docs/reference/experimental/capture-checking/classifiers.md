@@ -16,7 +16,7 @@ like this:
 ```scala
   trait Control extends SharedCapability, Classifier
 ```
-The Gears library then defines a capability class `Async` which extends `Control`.
+The [Gears library](https://lampepfl.github.io/gears/) then defines a capability class `Async` which extends `Control`.
 
 ```scala
   trait Async extends Control

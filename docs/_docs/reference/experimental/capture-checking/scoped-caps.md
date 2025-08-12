@@ -28,7 +28,7 @@ in the function itself. In that alternative notation, the type of makeLogger wou
 ```scala
 makeLogger: ∀cap₁.(fs: FileSystem^{cap₁}): ∃cap₂. Logger^{cap₂}
 ```
-There's a connection with capture polymorphism here. `cap`s in function parameters behave like additional
+There's a connection with [capture polymorphism](polymorphism.md) here. `cap`s in function parameters behave like additional
 capture parameters that can be instantiated at the call site to arbitrary capabilities.
 
 The conventions for method types carry over to function types. A function type
