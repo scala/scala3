@@ -249,7 +249,7 @@ class CodeActionTest extends DottyTest:
           |  def q(s2: String, s3: String): String | Null = null
           |}
           | val s: String = ???
-          | val t: String = (s.q(s, s)).nn""".stripMargin,
+          | val t: String = s.q(s, s).nn""".stripMargin,
       ctxx = ctxx
       )
 
