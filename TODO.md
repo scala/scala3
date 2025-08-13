@@ -221,7 +221,7 @@
 - [x] library/src/scala/collection/StringOps.scala
 - [x] library/src/scala/collection/StringParsers.scala
 - [x] library/src/scala/collection/View.scala
-- [ ] library/src/scala/collection/WithFilter.scala
+- [x] library/src/scala/collection/WithFilter.scala
 - [ ] library/src/scala/collection/concurrent/Map.scala
 - [ ] library/src/scala/collection/concurrent/TrieMap.scala
 - [ ] library/src/scala/collection/convert/AsJavaConverters.scala
