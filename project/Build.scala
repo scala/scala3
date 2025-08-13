@@ -1451,7 +1451,7 @@ object Build {
   lazy val `scala3-bootstrapped-new` = project
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
-      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`)
+      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -1927,6 +1927,46 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+    )
+
+  /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
+  lazy val `scala3-library-sjs` = project.in(file("library-js"))
+    .dependsOn(`scala-library-sjs`)
+    .settings(
+      name          := "scala3-library-sjs",
+      moduleName    := "scala3-library_sjs1",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
+      // (not the actual version we use to compile the project)
+      scalaVersion  := referenceVersion,
+      crossPaths    := true, // org.scala-lang:scala3-library_sjs1 has a crosspath
+      // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
+      autoScalaLibrary := false,
+      // Drop all the scala tools in this project, so we can never generate any bytecode, or documentation
+      managedScalaInstance := false,
+      // This Project only has a dependency to `org.scala-js:scalajs-scalalib:*.**.**-bootstrapped`
+      Compile / sources := Seq(),
+      Compile / resources := Seq(),
+      Test / sources := Seq(),
+      Test / resources := Seq(),
+      // Bridge the common task to call the ones of the actual library project
+      Compile / compile := (`scala-library-sjs` / Compile / compile).value,
+      Compile / doc     := (`scala-library-sjs` / Compile / doc).value,
+      Compile / run     := (`scala-library-sjs` / Compile / run).evaluated,
+      Test / compile := (`scala-library-sjs` / Test / compile).value,
+      Test / doc     := (`scala-library-sjs` / Test / doc).value,
+      Test / run     := (`scala-library-sjs` / Test / run).evaluated,
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      // Project specific target folder. sbt doesn't like having two projects using the same target folder
+      target := target.value / "scala3-library",
     )
 
   // ==============================================================================================

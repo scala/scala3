@@ -242,6 +242,26 @@ jobs:
       - name: Compile `scala-library` for Scala.js
         run: ./project/scripts/sbt scala-library-sjs/compile
 
+  scala3-library-sjs:
+    runs-on: ubuntu-latest
+    ## Add when we add support for caching here
+    ##needs: [scala-library-sjs]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-staging`
+        run: ./project/scripts/sbt scala3-staging-new/compile
+      - name: Compile `scala3-library` for Scala.js
+        run: ./project/scripts/sbt scala3-library-sjs/compile
+
   #################################################################################################
   ########################################### TEST JOBS ###########################################
   #################################################################################################
