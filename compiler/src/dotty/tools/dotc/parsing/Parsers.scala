@@ -2592,6 +2592,13 @@ object Parsers {
         Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
       }
 
+    /** SubMatchClause ::= `match' `{' CaseClauses `}'
+     */
+    def subMatchClause(t: Tree): SubMatch = atSpan(startOffset(t), accept(MATCH)):
+      val cases = inBracesOrIndented(caseClauses(() => caseClause()))
+      if !in.isNestedEnd then acceptStatSep() // else is sub sub match
+      SubMatch(t, cases)
+
     /**    `match' <<< TypeCaseClauses >>>
      */
     def matchType(t: Tree): MatchTypeTree =
@@ -3092,24 +3099,27 @@ object Parsers {
       buf.toList
     }
 
-    /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
-     *  ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
+    /** CaseClause        ::= ‘case’ Pattern [Guard] (‘with’ SimpleExpr SubMatchClause | `=>' Block)
+     *  ExprCaseClause    ::= ‘case’ Pattern [Guard] (‘with’ SimpleExpr SubMatchClause | `=>' Expr)
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {
         accept(CASE)
         (withinMatchPattern(pattern()), guard())
       }
-      CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then
-          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
-            warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
-                        |If this is intended, it should be indented for clarity.
-                        |Otherwise, if the handler is intended to be empty, use a multi-line catch with
-                        |an indented case.""")
-          expr()
-        else block()
-      })
+      val body =
+        if in.token == WITH && in.featureEnabled(Feature.matchWithSubCases) then atSpan(in.skipToken()):
+          subMatchClause(simpleExpr(Location.ElseWhere))
+        else atSpan(accept(ARROW)):
+          if exprOnly then
+            if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+              warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
+                          |If this is intended, it should be indented for clarity.
+                          |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                          |an indented case.""")
+            expr()
+          else block()
+      CaseDef(pat, grd, body)
     }
 
     /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
