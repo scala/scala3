@@ -197,7 +197,7 @@
 - [x] library/src/scala/collection/Iterable.scala
 - [x] library/src/scala/collection/IterableOnce.scala
 - [x] library/src/scala/collection/Iterator.scala
-- [ ] library/src/scala/collection/JavaConverters.scala
+- [x] library/src/scala/collection/JavaConverters.scala
 - [x] library/src/scala/collection/LazyZipOps.scala
 - [x] library/src/scala/collection/LinearSeq.scala
 - [x] library/src/scala/collection/Map.scala
