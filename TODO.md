@@ -210,11 +210,11 @@
 - [ ] library/src/scala/collection/SortedMap.scala
 - [ ] library/src/scala/collection/SortedOps.scala
 - [ ] library/src/scala/collection/SortedSet.scala
-- [ ] library/src/scala/collection/Stepper.scala
-- [ ] library/src/scala/collection/StepperShape.scala
-- [ ] library/src/scala/collection/StrictOptimizedIterableOps.scala
+- [x] library/src/scala/collection/Stepper.scala
+- [x] library/src/scala/collection/StepperShape.scala
+- [x] library/src/scala/collection/StrictOptimizedIterableOps.scala
 - [ ] library/src/scala/collection/StrictOptimizedMapOps.scala
-- [ ] library/src/scala/collection/StrictOptimizedSeqOps.scala
+- [x] library/src/scala/collection/StrictOptimizedSeqOps.scala
 - [ ] library/src/scala/collection/StrictOptimizedSetOps.scala
 - [ ] library/src/scala/collection/StrictOptimizedSortedMapOps.scala
 - [ ] library/src/scala/collection/StrictOptimizedSortedSetOps.scala

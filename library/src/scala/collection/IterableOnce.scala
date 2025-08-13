@@ -75,7 +75,7 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
     * allow creating parallel streams, whereas bare Steppers can be converted only to sequential
     * streams.
     */
-  def stepper[S <: Stepper[_]^{this}](implicit shape: StepperShape[A, S]): S = {
+  def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S^{this} = {
     import convert.impl._
     val s: Any = shape.shape match {
       case StepperShape.IntShape    => new IntIteratorStepper   (iterator.asInstanceOf[Iterator[Int]])
