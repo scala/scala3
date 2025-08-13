@@ -625,6 +625,8 @@ object Trees {
   case class CaseDef[+T <: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[+T <: Untyped] = CaseDef[T]
+    /** Should this case be considered partial for exhaustivity and unreachability checking */
+    def maybePartial(using Context): Boolean = !guard.isEmpty || body.isInstanceOf[SubMatch[T]]
   }
 
   /** label[tpt]: { expr } */
