@@ -22,16 +22,18 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
  * But even without capture checking, extending this trait can be useful for documenting the intended purpose
  * of a class.
  *
- * Capability has exactly two subtraits: Shared and Exclusive.
+ * Capability has exactly two subtraits: [[SharedCapability Shared]] and [[ExclusiveCapability Exclusive]].
  */
-@experimental
 sealed trait Capability extends Any
 
 /** A marker trait for classifier capabilities that can appear in `.only`
  *  qualifiers. Capability classes directly extending `Classifier` are treated
- *  as classifier capbilities
+ *  as classifier capbilities.
+ *
+ * [[Classifier]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on. It should not be used outside of capture checking.
  */
-@experimental
 trait Classifier
 
 /** The universal capture reference. */
@@ -39,15 +41,24 @@ trait Classifier
 object cap extends Capability
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
+ *
+ * [[SharedCapability]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
  * During separation checking, shared capabilities are not taken into account.
  */
-@experimental
 trait SharedCapability extends Capability, Classifier
 
 @experimental
 type Shared = SharedCapability
 
-/** Marker trait for exclusive capabilities that are separation-checked
+/** Marker trait for capabilities that should only be used by one concurrent process
+ *  at a given time. For example, write-access to a shared mutable buffer.
+ *
+ * [[ExclusiveCapability]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
+ * During separation checking, exclusive usage of marked capabilities will be enforced.
  */
 @experimental
 trait ExclusiveCapability extends Capability, Classifier
@@ -55,10 +66,14 @@ trait ExclusiveCapability extends Capability, Classifier
 @experimental
 type Exclusive = ExclusiveCapability
 
-/** Base trait for capabilities that capture some continuation or return point in
- *  the stack. Examples are exceptions, labels, Async, CanThrow.
+/** Marker trait for capabilities that capture some continuation or return point in
+ *  the stack. Examples are exceptions, [[scala.util.boundary.Label labels]], [[scala.CanThrow CanThrow]]
+ *  or Async contexts.
+ *
+ * [[Control]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
  */
-@experimental
 trait Control extends SharedCapability, Classifier
 
 /** Marker trait for classes with methods that require an exclusive reference. */

@@ -28,6 +28,10 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.onlyCapability"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.separationChecking"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$separationChecking$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Capability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.SharedCapability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
       ),
 
       // Additions since last LTS
