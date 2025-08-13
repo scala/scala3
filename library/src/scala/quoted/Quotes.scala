@@ -4267,11 +4267,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Tree of this definition
          *
-         *  If this symbol `isClassDef` it will return `a `ClassDef`,
-         *  if this symbol `isTypeDef` it will return `a `TypeDef`,
-         *  if this symbol `isValDef` it will return `a `ValDef`,
-         *  if this symbol `isDefDef` it will return `a `DefDef`
-         *  if this symbol `isBind` it will return `a `Bind`,
+         *  If this symbol `isClassDef` it will return a `ClassDef`,
+         *  if this symbol `isTypeDef` it will return a `TypeDef`,
+         *  if this symbol `isDefDef` it will return a `DefDef`,
+         *  if this symbol `isBind` it will return a `Bind`,
+         *  if this symbol `isValDef` it will return a `ValDef`,
+         *     or a `DefDef` (as the compiler can replace val class members with defs during compilation),
          *  else will throw
          *
          *  **Warning**: avoid using this method in macros.
