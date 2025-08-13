@@ -233,7 +233,7 @@ trait TypesSupport:
             tpe(tp.typeSymbol)
           case _: TermRef | _: ParamRef =>
             val suffix = if tp.typeSymbol == Symbol.noSymbol then tpe(typeName).l else tpe(tp.typeSymbol)
-            inner(qual)(using skipTypeSuffix = true) ++ plain(".").l ++ suffix
+            inner(qual)(using indent = indent, skipTypeSuffix = true) ++ plain(".").l ++ suffix
           case ThisType(tr) =>
             findSupertype(elideThis, tr.typeSymbol) match
               case Some((sym, AppliedType(tr2, args))) =>
@@ -250,7 +250,7 @@ trait TypesSupport:
                 val sig = inParens(inner(qual)(using indent = indent, skipTypeSuffix = true), wrapping)
                 sig ++ plain(".").l ++ tpe(tp.typeSymbol)
           case _ =>
-            val sig = inParens(inner(qual, skipThisTypePrefix), wrapping)
+            val sig = inParens(inner(qual), wrapping)
             sig ++ keyword("#").l ++ tpe(tp.typeSymbol)
         }
 

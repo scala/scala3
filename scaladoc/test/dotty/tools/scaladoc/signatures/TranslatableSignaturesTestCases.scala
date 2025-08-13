@@ -124,3 +124,5 @@ class InfixTypes extends SignatureTest("infixTypes", SignatureTest.all)
 class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)
 
 class RightAssocExtension extends SignatureTest("rightAssocExtension", SignatureTest.all)
+
+class OptionalParams extends SignatureTest("optionalParams", SignatureTest.all)
