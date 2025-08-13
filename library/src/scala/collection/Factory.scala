@@ -32,7 +32,7 @@ import scala.reflect.ClassTag
   * @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
   * @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
   */
-trait Factory[-A, +C] extends Pure {
+trait Factory[-A, +C] extends Any { self =>
 
   /**
     * @return A collection of type `C` containing the same elements
@@ -83,7 +83,7 @@ object Factory {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait IterableFactory[+CC[_]] extends Serializable, Pure {
+trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 
   /** Creates a target $coll from an existing source collection
     *
@@ -293,20 +293,59 @@ object IterableFactory {
   }
 }
 
+trait StrictIterableFactory[+CC[_] <: caps.Pure] extends IterableFactory[CC] {
+  // pure overrides of the IterableFactory methods
+  override def from[A](source: IterableOnce[A]^): CC[A]
+
+  override def iterate[A](start: A, len: Int)(f: A => A): CC[A] = from(new View.Iterate(start, len)(f))
+
+  override def unfold[A, S](init: S)(f: S => Option[(A, S)]): CC[A] = from(new View.Unfold(init)(f))
+
+  override def fill[A](n: Int)(elem: => A): CC[A] = from(new View.Fill(n)(elem))
+
+  override def fill[A](n1: Int, n2: Int)(elem: => A): CC[CC[A] @uncheckedVariance] = fill(n1)(fill(n2)(elem))
+
+  override def fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): CC[CC[CC[A]] @uncheckedVariance] = fill(n1)(fill(n2, n3)(elem))
+
+  override def fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): CC[CC[CC[CC[A]]] @uncheckedVariance] =
+    fill(n1)(fill(n2, n3, n4)(elem))
+
+  override def fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): CC[CC[CC[CC[CC[A]]]] @uncheckedVariance] =
+    fill(n1)(fill(n2, n3, n4, n5)(elem))
+
+  override def tabulate[A](n: Int)(f: Int => A): CC[A] = from(new View.Tabulate(n)(f))
+
+  override def tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): CC[CC[A] @uncheckedVariance] =
+    tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
+
+  override def tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): CC[CC[CC[A]] @uncheckedVariance] =
+    tabulate(n1)(i1 => tabulate(n2, n3)(f(i1, _, _)))
+
+  override def tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): CC[CC[CC[CC[A]]] @uncheckedVariance] =
+    tabulate(n1)(i1 => tabulate(n2, n3, n4)(f(i1, _, _, _)))
+
+  override def tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): CC[CC[CC[CC[CC[A]]]] @uncheckedVariance] =
+    tabulate(n1)(i1 => tabulate(n2, n3, n4, n5)(f(i1, _, _, _, _)))
+
+  override def concat[A](xss: Iterable[A]*): CC[A] = {
+    from(xss.foldLeft(View.empty[A])(_ ++ _))
+  }
+}
+
 /**
   * @tparam CC Collection type constructor (e.g. `List`)
   */
-trait SeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extends IterableFactory[CC] {
+trait SeqFactory[+CC[A] <: StrictSeqOps[A, Seq, Seq[A]]] extends StrictIterableFactory[CC] {
   import SeqFactory.UnapplySeqWrapper
   final def unapplySeq[A](x: CC[A] @uncheckedVariance): UnapplySeqWrapper[A] = new UnapplySeqWrapper(x) // TODO is uncheckedVariance sound here?
 }
 
 object SeqFactory {
   @SerialVersionUID(3L)
-  class Delegate[CC[A] <: SeqOps[A, Seq, Seq[A]]](delegate: SeqFactory[CC]) extends SeqFactory[CC] {
+  class Delegate[CC[A] <: StrictSeqOps[A, Seq, Seq[A]]](delegate: SeqFactory[CC]) extends SeqFactory[CC] {
     override def apply[A](elems: A*): CC[A] = delegate.apply(elems: _*)
     def empty[A]: CC[A] = delegate.empty
-    def from[E](it: IterableOnce[E]^): CC[E]^{it} = delegate.from(it)
+    def from[E](it: IterableOnce[E]^): CC[E] = delegate.from(it)
     def newBuilder[A]: Builder[A, CC[A]] = delegate.newBuilder[A]
   }
 
@@ -323,7 +362,7 @@ object SeqFactory {
   }
 }
 
-trait StrictOptimizedSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extends SeqFactory[CC] {
+trait StrictOptimizedSeqFactory[+CC[A] <: StrictSeqOps[A, Seq, Seq[A]]] extends SeqFactory[CC] {
 
   override def fill[A](n: Int)(elem: => A): CC[A] = {
     val b = newBuilder[A]
@@ -457,7 +496,7 @@ object MapFactory {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, Pure {
+trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, caps.Pure {
 
   def from[E : Ev](it: IterableOnce[E]^): CC[E]
 
@@ -699,7 +738,7 @@ object ClassTagSeqFactory {
   /** A SeqFactory that uses ClassTag.Any as the evidence for every element type. This may or may not be
     * sound depending on the use of the `ClassTag` by the collection implementation. */
   @SerialVersionUID(3L)
-  class AnySeqDelegate[CC[A] <: SeqOps[A, Seq, Seq[A]]](delegate: ClassTagSeqFactory[CC])
+  class AnySeqDelegate[CC[A] <: StrictSeqOps[A, Seq, Seq[A]]](delegate: ClassTagSeqFactory[CC])
     extends ClassTagIterableFactory.AnyIterableDelegate[CC](delegate) with SeqFactory[CC]
 }
 
