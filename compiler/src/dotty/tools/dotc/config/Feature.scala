@@ -37,6 +37,7 @@ object Feature:
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val packageObjectValues = experimental("packageObjectValues")
+  val matchWithSubCases = experimental("matchWithSubCases")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
