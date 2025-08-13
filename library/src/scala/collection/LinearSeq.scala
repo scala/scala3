@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 
 /** Base trait for linearly accessed sequences that have efficient `head` and
@@ -97,7 +99,7 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] wi
     else loop(0, coll)
   }
 
-  override def lengthCompare(that: Iterable[_]): Int = {
+  override def lengthCompare(that: Iterable[_]^): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this lengthCompare thatKnownSize
@@ -187,7 +189,7 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] wi
     acc
   }
 
-  override def sameElements[B >: A](that: IterableOnce[B]): Boolean = {
+  override def sameElements[B >: A](that: IterableOnce[B]^): Boolean = {
     @tailrec def linearSeqEq(a: LinearSeq[B], b: LinearSeq[B]): Boolean =
       (a eq b) || {
         if (a.nonEmpty && b.nonEmpty && a.head == b.head) {

@@ -74,7 +74,6 @@
 - [ ] library/src/scala/Product8.scala
 - [ ] library/src/scala/Product9.scala
 - [ ] library/src/scala/Proxy.scala
-- [x] library/src/scala/Pure.scala
 - [x] library/src/scala/Selectable.scala
 - [ ] library/src/scala/SerialVersionUID.scala
 - [ ] library/src/scala/Short.scala
@@ -199,11 +198,11 @@
 - [x] library/src/scala/collection/IterableOnce.scala
 - [x] library/src/scala/collection/Iterator.scala
 - [ ] library/src/scala/collection/JavaConverters.scala
-- [ ] library/src/scala/collection/LazyZipOps.scala
-- [ ] library/src/scala/collection/LinearSeq.scala
+- [x] library/src/scala/collection/LazyZipOps.scala
+- [x] library/src/scala/collection/LinearSeq.scala
 - [ ] library/src/scala/collection/Map.scala
 - [ ] library/src/scala/collection/MapView.scala
-- [ ] library/src/scala/collection/Searching.scala
+- [x] library/src/scala/collection/Searching.scala
 - [x] library/src/scala/collection/Seq.scala
 - [ ] library/src/scala/collection/SeqMap.scala
 - [ ] library/src/scala/collection/SeqView.scala
