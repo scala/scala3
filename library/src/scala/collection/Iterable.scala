@@ -997,7 +997,7 @@ trait SortedSetFactoryDefaults[+A,
   override protected def newSpecificBuilder: mutable.Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = sortedIterableFactory.newBuilder[A](using ordering)
   override def empty: CC[A @uncheckedVariance] = sortedIterableFactory.empty(using ordering)
 
-  override def withFilter(p: A => Boolean): SortedSetOps.WithFilter[A, WithFilterCC, CC] =
+  override def withFilter(p: A => Boolean): SortedSetOps.WithFilter[A, WithFilterCC, CC]^{p} =
     new SortedSetOps.WithFilter[A, WithFilterCC, CC](this, p)
 }
 

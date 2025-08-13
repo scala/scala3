@@ -13,6 +13,8 @@
 package scala.collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.annotation.unchecked.uncheckedVariance
 
@@ -130,7 +132,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
     *  @return       a new $coll resulting from applying the given collection-valued function
     *                `f` to each element of this $coll and concatenating the results.
     */
-  def flatMap[B](f: A => IterableOnce[B])(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
+  def flatMap[B](f: A => IterableOnce[B]^)(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
     sortedIterableFactory.from(new View.FlatMap(this, f))
 
   /** Returns a $coll formed from this $coll and another iterable collection
@@ -142,7 +144,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
     *  @return        a new $coll containing pairs consisting of corresponding elements of this $coll and `that`.
     *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
     */
-  def zip[B](that: IterableOnce[B])(implicit @implicitNotFound(SortedSetOps.zipOrdMsg) ev: Ordering[(A @uncheckedVariance, B)]): CC[(A @uncheckedVariance, B)] = // sound bcs of VarianceNote
+  def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(SortedSetOps.zipOrdMsg) ev: Ordering[(A @uncheckedVariance, B)]): CC[(A @uncheckedVariance, B)] = // sound bcs of VarianceNote
     sortedIterableFactory.from(that match {
       case that: Iterable[B] => new View.Zip(this, that)
       case _ => iterator.zip(that)
@@ -157,7 +159,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
     *                `pf` to each element on which it is defined and collecting the results.
     *                The order of the elements is preserved.
     */
-  def collect[B](pf: scala.PartialFunction[A, B])(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
+  def collect[B](pf: scala.PartialFunction[A, B]^)(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
     sortedIterableFactory.from(new View.Collect(this, pf))
 }
 
@@ -180,7 +182,7 @@ object SortedSetOps {
     def flatMap[B : Ordering](f: A => IterableOnce[B]): CC[B] =
       self.sortedIterableFactory.from(new View.FlatMap(filtered, f))
 
-    override def withFilter(q: A => Boolean): WithFilter[A, IterableCC, CC] =
+    override def withFilter(q: A => Boolean): WithFilter[A, IterableCC, CC]^{this, q} =
       new WithFilter[A, IterableCC, CC](self, (a: A) => p(a) && q(a))
   }
 
