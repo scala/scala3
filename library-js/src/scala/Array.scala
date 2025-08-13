@@ -68,7 +68,7 @@ object Array {
   /**
    * Returns a new [[scala.collection.mutable.ArrayBuilder]].
    */
-  def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](t)
+  def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](using t)
 
   def from[A : ClassTag](it: IterableOnce[A]): Array[A] = {
     val n = it.knownSize

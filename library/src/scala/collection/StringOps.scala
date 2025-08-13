@@ -966,7 +966,7 @@ final class StringOps(private val s: String) extends AnyVal {
     else new WrappedString(s).toArray[B]
 
   private[this] def unwrapArg(arg: Any): AnyRef = arg match {
-    case x: ScalaNumber => x.underlying
+    case x: ScalaNumber => x.underlying()
     case x              => x.asInstanceOf[AnyRef]
   }
 
