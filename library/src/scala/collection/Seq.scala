@@ -107,7 +107,7 @@ transparent trait StrictSeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with Seq
 transparent trait SeqOps[+A, +CC[_], +C] extends Any
   with IterableOps[A, CC, C] { self: SeqOps[A, CC, C]^ =>
 
-  override def view: SeqView[A] = new SeqView.Id[A](this)
+  override def view: SeqView[A]^{this} = new SeqView.Id[A](this)
 
   /** Gets the element at the specified index. This operation is provided for convenience in `Seq`. It should
     * not be assumed to be efficient unless you have an `IndexedSeq`. */

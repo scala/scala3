@@ -1506,7 +1506,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
     else mutable.ArrayBuilder.make[B].addAll(this).result()
 
   // For internal use
-  protected def reversed: Iterable[A] = {
+  protected def reversed: Iterable[A]^{this} = {
     var xs: immutable.List[A] = immutable.Nil
     val it = iterator
     while (it.hasNext) xs = it.next() :: xs

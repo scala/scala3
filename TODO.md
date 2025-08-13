@@ -205,7 +205,7 @@
 - [x] library/src/scala/collection/Searching.scala
 - [x] library/src/scala/collection/Seq.scala
 - [x] library/src/scala/collection/SeqMap.scala
-- [ ] library/src/scala/collection/SeqView.scala
+- [x] library/src/scala/collection/SeqView.scala
 - [x] library/src/scala/collection/Set.scala
 - [x] library/src/scala/collection/SortedMap.scala
 - [x] library/src/scala/collection/SortedOps.scala
