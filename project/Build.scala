@@ -1885,6 +1885,14 @@ object Build {
             .exists(overwrittenSources.contains))
 
       },
+      // Drop all the tasty files and the classfiles when packaging bu the scalajs exclusive classes
+      // More info here: https://github.com/scala-js/scala-js/issues/5217
+      Compile / packageBin / mappings := {
+        (Compile / packageBin / mappings).value.filter(file =>
+          file._2.endsWith(".sjsir")
+          || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
+          || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
+      },
       libraryDependencies += ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
