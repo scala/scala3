@@ -3307,3 +3307,15 @@ final class NamedPatternNotApplicable(selectorType: Type)(using Context) extends
     i"Named patterns cannot be used with $selectorType, because it is not a named tuple or case class"
 
   override protected def explain(using Context): String = ""
+
+final class DefaultShadowsGiven(name: Name)(using Context) extends TypeMsg(DefaultShadowsGivenID):
+  override protected def msg(using Context): String =
+    i"Argument for implicit parameter $name was supplied using a default argument."
+  override protected def explain(using Context): String =
+    "Usually the given in scope is intended, but you must specify it after explicit `using`."
+
+final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(RecurseWithDefaultID):
+  override protected def msg(using Context): String =
+    i"Recursive call used a default argument for parameter $name."
+  override protected def explain(using Context): String =
+    "It's more explicit to pass current or modified arguments in a recursion."

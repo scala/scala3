@@ -4,9 +4,10 @@ package tasty
 import scala.jdk.CollectionConverters._
 
 import scala.quoted._
+import scala.annotation.*
 
-import NameNormalizer._
-import SyntheticsSupport._
+import NameNormalizer.*
+import SyntheticsSupport.*
 
 trait TypesSupport:
   self: TastyParser =>
@@ -141,24 +142,24 @@ trait TypesSupport:
             .reduceLeftOption((acc: SSignature, elem: SSignature) => acc ++ plain(", ").l ++ elem).getOrElse(List())
           ++ plain(")").l
 
-        def parseRefinedElem(name: String, info: TypeRepr, polyTyped: SSignature = Nil): SSignature = ( info match {
+        def parseRefinedElem(name: String, info: TypeRepr, polyTyped: SSignature = Nil): SSignature =
+          val ssig = info match
           case m: MethodType => {
             val paramList = getParamList(m)
             keyword("def ").l ++ plain(name).l ++ polyTyped ++ paramList ++ plain(": ").l ++ inner(m.resType)
           }
-          case t: PolyType => {
+          case t: PolyType =>
             val paramBounds = getParamBounds(t)
-            val parsedMethod = parseRefinedElem(name, t.resType)
-            if (!paramBounds.isEmpty){
+            if !paramBounds.isEmpty then
               parseRefinedElem(name, t.resType, plain("[").l ++ paramBounds ++ plain("]").l)
-            } else parseRefinedElem(name, t.resType)
-          }
+            else parseRefinedElem(name, t.resType, polyTyped = Nil)
           case ByNameType(tp) => keyword("def ").l ++ plain(s"$name: ").l ++ inner(tp)
           case t: TypeBounds => keyword("type ").l ++ plain(name).l ++ inner(t)
           case t: TypeRef => keyword("val ").l ++ plain(s"$name: ").l ++ inner(t)
           case t: TermRef => keyword("val ").l ++ plain(s"$name: ").l ++ inner(t)
           case other => noSupported(s"Not supported type in refinement $info")
-        } ) ++ plain("; ").l
+
+          ssig ++ plain("; ").l
 
         def parsePolyFunction(info: TypeRepr): SSignature = info match {
           case t: PolyType =>
@@ -225,6 +226,7 @@ trait TypesSupport:
         }) ++ plain("]").l
 
       case tp @ TypeRef(qual, typeName) =>
+        inline def wrapping = shouldWrapInParens(inner = qual, outer = tp, isLeft = true)
         qual match {
           case r: RecursiveThis => tpe(s"this.$typeName").l
           case t if skipPrefix(t, elideThis) =>
@@ -245,17 +247,17 @@ trait TypesSupport:
                   case _ => tpe(tp.typeSymbol)
               case Some(_) => tpe(tp.typeSymbol)
               case None =>
-                val sig = inParens(inner(qual)(using skipTypeSuffix = true), shouldWrapInParens(qual, tp, true))
+                val sig = inParens(inner(qual)(using indent = indent, skipTypeSuffix = true), wrapping)
                 sig ++ plain(".").l ++ tpe(tp.typeSymbol)
           case _ =>
-            val sig = inParens(inner(qual), shouldWrapInParens(qual, tp, true))
+            val sig = inParens(inner(qual, skipThisTypePrefix), wrapping)
             sig ++ keyword("#").l ++ tpe(tp.typeSymbol)
         }
 
       case tr @ TermRef(qual, typeName) =>
         val prefix = qual match
           case t if skipPrefix(t, elideThis) => Nil
-          case tp => inner(tp)(using skipTypeSuffix = true) ++ plain(".").l
+          case tp => inner(tp)(using indent = indent, skipTypeSuffix = true) ++ plain(".").l
         val suffix = if skipTypeSuffix then Nil else List(plain("."), keyword("type"))
         val typeSig = tr.termSymbol.tree match
           case vd: ValDef if tr.termSymbol.flags.is(Flags.Module) =>
@@ -274,9 +276,9 @@ trait TypesSupport:
         val spaces = " " * (indent)
         val casesTexts = cases.flatMap {
           case MatchCase(from, to) =>
-            keyword(caseSpaces + "case ").l ++ inner(from) ++ keyword(" => ").l ++ inner(to)(using indent = indent + 2) ++ plain("\n").l
+            keyword(caseSpaces + "case ").l ++ inner(from) ++ keyword(" => ").l ++ inner(to)(using indent = indent + 2, skipTypeSuffix = skipTypeSuffix) ++ plain("\n").l
           case TypeLambda(_, _, MatchCase(from, to)) =>
-            keyword(caseSpaces + "case ").l ++ inner(from) ++ keyword(" => ").l ++ inner(to)(using indent = indent + 2) ++ plain("\n").l
+            keyword(caseSpaces + "case ").l ++ inner(from) ++ keyword(" => ").l ++ inner(to)(using indent = indent + 2, skipTypeSuffix = skipTypeSuffix) ++ plain("\n").l
         }
         inner(sc) ++ keyword(" match ").l ++ plain("{\n").l ++ casesTexts ++ plain(spaces + "}").l
 
