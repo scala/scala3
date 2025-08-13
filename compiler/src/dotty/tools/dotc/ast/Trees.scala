@@ -608,11 +608,17 @@ object Trees {
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Match[T]
     def isInline = false
+    def isSubMatch = false
   }
   class InlineMatch[+T <: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends Match(selector, cases) {
     override def isInline = true
     override def toString = s"InlineMatch($selector, $cases)"
+  }
+  /** with selector match { cases } */
+  final class SubMatch[+T <: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
+    extends Match(selector, cases) {
+    override def isSubMatch = true
   }
 
   /** case pat if guard => body */
@@ -1180,6 +1186,7 @@ object Trees {
     type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
     type InlineMatch = Trees.InlineMatch[T]
+    type SubMatch = Trees.SubMatch[T]
     type CaseDef = Trees.CaseDef[T]
     type Labeled = Trees.Labeled[T]
     type Return = Trees.Return[T]
@@ -1329,6 +1336,7 @@ object Trees {
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = tree match {
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
         case tree: InlineMatch => finalize(tree, untpd.InlineMatch(selector, cases)(sourceFile(tree)))
+        case tree: SubMatch => finalize(tree, untpd.SubMatch(selector, cases)(sourceFile(tree)))
         case _ => finalize(tree, untpd.Match(selector, cases)(sourceFile(tree)))
       }
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef = tree match {
