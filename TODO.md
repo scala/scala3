@@ -189,7 +189,7 @@
 - [x] library/src/scala/collection/BitSet.scala
 - [x] library/src/scala/collection/BufferedIterator.scala
 - [x] library/src/scala/collection/BuildFrom.scala
-- [ ] library/src/scala/collection/DefaultMap.scala
+- [x] library/src/scala/collection/DefaultMap.scala
 - [x] library/src/scala/collection/Factory.scala
 - [x] library/src/scala/collection/Hashing.scala
 - [x] library/src/scala/collection/IndexedSeq.scala
@@ -207,16 +207,16 @@
 - [x] library/src/scala/collection/SeqMap.scala
 - [ ] library/src/scala/collection/SeqView.scala
 - [x] library/src/scala/collection/Set.scala
-- [ ] library/src/scala/collection/SortedMap.scala
-- [ ] library/src/scala/collection/SortedOps.scala
+- [x] library/src/scala/collection/SortedMap.scala
+- [x] library/src/scala/collection/SortedOps.scala
 - [x] library/src/scala/collection/SortedSet.scala
 - [x] library/src/scala/collection/Stepper.scala
 - [x] library/src/scala/collection/StepperShape.scala
 - [x] library/src/scala/collection/StrictOptimizedIterableOps.scala
-- [ ] library/src/scala/collection/StrictOptimizedMapOps.scala
+- [x] library/src/scala/collection/StrictOptimizedMapOps.scala
 - [x] library/src/scala/collection/StrictOptimizedSeqOps.scala
 - [x] library/src/scala/collection/StrictOptimizedSetOps.scala
-- [ ] library/src/scala/collection/StrictOptimizedSortedMapOps.scala
+- [x] library/src/scala/collection/StrictOptimizedSortedMapOps.scala
 - [x] library/src/scala/collection/StrictOptimizedSortedSetOps.scala
 - [x] library/src/scala/collection/StringOps.scala
 - [x] library/src/scala/collection/StringParsers.scala
