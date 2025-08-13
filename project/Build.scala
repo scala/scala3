@@ -40,6 +40,9 @@ import sbttastymima.TastyMiMaPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 
+import scala.xml.{Node => XmlNode, NodeSeq => XmlNodeSeq, _}
+import scala.xml.transform.{RewriteRule, RuleTransformer}
+
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 object Build {
@@ -1893,7 +1896,7 @@ object Build {
           || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
           || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
       },
-      libraryDependencies += ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
+      libraryDependencies += ("org.scala-js" %% "scalajs-library" % scalaJSVersion % Provided).cross(CrossVersion.for3Use2_13),
       libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library",
@@ -1901,6 +1904,7 @@ object Build {
       // this was the only way to not get the artifact evicted by sbt. Even a custom configuration didn't work
       // NOTE: true is the default value, just making things clearer here
       managedScalaInstance := true,
+      autoScalaLibrary := false,
       // Configure the nonbootstrapped compiler
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
@@ -1926,6 +1930,16 @@ object Build {
       },
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      // See https://stackoverflow.com/a/51416386
+      pomPostProcess := { (node: XmlNode) =>
+        new RuleTransformer(new RewriteRule {
+          override def transform(node: XmlNode): XmlNodeSeq = node match {
+            case e: Elem if e.label == "dependency" && e.child.exists(child => child.label == "artifactId" && child.text == "scalajs-library_2.13") =>
+              XmlNodeSeq.Empty
+            case _ => node
+        }
+      }).transform(node).head
       },
     )
 
