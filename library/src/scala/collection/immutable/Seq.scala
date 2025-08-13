@@ -30,7 +30,7 @@ trait Seq[+A] extends Iterable[A]
   * @define coll immutable sequence
   * @define Coll `immutable.Seq`
   */
-transparent trait SeqOps[+A, +CC[_], +C] extends Any with collection.SeqOps[A, CC, C]
+transparent trait SeqOps[+A, +CC[B] <: collection.StrictSeqOps[B, collection.Seq, collection.Seq[B]], +C] extends Any with collection.StrictSeqOps[A, CC, C]
 
 /**
   * $factoryInfo
@@ -119,9 +119,9 @@ object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
 }
 
 /** Base trait for immutable indexed Seq operations */
-transparent trait IndexedSeqOps[+A, +CC[_], +C]
+transparent trait IndexedSeqOps[+A, +CC[B] <: collection.StrictSeqOps[B, collection.Seq, collection.Seq[B]], +C]
   extends SeqOps[A, CC, C]
-    with collection.IndexedSeqOps[A, CC, C] {
+    with collection.StrictIndexedSeqOps[A, CC, C] {
 
   override def slice(from: Int, until: Int): C = {
     // since we are immutable we can just share the same collection

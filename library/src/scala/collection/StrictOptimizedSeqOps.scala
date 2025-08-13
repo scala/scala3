@@ -18,10 +18,8 @@ import scala.language.`2.13`
   * Trait that overrides operations on sequences in order
   * to take advantage of strict builders.
   */
-transparent trait StrictOptimizedSeqOps [+A, +CC[_], +C]
-  extends Any
-    with SeqOps[A, CC, C]
-    with StrictOptimizedIterableOps[A, CC, C] {
+transparent trait StrictOptimizedSeqOps [+A, +CC[_] <: caps.Pure, +C]
+  extends Any with StrictSeqOps[A, CC, C] with StrictOptimizedIterableOps[A, CC, C] {
 
   override def distinctBy[B](f: A => B): C = {
     val builder = newSpecificBuilder

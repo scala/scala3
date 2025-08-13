@@ -297,7 +297,7 @@ object IArray:
     def prepended[U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr).prepended(x)
     def prependedAll[U >: T: ClassTag](prefix: IterableOnce[U]^): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
     def reverseIterator: Iterator[T] = genericArrayOps(arr).reverseIterator
-    def search[U >: T](elem: U)(using Ordering[U]^): Searching.SearchResult = arr.toSeq.search(elem)
+    def search[U >: T](elem: U)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem)
     def search[U >: T](elem: U, from: Int, to: Int)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem, from, to)
     def sizeCompare(that: IArray[Any]): Int = arr.toSeq.sizeCompare(that)
     def sizeCompare(that: Iterable[?]): Int = arr.toSeq.sizeCompare(that)

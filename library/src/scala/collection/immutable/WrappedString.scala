@@ -34,7 +34,7 @@ import scala.collection.mutable.{Builder, StringBuilder}
   */
 @SerialVersionUID(3L)
 final class WrappedString(private val self: String) extends AbstractSeq[Char] with IndexedSeq[Char]
-  with IndexedSeqOps[Char, IndexedSeq, WrappedString]
+  with StrictIndexedSeqOps[Char, IndexedSeq, WrappedString]
   with Serializable {
 
   def apply(i: Int): Char = self.charAt(i)
@@ -101,7 +101,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
   override def appendedAll[B >: Char](suffix: IterableOnce[B]): IndexedSeq[B] =
     suffix match {
       case s: WrappedString => new WrappedString(self concat s.self)
-      case _                => super.appendedAll(suffix)
+      case _                => Predef.??? // TODO super.appendedAll(suffix)
     }
 
   override def sameElements[B >: Char](o: IterableOnce[B]) = o match {

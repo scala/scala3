@@ -36,8 +36,8 @@ object Seq extends SeqFactory.Delegate[Seq](ArrayBuffer)
   * @define coll mutable sequence
   * @define Coll `mutable.Seq`
   */
-transparent trait SeqOps[A, +CC[_], +C <: AnyRef]
-  extends collection.SeqOps[A, CC, C]
+transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
+  extends collection.StrictSeqOps[A, CC, C]
     with Cloneable[C] {
 
   override def clone(): C = {

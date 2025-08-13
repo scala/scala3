@@ -46,7 +46,7 @@
 - [x] library/src/scala/NamedTuple.scala
 - [ ] library/src/scala/NotImplementedError.scala
 - [ ] library/src/scala/Option.scala
-- [ ] library/src/scala/PartialFunction.scala
+- [x] library/src/scala/PartialFunction.scala
 - [x] library/src/scala/PolyFunction.scala
 - [x] library/src/scala/Precise.scala
 - [ ] library/src/scala/Predef.scala
@@ -186,25 +186,25 @@
 - [ ] library/src/scala/beans/BeanProperty.scala
 - [ ] library/src/scala/beans/BooleanBeanProperty.scala
 - [x] library/src/scala/caps/package.scala
-- [ ] library/src/scala/collection/ArrayOps.scala
-- [ ] library/src/scala/collection/BitSet.scala
-- [ ] library/src/scala/collection/BufferedIterator.scala
-- [ ] library/src/scala/collection/BuildFrom.scala
+- [x] library/src/scala/collection/ArrayOps.scala
+- [x] library/src/scala/collection/BitSet.scala
+- [x] library/src/scala/collection/BufferedIterator.scala
+- [x] library/src/scala/collection/BuildFrom.scala
 - [ ] library/src/scala/collection/DefaultMap.scala
-- [ ] library/src/scala/collection/Factory.scala
+- [x] library/src/scala/collection/Factory.scala
 - [ ] library/src/scala/collection/Hashing.scala
-- [ ] library/src/scala/collection/IndexedSeq.scala
-- [ ] library/src/scala/collection/IndexedSeqView.scala
-- [ ] library/src/scala/collection/Iterable.scala
-- [ ] library/src/scala/collection/IterableOnce.scala
-- [ ] library/src/scala/collection/Iterator.scala
+- [x] library/src/scala/collection/IndexedSeq.scala
+- [x] library/src/scala/collection/IndexedSeqView.scala
+- [x] library/src/scala/collection/Iterable.scala
+- [x] library/src/scala/collection/IterableOnce.scala
+- [x] library/src/scala/collection/Iterator.scala
 - [ ] library/src/scala/collection/JavaConverters.scala
 - [ ] library/src/scala/collection/LazyZipOps.scala
 - [ ] library/src/scala/collection/LinearSeq.scala
 - [ ] library/src/scala/collection/Map.scala
 - [ ] library/src/scala/collection/MapView.scala
 - [ ] library/src/scala/collection/Searching.scala
-- [ ] library/src/scala/collection/Seq.scala
+- [x] library/src/scala/collection/Seq.scala
 - [ ] library/src/scala/collection/SeqMap.scala
 - [ ] library/src/scala/collection/SeqView.scala
 - [ ] library/src/scala/collection/Set.scala
@@ -221,7 +221,7 @@
 - [ ] library/src/scala/collection/StrictOptimizedSortedSetOps.scala
 - [ ] library/src/scala/collection/StringOps.scala
 - [ ] library/src/scala/collection/StringParsers.scala
-- [ ] library/src/scala/collection/View.scala
+- [x] library/src/scala/collection/View.scala
 - [ ] library/src/scala/collection/WithFilter.scala
 - [ ] library/src/scala/collection/concurrent/Map.scala
 - [ ] library/src/scala/collection/concurrent/TrieMap.scala
@@ -255,7 +255,7 @@
 - [ ] library/src/scala/collection/generic/Subtractable.scala
 - [ ] library/src/scala/collection/generic/package.scala
 - [ ] library/src/scala/collection/immutable/ArraySeq.scala
-- [ ] library/src/scala/collection/immutable/BitSet.scala
+- [x] library/src/scala/collection/immutable/BitSet.scala
 - [ ] library/src/scala/collection/immutable/ChampCommon.scala
 - [ ] library/src/scala/collection/immutable/HashMap.scala
 - [ ] library/src/scala/collection/immutable/HashSet.scala
@@ -290,7 +290,7 @@
 - [ ] library/src/scala/collection/mutable/ArrayBuilder.scala
 - [ ] library/src/scala/collection/mutable/ArrayDeque.scala
 - [ ] library/src/scala/collection/mutable/ArraySeq.scala
-- [ ] library/src/scala/collection/mutable/BitSet.scala
+- [x] library/src/scala/collection/mutable/BitSet.scala
 - [ ] library/src/scala/collection/mutable/Buffer.scala
 - [ ] library/src/scala/collection/mutable/Builder.scala
 - [ ] library/src/scala/collection/mutable/CheckedIndexedSeqView.scala
@@ -367,6 +367,7 @@
 - [ ] library/src/scala/deprecatedInheritance.scala
 - [ ] library/src/scala/deprecatedName.scala
 - [ ] library/src/scala/deprecatedOverriding.scala
+- [x] library/src/scala/deriving/Mirror.scala
 - [ ] library/src/scala/inline.scala
 - [ ] library/src/scala/io/AnsiColor.scala
 - [ ] library/src/scala/io/BufferedSource.scala
@@ -469,7 +470,7 @@
 - [ ] library/src/scala/runtime/AbstractFunction7.scala
 - [ ] library/src/scala/runtime/AbstractFunction8.scala
 - [ ] library/src/scala/runtime/AbstractFunction9.scala
-- [ ] library/src/scala/runtime/AbstractPartialFunction.scala
+- [x] library/src/scala/runtime/AbstractPartialFunction.scala
 - [ ] library/src/scala/runtime/ArrayCharSequence.scala
 - [x] library/src/scala/runtime/Arrays.scala
 - [ ] library/src/scala/runtime/ClassValueCompat.scala

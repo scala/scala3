@@ -319,7 +319,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  is `O(this.size min that.size)` instead of `O(this.size + that.size)`.
    *  The method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
    */
-  def sizeCompare(that: Iterable[_]): Int = {
+  def sizeCompare(that: Iterable[_]^): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this sizeCompare thatKnownSize
