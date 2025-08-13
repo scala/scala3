@@ -293,6 +293,7 @@ object IterableFactory {
   }
 }
 
+/** IterableFactory but with strict operations that do not capture the inputs. */
 trait StrictIterableFactory[+CC[_] <: caps.Pure] extends IterableFactory[CC] {
   // pure overrides of the IterableFactory methods
   override def from[A](source: IterableOnce[A]^): CC[A]
@@ -423,7 +424,7 @@ trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait MapFactory[+CC[_, _]] extends Serializable { this: MapFactory[CC] =>
+trait MapFactory[+CC[_, _]] extends Serializable { self =>
 
   /**
    * An empty Map
@@ -449,6 +450,14 @@ trait MapFactory[+CC[_, _]] extends Serializable { this: MapFactory[CC] =>
    * The default Factory instance for maps.
    */
   implicit def mapFactory[K, V]: Factory[(K, V), CC[K, V]] = MapFactory.toFactory(this)
+}
+
+/** Like MapFactory, but with a strict constructor. */
+trait StrictMapFactory[+CC[_, _] <: caps.Pure] extends MapFactory[CC] {
+  /**
+   * A collection of type Map generated from given iterable object.
+   */
+  def from[K, V](it: IterableOnce[(K, V)]^): CC[K, V]
 }
 
 object MapFactory {
@@ -477,9 +486,9 @@ object MapFactory {
     }
 
   @SerialVersionUID(3L)
-  class Delegate[C[_, _]](delegate: MapFactory[C]) extends MapFactory[C] {
+  class Delegate[C[_, _] <: caps.Pure](delegate: StrictMapFactory[C]) extends StrictMapFactory[C] {
     override def apply[K, V](elems: (K, V)*): C[K, V] = delegate.apply(elems: _*)
-    def from[K, V](it: IterableOnce[(K, V)]^): C[K, V]^{it} = delegate.from(it)
+    def from[K, V](it: IterableOnce[(K, V)]^): C[K, V] = delegate.from(it)
     def empty[K, V]: C[K, V] = delegate.empty
     def newBuilder[K, V]: Builder[(K, V), C[K, V]] = delegate.newBuilder
   }

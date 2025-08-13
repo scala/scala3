@@ -43,7 +43,7 @@ class LinkedHashMap[K, V]
     with MapFactoryDefaults[K, V, LinkedHashMap, Iterable]
     with DefaultSerializable {
 
-  override def mapFactory: MapFactory[LinkedHashMap] = LinkedHashMap
+  override def mapFactory: StrictMapFactory[LinkedHashMap] = LinkedHashMap
 
   // stepper / keyStepper / valueStepper are not overridden to use XTableStepper because that stepper
   // would not return the elements in insertion order
@@ -475,7 +475,7 @@ class LinkedHashMap[K, V]
  *  @define coll linked hash map
  */
 @SerialVersionUID(3L)
-object LinkedHashMap extends MapFactory[LinkedHashMap] {
+object LinkedHashMap extends StrictMapFactory[LinkedHashMap] {
 
   def empty[K, V] = new LinkedHashMap[K, V]
 

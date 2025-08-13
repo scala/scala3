@@ -191,7 +191,7 @@
 - [x] library/src/scala/collection/BuildFrom.scala
 - [ ] library/src/scala/collection/DefaultMap.scala
 - [x] library/src/scala/collection/Factory.scala
-- [ ] library/src/scala/collection/Hashing.scala
+- [x] library/src/scala/collection/Hashing.scala
 - [x] library/src/scala/collection/IndexedSeq.scala
 - [x] library/src/scala/collection/IndexedSeqView.scala
 - [x] library/src/scala/collection/Iterable.scala
@@ -200,11 +200,11 @@
 - [ ] library/src/scala/collection/JavaConverters.scala
 - [x] library/src/scala/collection/LazyZipOps.scala
 - [x] library/src/scala/collection/LinearSeq.scala
-- [ ] library/src/scala/collection/Map.scala
-- [ ] library/src/scala/collection/MapView.scala
+- [x] library/src/scala/collection/Map.scala
+- [x] library/src/scala/collection/MapView.scala
 - [x] library/src/scala/collection/Searching.scala
 - [x] library/src/scala/collection/Seq.scala
-- [ ] library/src/scala/collection/SeqMap.scala
+- [x] library/src/scala/collection/SeqMap.scala
 - [ ] library/src/scala/collection/SeqView.scala
 - [x] library/src/scala/collection/Set.scala
 - [ ] library/src/scala/collection/SortedMap.scala

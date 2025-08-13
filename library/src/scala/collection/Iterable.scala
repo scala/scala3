@@ -1026,7 +1026,7 @@ trait MapFactoryDefaults[K, +V,
     case _ => mapFactory.empty
   }
 
-  override def withFilter(p: ((K, V)) => Boolean): MapOps.WithFilter[K, V, WithFilterCC, CC] =
+  override def withFilter(p: ((K, V)) => Boolean): MapOps.WithFilter[K, V, WithFilterCC, CC]^{p} =
     new MapOps.WithFilter[K, V, WithFilterCC, CC](this, p)
 }
 
@@ -1045,7 +1045,7 @@ trait MapFactoryDefaults[K, +V,
 trait SortedMapFactoryDefaults[K, +V,
     +CC[x, y] <:  Map[x, y] with SortedMapOps[x, y, CC, CC[x, y]] with UnsortedCC[x, y],
     +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Iterable[x],
-    +UnsortedCC[x, y] <: Map[x, y]] extends SortedMapOps[K, V, CC, CC[K, V @uncheckedVariance]] with MapOps[K, V, UnsortedCC, CC[K, V @uncheckedVariance]] {
+    +UnsortedCC[x, y] <: Map[x, y]] extends SortedMapOps[K, V, CC, CC[K, V @uncheckedVariance]] with StrictMapOps[K, V, UnsortedCC, CC[K, V @uncheckedVariance]] {
   self: IterableOps[(K, V), WithFilterCC, _] =>
 
   override def empty: CC[K, V @uncheckedVariance] = sortedMapFactory.empty(using ordering)

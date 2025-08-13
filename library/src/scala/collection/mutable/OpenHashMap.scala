@@ -24,7 +24,7 @@ import scala.collection.generic.DefaultSerializable
   */
 @deprecated("Use HashMap or one of the specialized versions (LongMap, AnyRefMap) instead of OpenHashMap", "2.13.0")
 @SerialVersionUID(3L)
-object OpenHashMap extends MapFactory[OpenHashMap] {
+object OpenHashMap extends StrictMapFactory[OpenHashMap] {
 
   def empty[K, V] = new OpenHashMap[K, V]
   def from[K, V](it: IterableOnce[(K, V)]): OpenHashMap[K,V] = empty ++= it
@@ -76,7 +76,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     */
   def this() = this(8)
 
-  override def mapFactory: MapFactory[OpenHashMap] = OpenHashMap
+  override def mapFactory: StrictMapFactory[OpenHashMap] = OpenHashMap
 
   private[this] val actualInitialSize = OpenHashMap.nextPositivePowerOfTwo(initialSize)
 

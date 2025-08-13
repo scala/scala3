@@ -25,7 +25,7 @@ trait Map[K, V]
     with Shrinkable[K]
     with MapFactoryDefaults[K, V, Map, Iterable] {
 
-  override def mapFactory: scala.collection.MapFactory[Map] = Map
+  override def mapFactory: scala.collection.StrictMapFactory[Map] = Map
 
   /*
   //TODO consider keeping `remove` because it returns the removed entry
@@ -66,7 +66,7 @@ trait Map[K, V]
   */
 transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
-    with collection.MapOps[K, V, CC, C]
+    with collection.StrictMapOps[K, V, CC, C]
     with Cloneable[C]
     with Builder[(K, V), C]
     with Growable[(K, V)]
@@ -242,7 +242,7 @@ object Map extends MapFactory.Delegate[Map](HashMap) {
     def iterator: scala.collection.Iterator[(K, V)] = underlying.iterator
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = underlying.knownSize
-    override def mapFactory: MapFactory[Map] = underlying.mapFactory
+    override def mapFactory: StrictMapFactory[Map] = underlying.mapFactory
 
     override def clear(): Unit = underlying.clear()
 

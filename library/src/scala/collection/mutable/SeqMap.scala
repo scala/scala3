@@ -34,7 +34,7 @@ trait SeqMap[K, V] extends Map[K, V]
   with collection.SeqMap[K, V]
   with MapOps[K, V, SeqMap, SeqMap[K, V]]
   with MapFactoryDefaults[K, V, SeqMap, Iterable] {
-  override def mapFactory: MapFactory[SeqMap] = SeqMap
+  override def mapFactory: StrictMapFactory[SeqMap] = SeqMap
 }
 
 object SeqMap extends MapFactory.Delegate[SeqMap](LinkedHashMap)

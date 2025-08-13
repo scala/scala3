@@ -28,7 +28,7 @@ trait Map[K, +V]
      with MapOps[K, V, Map, Map[K, V]]
      with MapFactoryDefaults[K, V, Map, Iterable] {
 
-  override def mapFactory: scala.collection.MapFactory[Map] = Map
+  override def mapFactory: scala.collection.StrictMapFactory[Map] = Map
 
   override final def toMap[K2, V2](implicit ev: (K, V) <:< (K2, V2)): Map[K2, V2] = Map.from(this.asInstanceOf[Map[K2, V2]])
 
@@ -62,7 +62,7 @@ trait Map[K, +V]
   */
 transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
-    with collection.MapOps[K, V, CC, C] {
+    with collection.StrictMapOps[K, V, CC, C] {
 
   protected def coll: C with CC[K, V]
 
@@ -170,7 +170,7 @@ transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _]
   * @define Coll `immutable.Map`
   */
 @SerialVersionUID(3L)
-object Map extends MapFactory[Map] {
+object Map extends StrictMapFactory[Map] {
 
   @SerialVersionUID(3L)
   class WithDefault[K, +V](val underlying: Map[K, V], val defaultValue: K => V)
@@ -187,7 +187,7 @@ object Map extends MapFactory[Map] {
 
     override def isEmpty: Boolean = underlying.isEmpty
 
-    override def mapFactory: MapFactory[Map] = underlying.mapFactory
+    override def mapFactory: StrictMapFactory[Map] = underlying.mapFactory
 
     override def concat [V2 >: V](xs: collection.IterableOnce[(K, V2)]): WithDefault[K, V2] =
       new WithDefault(underlying.concat(xs), defaultValue)

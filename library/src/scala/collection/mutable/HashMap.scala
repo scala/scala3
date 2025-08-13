@@ -568,7 +568,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     this
   }
 
-  override def mapFactory: MapFactory[HashMap] = HashMap
+  override def mapFactory: StrictMapFactory[HashMap] = HashMap
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix = "HashMap"
@@ -595,7 +595,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   *  @define coll mutable hash map
   */
 @SerialVersionUID(3L)
-object HashMap extends MapFactory[HashMap] {
+object HashMap extends StrictMapFactory[HashMap] {
 
   def empty[K, V]: HashMap[K, V] = new HashMap[K, V]
 

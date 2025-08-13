@@ -38,11 +38,11 @@ trait SeqMap[K, +V]
     with collection.SeqMap[K, V]
     with MapOps[K, V, SeqMap, SeqMap[K, V]]
     with MapFactoryDefaults[K, V, SeqMap, Iterable] {
-  override def mapFactory: MapFactory[SeqMap] = SeqMap
+  override def mapFactory: StrictMapFactory[SeqMap] = SeqMap
 }
 
 
-object SeqMap extends MapFactory[SeqMap] {
+object SeqMap extends StrictMapFactory[SeqMap] {
   def empty[K, V]: SeqMap[K, V] = EmptySeqMap.asInstanceOf[SeqMap[K, V]]
 
   def from[K, V](it: collection.IterableOnce[(K, V)]): SeqMap[K, V] =

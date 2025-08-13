@@ -711,7 +711,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
 
   def this() = this(Hashing.default, Equiv.universal)
 
-  override def mapFactory: MapFactory[TrieMap] = TrieMap
+  override def mapFactory: StrictMapFactory[TrieMap] = TrieMap
 
   /* internal methods */
 
@@ -1038,7 +1038,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
 
 
 @SerialVersionUID(3L)
-object TrieMap extends MapFactory[TrieMap] {
+object TrieMap extends StrictMapFactory[TrieMap] {
 
   def empty[K, V]: TrieMap[K, V] = new TrieMap[K, V]
 
