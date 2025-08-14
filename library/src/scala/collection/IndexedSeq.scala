@@ -35,6 +35,12 @@ trait IndexedSeq[+A] extends Seq[A]
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](immutable.IndexedSeq)
 
 transparent trait StrictIndexedSeqOps[+A, +CC[_] <: caps.Pure, +C] extends Any with StrictSeqOps[A, CC, C] with IndexedSeqOps[A, CC, C] {
+  override def map[B](f: A => B): CC[B] = iterableFactory.from(new IndexedSeqView.Map(this, f))
+  override def sliding(size: Int, step: Int): Iterator[C] = {
+    require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
+    val it = new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
+    it.asInstanceOf // TODO: seems like CC cannot figure this out yet
+  }
 }
 
 /** Base trait for indexed Seq operations */
@@ -161,6 +167,8 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
 /** A fast sliding iterator for IndexedSeqs which uses the underlying `slice` operation. */
 private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, CC, C]^, size: Int, step: Int)
   extends AbstractIterator[C^{s}] {
+  // CC note: seems like the compiler cannot figure out that this class <: Iterator[C^{s}],
+  // so we need a cast when upcasting is needed.
 
   private[this] val len = s.length
   private[this] var pos = 0
