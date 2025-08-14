@@ -184,7 +184,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  override def subtractAll(xs: IterableOnce[K]): this.type = {
+  override def subtractAll(xs: IterableOnce[K]^): this.type = {
     if (size == 0) {
       return this
     }

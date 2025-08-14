@@ -175,7 +175,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs, delta = contentSize)
     super.addAll(xs)
   }
@@ -427,7 +427,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     *  @return       a new $coll resulting from applying the given collection-valued function
     *                `f` to each element of this $coll and concatenating the results.
     */
-  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)])
+  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.FlatMap(this, f))
 
