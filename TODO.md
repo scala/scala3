@@ -262,9 +262,9 @@
 - [x] library/src/scala/collection/immutable/Iterable.scala
 - [ ] library/src/scala/collection/immutable/LazyList.scala
 - [x] library/src/scala/collection/immutable/LazyListIterable.scala
-- [ ] library/src/scala/collection/immutable/List.scala
-- [ ] library/src/scala/collection/immutable/ListMap.scala
-- [ ] library/src/scala/collection/immutable/ListSet.scala
+- [x] library/src/scala/collection/immutable/List.scala
+- [x] library/src/scala/collection/immutable/ListMap.scala
+- [x] library/src/scala/collection/immutable/ListSet.scala
 - [x] library/src/scala/collection/immutable/LongMap.scala
 - [x] library/src/scala/collection/immutable/Map.scala
 - [ ] library/src/scala/collection/immutable/NumericRange.scala
