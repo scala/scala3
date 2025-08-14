@@ -225,12 +225,12 @@
 - [x] library/src/scala/collection/concurrent/Map.scala
 - [x] library/src/scala/collection/concurrent/TrieMap.scala
 - [ ] library/src/scala/collection/convert/AsJavaConverters.scala
-- [ ] library/src/scala/collection/convert/AsJavaExtensions.scala
-- [ ] library/src/scala/collection/convert/AsScalaConverters.scala
-- [ ] library/src/scala/collection/convert/AsScalaExtensions.scala
-- [ ] library/src/scala/collection/convert/ImplicitConversions.scala
-- [ ] library/src/scala/collection/convert/JavaCollectionWrappers.scala
-- [ ] library/src/scala/collection/convert/StreamExtensions.scala
+- [x] library/src/scala/collection/convert/AsJavaExtensions.scala
+- [x] library/src/scala/collection/convert/AsScalaConverters.scala
+- [x] library/src/scala/collection/convert/AsScalaExtensions.scala
+- [x] library/src/scala/collection/convert/ImplicitConversions.scala
+- [x] library/src/scala/collection/convert/JavaCollectionWrappers.scala
+- [x] library/src/scala/collection/convert/StreamExtensions.scala
 - [ ] library/src/scala/collection/convert/impl/ArrayStepper.scala
 - [ ] library/src/scala/collection/convert/impl/BinaryTreeStepper.scala
 - [ ] library/src/scala/collection/convert/impl/BitSetStepper.scala
