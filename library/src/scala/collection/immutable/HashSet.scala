@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.lang.Integer.{bitCount, numberOfTrailingZeros}
 import java.lang.System.arraycopy
 
@@ -92,7 +94,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     newHashSetOrThis(newRootNode)
   }
 
-  override def concat(that: IterableOnce[A]): HashSet[A] =
+  override def concat(that: IterableOnce[A]^): HashSet[A] =
     that match {
       case hs: HashSet[A] =>
         if (isEmpty) hs
@@ -277,7 +279,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     *
     * That is, this method is safe to call on published sets because it does not mutate `this`
     */
-  private[this] def removedAllWithShallowMutations(that: IterableOnce[A]): HashSet[A] = {
+  private[this] def removedAllWithShallowMutations(that: IterableOnce[A]^): HashSet[A] = {
     val iter = that.iterator
     var curr = rootNode
     while (iter.hasNext) {
@@ -306,7 +308,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     this
   }
 
-  override def removedAll(that: IterableOnce[A]): HashSet[A] = that match {
+  override def removedAll(that: IterableOnce[A]^): HashSet[A] = that match {
     case set: scala.collection.Set[A] => diff(set)
     case range: Range if range.length > size =>
       filter {
@@ -1937,7 +1939,7 @@ object HashSet extends IterableFactory[HashSet] {
   def empty[A]: HashSet[A] =
     EmptySet.asInstanceOf[HashSet[A]]
 
-  def from[A](source: collection.IterableOnce[A]): HashSet[A] =
+  def from[A](source: collection.IterableOnce[A]^): HashSet[A] =
     source match {
       case hs: HashSet[A] => hs
       case _ if source.knownSize == 0 => empty[A]

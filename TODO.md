@@ -257,7 +257,7 @@
 - [x] library/src/scala/collection/immutable/BitSet.scala
 - [x] library/src/scala/collection/immutable/ChampCommon.scala
 - [x] library/src/scala/collection/immutable/HashMap.scala
-- [ ] library/src/scala/collection/immutable/HashSet.scala
+- [x] library/src/scala/collection/immutable/HashSet.scala
 - [ ] library/src/scala/collection/immutable/IntMap.scala
 - [x] library/src/scala/collection/immutable/Iterable.scala
 - [ ] library/src/scala/collection/immutable/LazyList.scala
@@ -272,7 +272,7 @@
 - [ ] library/src/scala/collection/immutable/RedBlackTree.scala
 - [x] library/src/scala/collection/immutable/Seq.scala
 - [ ] library/src/scala/collection/immutable/SeqMap.scala
-- [ ] library/src/scala/collection/immutable/Set.scala
+- [x] library/src/scala/collection/immutable/Set.scala
 - [ ] library/src/scala/collection/immutable/SortedMap.scala
 - [ ] library/src/scala/collection/immutable/SortedSet.scala
 - [ ] library/src/scala/collection/immutable/Stream.scala
