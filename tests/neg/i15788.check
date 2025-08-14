@@ -1,0 +1,32 @@
+-- Error: tests/neg/i15788.scala:39:13 ---------------------------------------------------------------------------------
+39 |  fff1[Test2] // error
+   |             ^
+   |             Field 'a' not found
+-- Error: tests/neg/i15788.scala:42:15 ---------------------------------------------------------------------------------
+42 |  summonInline[Test[Test2]].test // error
+   |               ^
+   |               Field 'a' not found
+-- [E172] Type Error: tests/neg/i15788.scala:45:6 ----------------------------------------------------------------------
+45 |  fff2[Test2] // error
+   |  ^^^^^^^^^^^
+   |  No given instance of type Test[Test2] was found for a search with errors:
+   |    Field 'a' not found.
+   |  I found:
+   |
+   |      Test.given_Test_A[Test2](
+   |        Test2.$asInstanceOf[
+   |          scala.deriving.Mirror.Product{
+   |            type MirroredMonoType = Test2; type MirroredType = Test2; type MirroredLabel = ("Test2" : String);
+   |              type MirroredElemTypes = (String, Int); type MirroredElemLabels = (("q" : String), ("w" : String))
+   |          }
+   |        ]
+   |      )
+   |
+   |  But given instance given_Test_A in object Test does not match type Test[Test2].
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i15788.scala:35
+35 |    summonInline[Test[P]].test
+   |    ^^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
