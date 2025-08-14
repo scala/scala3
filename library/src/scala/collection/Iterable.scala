@@ -380,9 +380,9 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @throws IllegalArgumentException if all collections in this $coll
    *          are not of the same size.
    */
-  def transpose[B](implicit asIterable: A -> /*<:<!!!*/ Iterable[B]): CC[CC[B] @uncheckedVariance] = {
+  def transpose[B](implicit asIterable: A -> /*<:<!!!*/ Iterable[B]): CC[(CC[B]^{this}) @uncheckedVariance]^{this} = {
     if (isEmpty)
-      return iterableFactory.empty[CC[B]]
+      return iterableFactory.empty[CC[B]^{this}]
 
     def fail = throw new IllegalArgumentException("transpose requires all collections have the same size")
 
@@ -479,7 +479,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return An iterator producing ${coll}s of size `size`, except the
    *          last will be less than size `size` if the elements don't divide evenly.
    */
-  def grouped(size: Int): Iterator[C]^{this} =
+  def grouped(size: Int): Iterator[C^{this}]^{this} =
     iterator.grouped(size).map(fromSpecific)
 
   /** Groups elements in fixed size blocks by passing a "sliding window"
@@ -501,7 +501,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     *  @example `List(1, 2).sliding(2) = Iterator(List(1, 2))`
     *  @example `List(1, 2, 3).sliding(2) = Iterator(List(1, 2), List(2, 3))`
     */
-  def sliding(size: Int): Iterator[C]^{this} = sliding(size, 1)
+  def sliding(size: Int): Iterator[C^{this}]^{this} = sliding(size, 1)
 
   /** Groups elements in fixed size blocks by passing a "sliding window"
     *  over them (as opposed to partitioning them, as is done in `grouped`).
@@ -522,7 +522,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     *  @example `List(1, 2, 3, 4, 5).sliding(2, 2) = Iterator(List(1, 2), List(3, 4), List(5))`
     *  @example `List(1, 2, 3, 4, 5, 6).sliding(2, 3) = Iterator(List(1, 2), List(4, 5))`
     */
-  def sliding(size: Int, step: Int): Iterator[C]^{this} =
+  def sliding(size: Int, step: Int): Iterator[C^{this}]^{this} =
     iterator.sliding(size, step).map(fromSpecific)
 
   /** The rest of the collection without its first element. */
