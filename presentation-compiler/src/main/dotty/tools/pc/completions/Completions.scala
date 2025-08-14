@@ -193,12 +193,23 @@ class Completions(
     )
   end isAbstractType
 
-  private def findSuffix(symbol: Symbol): CompletionAffix =
+  private def findSuffix(symbol: Symbol, adjustedPath: List[untpd.Tree]): CompletionAffix =
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
         if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
+      }
+      .chain{ suffix =>
+        adjustedPath match
+            case (ident: Ident) :: (app@Apply(_, List(arg))) :: _  =>
+              app.symbol.info match
+                case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) &&
+                  !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
+                  suffix.withNewPrefix(Affix(PrefixKind.Using))
+                case _ => suffix    
+            case _ => suffix
+        
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then
@@ -271,7 +282,7 @@ class Completions(
       val existsApply = extraMethodDenots.exists(_.symbol.name == nme.apply)
 
       extraMethodDenots.map { methodDenot =>
-        val suffix = findSuffix(methodDenot.symbol)
+        val suffix = findSuffix(methodDenot.symbol, adjustedPath)
         val affix = if methodDenot.symbol.isConstructor && existsApply then
           adjustedPath match
             case (select @ Select(qual, _)) :: _ =>
@@ -293,7 +304,7 @@ class Completions(
 
     if skipOriginalDenot then extraCompletionValues
     else
-      val suffix = findSuffix(denot.symbol)
+      val suffix = findSuffix(denot.symbol, adjustedPath)
       val name = undoBacktick(label)
       val denotCompletionValue = toCompletionValue(name, denot, suffix)
       denotCompletionValue :: extraCompletionValues
