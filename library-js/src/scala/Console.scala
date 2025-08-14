@@ -280,5 +280,5 @@ object Console extends AnsiColor {
    *  @throws java.lang.IllegalArgumentException if there was a problem with the format string or arguments
    *  @group console-output
    */
-  def printf(text: String, args: Any*): Unit = { out.print(text format (args : _*)) }
+  def printf(text: String, args: Any*): Unit = { out.print(text.format(args*)) }
 }

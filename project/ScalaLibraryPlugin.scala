@@ -11,7 +11,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
+  private val scala2Version  = "2.13.16"
+  private val scalaJSVersion = "1.19.0"
+
   val fetchScala2ClassFiles = taskKey[(Set[File], File)]("Fetch the files to use that were compiled with Scala 2")
+  val fetchScala2SJSIR = taskKey[(Set[File], File)]("Fetch the .sjsir to use from Scala 2")
 
   override def projectSettings = Seq (
     fetchScala2ClassFiles := {
@@ -36,6 +40,31 @@ object ScalaLibraryPlugin extends AutoPlugin {
         IO.unzip(scalaLibraryBinaryJar, target)
         (target ** "*.class").get.toSet
       } (Set(scalaLibraryBinaryJar)), target)
+
+    },
+    fetchScala2SJSIR := {
+      val stream = streams.value
+      val lm = dependencyResolution.value
+      val log = stream.log
+      val cache  = stream.cacheDirectory
+      val retrieveDir = cache / "scalajs-scalalib" / scalaVersion.value
+      val comp = lm.retrieve("org.scala-js" % "scalajs-scalalib_2.13" % s"$scala2Version+$scalaJSVersion", scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+
+      println(comp(0))
+
+      val target = cache / "scala-library-sjsir"
+
+
+      if (!target.exists()) {
+        IO.createDirectory(target)
+      }
+
+      (FileFunction.cached(cache / "fetch-scala-library-sjsir", FilesInfo.lastModified, FilesInfo.exists) { _ =>
+        stream.log.info(s"Unpacking scalajs-scalalib binaries to persistent directory: ${target.getAbsolutePath}")
+        IO.unzip(comp(0), target)
+        (target ** "*.sjsir").get.toSet
+      } (Set(comp(0))), target)
 
     },
     (Compile / manipulateBytecode) := {
