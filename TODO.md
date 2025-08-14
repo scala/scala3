@@ -267,9 +267,9 @@
 - [x] library/src/scala/collection/immutable/ListSet.scala
 - [x] library/src/scala/collection/immutable/LongMap.scala
 - [x] library/src/scala/collection/immutable/Map.scala
-- [ ] library/src/scala/collection/immutable/NumericRange.scala
+- [x] library/src/scala/collection/immutable/NumericRange.scala
 - [ ] library/src/scala/collection/immutable/Queue.scala
-- [ ] library/src/scala/collection/immutable/Range.scala
+- [x] library/src/scala/collection/immutable/Range.scala
 - [ ] library/src/scala/collection/immutable/RedBlackTree.scala
 - [x] library/src/scala/collection/immutable/Seq.scala
 - [ ] library/src/scala/collection/immutable/SeqMap.scala
