@@ -276,14 +276,14 @@
 - [ ] library/src/scala/collection/immutable/SortedMap.scala
 - [ ] library/src/scala/collection/immutable/SortedSet.scala
 - [ ] library/src/scala/collection/immutable/Stream.scala
-- [ ] library/src/scala/collection/immutable/StrictOptimizedSeqOps.scala
+- [x] library/src/scala/collection/immutable/StrictOptimizedSeqOps.scala
 - [ ] library/src/scala/collection/immutable/TreeMap.scala
 - [ ] library/src/scala/collection/immutable/TreeSeqMap.scala
 - [ ] library/src/scala/collection/immutable/TreeSet.scala
 - [ ] library/src/scala/collection/immutable/Vector.scala
 - [ ] library/src/scala/collection/immutable/VectorMap.scala
 - [ ] library/src/scala/collection/immutable/WrappedString.scala
-- [ ] library/src/scala/collection/immutable/package.scala
+- [x] library/src/scala/collection/immutable/package.scala
 - [ ] library/src/scala/collection/mutable/AnyRefMap.scala
 - [ ] library/src/scala/collection/mutable/ArrayBuffer.scala
 - [ ] library/src/scala/collection/mutable/ArrayBuilder.scala
