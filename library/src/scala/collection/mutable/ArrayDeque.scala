@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.nowarn
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
@@ -100,7 +101,7 @@ class ArrayDeque[A] protected (
     this
   }
 
-  override def prependAll(elems: IterableOnce[A]): this.type = {
+  override def prependAll(elems: IterableOnce[A]^): this.type = {
     val it = elems.iterator
     if (it.nonEmpty) {
       val n = length
@@ -132,7 +133,7 @@ class ArrayDeque[A] protected (
     this
   }
 
-  override def addAll(elems: IterableOnce[A]): this.type = {
+  override def addAll(elems: IterableOnce[A]^): this.type = {
     elems.knownSize match {
       case srcLength if srcLength > 0 =>
         ensureSize(srcLength + length)
@@ -178,7 +179,7 @@ class ArrayDeque[A] protected (
     }
   }
 
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit = {
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
     requireBounds(idx, length+1)
     val n = length
     if (idx == 0) {
@@ -528,7 +529,7 @@ class ArrayDeque[A] protected (
 @SerialVersionUID(3L)
 object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
 
-  def from[B](coll: collection.IterableOnce[B]): ArrayDeque[B] = {
+  def from[B](coll: collection.IterableOnce[B]^): ArrayDeque[B] = {
     val s = coll.knownSize
     if (s >= 0) {
       val array = alloc(s)

@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import java.util.Arrays
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
@@ -147,7 +148,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   // Overridden to use array copying for efficiency where possible.
-  override def addAll(elems: IterableOnce[A]): this.type = {
+  override def addAll(elems: IterableOnce[A]^): this.type = {
     elems match {
       case elems: ArrayBuffer[_] =>
         val elemsLength = elems.size0
@@ -176,7 +177,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
     this
   }
 
-  def insertAll(@deprecatedName("n", "2.13.0") index: Int, elems: IterableOnce[A]): Unit = {
+  def insertAll(@deprecatedName("n", "2.13.0") index: Int, elems: IterableOnce[A]^): Unit = {
     checkWithinBounds(index, index)
     elems match {
       case elems: collection.Iterable[A] =>
@@ -294,7 +295,7 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   final val DefaultInitialSize = 16
   private[this] val emptyArray = new Array[AnyRef](0)
 
-  def from[B](coll: collection.IterableOnce[B]): ArrayBuffer[B] = {
+  def from[B](coll: collection.IterableOnce[B]^): ArrayBuffer[B] = {
     val k = coll.knownSize
     if (k >= 0) {
       // Avoid reallocation of buffer if length is known
@@ -372,10 +373,11 @@ final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], muta
     this({
       val _array = array
       val _length = length
-      new ArrayBuffer[A](0) {
+      val buf = new ArrayBuffer[A](0) {
         this.array = _array
         this.size0 = _length
       }
+      buf
     }, () => 0)
   }
 
@@ -388,21 +390,21 @@ final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], muta
   override protected[this] def className = "ArrayBufferView"
 
   // we could inherit all these from `CheckedIndexedSeqView`, except this class is public
-  override def iterator: Iterator[A] = new CheckedIndexedSeqView.CheckedIterator(this, mutationCount())
-  override def reverseIterator: Iterator[A] = new CheckedIndexedSeqView.CheckedReverseIterator(this, mutationCount())
+  override def iterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedIterator(this, mutationCount())
+  override def reverseIterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedReverseIterator(this, mutationCount())
 
-  override def appended[B >: A](elem: B): IndexedSeqView[B] = new CheckedIndexedSeqView.Appended(this, elem)(mutationCount)
-  override def prepended[B >: A](elem: B): IndexedSeqView[B] = new CheckedIndexedSeqView.Prepended(elem, this)(mutationCount)
-  override def take(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.Take(this, n)(mutationCount)
-  override def takeRight(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.TakeRight(this, n)(mutationCount)
-  override def drop(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.Drop(this, n)(mutationCount)
-  override def dropRight(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.DropRight(this, n)(mutationCount)
-  override def map[B](f: A => B): IndexedSeqView[B] = new CheckedIndexedSeqView.Map(this, f)(mutationCount)
-  override def reverse: IndexedSeqView[A] = new CheckedIndexedSeqView.Reverse(this)(mutationCount)
-  override def slice(from: Int, until: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.Slice(this, from, until)(mutationCount)
-  override def tapEach[U](f: A => U): IndexedSeqView[A] = new CheckedIndexedSeqView.Map(this, { (a: A) => f(a); a})(mutationCount)
+  override def appended[B >: A](elem: B): IndexedSeqView[B]^{this} = new CheckedIndexedSeqView.Appended(this, elem)(mutationCount)
+  override def prepended[B >: A](elem: B): IndexedSeqView[B]^{this} = new CheckedIndexedSeqView.Prepended(elem, this)(mutationCount)
+  override def take(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Take(this, n)(mutationCount)
+  override def takeRight(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.TakeRight(this, n)(mutationCount)
+  override def drop(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Drop(this, n)(mutationCount)
+  override def dropRight(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.DropRight(this, n)(mutationCount)
+  override def map[B](f: A => B): IndexedSeqView[B]^{this, f} = new CheckedIndexedSeqView.Map(this, f)(mutationCount)
+  override def reverse: IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Reverse(this)(mutationCount)
+  override def slice(from: Int, until: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Slice(this, from, until)(mutationCount)
+  override def tapEach[U](f: A => U): IndexedSeqView[A]^{this, f} = new CheckedIndexedSeqView.Map(this, { (a: A) => f(a); a})(mutationCount)
 
-  override def concat[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B] = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
-  override def appendedAll[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B] = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
-  override def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B] = new CheckedIndexedSeqView.Concat(prefix, this)(mutationCount)
+  override def concat[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{suffix, this} = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
+  override def appendedAll[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{suffix, this} = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
+  override def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{prefix, this} = new CheckedIndexedSeqView.Concat(prefix, this)(mutationCount)
 }
