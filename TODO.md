@@ -270,17 +270,17 @@
 - [x] library/src/scala/collection/immutable/NumericRange.scala
 - [x] library/src/scala/collection/immutable/Queue.scala
 - [x] library/src/scala/collection/immutable/Range.scala
-- [ ] library/src/scala/collection/immutable/RedBlackTree.scala
+- [x] library/src/scala/collection/immutable/RedBlackTree.scala
 - [x] library/src/scala/collection/immutable/Seq.scala
-- [ ] library/src/scala/collection/immutable/SeqMap.scala
+- [x] library/src/scala/collection/immutable/SeqMap.scala
 - [x] library/src/scala/collection/immutable/Set.scala
-- [ ] library/src/scala/collection/immutable/SortedMap.scala
-- [ ] library/src/scala/collection/immutable/SortedSet.scala
+- [x] library/src/scala/collection/immutable/SortedMap.scala
+- [x] library/src/scala/collection/immutable/SortedSet.scala
 - [ ] library/src/scala/collection/immutable/Stream.scala
 - [x] library/src/scala/collection/immutable/StrictOptimizedSeqOps.scala
-- [ ] library/src/scala/collection/immutable/TreeMap.scala
-- [ ] library/src/scala/collection/immutable/TreeSeqMap.scala
-- [ ] library/src/scala/collection/immutable/TreeSet.scala
+- [x] library/src/scala/collection/immutable/TreeMap.scala
+- [x] library/src/scala/collection/immutable/TreeSeqMap.scala
+- [x] library/src/scala/collection/immutable/TreeSet.scala
 - [ ] library/src/scala/collection/immutable/Vector.scala
 - [ ] library/src/scala/collection/immutable/VectorMap.scala
 - [x] library/src/scala/collection/immutable/WrappedString.scala
