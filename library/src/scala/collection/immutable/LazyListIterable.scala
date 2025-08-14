@@ -1337,7 +1337,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     * @tparam A the type of the ${coll}’s elements
     * @return A builder for $Coll objects.
     */
-  def newBuilder[A]: Builder[A, LazyListIterable[A]] = new LazyListIterableBuilder[A]
+  def newBuilder[A]: Builder[A, LazyListIterable[A]] = (new collection.mutable.ListBuffer[A]).mapResult(from)
 
   private class LazyIterator[+A](private[this] var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
     override def hasNext: Boolean = !lazyList.isEmpty
@@ -1379,25 +1379,6 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
     def withFilter(q: A => Boolean): collection.WithFilter[A, LazyListIterable]^{this, q} = new WithFilter(filtered, q)
-  }
-
-  // wraps a list buffer and use it to build the non-lazy LazyListIterable.
-  private final class LazyListIterableBuilder[A] extends ReusableBuilder[A, LazyListIterable[A]] {
-    private val buf = collection.mutable.ListBuffer[A]()
-
-    override def clear() = buf.clear()
-
-    override def result(): LazyListIterable[A] = LazyListIterable.fromSpecific(buf.result())
-
-    override def addOne(elem: A) = {
-      buf.addOne(elem)
-      this
-    }
-
-    override def addAll(xs: IterableOnce[A]^) = {
-      buf.addAll(xs)
-      this
-    }
   }
 
   // CC Note: Lazy Builder is not unsafe, but requires an explicit capture set.
