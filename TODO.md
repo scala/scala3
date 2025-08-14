@@ -281,8 +281,8 @@
 - [x] library/src/scala/collection/immutable/TreeMap.scala
 - [x] library/src/scala/collection/immutable/TreeSeqMap.scala
 - [x] library/src/scala/collection/immutable/TreeSet.scala
-- [ ] library/src/scala/collection/immutable/Vector.scala
-- [ ] library/src/scala/collection/immutable/VectorMap.scala
+- [x] library/src/scala/collection/immutable/Vector.scala
+- [x] library/src/scala/collection/immutable/VectorMap.scala
 - [x] library/src/scala/collection/immutable/WrappedString.scala
 - [x] library/src/scala/collection/immutable/package.scala
 - [x] library/src/scala/collection/mutable/AnyRefMap.scala
