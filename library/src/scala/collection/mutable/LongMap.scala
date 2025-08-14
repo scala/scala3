@@ -574,7 +574,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *
    *  @param f the mapping function
    */
-  def flatMap[V2](f: ((Long, V)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
+  def flatMap[V2](f: ((Long, V)) => IterableOnce[(Long, V2)]^): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
 
   /** An overload of `collect` which produces a `LongMap`.
    *
