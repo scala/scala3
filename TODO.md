@@ -244,15 +244,15 @@
 - [ ] library/src/scala/collection/convert/impl/StringStepper.scala
 - [ ] library/src/scala/collection/convert/impl/TableStepper.scala
 - [ ] library/src/scala/collection/convert/impl/VectorStepper.scala
-- [ ] library/src/scala/collection/generic/BitOperations.scala
-- [ ] library/src/scala/collection/generic/CommonErrors.scala
-- [ ] library/src/scala/collection/generic/DefaultSerializationProxy.scala
-- [ ] library/src/scala/collection/generic/IsIterable.scala
-- [ ] library/src/scala/collection/generic/IsIterableOnce.scala
-- [ ] library/src/scala/collection/generic/IsMap.scala
-- [ ] library/src/scala/collection/generic/IsSeq.scala
-- [ ] library/src/scala/collection/generic/Subtractable.scala
-- [ ] library/src/scala/collection/generic/package.scala
+- [x] library/src/scala/collection/generic/BitOperations.scala
+- [x] library/src/scala/collection/generic/CommonErrors.scala
+- [x] library/src/scala/collection/generic/DefaultSerializationProxy.scala
+- [x] library/src/scala/collection/generic/IsIterable.scala
+- [x] library/src/scala/collection/generic/IsIterableOnce.scala
+- [x] library/src/scala/collection/generic/IsMap.scala
+- [x] library/src/scala/collection/generic/IsSeq.scala
+- [x] library/src/scala/collection/generic/Subtractable.scala
+- [x] library/src/scala/collection/generic/package.scala
 - [x] library/src/scala/collection/immutable/ArraySeq.scala
 - [x] library/src/scala/collection/immutable/BitSet.scala
 - [x] library/src/scala/collection/immutable/ChampCommon.scala
