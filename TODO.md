@@ -224,7 +224,7 @@
 - [x] library/src/scala/collection/WithFilter.scala
 - [x] library/src/scala/collection/concurrent/Map.scala
 - [x] library/src/scala/collection/concurrent/TrieMap.scala
-- [ ] library/src/scala/collection/convert/AsJavaConverters.scala
+- [x] library/src/scala/collection/convert/AsJavaConverters.scala
 - [x] library/src/scala/collection/convert/AsJavaExtensions.scala
 - [x] library/src/scala/collection/convert/AsScalaConverters.scala
 - [x] library/src/scala/collection/convert/AsScalaExtensions.scala
