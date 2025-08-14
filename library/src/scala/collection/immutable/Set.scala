@@ -400,7 +400,7 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type =
+  override def addAll(xs: IterableOnce[A]^): this.type =
     if (switchedToHashSetBuilder) {
       hashSetBuilder.addAll(xs)
       this

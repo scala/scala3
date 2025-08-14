@@ -2079,7 +2079,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     this
   }
 
-  override def addAll(xs: IterableOnce[A]) = {
+  override def addAll(xs: IterableOnce[A]^) = {
     ensureUnaliased()
     xs match {
       case hm: HashSet[A] =>
