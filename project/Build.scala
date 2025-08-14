@@ -3116,7 +3116,7 @@ object Build {
       }.value,
 
       generateScalaDocumentation := Def.inputTaskDyn {
-        val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
+        val majorVersion = (`scala-library-bootstrapped` / scalaBinaryVersion).value
 
         val extraArgs = spaceDelimited("[<output-dir>] [--justAPI]").parsed
         val outputDirOverride = extraArgs.headOption.fold(identity[GenerationConfig](_))(newDir => {
@@ -3733,25 +3733,12 @@ object ScaladocConfigs {
 
   def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
   def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
-  def scalaSrcLink(v: String, s: String) = s"${s}github://scala/scala/v$v#src/library"
-  def dottySrcLink(v: String, sourcesPrefix: String = "", outputPrefix: String = "") =
-    sys.env.get("GITHUB_SHA") match {
-      case Some(sha) =>
-        s"${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
-      case None => s"${sourcesPrefix}github://scala/scala3/$v$outputPrefix"
+  def defaultSourceLinks(version: String) = {
+    def dottySrcLink(v: String) = sys.env.get("GITHUB_SHA") match {
+      case Some(sha) => s"github://scala/scala3/$sha"
+      case None => s"github://scala/scala3/$v"
     }
-
-  def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
-    def stdLibVersion = stdlibVersion(NonBootstrapped)
-    def srcManaged(v: String, s: String) = s"out/bootstrap/scala2-library-bootstrapped/scala-$v/src_managed/main/$s-library-src"
-    SourceLinks(
-      List(
-        scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
-        dottySrcLink(refVersion, "library/src=", "#library/src"),
-        dottySrcLink(refVersion),
-        "docs=github://scala/scala3/main#docs"
-      )
-    )
+    SourceLinks(List(dottySrcLink(version), "docs=github://scala/scala3/main#docs"))
   }
 
   lazy val DefaultGenerationSettings = Def.task {
@@ -3766,9 +3753,6 @@ object ScaladocConfigs {
     def skipById = SkipById(List(
       "scala.runtime.stdLibPatches",
       "scala.runtime.MatchCase",
-      "dotty.tools.tasty",
-      "dotty.tools.tasty.util",
-      "dotty.tools.tasty.besteffort"
     ))
     def projectFooter = ProjectFooter(s"Copyright (c) 2002-$currentYear, LAMP/EPFL")
     def defaultTemplate = DefaultTemplate("static-site-main")
@@ -3776,7 +3760,7 @@ object ScaladocConfigs {
       List(),
       ProjectVersion(projectVersion),
       GenerateInkuire(true),
-      defaultSourceLinks().value,
+      defaultSourceLinks(version = dottyVersion),
       skipByRegex,
       skipById,
       projectLogo,
@@ -3798,13 +3782,8 @@ object ScaladocConfigs {
     )
   }
 
-  lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / Universal / stage).value
-    DefaultGenerationSettings.value
-  }
-
   lazy val Scaladoc = Def.task {
-    DefaultGenerationConfig.value
+    DefaultGenerationSettings.value
       .add(UseJavacp(true))
       .add(ProjectName("scaladoc"))
       .add(OutputDir("scaladoc/output/self"))
@@ -3815,7 +3794,7 @@ object ScaladocConfigs {
 
   lazy val Testcases = Def.task {
     val tastyRoots = (Test / Build.testcasesOutputDir).value
-    DefaultGenerationConfig.value
+    DefaultGenerationSettings.value
       .add(UseJavacp(true))
       .add(OutputDir("scaladoc/output/testcases"))
       .add(ProjectName("scaladoc testcases"))
@@ -3831,56 +3810,35 @@ object ScaladocConfigs {
   }
 
   lazy val Scala3 = Def.task {
-    val dottyJars: Seq[java.io.File] = Seq(
-      (`scala2-library-bootstrapped`/Compile/products).value,
-      (`scala3-library-bootstrapped`/Compile/products).value,
-      (`scala3-interfaces`/Compile/products).value,
-      (`tasty-core-bootstrapped`/Compile/products).value,
-    ).flatten
-
-    val roots = dottyJars.map(_.getAbsolutePath)
-
-    val managedSources =
-      (`scala2-library-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
-    val projectRoot = (ThisBuild/baseDirectory).value.toPath
-    val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
-    val docRootFile = stdLibRoot.resolve("rootdoc.txt")
-
-    val dottyManagesSources = (`scala3-library-bootstrapped`/Compile/baseDirectory).value
-
-    val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
-
-    val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
-    DefaultGenerationConfig.value
+    DefaultGenerationSettings.value
       .add(ProjectName("Scala 3"))
       .add(OutputDir(file("scaladoc/output/scala3").getAbsoluteFile.getAbsolutePath))
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
-      .add(DocRootContent(docRootFile.toString))
+      .add(DocRootContent(((`scala-library-bootstrapped` / baseDirectory).value / "src" / "rootdoc.txt").toString))
       .add(CommentSyntax(List(
-        s"${dottyLibRoot}=markdown",
-        s"${stdLibRoot}=wiki",
-        s"${tastyCoreSources}=markdown",
+        //s"${dottyLibRoot}=markdown",
+        //s"${stdLibRoot}=wiki",
         "wiki"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
-      .add(SnippetCompiler(List(
-        s"$dottyLibRoot/src/scala=compile",
-        s"$dottyLibRoot/src/scala/compiletime=compile",
-        s"$dottyLibRoot/src/scala/util=compile",
-        s"$dottyLibRoot/src/scala/util/control=compile"
-      )))
+      //.add(SnippetCompiler(List(
+        //s"$dottyLibRoot/src/scala=compile",
+        //s"$dottyLibRoot/src/scala/compiletime=compile",
+        //s"$dottyLibRoot/src/scala/util=compile",
+        //s"$dottyLibRoot/src/scala/util/control=compile"
+      //)))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
-      .withTargets(roots)
+      .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))
   }
 
   def stableScala3(version: String) = Def.task {
     val scalaLibrarySrc = s"out/bootstrap/scala2-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed"
     val dottyLibrarySrc = "library/src"
     Scala3.value
-      .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
+      .add(defaultSourceLinks(version = version))
       .add(ProjectVersion(version))
       .add(SnippetCompiler(
         List(
