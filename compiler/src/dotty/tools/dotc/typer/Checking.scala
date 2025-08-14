@@ -156,10 +156,10 @@ object Checking {
                   // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
                   // Do check all bounds in Scala units and those bounds in Java units that
                   // occur in applications of Scala type constructors.
-                  && tycon.typeSymbol.is(CaptureChecked)
-                  // Exempted are types that are not themselves capture-checked.
-                  // Since the type constructor could not foresee possible capture sets,
-                  // it's better to be lenient for backwards compatibility.
+                  && (!isCaptureChecking || tycon.typeSymbol.is(CaptureChecked))
+                  // When capture checking, types that are not themselves capture-checked
+                  // are exempted. Since the type constructor could not foresee possible
+                  // capture sets, it's better to be lenient for backwards compatibility.
               then
                 checkAppliedType(
                   untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
