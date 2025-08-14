@@ -146,7 +146,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       invokeCall(statementId, span)
 
     private def transformApplyArgs(trees: List[Tree])(using Context): List[Tree] =
-      if (allConstArgs(trees)) trees else transform(trees)
+      if allConstArgs(trees) then trees else transform(trees)
 
     private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
       case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>
@@ -164,6 +164,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       case s: Select =>
         cpy.Select(s)(transformInnerApply(s.qualifier), s.name)
       case i: (Ident | This) => i
+      case t: Typed =>
+        cpy.Typed(t)(transformInnerApply(t.expr), t.tpt)
       case other    => transform(other)
 
     private def allConstArgs(args: List[Tree]) =
@@ -183,7 +185,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
         // Transform args and fun, i.e. instrument them if needed (and if possible)
         val app =
-          if (tree.fun.symbol eq defn.throwMethod) tree
+          if tree.fun.symbol eq defn.throwMethod then tree
           else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args))
 
         if needsLift(tree) then
