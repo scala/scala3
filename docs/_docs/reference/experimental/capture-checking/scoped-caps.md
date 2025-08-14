@@ -4,7 +4,7 @@ title: "Scoped Caps"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/scoped-caps.html
 ---
 
-## Introduction
+## Scoped Universal Capabilities
 
 When discussing escape checking, we referred to a scoping discipline. That is, capture sets can contain only capabilities that are visible at the point where the set is defined. But that raises the question where a universal capability `cap` is defined? In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. Usually a `cap` refers to a universal capability defined in the scope where the `cap` appears.
 
@@ -84,6 +84,7 @@ To summarize:
   variable `ex` is replaced by `cap`.
 -->
 
+<!--
 ## Reach Capabilities
 
 Say you have a method `f` that takes an impure function argument which gets stored in a `var`:
@@ -118,3 +119,4 @@ def f(ops: List[A => B])
   ...
 ```
 Reach capabilities take the form `x*` where `x` is syntactically a regular capability. If `x: T` then `x*` stands for any capability that appears covariantly in `T` and that is accessed through `x`. The least supertype of this capability is the set of all capabilities appearing covariantly in `T`.
+-->
