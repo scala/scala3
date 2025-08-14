@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import java.lang.Integer.numberOfLeadingZeros
 import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
@@ -27,7 +28,7 @@ import scala.collection.generic.DefaultSerializable
 object OpenHashMap extends StrictMapFactory[OpenHashMap] {
 
   def empty[K, V] = new OpenHashMap[K, V]
-  def from[K, V](it: IterableOnce[(K, V)]): OpenHashMap[K,V] = empty ++= it
+  def from[K, V](it: IterableOnce[(K, V)]^): OpenHashMap[K,V] = empty ++= it
 
   def newBuilder[K, V]: Builder[(K, V), OpenHashMap[K,V]] =
     new GrowableBuilder[(K, V), OpenHashMap[K, V]](empty)

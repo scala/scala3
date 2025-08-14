@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.nowarn
 import scala.collection.convert.JavaCollectionWrappers.{JMapWrapper, JMapWrapperLike}
 
@@ -50,7 +51,7 @@ class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
 @SerialVersionUID(3L)
 object WeakHashMap extends StrictMapFactory[WeakHashMap] {
   def empty[K, V]: WeakHashMap[K,V] = new WeakHashMap[K, V]
-  def from[K, V](it: collection.IterableOnce[(K, V)]): WeakHashMap[K,V] = Growable.from(empty[K, V], it)
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): WeakHashMap[K,V] = Growable.from(empty[K, V], it)
   def newBuilder[K, V]: Builder[(K, V), WeakHashMap[K,V]] = new GrowableBuilder(WeakHashMap.empty[K, V])
 }
 

@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.DefaultSerializable
 import scala.util.hashing.MurmurHash3
@@ -479,7 +480,7 @@ object LinkedHashMap extends StrictMapFactory[LinkedHashMap] {
 
   def empty[K, V] = new LinkedHashMap[K, V]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]) = {
+  def from[K, V](it: collection.IterableOnce[(K, V)]^) = {
     val newlhm = empty[K, V]
     newlhm.sizeHint(it, delta = 0)
     newlhm.addAll(it)
