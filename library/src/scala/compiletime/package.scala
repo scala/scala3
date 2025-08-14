@@ -191,3 +191,21 @@ def byName[T](x: => T): T = x
   */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]
+
+/** When a class/type is annotated with `hasCustomShow` and its type is shown in a compiler
+  * error/warning message, the compiler first tries to fetch a custom show via
+  * the dependent type class `CustomShow`.
+  */
+@experimental
+class hasCustomShow extends scala.annotation.StaticAnnotation
+
+/** Custom show dependent type class of compiler errors of given class `T` that
+  * is annotated with `hasCustomShow`.
+  * When the compiler attempts to show a given error that involves a type,
+  * the compiler searches first for an implicit `CustomShow` value and if available,
+  * uses its `Out` dependent type as the error. If no such value is available,
+  * then the compiler proceeds to show the type as the default behavior.
+  */
+@experimental
+trait CustomShow[T]:
+  type Out <: String & Singleton
