@@ -261,6 +261,7 @@
 - [x] library/src/scala/collection/immutable/IntMap.scala
 - [x] library/src/scala/collection/immutable/Iterable.scala
 - [ ] library/src/scala/collection/immutable/LazyList.scala
+- [x] library/src/scala/collection/immutable/LazyListIterable.scala
 - [ ] library/src/scala/collection/immutable/List.scala
 - [ ] library/src/scala/collection/immutable/ListMap.scala
 - [ ] library/src/scala/collection/immutable/ListSet.scala
@@ -284,51 +285,51 @@
 - [ ] library/src/scala/collection/immutable/VectorMap.scala
 - [ ] library/src/scala/collection/immutable/WrappedString.scala
 - [x] library/src/scala/collection/immutable/package.scala
-- [ ] library/src/scala/collection/mutable/AnyRefMap.scala
-- [ ] library/src/scala/collection/mutable/ArrayBuffer.scala
-- [ ] library/src/scala/collection/mutable/ArrayBuilder.scala
-- [ ] library/src/scala/collection/mutable/ArrayDeque.scala
-- [ ] library/src/scala/collection/mutable/ArraySeq.scala
+- [x] library/src/scala/collection/mutable/AnyRefMap.scala
+- [x] library/src/scala/collection/mutable/ArrayBuffer.scala
+- [x] library/src/scala/collection/mutable/ArrayBuilder.scala
+- [x] library/src/scala/collection/mutable/ArrayDeque.scala
+- [x] library/src/scala/collection/mutable/ArraySeq.scala
 - [x] library/src/scala/collection/mutable/BitSet.scala
-- [ ] library/src/scala/collection/mutable/Buffer.scala
-- [ ] library/src/scala/collection/mutable/Builder.scala
-- [ ] library/src/scala/collection/mutable/CheckedIndexedSeqView.scala
-- [ ] library/src/scala/collection/mutable/Cloneable.scala
-- [ ] library/src/scala/collection/mutable/CollisionProofHashMap.scala
-- [ ] library/src/scala/collection/mutable/Growable.scala
-- [ ] library/src/scala/collection/mutable/GrowableBuilder.scala
-- [ ] library/src/scala/collection/mutable/HashMap.scala
-- [ ] library/src/scala/collection/mutable/HashSet.scala
-- [ ] library/src/scala/collection/mutable/HashTable.scala
-- [ ] library/src/scala/collection/mutable/ImmutableBuilder.scala
-- [ ] library/src/scala/collection/mutable/IndexedSeq.scala
-- [ ] library/src/scala/collection/mutable/Iterable.scala
-- [ ] library/src/scala/collection/mutable/LinkedHashMap.scala
-- [ ] library/src/scala/collection/mutable/LinkedHashSet.scala
-- [ ] library/src/scala/collection/mutable/ListBuffer.scala
-- [ ] library/src/scala/collection/mutable/ListMap.scala
-- [ ] library/src/scala/collection/mutable/LongMap.scala
-- [ ] library/src/scala/collection/mutable/Map.scala
-- [ ] library/src/scala/collection/mutable/MultiMap.scala
-- [ ] library/src/scala/collection/mutable/MutationTracker.scala
-- [ ] library/src/scala/collection/mutable/OpenHashMap.scala
-- [ ] library/src/scala/collection/mutable/PriorityQueue.scala
-- [ ] library/src/scala/collection/mutable/Queue.scala
-- [ ] library/src/scala/collection/mutable/RedBlackTree.scala
-- [ ] library/src/scala/collection/mutable/ReusableBuilder.scala
-- [ ] library/src/scala/collection/mutable/Seq.scala
-- [ ] library/src/scala/collection/mutable/SeqMap.scala
-- [ ] library/src/scala/collection/mutable/Set.scala
-- [ ] library/src/scala/collection/mutable/Shrinkable.scala
-- [ ] library/src/scala/collection/mutable/SortedMap.scala
-- [ ] library/src/scala/collection/mutable/SortedSet.scala
-- [ ] library/src/scala/collection/mutable/Stack.scala
-- [ ] library/src/scala/collection/mutable/StringBuilder.scala
-- [ ] library/src/scala/collection/mutable/TreeMap.scala
-- [ ] library/src/scala/collection/mutable/TreeSet.scala
-- [ ] library/src/scala/collection/mutable/UnrolledBuffer.scala
-- [ ] library/src/scala/collection/mutable/WeakHashMap.scala
-- [ ] library/src/scala/collection/mutable/package.scala
+- [x] library/src/scala/collection/mutable/Buffer.scala
+- [x] library/src/scala/collection/mutable/Builder.scala
+- [x] library/src/scala/collection/mutable/CheckedIndexedSeqView.scala
+- [x] library/src/scala/collection/mutable/Cloneable.scala
+- [x] library/src/scala/collection/mutable/CollisionProofHashMap.scala
+- [x] library/src/scala/collection/mutable/Growable.scala
+- [x] library/src/scala/collection/mutable/GrowableBuilder.scala
+- [x] library/src/scala/collection/mutable/HashMap.scala
+- [x] library/src/scala/collection/mutable/HashSet.scala
+- [x] library/src/scala/collection/mutable/HashTable.scala
+- [x] library/src/scala/collection/mutable/ImmutableBuilder.scala
+- [x] library/src/scala/collection/mutable/IndexedSeq.scala
+- [x] library/src/scala/collection/mutable/Iterable.scala
+- [x] library/src/scala/collection/mutable/LinkedHashMap.scala
+- [x] library/src/scala/collection/mutable/LinkedHashSet.scala
+- [x] library/src/scala/collection/mutable/ListBuffer.scala
+- [x] library/src/scala/collection/mutable/ListMap.scala
+- [x] library/src/scala/collection/mutable/LongMap.scala
+- [x] library/src/scala/collection/mutable/Map.scala
+- [x] library/src/scala/collection/mutable/MultiMap.scala
+- [x] library/src/scala/collection/mutable/MutationTracker.scala
+- [x] library/src/scala/collection/mutable/OpenHashMap.scala
+- [x] library/src/scala/collection/mutable/PriorityQueue.scala
+- [x] library/src/scala/collection/mutable/Queue.scala
+- [x] library/src/scala/collection/mutable/RedBlackTree.scala
+- [x] library/src/scala/collection/mutable/ReusableBuilder.scala
+- [x] library/src/scala/collection/mutable/Seq.scala
+- [x] library/src/scala/collection/mutable/SeqMap.scala
+- [x] library/src/scala/collection/mutable/Set.scala
+- [x] library/src/scala/collection/mutable/Shrinkable.scala
+- [x] library/src/scala/collection/mutable/SortedMap.scala
+- [x] library/src/scala/collection/mutable/SortedSet.scala
+- [x] library/src/scala/collection/mutable/Stack.scala
+- [x] library/src/scala/collection/mutable/StringBuilder.scala
+- [x] library/src/scala/collection/mutable/TreeMap.scala
+- [x] library/src/scala/collection/mutable/TreeSet.scala
+- [x] library/src/scala/collection/mutable/UnrolledBuffer.scala
+- [x] library/src/scala/collection/mutable/WeakHashMap.scala
+- [x] library/src/scala/collection/mutable/package.scala
 - [ ] library/src/scala/collection/package.scala
 - [ ] library/src/scala/compat/Platform.scala
 - [ ] library/src/scala/compiletime/Erased.scala
