@@ -330,13 +330,17 @@ object TypeTestsCasts {
             expr.isInstance(testType).withSpan(tree.span)
           case OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
-              transformTypeTest(e, tp1, flagUnrelated = false)
-                .or(transformTypeTest(e, tp2, flagUnrelated = false))
+              lazy val tp1Tree = transformTypeTest(e, tp1, flagUnrelated = false)
+              lazy val tp2Tree = transformTypeTest(e, tp2, flagUnrelated = false)
+
+              if (tp1.isNothingType || (tp1.isNullType && !tp2.isNotNull)) tp2Tree
+              else if (tp2.isNothingType || (tp2.isNullType && !tp1.isNotNull)) tp1Tree
+              else tp1Tree.or(tp2Tree)
             }
           case AndType(tp1, tp2) =>
             evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated)
-                .and(transformTypeTest(e, tp2, flagUnrelated))
+              .and(transformTypeTest(e, tp2, flagUnrelated))
             }
           case defn.MultiArrayOf(elem, ndims) if isGenericArrayElement(elem, isScala2 = false) =>
             def isArrayTest(arg: Tree) =
