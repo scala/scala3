@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.generic.DefaultSerializationProxy
 import scala.math.Ordering
 
@@ -112,7 +113,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   override def isEmpty: Boolean = resarr.p_size0 < 2
 
   // not eligible for EvidenceIterableFactoryDefaults since C != CC[A] (PriorityQueue[A] != Iterable[A])
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[A]): PriorityQueue[A] = PriorityQueue.from(coll)
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[A]^): PriorityQueue[A] = PriorityQueue.from(coll)
   override protected def newSpecificBuilder: Builder[A, PriorityQueue[A]] = PriorityQueue.newBuilder
   override def empty: PriorityQueue[A] = PriorityQueue.empty
 
@@ -172,7 +173,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type = {
+  override def addAll(xs: IterableOnce[A]^): this.type = {
     val from = resarr.p_size0
     for (x <- xs.iterator) unsafeAdd(x)
     heapify(from)
@@ -238,7 +239,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     *  @param  xs    a iterable object.
     *  @return       a new priority queue containing elements of both `xs` and `this`.
     */
-  def ++(xs: IterableOnce[A]): PriorityQueue[A] = { this.clone() ++= xs }
+  def ++(xs: IterableOnce[A]^): PriorityQueue[A] = { this.clone() ++= xs }
 
   /** Adds all elements to the queue.
     *
@@ -406,7 +407,7 @@ object PriorityQueue extends SortedIterableFactory[PriorityQueue] {
 
   def empty[A : Ordering]: PriorityQueue[A] = new PriorityQueue[A]
 
-  def from[E : Ordering](it: IterableOnce[E]): PriorityQueue[E] = {
+  def from[E : Ordering](it: IterableOnce[E]^): PriorityQueue[E] = {
     val b = newBuilder[E]
     b ++= it
     b.result()

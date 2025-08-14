@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 trait IndexedSeq[T] extends Seq[T]
   with scala.collection.IndexedSeq[T]
