@@ -14,6 +14,8 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.Predef.{wrapString => _, assert}
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl.CharStringStepper
@@ -39,7 +41,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
 
   def apply(i: Int): Char = self.charAt(i)
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]): WrappedString = WrappedString.fromSpecific(coll)
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]^): WrappedString = WrappedString.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Char, WrappedString] = WrappedString.newBuilder
   override def empty: WrappedString = WrappedString.empty
 
@@ -66,13 +68,13 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
     r.asInstanceOf[S with EfficientSplit]
   }
 
-  override def startsWith[B >: Char](that: IterableOnce[B], offset: Int = 0): Boolean =
+  override def startsWith[B >: Char](that: IterableOnce[B]^, offset: Int = 0): Boolean =
     that match {
       case s: WrappedString => self.startsWith(s.self, offset)
       case _                => super.startsWith(that, offset)
     }
 
-  override def endsWith[B >: Char](that: collection.Iterable[B]): Boolean =
+  override def endsWith[B >: Char](that: collection.Iterable[B]^): Boolean =
     that match {
       case s: WrappedString => self.endsWith(s.self)
       case _                => super.endsWith(that)
@@ -98,13 +100,13 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
       case _                => super.copyToArray(xs, start, len)
     }
 
-  override def appendedAll[B >: Char](suffix: IterableOnce[B]): IndexedSeq[B] =
+  override def appendedAll[B >: Char](suffix: IterableOnce[B]^): IndexedSeq[B] =
     suffix match {
       case s: WrappedString => new WrappedString(self concat s.self)
       case _                => Predef.??? // TODO super.appendedAll(suffix)
     }
 
-  override def sameElements[B >: Char](o: IterableOnce[B]) = o match {
+  override def sameElements[B >: Char](o: IterableOnce[B]^) = o match {
     case s: WrappedString => self == s.self
     case _                => super.sameElements(o)
   }
@@ -124,7 +126,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
   */
 @SerialVersionUID(3L)
 object WrappedString extends SpecificIterableFactory[Char, WrappedString] {
-  def fromSpecific(it: IterableOnce[Char]): WrappedString = {
+  def fromSpecific(it: IterableOnce[Char]^): WrappedString = {
     val b = newBuilder
     b.sizeHint(it)
     b ++= it

@@ -268,7 +268,7 @@
 - [x] library/src/scala/collection/immutable/LongMap.scala
 - [x] library/src/scala/collection/immutable/Map.scala
 - [x] library/src/scala/collection/immutable/NumericRange.scala
-- [ ] library/src/scala/collection/immutable/Queue.scala
+- [x] library/src/scala/collection/immutable/Queue.scala
 - [x] library/src/scala/collection/immutable/Range.scala
 - [ ] library/src/scala/collection/immutable/RedBlackTree.scala
 - [x] library/src/scala/collection/immutable/Seq.scala
@@ -283,7 +283,7 @@
 - [ ] library/src/scala/collection/immutable/TreeSet.scala
 - [ ] library/src/scala/collection/immutable/Vector.scala
 - [ ] library/src/scala/collection/immutable/VectorMap.scala
-- [ ] library/src/scala/collection/immutable/WrappedString.scala
+- [x] library/src/scala/collection/immutable/WrappedString.scala
 - [x] library/src/scala/collection/immutable/package.scala
 - [x] library/src/scala/collection/mutable/AnyRefMap.scala
 - [x] library/src/scala/collection/mutable/ArrayBuffer.scala
