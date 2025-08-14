@@ -255,11 +255,11 @@
 - [ ] library/src/scala/collection/generic/package.scala
 - [x] library/src/scala/collection/immutable/ArraySeq.scala
 - [x] library/src/scala/collection/immutable/BitSet.scala
-- [ ] library/src/scala/collection/immutable/ChampCommon.scala
+- [x] library/src/scala/collection/immutable/ChampCommon.scala
 - [ ] library/src/scala/collection/immutable/HashMap.scala
 - [ ] library/src/scala/collection/immutable/HashSet.scala
 - [ ] library/src/scala/collection/immutable/IntMap.scala
-- [ ] library/src/scala/collection/immutable/Iterable.scala
+- [x] library/src/scala/collection/immutable/Iterable.scala
 - [ ] library/src/scala/collection/immutable/LazyList.scala
 - [ ] library/src/scala/collection/immutable/List.scala
 - [ ] library/src/scala/collection/immutable/ListMap.scala
