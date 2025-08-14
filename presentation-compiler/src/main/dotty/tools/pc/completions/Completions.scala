@@ -202,9 +202,10 @@ class Completions(
       }
       .chain{ suffix =>
         adjustedPath match
-            case (ident: Ident) :: (app@Apply(_,args)) :: _ if args.size == 1  =>
+            case (ident: Ident) :: (app@Apply(_, List(arg))) :: _  =>
               app.symbol.info match
-                case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) =>
+                case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) &&
+                  !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
                   suffix.withNewPrefix(Affix(PrefixKind.Using))
                 case _ => suffix    
             case _ => suffix

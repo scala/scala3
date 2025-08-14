@@ -278,7 +278,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |@main def main1(): Unit =
           |  val str = "hello"
           |  val int = 4
-          |  hello(using str, int)
+          |  hello(str, int)
           |""".stripMargin,
           assertSingleItem = false)
 
