@@ -256,7 +256,7 @@
 - [x] library/src/scala/collection/immutable/ArraySeq.scala
 - [x] library/src/scala/collection/immutable/BitSet.scala
 - [x] library/src/scala/collection/immutable/ChampCommon.scala
-- [ ] library/src/scala/collection/immutable/HashMap.scala
+- [x] library/src/scala/collection/immutable/HashMap.scala
 - [ ] library/src/scala/collection/immutable/HashSet.scala
 - [ ] library/src/scala/collection/immutable/IntMap.scala
 - [x] library/src/scala/collection/immutable/Iterable.scala
@@ -265,7 +265,7 @@
 - [ ] library/src/scala/collection/immutable/ListMap.scala
 - [ ] library/src/scala/collection/immutable/ListSet.scala
 - [ ] library/src/scala/collection/immutable/LongMap.scala
-- [ ] library/src/scala/collection/immutable/Map.scala
+- [x] library/src/scala/collection/immutable/Map.scala
 - [ ] library/src/scala/collection/immutable/NumericRange.scala
 - [ ] library/src/scala/collection/immutable/Queue.scala
 - [ ] library/src/scala/collection/immutable/Range.scala
