@@ -330,7 +330,7 @@
 - [x] library/src/scala/collection/mutable/UnrolledBuffer.scala
 - [x] library/src/scala/collection/mutable/WeakHashMap.scala
 - [x] library/src/scala/collection/mutable/package.scala
-- [ ] library/src/scala/collection/package.scala
+- [x] library/src/scala/collection/package.scala
 - [ ] library/src/scala/compat/Platform.scala
 - [ ] library/src/scala/compiletime/Erased.scala
 - [x] library/src/scala/compiletime/ops/any.scala
