@@ -258,13 +258,13 @@
 - [x] library/src/scala/collection/immutable/ChampCommon.scala
 - [x] library/src/scala/collection/immutable/HashMap.scala
 - [x] library/src/scala/collection/immutable/HashSet.scala
-- [ ] library/src/scala/collection/immutable/IntMap.scala
+- [x] library/src/scala/collection/immutable/IntMap.scala
 - [x] library/src/scala/collection/immutable/Iterable.scala
 - [ ] library/src/scala/collection/immutable/LazyList.scala
 - [ ] library/src/scala/collection/immutable/List.scala
 - [ ] library/src/scala/collection/immutable/ListMap.scala
 - [ ] library/src/scala/collection/immutable/ListSet.scala
-- [ ] library/src/scala/collection/immutable/LongMap.scala
+- [x] library/src/scala/collection/immutable/LongMap.scala
 - [x] library/src/scala/collection/immutable/Map.scala
 - [ ] library/src/scala/collection/immutable/NumericRange.scala
 - [ ] library/src/scala/collection/immutable/Queue.scala
