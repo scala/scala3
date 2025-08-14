@@ -253,7 +253,7 @@
 - [ ] library/src/scala/collection/generic/IsSeq.scala
 - [ ] library/src/scala/collection/generic/Subtractable.scala
 - [ ] library/src/scala/collection/generic/package.scala
-- [ ] library/src/scala/collection/immutable/ArraySeq.scala
+- [x] library/src/scala/collection/immutable/ArraySeq.scala
 - [x] library/src/scala/collection/immutable/BitSet.scala
 - [ ] library/src/scala/collection/immutable/ChampCommon.scala
 - [ ] library/src/scala/collection/immutable/HashMap.scala
@@ -270,7 +270,7 @@
 - [ ] library/src/scala/collection/immutable/Queue.scala
 - [ ] library/src/scala/collection/immutable/Range.scala
 - [ ] library/src/scala/collection/immutable/RedBlackTree.scala
-- [ ] library/src/scala/collection/immutable/Seq.scala
+- [x] library/src/scala/collection/immutable/Seq.scala
 - [ ] library/src/scala/collection/immutable/SeqMap.scala
 - [ ] library/src/scala/collection/immutable/Set.scala
 - [ ] library/src/scala/collection/immutable/SortedMap.scala
