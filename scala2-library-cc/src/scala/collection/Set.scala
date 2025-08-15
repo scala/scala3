@@ -26,7 +26,7 @@ trait Set[A]
     with SetOps[A, Set, Set[A]]
     with Equals
     with IterableFactoryDefaults[A, Set]
-    with Pure {
+    with caps.Pure {
   self: Set[A] =>
 
   def canEqual(that: Any) = true

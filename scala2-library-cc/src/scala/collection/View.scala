@@ -99,7 +99,7 @@ object View extends IterableFactory[View] {
 
   /** A view with given elements */
   @SerialVersionUID(3L)
-  class Elems[A](xs: A*) extends AbstractView[A], Pure {
+  class Elems[A](xs: A*) extends AbstractView[A], caps.Pure {
     def iterator = xs.iterator
     override def knownSize = xs.knownSize
     override def isEmpty: Boolean = xs.isEmpty
