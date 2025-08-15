@@ -25,6 +25,7 @@ import dotty.tools.dotc.util.chaining.*
 
 import java.util.IdentityHashMap
 
+import scala.annotation.*
 import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
 
 import CheckUnused.*
@@ -309,6 +310,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
              alt.symbol == sym
           || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
         sameSym && alt.symbol.isAccessibleFrom(qtpe)
+      def hasAltMemberNamed(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol.isAccessibleFrom(qtpe))
+
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -325,9 +328,17 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
                 else
                   !sym.is(Given) // Normal wildcard, check that the symbol is not a given (but can be implicit)
               }
+            else if sel.isUnimport then
+              val masksMatchingMember =
+                   name != nme.NO_NAME
+                && sels.exists(x => x.isWildcard && !x.isGiven)
+                && !name.exists(_.toTermName != sel.name) // import a.b as _, b must match name
+                && (hasAltMemberNamed(sel.name) || hasAltMemberNamed(sel.name.toTypeName))
+              if masksMatchingMember then
+                refInfos.sels.put(sel, ()) // imprecise due to precedence but errs on the side of false negative
+              false
             else
-              // if there is an explicit name, it must match
-                 !name.exists(_.toTermName != sel.rename)
+                 !name.exists(_.toTermName != sel.rename) // if there is an explicit name, it must match
               && (prefix.eq(NoPrefix) || qtpe =:= prefix)
               && (hasAltMember(sel.name) || hasAltMember(sel.name.toTypeName))
           if matches then sel else loop(sels)
@@ -658,11 +669,11 @@ object CheckUnused:
               warnAt(pos)(UnusedSymbol.unsetPrivates)
 
     def checkImports() =
-      // TODO check for unused masking import
       import scala.jdk.CollectionConverters.given
       import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
-      // true if used or might be used, to imply don't warn about it
+      def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
+      @unused // avoid merge conflict
       def isUsable(imp: Import, sel: ImportSelector): Boolean =
         sel.isImportExclusion || infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
@@ -673,7 +684,7 @@ object CheckUnused:
         warnAt(sel.srcPos)(msg, origin)
 
       if !actionable then
-        for imp <- infos.imps.keySet.nn.asScala; sel <- imp.selectors if !isUsable(imp, sel) do
+        for imp <- infos.imps.keySet.nn.asScala; sel <- imp.selectors if !isUsed(sel) do
           warnImport(imp -> sel)
       else
         // If the rest of the line is blank, include it in the final edit position. (Delete trailing whitespace.)
@@ -728,7 +739,7 @@ object CheckUnused:
         while index < sortedImps.length do
           val nextImport = sortedImps.indexSatisfying(from = index + 1)(_.isPrimaryClause) // next import statement
           if sortedImps.indexSatisfying(from = index, until = nextImport): imp =>
-              imp.selectors.exists(!isUsable(imp, _)) // check if any selector in statement was unused
+              imp.selectors.exists(!isUsed(_)) // check if any selector in statement was unused
           < nextImport then
             // if no usable selectors in the import statement, delete it entirely.
             // if there is exactly one usable selector, then replace with just that selector (i.e., format it).
@@ -737,7 +748,7 @@ object CheckUnused:
             // Reminder that first clause span includes the keyword, so delete point-to-start instead.
             val existing = sortedImps.slice(index, nextImport)
             val (keeping, deleting) = existing.iterator.flatMap(imp => imp.selectors.map(imp -> _)).toList
-                                      .partition(isUsable(_, _))
+                                      .partition((imp, sel) => isUsed(sel))
             if keeping.isEmpty then
               val editPos = existing.head.srcPos.sourcePos.withSpan:
                 Span(start = existing.head.srcPos.span.start, end = existing.last.srcPos.span.end)
@@ -962,12 +973,11 @@ object CheckUnused:
     def boundTpe: Type = sel.bound match
       case untpd.TypedSplice(tree) => tree.tpe
       case _ => NoType
-    /** This is used to ignore exclusion imports of the form import `qual.member as _`
-     *  because `sel.isUnimport` is too broad for old style `import concurrent._`.
+    /** Is a "masking" import of the form import `qual.member as _`.
+     *  Both conditions must be checked.
      */
-    def isImportExclusion: Boolean = sel.renamed match
-      case untpd.Ident(nme.WILDCARD) => true
-      case _ => false
+    @unused // matchingSelector checks isWildcard first
+    def isImportExclusion: Boolean = sel.isUnimport && !sel.isWildcard
 
   extension (imp: Import)(using Context)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
