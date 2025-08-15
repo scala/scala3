@@ -9,7 +9,7 @@
    |where:    =>  refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
    |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Unit of parameter parameter f² of method $anonfun
-23 |    cur = (() => f.write()) :: Nil
+21 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:30:13 --------------------------------------
@@ -23,8 +23,8 @@
    |where:    =>  refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
    |          cap is a fresh root capability created in anonymous function of type (f: File^'s3): Unit of parameter parameter f² of method $anonfun
-33 |    cur.set:
-34 |      (() => f.write()) :: Nil
+31 |    cur.set:
+32 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:42:16 -----------------------------------------------------------
@@ -98,8 +98,8 @@
    |where:    =>  refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
    |          ^   refers to the universal root capability
    |          cap is a fresh root capability created in anonymous function of type (f: File^'s6): File^{id*} of parameter parameter f² of method $anonfun
-70 |    val f1: File^{id*} = id(f)
-71 |    f1
+68 |    val f1: File^{id*} = id(f)
+69 |    f1
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:85:10 --------------------------------------
