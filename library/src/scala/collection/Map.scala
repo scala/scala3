@@ -243,8 +243,11 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   }
 
   /** A generic trait that is reused by keyset implementations */
-  protected trait GenKeySet { this: Set[K]^ =>
-    def iterator: Iterator[K]^{this} = MapOps.this.keysIterator
+  protected trait GenKeySet { this: Set[K] =>
+    def iterator: Iterator[K] =
+      // CC note: this is unavoidable to make the KeySet pure.
+      // If you need a generic, capturing KeySet, create a View from keysIterator
+      MapOps.this.keysIterator.toSet.iterator
     def contains(key: K): Boolean = MapOps.this.contains(key)
     override def size: Int = MapOps.this.size
     override def knownSize: Int = MapOps.this.knownSize
