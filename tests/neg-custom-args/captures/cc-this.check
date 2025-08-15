@@ -3,6 +3,7 @@
    |               ^^^^
    |               Found:    (C.this : C^{C.this.x})
    |               Required: C
+   |
    |               Note that capability C.this.x is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

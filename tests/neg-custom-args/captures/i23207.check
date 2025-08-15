@@ -3,6 +3,7 @@
    |             ^^^^^
    |             Found:    (box.x : (b : B^{io})^{b})
    |             Required: A
+   |
    |             Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
    |             ^
    |             Found:    (c : B^{b})
    |             Required: A
+   |
    |             Note that capability b is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -19,6 +21,7 @@
    |  ^
    |  Found:    A^{io}
    |  Required: A
+   |
    |  Note that capability io is not included in capture set {}.
 24 |    val hide: AnyRef^{io} = io
 25 |  val b = new B

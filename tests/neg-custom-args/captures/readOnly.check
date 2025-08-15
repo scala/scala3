@@ -3,6 +3,7 @@
    |                     ^^^^
    |                     Found:    (getA : () ->{a.rd} Int)
    |                     Required: () -> Int
+   |
    |                     Note that capability a.rd is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
    |                       ^^^^
    |                       Found:    (putA : Int ->{a} Unit)
    |                       Required: Int -> Unit
+   |
    |                       Note that capability a is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

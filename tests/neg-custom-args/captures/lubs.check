@@ -3,6 +3,7 @@
    |             ^^
    |             Found:    (x1 : D^{d1})
    |             Required: D
+   |
    |             Note that capability d1 is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
    |             ^^
    |             Found:    (x2 : D^{d1})
    |             Required: D
+   |
    |             Note that capability d1 is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -19,6 +21,7 @@
    |             ^^
    |             Found:    (x3 : D^{d1, d2})
    |             Required: D
+   |
    |             Note that capability d1 is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

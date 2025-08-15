@@ -4,10 +4,11 @@
    |Found:    (f: File^'s1) ->'s2 Unit
    |Required: File^ => Unit
    |
-   |where:    => refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
-   |          ^  refers to the universal root capability
-   |
    |Note that capability cap is not included in capture set {C}.
+   |
+   |where:    =>  refers to a fresh root capability created in method runAll0 when checking argument to parameter f of method usingFile
+   |          ^   refers to the universal root capability
+   |          cap is a fresh root capability created in anonymous function of type (f: File^'s1): Unit of parameter parameter f² of method $anonfun
 23 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
@@ -17,10 +18,11 @@
    |Found:    (f: File^'s3) ->'s4 Unit
    |Required: File^ => Unit
    |
-   |where:    => refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
-   |          ^  refers to the universal root capability
-   |
    |Note that capability cap cannot be included in capture set {C} of value cur.
+   |
+   |where:    =>  refers to a fresh root capability created in method runAll1 when checking argument to parameter f of method usingFile
+   |          ^   refers to the universal root capability
+   |          cap is a fresh root capability created in anonymous function of type (f: File^'s3): Unit of parameter parameter f² of method $anonfun
 33 |    cur.set:
 34 |      (() => f.write()) :: Nil
    |
@@ -38,11 +40,13 @@
    |                           Found:    () => Unit
    |                           Required: () =>² Unit
    |
-   |                           where:    =>  refers to the universal root capability
-   |                                     =>² refers to a fresh root capability in the type of value next
+   |                           Note that capability cap is not included in capture set {cap²}
+   |                           because cap is not visible from cap² in value next.
    |
-   |                           Note that capability cap is not included in capture set {cap}
-   |                           because cap is not visible from cap in value next.
+   |                           where:    =>   refers to the universal root capability
+   |                                     =>²  refers to a fresh root capability in the type of value next
+   |                                     cap  is the universal root capability
+   |                                     cap² is a fresh root capability in the type of value next
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:48:20 --------------------------------------
@@ -51,11 +55,13 @@
    |            Found:    List[() => Unit]
    |            Required: List[() =>² Unit]
    |
-   |            where:    =>  refers to the universal root capability
-   |                      =>² refers to a fresh root capability created in method runAll3
+   |            Note that capability cap is not included in capture set {cap²}
+   |            because cap is not visible from cap² in method runAll3.
    |
-   |            Note that capability cap is not included in capture set {cap}
-   |            because cap is not visible from cap in method runAll3.
+   |            where:    =>   refers to the universal root capability
+   |                      =>²  refers to a fresh root capability created in method runAll3
+   |                      cap  is the universal root capability
+   |                      cap² is a fresh root capability created in method runAll3
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:54:51 -----------------------------------------------------------
@@ -68,15 +74,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:27 --------------------------------------
 59 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
-   |                  Found:    (x: File^) ->'s5 File^²
-   |                  Required: File^ -> File^³
+   |                Found:    (x: File^) ->'s5 File^²
+   |                Required: File^ -> File^³
    |
-   |                  where:    ^  refers to the universal root capability
-   |                            ^² refers to a root capability associated with the result type of (x: File^): File^²
-   |                            ^³ refers to a fresh root capability in the type of value id
+   |                Note that capability cap is not included in capture set {cap²}
+   |                because cap is not visible from cap² in value id.
    |
-   |                  Note that capability <cap of (x: File^): File^> is not included in capture set {cap}
-   |                  because <cap of (x: File^): File^> is not visible from cap in value id.
+   |                where:    ^    refers to the universal root capability
+   |                          ^²   refers to a root capability associated with the result type of (x: File^): File^²
+   |                          ^³   refers to a fresh root capability in the type of value id
+   |                          cap  is a root capability associated with the result type of (x: File^): File^²
+   |                          cap² is a fresh root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:69:38 --------------------------------------
@@ -85,10 +93,11 @@
    |Found:    (f: File^'s6) ->'s7 File^{id*}
    |Required: File^ => File^{id*}
    |
-   |where:    => refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
-   |          ^  refers to the universal root capability
-   |
    |Note that capability cap is not included in capture set {id*}.
+   |
+   |where:    =>  refers to a fresh root capability created in value leaked when checking argument to parameter f of method usingFile
+   |          ^   refers to the universal root capability
+   |          cap is a fresh root capability created in anonymous function of type (f: File^'s6): File^{id*} of parameter parameter f² of method $anonfun
 70 |    val f1: File^{id*} = id(f)
 71 |    f1
    |
@@ -99,10 +108,10 @@
    |Found:    (x$1: (A^ ->'s8 A^'s9, A^ ->'s10 A^'s11)^'s12) ->'s13 A^'s14 ->'s15 A^'s16
    |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s17 ->'s18 A^'s19
    |
+   |Note that capability ps* cannot be included in capture set {} of value x.
+   |
    |where:    => refers to a fresh root capability created in method mapCompose when checking argument to parameter f of method map
    |          ^  refers to the universal root capability
-   |
-   |Note that capability ps* cannot be included in capture set {} of value x.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:90:10 --------------------------------------
@@ -111,10 +120,10 @@
    |Found:    (x$1: (A^ ->'s20 A^'s21, A^ ->'s22 A^'s23)^'s24) ->'s25 A^'s26 ->'s27 A^'s28
    |Required: ((A ->{C} A, A ->{C} A)) => A^'s29 ->'s30 A^'s31
    |
+   |Note that capability C cannot be included in capture set {} of value x.
+   |
    |where:    => refers to a fresh root capability created in method mapCompose2 when checking argument to parameter f of method map
    |          ^  refers to the universal root capability
-   |
-   |Note that capability C cannot be included in capture set {} of value x.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------

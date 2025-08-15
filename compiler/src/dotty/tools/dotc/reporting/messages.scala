@@ -18,7 +18,7 @@ import ast.desugar
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
-import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
+import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope, Addenda, NothingToAdd}
 import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
@@ -298,7 +298,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: Addenda = NothingToAdd)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   private val shouldSuggestNN =
@@ -355,12 +355,12 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
         |Required: $expectedStr${reported.notes}"""
   end msg
 
-  override def msgPostscript(using Context) =
+  override def msgPostscript(using Context): String =
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-    super.msgPostscript
-    ++ addenda.dropWhile(_.isEmpty).headOption.getOrElse(importSuggestions)
+
+    addenda.toAdd.mkString ++ super.msgPostscript ++ importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")

@@ -4,9 +4,11 @@
    |Found:    (f : F)
    |Required: File^
    |
-   |where:    ^ refers to a fresh root capability classified as SharedCapability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
+   |Note that capability cap is not included in capture set {cap²}.
    |
-   |Note that capability cap is not included in capture set {cap}.
+   |where:    ^    refers to a fresh root capability classified as SharedCapability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
+   |          cap  is a fresh root capability classified as SharedCapability in the type of parameter f
+   |          cap² is a fresh root capability classified as SharedCapability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
@@ -15,10 +17,10 @@
    |Found:    (_$1: File^'s1) ->{C} Logger{val f: File^{_$1}}^{cap.rd, _$1}
    |Required: File^{C} => Logger{val f: File^'s2}^'s3
    |
-   |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
-   |          cap is a root capability associated with the result type of (_$1: File^'s1): Logger{val f: File^{_$1}}^{cap.rd, _$1}
-   |
    |Note that capability C is not classified as trait SharedCapability, therefore it
    |cannot be included in capture set 's1 of parameter _$1 of SharedCapability elements.
+   |
+   |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
+   |          cap is a root capability associated with the result type of (_$1: File^'s1): Logger{val f: File^{_$1}}^{cap.rd, _$1}
    |
    | longer explanation available when compiling with `-explain`

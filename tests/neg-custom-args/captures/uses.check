@@ -3,6 +3,7 @@
   |                 ^
   |                 Found:    (d : D^{x, y})
   |                 Required: D^{y}
+  |
   |                 Note that capability x is not included in capture set {y}.
   |
   | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
   |             ^
   |             Found:    (d : D^{x, y})
   |             Required: D
+  |
   |             Note that capability x is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
@@ -19,6 +21,7 @@
    |                                  ^
    |                                  Found:    () ->{x, y} () ->{y} Unit
    |                                  Required: () ->{x} () ->{y} Unit
+   |
    |                                  Note that capability y is not included in capture set {x}.
    |
    | longer explanation available when compiling with `-explain`
@@ -27,6 +30,7 @@
    |                            ^
    |                            Found:    () ->{x, y} () ->{y} Unit
    |                            Required: () -> () -> Unit
+   |
    |                            Note that capability x is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

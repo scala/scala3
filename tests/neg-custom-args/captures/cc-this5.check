@@ -8,6 +8,7 @@
    |               ^^^^
    |               Found:    (A.this : A^{c})
    |               Required: A
+   |
    |               Note that capability c is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

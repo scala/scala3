@@ -8,6 +8,7 @@
    |    ^
    |    Found:    () ->{t} Logger^{t*}
    |    Required: x.T
+   |
    |    Note that capability t is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
@@ -17,11 +18,13 @@
    |                   Found:    bar.T
    |                   Required: () => Logger^
    |
-   |                   where:    => refers to a fresh root capability in the type of value bad
-   |                             ^  refers to a fresh root capability in the type of value bad
+   |                   Note that capability cap is not included in capture set {cap²}
+   |                   because cap in class Bar is not visible from cap² in value bad.
    |
-   |                   Note that capability cap is not included in capture set {cap}
-   |                   because cap in class Bar is not visible from cap in value bad.
+   |                   where:    =>   refers to a fresh root capability in the type of value bad
+   |                             ^    refers to a fresh root capability in the type of value bad
+   |                             cap  is a fresh root capability in the type of type T
+   |                             cap² is a fresh root capability in the type of value bad
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------

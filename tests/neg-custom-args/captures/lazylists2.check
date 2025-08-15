@@ -3,6 +3,7 @@
    |    ^
    |    Found:    LazyList[B^'s1]^{f, xs}
    |    Required: LazyList[B]^{f}
+   |
    |    Note that capability xs is not included in capture set {f}.
 19 |      this: (Mapped^{xs, f}) =>
 20 |      def isEmpty = false
@@ -16,6 +17,7 @@
    |    ^
    |    Found:    LazyList[B^'s2]^{f, xs}
    |    Required: LazyList[B]^{xs}
+   |
    |    Note that capability f is not included in capture set {xs}.
 28 |      this: Mapped^{xs, f} =>
 29 |      def isEmpty = false
@@ -37,6 +39,7 @@
    |    ^
    |    Found:    LazyList[B^'s3]^{f, xs}
    |    Required: LazyList[B]^{xs}
+   |
    |    Note that capability f is not included in capture set {xs}.
 46 |      this: (Mapped^{xs, f}) =>
 47 |      def isEmpty = false

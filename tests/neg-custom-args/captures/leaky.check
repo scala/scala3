@@ -3,6 +3,7 @@
    |  ^
    |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
    |  Required: test.runnable.Transform
+   |
    |  Note that capability a is not included in capture set {}.
 15 |    a.print()
 16 |    ()
@@ -14,6 +15,7 @@
    |  ^
    |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
    |  Required: test.runnable.Transform
+   |
    |  Note that capability a is not included in capture set {}.
 21 |    a.print()
 22 |    ()
@@ -26,6 +28,7 @@
    |  ^
    |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
    |  Required: test.runnable.Transform
+   |
    |  Note that capability a is not included in capture set {}.
 28 |    a.print()
 29 |    ()

@@ -8,15 +8,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:9:24 -----------------------------------
 9 |  val foo: IO^ -> IO^ = x => x // error
   |                        ^^^^^^
-  |                        Found:    (x: IO^) ->'s1 IO^²
-  |                        Required: IO^ -> IO^³
+  |                      Found:    (x: IO^) ->'s1 IO^²
+  |                      Required: IO^ -> IO^³
   |
-  |                        where:    ^  refers to the universal root capability
-  |                                  ^² refers to a root capability associated with the result type of (x: IO^): IO^²
-  |                                  ^³ refers to a fresh root capability in the type of value foo
+  |                      Note that capability cap is not included in capture set {cap²}
+  |                      because cap is not visible from cap² in value foo.
   |
-  |                        Note that capability <cap of (x: IO^): IO^> is not included in capture set {cap}
-  |                        because <cap of (x: IO^): IO^> is not visible from cap in value foo.
+  |                      where:    ^    refers to the universal root capability
+  |                                ^²   refers to a root capability associated with the result type of (x: IO^): IO^²
+  |                                ^³   refers to a fresh root capability in the type of value foo
+  |                                cap  is a root capability associated with the result type of (x: IO^): IO^²
+  |                                cap² is a fresh root capability in the type of value foo
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:13:26 ----------------------------------
@@ -25,10 +27,10 @@
    |                       Found:    IO^ ->{x*} IO^{x*}
    |                       Required: IO^ -> IO^²
    |
+   |                       Note that capability x* is not included in capture set {}.
+   |
    |                       where:    ^  refers to the universal root capability
    |                                 ^² refers to a fresh root capability in the type of value y2
-   |
-   |                       Note that capability x* is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 ----------------------------------
@@ -37,8 +39,8 @@
    |                           Found:    IO^ ->{x*} IO^{x*}
    |                           Required: IO^ -> IO^{x*}
    |
-   |                           where:    ^ refers to the universal root capability
-   |
    |                           Note that capability x* is not included in capture set {}.
+   |
+   |                           where:    ^ refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`

@@ -3,6 +3,7 @@
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    Future[T]^{collector.futures*}
    |                             Required: Future[T]^{C}
+   |
    |                             Note that capability collector.futures* is not included in capture set {C}.
    |
    | longer explanation available when compiling with `-explain`
@@ -11,6 +12,7 @@
    |                              ^^^^^
    |                              Found:    Future[T^{}]^{collector.futures*}
    |                              Required: Future[T]^{C}
+   |
    |                              Note that capability collector.futures* is not included in capture set {C}.
    |
    | longer explanation available when compiling with `-explain`
