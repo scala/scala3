@@ -339,7 +339,7 @@ object desugar {
         case Some(param) if param.mods.isOneOf(GivenOrImplicit) =>
           param.mods.flags & GivenOrImplicit
         case _ =>
-          if Feature.sourceVersion.isAtLeast(`3.6`) then Given
+          if Feature.sourceVersion.isAtLeast(`3.6`) && !Feature.sourceVersion.isScala2 then Given
           else Implicit
       val flags = if isPrimaryConstructor then iflag | LocalParamAccessor else iflag | Param
       mapParamss(paramss) {
