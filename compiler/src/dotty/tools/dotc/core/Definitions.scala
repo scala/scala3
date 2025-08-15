@@ -1149,7 +1149,6 @@ class Definitions {
     "reactor.util.annotation.NonNullApi" ::
     "io.reactivex.annotations.NonNull" :: Nil)
 
-
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
