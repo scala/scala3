@@ -156,12 +156,9 @@ object View extends IterableFactory[View] {
             new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
               .asInstanceOf[Filter[A]^{underlying, p}]
               // !!! asInstanceOf needed once paths were added, see path-patmat-should-be-pos.scala for minimization
-        //case filter: Filter[A]^{underlying} if filter.isFlipped == isFlipped =>
-        //  unsafeAssumeSeparate:
             // See filter-iterable.scala for a test where a variant of Filter
             // works without the unsafeAssumeSeparate. But it requires significant
             // changes compared to the version here. See also Filter in colltest5.CollectionStrawManCC5_1.
-        //    new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
         case _ => new Filter(underlying, p, isFlipped)
       }
   }
