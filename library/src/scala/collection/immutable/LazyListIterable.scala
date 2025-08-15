@@ -882,7 +882,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     if (knownIsEmpty) Iterator.empty
     else
       val it = new SlidingIterator[A](this, size = size, step = step)
-      it.asInstanceOf // CC cannot figure this out yet
+      it.asInstanceOf[Iterator[Nothing]] // CC cannot figure this out yet
 
   /** @inheritdoc
     *

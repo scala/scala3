@@ -39,7 +39,7 @@ transparent trait StrictIndexedSeqOps[+A, +CC[_] <: caps.Pure, +C] extends Any w
   override def sliding(size: Int, step: Int): Iterator[C] = {
     require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
     val it = new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
-    it.asInstanceOf // TODO: seems like CC cannot figure this out yet
+    it.asInstanceOf[Iterator[C]] // TODO: seems like CC cannot figure this out yet
   }
 }
 
@@ -106,7 +106,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
   override def sliding(size: Int, step: Int): Iterator[C^{this}]^{this} = {
     require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
     val it = new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
-    it.asInstanceOf // TODO: seems like CC cannot figure this out yet
+    it.asInstanceOf[Iterator[Nothing]] // TODO: seems like CC cannot figure this out yet
   }
 
   override def head: A =
