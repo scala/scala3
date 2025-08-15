@@ -2595,8 +2595,10 @@ object Parsers {
     /** SubMatchClause ::= `match' `{' CaseClauses `}'
      */
     def subMatchClause(t: Tree): SubMatch = atSpan(startOffset(t), accept(MATCH)):
-      val cases = inBracesOrIndented(caseClauses(() => caseClause()))
-      if !in.isNestedEnd then acceptStatSep() // else is sub sub match
+      val cases =
+        if in.token == CASE
+        then caseClause(exprOnly = true) :: Nil // single sub case without new line
+        else inBracesOrIndented(caseClauses(() => caseClause()))
       SubMatch(t, cases)
 
     /**    `match' <<< TypeCaseClauses >>>
@@ -3109,7 +3111,9 @@ object Parsers {
       }
       val body =
         if in.token == WITH && in.featureEnabled(Feature.subCases) then atSpan(in.skipToken()):
-          subMatchClause(simpleExpr(Location.ElseWhere))
+          val t = subMatchClause(simpleExpr(Location.ElseWhere))
+          if in.isStatSep then in.nextToken() // else may have been consumed by sub sub match
+          t
         else atSpan(accept(ARROW)):
           if exprOnly then
             if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
