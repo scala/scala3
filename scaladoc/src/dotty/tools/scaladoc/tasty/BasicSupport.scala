@@ -57,7 +57,7 @@ trait BasicSupport:
       )
       val fqNameAllowlist =
         if ccEnabled then
-          fqNameAllowlist0 + CaptureDefs.useAnnotFullName + CaptureDefs.consumeAnnotFullName
+          fqNameAllowlist0 + CaptureDefs.useAnnotFullName
         else fqNameAllowlist0
       val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
       val annotations = sym.annotations.filter { a =>
