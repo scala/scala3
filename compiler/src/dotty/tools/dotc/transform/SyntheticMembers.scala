@@ -17,8 +17,6 @@ import util.Spans.Span
 import config.Printers.derive
 import NullOpsDecorator.*
 import scala.runtime.Statics
-import dotty.tools.dotc.config.Feature
-import dotty.tools.dotc.cc.CapturingType
 
 object SyntheticMembers {
 

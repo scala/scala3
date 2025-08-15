@@ -175,7 +175,7 @@ object Tuple {
     case h *: t => F[h, Fold[t, Z, F]]
 
   /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
-  type Map[Tup <: Tuple, F <: [_ <: Union[Tup]] =>> Any] <: Tuple = Tup match {
+  type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => F[h] *: Map[t, F]
   }

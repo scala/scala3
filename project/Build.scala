@@ -1083,7 +1083,6 @@ object Build {
       // NOTE: Do not use `sourceDirectories` since `sources` are currently pinned until `3.8.0`
       "-sourcepath", (Compile / sources).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       "-Yexplicit-nulls",
-      "-explain",
     ),
     (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
     (Compile / packageSrc / mappings) ++= {
