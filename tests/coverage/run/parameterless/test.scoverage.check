@@ -42,6 +42,23 @@ O
 Object
 <empty>.O
 f
+51
+60
+4
+<none>
+Literal
+false
+0
+false
+"O.f_res"
+
+2
+parameterless/test.scala
+<empty>
+O
+Object
+<empty>.O
+f
 12
 17
 2
@@ -52,7 +69,7 @@ false
 false
 def f
 
-2
+3
 parameterless/test.scala
 <empty>
 O
@@ -69,7 +86,24 @@ false
 false
 println("O.g")
 
-3
+4
+parameterless/test.scala
+<empty>
+O
+Object
+<empty>.O
+g
+106
+115
+8
+<none>
+Literal
+false
+0
+false
+"O.g_res"
+
+5
 parameterless/test.scala
 <empty>
 O
@@ -86,7 +120,7 @@ false
 false
 def g
 
-4
+6
 parameterless/test.scala
 <empty>
 test$package
@@ -103,7 +137,24 @@ false
 false
 println("f")
 
-5
+7
+parameterless/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+f
+179
+186
+14
+<none>
+Literal
+false
+0
+false
+"f_res"
+
+8
 parameterless/test.scala
 <empty>
 test$package
@@ -120,7 +171,7 @@ false
 false
 def f
 
-6
+9
 parameterless/test.scala
 <empty>
 test$package
@@ -137,7 +188,24 @@ false
 false
 println("g")
 
-7
+10
+parameterless/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+g
+230
+237
+18
+<none>
+Literal
+false
+0
+false
+"g_res"
+
+11
 parameterless/test.scala
 <empty>
 test$package
@@ -154,7 +222,7 @@ false
 false
 def g
 
-8
+12
 parameterless/test.scala
 <empty>
 test$package
@@ -171,7 +239,7 @@ false
 false
 f
 
-9
+13
 parameterless/test.scala
 <empty>
 test$package
@@ -188,7 +256,7 @@ false
 false
 g
 
-10
+14
 parameterless/test.scala
 <empty>
 test$package
@@ -205,24 +273,7 @@ false
 false
 println(f)
 
-11
-parameterless/test.scala
-<empty>
-test$package
-Object
-<empty>.test$package
-Test
-273
-274
-22
-f
-Ident
-false
-0
-false
-f
-
-12
+15
 parameterless/test.scala
 <empty>
 test$package
@@ -239,7 +290,7 @@ false
 false
 println(g)
 
-13
+16
 parameterless/test.scala
 <empty>
 test$package
@@ -256,7 +307,7 @@ false
 false
 g
 
-14
+17
 parameterless/test.scala
 <empty>
 test$package
@@ -273,7 +324,7 @@ false
 false
 println(O.f)
 
-15
+18
 parameterless/test.scala
 <empty>
 test$package
@@ -290,7 +341,7 @@ false
 false
 O.f
 
-16
+19
 parameterless/test.scala
 <empty>
 test$package
@@ -307,7 +358,7 @@ false
 false
 println(O.g)
 
-17
+20
 parameterless/test.scala
 <empty>
 test$package
@@ -324,7 +375,7 @@ false
 false
 O.g
 
-18
+21
 parameterless/test.scala
 <empty>
 test$package

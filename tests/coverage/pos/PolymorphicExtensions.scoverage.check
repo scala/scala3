@@ -110,23 +110,6 @@ PolyExt
 Object
 covtest.PolyExt
 <init>
-177
-186
-11
-foo
-Apply
-false
-0
-false
-"str".foo
-
-6
-PolymorphicExtensions.scala
-covtest
-PolyExt
-Object
-covtest.PolyExt
-<init>
 277
 287
 12
@@ -136,6 +119,23 @@ false
 0
 false
 123.get(0)
+
+6
+PolymorphicExtensions.scala
+covtest
+PolyExt
+Object
+covtest.PolyExt
+foo
+385
+387
+14
+<none>
+Literal
+false
+0
+false
+42
 
 7
 PolymorphicExtensions.scala
@@ -177,40 +177,6 @@ covtest
 PolyExt
 Object
 covtest.PolyExt
-bar
-405
-412
-15
-tap
-Apply
-false
-0
-false
-foo.tap
-
-10
-PolymorphicExtensions.scala
-covtest
-PolyExt
-Object
-covtest.PolyExt
-bar
-405
-408
-15
-foo
-Ident
-false
-0
-false
-foo
-
-11
-PolymorphicExtensions.scala
-covtest
-PolyExt
-Object
-covtest.PolyExt
 $anonfun
 413
 420
@@ -222,7 +188,7 @@ false
 false
 println
 
-12
+10
 PolymorphicExtensions.scala
 covtest
 PolyExt
