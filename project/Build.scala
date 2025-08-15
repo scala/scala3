@@ -1661,7 +1661,12 @@ object Build {
       name          := "scala-library-nonbootstrapped",
       moduleName    := "scala-library",
       version       := dottyNonBootstrappedVersion,
-      versionScheme := Some("semver-spec"),
+      // We mark the current library as "always" instead of "semver-spec" so that buildtools can
+      // assume binary compatibility between 2.13.x and 3.x.y. If not set, build tools will, at least sbt,
+      // will error by claiming that scala-library:2.13.x and 3.x.y are potentially binary incompatible.
+      // Situation where we have 2.13.x and 3.x.y in the same dependency tree happens
+      // because we allow cross-compilation.
+      versionScheme := Some("always"),
       scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib
@@ -1736,7 +1741,12 @@ object Build {
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
       version       := dottyVersion,
-      versionScheme := Some("semver-spec"),
+      // We mark the current library as "always" instead of "semver-spec" so that buildtools can
+      // assume binary compatibility between 2.13.x and 3.x.y. If not set, build tools will, at least sbt,
+      // will error by claiming that scala-library:2.13.x and 3.x.y are potentially binary incompatible.
+      // Situation where we have 2.13.x and 3.x.y in the same dependency tree happens
+      // because we allow cross-compilation.
+      versionScheme := Some("always"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := referenceVersion,
@@ -1851,7 +1861,12 @@ object Build {
       // Yes, I know, this is weird and feels wrong.
       moduleName    := "scalajs-scalalib_2.13",
       version       := dottyVersion,
-      versionScheme := Some("semver-spec"),
+      // We mark the current library as "always" instead of "semver-spec" so that buildtools can
+      // assume binary compatibility between 2.13.x and 3.x.y. If not set, build tools will, at least sbt,
+      // will error by claiming that scalajs-scalalib_2.13:2.13.x and 3.x.y are potentially binary incompatible.
+      // Situation where we have 2.13.x and 3.x.y in the same dependency tree happens
+      // because we allow cross-compilation.
+      versionScheme := Some("always"),
       crossPaths    := false,
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
