@@ -62,9 +62,6 @@ jobs:
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
-      - name: Generate documentation for example project using dotty-sbt
-        run: ./project/scripts/sbt "sbt-test/scripted sbt-dotty/scaladoc"
-
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
     # if false - disable flaky test

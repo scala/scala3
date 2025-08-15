@@ -1471,6 +1471,7 @@ object Build {
   // ==============================================================================================
 
   lazy val `scala3-bootstrapped-new` = project
+    .enablePlugins(ScriptedPlugin)
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`, `scaladoc-new`)
@@ -1557,7 +1558,33 @@ object Build {
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
           (`scala3-compiler-bootstrapped-new` / Test / testOnly).toTask(cmd)
         }
-      }.evaluated
+      }.evaluated,
+      // ================================ SBT SCRIPT TEST SETTINGS ================================
+      sbtTestDirectory := (ThisBuild / baseDirectory).value / "sbt-test",
+      // The batch mode accidentally became the default with no way to disable
+      // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
+      // We enable it explicitly here to make it clear that we're using it.
+      scriptedBatchExecution := true,
+      scriptedLaunchOpts ++= Seq(
+        s"-Dplugin.scalaVersion=${dottyVersion}",
+        s"-Dplugin.scala2Version=${stdlibVersion(Bootstrapped)}",
+        s"-Dplugin.scalaJSVersion=${scalaJSVersion}",
+      ),
+      scriptedBufferLog := true,
+      scripted := scripted.dependsOn(
+        (`scala3-sbt-bridge-bootstrapped` / publishLocalBin),
+        (`scala3-interfaces` / publishLocalBin),
+        (`scala3-compiler-bootstrapped-new` / publishLocalBin),
+        (`scala3-library-bootstrapped-new` / publishLocalBin),
+        (`scala-library-bootstrapped` / publishLocalBin),
+        (`scala-library-sjs` / publishLocalBin),
+        (`scala3-library-sjs` / publishLocalBin),
+        (`tasty-core-bootstrapped-new` / publishLocalBin),
+        (`scala3-staging-new` / publishLocalBin),
+        (`scala3-tasty-inspector-new` / publishLocalBin),
+        (`scaladoc-new` / publishLocalBin),
+        publishLocalBin,
+      ).evaluated,
     )
 
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
@@ -3505,47 +3532,6 @@ object Build {
       testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
       Test / buildInfoPackage := "dotty.tools.scaladoc.test",
       BuildInfoPlugin.buildInfoScopedSettings(Test),
-    )
-
-  // various scripted sbt tests
-  lazy val `sbt-test` = project.in(file("sbt-test")).
-    enablePlugins(ScriptedPlugin).
-    settings(commonSettings).
-    settings(
-      sbtTestDirectory := baseDirectory.value,
-      target := baseDirectory.value / ".." / "out" / name.value,
-
-      // The batch mode accidentally became the default with no way to disable
-      // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
-      // We enable it explicitly here to make it clear that we're using it.
-      scriptedBatchExecution := true,
-
-      scriptedLaunchOpts ++= Seq(
-        "-Dplugin.version=" + version.value,
-        "-Dplugin.scalaVersion=" + dottyVersion,
-        "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
-        "-Dplugin.scalaJSVersion=" + scalaJSVersion,
-        "-Dsbt.boot.directory=" + ((ThisBuild / baseDirectory).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
-      ),
-      // Pass along ivy home and repositories settings to sbt instances run from the tests
-      scriptedLaunchOpts ++= {
-        val repositoryPath = (io.Path.userHome / ".sbt" / "repositories").absolutePath
-        s"-Dsbt.repository.config=$repositoryPath" ::
-        ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList
-      },
-      scriptedBufferLog := true,
-      scripted := scripted.dependsOn(
-        (`scala3-sbt-bridge` / publishLocalBin),
-        (`scala3-interfaces` / publishLocalBin),
-        (`scala3-compiler-bootstrapped` / publishLocalBin),
-        (`scala3-library-bootstrapped` / publishLocalBin),
-        (`scala3-library-bootstrappedJS` / publishLocalBin),
-        (`tasty-core-bootstrapped` / publishLocalBin),
-        (`scala3-staging` / publishLocalBin),
-        (`scala3-tasty-inspector` / publishLocalBin),
-        (`scaladoc` / publishLocalBin),
-        (`scala3-bootstrapped` / publishLocalBin) // Needed because sbt currently hardcodes the dotty artifact
-      ).evaluated
     )
 
   val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-injected-plugins}.")

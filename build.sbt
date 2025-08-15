@@ -54,7 +54,5 @@ val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
-val `sbt-test` = Build.`sbt-test`
-
 inThisBuild(Build.thisBuildSettings)
 inScope(Global)(Build.globalSettings)
