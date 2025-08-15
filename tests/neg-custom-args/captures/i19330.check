@@ -31,4 +31,4 @@
 16 |    val t: () => Logger^ = () => l // error
    |           ^^^^^^^^^^^^^
    |           Separation failure: value t's type () => Logger^ hides parameter l.
-   |           The parameter needs to be annotated with @consume to allow this.
+   |           The parameter needs to be annotated with consume to allow this.

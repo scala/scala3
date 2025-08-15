@@ -758,8 +758,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               && !(sym.is(Method) && sym.owner.isClass)
             then
               report.error(
-                em"""@consume cannot be used here. Only member methods and their term parameters
-                    |can have @consume annotations.""",
+                em"""consume cannot be used here. Only member methods and their term parameters
+                    |can have a consume modifier.""",
                 tree.srcPos)
           else if annotCls == defn.UseAnnot then
             if !ccConfig.allowUse then

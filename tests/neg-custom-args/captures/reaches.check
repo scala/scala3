@@ -1,5 +1,5 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:13 --------------------------------------
-22 |  usingFile: f => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:20:13 --------------------------------------
+20 |  usingFile: f => // error
    |             ^
    |Found:    (f: File^'s1) ->'s2 Unit
    |Required: File^ => Unit
@@ -12,8 +12,8 @@
 23 |    cur = (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:32:13 --------------------------------------
-32 |  usingFile: f => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:30:13 --------------------------------------
+30 |  usingFile: f => // error
    |             ^
    |Found:    (f: File^'s3) ->'s4 Unit
    |Required: File^ => Unit
@@ -27,15 +27,15 @@
 34 |      (() => f.write()) :: Nil
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:44:16 -----------------------------------------------------------
-44 |  val cur = Ref[List[Proc]](xs) // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:42:16 -----------------------------------------------------------
+42 |  val cur = Ref[List[Proc]](xs) // error
    |                ^^^^^^^^^^
    |                Type variable T of constructor Ref cannot be instantiated to List[() => Unit] since
    |                the part () => Unit of that type captures the root capability `cap`.
    |
    |                where:    => refers to the universal root capability
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:46:35 --------------------------------------
-46 |    val next: () => Unit = cur.get.head // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:44:35 --------------------------------------
+44 |    val next: () => Unit = cur.get.head // error
    |                           ^^^^^^^^^^^^
    |                           Found:    () => Unit
    |                           Required: () =>² Unit
@@ -49,8 +49,8 @@
    |                                     cap² is a fresh root capability in the type of value next
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:48:20 --------------------------------------
-48 |    cur.set(cur.get.tail: List[Proc]) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:46:20 --------------------------------------
+46 |    cur.set(cur.get.tail: List[Proc]) // error
    |            ^^^^^^^^^^^^
    |            Found:    List[() => Unit]
    |            Required: List[() =>² Unit]
@@ -64,15 +64,15 @@
    |                      cap² is a fresh root capability created in method runAll3
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:54:51 -----------------------------------------------------------
-54 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:52:51 -----------------------------------------------------------
+52 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |                                                   ^
    |                                    Type variable A of constructor Id cannot be instantiated to () => Unit since
    |                                    that type captures the root capability `cap`.
    |
    |                                    where:    => refers to the universal root capability
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:27 --------------------------------------
-59 |  val id: File^ -> File^ = x => x // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:57:27 --------------------------------------
+57 |  val id: File^ -> File^ = x => x // error
    |                           ^^^^^^
    |                Found:    (x: File^) ->'s5 File^²
    |                Required: File^ -> File^³
@@ -87,8 +87,8 @@
    |                          cap² is a fresh root capability in the type of value id
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:69:38 --------------------------------------
-69 |  val leaked = usingFile[File^{id*}]: f => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:67:38 --------------------------------------
+67 |  val leaked = usingFile[File^{id*}]: f => // error
    |                                      ^
    |Found:    (f: File^'s6) ->'s7 File^{id*}
    |Required: File^ => File^{id*}
@@ -102,8 +102,8 @@
 71 |    f1
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:87:10 --------------------------------------
-87 |  ps.map((x, y) => compose1(x, y)) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:85:10 --------------------------------------
+85 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (A^ ->'s8 A^'s9, A^ ->'s10 A^'s11)^'s12) ->'s13 A^'s14 ->'s15 A^'s16
    |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^'s17 ->'s18 A^'s19
@@ -114,8 +114,8 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:90:10 --------------------------------------
-90 |  ps.map((x, y) => compose1(x, y)) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:88:10 --------------------------------------
+88 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (x$1: (A^ ->'s20 A^'s21, A^ ->'s22 A^'s23)^'s24) ->'s25 A^'s26 ->'s27 A^'s28
    |Required: ((A ->{C} A, A ->{C} A)) => A^'s29 ->'s30 A^'s31
@@ -126,16 +126,16 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------
-39 |    val next: () => Unit = cur.head   // error, use
+-- Error: tests/neg-custom-args/captures/reaches.scala:37:31 -----------------------------------------------------------
+37 |    val next: () => Unit = cur.head   // error, use
    |                           ^^^^^^^^
    |                           Local reach capability xs* leaks into capture scope of method runAll2.
    |                           You could try to abstract the capabilities referred to by xs* in a capset variable.
--- Error: tests/neg-custom-args/captures/reaches.scala:62:36 -----------------------------------------------------------
-62 |  val leaked = usingFile[File^{id*}]: f => // error: separation
+-- Error: tests/neg-custom-args/captures/reaches.scala:60:36 -----------------------------------------------------------
+60 |  val leaked = usingFile[File^{id*}]: f => // error: separation
    |               ^
    |        Local cap created in type of parameter x leaks into capture scope of enclosing function
    |
    |        where:    cap is a fresh root capability created in value id of parameter parameter x of method $anonfun
-63 |    val f1: File^{id*} = id(f)
-64 |    f1
+61 |    val f1: File^{id*} = id(f)
+62 |    f1

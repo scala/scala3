@@ -48,4 +48,4 @@
 6 |    var myIO: IO^ = io1  // error: separation
   |              ^^^
   |              Separation failure: variable myIO's type IO^ hides parameter io1.
-  |              The parameter needs to be annotated with @consume to allow this.
+  |              The parameter needs to be annotated with consume to allow this.

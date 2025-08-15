@@ -454,6 +454,7 @@ object StdNames {
     val compiletime : N         = "compiletime"
     val compose: N              = "compose"
     val conforms_ : N           = "$conforms"
+    val consume: N              = "consume"
     val contents: N             = "contents"
     val copy: N                 = "copy"
     val create: N               = "create"
