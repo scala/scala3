@@ -161,6 +161,23 @@ test$package
 Object
 <empty>.test$package
 Test
+332
+335
+17
+<none>
+Literal
+false
+0
+false
+"a"
+
+9
+erased/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
 345
 374
 18
@@ -171,7 +188,24 @@ false
 false
 foo(e("a"))(identity("idem"))
 
-9
+10
+erased/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+351
+354
+18
+<none>
+Literal
+false
+0
+false
+"a"
+
+11
 erased/test.scala
 <empty>
 test$package
@@ -188,7 +222,7 @@ false
 false
 identity("idem")
 
-10
+12
 erased/test.scala
 <empty>
 test$package
