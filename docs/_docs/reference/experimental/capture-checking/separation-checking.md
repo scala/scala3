@@ -349,9 +349,9 @@ Therefore, parameters cannot appear in the hidden sets of fresh result caps eith
 
 ### Consume Parameters
 
-Returning parameters in fresh result caps is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `@consume` annotation to a parameter. With that annotation, the following variant of `incr` is legal:
+Returning parameters in fresh result caps is safe if the actual argument to the parameter is not used afterwards. We can signal and enforce this pattern by adding a `consume` modifier to a parameter. With that new soft modifier, the following variant of `incr` is legal:
 ```scala
-def incr(@consume a: Ref^): Ref^ =
+def incr(consume a: Ref^): Ref^ =
   a.set(a.get + 1)
   a
 ```
@@ -374,19 +374,19 @@ Consume parameters enforce linear access to resources. This can be very useful. 
 
 For instance, we can define a function `linearAdd` that adds elements to buffers in-place without violating referential transparency:
 ```scala
-def linearAdd[T](@consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
+def linearAdd[T](consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
   buf += elem
 ```
-`linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `@consume` annotation on `buf` ensures that the argument is not used after the call.
+`linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `consume` modifier on `buf` ensures that the argument is not used after the call.
 
 ### Consume Methods
 
-Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `@consume`  annotation to the method itself.
+Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `consume` modifier to the method itself.
 ```scala
 class Buffer[T] extends Mutable:
-  @consume update def +=(x: T): Buffer[T]^ = this // ok
+  consume def +=(x: T): Buffer[T]^ = this // ok
 ```
-Then we can write
+`consume` on a method implies `update`, so there's no need to label `+=` separately as an update method. Then we can write
 ```scala
 val b = Buffer[Int]() += 1 += 2
 val c = b += 3
