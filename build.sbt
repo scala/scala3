@@ -38,6 +38,7 @@ val `tasty-core-bootstrapped-new` = Build.`tasty-core-bootstrapped-new`
 val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
 val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val scaladoc = Build.scaladoc
+val `scaladoc-new` = Build.`scaladoc-new`
 val `scaladoc-testcases` = Build.`scaladoc-testcases`
 val `scaladoc-js-common` = Build.`scaladoc-js-common`
 val `scaladoc-js-main` = Build.`scaladoc-js-main`
