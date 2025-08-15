@@ -1406,7 +1406,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
@@ -1486,7 +1486,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
@@ -1556,7 +1556,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
@@ -1613,7 +1613,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
@@ -1681,7 +1681,7 @@ object Build {
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -1762,7 +1762,7 @@ object Build {
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -2021,7 +2021,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
@@ -2080,7 +2080,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
@@ -2161,7 +2161,7 @@ object Build {
       // TODO: Enable these flags when the new stdlib is explicitelly null checked
       //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -2282,7 +2282,7 @@ object Build {
       // TODO: Enable these flags when the new stdlib is explicitelly null checked
       //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
-      Compile / javacOptions  ++= Seq("--target", Versions.minimumJVMVersion),
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
