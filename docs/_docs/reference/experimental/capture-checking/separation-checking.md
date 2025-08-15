@@ -29,13 +29,13 @@ class Matrix(nrows: Int, ncols: Int) extends Mutable:
 ```
 We further declare that the `setElem` method in a `Matrix` is an `update` method, which means it has a side effect.
 
-Separation checking also gives a special interpretation to the following modified signature of `multiply`:
+Separation checking gives a special interpretation to the following modified signature of `multiply`:
 ```scala
 def multiply(a: Matrix, b: Matrix, c: Matrix^): Unit
 ```
 In fact, only a single character was added: `c`'s type now carries a universal capability. This signature enforces at the same time two desirable properties:
 
- - Matrices `a`, and `b` are read-only; `multiply` will not call their update method. By contrast, matrix `c` can be updated.
+ - Matrices `a`, and `b` are read-only; `multiply` will not call their update method. By contrast, the `c` matrix can be updated.
  - Matrices `a` and `b` are different from matrix `c`, but `a` and `b` could refer to the same matrix.
 
 So, effectively, anything that can be updated must be unaliased.
@@ -62,11 +62,11 @@ a new soft modifier `update`.
 class Ref(init: Int) extends Mutable:
   private var current = init
   def get: Int = current
-  update def put(x: Int): Unit = current = x
+  update def set(x: Int): Unit = current = x
 ```
 `update` can only be used in classes or objects extending `Mutable`. An update method is allowed to access exclusive capabilities in the method's environment. By contrast, a normal method in a type extending `Mutable` may access exclusive capabilities only if they are defined locally or passed to it in parameters.
 
-In class `Ref`, the `put` should be declared as an update method since it accesses the exclusive write capability of the variable `current` in its environment.
+In class `Ref`, the `set` should be declared as an update method since it accesses the exclusive write capability of the variable `current` in its environment.
 
 `update` can also be used on an inner class of a class or object extending `Mutable`. It gives all code in the class the right
 to  access exclusive capabilities in the class environment. Normal classes
@@ -84,7 +84,7 @@ Normal method members of `Mutable` classes cannot call update methods. This is i
 
 An update method cannot implement or override a normal method, whereas normal methods may implement or override update methods. Since methods such as `toString` or `==` inherited from Object are normal methods, it follows that none of these methods may be implemented as an update method.
 
-The `apply` method of a function type is also a normal method, hence `Mutable` classes may not implement a function type with an update method as the `apply` method.
+The `apply` method of a function type is also a normal method, hence `Mutable` classes may not implement a function type using an update method as the `apply` method.
 
 ## Mutable Types
 
@@ -154,7 +154,7 @@ If `x` is an exclusive capability of a type extending `Mutable`, `x.rd` is its a
 A read-only capability can be seen as a classified capability
 using a classifier trait `Read` that extends `Mutable`. I.e.
 `x.rd` can be seen as being essentially the same as `x.only[Read]`.
-Currently, this precise equivalence is still waiting to be implemented.
+(Currently, this precise equivalence is still waiting to be implemented.)
 
 **Implicitly added capture sets**
 
@@ -165,10 +165,6 @@ For instance, consider the matrix multiplication method mentioned previously:
 ```scala
 def multiply(a: Matrix, b: Matrix, c: Matrix^): Unit
 ```
-It is expanded to
-```scala
-def multiply(a: Matrix^{cap.rd}, b: Matrix^{cap.rd}, c: Matrix^{cap}): Unit
-```
 Here, `a` and `b` are implicitly read-only, and `c`'s type has capture set `cap`. I.e. with explicit capture sets this would read:
 ```scala
 def mul(a: Matrix^{cap.rd}, b: Matrix^{cap.rd}, c: Matrix^{cap}): Unit
@@ -177,7 +173,7 @@ Separation checking will then make sure that `a` and `b` must be different from 
 
 ## Accesses to Mutable Types
 
-An access `p.m` to an update method or class `m` in a mutable type is permitted only if the type of the prefix `M` retains exclusive capabilities. If `M` is pure or its capture set has only shared
+An access `p.m` to an update method or class `m` in a mutable type is permitted only if the type `M` of the prefix `p` retains exclusive capabilities. If `M` is pure or its capture set has only shared
 capabilities then the access is not permitted.
 
 A _read-only access_ is a reference `x` to a type extending `Mutable` that is either
@@ -197,8 +193,8 @@ val f = () => x.get    // f: () ->{x.rd} Unit
 val g = () => x.set(1) // g: () ->{x} Unit
 ```
 
-`f` accesses a regular method, so it charges only `x.rd` to its environment which shows up in its capture set. Bu contrast, `g`
-accesses an update method of `x`,so its capture set is `{x}`.
+`f` accesses a regular method, so it charges only `x.rd` to its environment which shows up in its capture set. By contrast, `g`
+accesses an update method of `x`, so its capture set is `{x}`.
 
 A reference to a mutable type with an exclusive capture set can be widened to a reference with a read-only set. For instance, the following is OK:
 ```scala
@@ -237,7 +233,7 @@ The subcapturing theory for sets is then as before, with the following additiona
 
 ## Separation Checking
 
-The idea behind separation checking is simple: We now interpret each occurrence of `cap` as a separate top capability. This includes derived syntaxes like `A^` and `B => C`. We further keep track during capture checking which capabilities are subsumed by each `cap`. If capture checking widens a capability `x` to the universal capability, we say `x` is _hidden_ by the universal. The rule then is that any capability hidden by a universal capability `capᵢ` cannot be referenced independently or hidden in another cap in code that can see `capᵢ`.
+The idea behind separation checking is simple: We now interpret each occurrence of `cap` as a separate top capability. This includes derived syntaxes like `A^` and `B => C`. We further keep track during capture checking which capabilities are subsumed by each `cap`. If capture checking widens a capability `x` to a top capability `capᵢ`, we say `x` is _hidden_ by `capᵢ`. The rule then is that any capability hidden by a top capability `capᵢ` cannot be referenced independently or hidden in another `capⱼ` in code that can see `capᵢ`.
 
 Here's an example:
 ```scala
@@ -247,7 +243,7 @@ val x: C^ = y
 ```
 This principle ensures that capabilities such as `x` that have `cap` as underlying capture set are un-aliased or "fresh". Any previously existing aliases such as `y` in the code above are inaccessible as long as `x` is also visible.
 
-The idea behind separation checking is simple: We now interpret each occurrence of `cap` as a separate top capability. This includes derived syntaxes like `A^` and `B => C`. We further keep track during capture checking which capabilities are subsumed by each `cap`. If capture checking widens a capability `x` to the universal capability, we say `x` is _hidden_ by the universal. The rule then is that any capability hidden by a universal capability `capᵢ` cannot be referenced independently or hidden in another cap in code that can see `capᵢ`.
+Separation checking applies only to exclusive capabilities and their read-only versions. Any capability extending `SharedCapability` in its type is exempted; the following definitions and rules do not apply to them.
 
 **Definitions:**
 
@@ -256,7 +252,7 @@ The idea behind separation checking is simple: We now interpret each occurrence 
  - The _transitive capture set_ `tcs(C)` of a capture set C is the union
    of `tcs(c)` for all elements `c` of `C`.
 
- - Two capture sets _interfere_ if one contains an exclusive capability `x` and the other also contains `x` or contains the read-only capability `x.rd`. Conversely, two capture sets are _separated_ if they don't interfere.]
+ - Two capture sets _interfere_ if one contains an exclusive capability `x` and the other also contains `x` or contains the read-only capability `x.rd`. Conversely, two capture sets are _separated_ if their transitive capture sets don't interfere.
 
 Separation checks are applied in the following scenarios:
 
@@ -281,11 +277,11 @@ val r = Ref(1)
 val plusOne = r.set(r.get + 1)
 seq(plusOne, plusOne)
 ```
-Without the explicit mention of parameter `f` in the capture set of parameter `g` of `seq` we'd get a separation error, since the capture sets of both arguments contain `r` and are therefore not separated.
+Without the explicit mention of parameter `f` in the capture set of parameter `g` of `seq` we'd get a separation error, since the transitive capture sets of both arguments contain `r` and are therefore not separated.
 
 ### Checking Statement Sequences
 
-When a capability `x` is used at some point in a statement sequence, check that `x` does not appear in the hidden set of a previous definition.
+When a capability `x` is used at some point in a statement sequence, we check that `{x}` is separated from the hidden sets of all previous definitions.
 
 Example:
 ```scala
@@ -318,7 +314,7 @@ val b: (Ref^, Ref^) = (a, a)       // error
 val c: (Ref^, Ref^{a}) = (a, a)    // error
 val d: (Ref^{a}, Ref^{a}) = (a, a) // ok
 ```
-Here, the definition of `b` is in error since the hidden sets of the two `^` in its type both contain `a`. Likewise, the definition of `c` is in error since the hidden set of the `^` in its type contains `a`, which is also part of a capture set somewhere else in the type. On the other hand, the definition of `d` is legal since there are no hidden sets to check.
+Here, the definition of `b` is in error since the hidden sets of the two `^`s in its type both contain `a`. Likewise, the definition of `c` is in error since the hidden set of the `^` in its type contains `a`, which is also part of a capture set somewhere else in the type. On the other hand, the definition of `d` is legal since there are no hidden sets to check.
 
 ### Checking Return Types
 
@@ -332,13 +328,12 @@ def newRef(): Ref^ =
   val a = Ref(1)
   a
 ```
-But the next line would cause a separation error:
+But the next definitions would cause a separation error:
 ```scala
 val a = Ref(1)
 def newRef(): Ref^ = a // error
 ```
-Here the rule is that the hidden set of a fresh cap in a return type cannot reference capabilities defined outside of the function. What about parameters?
-Here's another illegal version:
+The rule is that the hidden set of a fresh cap in a return type cannot reference exclusive or read-only capabilities defined outside of the function. What about parameters? Here's another illegal version:
 ```scala
 def incr(a: Ref^): Ref^ =
   a.set(a.get + 1)
@@ -377,16 +372,16 @@ of a previous application.
 
 Consume parameters enforce linear access to resources. This can be very useful. As an example, consider Scala's  buffers such as `ListBuffer` or `ArrayBuffer`. We can treat these buffers as if they were purely functional, if we can enforce linear access.
 
-We can define a function `linearAdd` that adds elements to buffers without violating referential transparency:
+For instance, we can define a function `linearAdd` that adds elements to buffers in-place without violating referential transparency:
 ```scala
 def linearAdd[T](@consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
   buf += elem
 ```
-`linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `@consume` annotation on `buf `makes the argument is not used after the call.
+`linearAdd` returns a fresh buffer resulting from appending `elem` to `buf`. It overwrites `buf`, but that's OK since the `@consume` annotation on `buf` ensures that the argument is not used after the call.
 
 ### Consume Methods
 
-Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function. We can enforce linearity in this case by adding the `@consume`  annotation to the method itself.
+Buffers in Scala's standard library use a single-argument method `+=` instead of a two argument global function like `linearAdd`. We can enforce linearity in this case by adding the `@consume`  annotation to the method itself.
 ```scala
 class Buffer[T] extends Mutable:
   @consume update def +=(x: T): Buffer[T]^ = this // ok
@@ -397,5 +392,5 @@ val b = Buffer[Int]() += 1 += 2
 val c = b += 3
 // b cannot be used from here
 ```
-and this code is equivalent (but a lot more efficient) to functional append with `+`.
+This code is equivalent to functional append with `+`, and is at the same time more efficient since it re-uses the storage of the argument buffer.
 
