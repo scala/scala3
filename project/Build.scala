@@ -1454,7 +1454,7 @@ object Build {
   lazy val `scala3-bootstrapped-new` = project
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped-new` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped-new`, `scala3-compiler-bootstrapped-new`, `scala3-sbt-bridge-bootstrapped`,
-      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`)
+      `scala3-staging-new`, `scala3-tasty-inspector-new`, `scala-library-sjs`, `scala3-library-sjs`, `scaladoc-new`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -2381,6 +2381,86 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+    )
+
+  // ==============================================================================================
+  // ========================================== SCALADOC ==========================================
+  // ==============================================================================================
+
+  /* Configuration of the org.scala-lang:scaladoc_3:*.**.**-bootstrapped project */
+  lazy val `scaladoc-new` = project.in(file("scaladoc"))
+    .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-tasty-inspector-new`)
+    .settings(
+      name          := "scaladoc",
+      moduleName    := "scaladoc",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      crossPaths    := true, // org.scala-lang:scaladoc has a crosspath
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      autoScalaLibrary := false,
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / resourceDirectory := baseDirectory.value / "resources",
+      // Add all the necessary resource generators
+      Compile / resourceGenerators ++= Seq(
+        generateStaticAssetsTask.taskValue,
+        bundleCSS.taskValue
+      ),
+      // All the dependencies needed by the doctool
+      libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
+        "nl.big-o" % "liqp" % "0.8.2",
+        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
+        Dependencies.`jackson-dataformat-yaml`,
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+      ),
+       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+      Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+      Compile / scalacOptions += "-experimental",
+      // TODO: Enable these flags when the new stdlib is explicitelly null checked
+      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      // Make sure that the produced artifacts have the minimum JVM version in the bytecode
+      Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
+      Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Packaging configuration of the stdlib
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := true,
+      // Only publish compilation artifacts, no test artifacts
+      Test    / publishArtifact := false,
+      // Do not allow to publish this project for now
+      publish / skip := false,
+      //
+      Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
+      Compile / buildInfoKeys := Seq[BuildInfoKey](version),
+      Compile / buildInfoPackage := "dotty.tools.scaladoc",
+      BuildInfoPlugin.buildInfoScopedSettings(Compile),
+      BuildInfoPlugin.buildInfoDefaultSettings,
+      // Configure to use the non-bootstrapped compiler
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
     )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
