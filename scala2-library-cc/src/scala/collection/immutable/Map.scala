@@ -314,7 +314,7 @@ object Map extends MapFactory[Map] {
       override protected def nextResult(k: K, v: V): V = v
     }
 
-    private abstract class Map2Iterator[A] extends AbstractIterator[A], Pure {
+    private abstract class Map2Iterator[A] extends AbstractIterator[A], caps.Pure {
       private[this] var i = 0
       override def hasNext: Boolean = i < 2
       override def next(): A = {
@@ -417,7 +417,7 @@ object Map extends MapFactory[Map] {
       override protected def nextResult(k: K, v: V): V = v
     }
 
-    private abstract class Map3Iterator[A] extends AbstractIterator[A], Pure {
+    private abstract class Map3Iterator[A] extends AbstractIterator[A], caps.Pure {
       private[this] var i = 0
       override def hasNext: Boolean = i < 3
       override def next(): A = {
@@ -537,7 +537,7 @@ object Map extends MapFactory[Map] {
       override protected def nextResult(k: K, v: V): V = v
     }
 
-    private abstract class Map4Iterator[A] extends AbstractIterator[A], Pure {
+    private abstract class Map4Iterator[A] extends AbstractIterator[A], caps.Pure {
       private[this] var i = 0
       override def hasNext: Boolean = i < 4
       override def next(): A = {

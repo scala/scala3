@@ -1,4 +1,5 @@
 package scala
+package caps
 import annotation.experimental
 
 /** A marker trait that declares that all inheriting classes are "pure" in the

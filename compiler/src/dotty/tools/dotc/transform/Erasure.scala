@@ -191,7 +191,7 @@ class Erasure extends Phase with DenotTransformer {
       || isAllowed(defn.TupleClass, "Tuple.scala")
       || isAllowed(defn.NonEmptyTupleClass, "Tuple.scala")
       || isAllowed(defn.PairClass, "Tuple.scala")
-      || isAllowed(defn.PureClass, "Pure.scala"),
+      || isAllowed(defn.PureClass, /* caps/ */ "Pure.scala"),
       i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }
 }

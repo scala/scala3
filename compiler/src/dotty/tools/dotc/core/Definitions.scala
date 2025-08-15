@@ -1020,7 +1020,7 @@ class Definitions {
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
 
-  @tu lazy val PureClass: ClassSymbol = requiredClass("scala.Pure")
+  @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
