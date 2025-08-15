@@ -2383,6 +2383,27 @@ object Build {
       }.taskValue,
     )
 
+  // ==============================================================================================
+  // ========================================= TEST SUITE =========================================
+  // ==============================================================================================
+
+  lazy val `sbt-test-new` = project.in(file("sbt-test"))
+    .enablePlugins(ScriptedPlugin)
+    .settings(
+      sbtTestDirectory := baseDirectory.value,
+      // The batch mode accidentally became the default with no way to disable
+      // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
+      // We enable it explicitly here to make it clear that we're using it.
+      scriptedBatchExecution := true,
+      scriptedLaunchOpts ++= Seq(
+        s"-Dplugin.scalaVersion=${dottyVersion}",
+        s"-Dplugin.scala2Version=${stdlibVersion(Bootstrapped)}",
+        s"-Dplugin.scalaJSVersion=${scalaJSVersion}",
+      ),
+      scriptedBufferLog := true,
+      scripted := scripted.dependsOn(`scala3-bootstrapped-new` / publishLocalBin).evaluated
+    )
+
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
     case Bootstrapped => `scala3-library-bootstrapped`
