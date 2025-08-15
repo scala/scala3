@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wunused:all
+//> using options -Werror -Wunused:all
 
 class SomeType
 
@@ -16,6 +16,5 @@ object UsesCanEqual:
 
 object UsesCanEqual2:
   import HasCanEqual.f
-
   def testIt(st1: SomeType, st2: SomeType): Boolean =
-    st1 == st2
+    st1 != st2
