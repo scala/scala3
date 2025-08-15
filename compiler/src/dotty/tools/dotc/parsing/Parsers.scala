@@ -3108,7 +3108,7 @@ object Parsers {
         (withinMatchPattern(pattern()), guard())
       }
       val body =
-        if in.token == WITH && in.featureEnabled(Feature.matchWithSubCases) then atSpan(in.skipToken()):
+        if in.token == WITH && in.featureEnabled(Feature.subCases) then atSpan(in.skipToken()):
           subMatchClause(simpleExpr(Location.ElseWhere))
         else atSpan(accept(ARROW)):
           if exprOnly then

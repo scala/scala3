@@ -1,4 +1,4 @@
-import scala.language.experimental.matchWithSubCases
+import scala.language.experimental.subCases
 
 enum E extends Exception:
   case A(x: Any)

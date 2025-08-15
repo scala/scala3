@@ -1,4 +1,4 @@
-import scala.language.experimental.matchWithSubCases
+import scala.language.experimental.subCases
 
 enum E:
   case A(e: E)

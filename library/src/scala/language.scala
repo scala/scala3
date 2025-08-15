@@ -350,10 +350,10 @@ object language {
     @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
     object packageObjectValues
 
-    /** Experimental support for match expressions with sub-cases.
+    /** Experimental support for match expressions with sub cases.
      */
-    @compileTimeOnly("`matchWithSubCases` can only be used at compile time in import statements")
-    object matchWithSubCases
+    @compileTimeOnly("`subCases` can only be used at compile time in import statements")
+    object subCases
 
   }
 

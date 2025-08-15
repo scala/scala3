@@ -1,4 +1,4 @@
-import scala.language.experimental.matchWithSubCases
+import scala.language.experimental.subCases
 
 val pf: PartialFunction[Option[Option[Int]], String] =
   case Some(x2) with x2 match
