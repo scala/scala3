@@ -1480,7 +1480,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   def toIndexedSeq: immutable.IndexedSeq[A] = immutable.IndexedSeq.from(this)
 
   @deprecated("Use .to(LazyList) instead of .toStream", "2.13.0")
-  @inline final def toStream: immutable.Stream[A]^{this} = to(immutable.Stream)
+  @inline final def toStream: immutable.Stream[A] = to(immutable.Stream)
 
   /** Converts this $coll to a `Buffer`.
     *

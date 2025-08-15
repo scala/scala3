@@ -263,7 +263,7 @@ object PartialFunction {
 
   final class ElementWiseExtractor[-A, +B] private[PartialFunction] (private val pf: PartialFunction[A, B]^) extends AnyVal { this: ElementWiseExtractor[A, B]^ =>
     @nowarn("cat=lint-nonlocal-return")
-    def unapplySeq(seq: Seq[A]): Option[Seq[B]^{this}] = { // TODO remove when Seq is capture-checked
+    def unapplySeq(seq: Seq[A]): Option[Seq[B]] = {
       Some(seq.map {
         case pf(b) => b
         case _ => return None

@@ -840,7 +840,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     *
     * $preservesLaziness
     */
-  override def diff[B >: A](that: collection.Seq[B]^): LazyListIterable[A]^{this}  =
+  override def diff[B >: A](that: collection.Seq[B]): LazyListIterable[A]^{this}  =
     if (knownIsEmpty) Empty
     else super.diff(that)
 
@@ -848,7 +848,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     *
     * $preservesLaziness
     */
-  override def intersect[B >: A](that: collection.Seq[B]^): LazyListIterable[A]^{this} =
+  override def intersect[B >: A](that: collection.Seq[B]): LazyListIterable[A]^{this} =
     if (knownIsEmpty) Empty
     else super.intersect(that)
 

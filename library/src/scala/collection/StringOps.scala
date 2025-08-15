@@ -595,14 +595,14 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   @inline final def mkString: String = s
 
   /** Appends this string to a string builder. */
-  @inline final def addString(b: StringBuilder^): b.type = b.append(s)
+  @inline final def addString(b: StringBuilder): b.type = b.append(s)
 
   /** Appends this string to a string builder using a separator string. */
-  @inline final def addString(b: StringBuilder^, sep: String): b.type =
+  @inline final def addString(b: StringBuilder, sep: String): b.type =
     addString(b, "", sep, "")
 
   /** Appends this string to a string builder using start, end and separator strings. */
-  final def addString(b: StringBuilder^, start: String, sep: String, end: String): b.type = {
+  final def addString(b: StringBuilder, start: String, sep: String, end: String): b.type = {
     val jsb = b.underlying
     if (start.length != 0) jsb.append(start)
     val len = s.length
