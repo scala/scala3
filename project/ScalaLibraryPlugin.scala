@@ -110,7 +110,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
       previous
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
         .withHasModified(true)  // mark it as updated for sbt to update its caches
-    },
+    }
   )
 
   private lazy val filesToCopy = Set(

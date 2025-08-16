@@ -1682,7 +1682,6 @@ object Build {
       Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
-        "-nowarn",
       ),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
@@ -1765,7 +1764,6 @@ object Build {
       Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
-        "-nowarn",
       ),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
