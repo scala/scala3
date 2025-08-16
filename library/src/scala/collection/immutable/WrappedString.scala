@@ -103,7 +103,7 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
   override def appendedAll[B >: Char](suffix: IterableOnce[B]^): IndexedSeq[B] =
     suffix match {
       case s: WrappedString => new WrappedString(self concat s.self)
-      case _                => Predef.??? // TODO super.appendedAll(suffix)
+      case _                => super.appendedAll(suffix)
     }
 
   override def sameElements[B >: Char](o: IterableOnce[B]^) = o match {
