@@ -1,4 +1,3 @@
-
 -- Error: tests/neg/experimental-message-experimental-flag/Test_2.scala:3:10 -------------------------------------------
 3 |def g() = f() // error
   |          ^
