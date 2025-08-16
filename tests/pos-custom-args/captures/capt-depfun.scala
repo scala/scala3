@@ -1,5 +1,5 @@
 import annotation.retains
-import caps.consume
+
 class C
 type Cap = C @retains[caps.cap.type]
 
@@ -11,7 +11,7 @@ class STR(s: String)
 
 val aa: ((x: Cap) -> STR @retains[x.type]) = (x: Cap) => STR("")
 
-def f(@consume y: Cap, z: Cap): STR @retains[caps.cap.type] =
+def f(consume y: Cap, z: Cap): STR @retains[caps.cap.type] =
   val a: ((x: Cap) -> STR @retains[x.type]) = (x: Cap) => STR("")
   val b = a(y)
   val c: STR @retains[y.type] = b

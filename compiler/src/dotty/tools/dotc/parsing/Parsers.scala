@@ -35,6 +35,7 @@ import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.dotc.config.Feature.ccEnabled
 
 object Parsers {
 
@@ -216,6 +217,8 @@ object Parsers {
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased =
       isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
+    def isConsume =
+      isIdent(nme.consume) && ccEnabled //\&& in.isSoftModifierInParamModifierPosition
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -3325,11 +3328,15 @@ object Parsers {
     private def addModifier(mods: Modifiers): Modifiers = {
       val tok = in.token
       val name = in.name
-      val mod = atSpan(in.skipToken()) { modOfToken(tok, name) }
-
-      if mods.isOneOf(mod.flags) then
-        syntaxError(RepeatedModifier(mod.flags.flagsString, source, mod.span), mod.span)
-      addMod(mods, mod)
+      if isConsume then
+        val consumeAnnot = atSpan(in.skipToken())(makeConsumeAnnot())
+        mods.withAddedAnnotation(consumeAnnot)
+      else
+        val mod = atSpan(in.skipToken()):
+          modOfToken(tok, name)
+        if mods.isOneOf(mod.flags) then
+          syntaxError(RepeatedModifier(mod.flags.flagsString, source, mod.span), mod.span)
+        addMod(mods, mod)
     }
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers =
@@ -3555,7 +3562,8 @@ object Parsers {
      *  UsingParamClause  ::=  ‘(’ ‘using’ (DefTermParams | ContextTypes) ‘)’
      *  DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
      *  DefTermParams     ::=  DefTermParam {‘,’ DefTermParam}
-     *  DefTermParam      ::=  {Annotation} [‘erased’] [‘inline’] Param
+     *  DefTermParam      ::=  {Annotation} TermParamMods Param
+     *  TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
      *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
@@ -3592,7 +3600,7 @@ object Parsers {
       def param(): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
-        if isErased then
+        if isConsume || isErased then
           mods = addModifier(mods)
         if paramOwner.isClass then
           mods = addFlag(modifiers(start = mods), ParamAccessor)
@@ -3664,6 +3672,7 @@ object Parsers {
                 var mods = EmptyModifiers
                 if in.lookahead.isColon then
                   (mods, true)
+                else if isConsume then (mods, true)
                 else
                   if isErased then mods = addModifier(mods)
                   val paramsAreNamed =

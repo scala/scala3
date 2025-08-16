@@ -1,9 +1,10 @@
 ---
 layout: doc-page
-title: "Capture Checking -- Advanced Use Cases"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/cc-advanced.html
+title: "Capability Polymorphism"
+nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/advanced.html
 ---
 
+Advanced use cases.
 
 ## Access Control
 Analogously to type parameters, we can lower- and upper-bound capability parameters where the bounds consist of concrete capture sets:
@@ -75,4 +76,4 @@ By leveraging capability polymorphism, capability members, and path-dependent ca
 * `Label`s store the free capabilities `C` of the `block` passed to `boundary` in their capability member `Fv`.
 * When suspending on a given label, the suspension handler can capture at most the capabilities that occur freely at the `boundary` that introduced the label. That prevents mentioning nested bound labels.
 
-[Back to Capture Checking](cc.md)
+[Back to Capability Polymorphism](polymorphism.md)

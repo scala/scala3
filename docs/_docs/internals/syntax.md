@@ -141,7 +141,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  mut  opaque  open  throws tracked transparent  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  inline  opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -406,7 +406,8 @@ UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) �
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
 
 DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
-DefTermParam      ::= {Annotation} [`erased`] [‘inline’] Param                    ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefTermParam      ::= {Annotation} TermParamMods Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
@@ -430,7 +431,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘infix’
                     |  ‘erased’
                     |  ‘tracked’
-                    |  ‘mut’                                                      -- under captureChecking
+                    |  ‘update’                                                      -- under captureChecking
+                    |  ‘consume’
 
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’

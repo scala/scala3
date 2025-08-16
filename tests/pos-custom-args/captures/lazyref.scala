@@ -1,5 +1,5 @@
 
-import caps.consume
+
 
 class Cap extends caps.SharedCapability
 
@@ -14,7 +14,7 @@ def map[A, B](ref: LazyRef[A]^, f: A => B): LazyRef[B]^{f, ref} =
 def mapc[A, B]: (ref: LazyRef[A]^, f: A => B) => LazyRef[B]^{f, ref} =
   (ref1, f1) => map[A, B](ref1, f1)
 
-def test(@consume cap1: Cap, @consume cap2: Cap) =
+def test(consume cap1: Cap, consume cap2: Cap) =
   def f(x: Int) = if cap1 == cap1 then x else 0
   def g(x: Int) = if cap2 == cap2 then x else 0
   val ref1 = LazyRef(() => f(0))

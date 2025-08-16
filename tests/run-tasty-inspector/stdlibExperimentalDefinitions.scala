@@ -38,7 +38,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps.ExclusiveCapability",
   "scala.caps.Mutable",
   "scala.caps.Read",
-  "scala.caps.consume",
   "scala.caps.internal",
   "scala.caps.internal$",
   "scala.caps.cap",

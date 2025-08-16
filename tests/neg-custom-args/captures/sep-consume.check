@@ -2,7 +2,7 @@
 19 |  x.put(42)  // error
    |  ^
    |  Separation failure: Illegal access to (x : Ref^), which was passed to a
-   |  @consume parameter or was used as a prefix to a @consume method on line 18
+   |  consume parameter or was used as a prefix to a consume method on line 18
    |  and therefore is no longer available.
    |
    |  where:    ^ refers to a fresh root capability classified as Mutable in the type of parameter x
@@ -10,11 +10,11 @@
 21 |  par(rx, () => x.put(42))  // error
    |                ^
    |                Separation failure: Illegal access to (x : Ref^), which was passed to a
-   |                @consume parameter or was used as a prefix to a @consume method on line 18
+   |                consume parameter or was used as a prefix to a consume method on line 18
    |                and therefore is no longer available.
    |
    |                where:    ^ refers to a fresh root capability classified as Mutable in the type of parameter x
 -- Error: tests/neg-custom-args/captures/sep-consume.scala:26:16 -------------------------------------------------------
 26 |  def foo = bad(f) // error
    |                ^
-   | Separation failure: argument to @consume parameter with type (f : () ->{x.rd} Unit) refers to non-local value f
+   |  Separation failure: argument to consume parameter with type (f : () ->{x.rd} Unit) refers to non-local value f

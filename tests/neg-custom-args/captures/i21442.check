@@ -12,4 +12,4 @@
 17 |  val x1: Boxed[IO^] = x // error
    |          ^^^^^^^^^^
    |          Separation failure: value x1's type Boxed[IO^] hides parameter x.
-   |          The parameter needs to be annotated with @consume to allow this.
+   |          The parameter needs to be annotated with consume to allow this.

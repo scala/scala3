@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import ast.tpd
+import ast.{tpd, untpd}
 import cc.*
 import CaptureSet.Mutability
 import Capabilities.*
@@ -716,8 +716,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ => literalText(String.valueOf(const.value))
   }
 
-  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
-  def annotText(annot: Annotation): Text = s"@${annot.symbol.name}"
+  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter, which also
+   *  looks at trees.
+   */
+  override def annotText(annot: Annotation): Text = annotText(annot.symbol)
+
+  protected def annotText(sym: Symbol): Text = s"@${sym.name}"
 
   def toText(annot: Annotation): Text = annot.toText(this)
 

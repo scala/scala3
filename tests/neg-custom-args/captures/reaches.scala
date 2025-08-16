@@ -1,5 +1,3 @@
-import caps.use;
-import caps.consume
 class File:
   def write(): Unit = ???
 
@@ -33,7 +31,7 @@ def runAll1[C^](xs: List[() ->{C} Unit]): Unit =
     cur.set:
       (() => f.write()) :: Nil
 
-def runAll2(@consume xs: List[Proc]): Unit =
+def runAll2(consume xs: List[Proc]): Unit =
   var cur: List[Proc] = xs
   while cur.nonEmpty do
     val next: () => Unit = cur.head   // error, use
