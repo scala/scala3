@@ -1288,7 +1288,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *                   `p(x, y)` is `true` for all corresponding elements `x` of this iterator
    *                   and `y` of `that`, otherwise `false`
    */
-  def corresponds[B](that: IterableOnce[B])(p: (A, B) => Boolean): Boolean = {
+  def corresponds[B](that: IterableOnce[B]^)(p: (A, B) => Boolean): Boolean = {
     val a = iterator
     val b = that.iterator
 

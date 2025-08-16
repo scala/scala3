@@ -177,7 +177,7 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     })
   }
 
-  def flatMap[B, C](f: (El1, El2, El3) => Iterable[B])(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
+  def flatMap[B, C](f: (El1, El2, El3) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
         private[this] val elems1 = coll1.iterator
@@ -310,7 +310,7 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     })
   }
 
-  def flatMap[B, C](f: (El1, El2, El3, El4) => Iterable[B])(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
+  def flatMap[B, C](f: (El1, El2, El3, El4) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
         private[this] val elems1 = coll1.iterator

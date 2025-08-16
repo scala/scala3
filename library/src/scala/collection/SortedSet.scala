@@ -179,7 +179,7 @@ object SortedSetOps {
     def map[B : Ordering](f: A => B): CC[B] =
       self.sortedIterableFactory.from(new View.Map(filtered, f))
 
-    def flatMap[B : Ordering](f: A => IterableOnce[B]): CC[B] =
+    def flatMap[B : Ordering](f: A => IterableOnce[B]^): CC[B] =
       self.sortedIterableFactory.from(new View.FlatMap(filtered, f))
 
     override def withFilter(q: A => Boolean): WithFilter[A, IterableCC, CC]^{this, q} =

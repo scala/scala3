@@ -124,7 +124,7 @@ object StringOps {
       *  @return       a new collection resulting from applying the given collection-valued function
       *                `f` to each char of this string and concatenating the results.
       */
-    def flatMap[B](f: Char => IterableOnce[B]): immutable.IndexedSeq[B] = {
+    def flatMap[B](f: Char => IterableOnce[B]^): immutable.IndexedSeq[B] = {
       val len = s.length
       val b = immutable.IndexedSeq.newBuilder[B]
       var i = 0

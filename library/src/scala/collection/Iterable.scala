@@ -669,7 +669,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     *  @param op      the binary operator applied to the intermediate result and the element
     *  @return        collection with intermediate results
     */
-  def scanRight[B](z: B)(op: (A, B) => B): CC[B] = {
+  def scanRight[B](z: B)(op: (A, B) => B): CC[B]^{this, op} = {
     class Scanner extends runtime.AbstractFunction1[A, Unit] {
       var acc = z
       var scanned = acc :: immutable.Nil

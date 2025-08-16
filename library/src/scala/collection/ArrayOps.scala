@@ -1172,7 +1172,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     dest
   }
 
-  @`inline` final def ++: [B >: A : ClassTag](prefix: IterableOnce[B]): Array[B] = prependedAll(prefix)
+  @`inline` final def ++: [B >: A : ClassTag](prefix: IterableOnce[B]^): Array[B] = prependedAll(prefix)
 
   @`inline` final def ++: [B >: A : ClassTag](prefix: Array[_ <: B]): Array[B] = prependedAll(prefix)
 
