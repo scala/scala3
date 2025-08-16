@@ -25,9 +25,10 @@ trait ClassLikeSupport:
     def getExtraModifiers(): Seq[Modifier] =
       var mods = SymOps.getExtraModifiers(symbol)()
       if ccEnabled && symbol.flags.is(Flags.Mutable) then
-        mods :+= Modifier.Update
-      if ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then
-        mods :+= Modifier.Consume
+        if symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then
+          mods :+= Modifier.Consume
+        else
+          mods :+= Modifier.Update
       mods
   }
 
