@@ -7,7 +7,7 @@
   |Parents in symbol: [class Object, trait Serializer]
   |Parents in tree: [class Object, trait Serializer, trait Foo]
   |
-  |	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:8)
+  |	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:10)
   |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:210)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:286)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:285)

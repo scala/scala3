@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 trait ExprMap:
 
   /** Map an expression `e` with a type `T` */

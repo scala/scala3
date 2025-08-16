@@ -1,5 +1,7 @@
 package scala.reflect
 
+import language.experimental.captureChecking
+
 /** A class that implements structural selections using Java reflection.
  *
  *  It can be used as a supertrait of a class or be made available

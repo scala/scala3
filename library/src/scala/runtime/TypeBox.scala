@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 /** A type for skolems that are generated during capture conversion. Capture conversion
  *  narrows the type of a tree whose type has wildcard arguments. A typical situation
  *  is a tree `t` of type `C[_ >: L <: U]` and an expected type `C[X]` where `X` is an

@@ -1,6 +1,8 @@
 package scala
 import compiletime.ops.boolean.*
 
+import language.experimental.captureChecking
+
 object NamedTuple:
 
   /** The type to which named tuples get mapped to. For instance,

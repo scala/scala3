@@ -1,6 +1,8 @@
 package scala
 package caps
 
+import language.experimental.captureChecking
+
 import annotation.{experimental, compileTimeOnly, retainsCap}
 
 /**

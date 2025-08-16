@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.annotation.{experimental, implicitNotFound, unused}
 import scala.reflect.TypeTest
 
