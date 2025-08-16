@@ -32,6 +32,9 @@ object boundary:
 
   /** User code should call `break.apply` instead of throwing this exception
    *  directly.
+   *
+   *  Note that it is **capability unsafe** to access `label` from a `Break`.
+   *  This field will be marked private in a future release.
    */
   final class Break[T] private[boundary](val label: Label[T]^{}, val value: T)
   extends RuntimeException(
