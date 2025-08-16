@@ -19,7 +19,7 @@ import scala.language.`2.13`
 /** A function of 8 parameters.
  *
  */
-trait Function8[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, +R] extends AnyRef { self =>
+trait Function8[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, +R] extends AnyRef {
   /** Apply the body of this function to the arguments.
    *  @return   the result of function application.
    */
@@ -29,7 +29,7 @@ trait Function8[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, +R] extends AnyRef { sel
    *  @return   a function `f` such that `f(x1)(x2)(x3)(x4)(x5)(x6)(x7)(x8) == apply(x1, x2, x3, x4, x5, x6, x7, x8)`
    */
   @annotation.unspecialized def curried: T1 => T2 => T3 => T4 => T5 => T6 => T7 => T8 => R = {
-    (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8) => self.apply(x1, x2, x3, x4, x5, x6, x7, x8)).curried
+    (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5, x6: T6, x7: T7, x8: T8) => this.apply(x1, x2, x3, x4, x5, x6, x7, x8)).curried
   }
   /** Creates a tupled version of this function: instead of 8 arguments,
    *  it accepts a single [[scala.Tuple8]] argument.

@@ -31,7 +31,7 @@ final abstract class Unit private extends AnyVal {
 @scala.annotation.compileTimeOnly("`Unit` companion object is not allowed in source; instead, use `()` for the unit value")
 object Unit extends AnyValCompanion {
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  This method is not intended for use in source code.
    *  The runtime representation of this value is platform specific.
@@ -41,7 +41,7 @@ object Unit extends AnyValCompanion {
    */
   def box(x: Unit): scala.runtime.BoxedUnit = scala.runtime.BoxedUnit.UNIT
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a scala.runtime.BoxedUnit.
    *

@@ -25,7 +25,7 @@ import scala.collection.mutable.{ArrayBuffer, StringBuilder}
 import scala.language.implicitConversions
 import Stream.cons
 
-@deprecated("Use LazyList (which is fully lazy) instead of Stream (which has a lazy tail only)", "2.13.0")
+@deprecated("Use LazyListIterable (which is fully lazy) instead of Stream (which has a lazy tail only)", "2.13.0")
 @SerialVersionUID(3L)
 sealed abstract class Stream[+A] extends AbstractSeq[A]
   with LinearSeq[A]

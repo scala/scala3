@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.ReusableBuilder
 import scala.collection.generic.DefaultSerializable
@@ -48,7 +50,7 @@ sealed class ListMap[K, +V]
     with MapFactoryDefaults[K, V, ListMap, Iterable]
     with DefaultSerializable {
 
-  override def mapFactory: MapFactory[ListMap] = ListMap
+  override def mapFactory: StrictMapFactory[ListMap] = ListMap
 
   override def size: Int = 0
 
@@ -127,7 +129,7 @@ sealed class ListMap[K, +V]
   * @define coll list map
   */
 @SerialVersionUID(3L)
-object ListMap extends MapFactory[ListMap] {
+object ListMap extends StrictMapFactory[ListMap] {
   /**
     * Represents an entry in the `ListMap`.
     */
@@ -241,7 +243,7 @@ object ListMap extends MapFactory[ListMap] {
 
   private object EmptyListMap extends ListMap[Any, Nothing]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): ListMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): ListMap[K, V] =
     it match {
       case lm: ListMap[K, V] => lm
       case lhm: collection.mutable.LinkedHashMap[K, V] =>
@@ -324,7 +326,7 @@ private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuil
     }
     this
   }
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     if (isAliased) {
       super.addAll(xs)
     } else if (underlying.nonEmpty) {

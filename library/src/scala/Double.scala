@@ -230,7 +230,7 @@ object Double extends AnyValCompanion {
   /** The largest finite positive number representable as a Double. */
   final val MaxValue = java.lang.Double.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToDouble`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -239,7 +239,7 @@ object Double extends AnyValCompanion {
    */
   def box(x: Double): java.lang.Double = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Double.
    *

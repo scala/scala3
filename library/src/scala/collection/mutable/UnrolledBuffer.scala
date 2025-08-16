@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.reflect.ClassTag
@@ -196,7 +197,7 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
   def insert(idx: Int, elem: T): Unit =
     insertAll(idx, elem :: Nil)
 
-  def insertAll(idx: Int, elems: IterableOnce[T]): Unit =
+  def insertAll(idx: Int, elems: IterableOnce[T]^): Unit =
     if (idx >= 0 && idx <= sz) {
       sz += headptr.insertAll(idx, elems, this)
     } else throw CommonErrors.indexOutOfBounds(index = idx, max = sz - 1)
@@ -208,7 +209,7 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
     this
   }
 
-  def patchInPlace(from: Int, patch: collection.IterableOnce[T], replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: collection.IterableOnce[T]^, replaced: Int): this.type = {
     remove(from, replaced)
     insertAll(from, patch)
     this
@@ -248,7 +249,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   def empty[A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
 
-  def from[A : ClassTag](source: scala.collection.IterableOnce[A]): UnrolledBuffer[A] = newBuilder[A].addAll(source)
+  def from[A : ClassTag](source: scala.collection.IterableOnce[A]^): UnrolledBuffer[A] = newBuilder[A].addAll(source)
 
   def newBuilder[A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
 
@@ -264,6 +265,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
   /** Unrolled buffer node.
     */
   class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
+    this: Unrolled[T]^{} =>
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)
     private[collection] def this(b: UnrolledBuffer[T]) = this(0, new Array[T](unrolledlength), null, b)
 
@@ -378,7 +380,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       if (next eq null) true else false // checks if last node was thrown out
     } else false
 
-    @tailrec final def insertAll(idx: Int, t: scala.collection.IterableOnce[T], buffer: UnrolledBuffer[T]): Int = {
+    @tailrec final def insertAll(idx: Int, t: scala.collection.IterableOnce[T]^, buffer: UnrolledBuffer[T]): Int = {
       if (idx < size) {
         // divide this node at the appropriate position and insert all into head
         // update new next

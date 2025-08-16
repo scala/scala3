@@ -114,7 +114,7 @@ final abstract class Boolean private extends AnyVal {
 
 object Boolean extends AnyValCompanion {
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToBoolean`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
    *
@@ -123,7 +123,7 @@ object Boolean extends AnyValCompanion {
    */
   def box(x: Boolean): java.lang.Boolean = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Boolean.
    *

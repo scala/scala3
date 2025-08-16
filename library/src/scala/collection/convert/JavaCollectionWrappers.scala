@@ -15,6 +15,8 @@ package collection
 package convert
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.{concurrent => juc}
 import java.util.{NavigableMap}
 import java.{lang => jl, util => ju}
@@ -29,7 +31,7 @@ import scala.util.control.ControlThrowable
 // not private[convert] because `WeakHashMap` uses JMapWrapper
 private[collection] object JavaCollectionWrappers extends Serializable {
   @SerialVersionUID(3L)
-  class IteratorWrapper[A](val underlying: Iterator[A]) extends ju.Iterator[A] with ju.Enumeration[A] with Serializable {
+  class IteratorWrapper[A](val underlying: Iterator[A]^) extends ju.Iterator[A] with ju.Enumeration[A] with Serializable {
     def hasNext = underlying.hasNext
     def next() = underlying.next()
     def hasMoreElements = underlying.hasNext
@@ -65,14 +67,14 @@ private[collection] object JavaCollectionWrappers extends Serializable {
   }
 
   trait IterableWrapperTrait[A] extends ju.AbstractCollection[A] {
-    val underlying: Iterable[A]
+    val underlying: Iterable[A]^
     def size = underlying.size
-    override def iterator: IteratorWrapper[A] = new IteratorWrapper(underlying.iterator)
+    override def iterator: IteratorWrapper[A]^{this} = new IteratorWrapper(underlying.iterator)
     override def isEmpty = underlying.isEmpty
   }
 
   @SerialVersionUID(3L)
-  class IterableWrapper[A](val underlying: Iterable[A]) extends ju.AbstractCollection[A] with IterableWrapperTrait[A] with Serializable {
+  class IterableWrapper[A](val underlying: Iterable[A]^) extends ju.AbstractCollection[A] with IterableWrapperTrait[A] with Serializable {
     override def equals(other: Any): Boolean = other match {
       case that: IterableWrapper[_] => this.underlying == that.underlying
       case _ => false
@@ -151,7 +153,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def prepend(elem: A) = { underlying.subList(0, 0) add elem; this }
     def addOne(elem: A): this.type = { underlying add elem; this }
     def insert(idx: Int,elem: A): Unit = underlying.subList(0, idx).add(elem)
-    def insertAll(i: Int, elems: IterableOnce[A]) = {
+    def insertAll(i: Int, elems: IterableOnce[A]^) = {
       val ins = underlying.subList(0, i)
       elems.iterator.foreach(ins.add(_))
     }
@@ -160,7 +162,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     // Note: Clone cannot just call underlying.clone because in Java, only specific collections
     // expose clone methods.  Generically, they're protected.
     override def clone(): JListWrapper[A] = new JListWrapper(new ju.ArrayList[A](underlying))
-    def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
+    def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
       remove(from, replaced)
       insertAll(from, patch)
       this

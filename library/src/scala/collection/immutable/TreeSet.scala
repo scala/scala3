@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.ReusableBuilder
@@ -171,7 +173,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
   def excl(elem: A): TreeSet[A] =
     newSetOrSelf(RB.delete(tree, elem))
 
-  override def concat(that: collection.IterableOnce[A]): TreeSet[A] = {
+  override def concat(that: collection.IterableOnce[A]^): TreeSet[A] = {
     val t = that match {
       case ts: TreeSet[A] if ordering == ts.ordering =>
         RB.union(tree, ts.tree)
@@ -184,7 +186,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     newSetOrSelf(t)
   }
 
-  override def removedAll(that: IterableOnce[A]): TreeSet[A] = that match {
+  override def removedAll(that: IterableOnce[A]^): TreeSet[A] = that match {
     case ts: TreeSet[A] if ordering == ts.ordering =>
       newSetOrSelf(RB.difference(tree, ts.tree))
     case _ =>
@@ -240,7 +242,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
 
   def empty[A: Ordering]: TreeSet[A] = new TreeSet[A]
 
-  def from[E](it: scala.collection.IterableOnce[E])(implicit ordering: Ordering[E]): TreeSet[E] =
+  def from[E](it: scala.collection.IterableOnce[E]^)(implicit ordering: Ordering[E]): TreeSet[E] =
     it match {
       case ts: TreeSet[E] if ordering == ts.ordering => ts
       case ss: scala.collection.SortedSet[E] if ordering == ss.ordering =>
@@ -270,7 +272,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
       this
     }
 
-    override def addAll(xs: IterableOnce[A]): this.type = {
+    override def addAll(xs: IterableOnce[A]^): this.type = {
       xs match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
         // for the moment we have to force immutability before the union

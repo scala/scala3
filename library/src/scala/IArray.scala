@@ -272,9 +272,9 @@ object IArray:
     def concat[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr).concat(suffix)
     def concat[U >: T: ClassTag](suffix: IterableOnce[U]^): IArray[U] = genericArrayOps(arr).concat(suffix)
     def diff[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).diff(that.toSeq)
-    def diff[U >: T](that: Seq[U]^): IArray[T] = genericArrayOps(arr).diff(that)
+    def diff[U >: T](that: Seq[U]): IArray[T] = genericArrayOps(arr).diff(that)
     def distinct: IArray[T] = genericArrayOps(arr).distinct
-    def distinctBy[U](f: T => U): IArray[T] = genericArrayOps(arr).distinctBy(f)
+    def distinctBy[U](f: T -> U): IArray[T] = genericArrayOps(arr).distinctBy(f)
     def startsWith[U >: T](that: IArray[U]): Boolean = genericArrayOps(arr).startsWith(that, 0)
     def startsWith[U >: T](that: IArray[U], offset: Int): Boolean = genericArrayOps(arr).startsWith(that, offset)
     def startsWith[U >: T](that: IterableOnce[U]^): Boolean = genericArrayOps(arr).startsWith(that, 0)
@@ -286,7 +286,7 @@ object IArray:
     def grouped(size: Int): Iterator[IArray[T]] = genericArrayOps(arr).grouped(size)
     def inits: Iterator[IArray[T]] = genericArrayOps(arr).inits
     def intersect[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).intersect(that)
-    def intersect[U >: T](that: Seq[U]^): IArray[T] = genericArrayOps(arr).intersect(that)
+    def intersect[U >: T](that: Seq[U]): IArray[T] = genericArrayOps(arr).intersect(that)
     def lazyZip[U](that: IArray[U]): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
     def lazyZip[U](that: Iterable[U]^): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
     def lengthCompare(len: Int): Int = genericArrayOps(arr).lengthCompare(len)
@@ -297,7 +297,7 @@ object IArray:
     def prepended[U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr).prepended(x)
     def prependedAll[U >: T: ClassTag](prefix: IterableOnce[U]^): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
     def reverseIterator: Iterator[T] = genericArrayOps(arr).reverseIterator
-    def search[U >: T](elem: U)(using Ordering[U]^): Searching.SearchResult = arr.toSeq.search(elem)
+    def search[U >: T](elem: U)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem)
     def search[U >: T](elem: U, from: Int, to: Int)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem, from, to)
     def sizeCompare(that: IArray[Any]): Int = arr.toSeq.sizeCompare(that)
     def sizeCompare(that: Iterable[?]): Int = arr.toSeq.sizeCompare(that)

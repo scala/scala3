@@ -14,6 +14,7 @@ package scala.collection
 package generic
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** Some precomputed common errors to reduce the generated code size.
   */

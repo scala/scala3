@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import java.lang.Integer.numberOfLeadingZeros
 import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
@@ -24,10 +25,10 @@ import scala.collection.generic.DefaultSerializable
   */
 @deprecated("Use HashMap or one of the specialized versions (LongMap, AnyRefMap) instead of OpenHashMap", "2.13.0")
 @SerialVersionUID(3L)
-object OpenHashMap extends MapFactory[OpenHashMap] {
+object OpenHashMap extends StrictMapFactory[OpenHashMap] {
 
   def empty[K, V] = new OpenHashMap[K, V]
-  def from[K, V](it: IterableOnce[(K, V)]): OpenHashMap[K,V] = empty ++= it
+  def from[K, V](it: IterableOnce[(K, V)]^): OpenHashMap[K,V] = empty ++= it
 
   def newBuilder[K, V]: Builder[(K, V), OpenHashMap[K,V]] =
     new GrowableBuilder[(K, V), OpenHashMap[K, V]](empty)
@@ -76,7 +77,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
     */
   def this() = this(8)
 
-  override def mapFactory: MapFactory[OpenHashMap] = OpenHashMap
+  override def mapFactory: StrictMapFactory[OpenHashMap] = OpenHashMap
 
   private[this] val actualInitialSize = OpenHashMap.nextPositivePowerOfTwo(initialSize)
 

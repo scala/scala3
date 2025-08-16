@@ -14,6 +14,8 @@ package scala.collection
 package generic
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.reflect.ClassTag
 
 /** Type class witnessing that a collection representation type `Repr` has
@@ -69,7 +71,7 @@ object IsSeq {
           def apply(i: Int): Char = s.charAt(i)
           def toIterable: Iterable[Char] = new immutable.WrappedString(s)
           protected[this] def coll: String = s
-          protected[this] def fromSpecific(coll: IterableOnce[Char]): String = coll.iterator.mkString
+          protected[this] def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
           def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
           override def empty: String = ""
           protected[this] def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
@@ -94,7 +96,7 @@ object IsSeq {
           def length: Int = a.length
           def toIterable: Iterable[A] = mutable.ArraySeq.make(a)
           protected def coll: Array[A] = a
-          protected def fromSpecific(coll: IterableOnce[A]): Array[A] = Array.from(coll)
+          protected def fromSpecific(coll: IterableOnce[A]^): Array[A] = Array.from(coll)
           def iterableFactory: IterableFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder

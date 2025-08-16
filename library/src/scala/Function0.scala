@@ -11,7 +11,7 @@
  */
 
 // GENERATED CODE: DO NOT EDIT.
-// genprod generated these sources at: 2022-01-17T20:47:12.170348200Z
+// genprod generated these sources at: 2025-08-11T16:44:44.712777821Z
 
 package scala
 
@@ -36,7 +36,7 @@ import scala.language.`2.13`
  * }
  *  }}}
  */
-trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef { self =>
+trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef {
   /** Apply the body of this function to the arguments.
    *  @return   the result of function application.
    */

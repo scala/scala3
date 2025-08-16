@@ -14,6 +14,8 @@ package scala
 package collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.lang.Integer.bitCount
 import java.lang.System.arraycopy
 
@@ -22,7 +24,7 @@ import scala.collection.Hashing.improve
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable, mutable.ReusableBuilder
-import scala.collection.{Iterator, MapFactory, MapFactoryDefaults, Stepper, StepperShape, mutable}
+import scala.collection.{Iterator, StrictMapFactory, MapFactoryDefaults, Stepper, StepperShape, mutable}
 import scala.runtime.AbstractFunction2
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
@@ -48,7 +50,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
   // This release fence is present because rootNode may have previously been mutated during construction.
   releaseFence()
 
-  override def mapFactory: MapFactory[HashMap] = HashMap
+  override def mapFactory: StrictMapFactory[HashMap] = HashMap
 
   override def knownSize: Int = rootNode.size
 
@@ -162,7 +164,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
-  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]): HashMap[K, V1] = that match {
+  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
     case hm: HashMap[K, V1] =>
       if (isEmpty) hm
       else {
@@ -385,7 +387,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     else new HashMap(newRootNode)
   }
 
-  override def removedAll(keys: IterableOnce[K]): HashMap[K, V] = {
+  override def removedAll(keys: IterableOnce[K]^): HashMap[K, V] = {
     if (isEmpty) {
       this
     } else {
@@ -2192,7 +2194,7 @@ private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) 
   * @define coll immutable champ hash map
   */
 @SerialVersionUID(3L)
-object HashMap extends MapFactory[HashMap] {
+object HashMap extends StrictMapFactory[HashMap] {
 
   @transient
   private final val EmptyMap = new HashMap(MapNode.empty)
@@ -2200,7 +2202,7 @@ object HashMap extends MapFactory[HashMap] {
   def empty[K, V]: HashMap[K, V] =
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
-  def from[K, V](source: collection.IterableOnce[(K, V)]): HashMap[K, V] =
+  def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     source match {
       case hs: HashMap[K, V] => hs
       case _ => (newBuilder[K, V] ++= source).result()
@@ -2364,7 +2366,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     this
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     ensureUnaliased()
     xs match {
       case hm: HashMap[K, V] =>

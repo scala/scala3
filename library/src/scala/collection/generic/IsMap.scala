@@ -14,6 +14,8 @@ package scala.collection
 package generic
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import IsMap.Tupled
 import scala.collection.immutable.{IntMap, LongMap}
 

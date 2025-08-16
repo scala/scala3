@@ -14,6 +14,7 @@ package scala
 package collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 import collection.{AbstractIterator, Iterator}
 import java.lang.String

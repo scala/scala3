@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializationProxy
@@ -91,7 +92,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     addElem(elem, computeHash(elem))
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type = {
+  override def addAll(xs: IterableOnce[A]^): this.type = {
     sizeHint(xs, delta = 0)
     xs match {
       case hs: immutable.HashSet[A] =>
@@ -115,7 +116,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  override def subtractAll(xs: IterableOnce[A]): this.type = {
+  override def subtractAll(xs: IterableOnce[A]^): this.type = {
     if (size == 0) {
       return this
     }
@@ -407,7 +408,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 @SerialVersionUID(3L)
 object HashSet extends IterableFactory[HashSet] {
 
-  def from[B](it: scala.collection.IterableOnce[B]): HashSet[B] = {
+  def from[B](it: scala.collection.IterableOnce[B]^): HashSet[B] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new HashSet[B](cap, defaultLoadFactor) ++= it
@@ -430,7 +431,7 @@ object HashSet extends IterableFactory[HashSet] {
 
   @SerialVersionUID(3L)
   private final class DeserializationFactory[A](val tableLength: Int, val loadFactor: Double) extends Factory[A, HashSet[A]] with Serializable {
-    def fromSpecific(it: IterableOnce[A]): HashSet[A] = new HashSet[A](tableLength, loadFactor) ++= it
+    def fromSpecific(it: IterableOnce[A]^): HashSet[A] = new HashSet[A](tableLength, loadFactor) ++= it
     def newBuilder: Builder[A, HashSet[A]] = HashSet.newBuilder(tableLength, loadFactor)
   }
 

@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.generic.DefaultSerializable
 import scala.collection.immutable.Map.Map4
@@ -28,7 +30,7 @@ trait Map[K, +V]
      with MapOps[K, V, Map, Map[K, V]]
      with MapFactoryDefaults[K, V, Map, Iterable] {
 
-  override def mapFactory: scala.collection.MapFactory[Map] = Map
+  override def mapFactory: scala.collection.StrictMapFactory[Map] = Map
 
   override final def toMap[K2, V2](implicit ev: (K, V) <:< (K2, V2)): Map[K2, V2] = Map.from(this.asInstanceOf[Map[K2, V2]])
 
@@ -41,7 +43,7 @@ trait Map[K, +V]
     *  @param d     the function mapping keys to values, used for non-present keys
     *  @return      a wrapper of the map with a default value
     */
-  def withDefault[V1 >: V](d: K => V1): Map[K, V1] = new Map.WithDefault[K, V1](this, d)
+  def withDefault[V1 >: V](d: K -> V1): Map[K, V1] = new Map.WithDefault[K, V1](this, d)
 
   /** The same map with a given default value.
     *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
@@ -62,7 +64,7 @@ trait Map[K, +V]
   */
 transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
-    with collection.MapOps[K, V, CC, C] {
+    with collection.StrictMapOps[K, V, CC, C] {
 
   protected def coll: C with CC[K, V]
 
@@ -88,10 +90,10 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[
     *  @return a new $coll that contains all elements of the current $coll
     *  except one less occurrence of each of the elements of `elems`.
     */
-  def removedAll(keys: IterableOnce[K]): C = keys.iterator.foldLeft[C](coll)(_ - _)
+  def removedAll(keys: IterableOnce[K]^): C = keys.iterator.foldLeft[C](coll)(_ - _)
 
   /** Alias for `removedAll` */
-  @`inline` final override def -- (keys: IterableOnce[K]): C = removedAll(keys)
+  @`inline` final override def -- (keys: IterableOnce[K]^): C = removedAll(keys)
 
   /** Creates a new map obtained by updating this map with a given key/value pair.
    *  @param    key the key
@@ -155,7 +157,7 @@ transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _]
     with collection.StrictOptimizedMapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {
 
-  override def concat [V1 >: V](that: collection.IterableOnce[(K, V1)]): CC[K, V1] = {
+  override def concat [V1 >: V](that: collection.IterableOnce[(K, V1)]^): CC[K, V1] = {
     var result: CC[K, V1] = coll
     val it = that.iterator
     while (it.hasNext) result = result + it.next()
@@ -170,10 +172,10 @@ transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _]
   * @define Coll `immutable.Map`
   */
 @SerialVersionUID(3L)
-object Map extends MapFactory[Map] {
+object Map extends StrictMapFactory[Map] {
 
   @SerialVersionUID(3L)
-  class WithDefault[K, +V](val underlying: Map[K, V], val defaultValue: K => V)
+  class WithDefault[K, +V](val underlying: Map[K, V], val defaultValue: K -> V)
     extends AbstractMap[K, V]
       with MapOps[K, V, Map, WithDefault[K, V]] with Serializable {
 
@@ -187,9 +189,9 @@ object Map extends MapFactory[Map] {
 
     override def isEmpty: Boolean = underlying.isEmpty
 
-    override def mapFactory: MapFactory[Map] = underlying.mapFactory
+    override def mapFactory: StrictMapFactory[Map] = underlying.mapFactory
 
-    override def concat [V2 >: V](xs: collection.IterableOnce[(K, V2)]): WithDefault[K, V2] =
+    override def concat [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): WithDefault[K, V2] =
       new WithDefault(underlying.concat(xs), defaultValue)
 
     def removed(key: K): WithDefault[K, V] = new WithDefault[K, V](underlying.removed(key), defaultValue)
@@ -199,7 +201,7 @@ object Map extends MapFactory[Map] {
 
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
-    override protected def fromSpecific(coll: collection.IterableOnce[(K, V)] @uncheckedVariance): WithDefault[K, V] =
+    override protected def fromSpecific(coll: (collection.IterableOnce[(K, V)]^) @uncheckedVariance): WithDefault[K, V] =
       new WithDefault[K, V](mapFactory.from(coll), defaultValue)
 
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] @uncheckedVariance =
@@ -208,7 +210,7 @@ object Map extends MapFactory[Map] {
 
   def empty[K, V]: Map[K, V] = EmptyMap.asInstanceOf[Map[K, V]]
 
-  def from[K, V](it: IterableOnce[(K, V)]): Map[K, V] =
+  def from[K, V](it: IterableOnce[(K, V)]^): Map[K, V] =
     it match {
       case it: Iterable[_] if it.isEmpty => empty[K, V]
       // Since IterableOnce[(K, V)] launders the variance of K,
@@ -250,7 +252,7 @@ object Map extends MapFactory[Map] {
     override def valuesIterator: Iterator[Nothing] = Iterator.empty
     def updated [V1] (key: Any, value: V1): Map[Any, V1] = new Map1(key, value)
     def removed(key: Any): Map[Any, Nothing] = this
-    override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]): Map[Any, V2] = suffix match {
+    override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]^): Map[Any, V2] = suffix match {
       case m: immutable.Map[Any, V2] => m
       case _ => super.concat(suffix)
     }
@@ -703,7 +705,7 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
 
   def addOne(elem: (K, V)) = addOne(elem._1, elem._2)
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type =
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type =
     if (switchedToHashMapBuilder) {
       hashMapBuilder.addAll(xs)
       this

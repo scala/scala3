@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.io.{ObjectInputStream, ObjectOutputStream}
 
 import scala.annotation.nowarn
@@ -33,8 +35,8 @@ import scala.collection.mutable.Builder
   * @define coll bitset
   * @define Coll `BitSet`
   */
-trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] {
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] { self: BitSet =>
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
@@ -49,7 +51,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   def empty: BitSet = immutable.BitSet.empty
   def newBuilder: Builder[Int, BitSet] = immutable.BitSet.newBuilder
-  def fromSpecific(it: IterableOnce[Int]): BitSet = immutable.BitSet.fromSpecific(it)
+  def fromSpecific(it: IterableOnce[Int]^): BitSet = immutable.BitSet.fromSpecific(it)
 
   @SerialVersionUID(3L)
   private[collection] abstract class SerializationProxy(@transient protected val coll: BitSet) extends Serializable {
@@ -243,7 +245,7 @@ transparent trait BitSetOps[+C <: BitSet with BitSetOps[C]]
     coll.fromBitMaskNoCopy(a)
   }
 
-  override def concat(other: collection.IterableOnce[Int]): C = other match {
+  override def concat(other: collection.IterableOnce[Int]^): C = other match {
     case otherBitset: BitSet =>
       val len = coll.nwords max otherBitset.nwords
       val words = new Array[Long](len)
@@ -298,9 +300,9 @@ transparent trait BitSetOps[+C <: BitSet with BitSetOps[C]]
     */
   def map(f: Int => Int): C = fromSpecific(new View.Map(this, f))
 
-  def flatMap(f: Int => IterableOnce[Int]): C = fromSpecific(new View.FlatMap(this, f))
+  def flatMap(f: Int => IterableOnce[Int]^): C = fromSpecific(new View.FlatMap(this, f))
 
-  def collect(pf: PartialFunction[Int, Int]): C = fromSpecific(super[SortedSetOps].collect(pf))
+  def collect(pf: PartialFunction[Int, Int]^): C = fromSpecific(super[SortedSetOps].collect(pf))
 
   override def partition(p: Int => Boolean): (C, C) = {
     val left = filter(p)

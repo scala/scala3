@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.DefaultSerializable
 import scala.util.hashing.MurmurHash3
@@ -43,7 +44,7 @@ class LinkedHashMap[K, V]
     with MapFactoryDefaults[K, V, LinkedHashMap, Iterable]
     with DefaultSerializable {
 
-  override def mapFactory: MapFactory[LinkedHashMap] = LinkedHashMap
+  override def mapFactory: StrictMapFactory[LinkedHashMap] = LinkedHashMap
 
   // stepper / keyStepper / valueStepper are not overridden to use XTableStepper because that stepper
   // would not return the elements in insertion order
@@ -475,11 +476,11 @@ class LinkedHashMap[K, V]
  *  @define coll linked hash map
  */
 @SerialVersionUID(3L)
-object LinkedHashMap extends MapFactory[LinkedHashMap] {
+object LinkedHashMap extends StrictMapFactory[LinkedHashMap] {
 
   def empty[K, V] = new LinkedHashMap[K, V]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]) = {
+  def from[K, V](it: collection.IterableOnce[(K, V)]^) = {
     val newlhm = empty[K, V]
     newlhm.sizeHint(it, delta = 0)
     newlhm.addAll(it)

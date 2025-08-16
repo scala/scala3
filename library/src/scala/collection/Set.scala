@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.util.hashing.MurmurHash3
 import java.lang.String
 
@@ -25,7 +27,8 @@ trait Set[A]
   extends Iterable[A]
     with SetOps[A, Set, Set[A]]
     with Equals
-    with IterableFactoryDefaults[A, Set] {
+    with IterableFactoryDefaults[A, Set]
+    with caps.Pure {
 
   def canEqual(that: Any) = true
 
@@ -88,7 +91,8 @@ trait Set[A]
   */
 transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   extends IterableOps[A, CC, C]
-     with (A => Boolean) {
+     with (A => Boolean)
+     with caps.Pure {
 
   def contains(elem: A): Boolean
 
@@ -200,7 +204,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   @`inline` final def &~ (that: Set[A]): C = this diff that
 
   @deprecated("Consider requiring an immutable Set", "2.13.0")
-  def -- (that: IterableOnce[A]): C = {
+  def -- (that: IterableOnce[A]^): C = {
     val toRemove = that.iterator.to(immutable.Set)
     fromSpecific(view.filterNot(toRemove))
   }
@@ -222,7 +226,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     *  @param that     the collection containing the elements to add.
     *  @return a new $coll with the given elements added, omitting duplicates.
     */
-  def concat(that: collection.IterableOnce[A]): C = this match {
+  def concat(that: collection.IterableOnce[A]^): C = this match {
     case optimizedSet @ (_ : scala.collection.immutable.Set.Set1[A] | _: scala.collection.immutable.Set.Set2[A] | _: scala.collection.immutable.Set.Set3[A] | _: scala.collection.immutable.Set.Set4[A]) =>
       // StrictOptimizedSetOps optimization of concat (these Sets cannot extend StrictOptimizedSetOps because of binary-incompatible return type; cf. PR #10036)
       var result = optimizedSet.asInstanceOf[scala.collection.immutable.SetOps[A, scala.collection.immutable.Set, scala.collection.immutable.Set[A]]]
@@ -242,7 +246,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   def + (elem1: A, elem2: A, elems: A*): C = fromSpecific(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
 
   /** Alias for `concat` */
-  @`inline` final def ++ (that: collection.IterableOnce[A]): C = concat(that)
+  @`inline` final def ++ (that: collection.IterableOnce[A]^): C = concat(that)
 
   /** Computes the union between of set and another set.
     *

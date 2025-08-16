@@ -14,6 +14,8 @@ package scala
 package collection
 package mutable
 
+import language.experimental.captureChecking
+
 import scala.language.`2.13`
 
 /** Base type of mutable Maps */
@@ -25,7 +27,7 @@ trait Map[K, V]
     with Shrinkable[K]
     with MapFactoryDefaults[K, V, Map, Iterable] {
 
-  override def mapFactory: scala.collection.MapFactory[Map] = Map
+  override def mapFactory: scala.collection.StrictMapFactory[Map] = Map
 
   /*
   //TODO consider keeping `remove` because it returns the removed entry
@@ -46,7 +48,7 @@ trait Map[K, V]
     *  @param d     the function mapping keys to values, used for non-present keys
     *  @return      a wrapper of the map with a default value
     */
-  def withDefault(d: K => V): Map[K, V] = new Map.WithDefault[K, V](this, d)
+  def withDefault(d: K -> V): Map[K, V] = new Map.WithDefault[K, V](this, d)
 
   /** The same map with a given default value.
     *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
@@ -66,7 +68,7 @@ trait Map[K, V]
   */
 transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
-    with collection.MapOps[K, V, CC, C]
+    with collection.StrictMapOps[K, V, CC, C]
     with Cloneable[C]
     with Builder[(K, V), C]
     with Growable[(K, V)]
@@ -233,7 +235,7 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K,
 object Map extends MapFactory.Delegate[Map](HashMap) {
 
   @SerialVersionUID(3L)
-  class WithDefault[K, V](val underlying: Map[K, V], val defaultValue: K => V)
+  class WithDefault[K, V](val underlying: Map[K, V], val defaultValue: K -> V)
     extends AbstractMap[K, V]
       with MapOps[K, V, Map, WithDefault[K, V]] with Serializable {
 
@@ -242,7 +244,7 @@ object Map extends MapFactory.Delegate[Map](HashMap) {
     def iterator: scala.collection.Iterator[(K, V)] = underlying.iterator
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = underlying.knownSize
-    override def mapFactory: MapFactory[Map] = underlying.mapFactory
+    override def mapFactory: StrictMapFactory[Map] = underlying.mapFactory
 
     override def clear(): Unit = underlying.clear()
 
@@ -252,12 +254,12 @@ object Map extends MapFactory.Delegate[Map](HashMap) {
 
     def addOne(elem: (K, V)): WithDefault.this.type = { underlying.addOne(elem); this }
 
-    override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]): Map[K, V2] =
+    override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): Map[K, V2] =
       underlying.concat(suffix).withDefault(defaultValue)
 
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
-    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]): WithDefault[K, V] =
+    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]^): WithDefault[K, V] =
       new WithDefault[K, V](mapFactory.from(coll), defaultValue)
 
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] =

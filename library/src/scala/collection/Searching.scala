@@ -14,6 +14,8 @@ package scala.collection
 
 import scala.language.`2.13`
 import scala.language.implicitConversions
+import language.experimental.captureChecking
+
 import scala.collection.generic.IsSeq
 
 object Searching {

@@ -15,6 +15,7 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** Base trait for sorted sets */
 trait SortedSet[A]
@@ -52,7 +53,7 @@ transparent trait StrictOptimizedSortedSetOps[A, +CC[X] <: SortedSet[X], +C <: S
   */
 @SerialVersionUID(3L)
 object SortedSet extends SortedIterableFactory.Delegate[SortedSet](TreeSet) {
-  override def from[E: Ordering](it: IterableOnce[E]): SortedSet[E] = it match {
+  override def from[E: Ordering](it: IterableOnce[E]^): SortedSet[E] = it match {
     case ss: SortedSet[E] if Ordering[E] == ss.ordering => ss
     case _ => super.from(it)
   }

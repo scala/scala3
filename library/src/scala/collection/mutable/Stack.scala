@@ -13,6 +13,7 @@
 package scala.collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{migration, nowarn}
 import scala.collection.generic.DefaultSerializable
 import scala.collection.{IterableFactoryDefaults, IterableOnce, SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}
@@ -77,7 +78,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
     *  @param elems the iterable object.
     *  @return the stack with the new elements on top.
     */
-  def pushAll(elems: scala.collection.IterableOnce[A]): this.type =
+  def pushAll(elems: scala.collection.IterableOnce[A]^): this.type =
     prependAll(elems match {
       case it: scala.collection.Seq[A] => it.view.reverse
       case it => IndexedSeq.from(it).view.reverse
@@ -134,7 +135,7 @@ class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Stack extends StrictOptimizedSeqFactory[Stack] {
 
-  def from[A](source: IterableOnce[A]): Stack[A] = empty ++= source
+  def from[A](source: IterableOnce[A]^): Stack[A] = empty ++= source
 
   def empty[A]: Stack[A] = new Stack
 

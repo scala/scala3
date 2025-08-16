@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.nowarn
 import scala.collection.generic.DefaultSerializable
 
@@ -67,7 +68,7 @@ class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
     *  @param elems the iterable object.
     *  @return this
     */
-  def enqueueAll(elems: scala.collection.IterableOnce[A]): this.type = this ++= elems
+  def enqueueAll(elems: scala.collection.IterableOnce[A]^): this.type = this ++= elems
 
   /**
     * Removes the first element from this queue and returns it
@@ -130,7 +131,7 @@ class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
 
-  def from[A](source: IterableOnce[A]): Queue[A] = empty ++= source
+  def from[A](source: IterableOnce[A]^): Queue[A] = empty ++= source
 
   def empty[A]: Queue[A] = new Queue
 

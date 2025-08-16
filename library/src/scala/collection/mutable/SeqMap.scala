@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /**
   * A generic trait for ordered mutable maps. Concrete classes have to provide
@@ -34,7 +35,7 @@ trait SeqMap[K, V] extends Map[K, V]
   with collection.SeqMap[K, V]
   with MapOps[K, V, SeqMap, SeqMap[K, V]]
   with MapFactoryDefaults[K, V, SeqMap, Iterable] {
-  override def mapFactory: MapFactory[SeqMap] = SeqMap
+  override def mapFactory: StrictMapFactory[SeqMap] = SeqMap
 }
 
 object SeqMap extends MapFactory.Delegate[SeqMap](LinkedHashMap)

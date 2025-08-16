@@ -34,7 +34,7 @@ import scala.language.`2.13`
  * }
  *  }}}
  */
-trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable.Args) -T2, @specialized(Specializable.Return) +R] extends AnyRef { self =>
+trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable.Args) -T2, @specialized(Specializable.Return) +R] extends AnyRef {
   /** Apply the body of this function to the arguments.
    *  @return   the result of function application.
    */

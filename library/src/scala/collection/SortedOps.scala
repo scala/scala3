@@ -13,6 +13,7 @@
 package scala.collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** Base trait for sorted collections */
 transparent trait SortedOps[A, +C] {
