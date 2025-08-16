@@ -3565,6 +3565,14 @@ object Build {
     homepage := Some(url(dottyGithubUrl)),
     licenses += (("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))),
     scmInfo := Some(ScmInfo(url(dottyGithubUrl), "scm:git:git@github.com:scala/scala3.git")),
+    developers := List(
+      Developer(
+        id = "scala",
+        name = "The Scala Team",
+        email = "security@scala-lang.org",
+        url = url("https://scala-lang.org")
+      )
+    ),
   )
 
   lazy val commonDistSettings = Seq(
