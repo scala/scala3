@@ -45,7 +45,7 @@ So, effectively, anything that can be updated must be unaliased.
 ## Capability Kinds
 
 A capability is called
-  - _shared_ if it is [classified](../classifiers.md) as a `SharedCapability`
+  - _shared_ if it is [classified](classifiers.md) as a `SharedCapability`
   - _exclusive_ otherwise.
 
 ## The Mutable Trait
@@ -54,7 +54,7 @@ We introduce a new trait
 ```scala
 trait Mutable extends ExclusiveCapability, Classifier
 ```
-It is used as a [classifier](../classifiers.md) trait for types that define _update methods_ using
+It is used as a [classifier](classifiers.md) trait for types that define _update methods_ using
 a new soft modifier `update`.
 
 **Example:**
