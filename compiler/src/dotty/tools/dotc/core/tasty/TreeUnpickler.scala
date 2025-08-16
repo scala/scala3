@@ -1539,6 +1539,9 @@ class TreeUnpickler(reader: TastyReader,
                   readByte()
                   InlineMatch(readTree(), readCases(end))
                 }
+                else if nextByte == WITH then
+                  readByte()
+                  SubMatch(readTree(), readCases(end))
                 else Match(readTree(), readCases(end)))
             case RETURN =>
               val from = readSymRef()

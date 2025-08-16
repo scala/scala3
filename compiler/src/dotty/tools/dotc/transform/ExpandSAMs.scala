@@ -180,7 +180,11 @@ class ExpandSAMs extends MiniPhase:
 
       def isDefinedAtRhs(paramRefss: List[List[Tree]])(using Context) =
         val tru = Literal(Constant(true))
-        def translateCase(cdef: CaseDef) = cpy.CaseDef(cdef)(body = tru)
+        def translateCase(cdef: CaseDef): CaseDef =
+          val body1 = cdef.body match
+            case b: SubMatch => cpy.Match(b)(b.selector, b.cases.map(translateCase))
+            case _ => tru
+          cpy.CaseDef(cdef)(body = body1)
         val paramRef = paramRefss.head.head
         val defaultValue = Literal(Constant(false))
         translateMatch(isDefinedAtFn)(paramRef.symbol, pfRHS.cases.map(translateCase), defaultValue)

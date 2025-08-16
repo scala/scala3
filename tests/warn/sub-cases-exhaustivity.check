@@ -1,0 +1,20 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:15:2 -----------------------------
+15 |  e match // warn: match may not be exhaustive: It would fail on pattern case: E.A(_) | E.B(_)
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: E.A(_), E.B(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/sub-cases-exhaustivity.scala:24:2 -----------------------------
+24 |  e match // warn: match may not be exhaustive: It would fail on pattern case: E.B(_)
+   |  ^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: E.B(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E030] Match case Unreachable Warning: tests/warn/sub-cases-exhaustivity.scala:32:9 ---------------------------------
+32 |    case A(_) => 3 // warn: unreacheable
+   |         ^^^^
+   |         Unreachable case

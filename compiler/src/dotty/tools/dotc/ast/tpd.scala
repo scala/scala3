@@ -143,6 +143,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def InlineMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
     ta.assignType(untpd.InlineMatch(selector, cases), selector, cases)
 
+  def SubMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
+    ta.assignType(untpd.SubMatch(selector, cases), selector, cases)
+
   def Labeled(bind: Bind, expr: Tree)(using Context): Labeled =
     ta.assignType(untpd.Labeled(bind, expr))
 

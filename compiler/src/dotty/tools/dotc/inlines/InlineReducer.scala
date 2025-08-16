@@ -394,9 +394,13 @@ class InlineReducer(inliner: Inliner)(using Context):
             case ConstantValue(v: Boolean) => (v, true)
             case _ => (false, false)
           }
-        if guardOK then Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
-        else if canReduceGuard then None
-        else Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
+        if !canReduceGuard then Some((List.empty, EmptyTree, false))
+        else if !guardOK then None
+        else cdef.body.subst(from, to) match
+          case t: SubMatch => // a sub match of an inline match is also inlined
+            reduceInlineMatch(t.selector, t.selector.tpe, t.cases, typer).map:
+              (subCaseBindings, rhs) => (caseBindings.map(_.subst(from, to)) ++ subCaseBindings, rhs, true)
+          case b => Some((caseBindings.map(_.subst(from, to)), b, true))
       }
       else None
     }
