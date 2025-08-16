@@ -33,7 +33,7 @@ object boundary:
   /** User code should call `break.apply` instead of throwing this exception
    *  directly.
    */
-  final class Break[T] private[boundary](private[boundary] val label: Label[T]^{}, val value: T)
+  final class Break[T] private[boundary](val label: Label[T]^{}, val value: T)
   extends RuntimeException(
     /*message*/ null, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false):
     /** Compare the given [[Label]] to the one this [[Break]] was constructed with. */
