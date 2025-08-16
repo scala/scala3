@@ -23,11 +23,12 @@ trait ClassLikeSupport:
 
   extension (symbol: Symbol) {
     def getExtraModifiers(): Seq[Modifier] =
-      val mods = SymOps.getExtraModifiers(symbol)()
-      if ccEnabled && symbol.flags.is(Flags.Mutable)then
-        mods :+ Modifier.Update
-      else
-        mods
+      var mods = SymOps.getExtraModifiers(symbol)()
+      if ccEnabled && symbol.flags.is(Flags.Mutable) then
+        mods :+= Modifier.Update
+      if ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then
+        mods :+= Modifier.Consume
+      mods
   }
 
   private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
@@ -427,12 +428,13 @@ trait ClassLikeSupport:
   ) =
     val symbol = argument.symbol
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
+    val comsumePrefix = if self.ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then "consume " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
     val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
-      inlinePrefix + prefix(symbol),
+      comsumePrefix + inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
       argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,

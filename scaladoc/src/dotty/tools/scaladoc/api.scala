@@ -45,6 +45,7 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Infix extends Modifier("infix", true)
   case AbsOverride extends Modifier("abstract override", true)
   case Update extends Modifier("update", true)
+  case Consume extends Modifier("consume", true)
 
 case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[TermParameterList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
