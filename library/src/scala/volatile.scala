@@ -13,7 +13,9 @@
 package scala
 
 import scala.language.`2.13`
+
+import scala.annotation.documented
 import scala.annotation.meta._
 
-@field
+@field @documented
 final class volatile extends scala.annotation.StaticAnnotation
