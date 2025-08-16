@@ -535,6 +535,7 @@ trait TypesSupport:
   private def isCapturedInContext(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): Boolean =
     import reflect._
     ref match
+      case t if t.isCaptureRoot  => true
       case ReachCapability(c)    => isCapturedInContext(c)
       case ReadOnlyCapability(c) => isCapturedInContext(c)
       case ThisType(tr)          => !elideThis.symbol.typeRef.isPureClass(elideThis) /* is the current class pure? */
