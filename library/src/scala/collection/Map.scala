@@ -127,7 +127,21 @@ transparent trait StrictMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _] 
     mapFactory.from(new View.Concat(thatIterable, this))
   }
 
+  // The original keySet implementation, with a lazy iterator over the keys,
+  // is only correct if we have a strict Map.
+  // We restore it here.
+  override def keySet: Set[K] = new LazyKeySet
 
+  /** The implementation class of the set returned by `keySet`, for pure maps.
+    */
+  private class LazyKeySet extends AbstractSet[K] with DefaultSerializable {
+    def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
+    def iterator: Iterator[K] = StrictMapOps.this.keysIterator
+    def contains(key: K): Boolean = StrictMapOps.this.contains(key)
+    override def size: Int = StrictMapOps.this.size
+    override def knownSize: Int = StrictMapOps.this.knownSize
+    override def isEmpty: Boolean = StrictMapOps.this.isEmpty
+  }
 }
 
 /** Base Map implementation type
@@ -239,19 +253,24 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   /** The implementation class of the set returned by `keySet`.
     */
   protected class KeySet extends AbstractSet[K] with GenKeySet with DefaultSerializable {
-    def diff(that: Set[K]): Set[K] = fromSpecific(this.view.filterNot(that))
+    // If you need a generic, capturing KeySet, create a View from keysIterator
+    def diff(that: Set[K]): Set[K] = fromSpecific(allKeys.filterNot(that))
   }
 
-  /** A generic trait that is reused by keyset implementations */
+  /** A generic trait that is reused by keyset implementations.
+    * Note that this version of KeySet copies all the keys into an interval val.
+    * See [[StrictMapOps.LazyKeySet]] for a version that lazily captures the map.
+    */
   protected trait GenKeySet { this: Set[K] =>
+    // CC note: this is unavoidable to make the KeySet pure.
+    private[MapOps] val allKeys = MapOps.this.keysIterator.toSet
+    // We restore the lazy behavior in StrictMapOps
     def iterator: Iterator[K] =
-      // CC note: this is unavoidable to make the KeySet pure.
-      // If you need a generic, capturing KeySet, create a View from keysIterator
-      MapOps.this.keysIterator.toSet.iterator
-    def contains(key: K): Boolean = MapOps.this.contains(key)
-    override def size: Int = MapOps.this.size
-    override def knownSize: Int = MapOps.this.knownSize
-    override def isEmpty: Boolean = MapOps.this.isEmpty
+      allKeys.iterator
+    def contains(key: K): Boolean = allKeys.contains(key)
+    override def size: Int = allKeys.size
+    override def knownSize: Int = allKeys.knownSize
+    override def isEmpty: Boolean = allKeys.isEmpty
   }
 
   /** An [[Iterable]] collection of the keys contained by this map.
