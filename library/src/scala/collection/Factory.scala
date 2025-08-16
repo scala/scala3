@@ -46,11 +46,16 @@ trait Factory[-A, +C] extends Any { self =>
   def newBuilder: Builder[A, C]
 }
 
+/** A strict version of [[Factory]], where the returned collection from [[fromSpecific]] do not capture its input. */
+trait StrictFactory[-A, +C] extends Factory[A, C] {
+  override def fromSpecific(it: IterableOnce[A]^): C
+}
+
 object Factory {
 
-  implicit val stringFactory: Factory[Char, String] = new StringFactory
+  implicit val stringFactory: StrictFactory[Char, String] = new StringFactory
   @SerialVersionUID(3L)
-  private class StringFactory extends Factory[Char, String] with Serializable {
+  private class StringFactory extends StrictFactory[Char, String] with Serializable {
     def fromSpecific(it: IterableOnce[Char]^): String = {
       val b = new mutable.StringBuilder(scala.math.max(0, it.knownSize))
       b ++= it
@@ -59,9 +64,9 @@ object Factory {
     def newBuilder: Builder[Char, String] = new mutable.StringBuilder()
   }
 
-  implicit def arrayFactory[A: ClassTag]: Factory[A, Array[A]] = new ArrayFactory[A]
+  implicit def arrayFactory[A: ClassTag]: StrictFactory[A, Array[A]] = new ArrayFactory[A]
   @SerialVersionUID(3L)
-  private class ArrayFactory[A: ClassTag] extends Factory[A, Array[A]] with Serializable {
+  private class ArrayFactory[A: ClassTag] extends StrictFactory[A, Array[A]] with Serializable {
     def fromSpecific(it: IterableOnce[A]^): Array[A] = {
       val b = newBuilder
       b.sizeHint(it, delta = 0)
