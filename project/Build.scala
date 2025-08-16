@@ -1471,6 +1471,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
   lazy val `scala3-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge"))
     .dependsOn(`scala3-compiler-bootstrapped-new`) // TODO: Would this actually evict the reference compiler in scala-tool?
+    .settings(publishSettings)
     .settings(
       name          := "scala3-sbt-bridge-bootstrapped",
       moduleName    := "scala3-sbt-bridge",
@@ -1542,6 +1543,7 @@ object Build {
     // when compiling a project that depends on scala3-staging (see sbt-test/sbt-dotty/quoted-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
     .dependsOn(`scala3-compiler-bootstrapped-new` % "provided; compile->runtime; test->test")
+    .settings(publishSettings)
     .settings(
       name          := "scala3-staging",
       moduleName    := "scala3-staging",
@@ -1599,6 +1601,7 @@ object Build {
     // when compiling a project that depends on scala3-tasty-inspector (see sbt-test/sbt-dotty/tasty-inspector-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
     .dependsOn(`scala3-compiler-bootstrapped-new` % "provided; compile->runtime; test->test")
+    .settings(publishSettings)
     .settings(
       name          := "scala3-tasty-inspector",
       moduleName    := "scala3-tasty-inspector",
@@ -1737,6 +1740,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
+    .settings(publishSettings)
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -1809,6 +1813,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
   lazy val `scala3-library-bootstrapped-new` = project.in(file("library"))
     .dependsOn(`scala-library-bootstrapped`)
+    .settings(publishSettings)
     .settings(
       name          := "scala3-library-bootstrapped",
       moduleName    := "scala3-library",
@@ -1851,6 +1856,7 @@ object Build {
     // We add a dependency to the JVM library to have the classfile available
     // (as they are not part of this artifact)
     .dependsOn(`scala3-library-bootstrapped-new`)
+    .settings(publishSettings)
     .settings(
       name          := "scala-library-sjs",
       organization  := "org.scala-js",
@@ -1961,6 +1967,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
   lazy val `scala3-library-sjs` = project.in(file("library-js"))
     .dependsOn(`scala-library-sjs`)
+    .settings(publishSettings)
     .settings(
       name          := "scala3-library-sjs",
       moduleName    := "scala3-library_sjs1",
@@ -2064,6 +2071,7 @@ object Build {
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-bootstrapped project */
   lazy val `tasty-core-bootstrapped-new` = project.in(file("tasty"))
     .dependsOn(`scala3-library-bootstrapped-new`)
+    .settings(publishSettings)
     .settings(
       name          := "tasty-core-bootstrapped",
       moduleName    := "tasty-core",
@@ -2256,6 +2264,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-bootstrapped project */
   lazy val `scala3-compiler-bootstrapped-new` = project.in(file("compiler"))
     .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped-new`, `scala3-library-bootstrapped-new`)
+    .settings(publishSettings)
     .settings(
       name          := "scala3-compiler-bootstrapped",
       moduleName    := "scala3-compiler",
@@ -2390,6 +2399,7 @@ object Build {
   /* Configuration of the org.scala-lang:scaladoc_3:*.**.**-bootstrapped project */
   lazy val `scaladoc-new` = project.in(file("scaladoc"))
     .dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-tasty-inspector-new`)
+    .settings(publishSettings)
     .settings(
       name          := "scaladoc",
       moduleName    := "scaladoc",
@@ -3527,10 +3537,24 @@ object Build {
     publishMavenStyle := true,
     isSnapshot := version.value.contains("SNAPSHOT"),
     publishTo := {
-      val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
-      if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
-      else localStaging.value
+      if (sys.env.get("NEWNIGHTLY").contains("yes")) {
+        Some(sys.env("MAVEN_REPOSITORY_REALM") at sys.env("MAVEN_REPOSITORY_URL"))
+      } else if (isSnapshot.value) {
+        Some("central-snapshots" at "https://central.sonatype.com/repository/maven-snapshots/")
+      } else
+        localStaging.value
     },
+    credentials ++= (
+      if (sys.env.get("NEWNIGHTLY").contains("yes")) {
+        for {
+          username <- sys.env.get("MAVEN_REPOSITORY_USER")
+          token <- sys.env.get("MAVEN_REPOSITORY_TOKEN")
+        } yield Credentials(sys.env("MAVEN_REPOSITORY_REALM"), sys.env("MAVEN_REPOSITORY_HOST"), username, token)
+      }
+      else
+        // The old build credentials are configured differently
+        None
+    ).toList,
     publishConfiguration ~= (_.withOverwrite(true)),
     publishLocalConfiguration ~= (_.withOverwrite(true)),
     projectID ~= {id =>
@@ -3539,76 +3563,8 @@ object Build {
     },
     Test / publishArtifact := false,
     homepage := Some(url(dottyGithubUrl)),
-    licenses += (("Apache-2.0",
-      url("https://www.apache.org/licenses/LICENSE-2.0"))),
-    scmInfo := Some(
-      ScmInfo(
-        url(dottyGithubUrl),
-        "scm:git:git@github.com:scala/scala3.git"
-      )
-    ),
-    developers := List(
-      Developer(
-        id = "odersky",
-        name = "Martin Odersky",
-        email = "martin.odersky@epfl.ch",
-        url = url("https://github.com/odersky")
-      ),
-      Developer(
-        id = "DarkDimius",
-        name = "Dmitry Petrashko",
-        email = "me@d-d.me",
-        url = url("https://d-d.me")
-      ),
-      Developer(
-        id = "smarter",
-        name = "Guillaume Martres",
-        email = "smarter@ubuntu.com",
-        url = url("http://guillaume.martres.me")
-      ),
-      Developer(
-        id = "felixmulder",
-        name = "Felix Mulder",
-        email = "felix.mulder@gmail.com",
-        url = url("http://felixmulder.com")
-      ),
-      Developer(
-        id = "liufengyun",
-        name = "Liu Fengyun",
-        email = "liu@fengy.me",
-        url = url("https://fengy.me")
-      ),
-      Developer(
-        id = "nicolasstucki",
-        name = "Nicolas Stucki",
-        email = "nicolas.stucki@gmail.com",
-        url = url("https://github.com/nicolasstucki")
-      ),
-      Developer(
-        id = "OlivierBlanvillain",
-        name = "Olivier Blanvillain",
-        email = "olivier.blanvillain@gmail.com",
-        url = url("https://github.com/OlivierBlanvillain")
-      ),
-      Developer(
-        id = "biboudis",
-        name = "Aggelos Biboudis",
-        email = "aggelos.biboudis@epfl.ch",
-        url = url("http://biboudis.github.io")
-      ),
-      Developer(
-        id = "allanrenucci",
-        name = "Allan Renucci",
-        email = "allan.renucci@gmail.com",
-        url = url("https://github.com/allanrenucci")
-      ),
-      Developer(
-        id = "Duhemm",
-        name = "Martin Duhem",
-        email = "martin.duhem@gmail.com",
-        url = url("https://github.com/Duhemm")
-      )
-    )
+    licenses += (("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))),
+    scmInfo := Some(ScmInfo(url(dottyGithubUrl), "scm:git:git@github.com:scala/scala3.git")),
   )
 
   lazy val commonDistSettings = Seq(

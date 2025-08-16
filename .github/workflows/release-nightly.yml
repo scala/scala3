@@ -1,0 +1,19 @@
+name: Nightly Release of Scala 3
+run-name: Nightly Release of Scala 3 (${{ github.sha }})
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'  # Every day at 3 AM
+
+jobs:
+
+  ## TODO: Add the compilation pipeline here
+
+  ## TODO: Add the test pipeline here
+
+  release-maven-artifacts:
+    # TODO: Add a dependency to the test ad compilation pipeline before releasing
+    uses: ./.github/workflows/release-maven-artifacts.yml
+    with:
+      environment: release-nightly
