@@ -11,7 +11,7 @@ object B:
   tracked object Foo // error
 
 object C:
-  tracked class D // error
+  tracked class D
 
 object D:
   tracked type T = Int // error
