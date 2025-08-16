@@ -7,4 +7,5 @@ import language.experimental.captureChecking
  *  definition, its implementation will use the name `extname` instead of
  *  the regular name.
  */
+@documented
 final class targetName(name: String) extends StaticAnnotation
