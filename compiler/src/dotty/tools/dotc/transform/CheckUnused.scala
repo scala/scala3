@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, ter
 import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.NameKinds.{
   BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import dotty.tools.dotc.core.Scopes.newScope
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import dotty.tools.dotc.core.Types.*
@@ -19,6 +20,7 @@ import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.{ImportInfo, Typer}
 import dotty.tools.dotc.typer.Deriving.OriginalTypeClass
+import dotty.tools.dotc.typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
 import dotty.tools.dotc.util.{Property, Spans, SrcPos}, Spans.Span
 import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
 import dotty.tools.dotc.util.chaining.*
@@ -116,6 +118,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           args.foreach(_.withAttachment(ForArtifact, ()))
       case _ =>
     ctx
+  override def transformApply(tree: Apply)(using Context): tree.type =
+    // check for multiversal equals
+    tree match
+    case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
+      val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
+      resolveScoped(caneq)
+    case _ =>
+    tree
 
   override def prepareForAssign(tree: Assign)(using Context): Context =
     tree.lhs.putAttachment(AssignmentTarget, ()) // don't take LHS reference as a read
@@ -212,6 +222,16 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if !tree.symbol.is(Param) then // type parameter to do?
       refInfos.register(tree)
     tree
+
+  override def prepareForStats(trees: List[Tree])(using Context): Context =
+    // gather local implicits while ye may
+    if !ctx.owner.isClass then
+      if trees.exists(t => t.isDef && t.symbol.is(Given) && t.symbol.isLocalToBlock) then
+        val scope = newScope.openForMutations
+        for tree <- trees if tree.isDef && tree.symbol.is(Given) do
+          scope.enter(tree.symbol.name, tree.symbol)
+        return ctx.fresh.setScope(scope)
+    ctx
 
   override def transformOther(tree: Tree)(using Context): tree.type =
     tree match
@@ -406,6 +426,38 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
+
+  /** Simulate implicit search for contextual implicits in lexical scope and mark any definitions or imports as used.
+   *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
+   */
+  def resolveScoped(tp: Type)(using Context): Unit =
+    var done = false
+    val ctxs = ctx.outersIterator
+    while !done && ctxs.hasNext do
+      val cur = ctxs.next()
+      val implicitRefs: List[ImplicitRef] =
+        if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
+        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
+        else Nil
+      implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
+      case Some(found: TermRef) =>
+        refInfos.addRef(found.denot.symbol)
+        if cur.isImportContext then
+          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+          case Some(sel) =>
+            refInfos.sels.put(sel, ())
+          case _ =>
+        return
+      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
+        refInfos.addRef(found.underlyingRef.denot.symbol)
+        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+        case Some(sel) =>
+          refInfos.sels.put(sel, ())
+        case _ =>
+        return
+      case _ =>
+  end resolveScoped
 end CheckUnused
 
 object CheckUnused:
