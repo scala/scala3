@@ -4408,7 +4408,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
-                val pt1 = pt.deepenProtoTrans
                 if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
                   return implicitArgs(formals, argIndex, pt1)
               case _ =>
