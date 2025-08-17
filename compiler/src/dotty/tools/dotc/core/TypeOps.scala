@@ -805,8 +805,12 @@ object TypeOps:
           prefixTVar.uncheckedNN
         case ThisType(tref) if !tref.symbol.isStaticOwner =>
           val symbol = tref.symbol
+          val compatibleSingleton = singletons.valuesIterator.find(_.underlying.derivesFrom(symbol))
           if singletons.contains(symbol) then
             prefixTVar = singletons(symbol) // e.g. tests/pos/i16785.scala, keep Outer.this
+            prefixTVar.uncheckedNN
+          else if compatibleSingleton.isDefined then
+            prefixTVar = compatibleSingleton.get
             prefixTVar.uncheckedNN
           else if symbol.is(Module) then
             TermRef(this(tref.prefix), symbol.sourceModule)
@@ -905,10 +909,11 @@ object TypeOps:
     }
 
     val inferThisMap = new InferPrefixMap
-    val tvars = tp1.etaExpand match
+    val prefixInferredTp = inferThisMap(tp1)
+    val tvars = prefixInferredTp.etaExpand match
       case eta: TypeLambda => constrained(eta)
       case _               => Nil
-    val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
+    val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
     if gadtSyms.nonEmpty then
       ctx.gadtState.addToConstraint(gadtSyms)
