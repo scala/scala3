@@ -7,9 +7,9 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
-import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.NameKinds.{
   BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.Scopes.newScope
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
@@ -27,7 +27,6 @@ import dotty.tools.dotc.util.chaining.*
 
 import java.util.IdentityHashMap
 
-import scala.annotation.*
 import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
 
 import CheckUnused.*
@@ -725,9 +724,6 @@ object CheckUnused:
       import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
-      @unused // avoid merge conflict
-      def isUsable(imp: Import, sel: ImportSelector): Boolean =
-        sel.isImportExclusion || infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
         val (imp, sel) = warnable
         val msg = UnusedSymbol.imports(actions)
@@ -1025,11 +1021,6 @@ object CheckUnused:
     def boundTpe: Type = sel.bound match
       case untpd.TypedSplice(tree) => tree.tpe
       case _ => NoType
-    /** Is a "masking" import of the form import `qual.member as _`.
-     *  Both conditions must be checked.
-     */
-    @unused // matchingSelector checks isWildcard first
-    def isImportExclusion: Boolean = sel.isUnimport && !sel.isWildcard
 
   extension (imp: Import)(using Context)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
