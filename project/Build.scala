@@ -208,6 +208,8 @@ object Build {
   //
   object Scala2LibraryCCTasty extends Scala2Library
 
+  object ScalaFullLibrary extends Scala2Library
+
   // Set in SBT with:
   //   - `set ThisBuild/Build.scala2Library := Build.Scala2LibraryJar` (default)
   //   - `set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty`
@@ -786,10 +788,16 @@ object Build {
               log.warn("Scala 2 library TASTy is ignored on non-bootstrapped compiler")
               Seq.empty
           }
+
+        def fullLibraryPathProperty: Seq[String] = Seq(
+          s"-Ddotty.tests.fullstdlib.scalaLibrary=${jars("scala-library-unified")}",
+        )
+
         val scala2LibraryTasty = scala2Library.value match {
-          case Scala2LibraryJar => Seq.empty
-          case Scala2LibraryTasty => libraryPathProperty("scala2-library-tasty")
+          case Scala2LibraryJar     => Seq.empty
+          case Scala2LibraryTasty   => libraryPathProperty("scala2-library-tasty")
           case Scala2LibraryCCTasty => libraryPathProperty("scala2-library-cc-tasty")
+          case ScalaFullLibrary     => fullLibraryPathProperty
         }
 
         scala2LibraryTasty ++ Seq(
@@ -917,6 +925,8 @@ object Build {
               case Some(jar) => extraClasspath :+= jar
               case None => log.warn("Scala2LibraryCCTasty is ignored on non-bootstrapped compiler")
             }
+          case ScalaFullLibrary =>
+            log.error(s"scala full library not supported")
         }
 
         if (decompile && !args.contains("-classpath"))
@@ -1039,6 +1049,7 @@ object Build {
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
         "scala2-library-tasty" -> (LocalProject("scala2-library-tasty") / Compile / packageBin).value.getAbsolutePath,
         "scala2-library-cc-tasty" -> (LocalProject("scala2-library-cc-tasty") / Compile / packageBin).value.getAbsolutePath,
+        "scala-library-unified" -> (LocalProject("scala-library-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
     },
 

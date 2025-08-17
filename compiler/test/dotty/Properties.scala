@@ -84,11 +84,15 @@ object Properties {
   /** scala-library TASTy jar */
   def scalaLibraryTasty: Option[String] = sys.props.get("dotty.tests.tasties.scalaLibrary")
 
+  def fullScalaLibrary: Option[String] = sys.props.get("dotty.tests.fullstdlib.scalaLibrary")
+
   /** If we are using the scala-library TASTy jar */
-  def usingScalaLibraryTasty: Boolean = scalaLibraryTasty.isDefined
+  def usingScalaLibraryTasty: Boolean = scalaLibraryTasty.isDefined || usingFullScalaLibrary
   /** If we are using the scala-library TASTy jar */
 
-  def usingScalaLibraryCCTasty: Boolean = scalaLibraryTasty.exists(_.contains("scala2-library-cc-tasty"))
+  def usingScalaLibraryCCTasty: Boolean = scalaLibraryTasty.exists(_.contains("scala2-library-cc-tasty")) //|| usingFullScalaLibrary
+
+  def usingFullScalaLibrary: Boolean = fullScalaLibrary.isDefined
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
