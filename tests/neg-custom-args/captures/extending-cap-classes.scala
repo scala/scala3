@@ -1,5 +1,5 @@
 class C1
-class C2 extends C1, caps.Capability
+class C2 extends C1, caps.SharedCapability
 class C3 extends C2
 
 def test =

@@ -99,9 +99,17 @@ extension (tp: Type)
     case AnnotatedType(tp1, ann) if tp1.derivesFrom(defn.Caps_CapSet) && ann.symbol.isRetains =>
       ann.tree.retainedSet.retainedElementsRaw
     case tp =>
-      // Nothing is a special type to represent the empty set
-      if tp.isNothingType then Nil
-      else tp :: Nil // should be checked by wellformedness
+      tp.dealiasKeepAnnots match
+        case tp: TypeRef if tp.symbol == defn.Caps_CapSet =>
+          // This can happen in cases where we try to type an eta expansion `$x => f($x)`
+          // from a polymorphic target type using capture sets. In that case the parameter type
+          // of $x is not treated as inferred and is approximated to CapSet. An example is
+          // capset-problem.scala. We handle these cases by appromxating to the empty set.
+          Nil
+        case _ =>
+          // Nothing is a special type to represent the empty set
+          if tp.isNothingType then Nil
+          else tp :: Nil // should be checked by wellformedness
 
   /** A list of capabilities of a retained set. */
   def retainedElements(using Context): List[Capability] =
@@ -378,7 +386,8 @@ extension (tp: Type)
 
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
   def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
-  def derivesFromSharedCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Sharable)
+  def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
+  def derivesFromExclusive(using Context): Boolean = derivesFromCapTrait(defn.Caps_ExclusiveCapability)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -401,9 +410,12 @@ extension (tp: Type)
           if variance <= 0 then t
           else t.dealias match
             case t @ CapturingType(p, cs) if cs.containsCapOrFresh =>
-              change = true
               val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
-              t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
+              if reachRef.singletonCaptureSet.mightSubcapture(cs) then
+                change = true
+                t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
+              else
+                t
             case t @ AnnotatedType(parent, ann) =>
               // Don't map annotations, which includes capture sets
               t.derivedAnnotatedType(this(parent), ann)
@@ -571,18 +583,30 @@ extension (sym: Symbol)
   def hasTrackedParts(using Context): Boolean =
     !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
-  /** `sym` itself or its info is annotated @use or it is a type parameter with a matching
-   *  @use-annotated term parameter that contains `sym` in its deep capture set.
+  /** Until 3.7:
+   *    `sym` itself or its info is annotated @use or it is a type parameter with a matching
+   *    @use-annotated term parameter that contains `sym` in its deep capture set.
+   *  From 3.8:
+   *    `sym` is a capset parameter without a `@reserve` annotation that
+   *      - belongs to a class in a class, or
+   *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
    */
   def isUseParam(using Context): Boolean =
     sym.hasAnnotation(defn.UseAnnot)
     || sym.info.hasAnnotation(defn.UseAnnot)
     || sym.is(TypeParam)
-        && sym.owner.rawParamss.nestedExists: param =>
-            param.is(TermParam) && param.hasAnnotation(defn.UseAnnot)
-            && param.info.deepCaptureSet.elems.exists:
-                case c: TypeRef => c.symbol == sym
-                case _ => false
+        && !sym.info.hasAnnotation(defn.ReserveAnnot)
+        && (sym.owner.isClass
+            || sym.owner.rawParamss.nestedExists: param =>
+                param.is(TermParam)
+                && (!ccConfig.allowUse || param.hasAnnotation(defn.UseAnnot))
+                && param.info.deepCaptureSet.elems.exists:
+                    case c: TypeRef => c.symbol == sym
+                    case _ => false
+            || {
+              //println(i"not is use param $sym")
+              false
+            })
 
   /** `sym` or its info is annotated with `@consume`. */
   def isConsumeParam(using Context): Boolean =
@@ -598,6 +622,11 @@ extension (sym: Symbol)
   def isInReadOnlyMethod(using Context): Boolean =
     if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
     else sym.owner.isInReadOnlyMethod
+
+  def qualString(prefix: String)(using Context): String =
+    if !sym.exists then ""
+    else if sym.isAnonymousFunction then i" $prefix enclosing function"
+    else i" $prefix $sym"
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
@@ -647,7 +676,9 @@ object OnlyCapability:
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
-      Some((parent, ann.tree.tpe.argTypes.head.classSymbol.asClass))
+      ann.tree.tpe.argTypes.head.classSymbol match
+        case cls: ClassSymbol => Some((parent, cls))
+        case _ => None
     case _ => None
 end OnlyCapability
 

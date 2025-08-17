@@ -481,6 +481,8 @@ object Implicits:
         if (argument.isEmpty) i"match type ${clarify(expectedType)}"
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
+
+    def toAdd(using Context) = Nil
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
@@ -844,6 +846,10 @@ trait ImplicitRunInfo:
             case t: TypeVar => apply(t.underlying)
             case t: ParamRef => applyToUnderlying(t)
             case t: ConstantType => apply(t.underlying)
+            case t @ AppliedType(tycon, args) if !tycon.typeSymbol.isClass =>
+              // To prevent arguments to be reduced away when re-applying the tycon bounds,
+              // we collect all parts as elements of a tuple. See i21951.scala for a test case.
+              apply(defn.tupleType(tycon :: args))
             case t => mapOver(t)
         end liftToAnchors
         val liftedTp = liftToAnchors(tp)

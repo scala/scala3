@@ -4,9 +4,14 @@
   |                    Found:    (f : (x: A^) -> B^²)
   |                    Required: A^ -> B^³
   |
-  |                    where:    ^  refers to the universal root capability
-  |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
-  |                              ^³ refers to a fresh root capability in the type of value g
+  |                    Note that capability cap is not included in capture set {cap²}
+  |                    because cap is not visible from cap² in value g.
+  |
+  |                    where:    ^    refers to the universal root capability
+  |                              ^²   refers to a root capability associated with the result type of (x: A^): B^²
+  |                              ^³   refers to a fresh root capability in the type of value g
+  |                              cap  is a root capability associated with the result type of (x: A^): B^²
+  |                              cap² is a fresh root capability in the type of value g
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:9:25 -----------------------------------
@@ -15,11 +20,14 @@
   |                         Found:    A^ -> B^{g*}
   |                         Required: (x: A^) -> B^²
   |
-  |                         where:    ^  refers to the universal root capability
-  |                                   ^² refers to a root capability associated with the result type of (x: A^): B^²
+  |                         Note that capability g* is not included in capture set {cap}.
   |
   |                         Note that the existential capture root in B^
-  |                         cannot subsume the capability g* since that capability is not a `Sharable` capability
+  |                         cannot subsume the capability g* since that capability is not a `Sharable` capability..
+  |
+  |                         where:    ^   refers to the universal root capability
+  |                                   ^²  refers to a root capability associated with the result type of (x: A^): B^²
+  |                                   cap is a root capability associated with the result type of (x: A^): B^²
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:10:20 ----------------------------------
@@ -28,68 +36,100 @@
    |                    Found:    (f : (x: A^) -> B^²)
    |                    Required: A^ -> B^³
    |
-   |                    where:    ^  refers to the universal root capability
-   |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
-   |                              ^³ refers to a fresh root capability in the type of value _$3
+   |                    Note that capability cap is not included in capture set {cap²}
+   |                    because cap is not visible from cap² in value _$3.
+   |
+   |                    where:    ^    refers to the universal root capability
+   |                              ^²   refers to a root capability associated with the result type of (x: A^): B^²
+   |                              ^³   refers to a fresh root capability in the type of value _$3
+   |                              cap  is a root capability associated with the result type of (x: A^): B^²
+   |                              cap² is a fresh root capability in the type of value _$3
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:13:25 ----------------------------------
-13 |  val _: (x: A^) -> B^ = x => f(x) // error: existential in B cannot subsume `x` since `x` is not shared
-   |                         ^^^^^^^^^
-   |                       Found:    (x: A^) ->? B^{x}
-   |                       Required: (x: A^) -> B^²
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:12:20 ----------------------------------
+12 |  val _: A^ -> B^ = x => g(x)      // error: g is no longer pure, since it contains the ^ of B
+   |                    ^^^^^^^^^
+   |                    Found:    (x: A^) ->{g} B^²
+   |                    Required: A^ -> B^³
    |
-   |                       where:    ^  refers to the universal root capability
-   |                                 ^² refers to a root capability associated with the result type of (x: A^): B^²
+   |                    Note that capability g is not included in capture set {}.
    |
-   |                       Note that the existential capture root in B^
-   |                       cannot subsume the capability x.type since that capability is not a `Sharable` capability
+   |                    where:    ^  refers to the universal root capability
+   |                              ^² refers to a root capability associated with the result type of (x: A^): B^²
+   |                              ^³ refers to a fresh root capability in the type of value _$5
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:16:24 ----------------------------------
 16 |  val _: (x: S) -> B^ = h          // error: direct conversion fails
    |                        ^
-   |                Found:    S^{cap.rd} -> B^{h*}
-   |                Required: (x: S^{cap.rd}) -> B^
+   |                       Found:    S^ -> B^{h*}
+   |                       Required: (x: S^) -> B^²
    |
-   |                where:    ^   refers to a root capability associated with the result type of (x: S^{cap.rd}): B^
-   |                          cap is the universal root capability
+   |                       Note that capability h* is not included in capture set {cap}.
    |
-   |                Note that the existential capture root in B^
-   |                cannot subsume the capability h* since that capability is not a `Sharable` capability
+   |                       Note that the existential capture root in B^
+   |                       cannot subsume the capability h* since that capability is not a `Sharable` capability..
+   |
+   |                       where:    ^   refers to the universal root capability
+   |                                 ^²  refers to a root capability associated with the result type of (x: S^): B^²
+   |                                 cap is a root capability associated with the result type of (x: S^): B^²
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:17:24 ----------------------------------
 17 |  val _: (x: S) -> B^ = (x: S) => h(x)  // error: eta expansion fails
    |                        ^^^^^^^^^^^^^^
-   |                Found:    (x: S^{cap.rd}) ->? B^{h*}
-   |                Required: (x: S^{cap.rd}) -> B^
+   |                        Found:    (x: S^) ->{h} B^²
+   |                        Required: (x: S^) -> B^³
    |
-   |                where:    ^   refers to a root capability associated with the result type of (x: S^{cap.rd}): B^
-   |                          cap is the universal root capability
+   |                        Note that capability h is not included in capture set {}.
    |
-   |                Note that the existential capture root in B^
-   |                cannot subsume the capability h* since that capability is not a `Sharable` capability
+   |                        where:    ^  refers to the universal root capability
+   |                                  ^² refers to a root capability associated with the result type of (x: S^): B^²
+   |                                  ^³ refers to a root capability associated with the result type of (x: S^): B^³
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:26:19 ----------------------------------
-26 |  val _: S -> B^ = j               // error
-   |                   ^
-   |                Found:    (j : (x: S) -> B^)
-   |                Required: S^{cap.rd} -> B^²
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:21:23 ----------------------------------
+21 |  val _: (x: S) -> S = (x: S) => h2(x)  // error: eta conversion fails since `h2` is now impure (result type S is a capability)
+   |                       ^^^^^^^^^^^^^^^
+   |                       Found:    (x: S^) ->{h2} S^²
+   |                       Required: (x: S^) -> S^³
    |
-   |                where:    ^   refers to a root capability associated with the result type of (x: S^{cap.rd}): B^
-   |                          ^²  refers to a fresh root capability in the type of value _$13
-   |                          cap is the universal root capability
+   |                       Note that capability h2 is not included in capture set {}.
+   |
+   |                       where:    ^  refers to the universal root capability
+   |                                 ^² refers to a root capability associated with the result type of (x: S^): S^²
+   |                                 ^³ refers to a root capability associated with the result type of (x: S^): S^³
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:27:19 ----------------------------------
-27 |  val _: S -> B^ = x => j(x)       // error
-   |                   ^^^^^^^^^
-   |                   Found:    (x: S^{cap.rd}) ->? B^{x}
-   |                   Required: S^{cap.rd} -> B^
+27 |  val _: S -> B^ = j               // error
+   |                   ^
+   |                   Found:    (j : (x: S) -> B^)
+   |                   Required: S^² -> B^³
    |
-   |                   where:    ^   refers to a fresh root capability in the type of value _$14
-   |                             cap is the universal root capability
+   |                   Note that capability cap is not included in capture set {cap²}
+   |                   because cap is not visible from cap² in value _$14.
+   |
+   |                   where:    ^    refers to a root capability associated with the result type of (x: S^²): B^
+   |                             ^²   refers to the universal root capability
+   |                             ^³   refers to a fresh root capability in the type of value _$14
+   |                             cap  is a root capability associated with the result type of (x: S^²): B^
+   |                             cap² is a fresh root capability in the type of value _$14
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps.scala:28:19 ----------------------------------
+28 |  val _: S -> B^ = x => j(x)       // error
+   |                   ^^^^^^^^^
+   |                   Found:    (x: S^) ->'s1 B^²
+   |                   Required: S^ -> B^³
+   |
+   |                   Note that capability cap is not included in capture set {cap²}
+   |                   because cap is not visible from cap² in value _$15.
+   |
+   |                   where:    ^    refers to the universal root capability
+   |                             ^²   refers to a root capability associated with the result type of (x: S^): B^²
+   |                             ^³   refers to a fresh root capability in the type of value _$15
+   |                             cap  is a root capability associated with the result type of (x: S^): B^²
+   |                             cap² is a fresh root capability in the type of value _$15
    |
    | longer explanation available when compiling with `-explain`

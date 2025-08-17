@@ -602,7 +602,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
     record("typedIdent")
     val name = tree.name
-    def kind = if (name.isTermName) "" else "type "
+    def kind =
+      if name.isTermName then
+        if ctx.mode.is(Mode.InCaptureSet) then "capability "
+        else ""
+      else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if ctx.mode.is(Mode.Pattern) then
       if name == nme.WILDCARD then
@@ -1237,6 +1241,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         var tpt1 = typedType(tree.tpt)
         val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
+        if ctx.mode.isQuotedPattern && tpt1.tpe.typeSymbol.isAllOf(Synthetic | Case) then
+          val errorTp = errorType(CannotInstantiateQuotedTypeVar(tpt1.tpe.typeSymbol), tpt1.srcPos)
+          return cpy.New(tree)(tpt1).withType(errorTp)
         if tsym.is(Package) then
           report error(em"$tsym cannot be instantiated", tpt1.srcPos)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
@@ -4378,31 +4385,39 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
+            lazy val defaultArg = findDefaultArgument(argIndex)
+              .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
+            def argHasDefault = hasDefaultParams && !defaultArg.isEmpty
+
             def canProfitFromMoreConstraints =
               arg.tpe.isInstanceOf[AmbiguousImplicits]
-                    // ambiguity could be decided by more constraints
-              || !isFullyDefined(formal, ForceDegree.none)
-                    // more context might constrain type variables which could make implicit scope larger
+                    // Ambiguity could be decided by more constraints
+              || !isFullyDefined(formal, ForceDegree.none) && !argHasDefault
+                    // More context might constrain type variables which could make implicit scope larger.
+                    // But in this case we should search with additional arguments typed only if there
+                    // is no default argument.
+
+            // Try to constrain the result using `pt1`, but back out if a BadTyperStateAssertion
+            // is thrown. TODO Find out why the bad typer state arises and prevent it. The try-catch
+            // is a temporary hack to keep projects compiling that would fail otherwise due to
+            // searching more arguments to instantiate implicits (PR #23532). A failing project
+            // is described in issue #23609.
+            def tryConstrainResult(pt: Type): Boolean =
+              try constrainResult(tree.symbol, wtp, pt)
+              catch case ex: TyperState.BadTyperStateAssertion => false
 
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
-                then return implicitArgs(formals, argIndex, pt1)
+                val pt1 = pt.deepenProtoTrans
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
+                  return implicitArgs(formals, argIndex, pt1)
               case _ =>
 
             arg.tpe match
               case failed: AmbiguousImplicits =>
                 arg :: implicitArgs(formals1, argIndex + 1, pt)
               case failed: SearchFailureType =>
-                lazy val defaultArg = findDefaultArgument(argIndex)
-                  .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
-                if !hasDefaultParams || defaultArg.isEmpty then
-                  // no need to search further, the adapt fails in any case
-                  // the reason why we continue inferring arguments in case of an AmbiguousImplicits
-                  // is that we need to know whether there are further errors.
-                  // If there are none, we have to propagate the ambiguity to the caller.
-                  arg :: formals1.map(dummyArg)
-                else
+                if argHasDefault then
                   // This is tricky. On the one hand, we need the defaultArg to
                   // correctly type subsequent formal parameters in the same using
                   // clause in case there are parameter dependencies. On the other hand,
@@ -4413,6 +4428,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   // `if propFail.exists` where we re-type the whole using clause with named
                   // arguments for all implicits that were found.
                   arg :: inferArgsAfter(defaultArg)
+                else
+                  // no need to search further, the adapt fails in any case
+                  // the reason why we continue inferring arguments in case of an AmbiguousImplicits
+                  // is that we need to know whether there are further errors.
+                  // If there are none, we have to propagate the ambiguity to the caller.
+                  arg :: formals1.map(dummyArg)
               case _ =>
                 arg :: inferArgsAfter(arg)
         end implicitArgs

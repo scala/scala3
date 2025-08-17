@@ -359,7 +359,7 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
 
 // TODO: use `CheckedIndexedSeqView.Id` once we can change the return type of `ArrayBuffer#view`
 final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], mutationCount: () -> Int)
-  extends AbstractIndexedSeqView[A], Pure {
+  extends AbstractIndexedSeqView[A], caps.Pure {
   /* Removed since it poses problems for capture checking
   @deprecated("never intended to be public; call ArrayBuffer#view instead", since = "2.13.7")
   def this(array: Array[AnyRef], length: Int) = {

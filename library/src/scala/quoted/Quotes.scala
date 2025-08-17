@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.annotation.{experimental, implicitNotFound, unused}
 import scala.reflect.TypeTest
 
@@ -681,6 +683,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
+
+      /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
+       *
+       *  Usage:
+       *  ```
+       *  ValDef.let(owner, "x", rhs1, Flags.Lazy) { x =>
+       *    ValDef.let(x.symbol.owner, "y", rhs2, Flags.Mutable) { y =>
+       *      // use `x` and `y`
+       *    }
+       *  }
+       *  ```
+       *
+       *  @param flags extra flags to with which the symbol should be constructed. Can be `Final | Implicit | Lazy | Mutable | Given | Synthetic`
+       */
+      // Keep: `flags` doc aligned with QuotesImpl's `validValInLetFlags`
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
        *
@@ -4251,11 +4269,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Tree of this definition
          *
-         *  If this symbol `isClassDef` it will return `a `ClassDef`,
-         *  if this symbol `isTypeDef` it will return `a `TypeDef`,
-         *  if this symbol `isValDef` it will return `a `ValDef`,
-         *  if this symbol `isDefDef` it will return `a `DefDef`
-         *  if this symbol `isBind` it will return `a `Bind`,
+         *  If this symbol `isClassDef` it will return a `ClassDef`,
+         *  if this symbol `isTypeDef` it will return a `TypeDef`,
+         *  if this symbol `isDefDef` it will return a `DefDef`,
+         *  if this symbol `isBind` it will return a `Bind`,
+         *  if this symbol `isValDef` it will return a `ValDef`,
+         *     or a `DefDef` (as the compiler can replace val class members with defs during compilation),
          *  else will throw
          *
          *  **Warning**: avoid using this method in macros.

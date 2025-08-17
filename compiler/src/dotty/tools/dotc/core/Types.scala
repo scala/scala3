@@ -1051,6 +1051,23 @@ object Types extends TypeUtils {
       buf.toList
     }
 
+    /** For use in quotes reflect.
+     *  A bit slower than the usual approach due to the use of LinkedHashSet.
+     **/
+    def sortedParents(using Context): mutable.LinkedHashSet[Type] = this match
+      case tp: ClassInfo =>
+        mutable.LinkedHashSet(tp) | mutable.LinkedHashSet(tp.declaredParents.flatMap(_.sortedParents.toList)*)
+      case tp: RefinedType =>
+        tp.parent.sortedParents
+      case tp: TypeProxy =>
+        tp.superType.sortedParents
+      case tp: AndType =>
+        tp.tp1.sortedParents | tp.tp2.sortedParents
+      case tp: OrType =>
+        tp.tp1.sortedParents & tp.tp2.sortedParents
+      case _ =>
+        mutable.LinkedHashSet()
+
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(using Context): Seq[SingleDenotation] = {
       record("abstractTermMembers")
@@ -3726,6 +3743,7 @@ object Types extends TypeUtils {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
+  /** Common base trait of MethodType, PolyType and ExprType */
   trait MethodicType extends TermType:
     def resType: Type
 
@@ -6490,7 +6508,7 @@ object Types extends TypeUtils {
     protected def range(lo: Type, hi: Type): Type =
       if variance > 0 then hi
       else if variance < 0 then
-        if (lo eq defn.NothingType) && hi.hasSimpleKind then
+        if (lo eq defn.NothingType) then
           // Approximate by Nothing & hi instead of just Nothing, in case the
           // approximated type is used as the prefix of another type (this would
           // lead to a type with a `NoDenotation` denot and a possible
@@ -6501,8 +6519,14 @@ object Types extends TypeUtils {
           // example if Nothing is the type of a parameter being depended on in
           // a MethodType)
           //
-          // Test case in tests/pos/i23530.scala
-          AndType(lo, hi)
+          // Test case in tests/pos/i23530.scala (and tests/pos/i23627.scala for
+          // the higher-kinded case which requires eta-expansion)
+          hi.etaExpand match
+            case expandedHi: HKTypeLambda =>
+              expandedHi.derivedLambdaType(resType = AndType(lo, expandedHi.resType))
+            case _ =>
+              // simple-kinded case
+              AndType(lo, hi)
         else
           lo
       else if lo `eq` hi then lo

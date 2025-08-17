@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 /** Expression representation of literal sequence of expressions.
  *
  *  `Varargs` can be used to create the an expression `args` that will be used as varargs `'{ f($args: _*) }`

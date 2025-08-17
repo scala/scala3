@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 /** Annotations to control the behavior of the compiler check for safe initialization of static obects.
  *
  *  Programmers usually do not need to use any annotations. They are intended for complex initialization

@@ -5,8 +5,8 @@ import caps.*
 // Test inspired by the "Gentrification Gone too Far?" paper
 object Levels:
 
-  trait Read extends Classifier, Capability
-  trait ReadWrite extends Classifier, Capability
+  trait Read extends Classifier, SharedCapability
+  trait ReadWrite extends Classifier, SharedCapability
 
   trait File(val name: String):
     val r: Read^
@@ -28,7 +28,7 @@ object Levels:
 
   // Unfortunately, we do not have @use lambdas yet
   trait UseFunction[U]:
-    def apply(@use f: File^): U
+    def apply[C^](f: File^{C}): U
 
   def withFile[U](name: String)(block: UseFunction[U]): U = block(File(name)) // unrestricted use of files & other capabilities
   def parReduce[U](xs: Seq[U])(op: (U, U) ->{cap.only[Read]} U): U = xs.reduce(op) // only Read-classified allowed
@@ -36,7 +36,7 @@ object Levels:
   @main def test =
     withFile("foo.txt"):
       new UseFunction[Unit]:
-        def apply(@use f: File^): Unit =
+        def apply[C^](f: File^{C}): Unit =
           f.read() // ok
           parReduce(1 to 1000): (a, b) =>
             a * b * f.read()    // ok
@@ -48,10 +48,10 @@ object Levels:
   def testMulti =
     withFile("foo.txt"):
       new UseFunction[Unit]:
-        def apply(@use f: File^): Unit =
+        def apply[C^](f: File^{C}): Unit =
           withFile("bar.txt"):
             new UseFunction[Unit]:
-              def apply(@use g: File^): Unit =
+              def apply[C^](g: File^{C}): Unit =
                 f.read() // ok
                 g.read() // ok
                 parReduce(1 to 1000): (a, b) =>

@@ -109,9 +109,9 @@ object TypeErasure {
         case _ => -1
 
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
+    if (defn.specialErasure.contains(cls))
+      return defn.specialErasure(cls).uncheckedNN
     if (cls.owner == defn.ScalaPackageClass) {
-      if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls).uncheckedNN
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }

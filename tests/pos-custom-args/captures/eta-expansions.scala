@@ -1,4 +1,4 @@
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def test(d: Cap) =
   def map2(xs: List[Int])(f: Int => Int): List[Int] = xs.map(f)

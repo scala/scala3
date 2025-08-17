@@ -24,7 +24,7 @@ import language.experimental.captureChecking
 trait StrictOptimizedMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   extends MapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C]
-    with Pure {
+    with caps.Pure {
 
   override def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
     strictOptimizedMap(mapFactory.newBuilder, f)

@@ -1,4 +1,4 @@
-class C extends caps.Capability
+class C extends caps.SharedCapability
 class STR(s: String)
 object test1:
   case class Ref(x: STR^)

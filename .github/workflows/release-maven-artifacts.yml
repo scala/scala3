@@ -1,0 +1,31 @@
+name: Release Artifacts to Maven
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+jobs:
+  release-maven-artifacts:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Publish Artifacts to the Maven Repository
+        run : sbt scala3-bootstrapped-new/publish
+        env:
+          MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
+          MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}
+          MAVEN_REPOSITORY_HOST : ${{ vars.MAVEN_REPOSITORY_HOST }}
+          MAVEN_REPOSITORY_REALM: ${{ vars.MAVEN_REPOSITORY_REALM }}
+          MAVEN_REPOSITORY_URL  : ${{ vars.MAVEN_REPOSITORY_URL }}
+          NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
+          NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}

@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 import scala.annotation.unused
 import scala.reflect.ClassTag
 

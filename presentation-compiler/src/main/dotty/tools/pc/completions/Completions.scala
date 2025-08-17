@@ -193,12 +193,23 @@ class Completions(
     )
   end isAbstractType
 
-  private def findSuffix(symbol: Symbol): CompletionAffix =
+  private def findSuffix(symbol: Symbol, adjustedPath: List[untpd.Tree]): CompletionAffix =
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
         if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
+      }
+      .chain{ suffix =>
+        adjustedPath match
+            case (ident: Ident) :: (app@Apply(_, List(arg))) :: _  =>
+              app.symbol.info match
+                case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) &&
+                  !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
+                  suffix.withNewPrefix(Affix(PrefixKind.Using))
+                case _ => suffix    
+            case _ => suffix
+        
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then
@@ -271,7 +282,7 @@ class Completions(
       val existsApply = extraMethodDenots.exists(_.symbol.name == nme.apply)
 
       extraMethodDenots.map { methodDenot =>
-        val suffix = findSuffix(methodDenot.symbol)
+        val suffix = findSuffix(methodDenot.symbol, adjustedPath)
         val affix = if methodDenot.symbol.isConstructor && existsApply then
           adjustedPath match
             case (select @ Select(qual, _)) :: _ =>
@@ -293,7 +304,7 @@ class Completions(
 
     if skipOriginalDenot then extraCompletionValues
     else
-      val suffix = findSuffix(denot.symbol)
+      val suffix = findSuffix(denot.symbol, adjustedPath)
       val name = undoBacktick(label)
       val denotCompletionValue = toCompletionValue(name, denot, suffix)
       denotCompletionValue :: extraCompletionValues
@@ -734,15 +745,18 @@ class Completions(
     defn.Object_notifyAll,
     defn.Object_notify,
     defn.Predef_undefined,
-    defn.ObjectClass.info.member(nme.wait_).symbol,
     // NOTE(olafur) IntelliJ does not complete the root package and without this filter
     // then `_root_` would appear as a completion result in the code `foobar(_<COMPLETE>)`
     defn.RootPackage,
     // NOTE(gabro) valueOf was added as a Predef member in 2.13. We filter it out since is a niche
     // use case and it would appear upon typing 'val'
-    defn.ValueOfClass.info.member(nme.valueOf).symbol,
-    defn.ScalaPredefModule.requiredMethod(nme.valueOf)
-  ).flatMap(_.alternatives.map(_.symbol)).toSet
+    defn.ValueOfClass
+  ) ++ (
+    Set(
+      defn.ObjectClass.info.member(nme.wait_),
+      defn.ScalaPredefModule.info.member(nme.valueOf)
+    ).flatMap(_.alternatives.map(_.symbol)).toSet
+  )
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||

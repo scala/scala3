@@ -26,7 +26,7 @@ trait Map[K, +V]
     with MapOps[K, V, Map, Map[K, V]]
     with MapFactoryDefaults[K, V, Map, Iterable]
     with Equals
-    with Pure {
+    with caps.Pure {
 
   def mapFactory: scala.collection.MapFactory[Map] = Map
 

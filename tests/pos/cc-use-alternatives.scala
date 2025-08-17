@@ -1,3 +1,4 @@
+//> using options -source 3.7
 import language.experimental.captureChecking
 // no separation checking
 import caps.{cap, use}

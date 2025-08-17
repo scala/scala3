@@ -1140,6 +1140,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   /** Textual representation of an instance creation expression without the leading `new` */
   protected def constrText(tree: untpd.Tree): Text = toTextLocal(tree).stripPrefix(keywordStr("new ")) // DD
 
+  override def annotText(annot: Annotation): Text = annotText(annot.symbol, annot.tree)
+
   protected def annotText(sym: Symbol, tree: untpd.Tree): Text =
     def recur(t: untpd.Tree): Text = t match
       case Apply(fn, Nil) => recur(fn)
@@ -1152,8 +1154,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case New(tpt) => recur(tpt)
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)
-        s"@${if annotSym.exists then annotSym.name.toString else t.show}"
+        if annotSym.exists then annotText(annotSym) else s"@${t.show}"
     recur(tree)
+
+  protected override def annotText(sym: Symbol): Text =
+    if sym == defn.ConsumeAnnot then "consume" else super.annotText(sym)
 
   protected def modText(mods: untpd.Modifiers, sym: Symbol, kw: String, isType: Boolean): Text = { // DD
     val suppressKw = if (enclDefIsClass) mods.isAllOf(LocalParam) else mods.is(Param)
@@ -1174,8 +1179,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         mods.annotations.filterNot(tree => dropAnnotForModText(tree.symbol)).map(annotText(NoSymbol, _))
     Text(annotTexts, " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
-
-  override def annotText(annot: Annotation): Text = annotText(annot.symbol, annot.tree)
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))

@@ -1220,7 +1220,7 @@ object SymDenotations {
       || is(Inline, butNot = Deferred)
       || is(JavaDefinedVal, butNot = Method)
       || isConstructor
-      || !owner.isExtensibleClass && !is(Deferred)
+      || exists && !owner.isExtensibleClass && !is(Deferred)
       	// Deferred symbols can arise through parent refinements under x.modularity.
       	// For them, the overriding relationship reverses anyway, so
       	// being in a final class does not mean the symbol cannot be
@@ -1240,9 +1240,7 @@ object SymDenotations {
       || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
 
     final def isTransparentClass(using Context): Boolean =
-      is(TransparentType)
-      || defn.isAssumedTransparent(symbol)
-      || isClass && hasAnnotation(defn.TransparentTraitAnnot)
+      is(TransparentType) || defn.isAssumedTransparent(symbol)
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(using Context): Symbol = {

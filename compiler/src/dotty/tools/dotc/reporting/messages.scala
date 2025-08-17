@@ -14,10 +14,11 @@ import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
+import ast.desugar
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
-import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
+import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope, Addenda, NothingToAdd}
 import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
@@ -297,8 +298,13 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: Addenda = NothingToAdd)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
+
+  private val shouldSuggestNN =
+    if ctx.mode.is(Mode.SafeNulls) && expected.isValueType then
+      found frozen_<:< OrNull(expected)
+    else false
 
   def msg(using Context) =
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -349,17 +355,37 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
         |Required: $expectedStr${reported.notes}"""
   end msg
 
-  override def msgPostscript(using Context) =
+  override def msgPostscript(using Context): String =
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-    super.msgPostscript
-    ++ addenda.dropWhile(_.isEmpty).headOption.getOrElse(importSuggestions)
+
+    addenda.toAdd.mkString ++ super.msgPostscript ++ importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
     treeStr + "\n" + super.explain
 
+  override def actions(using Context) =
+    inTree match {
+      case Some(tree) if shouldSuggestNN =>
+        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val replacement = tree match
+          case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
+            content + ".nn"
+          case _ @ (Select(_, _) | Ident(_)) => content + ".nn"
+          case _ => "(" + content + ").nn"
+        List(
+          CodeAction(title = """Add .nn""",
+            description = None,
+            patches = List(
+              ActionPatch(tree.srcPos.sourcePos, replacement)
+            )
+          )
+        )
+      case _ =>
+        List()
+    }
 end TypeMismatch
 
 class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
@@ -3381,11 +3407,13 @@ extends Message(UnusedSymbolID):
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def localVars(using Context): UnusedSymbol = UnusedSymbol(i"local variable was mutated but not read")
   def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
   def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def privateVars(using Context): UnusedSymbol = UnusedSymbol(i"private variable was mutated but not read")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
   def unsetLocals(using Context): UnusedSymbol =
     UnusedSymbol(i"unset local variable, consider using an immutable val instead")
@@ -3434,6 +3462,18 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
         |"""
 
 end QuotedTypeMissing
+
+final class CannotInstantiateQuotedTypeVar(symbol: Symbol)(using patternCtx: Context) extends StagingMessage(CannotInstantiateQuotedTypeVarID):
+  override protected def msg(using Context): String =
+    i"""Quoted pattern type variable `${symbol.name}` cannot be instantiated.
+      |If you meant to refer to a class named `${symbol.name}`, wrap it in backticks.
+      |If you meant to introduce a binding, this is not allowed after `new`. You might
+      |want to use the lower-level `quotes.reflect` API instead.
+      |Read more about type variables in quoted pattern in the Scala documentation:
+      |https://docs.scala-lang.org/scala3/guides/macros/quotes.html#type-variables-in-quoted-patterns
+    """
+
+  override protected def explain(using Context): String = ""
 
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
@@ -3652,3 +3692,15 @@ final class IllegalErasedDef(sym: Symbol)(using Context) extends TypeMsg(Illegal
   override protected def explain(using Context): String =
     "Only non-lazy immutable values can be `erased`"
 end IllegalErasedDef
+
+final class DefaultShadowsGiven(name: Name)(using Context) extends TypeMsg(DefaultShadowsGivenID):
+  override protected def msg(using Context): String =
+    i"Argument for implicit parameter $name was supplied using a default argument."
+  override protected def explain(using Context): String =
+    "Usually the given in scope is intended, but you must specify it after explicit `using`."
+
+final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(RecurseWithDefaultID):
+  override protected def msg(using Context): String =
+    i"Recursive call used a default argument for parameter $name."
+  override protected def explain(using Context): String =
+    "It's more explicit to pass current or modified arguments in a recursion."

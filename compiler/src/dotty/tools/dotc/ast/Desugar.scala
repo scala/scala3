@@ -67,6 +67,8 @@ object desugar {
    */
   val TrailingForMap: Property.Key[Unit] = Property.StickyKey()
 
+  val WasTypedInfix: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1720,10 +1722,12 @@ object desugar {
         case _ =>
           Apply(sel, arg :: Nil)
 
-    if op.name.isRightAssocOperatorName then
+    val apply = if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
     else
       makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
+    apply.pushAttachment(WasTypedInfix, ())
+    return apply
   }
 
   /** Translate throws type `A throws E1 | ... | En` to
@@ -2102,7 +2106,19 @@ object desugar {
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
             else MatchCheck.None
-          makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
+          val pat = gen.pat.match
+            case Tuple(pats) if pats.length > Definitions.MaxImplementedFunctionArity =>
+              /* The pattern case is a tupleXXL, because we have bound > 21 variables in the comprehension.
+               * In this case, we need to mark all the typed patterns as @unchecked, or get loads of warnings.
+               * Cf. warn test i23164.scala */
+              Tuple:
+                pats.map:
+                  case t @ Bind(name, tp @ Typed(id, tpt)) =>
+                    val annotated = Annotated(tpt, New(ref(defn.UncheckedAnnot.typeRef)))
+                    cpy.Bind(t)(name, cpy.Typed(tp)(id, annotated)).withMods(t.mods)
+                  case t => t
+            case _ => gen.pat
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
 
       def hasGivenBind(pat: Tree): Boolean = pat.existsSubTree {

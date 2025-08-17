@@ -1,5 +1,7 @@
 package scala.annotation.internal
 
+import language.experimental.captureChecking
+
 import scala.annotation.Annotation
 import scala.annotation.experimental
 
@@ -7,5 +9,4 @@ import scala.annotation.experimental
  *
  * The compiler will remove certain static checks except those that can't be performed at runtime.
  */
-@experimental
 final class RuntimeChecked() extends Annotation

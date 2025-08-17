@@ -1,8 +1,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:18:4 ------------------------------------
 18 |    final class Mapped extends LazyList[B]:  // error
    |    ^
-   |    Found:    LazyList[B^?]^{f, xs}
+   |    Found:    LazyList[B^'s1]^{f, xs}
    |    Required: LazyList[B]^{f}
+   |
+   |    Note that capability xs is not included in capture set {f}.
 19 |      this: (Mapped^{xs, f}) =>
 20 |      def isEmpty = false
 21 |      def head: B = f(xs.head)
@@ -13,8 +15,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:27:4 ------------------------------------
 27 |    final class Mapped extends LazyList[B]:  // error
    |    ^
-   |    Found:    LazyList[B^?]^{f, xs}
+   |    Found:    LazyList[B^'s2]^{f, xs}
    |    Required: LazyList[B]^{xs}
+   |
+   |    Note that capability f is not included in capture set {xs}.
 28 |      this: Mapped^{xs, f} =>
 29 |      def isEmpty = false
 30 |      def head: B = f(xs.head)
@@ -33,8 +37,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:45:4 ------------------------------------
 45 |    final class Mapped extends LazyList[B]:  // error
    |    ^
-   |    Found:    LazyList[B^?]^{f, xs}
+   |    Found:    LazyList[B^'s3]^{f, xs}
    |    Required: LazyList[B]^{xs}
+   |
+   |    Note that capability f is not included in capture set {xs}.
 46 |      this: (Mapped^{xs, f}) =>
 47 |      def isEmpty = false
 48 |      def head: B = f(xs.head)

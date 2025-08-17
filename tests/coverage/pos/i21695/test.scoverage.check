@@ -1,0 +1,71 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+i21695/A.scala
+example
+A
+Trait
+example.A
+create
+94
+119
+8
+build
+Apply
+false
+0
+false
+x1.addService(x2).build()
+
+1
+i21695/A.scala
+example
+A
+Trait
+example.A
+create
+108
+110
+8
+x2
+Select
+false
+0
+false
+x2
+
+2
+i21695/A.scala
+example
+A
+Trait
+example.A
+create
+69
+79
+7
+create
+DefDef
+false
+0
+false
+def create
+
