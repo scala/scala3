@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
 jobs:
   scala-library-nonbootstrapped:
     runs-on: ubuntu-latest
