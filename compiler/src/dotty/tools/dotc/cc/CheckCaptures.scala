@@ -780,21 +780,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val appType = resultToFresh(
         super.recheckApplication(tree, qualType, funType, argTypes),
         Origin.ResultInstance(funType, tree.symbol))
-      val qualCaptures = qualType.captureSet
-      val argCaptures =
-        for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
-          if formal.hasAnnotation(defn.UseAnnot) then argType.deepCaptureSet else argType.captureSet
-      appType match
-        case appType @ CapturingType(appType1, refs)
-        if qualType.exists
-            && !tree.fun.symbol.isConstructor
-            && qualCaptures.mightSubcapture(refs)
-            && argCaptures.forall(_.mightSubcapture(refs)) =>
-          val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
-          appType.derivedCapturingType(appType1, callCaptures)
-            .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
-        case appType =>
-          appType
+      appType
 
     private def isDistinct(xs: List[Type]): Boolean = xs match
       case x :: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
@@ -846,8 +832,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
-            refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
-            allCaptures ++= argType.captureSet
+            refined = refined.refinedOverride(getterName, argType.unboxed) // TODO: This looks unsound.
+                                                                           // Try to find an counter-example.
+            if defn.isFunctionType(argType.widenDealias) then
+              allCaptures ++= argType.deepCaptureSet
+            else
+              allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.

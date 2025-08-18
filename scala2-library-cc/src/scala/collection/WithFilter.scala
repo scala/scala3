@@ -45,7 +45,7 @@ abstract class WithFilter[+A, +CC[_]] extends Serializable {
     *                of the filtered outer $coll and
     *                concatenating the results.
     */
-  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f}
+  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f*}
 
   /** Applies a function `f` to all elements of the `filtered` outer $coll.
     *
