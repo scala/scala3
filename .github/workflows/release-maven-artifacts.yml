@@ -7,6 +7,9 @@ on:
         required: true
         type: string
 
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
 jobs:
   release-maven-artifacts:
     runs-on: ubuntu-latest
