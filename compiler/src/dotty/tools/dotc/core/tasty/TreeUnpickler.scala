@@ -809,8 +809,8 @@ class TreeUnpickler(reader: TastyReader,
             if (sym.isTerm && !sym.isOneOf(DeferredOrLazyOrMethod))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
-              sym.is(Method, butNot = Deferred) && !sym.isConstructor)
-              initsFlags &= NoInits
+              sym.isOneOf(Lazy | Method, butNot = Deferred) && !sym.isConstructor)
+              initsFlags &= NoInits // i.e. initsFlags &~= PureInterface
           case IMPORT | EXPORT =>
             skipTree()
           case PACKAGE =>
