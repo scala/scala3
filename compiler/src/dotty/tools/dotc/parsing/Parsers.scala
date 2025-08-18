@@ -2373,6 +2373,7 @@ object Parsers {
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  PrefixOperator SimpleExpr `=' Expr
+     *                      |  InfixExpr id [nl] `=' Expr                  -- only if language.postfixOps is enabled
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  ‘inline’ InfixExpr MatchClause
@@ -2528,7 +2529,7 @@ object Parsers {
     def expr1Rest(t: Tree, location: Location): Tree =
       if in.token == EQUALS then
         t match
-          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) =>
+          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) | PostfixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
               val loc = if location.inArgs then location else Location.ElseWhere
               Assign(t, subPart(() => expr(loc)))
