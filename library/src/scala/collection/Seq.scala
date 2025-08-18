@@ -63,25 +63,6 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
   * Contains strict overrides of SeqOps operations, where the parameters are also captured.
   */
 transparent trait StrictSeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with SeqOps[A, CC, C] with caps.Pure {
-  override def iterableFactory: StrictIterableFactory[CC]
-
-  override def prependedAll[B >: A](prefix: IterableOnce[B]^): CC[B] = iterableFactory.from(prefix match {
-    case prefix: Iterable[B] => new View.Concat(prefix, this)
-    case _ => prefix.iterator ++ iterator
-  })
-
-  @inline override final def ++: [B >: A](prefix: IterableOnce[B]^): CC[B] = prependedAll(prefix)
-
-  override def appendedAll[B >: A](suffix: IterableOnce[B]^): CC[B] = super.concat(suffix)
-
-  @inline override final def :++ [B >: A](suffix: IterableOnce[B]^): CC[B] = appendedAll(suffix)
-
-  @inline override final def concat[B >: A](suffix: IterableOnce[B]^): CC[B] = appendedAll(suffix)
-
-  override def reverseMap[B](f: A => B): CC[B] = iterableFactory.from(new View.Map(View.fromIteratorProvider(() => reverseIterator), f))
-
-  override def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
-    iterableFactory.from(new View.Patched(this, from, other, replaced))
 }
 
 /** Base trait for Seq operations
@@ -1042,11 +1023,11 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     * @return a `Found` value containing the index corresponding to the element in the
     *         sequence, or the `InsertionPoint` where the element would be inserted if
     *         the element is not in the sequence.
-    * 
+    *
     * @note if `to <= from`, the search space is empty, and an `InsertionPoint` at `from`
     *       is returned
     */
-  def search[B >: A](elem: B, from: Int, to: Int) (implicit ord: Ordering[B]): SearchResult = 
+  def search[B >: A](elem: B, from: Int, to: Int) (implicit ord: Ordering[B]): SearchResult =
     linearSearch(view.slice(from, to), elem, math.max(0, from))(ord)
 
   private[this] def linearSearch[B >: A](c: View[A]^, elem: B, offset: Int)

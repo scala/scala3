@@ -93,40 +93,6 @@ trait Map[K, +V]
 /** Map operations for strict maps. */
 transparent trait StrictMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _] with caps.Pure, +C]
   extends MapOps[K, V, CC, C] with caps.Pure {
-
-  override def mapFactory: StrictMapFactory[CC]
-  override protected def fromSpecific(coll: IterableOnce[(K, V) @uncheckedVariance]^): C
-
-  @`inline` override protected def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2] = mapFactory.from(it)
-
-  override def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] = mapFactory.from(new View.Map(this, f))
-
-  override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]^): CC[K2, V2] =
-    mapFactory.from(new View.Collect(this, pf))
-
-  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] = mapFactory.from(new View.FlatMap(this, f))
-
-  override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): CC[K, V2] = mapFactory.from(suffix match {
-    case it: Iterable[(K, V2)] => new View.Concat(this, it)
-    case _ => iterator.concat(suffix.iterator)
-  })
-
-  override def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
-
-  @`inline` override def -- (keys: IterableOnce[K]^): C = {
-    lazy val keysSet = keys.iterator.to(immutable.Set)
-    fromSpecific(this.view.filterKeys(k => !keysSet.contains(k)))
-  }
-
-  @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
-  override def ++: [V1 >: V](that: IterableOnce[(K,V1)]^): CC[K,V1] = {
-    val thatIterable: Iterable[(K, V1)]^{that} = that match {
-      case that: Iterable[(K, V1)] => that
-      case that => View.from(that)
-    }
-    mapFactory.from(new View.Concat(thatIterable, this))
-  }
-
   // The original keySet implementation, with a lazy iterator over the keys,
   // is only correct if we have a strict Map.
   // We restore it here.
