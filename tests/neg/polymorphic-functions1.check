@@ -1,10 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg/polymorphic-functions1.scala:1:33 ---------------------------------------------
 1 |val f: [T] => (x: T) => x.type = [T] => (x: Int) => x // error
   |                                 ^^^^^^^^^^^^^^^^^^^^
-  |                                 Found:    [T] => (x: Int) => x.type
-  |                                 Required: [T] => (x²: T) => x².type
-  |
-  |                                 where:    x  is a reference to a value parameter
-  |                                           x² is a reference to a value parameter
+  |                                 Found:    [T] => (x: Int) => (x : Int)
+  |                                 Required: [T] => (x: T) => (x : T)
   |
   | longer explanation available when compiling with `-explain`

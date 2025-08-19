@@ -1,14 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/simple-using.scala:8:15 ----------------------------------
 8 |  usingLogFile { f => () => f.write(2) } // error
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
-  |Found:    (f: java.io.FileOutputStream^) ->? box () ->{f} Unit
-  |Required: (f: java.io.FileOutputStream^) => box () ->? Unit
+  |Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
+  |Required: java.io.FileOutputStream^ => () ->'s3 Unit
+  |
+  |Note that capability f cannot be included in outer capture set 's3.
   |
   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op of method usingLogFile
   |          ^  refers to the universal root capability
-  |
-  |
-  |Note that reference f.type
-  |cannot be included in outer capture set ?
   |
   | longer explanation available when compiling with `-explain`

@@ -2,6 +2,9 @@
 7 |  f() // error f() missing arg
   |  ^^^
   |  missing argument for parameter i of method f: (implicit i: Int, j: Int): Int
+  |  This code can be rewritten automatically under -rewrite -source 3.7-migration.
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E050] Type Error: tests/neg/i22439.scala:8:2 -----------------------------------------------------------------------
 8 |  g() // error g(given_Int, given_Int)() doesn't take more params
   |  ^
@@ -24,3 +27,6 @@
 21 |  val (ws, zs) = vs.unzip() // error!
    |                 ^^^^^^^^^^
    |missing argument for parameter asPair of method unzip in trait StrictOptimizedIterableOps: (implicit asPair: ((Int, Int)) => (A1, A2)): (List[A1], List[A2])
+   |This code can be rewritten automatically under -rewrite -source 3.7-migration.
+   |
+   | longer explanation available when compiling with `-explain`

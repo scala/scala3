@@ -1,0 +1,224 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+169
+175
+12
+apply
+Apply
+false
+0
+false
+Bar(x)
+
+1
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+184
+190
+13
+==
+Apply
+false
+0
+false
+x == 5
+
+2
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+192
+195
+13
+<none>
+Literal
+false
+0
+false
+"5"
+
+3
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+192
+195
+13
+<none>
+Literal
+true
+0
+false
+"5"
+
+4
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+201
+221
+13
++
+Apply
+false
+0
+false
+"idk" + bar.toString
+
+5
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+201
+206
+13
+<none>
+Literal
+false
+0
+false
+"idk"
+
+6
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+209
+221
+13
+toString
+Apply
+false
+0
+false
+bar.toString
+
+7
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+201
+221
+13
++
+Apply
+true
+0
+false
+"idk" + bar.toString
+
+8
+i21877.scala
+<empty>
+Foo
+Object
+<empty>.Foo
+foo
+127
+134
+11
+foo
+DefDef
+false
+0
+false
+def foo
+
+9
+i21877.scala
+<empty>
+i21877$package
+Object
+<empty>.i21877$package
+test
+303
+313
+20
+foo
+Apply
+false
+0
+false
+Foo.foo(4)
+
+10
+i21877.scala
+<empty>
+i21877$package
+Object
+<empty>.i21877$package
+test
+316
+326
+21
+foo
+Apply
+false
+0
+false
+Foo.foo(5)
+
+11
+i21877.scala
+<empty>
+i21877$package
+Object
+<empty>.i21877$package
+test
+282
+296
+19
+test
+DefDef
+false
+0
+false
+@main def test
+

@@ -7,7 +7,7 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
-import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.NameKinds.{
   BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import dotty.tools.dotc.core.StdNames.nme
@@ -172,9 +172,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       refInfos.register(tree)
-    tree.tpt match
-    case RefinedTypeTree(_, refinements) => relax(tree.rhs, refinements)
-    case _ =>
+    relax(tree.rhs, tree.tpt.tpe)
     ctx
   override def transformValDef(tree: ValDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
@@ -198,9 +196,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       refInfos.inliners += 1
     else if !tree.symbol.is(Deferred) && tree.rhs.symbol != defn.Predef_undefined then
       refInfos.register(tree)
-    tree.tpt match
-    case RefinedTypeTree(_, refinements) => relax(tree.rhs, refinements)
-    case _ =>
+    relax(tree.rhs, tree.tpt.tpe)
     ctx
   override def transformDefDef(tree: DefDef)(using Context): tree.type =
     traverseAnnotations(tree.symbol)
@@ -309,8 +305,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     def matchingSelector(info: ImportInfo): ImportSelector | Null =
       val qtpe = info.site
       def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith: alt =>
-           alt.symbol == sym
-        || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
+        val sameSym =
+             alt.symbol == sym
+          || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
+        sameSym && alt.symbol.isAccessibleFrom(qtpe)
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -500,14 +498,22 @@ object CheckUnused:
     val warnings = ArrayBuilder.make[MessageInfo]
     def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
     val infos = refInfos
-    //println(infos.defs.mkString("DEFS\n", "\n", "\n---"))
-    //println(infos.refs.mkString("REFS\n", "\n", "\n---"))
+
+    // non-local sym was target of assignment or has a sibling setter that was referenced
+    def isMutated(sym: Symbol): Boolean =
+         infos.asss(sym)
+      || infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
 
     def checkUnassigned(sym: Symbol, pos: SrcPos) =
       if sym.isLocalToBlock then
         if ctx.settings.WunusedHas.locals && sym.is(Mutable) && !infos.asss(sym) then
           warnAt(pos)(UnusedSymbol.unsetLocals)
-      else if ctx.settings.WunusedHas.privates && sym.isAllOf(Private | Mutable) && !infos.asss(sym) then
+      else if ctx.settings.WunusedHas.privates
+        && sym.is(Mutable)
+        && (sym.is(Private) || sym.isEffectivelyPrivate)
+        && !sym.isSetter // tracks sym.underlyingSymbol sibling getter, check setter below
+        && !isMutated(sym)
+      then
         warnAt(pos)(UnusedSymbol.unsetPrivates)
 
     def checkPrivate(sym: Symbol, pos: SrcPos) =
@@ -516,10 +522,16 @@ object CheckUnused:
         && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
         && !sym.name.is(BodyRetainerName)
         && !sym.isSerializationSupport
-        && !(sym.is(Mutable) && sym.isSetter && sym.owner.is(Trait)) // tracks sym.underlyingSymbol sibling getter
+        && !( sym.is(Mutable)
+           && sym.isSetter // tracks sym.underlyingSymbol sibling getter
+           && (sym.owner.is(Trait) || sym.owner.isAnonymousClass)
+        )
         && !infos.nowarn(sym)
       then
-        warnAt(pos)(UnusedSymbol.privateMembers)
+        if sym.is(Mutable) && isMutated(sym) then
+          warnAt(pos)(UnusedSymbol.privateVars)
+        else
+          warnAt(pos)(UnusedSymbol.privateMembers)
 
     def checkParam(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
@@ -534,12 +546,15 @@ object CheckUnused:
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
         // A local param accessor warns as a param; a private accessor as a private member.
-        // Avoid warning for case class elements because they are aliased via unapply.
+        // Avoid warning for case class elements because they are aliased via unapply (i.e. may be extracted).
         if m.isPrimaryConstructor then
           val alias = m.owner.info.member(sym.name)
           if alias.exists then
             val aliasSym = alias.symbol
-            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor) && !infos.refs(alias.symbol) then
+            if aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               if aliasSym.is(Local) then
                 if ctx.settings.WunusedHas.explicits then
                   warnAt(pos)(UnusedSymbol.explicitParams(aliasSym))
@@ -548,13 +563,14 @@ object CheckUnused:
                   warnAt(pos)(UnusedSymbol.privateMembers)
         else if ctx.settings.WunusedHas.explicits
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
-          && !(sym.owner.is(ExtensionMethod) && {
-            m.paramSymss.dropWhile(_.exists(_.isTypeParam)) match
-            case (h :: Nil) :: Nil => h == sym // param is the extended receiver
+          && !(sym.owner.is(ExtensionMethod) &&
+            m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
+            case (h :: Nil) :: _ => h == sym // param is the extended receiver
             case _ => false
-          })
+          )
           && !sym.name.isInstanceOf[DerivedName]
           && !ctx.platform.isMainMethod(m)
+          && !usedByDefaultGetter(sym, m)
         then
           warnAt(pos)(UnusedSymbol.explicitParams(sym))
       end checkExplicit
@@ -566,6 +582,16 @@ object CheckUnused:
         checkExplicit()
     end checkParam
 
+    // does the param have an alias in a default arg method that is used?
+    def usedByDefaultGetter(param: Symbol, meth: Symbol): Boolean =
+      val cls = if meth.isConstructor then meth.enclosingClass.companionModule else meth.enclosingClass
+      val MethName = meth.name
+      cls.info.decls.exists: d =>
+        d.name match
+        case DefaultGetterName(MethName, _) =>
+          d.paramSymss.exists(_.exists(p => p.name == param.name && infos.refs(p)))
+        case _ => false
+
     def checkImplicit(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
       def allowed =
@@ -575,14 +601,14 @@ object CheckUnused:
         || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
         || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
         || sym.isCanEqual
-        || sym.info.typeSymbol.match                // more ubiquity
+        || sym.info.dealias.typeSymbol.match        // more ubiquity
            case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
            case tps =>
              tps.isMarkerTrait // no members to use; was only if sym.name.is(ContextBoundParamName)
              ||                // but consider NotGiven
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
-        || sym.info.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
@@ -595,9 +621,12 @@ object CheckUnused:
             val checking =
                  aliasSym.isAllOf(PrivateParamAccessor, butNot = CaseAccessor)
               || aliasSym.isAllOf(Protected | ParamAccessor, butNot = CaseAccessor) && m.owner.is(Given)
-            if checking && !infos.refs(alias.symbol) then
+            if checking
+              && !infos.refs(alias.symbol)
+              && !usedByDefaultGetter(sym, m)
+            then
               warnAt(pos)(UnusedSymbol.implicitParams(aliasSym))
-        else
+        else if !usedByDefaultGetter(sym, m) then
           warnAt(pos)(UnusedSymbol.implicitParams(sym))
 
     def checkLocal(sym: Symbol, pos: SrcPos) =
@@ -605,7 +634,10 @@ object CheckUnused:
         && !sym.is(InlineProxy)
         && !sym.isCanEqual
       then
-        warnAt(pos)(UnusedSymbol.localDefs)
+        if sym.is(Mutable) && infos.asss(sym) then
+          warnAt(pos)(UnusedSymbol.localVars)
+        else
+          warnAt(pos)(UnusedSymbol.localDefs)
 
     def checkPatvars() =
       // convert the one non-synthetic span so all are comparable; filter NoSpan below
@@ -864,15 +896,21 @@ object CheckUnused:
       case tree => traverseChildren(tree)
 
   // NoWarn members in tree that correspond to refinements; currently uses only names.
-  def relax(tree: Tree, refinements: List[Tree])(using Context): Unit =
-    val names = refinements.collect { case named: NamedDefTree => named.name }.toSet
-    val relaxer = new TreeTraverser:
-      def traverse(tree: Tree)(using Context) =
-        tree match
-        case tree: NamedDefTree if names(tree.name) => tree.withAttachment(NoWarn, ())
-        case _ =>
-        traverseChildren(tree)
-    relaxer.traverse(tree)
+  def relax(tree: Tree, tpe: Type)(using Context): Unit =
+    def refinements(tpe: Type, names: List[Name]): List[Name] =
+      tpe match
+      case RefinedType(parent, refinedName, refinedInfo) => refinedName :: refinements(parent, names)
+      case _ => names
+    val refinedNames = refinements(tpe, Nil)
+    if !refinedNames.isEmpty then
+      val names = refinedNames.toSet
+      val relaxer = new TreeTraverser:
+        def traverse(tree: Tree)(using Context) =
+          tree match
+          case tree: NamedDefTree if names(tree.name) => tree.withAttachment(NoWarn, ())
+          case _ =>
+          traverseChildren(tree)
+      relaxer.traverse(tree)
 
   extension (nm: Name)
     inline def exists(p: Name => Boolean): Boolean = nm.ne(nme.NO_NAME) && p(nm)
@@ -905,7 +943,7 @@ object CheckUnused:
     def isCanEqual: Boolean =
       sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
     def isMarkerTrait: Boolean =
-      sym.isClass && sym.info.allMembers.forall: d =>
+      sym.info.hiBound.resultType.allMembers.forall: d =>
         val m = d.symbol
         !m.isTerm || m.isSelfSym || m.is(Method) && (m.owner == defn.AnyClass || m.owner == defn.ObjectClass)
     def isEffectivelyPrivate: Boolean =

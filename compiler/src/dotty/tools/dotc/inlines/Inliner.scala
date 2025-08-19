@@ -58,12 +58,12 @@ object Inliner:
       case Ident(_) =>
         isPureRef(tree) || tree.symbol.isAllOf(InlineParam)
       case Select(qual, _) =>
-        if (tree.symbol.is(Erased)) true
+        if tree.symbol.isErased then true
         else isPureRef(tree) && apply(qual)
       case New(_) | Closure(_, _, _) =>
         true
       case TypeApply(fn, _) =>
-        if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of) true else apply(fn)
+        if fn.symbol.isErased || fn.symbol == defn.QuotedTypeModule_of then true else apply(fn)
       case Apply(fn, args) =>
         val isCaseClassApply = {
           val cls = tree.tpe.classSymbol
@@ -1144,9 +1144,9 @@ class Inliner(val call: tpd.Tree)(using Context):
         else
           ctx.compilationUnit.suspend(hints.nn.toList.mkString(", ")) // this throws a SuspendException
 
-    val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
-      Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
-    }
+    val evaluatedSplice =
+      inContext(quoted.MacroExpansion.context(inlinedFrom)):
+        Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
     val inlinedNormalizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case tree @ Inlined(_, Nil, expr) if tree.inlinedFromOuterScope && enclosingInlineds.isEmpty => transform(expr)

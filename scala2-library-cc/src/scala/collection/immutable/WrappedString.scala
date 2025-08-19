@@ -36,7 +36,7 @@ import language.experimental.captureChecking
 final class WrappedString(private val self: String) extends AbstractSeq[Char] with IndexedSeq[Char]
   with IndexedSeqOps[Char, IndexedSeq, WrappedString]
   with Serializable
-  with Pure {
+  with caps.Pure {
 
   def apply(i: Int): Char = self.charAt(i)
 

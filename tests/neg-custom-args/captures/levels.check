@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/levels.scala:17:21 ------------------------------------------------------------
 17 |  val _ = Ref[String => String]((x: String) => x) // error
    |              ^^^^^^^^^^^^^^^^
-   |              Type variable T of constructor Ref cannot be instantiated to box String => String since
+   |              Type variable T of constructor Ref cannot be instantiated to String => String since
    |              that type captures the root capability `cap`.
    |
    |              where:    => refers to the universal root capability
@@ -9,6 +9,8 @@
 22 |    r.setV(g) // error
    |           ^
    |           Found:    (x: String) ->{cap3} String
-   |           Required: (x: String) -> String
+   |           Required: String -> String
+   |
+   |           Note that capability cap3 is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

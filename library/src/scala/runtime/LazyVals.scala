@@ -1,5 +1,6 @@
 package scala.runtime
 
+import language.experimental.captureChecking
 import java.util.concurrent.CountDownLatch
 
 import scala.annotation.*
@@ -9,7 +10,7 @@ import scala.annotation.*
  */
 object LazyVals {
   @nowarn
-  private val unsafe: sun.misc.Unsafe = {
+  private val unsafe: sun.misc.Unsafe^ = { // do not let unsafe leak
     def throwInitializationException() =
       throw new ExceptionInInitializerError(
         new IllegalStateException("Can't find instance of sun.misc.Unsafe")

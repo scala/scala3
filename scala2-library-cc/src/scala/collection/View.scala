@@ -99,7 +99,7 @@ object View extends IterableFactory[View] {
 
   /** A view with given elements */
   @SerialVersionUID(3L)
-  class Elems[A](xs: A*) extends AbstractView[A], Pure {
+  class Elems[A](xs: A*) extends AbstractView[A], caps.Pure {
     def iterator = xs.iterator
     override def knownSize = xs.knownSize
     override def isEmpty: Boolean = xs.isEmpty
@@ -152,15 +152,13 @@ object View extends IterableFactory[View] {
     def apply[A](underlying: Iterable[A]^, p: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, p} =
       underlying match {
         case filter: Filter[A] if filter.isFlipped == isFlipped =>
-          new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
-            .asInstanceOf[Filter[A]^{underlying, p}]
+          unsafeAssumeSeparate:
+            new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
+              .asInstanceOf[Filter[A]^{underlying, p}]
               // !!! asInstanceOf needed once paths were added, see path-patmat-should-be-pos.scala for minimization
-        //case filter: Filter[A]^{underlying} if filter.isFlipped == isFlipped =>
-        //  unsafeAssumeSeparate:
             // See filter-iterable.scala for a test where a variant of Filter
             // works without the unsafeAssumeSeparate. But it requires significant
             // changes compared to the version here. See also Filter in colltest5.CollectionStrawManCC5_1.
-        //    new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
         case _ => new Filter(underlying, p, isFlipped)
       }
   }

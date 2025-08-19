@@ -94,7 +94,8 @@ object NavigateAST {
       * When choosing better fit we compare spans. If candidate span has starting or ending point inside (exclusive)
       * current best fit it is selected as new best fit. This means that same spans are failing the first predicate.
       *
-      * In case when spans start and end at same offsets we prefer non synthethic one.
+      * In case when spans start and end at same offsets we prefer non synthethic one,
+      * and then one with better point (see isBetterPoint below).
       */
     def isBetterFit(currentBest: List[Positioned], candidate: List[Positioned]): Boolean =
       if currentBest.isEmpty && candidate.nonEmpty then true
@@ -102,9 +103,20 @@ object NavigateAST {
         val bestSpan = currentBest.head.span
         val candidateSpan = candidate.head.span
 
-        bestSpan != candidateSpan &&
-          envelops(bestSpan, candidateSpan) ||
-          bestSpan.contains(candidateSpan) && bestSpan.isSynthetic && !candidateSpan.isSynthetic
+        def isBetterPoint =
+          // Given two spans with same end points,
+          // we compare their points in relation to the point we are looking for (span.point)
+          // The candidate (candidateSpan.point) is better than what we have so far (bestSpan.point), when:
+          // 1) candidate is closer to target from the right
+          span.point <= candidateSpan.point && candidateSpan.point < bestSpan.point
+          // 2) candidate is closer to target from the left
+          || bestSpan.point < candidateSpan.point && candidateSpan.point <= span.point
+          // 3) candidate is to on the left side of target, and best so far is on the right
+          || candidateSpan.point <= span.point && span.point < bestSpan.point
+
+        bestSpan != candidateSpan && envelops(bestSpan, candidateSpan)
+        || bestSpan.contains(candidateSpan) && bestSpan.isSynthetic && !candidateSpan.isSynthetic
+        || candidateSpan.start == bestSpan.start && candidateSpan.end == bestSpan.end && isBetterPoint
       else false
 
     def isRecoveryTree(sel: untpd.Select): Boolean =
@@ -141,7 +153,9 @@ object NavigateAST {
           case _ =>
         val iterator = p match
           case defdef: DefTree[?] =>
-            p.productIterator ++ defdef.mods.productIterator
+            val mods = defdef.mods
+            val annotations = defdef.symbol.annotations.filter(_.tree.span.contains(span)).map(_.tree)
+            p.productIterator ++ annotations ++ mods.productIterator
           case _ =>
             p.productIterator
         childPath(iterator, p :: path)

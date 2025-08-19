@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -44,6 +44,7 @@ jobs:
       - name: Compile and test
         run: |
           ./project/scripts/sbt scaladoc/test
+          ./project/scripts/sbt dist/Universal/stage
           ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
@@ -77,7 +78,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

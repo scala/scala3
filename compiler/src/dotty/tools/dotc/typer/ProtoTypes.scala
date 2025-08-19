@@ -466,13 +466,13 @@ object ProtoTypes {
             targ = typerFn(arg)
             // TODO: investigate why flow typing is not working on `targ`
             if ctx.reporter.hasUnreportedErrors then
-              if hasInnerErrors(targ.nn, argType) then
+              if hasInnerErrors(targ, argType) then
                 state.errorArgs += arg
             else
-              state.typedArg = state.typedArg.updated(arg, targ.nn)
+              state.typedArg = state.typedArg.updated(arg, targ)
               state.errorArgs -= arg
         }
-      targ.nn
+      targ
     }
 
     /** The typed arguments. This takes any arguments already typed using
@@ -623,6 +623,10 @@ object ProtoTypes {
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
       else new FunProto(args, resType)(typer, applyKind, state)(using newCtx)
+
+    def withApplyKind(applyKind: ApplyKind) =
+      if applyKind == this.applyKind then this
+      else new FunProto(args, resType)(typer, applyKind, state)
   }
 
   /** A prototype for expressions that appear in function position

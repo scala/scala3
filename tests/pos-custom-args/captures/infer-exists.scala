@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 
-class C extends caps.Capability
+class C extends caps.SharedCapability
 class D
 
 def test1 =

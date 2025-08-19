@@ -42,6 +42,7 @@ import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
+import scala.annotation.tailrec
 
 object Contexts {
 
@@ -401,8 +402,8 @@ object Contexts {
      *
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
-     *  - as scope: type parameters, the parameter accessors, and
-     *    the context bound companions in the class context,
+     *  - as scope: type parameters, the parameter accessors,
+     *    the dummy capture parameters and the context bound companions in the class context,
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -419,7 +420,7 @@ object Contexts {
     def superCallContext: Context =
       val locals = owner.typeParams
           ++ owner.asClass.unforcedDecls.filter: sym =>
-              sym.is(ParamAccessor) || sym.isContextBoundCompanion
+              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.
@@ -776,6 +777,14 @@ object Contexts {
       c
   end FreshContext
 
+  extension (ctx: Context)
+    /** Get the original compilation unit, ignoring any highlighting wrappers. */
+    @tailrec
+    def originalCompilationUnit: CompilationUnit =
+      val cu = ctx.compilationUnit
+      if cu.source.name == SyntaxHighlighting.VirtualSourceName then ctx.outer.originalCompilationUnit
+      else cu
+
   extension (c: Context)
     def addNotNullInfo(info: NotNullInfo) =
       if c.explicitNulls then c.withNotNullInfos(c.notNullInfos.extendWith(info)) else c
@@ -787,18 +796,16 @@ object Contexts {
       if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
-  extension (c: Context) {
+  extension (c: Context)
     final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
     final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
-  }
 
-  extension (c: FreshContext) {
+  extension (c: FreshContext)
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
-  }
 
   /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
@@ -862,6 +869,13 @@ object Contexts {
       base.comparersInUse += 1
       result.init(ctx)
       result
+
+  def currentComparer(using Context): TypeComparer =
+    val base = ctx.base
+    if base.comparersInUse > 0 then
+      base.comparers(base.comparersInUse - 1)
+    else
+      comparer
 
   inline def comparing[T](inline op: TypeComparer => T)(using Context): T =
     util.Stats.record("comparing")

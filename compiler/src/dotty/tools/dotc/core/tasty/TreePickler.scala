@@ -857,6 +857,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if (flags.is(ParamAccessor) && sym.isTerm && !sym.isSetter)
       flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
     pickleFlags(flags, sym.isTerm)
+    if flags.is(Into) then
+      // Temporary measure until we can change TastyFormat to include an INTO tag
+      pickleAnnotation(sym, mdef, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
     val annots = sym.annotations.foreach(pickleAnnotation(sym, mdef, _))
   }
 

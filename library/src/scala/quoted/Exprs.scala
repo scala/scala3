@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 object Exprs:
 
   /** Matches literal sequence of literal constant value expressions and return a sequence of values.

@@ -1,4 +1,4 @@
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 class Pair[+A, +B](x: A, y: B):
     def fst: A = x

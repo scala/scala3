@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 
-class Cap extends caps.Capability:
+class Cap extends caps.SharedCapability:
   def use[T](body: Cap => T) = body(this)
 
 class Box[T](body: Cap => T):

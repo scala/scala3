@@ -50,3 +50,6 @@ named-tuples-strawman-2.scala
 typeCheckErrors.scala
 i18150.scala
 i22968.scala
+
+# Pickling differences with local parameters export forwarders of methods with into parameters. But their external type is the same
+Parser.scala

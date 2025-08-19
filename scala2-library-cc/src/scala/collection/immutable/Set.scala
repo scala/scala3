@@ -129,7 +129,7 @@ object Set extends IterableFactory[Set] {
   private[collection] def emptyInstance: Set[Any] = EmptySet
 
   @SerialVersionUID(3L)
-  private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A], Serializable, Pure {
+  private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A], Serializable, caps.Pure {
     private[this] var current = 0
     private[this] var remainder = n
     override def knownSize: Int = remainder

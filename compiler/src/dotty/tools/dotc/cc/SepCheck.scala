@@ -22,9 +22,9 @@ import Capabilities.*
  *
  *   - Hidden sets of arguments must not be referred to in the same application
  *   - Hidden sets of (result-) types must not be referred to alter in the same scope.
- *   - Returned hidden sets can only refer to @consume parameters.
+ *   - Returned hidden sets can only refer to consume parameters.
  *   - If returned hidden sets refer to an encloding this, the reference must be
- *     from a @consume method.
+ *     from a consume method.
  *   - Consumed entities cannot be used subsequently.
  *   - Entitites cannot be consumed in a loop.
  */
@@ -165,12 +165,11 @@ object SepCheck:
   extension (refs: Refs)
 
     /** The footprint of a set of references `refs` the smallest set `F` such that
-     *   1. if includeMax is false then no maximal capability is in `F`
-     *   2. all capabilities in `refs` satisfying (1) are in `F`
-     *   3. if `f in F` then the footprint of `f`'s info is also in `F`.
+     *   1. all capabilities in `refs` satisfying (1) are in `F`
+     *   2. if `f in F` then the footprint of `f`'s info is also in `F`.
      */
-    private def footprint(includeMax: Boolean = false)(using Context): Refs =
-      def retain(ref: Capability) = includeMax || !ref.isTerminalCapability
+    private def footprint(using Context): Refs =
+      def retain(ref: Capability) = !ref.isTerminalCapability
       def recur(elems: Refs, newElems: List[Capability]): Refs = newElems match
         case newElem :: newElems1 =>
           val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
@@ -186,8 +185,8 @@ object SepCheck:
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
-          else newElem.stripReadOnly match
-            case elem: FreshCap =>
+          else newElem.stripRestricted.stripReadOnly match
+            case elem: FreshCap if !elem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
               if elem.hiddenSet.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
                 val superCaps =
@@ -198,7 +197,7 @@ object SepCheck:
               if newElem.isTerminalCapability
                 //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
               then recur(seen + newElem, acc, newElems1)
-              else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
+              else recur(seen + newElem, acc, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
         case Nil => acc
       recur(emptyRefs, emptyRefs, refs.toList)
 
@@ -257,6 +256,7 @@ object SepCheck:
 
       def hiddenByElem(elem: Capability): Refs = elem match
         case elem: FreshCap => elem.hiddenSet.elems ++ recur(elem.hiddenSet.elems)
+        case Restricted(elem1, cls) => hiddenByElem(elem1).map(_.restrict(cls))
         case ReadOnly(elem1) => hiddenByElem(elem1).map(_.readOnly)
         case _ => emptyRefs
 
@@ -326,15 +326,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         i"$other"
 
   def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
-    val hiddenFootprint = hiddenSet.footprint()
-    val clashFootprint = clashSet.footprint()
+    val hiddenFootprint = hiddenSet.footprint
+    val clashFootprint = clashSet.footprint
     // The overlap of footprints, or, of this empty the set of shared peaks.
     // We prefer footprint overlap since it tends to be more informative.
     val overlap = hiddenFootprint.overlapWith(clashFootprint)
     if !overlap.isEmpty then i"${CaptureSet(overlap)}"
     else
-      val sharedPeaks = hiddenSet.footprint(includeMax = true).sharedWith:
-        clashSet.footprint(includeMax = true)
+      val sharedPeaks = hiddenSet.peaks.sharedWith(clashSet.peaks)
       assert(!sharedPeaks.isEmpty, i"no overlap for $hiddenSet vs $clashSet")
       sharedPeaksStr(sharedPeaks)
 
@@ -386,9 +385,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           |Some of these overlap with the captures of the ${clashArgStr.trim}$clashTypeStr.
           |
           |  Hidden set of current argument        : ${CaptureSet(hiddenSet)}
-          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.footprint())}
+          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.footprint)}
           |  Capture set of $clashArgStr        : ${CaptureSet(clashSet)}
-          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.footprint())}
+          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.footprint)}
           |  The two sets overlap at               : ${overlapStr(hiddenSet, clashSet)}""",
       polyArg.srcPos)
 
@@ -423,7 +422,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def consumeError(ref: Capability, loc: SrcPos, pos: SrcPos)(using Context): Unit =
     report.error(
       em"""Separation failure: Illegal access to $ref, which was passed to a
-          |@consume parameter or was used as a prefix to a @consume method on line ${loc.line + 1}
+          |consume parameter or was used as a prefix to a consume method on line ${loc.line + 1}
           |and therefore is no longer available.""",
       pos)
 
@@ -434,7 +433,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def consumeInLoopError(ref: Capability, pos: SrcPos)(using Context): Unit =
     report.error(
       em"""Separation failure: $ref appears in a loop, therefore it cannot
-          |be passed to a @consume parameter or be used as a prefix of a @consume method call.""",
+          |be passed to a consume parameter or be used as a prefix of a consume method call.""",
       pos)
 
   // ------------ Checks -----------------------------------------------------
@@ -588,18 +587,18 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Check validity of consumed references `refsToCheck`. The references are consumed
    *  because they are hidden in a Fresh result type or they are referred
-   *  to in an argument to a @consume parameter or in a prefix of a @consume method --
+   *  to in an argument to a consume parameter or in a prefix of a consume method --
    *  which one applies is determined by the role parameter.
    *
    *  This entails the following checks:
    *   - The reference must be defined in the same as method or class as
    *     the access.
    *   - If the reference is to a term parameter, that parameter must be
-   *     marked as @consume as well.
+   *     marked as consume as well.
    *   - If the reference is to a this type of the enclosing class, the
-   *     access must be in a @consume method.
+   *     access must be in a consume method.
    *
-   *  References that extend SharedCapability are excluded from checking.
+   *  References that extend caps.Sharable are excluded from checking.
    *  As a side effect, add all checked references with the given position `pos`
    *  to the global `consumed` map.
    *
@@ -613,14 +612,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- refsToCheck.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe)) do
-      if !hiddenRef.derivesFromSharedCapability then
+      if !hiddenRef.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
           case ref: TermRef =>
             val refSym = ref.symbol
             if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
               report.error(em"""Separation failure: $descr non-local $refSym""", pos)
             else if refSym.is(TermParam)
-              && !refSym.hasAnnotation(defn.ConsumeAnnot)
+              && !refSym.isConsumeParam
               && currentOwner.isContainedIn(refSym.owner)
             then
               badParams += refSym
@@ -632,7 +631,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             then
               report.error(
                 em"""Separation failure: $descr non-local this of class ${ref.cls}.
-                    |The access must be in a @consume method to allow this.""",
+                    |The access must be in a consume method to allow this.""",
                 pos)
           case _ =>
 
@@ -644,13 +643,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
       report.error(
         em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toList)}.
-            |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
+            |The parameter$pluralS need$singleS to be annotated with consume to allow this.""",
           pos)
 
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.derivesFromSharedCapability then
+          if !ref.isKnownClassifiedAs(defn.Caps_SharedCapability) then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs
@@ -679,7 +678,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val captured = genPart.deepCaptureSet.elems
       val hiddenSet = captured.hiddenSet.pruned
       val clashSet = otherPart.deepCaptureSet.elems
-      val deepClashSet = (clashSet.footprint() ++ clashSet.hiddenSet).pruned
+      val deepClashSet = (clashSet.footprint ++ clashSet.hiddenSet).pruned
       report.error(
         em"""Separation failure in ${role.description} $tpe.
             |One part,  $genPart, hides capabilities  ${CaptureSet(hiddenSet)}.
@@ -770,7 +769,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     /** If `tpe` appears as a (result-) type of a definition, treat its
      *  hidden set minus its explicitly declared footprint as consumed.
-     *  If `tpe` appears as an argument to a @consume parameter, treat
+     *  If `tpe` appears as an argument to a consume parameter, treat
      *  its footprint as consumed.
      */
     def checkLegalRefs() = role match
@@ -782,12 +781,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.hiddenSet.footprint().deduct(refs.footprint())
+          val toCheck = refs.hiddenSet.footprint.deduct(refs.footprint)
           checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
       case TypeRole.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
-          val capts = captures(arg).footprint()
-          checkConsumedRefs(capts, tpe, role, i"argument to @consume parameter with type ${arg.nuType} refers to", pos)
+          val capts = captures(arg).footprint
+          checkConsumedRefs(capts, tpe, role, i"argument to consume parameter with type ${arg.nuType} refers to", pos)
       case _ =>
 
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
@@ -881,7 +880,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
     if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
       checkType(tree.tpt, tree.symbol)
-      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint()}")
+      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hiddenSet.footprint}")
       pushDef(tree, captures(tree.tpt).hiddenSet.deductSymRefs(tree.symbol))
 
   def inSection[T](op: => T)(using Context): T =
@@ -894,17 +893,24 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))
 
+  /** Should separatiion checking be disabled for the body of this method?
+   */
+  def skippable(sym: Symbol)(using Context): Boolean =
+    sym.isInlineMethod
+      // We currently skip inline method bodies since these seem to generan
+      // spurious recheck completions. Test case is i20237.scala
+
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
     if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
-        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.hasAnnotation(defn.ConsumeAnnot) =>
+        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsumeParam =>
           traverseChildren(tree)
           checkConsumedRefs(
-              captures(qual).footprint(), qual.nuType,
+              captures(qual).footprint, qual.nuType,
               TypeRole.Qualifier(qual, tree.symbol),
-              i"call prefix of @consume ${tree.symbol} refers to", qual.srcPos)
+              i"call prefix of consume ${tree.symbol} refers to", qual.srcPos)
         case tree: GenericApply =>
           traverseChildren(tree)
           tree.tpe match
@@ -916,15 +922,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           traverseChildren(tree)
           checkValOrDefDef(tree)
         case tree: DefDef =>
-          if tree.symbol.isInlineMethod then
-            // We currently skip inline method since these seem to generate
-            // spurious recheck completions. Test case is i20237.scala
-            capt.println(i"skipping sep check of inline def ${tree.symbol}")
-          else inSection:
-            consumed.segment:
-              for params <- tree.paramss; case param: ValDef <- params do
-                pushDef(param, emptyRefs)
-              traverseChildren(tree)
+          if skippable(tree.symbol) then
+            capt.println(i"skipping sep check of ${tree.symbol}")
+          else
+            inSection:
+              consumed.segment:
+                for params <- tree.paramss; case param: ValDef <- params do
+                  pushDef(param, emptyRefs)
+                traverseChildren(tree)
           checkValOrDefDef(tree)
         case If(cond, thenp, elsep) =>
           traverse(cond)

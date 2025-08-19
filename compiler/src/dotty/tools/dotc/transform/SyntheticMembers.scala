@@ -69,7 +69,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       myCaseSymbols = defn.caseClassSynthesized
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
-      myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal
+      myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal :+ defn.Any_hashCode
     }
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
@@ -117,6 +117,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def syntheticDefIfMissing(sym: Symbol): List[Tree] =
       if (existingDef(sym, clazz).exists) Nil else syntheticDef(sym) :: Nil
 
+    def identifierRef: Tree =
+      if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
+        ref(clazz.owner.paramSymss.head.find(_.name == nme.nameDollar).get)
+      else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
+        Literal(Constant(clazz.owner.name.toString))
+
     def syntheticDef(sym: Symbol): Tree = {
       val synthetic = sym.copy(
         owner = clazz,
@@ -135,12 +141,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           if ctx.explicitNulls then name.cast(defn.StringType) else name
         else
           identifierRef
-
-      def identifierRef: Tree =
-        if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
-          ref(clazz.owner.paramSymss.head.find(_.name == nme.nameDollar).get)
-        else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
-          Literal(Constant(clazz.owner.name.toString))
 
       def ordinalRef: Tree =
         if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
@@ -358,7 +358,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      * For case classes with primitive paramters, see [[caseHashCodeBody]].
      */
     def chooseHashcode(using Context) =
-      if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
+      if (isNonJavaEnumValue) identifierRef.select(nme.hashCode_).appliedToTermArgs(Nil)
+      else if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
       else

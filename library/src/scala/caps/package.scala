@@ -1,6 +1,8 @@
 package scala
 package caps
 
+import language.experimental.captureChecking
+
 import annotation.{experimental, compileTimeOnly, retainsCap}
 
 /**
@@ -21,23 +23,68 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
  * is turned on.
  * But even without capture checking, extending this trait can be useful for documenting the intended purpose
  * of a class.
+ *
+ * Capability has exactly two subtraits: [[SharedCapability Shared]] and [[ExclusiveCapability Exclusive]].
  */
-@experimental
-trait Capability extends Any
+sealed trait Capability extends Any
+
+/** A marker trait for classifier capabilities that can appear in `.only`
+ *  qualifiers. Capability classes directly extending `Classifier` are treated
+ *  as classifier capbilities.
+ *
+ * [[Classifier]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on. It should not be used outside of capture checking.
+ */
+trait Classifier
 
 /** The universal capture reference. */
 @experimental
 object cap extends Capability
 
-/** Marker trait for classes with methods that requires an exclusive reference. */
-@experimental
-trait Mutable extends Capability
-
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
-  * During separation checking, shared capabilities are not taken into account.
-  */
+ *
+ * [[SharedCapability]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
+ * During separation checking, shared capabilities are not taken into account.
+ */
+trait SharedCapability extends Capability, Classifier
+
 @experimental
-trait SharedCapability extends Capability
+type Shared = SharedCapability
+
+/** Marker trait for capabilities that should only be used by one concurrent process
+ *  at a given time. For example, write-access to a shared mutable buffer.
+ *
+ * [[ExclusiveCapability]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
+ * During separation checking, exclusive usage of marked capabilities will be enforced.
+ */
+@experimental
+trait ExclusiveCapability extends Capability, Classifier
+
+@experimental
+type Exclusive = ExclusiveCapability
+
+/** Marker trait for capabilities that capture some continuation or return point in
+ *  the stack. Examples are exceptions, [[scala.util.boundary.Label labels]], [[scala.CanThrow CanThrow]]
+ *  or Async contexts.
+ *
+ * [[Control]] has a formal meaning when
+ * [[scala.language.experimental.captureChecking Capture Checking]]
+ * is turned on.
+ */
+trait Control extends SharedCapability, Classifier
+
+/** Marker trait for classes with methods that require an exclusive reference. */
+@experimental
+trait Mutable extends ExclusiveCapability, Classifier
+
+/** Marker trait for classes with reader methods, typically extended by Mutable classes */
+@experimental
+trait Read extends Mutable, Classifier
 
 /** Carrier trait for capture set type parameters */
 @experimental
@@ -57,26 +104,26 @@ object Contains:
   @experimental
   given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
-/** An annotation on parameters `x` stating that the method's body makes
- *  use of the reach capability `x*`. Consequently, when calling the method
- *  we need to charge the deep capture set of the actual argiment to the
+/** An annotation on capset parameters `C` stating that the method's body does not
+ *  have `C` in its use-set. `C` might be accessed under a box in the method
+ *  or in the result type of the method. Consequently, when calling the method
+ *  we do not need to charge the capture set of the actual argiment to the
  *  environment.
  *
  *  Note: This should go into annotations. For now it is here, so that we
  *  can experiment with it quickly between minor releases
  */
 @experimental
-final class use extends annotation.StaticAnnotation
+final class reserve extends annotation.StaticAnnotation
 
-/** An annotations on parameters and update methods.
- *  On a parameter it states that any capabilties passed in the argument
- *  are no longer available afterwards, unless they are of class `SharableCapabilitty`.
- *  On an update method, it states that the `this` of the enclosing class is
- *  consumed, which means that any capabilities of the method prefix are
- *  no longer available afterwards.
+/** Allowed only for source versions up to 3.7:
+ *  An annotation on parameters `x` stating that the method's body makes
+ *  use of the reach capability `x*`. Consequently, when calling the method
+ *  we need to charge the deep capture set of the actual argiment to the
+ *  environment.
  */
 @experimental
-final class consume extends annotation.StaticAnnotation
+final class use extends annotation.StaticAnnotation
 
 /** A trait that used to allow expressing existential types. Replaced by
 *  root.Result instances.
@@ -88,23 +135,10 @@ sealed trait Exists extends Capability
 @experimental
 object internal:
 
-  /** A wrapper indicating a type variable in a capture argument list of a
-   *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
+  /** An annotation to reflect that a parameter or method carries the `consume`
+   *  soft modifier.
    */
-  @compileTimeOnly("Should be be used only internally by the Scala compiler")
-  def capsOf[CS >: CapSet <: CapSet @retainsCap]: Any = ???
-
-  /** Reach capabilities x* which appear as terms in @retains annotations are encoded
-   *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.reachCapability`.
-   */
-  extension (x: Any) def reachCapability: Any = x
-
-  /** Read-only capabilities x.rd which appear as terms in @retains annotations are encoded
-   *  as `caps.readOnlyCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
-   */
-  extension (x: Any) def readOnlyCapability: Any = x
+  final class consume extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
@@ -127,6 +161,13 @@ object internal:
    *  Such function types should not map roots to result variables.
    */
   final class inferredDepFun extends annotation.StaticAnnotation
+
+  /** An erasedValue issued internally by the compiler. Unlike the
+   *  user-accessible compiletime.erasedValue, this version is assumed
+   *  to be a pure expression, hence capability safe. The compiler generates this
+   *  version only where it is known that a value can be generated.
+   */
+  def erasedValue[T]: T = ???
 
 end internal
 
@@ -152,5 +193,12 @@ object unsafe:
   /** A wrapper around code for which separation checks are suppressed.
    */
   def unsafeAssumeSeparate(op: Any): op.type = op
+
+  /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the
+   *  user-accessible compiletime.erasedValue, this version is assumed
+   *  to be a pure expression, hence capability safe. But there is no proof
+   *  of realizability, hence it is unsafe.
+   */
+  def unsafeErasedValue[T]: T = ???
 
 end unsafe

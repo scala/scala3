@@ -1,0 +1,50 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------
+ 4 |  boundary[AnyRef^]:
+ 5 |    l1 ?=> // error // error
+   |  ^
+   |Found:    scala.util.boundary.Label[Object^'s1]^{cap.rd}
+   |Required: scala.util.boundary.Label[Object^]^²
+   |
+   |Note that capability cap² cannot be included in outer capture set 's1.
+   |
+   |where:    ^    refers to the universal root capability
+   |          ^²   refers to a fresh root capability classified as Control in the type of value local
+   |          cap  is a fresh root capability classified as Control created in value local when constructing Capability instance scala.util.boundary.Label[Object^'s1]
+   |          cap² is the universal root capability
+ 6 |      boundary[Unit]: l2 ?=>
+ 7 |        boundary.break(l2)(using l1)
+ 8 |      ???
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from boundary.scala:73
+73 |    val local = Label[T]()
+   |                ^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------
+ 4 |  boundary[AnyRef^]:
+ 5 |    l1 ?=> // error // error
+   |  ^
+   |  Found:    scala.util.boundary.Break[AnyRef^] @unchecked
+   |  Required: scala.util.boundary.Break[Object^²] @unchecked
+   |
+   |  Note that capability cap is not included in capture set {cap²}.
+   |
+   |  where:    ^    refers to the universal root capability
+   |            ^²   refers to a fresh root capability created in package <empty>
+   |            cap  is a fresh root capability created in package <empty>
+   |            cap² is the universal root capability
+ 6 |      boundary[Unit]: l2 ?=>
+ 7 |        boundary.break(l2)(using l1)
+ 8 |      ???
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from boundary.scala:75
+75 |    catch case ex: Break[T] @unchecked =>
+   |                   ^
+    --------------------------------------------------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`

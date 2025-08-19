@@ -1,15 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/filevar.scala:15:12 --------------------------------------
 15 |  withFile: f =>       // error with level checking, was OK under both schemes before
    |            ^
-   |Found:    (l: scala.caps.Capability^{cap.rd}) ?->? File^? ->? Unit
-   |Required: (l: scala.caps.Capability^{cap.rd}) ?-> (f: File^{l}) => Unit
+   |Found:    (f: File^'s1) ->'s2 Unit
+   |Required: (f: File^{l}) => Unit
    |
-   |where:    =>  refers to a root capability associated with the result type of (using l: scala.caps.Capability^{cap.rd}): (f: File^{l}) => Unit
-   |          cap is the universal root capability
+   |Note that capability l cannot be included in outer capture set 's1 of parameter f.
    |
-   |
-   |Note that reference l.type
-   |cannot be included in outer capture set ? of parameter f
+   |where:    => refers to a fresh root capability created in anonymous function of type (using l: scala.caps.Capability): File^{l} -> Unit when instantiating expected result type (f: File^{l}) ->{cap} Unit of function literal
 16 |    val o = Service()
 17 |    o.file = f
 18 |    o.log
@@ -18,4 +15,4 @@
 -- Warning: tests/neg-custom-args/captures/filevar.scala:11:55 ---------------------------------------------------------
 11 |def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =
    |                                                       ^
-   |                                                       redundant capture: File already accounts for l.type
+   |                                        redundant capture: File already accounts for (l : scala.caps.Capability)

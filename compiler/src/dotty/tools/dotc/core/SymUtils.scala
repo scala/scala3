@@ -90,6 +90,9 @@ class SymUtils:
     def isContextBoundCompanion(using Context): Boolean =
       self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
 
+    def isDummyCaptureParam(using Context): Boolean =
+      self.is(PhantomSymbol) && self.infoOrCompleter.typeSymbol != defn.CBCompanion
+
     /** Is this a case class for which a product mirror is generated?
     *  Excluded are value classes, abstract classes and case classes with more than one
     *  parameter section.
@@ -117,6 +120,16 @@ class SymUtils:
     end whyNotGenericProduct
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
+
+    def sanitizedDescription(using Context): String =
+      if self.isConstructor then
+        i"constructor of ${self.owner.sanitizedDescription}"
+      else if self.isAnonymousFunction then
+        i"anonymous function of type ${self.info}"
+      else if self.name.toString.contains('$') then
+        self.owner.sanitizedDescription
+      else
+        self.show
 
     /** Is this an old style implicit conversion?
      *  @param directOnly            only consider explicitly written methods

@@ -1,0 +1,31 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:15:17 ---------------------------------------
+15 |  val a: A = box.x // error
+   |             ^^^^^
+   |             Found:    (box.x : (b : B^{io})^{b})
+   |             Required: A
+   |
+   |             Note that capability io is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:18:13 ---------------------------------------
+18 |  val _: A = c // error
+   |             ^
+   |             Found:    (c : B^{b})
+   |             Required: A
+   |
+   |             Note that capability b is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:23:2 ----------------------------------------
+23 |  class B extends A:   // error, now we see the error for the whole block since there are no nested errors
+   |  ^
+   |  Found:    A^{io}
+   |  Required: A
+   |
+   |  Note that capability io is not included in capture set {}.
+24 |    val hide: AnyRef^{io} = io
+25 |  val b = new B
+26 |  val c = b.getBox.x
+27 |  c
+   |
+   | longer explanation available when compiling with `-explain`

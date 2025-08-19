@@ -7,11 +7,8 @@ import config.{Feature, SourceVersion}
 
 object ccConfig:
 
-  /** If enabled, use a special path in recheckClosure for closures
-   *  to compare the result tpt of the anonymous functon with the expected
-   *  result type. This can narrow the scope of error messages.
-   */
-  inline val preTypeClosureResults = false
+  /** If enabled, cache capture sets of infos capabilties */
+  inline val cacheCaptureSetOfInfo = false
 
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
    *  for eta expansions. This can improve some error messages.
@@ -46,16 +43,15 @@ object ccConfig:
    */
   inline val postCheckCapturesets = false
 
-  /** If true, turn on separation checking */
-  def useSepChecks(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
-
   /** If true, do level checking for FreshCap instances */
   def useFreshLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
   /** Not used currently. Handy for trying out new features */
-  def newScheme(using Context): Boolean =
+  def newScheme(using ctx: Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+
+  def allowUse(using Context): Boolean =
+    Feature.sourceVersion.stable.isAtMost(SourceVersion.`3.7`)
 
 end ccConfig

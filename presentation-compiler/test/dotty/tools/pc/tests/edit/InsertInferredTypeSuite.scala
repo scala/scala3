@@ -657,14 +657,13 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |object O{
          |  val <<foo>> = A.Foo(new A.`x-x`)
          |}""".stripMargin,
-      """|import A.Foo
-         |import A.`x-x`
+      """|import A.`x-x`
          |object A{
          |  class `x-x`
          |  case class Foo[A](i: A)
          |}
          |object O{
-         |  val foo: Foo[`x-x`] = A.Foo(new A.`x-x`)
+         |  val foo: A.Foo[`x-x`] = A.Foo(new A.`x-x`)
          |}
          |""".stripMargin
     )
@@ -1055,6 +1054,70 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    else False
          |""".stripMargin
     )
+
+  @Test def `Adjust type for val` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>:String = 123
+         |}""".stripMargin,
+
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for val2` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>:Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for val3` =
+    checkEdit(
+      """|object A{
+         |  val <<alpha>>: Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  val alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for def` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>:String = 123
+         |}""".stripMargin,
+
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+  @Test def `Adjust type for def2` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>:Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin,
+    )
+
+
+  @Test def `Adjust type for def3` =
+    checkEdit(
+      """|object A{
+         |  def <<alpha>>: Int = 123
+         |}""".stripMargin,
+      """|object A{
+         |  def alpha: Int = 123
+         |}""".stripMargin,
+    )
+
 
   def checkEdit(
       original: String,

@@ -11,7 +11,6 @@ import config.SourceVersion
 import cc.CaptureSet
 import cc.Capabilities.*
 
-import scala.language.unsafeNulls
 import scala.annotation.threadUnsafe
 
 /** ## Tips for error message generation
@@ -53,7 +52,7 @@ object Message:
       case None => false
   end Disambiguation
 
-  private type Recorded = Symbol | ParamRef | SkolemType | Capability
+  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -62,13 +61,6 @@ object Message:
    *  in ` where` clause
    */
   private class Seen(disambiguate: Disambiguation):
-
-    /** The set of lambdas that were opened at some point during printing. */
-    private val openedLambdas = new collection.mutable.HashSet[LambdaType]
-
-    /** Register that `tp` was opened during printing. */
-    def openLambda(tp: LambdaType): Unit =
-      openedLambdas += tp
 
     val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
 
@@ -110,16 +102,17 @@ object Message:
         lazy val dealiased = followAlias(entry)
 
         /** All lambda parameters with the same name are given the same superscript as
-         *  long as their corresponding binder has been printed.
-         *  See tests/neg/lambda-rename.scala for test cases.
+         *  long as their corresponding binders have the same parameter name lists.
+         *  This avoids spurious distinctions between parameters of mapped lambdas at
+         *  the risk that sometimes we cannot distinguish parameters of distinct functions
+         *  that have the same parameter names. See tests/neg/lambda-rename.scala for test cases.
          */
         def sameSuperscript(cur: Recorded, existing: Recorded) =
           (cur eq existing) ||
           (cur, existing).match
             case (cur: ParamRef, existing: ParamRef) =>
-              (cur.paramName eq existing.paramName) &&
-              openedLambdas.contains(cur.binder) &&
-              openedLambdas.contains(existing.binder)
+              (cur.paramName eq existing.paramName)
+              && cur.binder.paramNames == existing.binder.paramNames
             case _ =>
               false
 
@@ -177,37 +170,17 @@ object Message:
         case sym: Symbol =>
           val info =
             if (ctx.gadt.contains(sym))
-              sym.info & ctx.gadt.fullBounds(sym)
+              sym.info & ctx.gadt.fullBounds(sym).nn
             else
               sym.info
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-        case ref: Capability =>
+        case ref: RootCapability =>
           val relation =
             if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
             else "is"
-          def ownerStr(owner: Symbol): String =
-            if owner.isConstructor then
-              i"constructor of ${ownerStr(owner.owner)}"
-            else if owner.isAnonymousFunction then
-              i"anonymous function of type ${owner.info}"
-            else if owner.name.toString.contains('$') then
-              ownerStr(owner.owner)
-            else
-              owner.show
-          val descr =
-            ref match
-              case GlobalCap => "the universal root capability"
-              case ref: FreshCap =>
-                val descr = ref.origin match
-                  case origin @ Origin.InDecl(sym) if sym.exists =>
-                    origin.explanation
-                  case origin =>
-                    i" created in ${ownerStr(ref.hiddenSet.owner)}${origin.explanation}"
-                i"a fresh root capability$descr"
-              case ResultCap(binder) => i"a root capability associated with the result type of $binder"
-          s"$relation $descr"
+          s"$relation ${ref.descr}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -274,31 +247,23 @@ object Message:
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet
       if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
-        boxText ~ toTextLocal(parent) ~ seen.record("^", isType = true, refs.elems.nth(0))
+        boxText
+        ~ toTextLocal(parent)
+        ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 
     override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       refs match
         case refs: CaptureSet if isUniversalCaptureSet(refs) && seen.isActive =>
-          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0))
+          seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
-
-    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: GeneralCaptureSet): Text =
-      info match
-        case info: LambdaType =>
-          seen.openLambda(info)
-        case _ =>
-      super.toTextMethodAsFunction(info, isPure, refs)
 
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true
       tp match
         case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
-        case tp: LambdaType =>
-          seen.openLambda(tp)
-          super.toText(tp)
         case _ => super.toText(tp)
 
     override def toText(sym: Symbol): Text =

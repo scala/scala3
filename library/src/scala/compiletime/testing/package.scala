@@ -1,6 +1,8 @@
 package scala.compiletime
 package testing
 
+import language.experimental.captureChecking
+
 /** Whether the code type checks in the current context?
  *
  *  An inline definition with a call to `typeChecks` should be transparent.

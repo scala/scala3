@@ -44,6 +44,8 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Transparent extends Modifier("transparent", true)
   case Infix extends Modifier("infix", true)
   case AbsOverride extends Modifier("abstract override", true)
+  case Update extends Modifier("update", true)
+  case Consume extends Modifier("consume", true)
 
 case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[TermParameterList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
@@ -69,7 +71,7 @@ enum Kind(val name: String):
   case Var extends Kind("var")
   case Val extends Kind("val")
   case Exported(base: Kind) extends Kind("export")
-  case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter])
+  case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter], isCaptureVar: Boolean = false)
     extends Kind("type") // should we handle opaque as modifier?
   case Given(kind: Def | Class | Val.type, as: Option[Signature], conversion: Option[ImplicitConversion])
     extends Kind("given") with ImplicitConversionProvider
@@ -120,7 +122,8 @@ case class TypeParameter(
   variance: "" | "+" | "-",
   name: String,
   dri: DRI,
-  signature: Signature
+  signature: Signature,
+  isCaptureVar: Boolean = false // under capture checking
 )
 
 case class Link(name: String, dri: DRI)

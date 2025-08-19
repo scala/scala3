@@ -196,7 +196,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try
+        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet) else ctx
+        transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
 
@@ -252,10 +255,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
               unusing.foreach(sym.addAnnotation)
             else if sym.is(ParamAccessor) then
-              // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
-              val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
-              for publicInBinaryAnnot <- publicInBinaryAnnotOpt do sym.addAnnotation(publicInBinaryAnnot)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot),
+                andAlso = defn.NonBeanParamAccessorAnnots)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value &&
@@ -334,20 +335,14 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         }
     }
 
-    private object dropInlines extends TreeMap {
-      override def transform(tree: Tree)(using Context): Tree = tree match {
-        case tree @ Inlined(call, _, expansion) =>
-          val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
-          cpy.Inlined(tree)(call, Nil, newExpansion)
-        case _ => super.transform(tree)
-      }
-    }
-
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(ConstructorProxy) then
-        unusable(ConstructorProxyNotValue(_))
+      if tree.symbol.is(PhantomSymbol) then
+        if tree.symbol.isDummyCaptureParam then
+          unusable(DummyCaptureParamNotValue(_))
+        else
+          unusable(ConstructorProxyNotValue(_))
       else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
       else
@@ -410,26 +405,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkUsableAsValue(tree) match
               case tree1: Select => transformSelect(tree1, Nil)
               case tree1 => tree1
-        case tree: Apply =>
-          val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
-          val app =
-            if (methType.hasErasedParams)
-              tpd.cpy.Apply(tree)(
-                tree.fun,
-                tree.args.zip(methType.erasedParams).map((arg, isErased) =>
-                  if !isErased then arg
-                  else
-                    if methType.isResultDependent then
-                      Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
-                    if (methType.isImplicitMethod && arg.span.isSynthetic)
-                      arg match
-                        case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
-                          dropInlines.transform(arg)
-                        case _ =>
-                          PruneErasedDefs.trivialErasedTree(arg)
-                    else dropInlines.transform(arg)))
-            else
-              tree
+        case app: Apply =>
+          val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
+          if (methType.hasErasedParams)
+            for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
+              if isErased then
+                if methType.isResultDependent then
+                  Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
           def app1 =
             // reverse order of transforming args and fun. This way, we get a chance to see other
             // well-formedness errors before reporting errors in possible inferred type args of fun.
@@ -493,18 +475,16 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
-          checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
-          val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt), rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
-          checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt), rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)
@@ -628,12 +608,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       Checking.checkAndAdaptExperimentalImports(trees)
       super.transformStats(trees, exprOwner, wrapResult)
 
-    /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-     *  Performed to shrink the tree that is known to be erased later.
-     */
-    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
-      if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
-
     private def registerNeedsInlining(tree: Tree)(using Context): Unit =
       if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.NoInline) then
         ctx.compilationUnit.needsInlining = true
@@ -647,21 +621,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     private def checkMacroAnnotation(sym: Symbol)(using Context) =
       if sym.derivesFrom(defn.MacroAnnotationClass) && !sym.isStatic then
         report.error("classes that extend MacroAnnotation must not be inner/local classes", sym.srcPos)
-
-    private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
-      def checkOnlyErasedParams(): Unit = tree match
-        case tree: DefDef =>
-          for params <- tree.paramss; param <- params if !param.symbol.isType && !param.symbol.is(Erased) do
-            report.error("erased definition can only have erased parameters", param.srcPos)
-        case _ =>
-
-      if tree.symbol.is(Erased, butNot = Macro) then
-        checkOnlyErasedParams()
-        val tpe = tree.rhs.tpe
-        if tpe.derivesFrom(defn.NothingClass) then
-          report.error("`erased` definition cannot be implemented with en expression of type Nothing", tree.srcPos)
-        else if tpe.derivesFrom(defn.NullClass) then
-          report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimentalCompanion(sym: Symbol)(using Context): Unit =
       if sym.is(Module) then

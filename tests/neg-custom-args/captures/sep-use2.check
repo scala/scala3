@@ -14,7 +14,7 @@
 12 |  val x4: Object^ = // error
    |          ^^^^^^^
    |          Separation failure: value x4's type Object^ hides parameter f.
-   |          The parameter needs to be annotated with @consume to allow this.
+   |          The parameter needs to be annotated with consume to allow this.
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:16:10 ----------------------------------------------------------
 16 |  def cc: Object^ = c // error
    |          ^^^^^^^
@@ -47,16 +47,43 @@
 24 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{c} Object^
+   |to a function of type Object^ ->{c} Object^{f*}
    |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {f}
-   |  Footprint set of function prefix      : {f, c}
+   |  Capture set of function prefix        : {c, f*}
+   |  Footprint set of function prefix      : {c, f*}
    |  The two sets overlap at               : {c}
    |
    |where:    ^  refers to a fresh root capability in the type of parameter c
    |          ^² refers to a fresh root capability created in value x4 when checking argument to parameter v1 of method apply
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:23:10 ----------------------------------------------------------
+23 |  val x4: Object^ = // error: ^ hides f*, needs consume
+   |          ^^^^^^^
+   |          Separation failure: value x4's type Object^ hides parameter f.
+   |          The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:28:8 -----------------------------------------------------------
+28 |    { f(c) } // error
+   |        ^
+   |Separation failure: argument of type  (c : Object^)
+   |to a function of type Object^ ->{c} Object^{f*}
+   |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
+   |and hides capabilities  {c}.
+   |Some of these overlap with the captures of the function prefix.
+   |
+   |  Hidden set of current argument        : {c}
+   |  Hidden footprint of current argument  : {c}
+   |  Capture set of function prefix        : {c, f*}
+   |  Footprint set of function prefix      : {c, f*}
+   |  The two sets overlap at               : {c}
+   |
+   |where:    ^  refers to a fresh root capability in the type of parameter c
+   |          ^² refers to a fresh root capability created in value x4 when checking argument to parameter v1 of method apply
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:27:10 ----------------------------------------------------------
+27 |  val x4: Object^ = // error: ^ hides f* which refers to c, so c needs consume
+   |          ^^^^^^^
+   |          Separation failure: value x4's type Object^ hides parameter c.
+   |          The parameter needs to be annotated with consume to allow this.

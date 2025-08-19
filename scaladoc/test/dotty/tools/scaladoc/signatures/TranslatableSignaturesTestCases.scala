@@ -128,3 +128,7 @@ class RefinedFunctionTypes extends SignatureTest("refinedFunctionTypes", Signatu
 class RightAssocExtension extends SignatureTest("rightAssocExtension", SignatureTest.all)
 
 class NamedTuples extends SignatureTest("namedTuples", SignatureTest.all)
+
+class InnerClasses extends SignatureTest("innerClasses", SignatureTest.all)
+
+class OptionalParams extends SignatureTest("optionalParams", SignatureTest.all)

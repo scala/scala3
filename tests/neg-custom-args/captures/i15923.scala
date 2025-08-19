@@ -12,7 +12,7 @@ def bar() = {
   val leak = withCap(cap => mkId(cap)) // error
 }
 
-package test2:
+object test2:
   trait Cap { def use(): Int }
   type Id[X] = [T] -> (op: X => T) -> T
   def mkId[X](x: X): Id[X] = [T] => (op: X => T) => op(x)
@@ -24,6 +24,6 @@ package test2:
       result
     }
 
-    val leak = withCap(cap => mkId(cap))  // no error here since type aliases don't box
+    val leak = withCap(cap => mkId(cap))  // error (was: no error here since type aliases don't box)
     leak { cap => cap.use() }
   }

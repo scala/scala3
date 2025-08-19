@@ -31,7 +31,7 @@ import caps.unsafe.unsafeAssumePure
   * @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
   * @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
   */
-trait Factory[-A, +C] extends Pure {
+trait Factory[-A, +C] extends caps.Pure {
 
   /**
     * @return A collection of type `C` containing the same elements
@@ -82,7 +82,7 @@ object Factory {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait IterableFactory[+CC[_]] extends Serializable, Pure {
+trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
 
   /** Creates a target $coll from an existing source collection
     *
@@ -389,7 +389,7 @@ trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait MapFactory[+CC[_, _]] extends Serializable, Pure {
+trait MapFactory[+CC[_, _]] extends Serializable, caps.Pure {
 
   /**
    * An empty Map
@@ -462,7 +462,7 @@ object MapFactory {
   * @define coll collection
   * @define Coll `Iterable`
   */
-trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, Pure {
+trait EvidenceIterableFactory[+CC[_], Ev[_]] extends Serializable, caps.Pure {
 
   def from[E : Ev](it: IterableOnce[E]^): CC[E]
 

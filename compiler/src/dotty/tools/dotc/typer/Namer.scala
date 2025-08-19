@@ -140,7 +140,7 @@ class Namer { typer: Typer =>
 
     def conflict(conflicting: Symbol) =
       val other =
-        if conflicting.is(ConstructorProxy) then conflicting.companionClass
+        if conflicting.is(PhantomSymbol) then conflicting.companionClass
         else conflicting
       report.error(AlreadyDefined(name, owner, other), ctx.source.atSpan(span))
       conflictsDetected = true
@@ -833,7 +833,9 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+        else
+          valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
+            .suppressIntoIfParam(sym)
       case original: DefDef =>
         // For the primary constructor DefDef, it is:
         // * indexed as a part of completing the class, with indexConstructor; and
@@ -945,7 +947,7 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic, butNot = ConstructorProxy) &&
+        denot.is(Synthetic, butNot = PhantomSymbol) &&
         (
           (desugar.isRetractableCaseClassMethodName(denot.name)
             && isCaseClassOrCompanion(denot.owner)
@@ -993,6 +995,10 @@ class Namer { typer: Typer =>
       end if
     }
 
+    private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
+      if denot.is(Method) && denot.hasAnnotation(defn.ConsumeAnnot) then
+        denot.setFlag(Mutable)
+
     /** Intentionally left without `using Context` parameter. We need
      *  to pick up the context at the point where the completer was created.
      */
@@ -1002,6 +1008,7 @@ class Namer { typer: Typer =>
       addInlineInfo(sym)
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
+      normalizeFlags(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
@@ -1132,11 +1139,15 @@ class Namer { typer: Typer =>
       ensureUpToDate(sym.typeRef, dummyInfo1)
       if (dummyInfo2 `ne` dummyInfo1) ensureUpToDate(sym.typeRef, dummyInfo2)
 
+      if original.hasAttachment(Trees.CaptureVar) then
+        addDummyTermCaptureParam(sym)(using ictx)
+
       sym.info
     end typeSig
   }
 
-  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context)
+  extends Completer(original)(ictx), CompleterWithCleanup {
     withDecls(newScope(using ictx))
 
     protected given completerCtx: Context = localContext(cls)
@@ -1195,7 +1206,7 @@ class Namer { typer: Typer =>
           case _ => false
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
-        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
         // if the cls is a subclass or mixes in the owner of the symbol
         // and either
@@ -1320,6 +1331,7 @@ class Namer { typer: Typer =>
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if sym.is(Erased) then mbrFlags |= Inline
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1388,7 +1400,7 @@ class Namer { typer: Typer =>
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
-          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|PhantomSymbol).alternatives)
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
@@ -1759,6 +1771,7 @@ class Namer { typer: Typer =>
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
+      cleanup()
     }
   }
 
@@ -1901,6 +1914,12 @@ class Namer { typer: Typer =>
         case _ =>
 
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    // Add an erased to the using clause generated from a `: Singleton` context bound
+    mdef.tpt match
+      case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
+        sym.setFlag(Erased)
+        sym.resetFlag(Lazy)
+      case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
@@ -1941,7 +1960,7 @@ class Namer { typer: Typer =>
     if completedTypeParams.forall(_.isType) then
       completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
     completeTrailingParamss(ddef, sym, indexingCtor = false)
-    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
+    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor, Some(ddef.nameSpan.startPos))
     sym.setParamss(paramSymss)
 
     def wrapMethType(restpe: Type): Type =
@@ -2240,8 +2259,9 @@ class Namer { typer: Typer =>
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-    def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
+    def cookedRhsType = dealiasIfUnit(rhsType)
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
+      .deskolemized
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal || isTracked then lhsType else inherited

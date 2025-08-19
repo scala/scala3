@@ -71,7 +71,7 @@ trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
     with Builder[(K, V), C]
     with Growable[(K, V)]
     with Shrinkable[K]
-    with Pure {
+    with caps.Pure {
 
   def result(): C = coll
 

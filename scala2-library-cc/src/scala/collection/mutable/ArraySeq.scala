@@ -41,7 +41,7 @@ sealed abstract class ArraySeq[T]
     with IndexedSeqOps[T, ArraySeq, ArraySeq[T]]
     with StrictOptimizedSeqOps[T, ArraySeq, ArraySeq[T]]
     with Serializable
-    with Pure {
+    with caps.Pure {
 
   override def iterableFactory: scala.collection.SeqFactory[ArraySeq] = ArraySeq.untagged
 

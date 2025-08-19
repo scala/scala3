@@ -1,15 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:10:23 -------------------------------
 10 |  val test1 = localCap { c => // error
    |                       ^
-   |Found:    (c: Capp^) ->? box () ->{c} Unit
-   |Required: (c: Capp^) => box () ->? Unit
+   |Found:    (c: Capp^'s1) ->'s2 () ->{c} Unit
+   |Required: (c: Capp^) => () ->'s3 Unit
+   |
+   |Note that capability c cannot be included in outer capture set 's3.
    |
    |where:    => refers to a fresh root capability created in value test1 when checking argument to parameter op of method localCap
    |          ^  refers to the universal root capability
-   |
-   |
-   |Note that reference c.type
-   |cannot be included in outer capture set ?
 11 |    () => { c.use() }
 12 |  }
    |
@@ -17,15 +15,18 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:15:13 -------------------------------
 15 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^) ->? () ->{x$0} Unit
+   |    Found:    (x$0: Capp^'s4) ->'s5 () ->{x$0} Unit
    |    Required: (c: Capp^) -> () => Unit
    |
-   |    where:    => refers to a root capability associated with the result type of (c: Capp^): () => Unit
-   |              ^  refers to the universal root capability
+   |    Note that capability x$0 is not included in capture set {cap}.
    |
+   |    Note that the existential capture root in () =>² Unit
+   |    cannot subsume the capability (x$0 : Capp^'s4) since that capability is not a `Sharable` capability..
    |
-   |    Note that the existential capture root in () => Unit
-   |    cannot subsume the capability x$0.type since that capability is not a SharedCapability
+   |    where:    =>  refers to a root capability associated with the result type of (c: Capp^): () => Unit
+   |              =>² refers to the universal root capability
+   |              ^   refers to the universal root capability
+   |              cap is a root capability associated with the result type of (x$0: Capp^'s4): () ->{x$0} Unit
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }
    |
@@ -33,27 +34,29 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:25:13 -------------------------------
 25 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^{io}) ->? () ->{x$0} Unit
+   |    Found:    (x$0: Capp^'s6) ->'s7 () ->{x$0} Unit
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
+   |
+   |    Note that capability x$0 is not included in capture set {net}.
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:41:4 --------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:41:10 -------------------------------
 41 |    io => () => io.use()  // error
-   |    ^^^^^^^^^^^^^^^^^^^^
-   |    Found:    (io: Capp^) ->? () ->{io} Unit
-   |    Required: (io: Capp^) -> () -> Unit
+   |          ^^^^^^^^^^^^^^
+   |          Found:    () ->{io} Unit
+   |          Required: () -> Unit
    |
-   |    where:    ^ refers to the universal root capability
+   |          Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:4 --------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:10 -------------------------------
 44 |    io => () => io.use()  // error
-   |    ^^^^^^^^^^^^^^^^^^^^
-   |    Found:    (io: Capp^) ->? () ->{io} Unit
-   |    Required: (io: Capp^) -> () -> Unit
+   |          ^^^^^^^^^^^^^^
+   |          Found:    () ->{io} Unit
+   |          Required: () -> Unit
    |
-   |    where:    ^ refers to the universal root capability
+   |          Note that capability io is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
