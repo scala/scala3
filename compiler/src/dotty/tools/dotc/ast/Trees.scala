@@ -1499,9 +1499,8 @@ object Trees {
     protected def skipTransform(tree: Tree)(using Context): Boolean = false
 
     /** For untyped trees, this is just the identity.
-     *  For typed trees, a context derived form `ctx` that records `call` as the
-     *  innermost enclosing call for which the inlined version is currently
-     *  processed.
+     *  For typed trees, a context derived from `ctx` that records `call` as the
+     *  innermost enclosing call for which the inlined version is currently processed.
      */
     protected def inlineContext(tree: Inlined)(using Context): Context = ctx
 
