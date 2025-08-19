@@ -467,7 +467,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     *  @return a $coll consisting of all elements of this $coll except the last `n` ones, or else the
     *          empty $coll, if this $coll has less than `n` elements.
     *          If `n` is negative, don't drop any elements.
-  ^{this}  */
+    */
   def dropRight(n: Int): C^{this} = fromSpecific(new View.DropRight(this, n))
 
   def dropWhile(p: A => Boolean): C^{this, p} = fromSpecific(new View.DropWhile(this, p))
@@ -475,7 +475,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
   /** Partitions elements in fixed size ${coll}s.
    *  @see [[scala.collection.Iterator]], method `grouped`
    *
-   *  @param si^{this}ze the number of elements per group
+   *  @param size the number of elements per group
    *  @return An iterator producing ${coll}s of size `size`, except the
    *          last will be less than size `size` if the elements don't divide evenly.
    */

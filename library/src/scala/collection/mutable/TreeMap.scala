@@ -168,7 +168,6 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     *              bound.
     */
   private[this] final class TreeMapProjection(from: Option[K], until: Option[K]) extends TreeMap[K, V](tree) {
-    this: TreeMapProjection^{} =>
 
     /**
       * Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
