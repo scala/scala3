@@ -68,11 +68,12 @@ trait Map[K, V]
   */
 transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
-    with collection.StrictMapOps[K, V, CC, C]
+    with collection.MapOps[K, V, CC, C]
     with Cloneable[C]
     with Builder[(K, V), C]
     with Growable[(K, V)]
-    with Shrinkable[K] {
+    with Shrinkable[K]
+    with caps.Pure {
 
   def result(): C = coll
 

@@ -24,7 +24,7 @@ import scala.util.hashing.MurmurHash3
 /** Base Map type */
 trait Map[K, +V]
   extends Iterable[(K, V)]
-    with StrictMapOps[K, V, Map, Map[K, V]]
+    with MapOps[K, V, Map, Map[K, V]]
     with MapFactoryDefaults[K, V, Map, Iterable]
     with Equals
     with caps.Pure {
@@ -87,14 +87,6 @@ trait Map[K, +V]
   override protected[this] def stringPrefix: String = "Map"
 
   override def toString(): String = super[Iterable].toString() // Because `Function1` overrides `toString` too
-}
-
-/** Map operations for strict maps. */
-transparent trait StrictMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _] with caps.Pure, +C]
-  extends MapOps[K, V, CC, C] with caps.Pure {
-  // The original keySet implementation, with a lazy iterator over the keys,
-  // is only correct if we have a strict Map.
-  // We restore it here.
 }
 
 /** Base Map implementation type
@@ -220,12 +212,12 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
 
   /** A generic trait that is reused by keyset implementations.
     * Note that this version of KeySet copies all the keys into an interval val.
-    * See [[StrictMapOps.LazyKeySet]] for a version that lazily captures the map.
+    * See [[MapOps.LazyKeySet]] for a version that lazily captures the map.
     */
   protected trait GenKeySet { this: Set[K] =>
     // CC note: this is unavoidable to make the KeySet pure.
     private[MapOps] val allKeys = MapOps.this.keysIterator.toSet
-    // We restore the lazy behavior in StrictMapOps
+    // We restore the lazy behavior in LazyKeySet
     def iterator: Iterator[K] =
       allKeys.iterator
     def contains(key: K): Boolean = allKeys.contains(key)

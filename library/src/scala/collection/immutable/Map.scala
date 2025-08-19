@@ -64,7 +64,8 @@ trait Map[K, +V]
   */
 transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
-    with collection.StrictMapOps[K, V, CC, C] {
+    with collection.MapOps[K, V, CC, C]
+    with caps.Pure {
 
   protected def coll: C with CC[K, V]
 

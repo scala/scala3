@@ -31,8 +31,9 @@ import scala.annotation.nowarn
   */
 
 trait SeqMap[K, +V] extends Map[K, V]
-  with StrictMapOps[K, V, SeqMap, SeqMap[K, V]]
-  with MapFactoryDefaults[K, V, SeqMap, Iterable] {
+  with MapOps[K, V, SeqMap, SeqMap[K, V]]
+  with MapFactoryDefaults[K, V, SeqMap, Iterable]
+  with caps.Pure {
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix: String = "SeqMap"
 

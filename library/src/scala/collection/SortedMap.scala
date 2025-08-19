@@ -51,8 +51,9 @@ trait SortedMap[K, +V]
 }
 
 transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _] with caps.Pure, +C <: SortedMapOps[K, V, CC, C]]
-  extends StrictMapOps[K, V, Map, C]
-     with SortedOps[K, C] {
+  extends MapOps[K, V, Map, C]
+     with SortedOps[K, C]
+     with caps.Pure {
 
   /** The companion object of this sorted map, providing various factory methods.
     *
