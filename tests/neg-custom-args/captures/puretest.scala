@@ -1,4 +1,5 @@
 import caps.Pure
+class P extends Pure
 def foo[C <: Pure]() = ()
 def bar[T, C <: Iterable[T] & Pure]() = ()
 def baz[CC[_] <: Pure]() = ()
@@ -8,3 +9,4 @@ def test =
   bar[Int, List[Int]]() // error
   baz[Seq]() // error
   bam[Seq]() // error
+  foo[P]() // OK
