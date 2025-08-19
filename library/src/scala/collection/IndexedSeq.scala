@@ -23,8 +23,9 @@ import scala.math.Ordering
 
 /** Base trait for indexed sequences that have efficient `apply` and `length` */
 trait IndexedSeq[+A] extends Seq[A]
-  with StrictIndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
-  with IterableFactoryDefaults[A, IndexedSeq] {
+  with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
+  with IterableFactoryDefaults[A, IndexedSeq]
+  with caps.Pure {
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix: String = "IndexedSeq"
 
@@ -33,15 +34,6 @@ trait IndexedSeq[+A] extends Seq[A]
 
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](immutable.IndexedSeq)
-
-transparent trait StrictIndexedSeqOps[+A, +CC[_] <: caps.Pure, +C] extends Any with StrictSeqOps[A, CC, C] with IndexedSeqOps[A, CC, C] {
-  override def map[B](f: A => B): CC[B] = iterableFactory.from(new IndexedSeqView.Map(this, f))
-  override def sliding(size: Int, step: Int): Iterator[C] = {
-    require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
-    val it = new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
-    it.asInstanceOf[Iterator[C]] // TODO: seems like CC cannot figure this out yet
-  }
-}
 
 /** Base trait for indexed Seq operations */
 transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self: IndexedSeqOps[A, CC, C]^ =>

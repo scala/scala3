@@ -38,8 +38,9 @@ object Seq extends SeqFactory.Delegate[Seq](ArrayBuffer)
   * @define Coll `mutable.Seq`
   */
 transparent trait SeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
-  extends collection.StrictSeqOps[A, CC, C]
-    with Cloneable[C] {
+  extends collection.SeqOps[A, CC, C]
+    with Cloneable[C]
+    with caps.Pure {
 
   override def clone(): C = {
     val b = newSpecificBuilder

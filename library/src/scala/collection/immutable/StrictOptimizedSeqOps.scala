@@ -21,11 +21,12 @@ import scala.collection.generic.CommonErrors
 
 /** Trait that overrides operations to take advantage of strict builders.
  */
-transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: collection.StrictSeqOps[B, collection.Seq, collection.Seq[B]], +C]
+transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: collection.SeqOps[B, collection.Seq, collection.Seq[B]] & caps.Pure, +C]
   extends Any
-    with StrictSeqOps[A, CC, C]
+    with SeqOps[A, CC, C]
     with collection.StrictOptimizedSeqOps[A, CC, C]
-    with StrictOptimizedIterableOps[A, CC, C] {
+    with StrictOptimizedIterableOps[A, CC, C]
+    with caps.Pure {
 
   override def distinctBy[B](f: A -> B): C = {
     if (lengthCompare(1) <= 0) coll

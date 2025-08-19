@@ -20,7 +20,7 @@ import language.experimental.captureChecking
   * to take advantage of strict builders.
   */
 transparent trait StrictOptimizedSeqOps [+A, +CC[_] <: caps.Pure, +C]
-  extends Any with StrictSeqOps[A, CC, C] with StrictOptimizedIterableOps[A, CC, C] {
+  extends Any with SeqOps[A, CC, C] with StrictOptimizedIterableOps[A, CC, C] with caps.Pure {
 
   override def distinctBy[B](f: A -> B): C = {
     val builder = newSpecificBuilder

@@ -36,8 +36,9 @@ import scala.collection.mutable.{Builder, StringBuilder}
   */
 @SerialVersionUID(3L)
 final class WrappedString(private val self: String) extends AbstractSeq[Char] with IndexedSeq[Char]
-  with StrictIndexedSeqOps[Char, IndexedSeq, WrappedString]
-  with Serializable {
+  with IndexedSeqOps[Char, IndexedSeq, WrappedString]
+  with Serializable
+  with caps.Pure {
 
   def apply(i: Int): Char = self.charAt(i)
 

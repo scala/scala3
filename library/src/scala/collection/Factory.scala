@@ -707,7 +707,7 @@ object ClassTagSeqFactory {
   /** A SeqFactory that uses ClassTag.Any as the evidence for every element type. This may or may not be
     * sound depending on the use of the `ClassTag` by the collection implementation. */
   @SerialVersionUID(3L)
-  class AnySeqDelegate[CC[A] <: StrictSeqOps[A, Seq, Seq[A]]](delegate: ClassTagSeqFactory[CC])
+  class AnySeqDelegate[CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure](delegate: ClassTagSeqFactory[CC])
     extends ClassTagIterableFactory.AnyIterableDelegate[CC](delegate) with SeqFactory[CC]
 }
 

@@ -27,7 +27,7 @@ import scala.annotation.nowarn
 trait Seq[+A]
   extends Iterable[A]
     with PartialFunction[Int, A]
-    with StrictSeqOps[A, Seq, Seq[A]]
+    with SeqOps[A, Seq, Seq[A]]
     with IterableFactoryDefaults[A, Seq]
     with Equals
     with caps.Pure {
@@ -57,13 +57,6 @@ trait Seq[+A]
   */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
-
-/** Base trait for strict Seq operations.
-  *
-  * Contains strict overrides of SeqOps operations, where the parameters are also captured.
-  */
-transparent trait StrictSeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with SeqOps[A, CC, C] with caps.Pure {
-}
 
 /** Base trait for Seq operations
   *
