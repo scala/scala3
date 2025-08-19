@@ -15,7 +15,6 @@ package collection
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedVariance
 
 import scala.annotation.nowarn
 import scala.collection.generic.DefaultSerializable
@@ -96,18 +95,6 @@ transparent trait StrictMapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _] 
   // The original keySet implementation, with a lazy iterator over the keys,
   // is only correct if we have a strict Map.
   // We restore it here.
-  override def keySet: Set[K] = new LazyKeySet
-
-  /** The implementation class of the set returned by `keySet`, for pure maps.
-    */
-  private class LazyKeySet extends AbstractSet[K] with DefaultSerializable {
-    def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
-    def iterator: Iterator[K] = StrictMapOps.this.keysIterator
-    def contains(key: K): Boolean = StrictMapOps.this.contains(key)
-    override def size: Int = StrictMapOps.this.size
-    override def knownSize: Int = StrictMapOps.this.knownSize
-    override def isEmpty: Boolean = StrictMapOps.this.isEmpty
-  }
 }
 
 /** Base Map implementation type
@@ -214,7 +201,15 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
    *
    *  @return a set representing the keys contained by this map
    */
-  def keySet: Set[K] = new KeySet
+  def keySet: Set[K] =
+    // If we know one of the strict implementations inside this library, simply return LazyKeySet
+    import MapOps.LazyKeySet
+    this match
+      case s: SeqMap[K, V] => new LazyKeySet(s)
+      case s: SortedMap[K, V] => new LazyKeySet(s)
+      case s: immutable.MapOps[K, V, immutable.Map, immutable.Map[K, V]] => new LazyKeySet(s)
+      case s: mutable.MapOps[K, V, mutable.Map, mutable.Map[K, V]] => new LazyKeySet(s)
+      case _ => new KeySet
 
   /** The implementation class of the set returned by `keySet`.
     */
@@ -250,7 +245,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
    *  @return an [[Iterable]] collection of the keys contained by this map
    */
   @deprecatedOverriding("This method should be an alias for keySet", since="2.13.13")
-  def keys: Iterable[K]^{this} = keySet
+  def keys: Iterable[K]^{this} = this.keySet
 
   /** Collects all values of this map in an iterable collection.
    *
@@ -436,6 +431,17 @@ object MapOps {
 
   }
 
+
+  /** The implementation class of the set returned by `keySet`, for pure maps.
+    */
+  private class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
+    def iterator: Iterator[K] = mp.keysIterator
+    def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
+    def contains(key: K): Boolean = mp.contains(key)
+    override def size: Int = mp.size
+    override def knownSize: Int = mp.knownSize
+    override def isEmpty: Boolean = mp.isEmpty
+  }
 }
 
 /**
