@@ -16,6 +16,7 @@ import reporting.*
 import config.Printers.{ transforms => debug }
 
 import patmat.Typ
+import dotty.tools.dotc.core.NullOpsDecorator.stripNull
 import dotty.tools.dotc.util.SrcPos
 
 /** This transform normalizes type tests and type casts,
@@ -323,19 +324,15 @@ object TypeTestsCasts {
          *  The transform happens before erasure of `testType`, thus cannot be merged
          *  with `transformIsInstanceOf`, which depends on erased type of `testType`.
          */
-        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias match {
+        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias.stripNull(false, true) match {
           case tref: TermRef if tref.symbol == defn.EmptyTupleModule =>
             ref(defn.RuntimeTuples_isInstanceOfEmptyTuple).appliedTo(expr)
           case _: SingletonType =>
             expr.isInstance(testType).withSpan(tree.span)
-          case OrType(tp1, tp2) =>
+          case t @ OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
-              lazy val tp1Tree = transformTypeTest(e, tp1, flagUnrelated = false)
-              lazy val tp2Tree = transformTypeTest(e, tp2, flagUnrelated = false)
-
-              if (tp1.isNothingType || (tp1.isNullType && !tp2.isNotNull)) tp2Tree
-              else if (tp2.isNothingType || (tp2.isNullType && !tp1.isNotNull)) tp1Tree
-              else tp1Tree.or(tp2Tree)
+              transformTypeTest(e, tp1, flagUnrelated = false)
+                .or(transformTypeTest(e, tp2, flagUnrelated = false))
             }
           case AndType(tp1, tp2) =>
             evalOnce(expr) { e =>
