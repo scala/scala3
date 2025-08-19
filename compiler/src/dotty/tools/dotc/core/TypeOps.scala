@@ -710,8 +710,13 @@ object TypeOps:
           // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
           def dropPure(tp: Type): Option[Type] = tp match
             case tp @ AndType(tp1, tp2) =>
-              for tp1o <- dropPure(tp1); tp2o <- dropPure(tp2) yield
-                tp.derivedAndType(tp1o, tp2o)
+              dropPure(tp1) match
+                case Some(tp1o) =>
+                  dropPure(tp2) match
+                    case Some(tp2o) => Some(tp.derivedAndType(tp1o, tp2o))
+                    case None => Some(tp1o)
+                case None =>
+                  dropPure(tp2)
             case tp: HKTypeLambda =>
               for rt <- dropPure(tp.resType) yield
                 tp.derivedLambdaType(resType = rt)
