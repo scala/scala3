@@ -68,11 +68,14 @@ object JavaNullInterop {
       nullifyExceptReturnType(tp)
     else
       // Otherwise, nullify everything
-      nullifyType(tp)
+      nullifyType(tp, explicitlyNullable = hasNullableAnnot(sym))
   }
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
     ctx.definitions.NotNullAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
+
+  private def hasNullableAnnot(sym: Symbol)(using Context): Boolean =
+    ctx.definitions.NullableAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
 
   /** If tp is a MethodType, the parameters and the inside of return type are nullified,
    *  but the result return type is not nullable.
@@ -80,11 +83,11 @@ object JavaNullInterop {
    *  but the result type is not nullable.
    */
   private def nullifyExceptReturnType(tp: Type)(using Context): Type =
-    new JavaNullMap(outermostLevelAlreadyNullable = true)(tp)
+    new JavaNullMap(outermostLevelAlreadyNullable = true, explicitlyNullable = false)(tp)
 
   /** Nullifies a Java type by adding `| Null` in the relevant places. */
-  private def nullifyType(tp: Type)(using Context): Type =
-    new JavaNullMap(outermostLevelAlreadyNullable = false)(tp)
+  private def nullifyType(tp: Type, explicitlyNullable: Boolean = false)(using Context): Type =
+    new JavaNullMap(outermostLevelAlreadyNullable = false, explicitlyNullable)(tp)
 
   /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| Null`
    *  in the right places to make the nulls explicit in Scala.
@@ -97,8 +100,17 @@ object JavaNullInterop {
    *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
    *                                       to `(A & B) | Null`, instead of `(A | Null & B | Null) | Null`.
    */
-  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap {
-    def nullify(tp: Type): Type = if ctx.flexibleTypes then FlexibleType(tp) else OrNull(tp)
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean, explicitlyNullable: Boolean)(using Context) extends TypeMap {
+    def nullify(tp: Type): Type = 
+      if ctx.flexibleTypes then {
+        if explicitlyNullable then {
+          OrNull(tp)
+        } else {
+          FlexibleType(tp)
+        }
+      } else {
+        OrNull(tp)
+      }
 
     /** Should we nullify `tp` at the outermost level? */
     def needsNull(tp: Type): Boolean =
