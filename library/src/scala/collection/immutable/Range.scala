@@ -14,6 +14,8 @@ package scala
 package collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl.RangeStepper
 import scala.collection.generic.CommonErrors
@@ -217,7 +219,7 @@ sealed abstract class Range(
   private[this] def posOf(i: Int): Int =
     if (contains(i)) (i - start) / step else -1
 
-  override def sameElements[B >: Int](that: IterableOnce[B]): Boolean = that match {
+  override def sameElements[B >: Int](that: IterableOnce[B]^): Boolean = that match {
     case other: Range =>
       (this.length : @annotation.switch) match {
         case 0 => other.isEmpty
@@ -613,7 +615,7 @@ object Range {
 
   // As there is no appealing default step size for not-really-integral ranges,
   // we offer a partially constructed object.
-  class Partial[T, U](private val f: T => U) extends AnyVal {
+  class Partial[T, U](private val f: T => U) extends AnyVal { self: Partial[T, U]^ =>
     def by(x: T): U = f(x)
     override def toString = "Range requires step"
   }
@@ -641,7 +643,7 @@ private class RangeIterator(
   step: Int,
   lastElement: Int,
   initiallyEmpty: Boolean
-) extends AbstractIterator[Int] with Serializable {
+) extends AbstractIterator[Int] with Serializable { self =>
   private[this] var _hasNext: Boolean = !initiallyEmpty
   private[this] var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0

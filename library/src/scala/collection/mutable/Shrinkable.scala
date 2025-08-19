@@ -14,6 +14,7 @@ package scala
 package collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 
 /** This trait forms part of collections that can be reduced
@@ -53,7 +54,7 @@ trait Shrinkable[-A] {
    *  @param xs   the iterator producing the elements to remove.
    *  @return the $coll itself
    */
-  def subtractAll(xs: collection.IterableOnce[A]): this.type = {
+  def subtractAll(xs: collection.IterableOnce[A]^): this.type = {
     @tailrec def loop(xs: collection.LinearSeq[A]): Unit = {
       if (xs.nonEmpty) {
         subtractOne(xs.head)
@@ -75,6 +76,6 @@ trait Shrinkable[-A] {
   }
 
   /** Alias for `subtractAll` */
-  @`inline` final def --= (xs: collection.IterableOnce[A]): this.type = subtractAll(xs)
+  @`inline` final def --= (xs: collection.IterableOnce[A]^): this.type = subtractAll(xs)
 
 }

@@ -14,6 +14,8 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.Arrays
 
 import scala.annotation.unchecked.uncheckedVariance
@@ -39,7 +41,8 @@ sealed abstract class ArraySeq[+A]
     with IndexedSeqOps[A, ArraySeq, ArraySeq[A]]
     with StrictOptimizedSeqOps[A, ArraySeq, ArraySeq[A]]
     with EvidenceIterableFactoryDefaults[A, ArraySeq, ClassTag]
-    with Serializable {
+    with Serializable
+    with caps.Pure {
 
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
     * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
@@ -125,7 +128,7 @@ sealed abstract class ArraySeq[+A]
     }
   }
 
-  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]): ArraySeq[B] = {
+  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): ArraySeq[B] = {
     def genericResult = {
       val k = suffix.knownSize
       if (k == 0) this
@@ -148,7 +151,7 @@ sealed abstract class ArraySeq[+A]
     }
   }
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): ArraySeq[B] = {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): ArraySeq[B] = {
     def genericResult = {
       val k = prefix.knownSize
       if (k == 0) this
@@ -172,7 +175,7 @@ sealed abstract class ArraySeq[+A]
     }
   }
 
-  override def zip[B](that: collection.IterableOnce[B]): ArraySeq[(A, B)] =
+  override def zip[B](that: collection.IterableOnce[B]^): ArraySeq[(A, B)] =
     that match {
       case bs: ArraySeq[B] =>
         ArraySeq.tabulate(length min bs.length) { i =>
@@ -278,7 +281,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
 
   def empty[A : ClassTag]: ArraySeq[A] = emptyImpl
 
-  def from[A](it: scala.collection.IterableOnce[A])(implicit tag: ClassTag[A]): ArraySeq[A] = it match {
+  def from[A](it: scala.collection.IterableOnce[A]^)(implicit tag: ClassTag[A]): ArraySeq[A] = it match {
     case as: ArraySeq[A] => as
     case _ => unsafeWrapArray(Array.from[A](it))
   }

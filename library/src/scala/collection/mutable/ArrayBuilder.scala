@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.mutable.ArrayBuffer.resizeUp
 import scala.reflect.ClassTag
 
@@ -66,7 +67,7 @@ sealed abstract class ArrayBuilder[T]
     this
   }
 
-  override def addAll(xs: IterableOnce[T]): this.type = {
+  override def addAll(xs: IterableOnce[T]^): this.type = {
     val k = xs.knownSize
     if (k > 0) {
       ensureSize(this.size + k)
@@ -452,6 +453,7 @@ object ArrayBuilder {
   /** A class for array builders for arrays of `boolean`s. It can be reused. */
   @SerialVersionUID(3L)
   class ofBoolean extends ArrayBuilder[Boolean] {
+    this: ofBoolean^{} =>
 
     protected var elems: Array[Boolean] = _
 
@@ -504,7 +506,7 @@ object ArrayBuilder {
       this
     }
 
-    override def addAll(xs: IterableOnce[Unit]): this.type = {
+    override def addAll(xs: IterableOnce[Unit]^): this.type = {
       val newSize = size + xs.iterator.size
       ensureSize(newSize)
       size = newSize

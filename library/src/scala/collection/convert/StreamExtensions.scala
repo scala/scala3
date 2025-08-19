@@ -13,6 +13,8 @@
 package scala.collection.convert
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.Spliterator
 import java.util.stream._
 import java.{lang => jl}

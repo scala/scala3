@@ -15,17 +15,20 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.generic.CommonErrors
 
 /** Trait that overrides operations to take advantage of strict builders.
  */
-transparent trait StrictOptimizedSeqOps[+A, +CC[_], +C]
+transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends Any
     with SeqOps[A, CC, C]
     with collection.StrictOptimizedSeqOps[A, CC, C]
-    with StrictOptimizedIterableOps[A, CC, C] {
+    with StrictOptimizedIterableOps[A, CC, C]
+    with caps.Pure {
 
-  override def distinctBy[B](f: A => B): C = {
+  override def distinctBy[B](f: A -> B): C = {
     if (lengthCompare(1) <= 0) coll
     else {
       val builder = newSpecificBuilder
@@ -62,7 +65,7 @@ transparent trait StrictOptimizedSeqOps[+A, +CC[_], +C]
     b.result()
   }
 
-  override def patch[B >: A](from: Int, other: IterableOnce[B], replaced: Int): CC[B] = {
+  override def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] = {
     val b = iterableFactory.newBuilder[B]
     var i = 0
     val it = iterator

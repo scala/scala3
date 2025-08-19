@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Searching.{Found, InsertionPoint, SearchResult}
 import scala.collection.Stepper.EfficientSplit
@@ -22,7 +24,8 @@ import scala.math.Ordering
 /** Base trait for indexed sequences that have efficient `apply` and `length` */
 trait IndexedSeq[+A] extends Seq[A]
   with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
-  with IterableFactoryDefaults[A, IndexedSeq] {
+  with IterableFactoryDefaults[A, IndexedSeq]
+  with caps.Pure {
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix: String = "IndexedSeq"
 
@@ -33,9 +36,9 @@ trait IndexedSeq[+A] extends Seq[A]
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](immutable.IndexedSeq)
 
 /** Base trait for indexed Seq operations */
-transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self =>
+transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self: IndexedSeqOps[A, CC, C]^ =>
 
-  def iterator: Iterator[A] = view.iterator
+  def iterator: Iterator[A]^{this} = view.iterator
 
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
     import convert.impl._
@@ -48,7 +51,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
     s.asInstanceOf[S with EfficientSplit]
   }
 
-  override def reverseIterator: Iterator[A] = view.reverseIterator
+  override def reverseIterator: Iterator[A]^{this} = view.reverseIterator
 
   /* TODO 2.14+ uncomment and delete related code in IterableOnce
   @tailrec private def foldl[B](start: Int, end: Int, z: B, op: (B, A) => B): B =
@@ -68,33 +71,34 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
 
   //override def reduceRight[B >: A](op: (A, B) => B): B = if (length > 0) foldr(0, length - 1, apply(length - 1), op) else super.reduceRight(op)
 
-  override def view: IndexedSeqView[A] = new IndexedSeqView.Id[A](this)
+  override def view: IndexedSeqView[A]^{this} = new IndexedSeqView.Id[A](this)
 
   @deprecated("Use .view.slice(from, until) instead of .view(from, until)", "2.13.0")
-  override def view(from: Int, until: Int): IndexedSeqView[A] = view.slice(from, until)
+  override def view(from: Int, until: Int): IndexedSeqView[A]^{this} = view.slice(from, until)
 
-  override protected def reversed: Iterable[A] = new IndexedSeqView.Reverse(this)
+  override protected def reversed: Iterable[A]^{this} = new IndexedSeqView.Reverse(this)
 
   // Override transformation operations to use more efficient views than the default ones
-  override def prepended[B >: A](elem: B): CC[B] = iterableFactory.from(new IndexedSeqView.Prepended(elem, this))
+  override def prepended[B >: A](elem: B): CC[B]^{this} = iterableFactory.from(new IndexedSeqView.Prepended(elem, this))
 
-  override def take(n: Int): C = fromSpecific(new IndexedSeqView.Take(this, n))
+  override def take(n: Int): C^{this} = fromSpecific(new IndexedSeqView.Take(this, n))
 
-  override def takeRight(n: Int): C = fromSpecific(new IndexedSeqView.TakeRight(this, n))
+  override def takeRight(n: Int): C^{this} = fromSpecific(new IndexedSeqView.TakeRight(this, n))
 
-  override def drop(n: Int): C = fromSpecific(new IndexedSeqView.Drop(this, n))
+  override def drop(n: Int): C^{this} = fromSpecific(new IndexedSeqView.Drop(this, n))
 
-  override def dropRight(n: Int): C = fromSpecific(new IndexedSeqView.DropRight(this, n))
+  override def dropRight(n: Int): C^{this} = fromSpecific(new IndexedSeqView.DropRight(this, n))
 
-  override def map[B](f: A => B): CC[B] = iterableFactory.from(new IndexedSeqView.Map(this, f))
+  override def map[B](f: A => B): CC[B]^{this, f} = iterableFactory.from(new IndexedSeqView.Map(this, f))
 
-  override def reverse: C = fromSpecific(new IndexedSeqView.Reverse(this))
+  override def reverse: C^{this} = fromSpecific(new IndexedSeqView.Reverse(this))
 
-  override def slice(from: Int, until: Int): C = fromSpecific(new IndexedSeqView.Slice(this, from, until))
+  override def slice(from: Int, until: Int): C^{this} = fromSpecific(new IndexedSeqView.Slice(this, from, until))
 
-  override def sliding(size: Int, step: Int): Iterator[C] = {
+  override def sliding(size: Int, step: Int): Iterator[C^{this}]^{this} = {
     require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
-    new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
+    val it = new IndexedSeqSlidingIterator[A, CC, C](this, size, step)
+    it.asInstanceOf[Iterator[Nothing]] // TODO: seems like CC cannot figure this out yet
   }
 
   override def head: A =
@@ -123,7 +127,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
 
   override def knownSize: Int = length
 
-  override final def lengthCompare(that: Iterable[_]): Int = {
+  override final def lengthCompare(that: Iterable[_]^): Int = {
     val res = that.sizeCompare(length)
     // can't just invert the result, because `-Int.MinValue == Int.MinValue`
     if (res == Int.MinValue) 1 else -res
@@ -153,8 +157,10 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
 }
 
 /** A fast sliding iterator for IndexedSeqs which uses the underlying `slice` operation. */
-private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, CC, C], size: Int, step: Int)
-  extends AbstractIterator[C] {
+private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, CC, C]^, size: Int, step: Int)
+  extends AbstractIterator[C^{s}] {
+  // CC note: seems like the compiler cannot figure out that this class <: Iterator[C^{s}],
+  // so we need a cast when upcasting is needed.
 
   private[this] val len = s.length
   private[this] var pos = 0
@@ -165,7 +171,7 @@ private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, C
 
   def hasNext: Boolean = chklen && pos < len
 
-  def next(): C = if (!chklen || !hasNext) Iterator.empty.next() else {
+  def next(): C^{s} = if (!chklen || !hasNext) Iterator.empty.next() else {
     val end = { val x = pos + size; if (x < 0 || x > len) len else x } // (pos.toLong + size).min(len).toInt
     val slice = s.slice(pos, end)
     pos =

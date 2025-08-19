@@ -13,6 +13,8 @@
 package scala.collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.implicitNotFound
 
 /**
@@ -30,13 +32,13 @@ transparent trait StrictOptimizedSortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with
   override def map[K2, V2](f: ((K, V)) => (K2, V2))(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     strictOptimizedMap(sortedMapFactory.newBuilder, f)
 
-  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)])(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
+  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     strictOptimizedFlatMap(sortedMapFactory.newBuilder, f)
 
-  override def concat[V2 >: V](xs: IterableOnce[(K, V2)]): CC[K, V2] =
+  override def concat[V2 >: V](xs: IterableOnce[(K, V2)]^): CC[K, V2] =
     strictOptimizedConcat(xs, sortedMapFactory.newBuilder(using ordering))
 
-  override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
+  override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]^)(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     strictOptimizedCollect(sortedMapFactory.newBuilder, pf)
 
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")

@@ -7,5 +7,5 @@ import language.experimental.captureChecking
  *  sense that their values retain no capabilities including capabilities needed
  *  to perform effects. This has formal meaning only under capture checking.
  */
-trait Pure:
+trait Pure extends Any:
   this: Pure =>

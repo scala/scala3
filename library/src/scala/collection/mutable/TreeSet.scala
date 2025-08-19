@@ -14,6 +14,7 @@ package scala
 package collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{RedBlackTree => RB}
@@ -115,6 +116,7 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     *              bound.
     */
   private[this] final class TreeSetProjection(from: Option[A], until: Option[A]) extends TreeSet[A](tree) {
+    self: TreeSetProjection^{} =>
 
     /**
       * Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
@@ -194,7 +196,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
 
   def empty[A : Ordering]: TreeSet[A] = new TreeSet[A]()
 
-  def from[E](it: IterableOnce[E])(implicit ordering: Ordering[E]): TreeSet[E] =
+  def from[E](it: IterableOnce[E]^)(implicit ordering: Ordering[E]): TreeSet[E] =
     it match {
       case ts: TreeSet[E] if ordering == ts.ordering =>
         new TreeSet[E](ts.tree.treeCopy())

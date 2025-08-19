@@ -13,6 +13,8 @@
 package scala.collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.{concurrent => juc}
 import java.{lang => jl, util => ju}
 
