@@ -135,7 +135,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   /** Similar to `fromIterable`, but returns a Map collection type.
     * Note that the return type is now `CC[K2, V2]`.
     */
-  @`inline` protected def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2]^{it} = mapFactory.from(it)
+  @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2]^{it} = mapFactory.from(it)
 
   /** The companion object of this map, providing various factory methods.
     *

@@ -534,7 +534,7 @@ object EvidenceIterableFactory {
   class Delegate[CC[_], Ev[_]](delegate: EvidenceIterableFactory[CC, Ev]) extends EvidenceIterableFactory[CC, Ev] {
     override def apply[A: Ev](xs: A*): CC[A] = delegate.apply(xs: _*)
     def empty[A : Ev]: CC[A] = delegate.empty
-    def from[E : Ev](it: IterableOnce[E]^) = delegate.from(it)
+    def from[E : Ev](it: IterableOnce[E]^): CC[E] = delegate.from(it)
     def newBuilder[A : Ev]: Builder[A, CC[A]] = delegate.newBuilder[A]
   }
 }

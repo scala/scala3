@@ -21,7 +21,7 @@ import scala.collection.generic.CommonErrors
 
 /** Trait that overrides operations to take advantage of strict builders.
  */
-transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: collection.SeqOps[B, collection.Seq, collection.Seq[B]] & caps.Pure, +C]
+transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends Any
     with SeqOps[A, CC, C]
     with collection.StrictOptimizedSeqOps[A, CC, C]
