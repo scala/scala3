@@ -88,7 +88,7 @@ object MapView extends MapViewFactory {
     override def knownSize: Int = 0
     override def isEmpty: Boolean = true
     override def filterKeys(p: Any => Boolean): MapView[Any, Nothing] = this
-    override def mapValues[W](f: Nothing => W): MapView[Any, Nothing] = this
+    override def mapValues[W](f: Nothing => W): MapView[Any, W] = this // TODO: W is originally Nothing in return type, but breaks CC
     override def filter(pred: ((Any, Nothing)) => Boolean): MapView[Any, Nothing] = this
     override def filterNot(pred: ((Any, Nothing)) => Boolean): MapView[Any, Nothing] = this
     override def partition(p: ((Any, Nothing)) => Boolean): (MapView[Any, Nothing], MapView[Any, Nothing]) = (this, this)
