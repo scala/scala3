@@ -168,7 +168,7 @@ final class VectorMap[K, +V] private (
     }
   }
 
-  override def mapFactory: StrictMapFactory[VectorMap] = VectorMap
+  override def mapFactory: MapFactory[VectorMap] = VectorMap
 
   override def contains(key: K): Boolean = underlying.contains(key)
 
@@ -221,7 +221,7 @@ final class VectorMap[K, +V] private (
   }
 }
 
-object VectorMap extends StrictMapFactory[VectorMap] {
+object VectorMap extends MapFactory[VectorMap] {
   //Class to mark deleted slots in 'fields'.
   //When one or more consecutive slots are deleted, the 'distance' of the first 'Tombstone'
   // represents the distance to the location of the next undeleted slot (or the last slot in 'fields' +1 if it does not exist).

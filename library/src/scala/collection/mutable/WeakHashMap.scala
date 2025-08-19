@@ -39,7 +39,7 @@ class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
     with JMapWrapperLike[K, V, WeakHashMap, WeakHashMap[K, V]]
     with MapFactoryDefaults[K, V, WeakHashMap, Iterable] {
   override def empty = new WeakHashMap[K, V]
-  override def mapFactory: StrictMapFactory[WeakHashMap] = WeakHashMap
+  override def mapFactory: MapFactory[WeakHashMap] = WeakHashMap
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix = "WeakHashMap"
 }
@@ -49,7 +49,7 @@ class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
  *  @define coll weak hash map
  */
 @SerialVersionUID(3L)
-object WeakHashMap extends StrictMapFactory[WeakHashMap] {
+object WeakHashMap extends MapFactory[WeakHashMap] {
   def empty[K, V]: WeakHashMap[K,V] = new WeakHashMap[K, V]
   def from[K, V](it: collection.IterableOnce[(K, V)]^): WeakHashMap[K,V] = Growable.from(empty[K, V], it)
   def newBuilder[K, V]: Builder[(K, V), WeakHashMap[K,V]] = new GrowableBuilder(WeakHashMap.empty[K, V])

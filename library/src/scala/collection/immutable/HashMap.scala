@@ -24,7 +24,7 @@ import scala.collection.Hashing.improve
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable, mutable.ReusableBuilder
-import scala.collection.{Iterator, StrictMapFactory, MapFactoryDefaults, Stepper, StepperShape, mutable}
+import scala.collection.{Iterator, MapFactory, MapFactoryDefaults, Stepper, StepperShape, mutable}
 import scala.runtime.AbstractFunction2
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
@@ -50,7 +50,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
   // This release fence is present because rootNode may have previously been mutated during construction.
   releaseFence()
 
-  override def mapFactory: StrictMapFactory[HashMap] = HashMap
+  override def mapFactory: MapFactory[HashMap] = HashMap
 
   override def knownSize: Int = rootNode.size
 
@@ -2194,7 +2194,7 @@ private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) 
   * @define coll immutable champ hash map
   */
 @SerialVersionUID(3L)
-object HashMap extends StrictMapFactory[HashMap] {
+object HashMap extends MapFactory[HashMap] {
 
   @transient
   private final val EmptyMap = new HashMap(MapNode.empty)

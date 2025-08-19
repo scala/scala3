@@ -36,7 +36,7 @@ trait SeqMap[K, +V] extends Map[K, V]
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix: String = "SeqMap"
 
-  override def mapFactory: StrictMapFactory[SeqMap] = SeqMap
+  override def mapFactory: MapFactory[SeqMap] = SeqMap
 }
 
 object SeqMap extends MapFactory.Delegate[immutable.SeqMap](immutable.SeqMap)

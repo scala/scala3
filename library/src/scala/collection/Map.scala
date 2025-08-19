@@ -30,7 +30,7 @@ trait Map[K, +V]
     with Equals
     with caps.Pure {
 
-  def mapFactory: scala.collection.StrictMapFactory[Map] = Map
+  def mapFactory: scala.collection.MapFactory[Map] = Map
 
   def canEqual(that: Any): Boolean = true
 

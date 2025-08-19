@@ -61,7 +61,7 @@ final class TreeSeqMap[K, +V] private (
 
   override protected[this] def className: String = "TreeSeqMap"
 
-  override def mapFactory: StrictMapFactory[TreeSeqMap] = TreeSeqMap
+  override def mapFactory: MapFactory[TreeSeqMap] = TreeSeqMap
 
   override val size = mapping.size
 
@@ -289,7 +289,7 @@ final class TreeSeqMap[K, +V] private (
   @`inline` private[this] def value(p: (_, V)) = p._2
   @`inline` private[this] def binding(k: K) = mapping(k).copy(_1 = k)
 }
-object TreeSeqMap extends StrictMapFactory[TreeSeqMap] {
+object TreeSeqMap extends MapFactory[TreeSeqMap] {
   sealed trait OrderBy
   object OrderBy {
     case object Insertion extends OrderBy

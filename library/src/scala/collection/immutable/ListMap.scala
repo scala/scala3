@@ -50,7 +50,7 @@ sealed class ListMap[K, +V]
     with MapFactoryDefaults[K, V, ListMap, Iterable]
     with DefaultSerializable {
 
-  override def mapFactory: StrictMapFactory[ListMap] = ListMap
+  override def mapFactory: MapFactory[ListMap] = ListMap
 
   override def size: Int = 0
 
@@ -129,7 +129,7 @@ sealed class ListMap[K, +V]
   * @define coll list map
   */
 @SerialVersionUID(3L)
-object ListMap extends StrictMapFactory[ListMap] {
+object ListMap extends MapFactory[ListMap] {
   /**
     * Represents an entry in the `ListMap`.
     */
