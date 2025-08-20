@@ -293,12 +293,13 @@ object Build {
       config
         .withProjectId(ProjectId("scala3"))
         .withServer(config.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
-        .withBuildScan(
-          buildScan
+        .withBuildScan({
+          val scan = buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
             .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
-        )
+          if (isNightly) scan.withTag("NIGHTLY") else scan
+        })
         .withBuildCache(
           buildCache
             .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
