@@ -158,9 +158,12 @@ object ImplicitNullInterop {
       // type of a final non-nullable field.
       case tp: ExprType => mapOver(tp)
       case tp: AnnotatedType => mapOver(tp)
-      case tp: OrType => mapOver(tp)
-      case tp: MatchType => mapOver(tp)
-      case tp: RefinedType => nullify(mapOver(tp))
+      case tp: OrType =>
+        outermostLevelAlreadyNullable = true
+        nullify(derivedOrType(tp, this(tp.tp1), this(tp.tp2)))
+      case tp: RefinedType =>
+        outermostLevelAlreadyNullable = true
+        nullify(mapOver(tp))
       case _ => tp
     }
   }
