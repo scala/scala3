@@ -3150,10 +3150,10 @@ object Parsers {
           SubMatch(sel, cases)
         case _ =>
           syntaxErrorOrIncomplete(ExpectedTokenButFound(ARROW, tok))
-          EmptyTree
+          atSpan(self.span)(Block(Nil, EmptyTree))
 
       val body = tok match
-        case ARROW =>  atSpan(in.skipToken()):
+        case ARROW => atSpan(in.skipToken()):
           if exprOnly then
             if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
               warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
