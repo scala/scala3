@@ -17,12 +17,12 @@ import E.*
 @main def Test =
 
   def test(e: E): Int = e match
-    case A(B(e1)) if true with e1.f match
-      case Some(x) with x match
+    case A(B(e1)) if true if e1.f match
+      case Some(x) if x match
         case A(_) => 11
         case C => 12
-    case B(A(e1)) with e1.f match
-      case Some(C) => 21
+    case B(A(e1)) if e1.f match
+      case Some(C) if false || true => 21
       case None => 22
     case _ => 3
   end test

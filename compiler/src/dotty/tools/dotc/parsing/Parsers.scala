@@ -2585,21 +2585,53 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
+    /* When parsing (what will become) a sub sub match, that is,
+     * when in a guard of case of a match, in a guard of case of a match;
+     * we will eventually reach Scanners.handleNewLine at the end of the sub sub match
+     * with an in.currretRegion of the shape `InCase +: Indented :+ InCase :+ Indented :+ ...`
+     * if we did not do dropInnerCaseRegion.
+     * In effect, a single outdent would be inserted by handleNewLine after the sub sub match.
+     * This causes the remaining cases of the outer match to be included in the intermediate sub match.
+     * For example:
+     *    match
+     *      case x1 if x1 match
+     *        case y if y match
+     *          case z => "a"
+     *      case x2 => "b"
+     * would become
+     *    match
+     *      case x1 if x1 match {
+     *        case y if y match {
+     *          case z => "a"
+     *        }
+     *        case x2 => "b"
+     *     }
+     * This issue is avoided by dropping the `InCase` region when parsing match clause,
+     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * Note that this _could_ break previous code which relied on matches within guards
+     * being considered as a separate region without explicit indentation.
+     */
+    private def dropInnerCaseRegion(): Unit =
+      in.currentRegion match
+        case Indented(width, prefix, Scanners.InCase(r)) => in.currentRegion = Indented(width, prefix, r)
+        case Scanners.InCase(r) => in.currentRegion = r
+        case _ =>
+
     /**    MatchClause ::= `match' `{' CaseClauses `}'
+     *                   | `match' ExprCaseClause
      */
     def matchClause(t: Tree): Match =
       atSpan(startOffset(t), in.skipToken()) {
-        Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
+        val cases =
+          if in.featureEnabled(Feature.subCases) then
+            dropInnerCaseRegion()
+            if in.token == CASE
+            then caseClause(exprOnly = true) :: Nil // single case without new line
+            else inBracesOrIndented(caseClauses(() => caseClause()))
+          else
+            inBracesOrIndented(caseClauses(() => caseClause()))
+        Match(t, cases)
       }
-
-    /** SubMatchClause ::= `match' `{' CaseClauses `}'
-     */
-    def subMatchClause(t: Tree): SubMatch = atSpan(startOffset(t), accept(MATCH)):
-      val cases =
-        if in.token == CASE
-        then caseClause(exprOnly = true) :: Nil // single sub case without new line
-        else inBracesOrIndented(caseClauses(() => caseClause()))
-      SubMatch(t, cases)
 
     /**    `match' <<< TypeCaseClauses >>>
      */
@@ -3109,12 +3141,19 @@ object Parsers {
         accept(CASE)
         (withinMatchPattern(pattern()), guard())
       }
-      val body =
-        if in.token == WITH && in.featureEnabled(Feature.subCases) then atSpan(in.skipToken()):
-          val t = subMatchClause(simpleExpr(Location.ElseWhere))
+      var grd1 = grd // may be reset to EmptyTree (and used as sub match body instead) if there is no leading ARROW
+      val tok = in.token
+
+      extension (self: Tree) def asSubMatch: Tree = self match
+        case Match(sel, cases) if in.featureEnabled(Feature.subCases) =>
           if in.isStatSep then in.nextToken() // else may have been consumed by sub sub match
-          t
-        else atSpan(accept(ARROW)):
+          SubMatch(sel, cases)
+        case _ =>
+          syntaxErrorOrIncomplete(ExpectedTokenButFound(ARROW, tok))
+          EmptyTree
+
+      val body = tok match
+        case ARROW =>  atSpan(in.skipToken()):
           if exprOnly then
             if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
               warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
@@ -3123,7 +3162,16 @@ object Parsers {
                           |an indented case.""")
             expr()
           else block()
-      CaseDef(pat, grd, body)
+        case IF => atSpan(in.skipToken()):
+          // a sub match after a guard is parsed the same as one without
+          val t = inSepRegion(InCase)(postfixExpr(Location.InGuard))
+          t.asSubMatch
+        case other =>
+          val t = grd1.asSubMatch
+          grd1 = EmptyTree
+          t
+
+      CaseDef(pat, grd1, body)
     }
 
     /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]

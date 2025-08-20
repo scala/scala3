@@ -10,10 +10,10 @@ import E.*
 
 def test(op: => Nothing): String =
   try op catch
-    case A(x: Int) if true with x match
+    case A(x: Int) if true if x match
       case 1 => "A(1)"
       case 2 => "A(2)"
-    case B(x: String) with x match
+    case B(x: String) if x match
       case "a" => "B(a)"
       case "b" => "B(b)"
     case _ => "other"

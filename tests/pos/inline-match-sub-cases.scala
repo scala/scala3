@@ -5,10 +5,10 @@ object Test:
   // using transparent to test whether test whether reduced as expected
   transparent inline def foo(i: Int, j: Int): String =
     inline i match
-      case 0 with j match
+      case 0 if j match
         case 1 => "01"
         case 2 => "02"
-      case 1 with j match
+      case 1 if j match
         case 1 => "11"
         case 2 => "12"
       case _ => "3"
@@ -20,7 +20,7 @@ object Test:
 
   transparent inline def bar(x: Option[Any]): String =
     inline x match
-      case Some(y: Int) with y match
+      case Some(y: Int) if y match
         case 1 => "a"
         case 2 => "b"
       case Some(z: String) => "c"
