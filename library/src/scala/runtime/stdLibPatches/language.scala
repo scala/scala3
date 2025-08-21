@@ -149,13 +149,18 @@ object language:
      * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
-    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stablised and can be enabled using `-preview` flag", since = "3.7")
+    @deprecated("The `experimental.betterFors` language import no longer has any effect, the feature is being stabilised and can be enabled using `-preview` flag", since = "3.7")
     object betterFors
 
     /** Experimental support for package object values
      */
     @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
     object packageObjectValues
+
+    /** Experimental support for match expressions with sub cases.
+     */
+    @compileTimeOnly("`subCases` can only be used at compile time in import statements")
+    object subCases
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
