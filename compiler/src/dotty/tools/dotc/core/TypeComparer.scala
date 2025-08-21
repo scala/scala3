@@ -899,7 +899,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             throw ex
         compareCapturing || fourthTry
       case QualifiedType(parent2, qualifier2) =>
-        QualifiedTypes.typeImplies(tp1, qualifier2) && recur(tp1, parent2)
+        recur(tp1, parent2) && QualifiedTypes.typeImplies(tp1, qualifier2, qualifierSolver())
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
@@ -3337,6 +3337,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
   protected def matchReducer = MatchReducer(comparerContext)
+  protected def qualifierSolver() = qualified_types.QualifierSolver(using comparerContext)
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
     val saved = myInstance
@@ -4000,7 +4001,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       lastForwardGoal = null
 
   override def traceIndented[T](str: String)(op: => T): T =
-    val str1 = str.replace('\n', ' ')
+    val str1 = str
     if short && str1 == lastForwardGoal then
       op // repeated goal, skip for clarity
     else
@@ -4068,6 +4069,10 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
     traceIndented(i"subcaptures $refs1 <:< $refs2 in ${vs.toString}") {
       super.subCaptures(refs1, refs2, vs)
     }
+
+  override def qualifierSolver() =
+    val traceIndented0 = [T] => (message: String) => traceIndented[T](message)
+    qualified_types.ExplainingQualifierSolver(traceIndented0)(using comparerContext)
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }
 }

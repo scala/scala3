@@ -355,12 +355,16 @@ object TypeTestsCasts {
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
-          case QualifiedType(parent, closureDef(qualifierDef)) =>
-            evalOnce(expr): e =>
-              // e.isInstanceOf[baseType] && qualifier(e.asInstanceOf[baseType])
-              val arg = e.asInstance(parent)
-              val qualifierTest = BetaReduce.reduceApplication(qualifierDef, List(List(arg))).get
-              transformTypeTest(e, parent, flagUnrelated).and(qualifierTest)
+          case QualifiedType(parent, qualifier) =>
+            qualifier.toTree() match
+              case closureDef(qualifierDef) =>
+                evalOnce(expr): e =>
+                  // e.isInstanceOf[baseType] && qualifier(e.asInstanceOf[baseType])
+                  val arg = e.asInstance(parent)
+                  val qualifierTest = BetaReduce.reduceApplication(qualifierDef, List(List(arg))).get
+                  transformTypeTest(e, parent, flagUnrelated).and(qualifierTest)
+              case tree =>
+                throw new IllegalStateException("Malformed qualifier tree: $tree, expected a closure definition")
           case _ =>
             val testWidened = testType.widen
             defn.untestableClasses.find(testWidened.isRef(_)) match

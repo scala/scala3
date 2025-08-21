@@ -620,9 +620,11 @@ class Definitions {
     @tu lazy val Int_/  : Symbol = IntClass.requiredMethod(nme.DIV, List(IntType))
     @tu lazy val Int_*  : Symbol = IntClass.requiredMethod(nme.MUL, List(IntType))
     @tu lazy val Int_== : Symbol = IntClass.requiredMethod(nme.EQ, List(IntType))
+    @tu lazy val Int_!= : Symbol = IntClass.requiredMethod(nme.NE, List(IntType))
     @tu lazy val Int_>= : Symbol = IntClass.requiredMethod(nme.GE, List(IntType))
     @tu lazy val Int_<= : Symbol = IntClass.requiredMethod(nme.LE, List(IntType))
     @tu lazy val Int_>  : Symbol = IntClass.requiredMethod(nme.GT, List(IntType))
+    @tu lazy val Int_<  : Symbol = IntClass.requiredMethod(nme.LT, List(IntType))
   @tu lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass(using Context): ClassSymbol = LongType.symbol.asClass
     @tu lazy val Long_+ : Symbol = LongClass.requiredMethod(nme.PLUS, List(LongType))

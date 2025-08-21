@@ -3,6 +3,9 @@ def g(x: Int): Int = ???
 def f2(x: Int, y: Int): Int = ???
 def g2(x: Int, y: Int): Int = ???
 
+case class IntBox(x: Int)
+case class Box[T](x: T)
+
 def test: Unit =
   val a: Int = ???
   val b: Int = ???
@@ -33,3 +36,13 @@ def test: Unit =
   // of the e-graph when `f(a)` and `f(b)` are inserted before `a == b`.
   summon[{v: Int with c == f(a) && d == f(b) && a == b} <:< {v: Int with f(a) == f(b)}]
   summon[{v: Int with c == f(a) && d == f(b) && a == b} <:< {v: Int with f(f(a)) == f(f(b))}]
+
+  // Equality is supported on Strings
+  summon[{v: String with v == "hello"} <:< {v: String with v == "hello"}]
+  summon[{v: String with v == "hello"} <:< {v: String with "hello" == v}]
+
+  // Equality is supported on case classes
+  summon[{v: IntBox with v == IntBox(3)} <:< {v: IntBox with v == IntBox(3)}]
+  summon[{v: IntBox with v == IntBox(3)} <:< {v: IntBox with IntBox(3) == v}]
+  summon[{v: Box[Int] with v == Box(3)} <:< {v: Box[Int] with v == Box(3)}]
+  summon[{v: Box[Int] with v == Box(3)} <:< {v: Box[Int] with Box(3) == v}]

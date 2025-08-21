@@ -2594,7 +2594,8 @@ object desugar {
           tree
 
     if Feature.qualifiedTypesEnabled then
-      transform(tpt)
+      trace(i"desugar qualified types in pattern: $tpt", Printers.qualifiedTypes):
+        transform(tpt)
     else
       tpt
 

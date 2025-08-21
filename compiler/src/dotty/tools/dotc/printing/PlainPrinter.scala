@@ -460,6 +460,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "<" ~ reprStr ~ ":" ~ toText(tp.info) ~ ">"
         else
           reprStr
+      case qualified_types.ENodeParamRef(index, underlying) =>
+        if ctx.settings.XprintTypes.value then
+          "<" ~ "eparam" ~ index.toString ~ ":" ~ toText(underlying) ~ ">"
+        else
+          "eparam" ~ index.toString
     }
   }
 
