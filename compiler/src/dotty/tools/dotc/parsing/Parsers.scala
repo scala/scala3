@@ -3133,8 +3133,8 @@ object Parsers {
       buf.toList
     }
 
-    /** CaseClause        ::= ‘case’ Pattern [Guard] (‘with’ SimpleExpr SubMatchClause | `=>' Block)
-     *  ExprCaseClause    ::= ‘case’ Pattern [Guard] (‘with’ SimpleExpr SubMatchClause | `=>' Expr)
+    /** CaseClause        ::= ‘case’ Pattern [Guard] (‘if’ InfixExpr MatchClause | `=>' Block)
+     *  ExprCaseClause    ::= ‘case’ Pattern [Guard] (‘if’ InfixExpr MatchClause | `=>' Expr)
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {

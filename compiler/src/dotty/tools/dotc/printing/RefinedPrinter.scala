@@ -566,7 +566,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case CaseDef(pat, guard, body) =>
         val bodyText = body match
-          case t: SubMatch => keywordStr(" with ") ~ toText(t)
+          case t: SubMatch => keywordStr(" if ") ~ toText(t)
           case t => " => " ~ caseBlockText(t)
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ bodyText
       case Labeled(bind, expr) =>
