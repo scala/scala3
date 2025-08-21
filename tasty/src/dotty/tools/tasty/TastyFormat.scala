@@ -511,7 +511,6 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
   final val TRACKED = 47
-  final val WITH = 48
 
   // Tree Cat. 2:    tag Nat
   final val firstNatTreeTag = SHAREDterm
