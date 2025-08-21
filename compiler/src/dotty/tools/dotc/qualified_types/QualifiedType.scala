@@ -17,22 +17,12 @@ object QualifiedType:
    *    a pair containing the parent type and the qualifier tree (a lambda) on
    *    success, [[None]] otherwise
    */
-  def unapply(tp: Type)(using Context): Option[(Type, tpd.Tree)] =
+  def unapply(tp: Type)(using Context): Option[(Type, ENode.Lambda)] =
     tp match
-      case AnnotatedType(parent, annot) if annot.symbol == ctx.definitions.QualifiedAnnot =>
-        Some((parent, annot.argument(0).get))
+      case AnnotatedType(parent, QualifiedAnnotation(qualifier)) =>
+        Some((parent, qualifier))
       case _ =>
         None
 
-  /** Factory method to create a qualified type.
-   *
-   *  @param parent
-   *    the parent type
-   *  @param qualifier
-   *    the qualifier tree (a lambda)
-   *  @return
-   *    a qualified type
-   */
-  def apply(parent: Type, qualifier: tpd.Tree)(using Context): Type =
-    val annotTp = ctx.definitions.QualifiedAnnot.typeRef.appliedTo(parent)
-    AnnotatedType(parent, Annotation(tpd.New(annotTp, List(qualifier))))
+  def apply(parent: Type, qualifier: ENode.Lambda)(using Context): Type =
+    AnnotatedType(parent, QualifiedAnnotation(qualifier))
