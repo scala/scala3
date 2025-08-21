@@ -573,10 +573,16 @@ object Inlines:
       // different for bindings from arguments and bindings from body.
       val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies then inlined
+      val hasOpaquesInResultFromCallWithTransparentContext =
+        call.tpe.widenTermRefExpr.existsPart(
+          part => part.typeSymbol.is(Opaque) && call.symbol.ownersIterator.contains(part.typeSymbol.owner)
+        )
+
+      if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
         val target =
-          if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
+          if inlinedMethod.is(Transparent) then
+            call.tpe & unpackProxiesFromResultType(inlined)
           else call.tpe
         inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type

@@ -394,6 +394,11 @@ class Inliner(val call: tpd.Tree)(using Context):
       case (from, to) if from.symbol == ref.symbol && from =:= ref => to
     }
 
+  private def mapRefBack(ref: TermRef): Option[TermRef] =
+    opaqueProxies.collectFirst {
+      case (from, to) if to.symbol == ref.symbol && to =:= ref => from
+    }
+
   /** If `tp` contains TermRefs that refer to objects with opaque
    *  type aliases, add proxy definitions to `opaqueProxies` that expose these aliases.
    */
@@ -437,6 +442,19 @@ class Inliner(val call: tpd.Tree)(using Context):
               case _ => t
           }
     )
+
+  /** Map back all TermRefs that match the right element in `opaqueProxies` to the
+   *  corresponding left element.
+   */
+  protected val mapBackToOpaques = TreeTypeMap(
+    typeMap = new TypeMap:
+      override def stopAt = StopAt.Package
+      def apply(t: Type) = mapOver {
+        t match
+          case ref: TermRef => mapRefBack(ref).getOrElse(ref)
+          case _ => t
+      }
+  )
 
   /** If `binding` contains TermRefs that refer to objects with opaque
    *  type aliases, add proxy definitions that expose these aliases
@@ -486,6 +504,28 @@ class Inliner(val call: tpd.Tree)(using Context):
     || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && inlinedMethod.isContainedIn(tpe.cls))
 
   private def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
+
+  def thisTypeProxyExists = !thisProxy.isEmpty
+
+  // Unpacks `val ObjectDef$_this: ObjectDef.type = ObjectDef` reference back into ObjectDef reference
+  // For nested transparent inline calls, ObjectDef will be an another proxy, but that is okay
+  val thisTypeUnpacker =
+    TreeTypeMap(
+      typeMap = new TypeMap:
+        override def stopAt = StopAt.Package
+        def apply(t: Type) = mapOver {
+          t match
+            case a: TermRef if thisProxy.values.exists(_ == a) =>
+              a.termSymbol.defTree match
+                case untpd.ValDef(a, tpt, _) => tpt.tpe
+            case _ => t
+        }
+  )
+
+  def unpackProxiesFromResultType(inlined: Inlined): Type =
+    if thisTypeProxyExists then mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+    else inlined.tpe
+
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
