@@ -19,6 +19,15 @@ object TreeExtractors {
     }
   }
 
+  /** Match arg.op() and extract (arg, op.symbol) */
+  object UnaryOp:
+    def unapply(t: Tree)(using Context): Option[(Symbol, Tree)] =
+      t match
+        case Apply(sel @ Select(arg, _), Nil) =>
+          Some((sel.symbol, arg))
+        case _ =>
+          None
+
  /** Match new C(args) and extract (C, args).
   *  Also admit new C(args): T and {new C(args)}.
   */

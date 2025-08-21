@@ -1747,7 +1747,7 @@ object Parsers {
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
      *  MatchType      ::=  InfixType `match` <<< TypeCaseClauses >>>
-     *  QualifiedType2 ::=  InfixType `with` PostfixExprf
+     *  QualifiedType2 ::=  InfixType `with` PostfixExpr
      *  IntoType       ::=  [‘into’] IntoTargetType
      *                   |  ‘( IntoType ‘)’
      *  IntoTargetType ::=  Type
