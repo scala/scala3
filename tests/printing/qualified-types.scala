@@ -11,17 +11,16 @@ type Pos3 = {x: Int with
 type Pos4 =
   {x: Int with x > 0}
 type Pos5 = {x: Int with
-  val res = x > 0
-  res
+  ((_: Int) => x > 0)(42)
 }
 
 type UninhabitedInt = Int with false
 
-type Nested = {x: Int with { val y: {z: Int with z > 0} = ??? ; x > y }}
+def id[T](x: T): T = x
+
+type Nested = {x: Int with id[{b: Boolean with b == x > 42}](x > 42) }
 type Intersection = Int & {x: Int with x > 0}
 type ValRefinement = {val x: Int with x > 0}
-
-def id[T](x: T): T = x
 
 def test() =
   val x: Pos = 1
