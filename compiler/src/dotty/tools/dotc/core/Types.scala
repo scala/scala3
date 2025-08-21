@@ -41,7 +41,7 @@ import compiletime.uninitialized
 import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
-import qualified_types.QualifiedType
+import qualified_types.{QualifiedType, QualifiedAnnotation}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
@@ -6271,6 +6271,8 @@ object Types extends TypeUtils {
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedCapturingType(tp: Type, parent: Type, refs: CaptureSet): Type =
       tp.derivedCapturingType(parent, refs)
+    protected def derivedENodeParamRef(tp: qualified_types.ENodeParamRef, index: Int, underlying: Type): Type =
+      tp.derivedENodeParamRef(index, underlying)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
       tp.derivedWildcardType(bounds)
     protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
@@ -6482,6 +6484,9 @@ object Types extends TypeUtils {
 
         case tp: JavaArrayType =>
           derivedJavaArrayType(tp, this(tp.elemType))
+
+        case tp: qualified_types.ENodeParamRef =>
+          derivedENodeParamRef(tp, tp.index, this(tp.underlying))
 
         case _ =>
           tp

@@ -14,6 +14,7 @@ import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
 import util.Property
 import transform.Splicer
+import qualified_types.QualifiedType
 
 trait TypeAssigner {
   import tpd.*
@@ -572,7 +573,10 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(using Context): Annotated = {
     assert(tree.isType) // annotating a term is done via a Typed node, can't use Annotate directly
-    tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
+    if Annotations.annotClass(annot) == defn.QualifiedAnnot then
+      tree.withType(QualifiedType(arg.tpe, annot))
+    else
+      tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
   }
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(using Context): PackageDef =
