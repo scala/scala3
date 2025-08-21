@@ -14,6 +14,7 @@ import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import util.Property
 import transform.Splicer
 import config.Feature
+import qualified_types.QualifiedType
 
 trait TypeAssigner {
   import tpd.*
@@ -597,8 +598,12 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Annotated, arg: Tree, annotTree: Tree)(using Context): Annotated =
     assert(tree.isType) // annotating a term is done via a Typed node, can't use Annotate directly
-    if annotClass(annotTree).exists then
-      tree.withType(AnnotatedType(arg.tpe, Annotation(annotTree)))
+    val clazz = annotClass(annotTree)
+    if clazz.exists then
+      if clazz == defn.QualifiedAnnot then
+        tree.withType(QualifiedType(arg.tpe, annotTree))
+      else
+        tree.withType(AnnotatedType(arg.tpe, Annotation(annotTree)))
     else
       // this can happen if cyclic reference errors occurred when typing the annotation
       tree.withType(
