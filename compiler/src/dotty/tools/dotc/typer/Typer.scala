@@ -51,7 +51,7 @@ import NullOpsDecorator.*
 import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
-import qualified_types.QualifiedTypes
+import qualified_types.{QualifiedTypes, QualifiedType}
 import transform.CheckUnused.withOriginalName
 
 import scala.annotation.{unchecked as _, *}
@@ -2670,7 +2670,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // untyped tree is no longer accessed after all
             // accesses with typedTypeTree are done.
           case None =>
-            errorTree(tree, em"Something's wrong: missing original symbol for type tree")
+            errorTree(tree, em"Something's wrong: missing original symbol for type tree ${tree}")
         }
       case _ =>
         completeTypeTree(InferredTypeTree(), pt, tree)

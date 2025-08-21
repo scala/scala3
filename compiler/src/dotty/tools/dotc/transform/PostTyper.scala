@@ -27,6 +27,7 @@ import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import ast.TreeInfo
 import dotty.tools.dotc.cc.derivedFunctionOrMethod
+import dotty.tools.dotc.qualified_types.QualifiedAnnotation
 
 object PostTyper {
   val name: String = "posttyper"
@@ -231,11 +232,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     }
 
     private def transformAnnot(annot: Annotation)(using Context): Annotation =
-      val tree1 =
-        annot match
-          case _: BodyAnnotation => annot.tree
-          case _ => copySymbols(annot.tree)
-      annot.derivedAnnotation(transformAnnotTree(tree1))
+      annot match
+        case _: QualifiedAnnotation =>
+          annot
+        case _ =>
+          val tree1 =
+            annot match
+              case _: BodyAnnotation => annot.tree
+              case _ => copySymbols(annot.tree)
+          annot.derivedAnnotation(transformAnnotTree(tree1))
 
     /** Transforms all annotations in the given type. */
     private def transformAnnotsIn(using Context) =
