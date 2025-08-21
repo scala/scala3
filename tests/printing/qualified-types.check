@@ -13,20 +13,13 @@ package example {
     type Pos2 = Int @qualified[Int]((x: Int) => x > 0)
     type Pos3 = Int @qualified[Int]((x: Int) => x > 0)
     type Pos4 = Int @qualified[Int]((x: Int) => x > 0)
-    type Pos5 =
-      Int @qualified[Int]((x: Int) =>
-        {
-          val res: Boolean = x > 0
-          res:Boolean
-        }
-      )
+    type Pos5 = Int @qualified[Int]((x: Int) => (_$1: Int) => (x > 0).apply(42))
     type UninhabitedInt = Int @qualified[Int]((_: Int) => false)
+    def id[T >: Nothing <: Any](x: T): T = x
     type Nested =
       Int @qualified[Int]((x: Int) =>
-        {
-          val y: Int @qualified[Int]((z: Int) => z > 0) = ???
-          x > y
-        }
+        example.id[Boolean @qualified[Boolean]((b: Boolean) => b == x > 42)](
+          (x > 42).$asInstanceOf[Boolean with x > 42 == eparam0])
       )
     type Intersection = Int & Int @qualified[Int]((x: Int) => x > 0)
     type ValRefinement =
@@ -34,7 +27,6 @@ package example {
         {
           val x: Int @qualified[Int]((x: Int) => x > 0)
         }
-    def id[T >: Nothing <: Any](x: T): T = x
     def test(): Unit =
       {
         val x: example.Pos = 1

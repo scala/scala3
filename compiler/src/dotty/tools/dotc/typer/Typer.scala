@@ -47,7 +47,7 @@ import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.{CheckCaptures, isRetainsLike}
-import qualified_types.QualifiedTypes
+import qualified_types.{QualifiedTypes, QualifiedType}
 import config.Config
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
@@ -2543,7 +2543,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // untyped tree is no longer accessed after all
             // accesses with typedTypeTree are done.
           case None =>
-            errorTree(tree, em"Something's wrong: missing original symbol for type tree")
+            errorTree(tree, em"Something's wrong: missing original symbol for type tree ${tree}")
         }
       case _ =>
         completeTypeTree(InferredTypeTree(), pt, tree)
