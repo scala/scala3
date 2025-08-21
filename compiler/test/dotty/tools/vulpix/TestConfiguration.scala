@@ -25,11 +25,16 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
-  val basicClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
-    Properties.scalaLibrary,
-    Properties.dottyLibrary
-  ))
+  val basicClasspath =
+    if Properties.usingFullScalaLibrary then
+      println(s"using the full stdlib")
+      mkClasspath(Properties.fullScalaLibrary.toList)
+    else
+      mkClasspath(
+        Properties.scalaLibraryTasty.toList ::: List(
+        Properties.scalaLibrary,
+        Properties.dottyLibrary
+      ))
 
   val withCompilerClasspath = mkClasspath(
     Properties.scalaLibraryTasty.toList ::: List(

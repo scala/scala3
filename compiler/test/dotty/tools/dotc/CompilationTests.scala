@@ -214,14 +214,15 @@ class CompilationTests {
     )
   }.checkExpectedErrors()
 
-  @Test def explicitNullsPos: Unit = {
+  @Test def explicitNullsPos: Unit =
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
-    aggregateTests(
-      compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls" and "-Yno-flexible-types"),
-    )
-  }.checkCompile()
+    if !Properties.usingFullScalaLibrary then
+      aggregateTests(
+        compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
+        compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
+        compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls" and "-Yno-flexible-types"),
+      ).checkCompile()
+  end explicitNullsPos
 
   @Test def explicitNullsWarn: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
