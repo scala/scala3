@@ -4263,21 +4263,21 @@ object Parsers {
       finalizeDef(ModuleDef(name, templ), mods, start)
     }
 
-    private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
-      // We allow `infix to mark the `enum`s type as infix.
-      // Syntax rules disallow the soft infix modifier on `case`s.
-
-      val flags = mods.flags.toTypeFlags
-      val flags1 = flags & (AccessFlags | Enum | Infix | Into).toTypeFlags
-      if flags1 != flags then
-        syntaxError(em"Only access modifiers are allowed on enum $where")
-        mods.withFlags(flags1)
-      else mods
+    private def checkAccessOnly(mods: Modifiers, caseStr: String): Modifiers =
+      // We allow `infix` and `into` on `enum` definitions.
+      // Syntax rules disallow these soft infix modifiers on `case`s.
+      val flags = mods.flags
+      var flags1 = flags
+      for mod <- mods.mods do
+        if !mod.flags.isOneOf(AccessFlags | Enum | Infix | Into) then
+          syntaxError(em"This modifier is not allowed on an enum$caseStr", mod.span)
+          flags1 = flags1 &~ mod.flags
+      if flags1 != flags then mods.withFlags(flags1) else mods
 
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      val mods1 = checkAccessOnly(mods, "definitions")
+      val mods1 = checkAccessOnly(mods, "")
       val modulName = ident()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)
@@ -4288,7 +4288,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = checkAccessOnly(mods, "cases") | EnumCase
+      val mods1 = checkAccessOnly(mods, " case") | EnumCase
       accept(CASE)
 
       atSpan(start, nameStart) {

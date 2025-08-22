@@ -1,11 +1,11 @@
-abstract enum Foo1 {} // error: only access modifiers allowed
-final    enum Foo2 {} // error: only access modifiers allowed
-sealed   enum Foo3 {} // error: only access modifiers allowed
-implicit enum Foo4 {} // error: only access modifiers allowed
-lazy     enum Foo5 {} // error: only access modifiers allowed
-override enum Foo7 {} // error: only access modifiers allowed
-inline   enum Foo8 {} // error: only access modifiers allowed
-opaque   enum Foo9 {} // error: only access modifiers allowed
+abstract enum Foo1 { case C } // error: only access modifiers allowed
+final    enum Foo2 { case C } // error: only access modifiers allowed
+sealed   enum Foo3 { case C } // error: only access modifiers allowed
+implicit enum Foo4 { case C } // error: only access modifiers allowed
+lazy     enum Foo5 { case C } // error: only access modifiers allowed
+override enum Foo7 { case C } // error: only access modifiers allowed
+inline   enum Foo8 { case C } // error: only access modifiers allowed
+opaque   enum Foo9 { case C } // error: only access modifiers allowed
 
 enum Foo10 {
   abstract  case C1()  // error: only access modifiers allowed
