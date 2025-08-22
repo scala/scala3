@@ -1339,7 +1339,7 @@ trait Checking {
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
-      for (other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent()) {
+      for other <- seen(decl.name) if decl.name != nme.ERROR && !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
@@ -1356,7 +1356,6 @@ trait Checking {
         if decl.hasDefaultParams && other.hasDefaultParams then
           report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
           decl.resetFlag(HasDefaultParams)
-      }
       if (!excludeFromDoubleDeclCheck(decl))
         seen(decl.name) = decl :: seen(decl.name)
     }
