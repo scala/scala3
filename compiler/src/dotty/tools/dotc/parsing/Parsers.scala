@@ -4266,10 +4266,13 @@ object Parsers {
     private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
       // We allow `infix to mark the `enum`s type as infix.
       // Syntax rules disallow the soft infix modifier on `case`s.
-      val mods1 = mods & (AccessFlags | Enum | Infix)
-      if mods1 ne mods then
+
+      val flags = mods.flags.toTypeFlags
+      val flags1 = flags & (AccessFlags | Enum | Infix | Into).toTypeFlags
+      if flags1 != flags then
         syntaxError(em"Only access modifiers are allowed on enum $where")
-      mods1
+        mods.withFlags(flags1)
+      else mods
 
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */

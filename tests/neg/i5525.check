@@ -1,0 +1,114 @@
+-- Error: tests/neg/i5525.scala:1:14 -----------------------------------------------------------------------------------
+1 |abstract enum Foo1 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:2:14 -----------------------------------------------------------------------------------
+2 |final    enum Foo2 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:3:14 -----------------------------------------------------------------------------------
+3 |sealed   enum Foo3 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:4:14 -----------------------------------------------------------------------------------
+4 |implicit enum Foo4 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:5:14 -----------------------------------------------------------------------------------
+5 |lazy     enum Foo5 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:6:14 -----------------------------------------------------------------------------------
+6 |override enum Foo7 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:7:14 -----------------------------------------------------------------------------------
+7 |inline   enum Foo8 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:8:14 -----------------------------------------------------------------------------------
+8 |opaque   enum Foo9 {} // error: only access modifiers allowed
+  |              ^^^^
+  |              Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:11:12 ----------------------------------------------------------------------------------
+11 |  abstract  case C1()  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:12:12 ----------------------------------------------------------------------------------
+12 |  final     case C2()  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:13:12 ----------------------------------------------------------------------------------
+13 |  sealed    case C3()  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:14:12 ----------------------------------------------------------------------------------
+14 |  implicit  case C4()  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:15:12 ----------------------------------------------------------------------------------
+15 |  lazy      case C5()  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:16:12 ----------------------------------------------------------------------------------
+16 |  override  case C7()  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:22:12 ----------------------------------------------------------------------------------
+22 |  abstract  case C1  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:23:12 ----------------------------------------------------------------------------------
+23 |  final     case C2  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:24:12 ----------------------------------------------------------------------------------
+24 |  sealed    case C3  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:25:12 ----------------------------------------------------------------------------------
+25 |  implicit  case C4  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:26:12 ----------------------------------------------------------------------------------
+26 |  lazy      case C5  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:27:12 ----------------------------------------------------------------------------------
+27 |  override  case C7  // error: only access modifiers allowed
+   |            ^^^^
+   |            Only access modifiers are allowed on enum cases
+-- Error: tests/neg/i5525.scala:33:12 ----------------------------------------------------------------------------------
+33 |  inline    case C10() // error: only access modifiers allowed
+   |            ^^^^
+   |            end of statement expected but 'case' found
+-- Error: tests/neg/i5525.scala:36:11 ----------------------------------------------------------------------------------
+36 |final enum Foo13 {   // error: only access modifiers and `into` allowed
+   |           ^^^^^
+   |           Only access modifiers are allowed on enum definitions
+-- Error: tests/neg/i5525.scala:42:8 -----------------------------------------------------------------------------------
+42 |  infix case C2 extends Foo14[Int, Int] // error // error
+   |        ^^^^
+   |        end of statement expected but 'case' found
+-- Error: tests/neg/i5525.scala:49:7 -----------------------------------------------------------------------------------
+49 |  into case C1  // error
+   |       ^^^^
+   |       end of statement expected but 'case' found
+-- [E145] Syntax Error: tests/neg/i5525.scala:32:5 ---------------------------------------------------------------------
+32 |enum Foo12 {  // error: Enumerations must contain at least one case
+   |     ^^^^^
+   |     Enumerations must contain at least one case
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i5525.scala:42:2 ------------------------------------------------------------------
+42 |  infix case C2 extends Foo14[Int, Int] // error // error
+   |  ^^^^^
+   |  Not found: infix
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/i5525.scala:49:2 ----------------------------------------------------------
+49 |  into case C1  // error
+   |  ^^^^
+   |  A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`

@@ -32,3 +32,19 @@ enum Foo11 {
 enum Foo12 {  // error: Enumerations must contain at least one case
   inline    case C10() // error: only access modifiers allowed
 }
+
+final enum Foo13 {   // error: only access modifiers and `into` allowed
+  case C1
+}
+
+infix enum Foo14[A, B]{   // OK
+  case C1 extends Foo14[Int, Int]
+  infix case C2 extends Foo14[Int, Int] // error // error
+}
+
+import language.experimental.into
+
+into enum Foo15 {   // OK
+  case C0
+  into case C1  // error
+}
