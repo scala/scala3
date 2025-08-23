@@ -4,29 +4,29 @@ package refinedFunctionTypes
 import annotation.experimental
 
 @experimental
-infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
+infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R //expected: @experimental infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
 
 @experimental
-infix type $throws2[+E <: Exception] = (c: CanThrow[E]) ?=> c.type
+infix type $throws2[+E <: Exception] = (c: CanThrow[E]) ?=> c.type //expected: @experimental infix type $throws2[+E <: Exception] = (c: CanThrow[E]) ?=> c.type
 
 @experimental
-infix type $throws3[+E <: Exception] = [T] => (c: CanThrow[E]) ?=> c.type
+infix type $throws3[+E <: Exception] = [T] => (c: CanThrow[E]) ?=> c.type //expected: @experimental infix type $throws3[+E <: Exception] = [T] => (c: CanThrow[E]) ?=> c.type
 
 @experimental
-infix type $throws4[+E <: Exception] = [T] => (c: CanThrow[E]) ?=> T //expected: infix type $throws4[+E <: Exception] = [T] => CanThrow[E] ?=> T
+infix type $throws4[+E <: Exception] = [T] => (c: CanThrow[E]) ?=> T //expected: @experimental infix type $throws4[+E <: Exception] = [T] => CanThrow[E] ?=> T
 
 type TA1 = (a: Int, b: (Boolean, String)) => List[(a.type, b.type)]
 
 type TA2 = (a: Int, b: (Boolean, String)) ?=> List[Boolean]
 
 @experimental
-type TB0 = [R, E <: Exception] =>> PolyFunction { def apply[T](c: CanThrow[E]): R; } //expected: type TB0[R, E <: Exception] = [T] => CanThrow[E] => R
+type TB0 = [R, E <: Exception] =>> PolyFunction { def apply[T](c: CanThrow[E]): R; } //expected: @experimental type TB0[R, E <: Exception] = [T] => CanThrow[E] => R
 
 @experimental
-type TB1 = [R, E <: Exception] =>> PolyFunction { def apply[T](c: CanThrow[E], y: c.type): R; } //expected: type TB1[R, E <: Exception] = [T] => (c: CanThrow[E], y: c.type) => R
+type TB1 = [R, E <: Exception] =>> PolyFunction { def apply[T](c: CanThrow[E], y: c.type): R; } //expected: @experimental type TB1[R, E <: Exception] = [T] => (c: CanThrow[E], y: c.type) => R
 
 @experimental
-type TB2 = [R, E <: Exception] =>> PolyFunction { def apply[T](using c: CanThrow[E]): c.type; } //expected: type TB2[R, E <: Exception] = [T] => (c: CanThrow[E]) ?=> c.type
+type TB2 = [R, E <: Exception] =>> PolyFunction { def apply[T](using c: CanThrow[E]): c.type; } //expected: @experimental type TB2[R, E <: Exception] = [T] => (c: CanThrow[E]) ?=> c.type
 
 type TC1 = [T] => (a: T) => T //expected: type TC1 = [T] => T => T
 
