@@ -3291,7 +3291,7 @@ object Parsers {
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
      *                    |  ‘given’ RefinedType
      *  SimplePattern1   ::= SimpleRef
-     *                    |  SimplePattern1 `.' id
+     *                    |  [SimplePattern1] `.' id
      *  PatVar           ::= id
      *                    |  `_'
      */
@@ -3308,6 +3308,9 @@ object Parsers {
         simpleExpr(Location.InPattern)
       case XMLSTART =>
         xmlLiteralPattern()
+      case DOT =>
+        accept(DOT)
+        simplePatternRest(selector(EmptyTree))
       case GIVEN =>
         atSpan(in.offset) {
           val givenMod = atSpan(in.skipToken())(Mod.Given())
