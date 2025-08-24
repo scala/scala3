@@ -1037,7 +1037,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
     record("typedSelect")
 
-    def typeSelectOnTerm(using Context): Tree =
+    def typeSelectOnTerm(tree: untpd.Select)(using Context): Tree =
       if ctx.isJava then
         // permitted selection depends on Java context (type or expression).
         // we don't propagate (as a mode) whether a.b.m is a type name; OK since we only see type contexts.
@@ -1111,9 +1111,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else if (ctx.isJava && tree.name.isTypeName)
       // scala/bug#3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both. (possibly exponential bc of qualifier retyping)
-      tryAlternatively(typeSelectOnTerm)(tryJavaSelectOnType)
+      tryAlternatively(typeSelectOnTerm(tree))(tryJavaSelectOnType)
+    else if tree.qualifier.isEmpty then
+      // TODO: Specify and develop the logic to resolve the qualifier here
+      val companion = pt.resultType.typeSymbol.companionModule
+      val qualified = cpy.Select(tree)(qualifier = untpd.ref(companion), name = tree.name)
+      typeSelectOnTerm(qualified)
     else
-      typeSelectOnTerm
+      typeSelectOnTerm(tree)
 
     warnUnnecessaryNN(tree1)
     tree1

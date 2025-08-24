@@ -2368,6 +2368,7 @@ object Parsers {
      *                      |  `try' Expr [`finally' Expr]
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
+     *                      |  `.` id
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  PrefixOperator SimpleExpr `=' Expr
@@ -2756,6 +2757,7 @@ object Parsers {
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
      *                 |  SimpleRef
+     *                 |  `.` id
      *                 |  `(` [ExprsInParens] `)`
      *                 |  SimpleExpr `.` id
      *                 |  SimpleExpr `.` MatchClause
@@ -2800,6 +2802,9 @@ object Parsers {
         case MACRO =>
           val start = in.skipToken()
           MacroTree(simpleExpr(Location.ElseWhere))
+        case DOT =>
+          accept(DOT)
+          selector(EmptyTree)
         case _ =>
           if isLiteral then
             literal()
