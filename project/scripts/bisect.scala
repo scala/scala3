@@ -177,14 +177,20 @@ class Releases(val releases: Vector[Release])
 
 object Releases:
   lazy val allReleases: Vector[Release] =
-    val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
-    val xml = io.Source.fromURL(
-      "https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+    Seq(
+      // Until 3.8.0-RC1-bin-20250822-658c8bd-NIGHTLY
+      "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml",
+      // From 3.8.0-RC1-bin-20250818-aaa39c5-NIGHTLY
+      "https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/scala3-compiler_3/maven-metadata.xml",
     )
-    re.findAllMatchIn(xml.mkString)
+    .map(io.Source.fromURL(_).mkString)
+    .flatMap: metadataXML =>
+      raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
+      .findAllMatchIn(metadataXML)
       .flatMap{ m => Option(m.group(1)).map(Release.apply) }
-      .toVector
-      .sortBy: release =>
+    .toVector
+    .distinctBy(_.version)
+    .sortBy: release =>
         (release.version, release.date)
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
