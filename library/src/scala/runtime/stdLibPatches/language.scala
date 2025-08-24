@@ -161,6 +161,11 @@ object language:
      */
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
+
+    /** Experimental support for unqualified selectors
+     */
+    @compileTimeOnly("`unqualifiedSelectors` can only be used at compile time in import statements")
+    object unqualifiedSelectors
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

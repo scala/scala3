@@ -1,3 +1,5 @@
+import scala.language.experimental.unqualifiedSelectors
+
 enum Opt[+T]:
   case none extends Opt[Nothing]
   case some[T](value: T) extends Opt[T]

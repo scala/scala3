@@ -2802,7 +2802,7 @@ object Parsers {
         case MACRO =>
           val start = in.skipToken()
           MacroTree(simpleExpr(Location.ElseWhere))
-        case DOT =>
+        case DOT if in.featureEnabled(Feature.unqualifiedSelectors)  =>
           accept(DOT)
           selector(EmptyTree)
         case _ =>
@@ -3308,7 +3308,7 @@ object Parsers {
         simpleExpr(Location.InPattern)
       case XMLSTART =>
         xmlLiteralPattern()
-      case DOT =>
+      case DOT if in.featureEnabled(Feature.unqualifiedSelectors) =>
         accept(DOT)
         simplePatternRest(selector(EmptyTree))
       case GIVEN =>

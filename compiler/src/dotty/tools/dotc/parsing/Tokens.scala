@@ -227,7 +227,7 @@ object Tokens extends TokensCommon {
     | BitSet(QUOTE, NEW)
 
   final val canStartExprTokens3: TokenSet =
-    canStartInfixExprTokens | BitSet(INDENT, IF, WHILE, FOR, TRY, THROW, DOT)
+    canStartInfixExprTokens | BitSet(INDENT, IF, WHILE, FOR, TRY, THROW)
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 

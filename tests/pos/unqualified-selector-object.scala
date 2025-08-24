@@ -1,3 +1,5 @@
+import scala.language.experimental.unqualifiedSelectors
+
 class Opt[+T](v: T)
 
 object Opt:
