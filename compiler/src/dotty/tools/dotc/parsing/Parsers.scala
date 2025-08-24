@@ -1269,9 +1269,7 @@ object Parsers {
 
     /** Accept identifier or match clause acting as a selector on given tree `t` */
     def selectorOrMatch(t: Tree): Tree =
-      atSpan(startOffset(t), in.offset) {
-        if in.token == MATCH then matchClause(t) else Select(t, ident())
-      }
+      if in.token == MATCH then matchClause(t) else selector(t)
 
     def selector(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) { Select(t, ident()) }
