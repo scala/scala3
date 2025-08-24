@@ -133,7 +133,7 @@ object ValidationScript:
   def tmpScalaCliScript(command: String, args: Seq[String]): File = tmpScript(s"""
     |#!/usr/bin/env bash
     |export JAVA_HOME=${sys.props("java.home")}
-    |scala-cli ${command} -S "$$1" --server=false ${args.mkString(" ")}
+    |scala-cli ${command} --repository=https://repo.scala-lang.org/artifactory/maven-nightlies/ -S "$$1" --server=false ${args.mkString(" ")}
     |""".stripMargin
   )
 
