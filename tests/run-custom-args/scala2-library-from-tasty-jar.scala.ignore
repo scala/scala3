@@ -4,7 +4,7 @@ import dotty.tools.dotc.util.ClasspathFromClassloader
 import java.io.File.pathSeparator
 import java.io.File.separator
 
-@main def Test: Unit =
+/*@main*/ def Test: Unit =
   blacklistsOnlyContainsClassesThatExist()
   // FIXME this test does not work on JDK8
   // Caused by: dotty.tools.dotc.core.TypeError$$anon$1: package scala.quoted.runtime.Expr does not have a member method quote
