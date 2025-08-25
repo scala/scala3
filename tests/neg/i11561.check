@@ -11,6 +11,6 @@
 -- [E052] Type Error: tests/neg/i11561.scala:3:30 ----------------------------------------------------------------------
 3 |  val updateText2 = copy(text = (_: String)) // error
   |                         ^^^^^^^^^^^^^^^^^^
-  |                         Reassignment to val text
+  |                         Assignment to value text
   |
   | longer explanation available when compiling with `-explain`
