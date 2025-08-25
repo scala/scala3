@@ -8,13 +8,14 @@ import Types.*
 object NullOpsDecorator:
 
   extension (self: Type)
-    /** Syntactically strips the nullability from this type.
+    /** If explicit-nulls is enabled, syntactically strips the nullability from this type.
+     *  If explicit-nulls is not enabled, removes all Null in unions.
      *  If the type is `T1 | ... | Tn`, and `Ti` references to `Null`,
      *  then return `T1 | ... | Ti-1 | Ti+1 | ... | Tn`.
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
-     *  The type will not be changed if explicit-nulls is not enabled.
+     *  The type will not be changed if explicit-nulls is not enabled and forceStrip is false.
      */
-    def stripNull(stripFlexibleTypes: Boolean = true)(using Context): Type = {
+    def stripNull(stripFlexibleTypes: Boolean = true, forceStrip: Boolean = false)(using Context): Type = {
       def strip(tp: Type): Type =
         val tpWiden = tp.widenDealias
         val tpStripped = tpWiden match {
@@ -42,7 +43,7 @@ object NullOpsDecorator:
         }
         if tpStripped ne tpWiden then tpStripped else tp
 
-      if ctx.explicitNulls then strip(self) else self
+      if ctx.explicitNulls || forceStrip then strip(self) else self
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
