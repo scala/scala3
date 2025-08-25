@@ -1310,12 +1310,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
 
     @annotation.tailrec
-    private def widenNamed(tp: Type)(using Context): Type = tp match
-      case stp: SingletonType => widenNamed(stp.widen)
-      case ntp: NamedType => ntp.info match
-        case info: TypeBounds => widenNamed(info.hi)
-        case _ => tp
-      case _ => tp
+    private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
+      case _: SingletonType => findImpureUpperBound(tp.widen)
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
+        tp.info match
+          case TypeBounds(_, hi) if hi.isBoxedCapturing => hi
+          case TypeBounds(_, hi) => findImpureUpperBound(hi)
+          case _ => NoType
+      case _ => NoType
 
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, addenda: Addenda)
         (fail: (Tree, Type, Addenda) => Unit)(using Context): Type =
@@ -1332,7 +1334,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           //
           // Therefore, when the expected type is a selection proto, we conservatively widen
           // the actual type to strip type parameters.
-          widenNamed(actual)
+          val hi = findImpureUpperBound(actual)
+          if !hi.exists then actual else hi
         else actual
       val actualBoxed = adapt(actual1, expected1, tree)
       //println(i"check conforms $actualBoxed <<< $expected1")
@@ -1357,8 +1360,8 @@ class CheckCaptures extends Recheck, SymTransformer:
        * In those cases, we widen such types and try box adaptation another time.
        */
       def tryWidenNamed: Boolean =
-        val actual1 = widenNamed(actual)
-        (actual1 ne actual) && {
+        val actual1 = findImpureUpperBound(actual)
+        actual1.exists && {
           val actualBoxed1 = adapt(actual1, expected1, tree)
           isCompatible(actualBoxed1, expected1)
         }
