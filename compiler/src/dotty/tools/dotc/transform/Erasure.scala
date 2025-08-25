@@ -19,7 +19,7 @@ import core.Scopes.newScopeWith
 import core.Decorators.*
 import core.Constants.*
 import core.Definitions.*
-import core.Annotations.BodyAnnotation
+import core.Annotations.{Annotation, BodyAnnotation}
 import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
@@ -550,6 +550,11 @@ object Erasure {
      *    - Java statics and packages can only be used in selections.
      */
     private def checkNotErased(tree: Tree)(using Context): tree.type =
+      extension (annot: Annotation) def argumentAdaptedConstantString(i: Int)(using Context): Option[String] =
+        annot.argument(i) match
+        case Some(Literal(Constant(s: String))) => Some(s)
+        case Some(TypeApply(Select(Literal(Constant(s: String)), nme.asInstanceOf_), _)) => Some(s)
+        case _ => None
       if !ctx.mode.is(Mode.Type) then
         if isErased(tree) then
           val msg =
@@ -562,15 +567,15 @@ object Erasure {
           report.error(msg, tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
           case Some(annot) =>
-            val message = annot.argumentConstant(0) match
-              case Some(c) =>
+            val message = annot.argumentConstantString(0).orElse(annot.argumentAdaptedConstantString(0)) match
+              case Some(msg) =>
                 val addendum = tree match
                   case tree: RefTree
                   if tree.symbol == defn.Compiletime_deferred && tree.name != nme.deferred =>
                     i".\nNote that `deferred` can only be used under its own name when implementing a given in a trait; `${tree.name}` is not accepted."
                   case _ =>
                     ""
-                (c.stringValue ++ addendum).toMessage
+                (msg + addendum).toMessage
               case _ =>
                 em"""Reference to ${tree.symbol.showLocated} should not have survived,
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
