@@ -590,7 +590,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             if (tree.isInline)
               if (selector.isEmpty) writeByte(IMPLICIT)
               else { writeByte(INLINE); pickleTree(selector) }
-            else if tree.isSubMatch then { writeByte(LAZY); pickleTree(selector) }
+            else if tree.isSubMatch then
+              // Temporary measure until we can change TastyFormat
+              val annot = New(defn.SilentSubMatchAnnot.typeRef, Nil)
+              pickleTree(selector.annotated(annot))
             else pickleTree(selector)
             tree.cases.foreach(pickleTree)
           }

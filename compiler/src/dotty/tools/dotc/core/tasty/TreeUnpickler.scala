@@ -1542,7 +1542,7 @@ class TreeUnpickler(reader: TastyReader,
               val tpt = ifBefore(end)(readTpt(), EmptyTree)
               Closure(Nil, meth, tpt)
             case MATCH =>
-              simplifyLub(
+              simplifyLub:
                 if (nextByte == IMPLICIT) {
                   readByte()
                   InlineMatch(EmptyTree, readCases(end))
@@ -1551,10 +1551,9 @@ class TreeUnpickler(reader: TastyReader,
                   readByte()
                   InlineMatch(readTree(), readCases(end))
                 }
-                else if nextByte == LAZY then // similarly to InlineMatch we use an arbitrary Cat.1 tag
-                  readByte()
-                  SubMatch(readTree(), readCases(end))
-                else Match(readTree(), readCases(end)))
+                else readTree() match
+                  case Typed(sel, tpt) if tpt.tpe.hasAnnotation(defn.SilentSubMatchAnnot) => SubMatch(sel, readCases(end))
+                  case sel => Match(sel, readCases(end))
             case RETURN =>
               val from = readSymRef()
               val expr = ifBefore(end)(readTree(), EmptyTree)
