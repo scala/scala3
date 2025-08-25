@@ -144,8 +144,6 @@ object report:
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
 
-  private object messageRendering extends MessageRendering
-
   // Should only be called from Run#enrichErrorMessage.
   def enrichErrorMessage(errorMessage: String)(using Context): String =
     if ctx.settings.XnoEnrichErrorMessages.value then errorMessage

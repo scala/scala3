@@ -1,4 +1,3 @@
-
 -- Error: tests/neg-macros/annot-error-annot/Test_2.scala:17:6 ---------------------------------------------------------
 16 |@error
 17 |class cGlobal // error
