@@ -25,14 +25,12 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
-  val basicClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
+  val basicClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.dottyLibrary
   ))
 
-  val withCompilerClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
+  val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
     Properties.jlineTerminal,

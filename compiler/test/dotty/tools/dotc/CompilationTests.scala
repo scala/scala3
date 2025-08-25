@@ -44,10 +44,7 @@ class CompilationTests {
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
-    ) ::: (
-      // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
-      if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
-      else Nil
+      compileDir("tests/pos-special/stdlib", allowDeepSubtypes),
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then
@@ -248,10 +245,8 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
     compileFilesInDir("tests/init-global/pos", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
-    if Properties.usingScalaLibraryTasty && !Properties.usingScalaLibraryCCTasty then
-      compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
-      compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
-    end if
+    compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
+    compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
   }
 
   // initialization tests
