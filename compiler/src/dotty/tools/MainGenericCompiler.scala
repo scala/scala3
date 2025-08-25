@@ -7,6 +7,7 @@ import java.io.File
 import java.lang.Thread
 import scala.annotation.internal.sharable
 import dotty.tools.dotc.util.ClasspathFromClassloader
+import dotty.tools.dotc.util.chaining.*
 import dotty.tools.runner.ObjectRunner
 import dotty.tools.dotc.config.Properties.envOrNone
 import dotty.tools.io.Jar
@@ -82,66 +83,82 @@ case class CompileSettings(
   def withNoColors: CompileSettings =
     this.copy(colors = false)
 }
+object CompileSettings:
+  @sharable val javaOption = raw"""-J(.*)""".r
+  @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
+
+  def from(args: List[String]): CompileSettings =
+    @tailrec def process(args: List[String], settings: CompileSettings): CompileSettings = args match
+      case Nil =>
+        settings
+      case "--" :: tail =>
+        process(Nil, settings.withResidualArgs(tail.toList*))
+      case ("-v" | "-verbose" | "--verbose") :: tail =>
+        process(tail, settings.withScalaArgs("-verbose"))
+      case ("-q" | "-quiet") :: tail =>
+        process(tail, settings.withQuiet)
+      case "-repl" :: tail =>
+        process(tail, settings.withCompileMode(CompileMode.Repl))
+      case "-script" :: targetScript :: tail =>
+        process(Nil, settings
+          .withCompileMode(CompileMode.Script)
+          .withJavaProps("script.path" -> targetScript)
+          .withTargetScript(targetScript)
+          .withScriptArgs(tail*))
+      case "-compile" :: tail =>
+        process(tail, settings.withCompileMode(CompileMode.Compile))
+      case "-decompile" :: tail =>
+        process(tail, settings.withCompileMode(CompileMode.Decompile))
+      case "-print-tasty" :: tail =>
+        process(tail, settings.withCompileMode(CompileMode.PrintTasty))
+      case "-run" :: tail =>
+        process(tail, settings.withCompileMode(CompileMode.Run))
+      case "-colors" :: tail =>
+        process(tail, settings.withColors)
+      case "-no-colors" :: tail =>
+        process(tail, settings.withNoColors)
+      case "-with-compiler" :: tail =>
+        process(tail, settings.withCompiler)
+      case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
+        if cp.startsWith("-") then
+          process(cp :: tail, settings)
+        else
+          MainGenericRunner.processClasspath(cp, tail) match
+          case (tail, newEntries) =>
+            process(tail, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
+      case "-Oshort" :: tail =>
+        // Nothing is to be done here. Request that the user adds the relevant flags manually.
+        // i.e this has no effect when MainGenericRunner is invoked programatically.
+        val addTC="-XX:+TieredCompilation"
+        val tStopAtLvl="-XX:TieredStopAtLevel=1"
+        println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
+        process(tail, settings)
+      case javaOption(stripped: String) :: tail =>
+        process(tail, settings.withJavaArgs(stripped))
+      case javaPropOption(opt: String, value: String) :: tail =>
+        process(tail, settings.withJavaProps(opt -> value))
+      case arg :: tail =>
+        process(tail, settings.withResidualArgs(arg))
+    end process
+    process(args, new CompileSettings)
+  end from
+end CompileSettings
 
 object MainGenericCompiler {
 
   val classpathSeparator: String = File.pathSeparator
 
-  @sharable val javaOption = raw"""-J(.*)""".r
-  @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r
-  @tailrec
-  def process(args: List[String], settings: CompileSettings): CompileSettings = args match
-    case Nil =>
-      settings
-    case "--" :: tail =>
-      process(Nil, settings.withResidualArgs(tail.toList*))
-    case ("-v" | "-verbose" | "--verbose") :: tail =>
-      process(tail, settings.withScalaArgs("-verbose"))
-    case ("-q" | "-quiet") :: tail =>
-      process(tail, settings.withQuiet)
-    case "-repl" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.Repl))
-    case "-script" :: targetScript :: tail =>
-      process(Nil, settings
-        .withCompileMode(CompileMode.Script)
-        .withJavaProps("script.path" -> targetScript)
-        .withTargetScript(targetScript)
-        .withScriptArgs(tail*))
-    case "-compile" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.Compile))
-    case "-decompile" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.Decompile))
-    case "-print-tasty" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.PrintTasty))
-    case "-run" :: tail =>
-      process(tail, settings.withCompileMode(CompileMode.Run))
-    case "-colors" :: tail =>
-      process(tail, settings.withColors)
-    case "-no-colors" :: tail =>
-      process(tail, settings.withNoColors)
-    case "-with-compiler" :: tail =>
-      process(tail, settings.withCompiler)
-    case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val (tailargs, newEntries) = MainGenericRunner.processClasspath(cp, tail)
-      process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
-    case "-Oshort" :: tail =>
-      // Nothing is to be done here. Request that the user adds the relevant flags manually.
-      // i.e this has no effect when MainGenericRunner is invoked programatically.
-      val addTC="-XX:+TieredCompilation"
-      val tStopAtLvl="-XX:TieredStopAtLevel=1"
-      println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
-      process(tail, settings)
-    case javaOption(stripped: String) :: tail =>
-      process(tail, settings.withJavaArgs(stripped))
-    case javaPropOption(opt: String, value: String) :: tail =>
-      process(tail, settings.withJavaProps(opt -> value))
-    case arg :: tail =>
-      process(tail, settings.withResidualArgs(arg))
-  end process
-
   def main(args: Array[String]): Unit =
-    val settings = process(args.toList, CompileSettings())
-    if settings.exitCode != 0 then System.exit(settings.exitCode)
+    import CompileMode.*
+    import dotc.Main.main as compiler
+    import dotc.decompiler.Main.main as decompiler
+    import dotc.core.tasty.TastyPrinter.main as tastyPrinter
+    import scripting.Main.main as scripting
+    import repl.Main.main as repl
+
+    val settings = CompileSettings.from(args.toList)
+      .tap: settings =>
+        if settings.exitCode != 0 then System.exit(settings.exitCode)
 
     def classpathSetting =
       if settings.classPath.isEmpty then List()
@@ -153,34 +170,32 @@ object MainGenericCompiler {
     def addJavaProps(): Unit =
       settings.javaProps.foreach { (k, v) => sys.props(k) = v }
 
-    def run(settings: CompileSettings): Unit = settings.compileMode match
-      case CompileMode.Compile =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
-        dotty.tools.dotc.Main.main(properArgs.toArray)
-      case CompileMode.Decompile =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
-        dotty.tools.dotc.decompiler.Main.main(properArgs.toArray)
-      case CompileMode.PrintTasty =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
-        dotty.tools.dotc.core.tasty.TastyPrinter.main(properArgs.toArray)
-      case CompileMode.Script => // Naive copy from scalac bash script
-        addJavaProps()
-        val properArgs =
-          reconstructedArgs()
-          ++ List("-script", settings.targetScript)
-          ++ settings.scriptArgs
-        scripting.Main.main(properArgs.toArray)
-      case CompileMode.Repl | CompileMode.Run =>
-        addJavaProps()
-        val properArgs = reconstructedArgs()
-        repl.Main.main(properArgs.toArray)
-      case CompileMode.Guess =>
-        run(settings.withCompileMode(CompileMode.Compile))
-    end run
-
-    run(settings)
+    settings.compileMode match
+    case Compile =>
+      addJavaProps()
+      val properArgs = reconstructedArgs()
+      compiler(properArgs.toArray)
+    case Decompile =>
+      addJavaProps()
+      val properArgs = reconstructedArgs()
+      decompiler(properArgs.toArray)
+    case PrintTasty =>
+      addJavaProps()
+      val properArgs = reconstructedArgs()
+      tastyPrinter(properArgs.toArray)
+    case Script => // Naive copy from scalac bash script
+      addJavaProps()
+      val properArgs =
+        reconstructedArgs()
+        ++ List("-script", settings.targetScript)
+        ++ settings.scriptArgs
+      scripting(properArgs.toArray)
+    case Repl | Run =>
+      addJavaProps()
+      val properArgs = reconstructedArgs()
+      repl(properArgs.toArray)
+    case Guess =>
+      addJavaProps()
+      compiler(reconstructedArgs().toArray)
   end main
 }

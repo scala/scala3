@@ -98,6 +98,7 @@ object MainGenericRunner {
 
   val classpathSeparator: String = File.pathSeparator
 
+  // returns (tail, cp.split) modulo globbing
   def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
     val cpEntries = cp.split(classpathSeparator).toList
     val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
@@ -122,8 +123,12 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       processArgs(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val (tailargs, newEntries) = processClasspath(cp, tail)
-      processArgs(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
+      if cp.startsWith("-") then
+        processArgs(cp :: tail, settings)
+      else
+        processClasspath(cp, tail) match
+        case (tail, newEntries) =>
+          processArgs(tail, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
     case ("-version" | "--version") :: _ =>
       settings.copy(
         executeMode = ExecuteMode.Repl,
@@ -166,7 +171,9 @@ object MainGenericRunner {
           .withTargetScript(arg)
           .withScriptArgs(tail*)
       else
-        val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
+        val newSettings =
+          if arg.startsWith("-") then settings
+          else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         processArgs(tail, newSettings.withResidualArgs(arg))
   end processArgs
 
@@ -293,5 +300,4 @@ object MainGenericRunner {
 
   def main(args: Array[String]): Unit =
     if (!process(args)) System.exit(1)
-
 }
