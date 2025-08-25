@@ -2837,10 +2837,8 @@ object Build {
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
-        ("org.scalameta" % "mtags-interfaces" % mtagsVersion)
-          .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j")
-          .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
+        "org.scalameta" % "mtags-interfaces" % mtagsVersion,
+        "com.google.guava" % "guava" % "33.2.1-jre",
       ),
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
