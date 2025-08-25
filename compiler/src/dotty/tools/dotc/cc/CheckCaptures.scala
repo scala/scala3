@@ -15,7 +15,7 @@ import typer.Inferencing.isFullyDefined
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, NothingToAdd, err}
-import typer.ProtoTypes.{LhsProto, WildcardSelectionProto}
+import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
@@ -1309,17 +1309,61 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
       testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
 
+    @annotation.tailrec
+    private def widenNamed(tp: Type)(using Context): Type = tp match
+      case stp: SingletonType => widenNamed(stp.widen)
+      case ntp: NamedType => ntp.info match
+        case info: TypeBounds => widenNamed(info.hi)
+        case _ => tp
+      case _ => tp
+
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, addenda: Addenda)
         (fail: (Tree, Type, Addenda) => Unit)(using Context): Type =
+
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val falseDeps = expected1 ne expected
-      val actualBoxed = adapt(actual, expected1, tree)
+      val actual1 =
+        if expected.stripCapturing.isInstanceOf[SelectionProto] then
+          // If the expected type is a `SelectionProto`, we should be careful about cases when
+          // the actual type is a type parameter (for instance, `X <: box IO^`).
+          // If `X` were not widen to reveal the boxed type, both sides are unboxed and thus
+          // no box adaptation happens. But it is unsound: selecting a member from `X` implicitly
+          // unboxes the value.
+          //
+          // Therefore, when the expected type is a selection proto, we conservatively widen
+          // the actual type to strip type parameters.
+          widenNamed(actual)
+        else actual
+      val actualBoxed = adapt(actual1, expected1, tree)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
-      TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
+
+      def tryCurrentType: Boolean =
+        isCompatible(actualBoxed, expected1)
+
+      /** When the actual type is a named type, and the previous attempt failed, try to widen the named type
+       * and try another time.
+       *
+       * This is useful for cases like:
+       *
+       *   def id[X <: box IO^{a}](x: X): IO^{a} = x
+       *
+       * When typechecking the body, we need to show that `(x: X)` can be typed at `IO^{a}`.
+       * In the first attempt, since `X` is simply a parameter reference, we treat it as non-boxed and perform
+       * no box adptation. But its upper bound is in fact boxed, and adaptation is needed for typechecking the body.
+       * In those cases, we widen such types and try box adaptation another time.
+       */
+      def tryWidenNamed: Boolean =
+        val actual1 = widenNamed(actual)
+        (actual1 ne actual) && {
+          val actualBoxed1 = adapt(actual1, expected1, tree)
+          isCompatible(actualBoxed1, expected1)
+        }
+
+      TypeComparer.compareResult(tryCurrentType || tryWidenNamed) match
         case TypeComparer.CompareResult.Fail(notes) =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
           if falseDeps then expected1 = unalignFunction(expected1)
@@ -1477,7 +1521,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             (actualShape, CaptureSet())
         end adaptShape
 
-        def adaptStr = i"adapting $actual ${if covariant then "~~>" else "<~~"} $expected"
+        //val adaptStr = i"adapting $actual ${if covariant then "~~>" else "<~~"} $expected"
+        //println(adaptStr)
 
         // Get wildcards out of the way
         expected match
