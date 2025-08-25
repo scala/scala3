@@ -36,11 +36,6 @@ e.g., `case Some(x) => x.version match ...`.
 If none of the sub-cases succeed, then control flow returns to the outer match expression and proceeds as though the current case had not matched.
 For example, `Some(Document("...", Version.Stable(2, 1)))` matches the first pattern, but none of its sub-cases, and we therefore obtain the result `"unsupported"`. 
 
-More generally, sub-matches also allow:
-- Arbitrary nesting, e.g. sub-sub-matches are supported.
-- Interleaved boolean guards, e.g. `case Some(x: Int) if x != 0 if x match ...`.
-- Interleaving pattern extractors and computations for the scrutinees of sub-matches.
-
 
 ## Motivation
 
@@ -62,11 +57,21 @@ def version(d: Option[Document]) = d match
   case _ => "unsupported"
 ```
 
+## Details
 
+Sub-cases allow:
+- Arbitrary nesting, e.g. sub-sub-matches are supported.
+- Interleaving boolean guards, e.g. `case Some(x: Int) if x != 0 if x match ...`.
+- Interleaving pattern extractors and computations for the scrutinees of sub-matches.
 
+Sub-cases are supported for:
+- match clauses
+- catch clauses
+- partial functions
 
+Similarly to catch clauses, match expressions with a single case can now be written on single line (without braces),
+e.g., `Some(1) match case Some(x) => x`.
 
+Exhaustivity and reachability checking conservatively assume the sub-cases to be partial, similarly boolean guards.
 
-
-
-
+A sub-match is inlined iff the outer match is inlined, with the same semantics as the usual match expressions.

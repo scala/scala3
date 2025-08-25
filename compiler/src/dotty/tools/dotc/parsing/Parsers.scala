@@ -3171,6 +3171,7 @@ object Parsers {
           val t = inSepRegion(InCase)(postfixExpr(Location.InGuard))
           t.asSubMatch
         case other =>
+          // the guard is reinterpreted as a sub-match when there is no leading IF or ARROW token
           val t = grd1.asSubMatch
           grd1 = EmptyTree
           t
