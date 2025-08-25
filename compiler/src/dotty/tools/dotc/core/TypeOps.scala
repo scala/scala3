@@ -773,7 +773,22 @@ object TypeOps:
     //
     if (child.name == tpnme.LOCAL_CHILD) return child.typeRef
 
-    val childTp = if (child.isTerm) child.termRef else child.typeRef
+    val childTp = {
+      val parentSym = parent.typeSymbol
+      val parentPre = parent.normalizedPrefix
+      val defaultRef = if (child.isTerm) child.termRef else child.typeRef
+
+      if (parentSym.isClass && parentPre.isInstanceOf[TermRef]) {
+        val newPrefix = childPrefix(parentPre, parentSym, child)
+        if (newPrefix.exists)
+          if (child.isTerm) TermRef(newPrefix, child.asTerm)
+          else TypeRef(newPrefix, child.asType)
+        else
+          defaultRef
+      }
+      else
+        defaultRef
+    }
 
     inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds.addMode(Mode.GadtConstraintInference)) {
       instantiateToSubType(childTp, parent, mixins).dealias
