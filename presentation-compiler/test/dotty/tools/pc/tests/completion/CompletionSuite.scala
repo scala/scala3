@@ -2285,3 +2285,11 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       "asTerm: Term"
     )
+  
+  @Test def `derives-no-square-brackets` =
+    check(
+      """
+        |case class Miau(y: Int) derives Ordering, CanEqu@@
+        |""".stripMargin,
+      "CanEqual scala"
+    )

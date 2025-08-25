@@ -74,7 +74,15 @@ class Completions(
       case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
       case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
         if appl.fun == funSel && sel == fun => false
-      case _ => true)
+      case _ => true) &&
+      (adjustedPath match
+        /* In case of `class X derives TC@@` we shouldn't add `[]` 
+         */
+        case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
+          val pos = completionPos.toSourcePosition
+          !templ.derived.exists(_.sourcePos.contains(pos))
+        case _ => true
+      )
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
