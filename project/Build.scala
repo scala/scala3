@@ -1478,7 +1478,7 @@ object Build {
       moduleName    := "scala3-sbt-bridge",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -1495,11 +1495,6 @@ object Build {
         ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ),
-      // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
-      excludeDependencies ++= Seq(
-        "org.scala-lang" % "scala-reflect",
-        "org.scala-lang" % "scala-compiler",
-      ),
       // Packaging configuration of `scala3-sbt-bridge`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1511,6 +1506,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-sbt-bridge-bootstrapped",
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
