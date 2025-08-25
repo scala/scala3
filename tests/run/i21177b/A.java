@@ -1,0 +1,1 @@
+interface A { default int m() { return 1; } }
