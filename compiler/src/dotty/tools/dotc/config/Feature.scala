@@ -38,6 +38,7 @@ object Feature:
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val packageObjectValues = experimental("packageObjectValues")
   val subCases = experimental("subCases")
+  val unqualifiedSelectors = experimental("unqualifiedSelectors")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
@@ -66,6 +67,7 @@ object Feature:
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (packageObjectValues, "Enable experimental package objects as values"),
+    (unqualifiedSelectors, "Enable unqualified selectors for expressions and patterns")
   )
 
   // legacy language features from Scala 2 that are no longer supported.
