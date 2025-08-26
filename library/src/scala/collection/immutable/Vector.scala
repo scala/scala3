@@ -364,7 +364,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
   protected[this] def slice0(lo: Int, hi: Int): Vector[Nothing] = this
 
   protected[immutable] def vectorSliceCount: Int = 0
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = null
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] | Null = null
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int = 0
 
   override def equals(o: Any): Boolean = {
@@ -1153,7 +1153,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
         )
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
+  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
     if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
     else super.appendedAll0(suffix, k)
@@ -1170,7 +1170,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
 private final class VectorSliceBuilder(lo: Int, hi: Int) {
   //println(s"***** VectorSliceBuilder($lo, $hi)")
 
-  private[this] val slices = new Array[Array[AnyRef]](11)
+  private[this] val slices = new Array[Array[AnyRef] | Null](11)
   private[this] var len, pos, maxDim = 0
 
   @inline private[this] def prefixIdx(n: Int) = n-1
@@ -1264,7 +1264,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
         if((pre ne null) && (suf ne null)) {
           // The highest-dimensional data consists of two slices: concatenate if they fit into the main data array,
           // otherwise increase the dimension
-          if(pre.length + suf.length <= WIDTH-2) {
+          if(pre.nn.length + suf.nn.length <= WIDTH-2) {
             slices(prefixIdx(maxDim)) = concatArrays(pre, suf)
             slices(suffixIdx(maxDim)) = null
           } else resultDim += 1
@@ -1272,11 +1272,11 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
           // A single highest-dimensional slice could have length WIDTH-1 if it came from a prefix or suffix but we
           // only allow WIDTH-2 for the main data, so increase the dimension in this case
           val one = if(pre ne null) pre else suf
-          if(one.length > WIDTH-2) resultDim += 1
+          if(one.nn.length > WIDTH-2) resultDim += 1
         }
       }
-      val prefix1 = slices(prefixIdx(1))
-      val suffix1 = slices(suffixIdx(1))
+      val prefix1 = slices(prefixIdx(1)).nn
+      val suffix1 = slices(suffixIdx(1)).nn
       val len1 = prefix1.length
       val res = (resultDim: @switch) match {
         case 2 =>
@@ -1393,17 +1393,17 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
   override def toString: String =
     s"VectorSliceBuilder(lo=$lo, hi=$hi, len=$len, pos=$pos, maxDim=$maxDim)"
 
-  private[immutable] def getSlices: Array[Array[AnyRef]] = slices
+  private[immutable] def getSlices: Array[Array[AnyRef] | Null] = slices
 }
 
 
 final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
 
-  private[this] var a6: Arr6 = _
-  private[this] var a5: Arr5 = _
-  private[this] var a4: Arr4 = _
-  private[this] var a3: Arr3 = _
-  private[this] var a2: Arr2 = _
+  @annotation.stableNull private[this] var a6: Arr6 | Null = _
+  @annotation.stableNull private[this] var a5: Arr5 | Null = _
+  @annotation.stableNull private[this] var a4: Arr4 | Null = _
+  @annotation.stableNull private[this] var a3: Arr3 | Null = _
+  @annotation.stableNull private[this] var a2: Arr2 | Null = _
   private[this] var a1: Arr1 = new Arr1(WIDTH)
   private[this] var len1, lenRest, offset = 0
   private[this] var prefixIsRightAligned = false
@@ -1487,9 +1487,9 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         offset = WIDTH - v2.len1
         setLen(v2.length0 + offset)
         a2 = new Arr2(WIDTH)
-        a2(0) = v2.prefix1
+        a2.nn(0) = v2.prefix1
         System.arraycopy(d2, 0, a2, 1, d2.length)
-        a2(d2.length+1) = a1
+        a2.nn(d2.length+1) = a1.nn
       case 5 =>
         val v3 = v.asInstanceOf[Vector3[_]]
         val d3 = v3.data3
@@ -1499,11 +1499,11 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         offset = WIDTH2 - v3.len12
         setLen(v3.length0 + offset)
         a3 = new Arr3(WIDTH)
-        a3(0) = copyPrepend(v3.prefix1, v3.prefix2)
+        a3.nn(0) = copyPrepend(v3.prefix1, v3.prefix2)
         System.arraycopy(d3, 0, a3, 1, d3.length)
         a2 = copyOf(s2, WIDTH)
-        a3(d3.length+1) = a2
-        a2(s2.length) = a1
+        a3.nn(d3.length+1) = a2.nn
+        a2.nn(s2.length) = a1.nn
       case 7 =>
         val v4 = v.asInstanceOf[Vector4[_]]
         val d4 = v4.data4
@@ -1514,13 +1514,13 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         offset = WIDTH3 - v4.len123
         setLen(v4.length0 + offset)
         a4 = new Arr4(WIDTH)
-        a4(0) = copyPrepend(copyPrepend(v4.prefix1, v4.prefix2), v4.prefix3)
+        a4.nn(0) = copyPrepend(copyPrepend(v4.prefix1, v4.prefix2), v4.prefix3)
         System.arraycopy(d4, 0, a4, 1, d4.length)
         a3 = copyOf(s3, WIDTH)
         a2 = copyOf(s2, WIDTH)
-        a4(d4.length+1) = a3
-        a3(s3.length) = a2
-        a2(s2.length) = a1
+        a4.nn(d4.length+1) = a3.nn
+        a3.nn(s3.length) = a2.nn
+        a2.nn(s2.length) = a1.nn
       case 9 =>
         val v5 = v.asInstanceOf[Vector5[_]]
         val d5 = v5.data5
@@ -1532,15 +1532,15 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         offset = WIDTH4 - v5.len1234
         setLen(v5.length0 + offset)
         a5 = new Arr5(WIDTH)
-        a5(0) = copyPrepend(copyPrepend(copyPrepend(v5.prefix1, v5.prefix2), v5.prefix3), v5.prefix4)
+        a5.nn(0) = copyPrepend(copyPrepend(copyPrepend(v5.prefix1, v5.prefix2), v5.prefix3), v5.prefix4)
         System.arraycopy(d5, 0, a5, 1, d5.length)
         a4 = copyOf(s4, WIDTH)
         a3 = copyOf(s3, WIDTH)
         a2 = copyOf(s2, WIDTH)
-        a5(d5.length+1) = a4
-        a4(s4.length) = a3
-        a3(s3.length) = a2
-        a2(s2.length) = a1
+        a5.nn(d5.length+1) = a4.nn
+        a4.nn(s4.length) = a3.nn
+        a3.nn(s3.length) = a2.nn
+        a2.nn(s2.length) = a1.nn
       case 11 =>
         val v6 = v.asInstanceOf[Vector6[_]]
         val d6 = v6.data6
@@ -1553,17 +1553,17 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         offset = WIDTH5 - v6.len12345
         setLen(v6.length0 + offset)
         a6 = new Arr6(LASTWIDTH)
-        a6(0) = copyPrepend(copyPrepend(copyPrepend(copyPrepend(v6.prefix1, v6.prefix2), v6.prefix3), v6.prefix4), v6.prefix5)
+        a6.nn(0) = copyPrepend(copyPrepend(copyPrepend(copyPrepend(v6.prefix1, v6.prefix2), v6.prefix3), v6.prefix4), v6.prefix5)
         System.arraycopy(d6, 0, a6, 1, d6.length)
         a5 = copyOf(s5, WIDTH)
         a4 = copyOf(s4, WIDTH)
         a3 = copyOf(s3, WIDTH)
         a2 = copyOf(s2, WIDTH)
-        a6(d6.length+1) = a5
-        a5(s5.length) = a4
-        a4(s4.length) = a3
-        a3(s3.length) = a2
-        a2(s2.length) = a1
+        a6.nn(d6.length+1) = a5.nn
+        a5.nn(s5.length) = a4.nn
+        a4.nn(s4.length) = a3.nn
+        a3.nn(s3.length) = a2.nn
+        a2.nn(s2.length) = a1.nn
     }
     if(len1 == 0 && lenRest > 0) {
       // force advance() on next addition:
@@ -1614,8 +1614,8 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       lenRest -= offset - newOffset
       offset = newOffset
     }
-    var a: Array[AnyRef] = null // the array we modify
-    var aParent: Array[AnyRef] = null // a's parent, so aParent(0) == a
+    var a: Array[AnyRef] | Null = null // the array we modify
+    var aParent: Array[AnyRef] | Null = null // a's parent, so aParent(0) == a
     if (depth >= 6) {
       a = a6.asInstanceOf[Array[AnyRef]]
       val i = offset >>> BITS5
@@ -1623,7 +1623,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       shrinkOffsetIfToLarge(WIDTH5)
       if ((lenRest >>> BITS5) == 0) depth = 5
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 5) {
       if (a == null) a = a5.asInstanceOf[Array[AnyRef]]
@@ -1635,10 +1635,10 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         if ((lenRest >>> BITS4) == 0) depth = 4
       } else {
         if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        aParent.nn(0) = a.nn
       }
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 4) {
       if (a == null) a = a4.asInstanceOf[Array[AnyRef]]
@@ -1650,10 +1650,10 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         if ((lenRest >>> BITS3) == 0) depth = 3
       } else {
         if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        aParent.nn(0) = a.nn
       }
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 3) {
       if (a == null) a = a3.asInstanceOf[Array[AnyRef]]
@@ -1665,10 +1665,10 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         if ((lenRest >>> BITS2) == 0) depth = 2
       } else {
         if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        aParent.nn(0) = a.nn
       }
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 2) {
       if (a == null) a = a2.asInstanceOf[Array[AnyRef]]
@@ -1680,10 +1680,10 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         if ((lenRest >>> BITS) == 0) depth = 1
       } else {
         if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        aParent.nn(0) = a.nn
       }
       aParent = a
-      a = a(0).asInstanceOf[Array[AnyRef]]
+      a = a.nn(0).asInstanceOf[Array[AnyRef]]
     }
     if (depth >= 1) {
       if (a == null) a = a1.asInstanceOf[Array[AnyRef]]
@@ -1695,7 +1695,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         offset = 0
       } else {
         if (i > 0) a = copyOfRange(a, i, WIDTH)
-        aParent(0) = a
+        aParent.nn(0) = a.nn
       }
     }
     prefixIsRightAligned = false
@@ -1703,7 +1703,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
 
   def addOne(elem: A): this.type = {
     if(len1 == WIDTH) advance()
-    a1(len1) = elem.asInstanceOf[AnyRef]
+    a1.nn(len1) = elem.asInstanceOf[AnyRef]
     len1 += 1
     this
   }
@@ -1849,45 +1849,45 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     if (xor <= 0) {            // level = 6 or something very unexpected happened
       throw new IllegalArgumentException(s"advance1($idx, $xor): a1=$a1, a2=$a2, a3=$a3, a4=$a4, a5=$a5, a6=$a6, depth=$depth")
     } else if (xor < WIDTH2) { // level = 1
-      if (depth <= 1) { a2 = new Array(WIDTH); a2(0) = a1; depth = 2 }
+      if (depth <= 1) { a2 = new Array(WIDTH); a2.nn(0) = a1; depth = 2 }
       a1 = new Array(WIDTH)
-      a2((idx >>> BITS) & MASK) = a1
+      a2.nn((idx >>> BITS) & MASK) = a1
     } else if (xor < WIDTH3) { // level = 2
-      if (depth <= 2) { a3 = new Array(WIDTH); a3(0) = a2; depth = 3 }
+      if (depth <= 2) { a3 = new Array(WIDTH); a3.nn(0) = a2.nn; depth = 3 }
       a1 = new Array(WIDTH)
       a2 = new Array(WIDTH)
-      a2((idx >>> BITS) & MASK) = a1
-      a3((idx >>> BITS2) & MASK) = a2
+      a2.nn((idx >>> BITS) & MASK) = a1
+      a3.nn((idx >>> BITS2) & MASK) = a2
     } else if (xor < WIDTH4) { // level = 3
-      if (depth <= 3) { a4 = new Array(WIDTH); a4(0) = a3; depth = 4 }
+      if (depth <= 3) { a4 = new Array(WIDTH); a4.nn(0) = a3.nn; depth = 4 }
       a1 = new Array(WIDTH)
       a2 = new Array(WIDTH)
       a3 = new Array(WIDTH)
-      a2((idx >>> BITS) & MASK) = a1
-      a3((idx >>> BITS2) & MASK) = a2
-      a4((idx >>> BITS3) & MASK) = a3
-    } else if (xor < WIDTH5) { // level = 4
-      if (depth <= 4) { a5 = new Array(WIDTH); a5(0) = a4; depth = 5 }
+      a2.nn((idx >>> BITS) & MASK) = a1.nn
+      a3.nn((idx >>> BITS2) & MASK) = a2.nn
+      a4.nn((idx >>> BITS3) & MASK) = a3.nn
+    } else if (xor < WIDTH5) {
+      if (depth <= 4) { a5 = new Array(WIDTH); a5.nn(0) = a4.nn; depth = 5 }
       a1 = new Array(WIDTH)
       a2 = new Array(WIDTH)
       a3 = new Array(WIDTH)
       a4 = new Array(WIDTH)
-      a2((idx >>> BITS) & MASK) = a1
-      a3((idx >>> BITS2) & MASK) = a2
-      a4((idx >>> BITS3) & MASK) = a3
-      a5((idx >>> BITS4) & MASK) = a4
-    } else {                   // level = 5
-      if (depth <= 5) { a6 = new Array(LASTWIDTH); a6(0) = a5; depth = 6 }
+      a2.nn((idx >>> BITS) & MASK) = a1.nn
+      a3.nn((idx >>> BITS2) & MASK) = a2.nn
+      a4.nn((idx >>> BITS3) & MASK) = a3.nn
+      a5.nn((idx >>> BITS4) & MASK) = a4.nn
+    } else {
+      if (depth <= 5) { a6 = new Array(LASTWIDTH); a6.nn(0) = a5.nn; depth = 6 }
       a1 = new Array(WIDTH)
       a2 = new Array(WIDTH)
       a3 = new Array(WIDTH)
       a4 = new Array(WIDTH)
       a5 = new Array(WIDTH)
-      a2((idx >>> BITS) & MASK) = a1
-      a3((idx >>> BITS2) & MASK) = a2
-      a4((idx >>> BITS3) & MASK) = a3
-      a5((idx >>> BITS4) & MASK) = a4
-      a6(idx >>> BITS5) = a5
+      a2.nn((idx >>> BITS) & MASK) = a1.nn
+      a3.nn((idx >>> BITS2) & MASK) = a2.nn
+      a4.nn((idx >>> BITS3) & MASK) = a3.nn
+      a5.nn((idx >>> BITS4) & MASK) = a4.nn
+      a6.nn(idx >>> BITS5) = a5.nn
     }
   }
 
@@ -1903,18 +1903,18 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       val i1 = (len-1) & MASK
       val i2 = (len-1) >>> BITS
       val data = copyOfRange(a2, 1, i2)
-      val prefix1 = a2(0)
-      val suffix1 = copyIfDifferentSize(a2(i2), i1+1)
+      val prefix1 = a2.nn(0)
+      val suffix1 = copyIfDifferentSize(a2.nn(i2), i1+1)
       new Vector2(prefix1, WIDTH-offset, data, suffix1, realLen)
     } else if(len <= WIDTH3) {
       val i1 = (len-1) & MASK
       val i2 = ((len-1) >>> BITS) & MASK
       val i3 = ((len-1) >>> BITS2)
       val data = copyOfRange(a3, 1, i3)
-      val prefix2 = copyTail(a3(0))
-      val prefix1 = a3(0)(0)
-      val suffix2 = copyOf(a3(i3), i2)
-      val suffix1 = copyIfDifferentSize(a3(i3)(i2), i1+1)
+      val prefix2 = copyTail(a3.nn(0))
+      val prefix1 = a3.nn(0).nn(0)
+      val suffix2 = copyOf(a3.nn(i3), i2)
+      val suffix1 = copyIfDifferentSize(a3.nn(i3).nn(i2), i1+1)
       val len1 = prefix1.length
       val len12 = len1 + prefix2.length*WIDTH
       new Vector3(prefix1, len1, prefix2, len12, data, suffix2, suffix1, realLen)
@@ -1924,12 +1924,12 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       val i3 = ((len-1) >>> BITS2) & MASK
       val i4 = ((len-1) >>> BITS3)
       val data = copyOfRange(a4, 1, i4)
-      val prefix3 = copyTail(a4(0))
-      val prefix2 = copyTail(a4(0)(0))
-      val prefix1 = a4(0)(0)(0)
-      val suffix3 = copyOf(a4(i4), i3)
-      val suffix2 = copyOf(a4(i4)(i3), i2)
-      val suffix1 = copyIfDifferentSize(a4(i4)(i3)(i2), i1+1)
+      val prefix3 = copyTail(a4.nn(0))
+      val prefix2 = copyTail(a4.nn(0).nn(0))
+      val prefix1 = a4.nn(0).nn(0).nn(0)
+      val suffix3 = copyOf(a4.nn(i4), i3)
+      val suffix2 = copyOf(a4.nn(i4).nn(i3), i2)
+      val suffix1 = copyIfDifferentSize(a4.nn(i4).nn(i3).nn(i2), i1+1)
       val len1 = prefix1.length
       val len12 = len1 + prefix2.length*WIDTH
       val len123 = len12 + prefix3.length*WIDTH2
@@ -1941,14 +1941,14 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       val i4 = ((len-1) >>> BITS3) & MASK
       val i5 = ((len-1) >>> BITS4)
       val data = copyOfRange(a5, 1, i5)
-      val prefix4 = copyTail(a5(0))
-      val prefix3 = copyTail(a5(0)(0))
-      val prefix2 = copyTail(a5(0)(0)(0))
-      val prefix1 = a5(0)(0)(0)(0)
-      val suffix4 = copyOf(a5(i5), i4)
-      val suffix3 = copyOf(a5(i5)(i4), i3)
-      val suffix2 = copyOf(a5(i5)(i4)(i3), i2)
-      val suffix1 = copyIfDifferentSize(a5(i5)(i4)(i3)(i2), i1+1)
+      val prefix4 = copyTail(a5.nn(0))
+      val prefix3 = copyTail(a5.nn(0).nn(0))
+      val prefix2 = copyTail(a5.nn(0).nn(0).nn(0))
+      val prefix1 = a5.nn(0).nn(0).nn(0).nn(0)
+      val suffix4 = copyOf(a5.nn(i5), i4)
+      val suffix3 = copyOf(a5.nn(i5).nn(i4), i3)
+      val suffix2 = copyOf(a5.nn(i5).nn(i4).nn(i3), i2)
+      val suffix1 = copyIfDifferentSize(a5.nn(i5).nn(i4).nn(i3).nn(i2), i1+1)
       val len1 = prefix1.length
       val len12 = len1 + prefix2.length*WIDTH
       val len123 = len12 + prefix3.length*WIDTH2
@@ -1962,16 +1962,15 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       val i5 = ((len-1) >>> BITS4) & MASK
       val i6 = ((len-1) >>> BITS5)
       val data = copyOfRange(a6, 1, i6)
-      val prefix5 = copyTail(a6(0))
-      val prefix4 = copyTail(a6(0)(0))
-      val prefix3 = copyTail(a6(0)(0)(0))
-      val prefix2 = copyTail(a6(0)(0)(0)(0))
-      val prefix1 = a6(0)(0)(0)(0)(0)
-      val suffix5 = copyOf(a6(i6), i5)
-      val suffix4 = copyOf(a6(i6)(i5), i4)
-      val suffix3 = copyOf(a6(i6)(i5)(i4), i3)
-      val suffix2 = copyOf(a6(i6)(i5)(i4)(i3), i2)
-      val suffix1 = copyIfDifferentSize(a6(i6)(i5)(i4)(i3)(i2), i1+1)
+      val prefix5 = copyTail(a6.nn(0))
+      val prefix4 = copyTail(a6.nn(0).nn(0))
+      val prefix3 = copyTail(a6.nn(0).nn(0).nn(0))
+      val prefix2 = copyTail(a6.nn(0).nn(0).nn(0).nn(0))
+      val suffix5 = copyOf(a6.nn(i6), i5)
+      val suffix4 = copyOf(a6.nn(i6).nn(i5), i4)
+      val suffix3 = copyOf(a6.nn(i6).nn(i5).nn(i4), i3)
+      val suffix2 = copyOf(a6.nn(i6).nn(i5).nn(i4).nn(i3), i2)
+      val suffix1 = copyIfDifferentSize(a6.nn(i6).nn(i5).nn(i4).nn(i3).nn(i2), i1+1)
       val len1 = prefix1.length
       val len12 = len1 + prefix2.length*WIDTH
       val len123 = len12 + prefix3.length*WIDTH2
@@ -2189,7 +2188,7 @@ private object VectorStatics {
     ac.asInstanceOf[Array[T]]
   }
 
-  final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[_]^): Arr1 = xs match {
+  final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[_]^): Arr1 | Null = xs match {
     case it: Iterable[_] =>
       if(it.sizeCompare(WIDTH-prefix1.length) <= 0) {
         it.size match {
@@ -2214,7 +2213,7 @@ private object VectorStatics {
       } else null
   }
 
-  final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[_]^): Arr1 = xs match {
+  final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[_]^): Arr1 | Null = xs match {
     case it: Iterable[_] =>
       if(it.sizeCompare(WIDTH-suffix1.length) <= 0) {
         it.size match {
@@ -2242,11 +2241,11 @@ private object VectorStatics {
 private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLength: Int, private[this] val sliceCount: Int) extends AbstractIterator[A] with java.lang.Cloneable {
 
   private[this] var a1: Arr1 = v.prefix1
-  private[this] var a2: Arr2 = _
-  private[this] var a3: Arr3 = _
-  private[this] var a4: Arr4 = _
-  private[this] var a5: Arr5 = _
-  private[this] var a6: Arr6 = _
+  @annotation.stableNull private[this] var a2: Arr2 | Null = _
+  @annotation.stableNull private[this] var a3: Arr3 | Null = _
+  @annotation.stableNull private[this] var a4: Arr4 | Null = _
+  @annotation.stableNull private[this] var a5: Arr5 | Null = _
+  @annotation.stableNull private[this] var a6: Arr6 | Null = _
   private[this] var a1len = a1.length
   private[this] var i1 = 0 // current index in a1
   private[this] var oldPos = 0
@@ -2310,49 +2309,49 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
 
   private[this] def advanceA(io: Int, xor: Int): Unit = {
     if(xor < WIDTH2) {
-      a1 = a2((io >>> BITS) & MASK)
+      a1 = a2.nn((io >>> BITS) & MASK)
     } else if(xor < WIDTH3) {
-      a2 = a3((io >>> BITS2) & MASK)
-      a1 = a2(0)
+      a2 = a3.nn((io >>> BITS2) & MASK)
+      a1 = a2.nn(0)
     } else if(xor < WIDTH4) {
-      a3 = a4((io >>> BITS3) & MASK)
-      a2 = a3(0)
-      a1 = a2(0)
+      a3 = a4.nn((io >>> BITS3) & MASK)
+      a2 = a3.nn(0)
+      a1 = a2.nn(0)
     } else if(xor < WIDTH5) {
-      a4 = a5((io >>> BITS4) & MASK)
-      a3 = a4(0)
-      a2 = a3(0)
-      a1 = a2(0)
+      a4 = a5.nn((io >>> BITS4) & MASK)
+      a3 = a4.nn(0)
+      a2 = a3.nn(0)
+      a1 = a2.nn(0)
     } else {
-      a5 = a6(io >>> BITS5)
-      a4 = a5(0)
-      a3 = a4(0)
-      a2 = a3(0)
-      a1 = a2(0)
+      a5 = a6.nn(io >>> BITS5)
+      a4 = a5.nn(0)
+      a3 = a4.nn(0)
+      a2 = a3.nn(0)
+      a1 = a2.nn(0)
     }
   }
 
   private[this] def setA(io: Int, xor: Int): Unit = {
     if(xor < WIDTH2) {
-      a1 = a2((io >>> BITS) & MASK)
+      a1 = a2.nn((io >>> BITS) & MASK)
     } else if(xor < WIDTH3) {
-      a2 = a3((io >>> BITS2) & MASK)
-      a1 = a2((io >>> BITS) & MASK)
+      a2 = a3.nn((io >>> BITS2) & MASK)
+      a1 = a2.nn((io >>> BITS) & MASK)
     } else if(xor < WIDTH4) {
-      a3 = a4((io >>> BITS3) & MASK)
-      a2 = a3((io >>> BITS2) & MASK)
-      a1 = a2((io >>> BITS) & MASK)
+      a3 = a4.nn((io >>> BITS3) & MASK)
+      a2 = a3.nn((io >>> BITS2) & MASK)
+      a1 = a2.nn((io >>> BITS) & MASK)
     } else if(xor < WIDTH5) {
-      a4 = a5((io >>> BITS4) & MASK)
-      a3 = a4((io >>> BITS3) & MASK)
-      a2 = a3((io >>> BITS2) & MASK)
-      a1 = a2((io >>> BITS) & MASK)
+      a4 = a5.nn((io >>> BITS4) & MASK)
+      a3 = a4.nn((io >>> BITS3) & MASK)
+      a2 = a3.nn((io >>> BITS2) & MASK)
+      a1 = a2.nn((io >>> BITS) & MASK)
     } else {
-      a5 = a6(io >>> BITS5)
-      a4 = a5((io >>> BITS4) & MASK)
-      a3 = a4((io >>> BITS3) & MASK)
-      a2 = a3((io >>> BITS2) & MASK)
-      a1 = a2((io >>> BITS) & MASK)
+      a5 = a6.nn(io >>> BITS5)
+      a4 = a5.nn((io >>> BITS4) & MASK)
+      a3 = a4.nn((io >>> BITS3) & MASK)
+      a2 = a3.nn((io >>> BITS2) & MASK)
+      a1 = a2.nn((io >>> BITS) & MASK)
     }
   }
 
@@ -2431,7 +2430,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
 }
 
 
-private abstract class VectorStepperBase[A, Sub >: Null <: Stepper[A], Semi <: Sub](it: NewVectorIterator[A])
+private abstract class VectorStepperBase[A, Sub >: Null <: Stepper[A] | Null, Semi <: Sub](it: NewVectorIterator[A])
   extends Stepper[A] with EfficientSplit {
 
   protected[this] def build(it: NewVectorIterator[A]): Semi

@@ -16,6 +16,7 @@ package concurrent
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import scala.language.unsafeNulls
 
 import java.util.concurrent.atomic._
 import scala.{unchecked => uc}

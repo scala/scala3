@@ -45,7 +45,7 @@ private[collection] object BinaryTreeStepper {
   * Subclasses should allow this class to do all the work of maintaining state; `next` should simply
   * reduce `maxLength` by one, and consume `myCurrent` and set it to `null` if `hasNext` is true.
   */
-private[collection] abstract class BinaryTreeStepperBase[A, T >: Null <: AnyRef, Sub >: Null, Semi <: Sub with BinaryTreeStepperBase[A, T, _, _]](
+private[collection] abstract class BinaryTreeStepperBase[A, T >: Null <: AnyRef | Null, Sub >: Null, Semi <: Sub with BinaryTreeStepperBase[A, T, _, _]](
   protected var maxLength: Int, protected var myCurrent: T, protected var stack: Array[AnyRef], protected var index: Int,
   protected val left: T => T, protected val right: T => T
 )
@@ -126,7 +126,7 @@ extends EfficientSplit {
     if (!hasStep || index < 0) null
     else {
       val root = stack(0).asInstanceOf[T]
-      val leftStack = 
+      val leftStack =
         if (index > 0) java.util.Arrays.copyOfRange(stack, 1, index+1)
         else BinaryTreeStepper.emptyStack
       val leftIndex = index - 1
@@ -160,7 +160,7 @@ with AnyStepper[A] {
     new AnyBinaryTreeStepper[A, T](maxL, myC, stk, ix, left, right, extract)
 }
 private[collection] object AnyBinaryTreeStepper {
-  def from[A, T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => A): AnyBinaryTreeStepper[A, T] = {
+  def from[A, T >: Null <: AnyRef | Null](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => A): AnyBinaryTreeStepper[A, T] = {
     val ans = new AnyBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -168,7 +168,7 @@ private[collection] object AnyBinaryTreeStepper {
 }
 
 
-private[collection] final class DoubleBinaryTreeStepper[T >: Null <: AnyRef](
+private[collection] final class DoubleBinaryTreeStepper[T >: Null <: AnyRef | Null](
   _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => Double
 )
 extends BinaryTreeStepperBase[Double, T, DoubleStepper, DoubleBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
@@ -186,7 +186,7 @@ with DoubleStepper {
     new DoubleBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object DoubleBinaryTreeStepper {
-  def from[T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Double): DoubleBinaryTreeStepper[T] = {
+  def from[T >: Null <: AnyRef | Null](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Double): DoubleBinaryTreeStepper[T] = {
     val ans = new DoubleBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -194,7 +194,7 @@ private [collection] object DoubleBinaryTreeStepper {
 }
 
 
-private[collection] final class IntBinaryTreeStepper[T >: Null <: AnyRef](
+private[collection] final class IntBinaryTreeStepper[T >: Null <: AnyRef | Null](
   _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => Int
 )
 extends BinaryTreeStepperBase[Int, T, IntStepper, IntBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
@@ -212,7 +212,7 @@ with IntStepper {
     new IntBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object IntBinaryTreeStepper {
-  def from[T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Int): IntBinaryTreeStepper[T] = {
+  def from[T >: Null <: AnyRef | Null](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Int): IntBinaryTreeStepper[T] = {
     val ans = new IntBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -221,7 +221,7 @@ private [collection] object IntBinaryTreeStepper {
 
 
 
-private[collection] final class LongBinaryTreeStepper[T >: Null <: AnyRef](
+private[collection] final class LongBinaryTreeStepper[T >: Null <: AnyRef | Null](
   _maxLength: Int, _myCurrent: T, _stack: Array[AnyRef], _index: Int, _left: T => T, _right: T => T, protected val extract: T => Long
 )
 extends BinaryTreeStepperBase[Long, T, LongStepper, LongBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
@@ -239,7 +239,7 @@ with LongStepper {
     new LongBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object LongBinaryTreeStepper {
-  def from[T >: Null <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Long): LongBinaryTreeStepper[T] = {
+  def from[T >: Null <: AnyRef | Null](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Long): LongBinaryTreeStepper[T] = {
     val ans = new LongBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
