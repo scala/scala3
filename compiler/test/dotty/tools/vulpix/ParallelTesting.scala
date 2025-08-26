@@ -978,21 +978,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           case null => errorMap.put(key, 1)
           case n => errorMap.put(key, n+1)
         expectedErrors += 1
-      files.filter(isSourceFile).foreach { file =>
-        Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
-          source.getLines().zipWithIndex.foreach { case (line, lineNbr) =>
-            comment.findAllMatchIn(line).foreach { m =>
+      for file <- files if isSourceFile(file) do
+        Using.resource(Source.fromFile(file, StandardCharsets.UTF_8.name)): source =>
+          source.getLines().zipWithIndex.foreach: (line, lineNbr) =>
+            comment.findAllMatchIn(line).foreach: m =>
               m.group(2) match
-                case prefix if m.group(1).isEmpty =>
-                  val what = Option(prefix).getOrElse("")
-                  echo(s"Warning: ${file.getCanonicalPath}:${lineNbr}: found `//${what}error` but expected `// ${what}error`, skipping comment")
-                case "nopos-" => bump("nopos")
-                case "anypos-" => bump("anypos")
-                case _ => bump(s"${file.getPath}:${lineNbr+1}")
-            }
-          }
-        }.get
-      }
+              case prefix if m.group(1).isEmpty =>
+                val what = Option(prefix).getOrElse("")
+                echo(s"Warning: ${file.getCanonicalPath}:${lineNbr}: found `//${what}error` but expected `// ${what}error`, skipping comment")
+              case "nopos-" => bump("nopos")
+              case "anypos-" => bump("anypos")
+              case _ => bump(s"${file.getPath}:${lineNbr+1}")
       (errorMap, expectedErrors)
     end getErrorMapAndExpectedCount
 
