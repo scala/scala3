@@ -1089,15 +1089,22 @@ object Parsers {
      *  something enclosed in (...) or [...], and this is followed by a `=>` or `?=>`
      *  and an INDENT.
      */
-    def followingIsLambdaAfterColon(): Boolean =
+    def followingIsLambdaAfterColon(): Option[() => Tree] =
       val lookahead = in.LookaheadScanner(allowIndent = true)
                       .tap(_.currentRegion.knownWidth = in.currentRegion.indentWidth)
-      def isArrowIndent() =
-        lookahead.isArrow
-        && {
+      def isArrowIndent(): Option[() => Tree] =
+        if lookahead.isArrow then
           lookahead.observeArrowIndented()
-          lookahead.token == INDENT || lookahead.token == EOF
-        }
+          if lookahead.token == INDENT || lookahead.token == EOF then
+            Some(() => expr(Location.InColonArg))
+          else if !in.currentRegion.isInstanceOf[InParens] then
+            Some: () =>
+              val t = inSepRegion(SingleLineLambda(_)):
+                expr(Location.InColonArg)
+              accept(ENDLAMBDA)
+              t
+          else None
+        else None
       lookahead.nextToken()
       if lookahead.isIdent || lookahead.token == USCORE then
         lookahead.nextToken()
@@ -1105,7 +1112,8 @@ object Parsers {
       else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
         lookahead.skipParens()
         isArrowIndent()
-      else false
+      else
+        None
 
     /** Can the next lookahead token start an operand as defined by
      *  leadingOperandTokens, or is postfix ops enabled?
@@ -1174,8 +1182,10 @@ object Parsers {
      *    : (params) =>
      *      body
      */
-    def isColonLambda =
-      sourceVersion.enablesFewerBraces && in.token == COLONfollow && followingIsLambdaAfterColon()
+    def isColonLambda: Option[() => Tree] =
+      if sourceVersion.enablesFewerBraces && in.token == COLONfollow
+      then followingIsLambdaAfterColon()
+      else None
 
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
@@ -1199,17 +1209,19 @@ object Parsers {
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
-          if isColonLambda then
-            in.nextToken()
-            recur(expr(Location.InColonArg))
-          else if maybePostfix && !canStartOperand(in.token) then
-            val topInfo = opStack.head
-            opStack = opStack.tail
-            val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
-            atSpan(startOffset(od), topInfo.offset) {
-              PostfixOp(od, topInfo.operator)
-            }
-          else recur(operand(location))
+          isColonLambda match
+            case Some(parseExpr) =>
+              in.nextToken()
+              recur(parseExpr())
+            case _ =>
+              if maybePostfix && !canStartOperand(in.token) then
+                val topInfo = opStack.head
+                opStack = opStack.tail
+                val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
+                atSpan(startOffset(od), topInfo.offset) {
+                  PostfixOp(od, topInfo.operator)
+                }
+              else recur(operand(location))
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
           if !isType && in.token == MATCH then recurAtMinPrec(matchClause(t))
@@ -2848,12 +2860,14 @@ object Parsers {
                   makeParameter(name.asTermName, typedOpt(), Modifiers(), isBackquoted = isBackquoted(id))
                 }
               case _ => t
-          else if isColonLambda then
-            val app = atSpan(startOffset(t), in.skipToken()) {
-              Apply(t, expr(Location.InColonArg) :: Nil)
-            }
-            simpleExprRest(app, location, canApply = true)
-          else t
+          else isColonLambda match
+            case Some(parseExpr) =>
+              val app =
+                atSpan(startOffset(t), in.skipToken()):
+                  Apply(t, parseExpr() :: Nil)
+              simpleExprRest(app, location, canApply = true)
+            case None =>
+              t
     end simpleExprRest
 
     /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
