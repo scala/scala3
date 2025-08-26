@@ -6,4 +6,4 @@ trait T1
 
 package t2 // error
 trait T2
-// anypos-error
+// error
