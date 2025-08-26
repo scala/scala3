@@ -574,17 +574,42 @@ object Inlines:
       val inlined = tpd.Inlined(call, bindings, expansion)
 
       val hasOpaquesInResultFromCallWithTransparentContext =
+        val owners = call.symbol.ownersIterator.toSet
         call.tpe.widenTermRefExpr.existsPart(
-          part => part.typeSymbol.is(Opaque) && call.symbol.ownersIterator.contains(part.typeSymbol.owner)
+          part => part.typeSymbol.is(Opaque) && owners.contains(part.typeSymbol.owner)
         )
+
+      /* Remap ThisType nodes that are incorrect in the inlined context.
+       * Incorrect ThisType nodes can cause unwanted opaque type dealiasing later
+       * See test i113461-d
+       * */
+      def fixThisTypeModuleClassReferences(tpe: Type): Type =
+        val owners = ctx.owner.ownersIterator.toSet
+        TreeTypeMap(
+          typeMap = new TypeMap:
+            override def stopAt = StopAt.Package
+            def apply(t: Type) = mapOver {
+              t match
+                case ThisType(tref @ TypeRef(prefix, _)) if tref.symbol.flags.is(Module) && !owners.contains(tref.symbol) =>
+                  TermRef(apply(prefix), tref.symbol.companionModule)
+                case _ => mapOver(t)
+            }
+        ).typeMap(tpe)
 
       if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
-        val target =
+        val (target, forceCast) =
           if inlinedMethod.is(Transparent) then
-            call.tpe & unpackProxiesFromResultType(inlined)
-          else call.tpe
-        inlined.ensureConforms(target)
+            val unpacked = unpackProxiesFromResultType(inlined)
+            val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
+            (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
+          else (call.tpe, false)
+        if forceCast then
+          // we need to force the cast for issues with ThisTypes, as ensureConforms will just
+          // check subtyping and then choose not to cast, leaving the previous, incorrect type
+          inlined.cast(target)
+        else
+          inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is

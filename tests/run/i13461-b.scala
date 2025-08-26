@@ -1,4 +1,3 @@
-// TODO taken from issue
 object Time:
   opaque type Time = String
   opaque type Seconds <: Time = String
