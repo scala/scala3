@@ -3,4 +3,4 @@ case class x0  // error // error
 }
 package x0 // error
 class x0  // error
-// anypos-error
+// error
