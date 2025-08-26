@@ -254,28 +254,26 @@ object Settings:
 
       def setMultivalue(arg: String, args: List[String]) =
         val split = arg.split(",").toList
-        // check whether a value was previously set
-        def checkRedundant(actual: List[String]) =
-          if changed then
-            var dangers: List[String] = Nil
-            val current = valueIn(sstate).asInstanceOf[List[String]]
-            for value <- split if current.contains(value) do
-              dangers :+= s"Setting $name set to $value redundantly"
-            dangers.foldLeft(update(current ++ actual, arg, args))((sum, w) => sum.warn(w))
-          else
-            update(actual, arg, args)
+        def setOrUpdate(actual: List[String]) =
+          val updated =
+            if changed then
+              val current = valueIn(sstate).asInstanceOf[List[String]]
+              current ++ actual
+            else
+              actual
+          update(updated, arg, args)
         choices match
         case Some(choices) =>
           split.partition(choices.contains) match
-          case (_, Nil) => checkRedundant(split)
+          case (_, Nil) => setOrUpdate(split)
           case (valid, invalid) =>
             legacyChoices match
             case Some(legacyChoices) =>
               invalid.filterNot(legacyChoices.contains) match
-              case Nil => checkRedundant(valid) // silently ignore legacy choices
+              case Nil => setOrUpdate(valid) // silently ignore legacy choices
               case invalid => invalidChoices(invalid)
             case none => invalidChoices(invalid)
-        case none => checkRedundant(split)
+        case none => setOrUpdate(split)
 
       def matches: Boolean =
         val name = arg.takeWhile(_ != ':')
