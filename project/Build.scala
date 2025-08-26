@@ -99,7 +99,12 @@ object Build {
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
     if (isRelease) baseVersion
-    else if (isNightly) s"${baseVersion}-bin-${VersionUtil.commitDate}-${VersionUtil.gitHash}-NIGHTLY"
+    else if (isNightly) {
+      val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")
+      val currentDate =
+        formatter.format(java.time.ZonedDateTime.now(java.time.ZoneId.of("UTC")))
+      s"${baseVersion}-bin-${currentDate}-${VersionUtil.gitHash}-NIGHTLY"
+    }
     else s"${baseVersion}-bin-SNAPSHOT"
   }
   def isRelease = sys.env.get("RELEASEBUILD").contains("yes")
