@@ -247,7 +247,8 @@ object VectorMap extends MapFactory[VectorMap] {
 private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K, V), VectorMap[K, V]] {
   private[this] val vectorBuilder = new VectorBuilder[K]
   private[this] val mapBuilder = new MapBuilderImpl[K, (Int, V)]
-  private[this] var aliased: VectorMap[K, V] = _
+  @annotation.stableNull
+  private[this] var aliased: VectorMap[K, V] | Null = null
 
   override def clear(): Unit = {
     vectorBuilder.clear()
