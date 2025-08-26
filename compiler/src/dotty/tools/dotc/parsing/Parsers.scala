@@ -4692,6 +4692,10 @@ object Parsers {
     def packaging(start: Int): Tree =
       val pkg = qualId()
       possibleTemplateStart()
+      if in.token != INDENT && in.token != LBRACE then
+        val prefix = "':' or "
+        val suffix = "\nNested package statements that are not at the beginning of the file require braces or ':' with an indented body."
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token, prefix = prefix, suffix = suffix), in.lastOffset)
       val stats = inDefScopeBraces(topStatSeq(), rewriteWithColon = true)
       makePackaging(start, pkg, stats)
 
