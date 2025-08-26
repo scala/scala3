@@ -257,11 +257,8 @@ object Settings:
         // check whether a value was previously set
         def checkRedundant(actual: List[String]) =
           if changed then
-            var dangers: List[String] = Nil
             val current = valueIn(sstate).asInstanceOf[List[String]]
-            for value <- split if current.contains(value) do
-              dangers :+= s"Setting $name set to $value redundantly"
-            dangers.foldLeft(update(current ++ actual, arg, args))((sum, w) => sum.warn(w))
+            update(current ++ actual, arg, args)
           else
             update(actual, arg, args)
         choices match
