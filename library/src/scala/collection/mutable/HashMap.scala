@@ -83,7 +83,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   override def contains(key: K): Boolean = findNode(key) ne null
 
-  @`inline` private[this] def findNode(key: K): Node[K, V] = {
+  @`inline` private[this] def findNode(key: K): Node[K, V] | Null = {
     val hash = computeHash(key)
     table(index(hash)) match {
       case null => null
@@ -137,13 +137,13 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       val hash = computeHash(key)
       val indexedHash = index(hash)
 
-      var foundNode: Node[K, V] = null
-      var previousNode: Node[K, V] = null
+      var foundNode: Node[K, V] | Null = null
+      var previousNode: Node[K, V] | Null = null
       table(indexedHash) match {
         case null =>
         case nd =>
           @tailrec
-          def findNode(prev: Node[K, V], nd: Node[K, V], k: K, h: Int): Unit = {
+          def findNode(prev: Node[K, V] | Null, nd: Node[K, V], k: K, h: Int): Unit = {
             if (h == nd.hash && k == nd.key) {
               previousNode = prev
               foundNode = nd
@@ -223,13 +223,13 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     * @param hash the **improved** hashcode of `key` (see computeHash)
     * @param getOld if true, then the previous value for `key` will be returned, otherwise, false
     */
-  private[this] def put0(key: K, value: V, hash: Int, getOld: Boolean): Some[V] = {
+  private[this] def put0(key: K, value: V, hash: Int, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     val idx = index(hash)
     put0(key, value, getOld, hash, idx)
   }
 
-  private[this] def put0(key: K, value: V, getOld: Boolean): Some[V] = {
+  private[this] def put0(key: K, value: V, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     val hash = computeHash(key)
     val idx = index(hash)
@@ -237,7 +237,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   }
 
 
-  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] = {
+  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] | Null = {
     table(idx) match {
       case null =>
         table(idx) = new Node[K, V](key, hash, value, null)
@@ -260,7 +260,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     null
   }
 
-  private def remove0(elem: K) : Node[K, V] = remove0(elem, computeHash(elem))
+  private def remove0(elem: K) : Node[K, V] | Null = remove0(elem, computeHash(elem))
 
   /** Removes a key from this map if it exists
     *
@@ -268,7 +268,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     * @param hash the **improved** hashcode of `element` (see computeHash)
     * @return the node that contained element if it was present, otherwise null
     */
-  private[this] def remove0(elem: K, hash: Int) : Node[K, V] = {
+  private[this] def remove0(elem: K, hash: Int) : Node[K, V] | Null = {
     val idx = index(hash)
     table(idx) match {
       case null => null
@@ -296,7 +296,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   private[this] abstract class HashMapIterator[A] extends AbstractIterator[A] {
     private[this] var i = 0
-    private[this] var node: Node[K, V] = null
+    private[this] var node: Node[K, V] | Null = null
     private[this] val len = table.length
 
     protected[this] def extract(nd: Node[K, V]): A

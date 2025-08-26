@@ -122,7 +122,7 @@ object Predef extends LowPriorityImplicits {
    * @return The runtime [[Class]] representation of type `T`.
    * @group utilities
    */
-  def classOf[T]: Class[T] = null // This is a stub method. The actual implementation is filled in by the compiler.
+  def classOf[T]: Class[T] = null.asInstanceOf[Class[T]] // This is a stub method. The actual implementation is filled in by the compiler.
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.
@@ -657,7 +657,7 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   @inline implicit def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
   /** @group conversions-array-to-wrapped-array */
-  implicit def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
+  implicit def genericWrapArray[T](xs: Array[T] | Null): ArraySeq[T] | Null =
     if (xs eq null) null
     else ArraySeq.make(xs)
 
@@ -665,38 +665,38 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
   // unique ones by way of this implicit, let's share one.
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq.ofRef[T] = {
+  implicit def wrapRefArray[T <: AnyRef](xs: Array[T] | Null): ArraySeq.ofRef[T] | Null = {
     if (xs eq null) null
     else if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
     else new ArraySeq.ofRef[T](xs)
   }
 
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapIntArray(xs: Array[Int]): ArraySeq.ofInt = if (xs ne null) new ArraySeq.ofInt(xs) else null
+  implicit def wrapIntArray(xs: Array[Int] | Null): ArraySeq.ofInt | Null = if (xs ne null) new ArraySeq.ofInt(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapDoubleArray(xs: Array[Double]): ArraySeq.ofDouble = if (xs ne null) new ArraySeq.ofDouble(xs) else null
+  implicit def wrapDoubleArray(xs: Array[Double] | Null): ArraySeq.ofDouble | Null = if (xs ne null) new ArraySeq.ofDouble(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapLongArray(xs: Array[Long]): ArraySeq.ofLong = if (xs ne null) new ArraySeq.ofLong(xs) else null
+  implicit def wrapLongArray(xs: Array[Long] | Null): ArraySeq.ofLong | Null = if (xs ne null) new ArraySeq.ofLong(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapFloatArray(xs: Array[Float]): ArraySeq.ofFloat = if (xs ne null) new ArraySeq.ofFloat(xs) else null
+  implicit def wrapFloatArray(xs: Array[Float] | Null): ArraySeq.ofFloat | Null = if (xs ne null) new ArraySeq.ofFloat(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapCharArray(xs: Array[Char]): ArraySeq.ofChar = if (xs ne null) new ArraySeq.ofChar(xs) else null
+  implicit def wrapCharArray(xs: Array[Char] | Null): ArraySeq.ofChar | Null = if (xs ne null) new ArraySeq.ofChar(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapByteArray(xs: Array[Byte]): ArraySeq.ofByte = if (xs ne null) new ArraySeq.ofByte(xs) else null
+  implicit def wrapByteArray(xs: Array[Byte] | Null): ArraySeq.ofByte | Null = if (xs ne null) new ArraySeq.ofByte(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapShortArray(xs: Array[Short]): ArraySeq.ofShort = if (xs ne null) new ArraySeq.ofShort(xs) else null
+  implicit def wrapShortArray(xs: Array[Short] | Null): ArraySeq.ofShort | Null = if (xs ne null) new ArraySeq.ofShort(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapBooleanArray(xs: Array[Boolean]): ArraySeq.ofBoolean = if (xs ne null) new ArraySeq.ofBoolean(xs) else null
+  implicit def wrapBooleanArray(xs: Array[Boolean] | Null): ArraySeq.ofBoolean | Null = if (xs ne null) new ArraySeq.ofBoolean(xs) else null
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapUnitArray(xs: Array[Unit]): ArraySeq.ofUnit = if (xs ne null) new ArraySeq.ofUnit(xs) else null
+  implicit def wrapUnitArray(xs: Array[Unit] | Null): ArraySeq.ofUnit | Null = if (xs ne null) new ArraySeq.ofUnit(xs) else null
 
   /** @group conversions-string */
-  implicit def wrapString(s: String): WrappedString = if (s ne null) new WrappedString(s) else null
+  implicit def wrapString(s: String | Null): WrappedString | Null = if (s ne null) new WrappedString(s) else null
 }
 
 private[scala] abstract class LowPriorityImplicits2 {
   @deprecated("implicit conversions from Array to immutable.IndexedSeq are implemented by copying; use `toIndexedSeq` explicitly if you want to copy, or use the more efficient non-copying ArraySeq.unsafeWrapArray", since="2.13.0")
-  implicit def copyArrayToImmutableIndexedSeq[T](xs: Array[T]): IndexedSeq[T] =
+  implicit def copyArrayToImmutableIndexedSeq[T](xs: Array[T] | Null): IndexedSeq[T] | Null =
     if (xs eq null) null
     else new ArrayOps(xs).toIndexedSeq
 }
