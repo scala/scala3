@@ -265,7 +265,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
     extends RB.SetHelper[A]
       with ReusableBuilder[A, TreeSet[A]] {
     type Tree = RB.Tree[A, Any]
-    private [this] var tree:RB.Tree[A, Any] = null
+    private [this] var tree:RB.Tree[A, Any] | Null = null
 
     override def addOne(elem: A): this.type = {
       tree = mutableUpd(tree, elem)

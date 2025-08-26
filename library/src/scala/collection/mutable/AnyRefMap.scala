@@ -70,9 +70,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   private[this] var mask = 0
   private[this] var _size = 0
   private[this] var _vacant = 0
-  private[this] var _hashes: Array[Int] = null
-  private[this] var _keys: Array[AnyRef] = null
-  private[this] var _values: Array[AnyRef] = null
+  @annotation.stableNull private[this] var _hashes: Array[Int] | Null = null
+  @annotation.stableNull private[this] var _keys: Array[AnyRef | Null] | Null = null
+  @annotation.stableNull private[this] var _values: Array[AnyRef | Null] | Null = null
 
   if (initBlank) defaultInitialize(initialBufferSize)
 
@@ -81,12 +81,12 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       if (n<0) 0x7
       else (((1 << (32 - java.lang.Integer.numberOfLeadingZeros(n-1))) - 1) & 0x3FFFFFFF) | 0x7
     _hashes = new Array[Int](mask+1)
-    _keys = new Array[AnyRef](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _keys = new Array[AnyRef | Null](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
   }
 
   private[collection] def initializeTo(
-    m: Int, sz: Int, vc: Int, hz: Array[Int], kz: Array[AnyRef], vz: Array[AnyRef]
+    m: Int, sz: Int, vc: Int, hz: Array[Int], kz: Array[AnyRef | Null], vz: Array[AnyRef | Null]
   ): Unit = {
     mask = m; _size = sz; _vacant = vc; _hashes = hz; _keys = kz; _values = vz
   }
@@ -140,8 +140,8 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     var x = 0
     var g = 0
     var o = -1
-    while ({ g = _hashes(e); g != 0}) {
-      if (g == h && { val q = _keys(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
+    while ({ g = _hashes.nn(e); g != 0}) {
+      if (g == h && { val q = _keys.nn(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
       else if (o == -1 && g+g == 0) o = e
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
@@ -153,12 +153,12 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
 
   override def get(key: K): Option[V] = {
     val i = seekEntry(hashOf(key), key)
-    if (i < 0) None else Some(_values(i).asInstanceOf[V])
+    if (i < 0) None else Some(_values.nn(i).asInstanceOf[V])
   }
 
   override def getOrElse[V1 >: V](key: K, default: => V1): V1 = {
     val i = seekEntry(hashOf(key), key)
-    if (i < 0) default else _values(i).asInstanceOf[V]
+    if (i < 0) default else _values.nn(i).asInstanceOf[V]
   }
 
   override def getOrElseUpdate(key: K, defaultValue: => V): V = {
@@ -166,7 +166,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     var i = seekEntryOrOpen(h, key)
     if (i < 0) {
       val value = {
-        val ohs = _hashes
+        val ohs = _hashes.nn
         val j = i & IndexMask
         val oh = ohs(j)
         val ans = defaultValue
@@ -175,7 +175,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
         //   - element added at `j`: since `i < 0`, the key was missing and `oh` is either 0 or MinValue.
         //     If `defaultValue` added an element at `j` then `_hashes(j)` must be different now.
         //     (`hashOf` never returns 0 or MinValue.)
-        if (ohs.ne(_hashes) || oh != _hashes(j)) {
+        if (ohs.ne(_hashes) || oh != _hashes.nn(j)) {
           i = seekEntryOrOpen(h, key)
           if (i >= 0) _size -= 1
         }
@@ -183,14 +183,14 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       }
       _size += 1
       val j = i & IndexMask
-      _hashes(j) = h
-      _keys(j) = key.asInstanceOf[AnyRef]
-      _values(j) = value.asInstanceOf[AnyRef]
+      _hashes.nn(j) = h
+      _keys.nn(j) = key.asInstanceOf[AnyRef]
+      _values.nn(j) = value.asInstanceOf[AnyRef]
       if ((i & VacantBit) != 0) _vacant -= 1
       else if (imbalanced) repack()
       value
     }
-    else _values(i).asInstanceOf[V]
+    else _values.nn(i).asInstanceOf[V]
   }
 
   /** Retrieves the value associated with a key, or the default for that type if none exists
@@ -200,9 +200,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  may not exist, if the default null/zero is acceptable.  For key/value
    *  pairs that do exist, `apply` (i.e. `map(key)`) is equally fast.
    */
-  def getOrNull(key: K): V = {
+  def getOrNull(key: K): V | Null = {
     val i = seekEntry(hashOf(key), key)
-    (if (i < 0) null else _values(i)).asInstanceOf[V]
+    if (i < 0) null else _values.nn(i).asInstanceOf[V]
   }
 
   /** Retrieves the value associated with a key.
@@ -212,7 +212,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    */
   override def apply(key: K): V = {
     val i = seekEntry(hashOf(key), key)
-    if (i < 0) defaultEntry(key) else _values(i).asInstanceOf[V]
+    if (i < 0) defaultEntry(key) else _values.nn(i).asInstanceOf[V]
   }
 
   /** Defers to defaultEntry to find a default value for the key.  Throws an
@@ -221,13 +221,13 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   override def default(key: K): V = defaultEntry(key)
 
   private def repack(newMask: Int): Unit = {
-    val oh = _hashes
-    val ok = _keys
-    val ov = _values
+    val oh = _hashes.nn
+    val ok = _keys.nn
+    val ov = _values.nn
     mask = newMask
     _hashes = new Array[Int](mask+1)
-    _keys = new Array[AnyRef](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _keys = new Array[AnyRef | Null](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
     _vacant = 0
     var i = 0
     while (i < oh.length) {
@@ -235,10 +235,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       if (h+h != 0) {
         var e = h & mask
         var x = 0
-        while (_hashes(e) != 0) { x += 1; e = (e + 2*(x+1)*x - 3) & mask }
-        _hashes(e) = h
-        _keys(e) = ok(i)
-        _values(e) = ov(i)
+        while (_hashes.nn(e) != 0) { x += 1; e = (e + 2*(x+1)*x - 3) & mask }
+        _hashes.nn(e) = h
+        _keys.nn(e) = ok(i)
+        _values.nn(e) = ov(i)
       }
       i += 1
     }
@@ -264,18 +264,18 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     val i = seekEntryOrOpen(h, key)
     if (i < 0) {
       val j = i & IndexMask
-      _hashes(j) = h
-      _keys(j) = key
-      _values(j) = value.asInstanceOf[AnyRef]
+      _hashes.nn(j) = h
+      _keys.nn(j) = key
+      _values.nn(j) = value.asInstanceOf[AnyRef]
       _size += 1
       if ((i & VacantBit) != 0) _vacant -= 1
       else if (imbalanced) repack()
       None
     }
     else {
-      val ans = Some(_values(i).asInstanceOf[V])
-      _hashes(i) = h
-      _values(i) = value.asInstanceOf[AnyRef]
+      val ans = Some(_values.nn(i).asInstanceOf[V])
+      _hashes.nn(i) = h
+      _values.nn(i) = value.asInstanceOf[AnyRef]
       ans
     }
   }
@@ -289,16 +289,16 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     val i = seekEntryOrOpen(h, key)
     if (i < 0) {
       val j = i & IndexMask
-      _hashes(j) = h
-      _keys(j) = key
-      _values(j) = value.asInstanceOf[AnyRef]
+      _hashes.nn(j) = h
+      _keys.nn(j) = key
+      _values.nn(j) = value.asInstanceOf[AnyRef]
       _size += 1
       if ((i & VacantBit) != 0) _vacant -= 1
       else if (imbalanced) repack()
     }
     else {
-      _hashes(i) = h
-      _values(i) = value.asInstanceOf[AnyRef]
+      _hashes.nn(i) = h
+      _values.nn(i) = value.asInstanceOf[AnyRef]
     }
   }
 
@@ -316,9 +316,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     if (i >= 0) {
       _size -= 1
       _vacant += 1
-      _hashes(i) = Int.MinValue
-      _keys(i) = null
-      _values(i) = null
+      _hashes.nn(i) = Int.MinValue
+      _keys.nn(i) = null
+      _values.nn(i) = null
     }
     this
   }
@@ -334,13 +334,13 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   }
 
   private abstract class AnyRefMapIterator[A] extends AbstractIterator[A] {
-    private[this] val hz = _hashes
-    private[this] val kz = _keys
-    private[this] val vz = _values
+    private[this] val hz = _hashes.nn
+    private[this] val kz = _keys.nn
+    private[this] val vz = _values.nn
 
     private[this] var index = 0
 
-    def hasNext: Boolean = index<hz.length && {
+    def hasNext: Boolean = index < hz.length && {
       var h = hz(index)
       while (h+h == 0) {
         index += 1
@@ -367,9 +367,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     var i = 0
     var e = _size
     while (e > 0) {
-      while(i < _hashes.length && { val h = _hashes(i); h+h == 0 && i < _hashes.length}) i += 1
-      if (i < _hashes.length) {
-        f((_keys(i).asInstanceOf[K], _values(i).asInstanceOf[V]))
+      while(i < _hashes.nn.length && { val h = _hashes.nn(i); h+h == 0 && i < _hashes.nn.length}) i += 1
+      if (i < _hashes.nn.length) {
+        f((_keys.nn(i).asInstanceOf[K], _values.nn(i).asInstanceOf[V]))
         i += 1
         e -= 1
       }
@@ -381,9 +381,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     var i = 0
     var e = _size
     while (e > 0) {
-      while(i < _hashes.length && { val h = _hashes(i); h+h == 0 && i < _hashes.length}) i += 1
-      if (i < _hashes.length) {
-        f(_keys(i).asInstanceOf[K], _values(i).asInstanceOf[V])
+      while(i < _hashes.nn.length && { val h = _hashes.nn(i); h+h == 0 && i < _hashes.nn.length}) i += 1
+      if (i < _hashes.nn.length) {
+        f(_keys.nn(i).asInstanceOf[K], _values.nn(i).asInstanceOf[V])
         i += 1
         e -= 1
       }
@@ -392,11 +392,11 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   }
 
   override def clone(): AnyRefMap[K, V] = {
-    val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
-    val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = java.util.Arrays.copyOf(_values,  _values.length)
+    val hz = java.util.Arrays.copyOf(_hashes.nn, _hashes.nn.length)
+    val kz = java.util.Arrays.copyOf(_keys.nn, _keys.nn.length)
+    val vz = java.util.Arrays.copyOf(_values.nn, _values.nn.length)
     val arm = new AnyRefMap[K, V](defaultEntry, 1, initBlank = false)
-    arm.initializeTo(mask, _size, _vacant, hz, kz,  vz)
+    arm.initializeTo(mask, _size, _vacant, hz, kz, vz)
     arm
   }
 
@@ -422,10 +422,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   override def updated[V1 >: V](key: K, value: V1): AnyRefMap[K, V1] =
     clone().asInstanceOf[AnyRefMap[K, V1]].addOne(key, value)
 
-  private[this] def foreachElement[A,B](elems: Array[AnyRef], f: A => B): Unit = {
+  private[this] def foreachElement[A,B](elems: Array[AnyRef | Null] | Null, f: A => B): Unit = {
     var i,j = 0
-    while (i < _hashes.length & j < _size) {
-      val h = _hashes(i)
+    while (i < _hashes.nn.length & j < _size) {
+      val h = _hashes.nn(i)
       if (h+h != 0) {
         j += 1
         f(elems(i).asInstanceOf[A])
@@ -445,16 +445,16 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  collection immediately.
    */
   def mapValuesNow[V1](f: V => V1): AnyRefMap[K, V1] = {
-    val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault,  1,  initBlank = false)
-    val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
-    val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = new Array[AnyRef](_values.length)
+    val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault, 1, initBlank = false)
+    val hz = java.util.Arrays.copyOf(_hashes.nn, _hashes.nn.length)
+    val kz = java.util.Arrays.copyOf(_keys.nn, _keys.nn.length)
+    val vz = new Array[AnyRef | Null](_values.nn.length)
     var i,j = 0
-    while (i < _hashes.length & j < _size) {
-      val h = _hashes(i)
+    while (i < _hashes.nn.length & j < _size) {
+      val h = _hashes.nn(i)
       if (h+h != 0) {
         j += 1
-        vz(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef]
+        vz(i) = f(_values.nn(i).asInstanceOf[V]).asInstanceOf[AnyRef]
       }
       i += 1
     }
@@ -473,11 +473,11 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    */
   def transformValuesInPlace(f: V => V): this.type = {
     var i,j = 0
-    while (i < _hashes.length & j < _size) {
-      val h = _hashes(i)
+    while (i < _hashes.nn.length & j < _size) {
+      val h = _hashes.nn(i)
       if (h+h != 0) {
         j += 1
-        _values(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef]
+        _values.nn(i) = f(_values.nn(i).asInstanceOf[V]).asInstanceOf[AnyRef]
       }
       i += 1
     }
@@ -513,9 +513,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
 
   override def clear(): Unit = {
     import java.util.Arrays.fill
-    fill(_keys, null)
-    fill(_values, null)
-    fill(_hashes, 0)
+    fill(_keys.nn, null)
+    fill(_values.nn, null)
+    fill(_hashes.nn, 0)
     _size = 0
     _vacant = 0
   }
