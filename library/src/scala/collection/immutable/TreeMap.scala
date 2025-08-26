@@ -16,6 +16,7 @@ package immutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import scala.language.unsafeNulls
 
 import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit

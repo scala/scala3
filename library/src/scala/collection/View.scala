@@ -452,7 +452,8 @@ object View extends IterableFactory[View] {
   private final class TakeRightIterator[A](private[this] var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
     private[this] var len: Int = -1
     private[this] var pos: Int = 0
-    private[this] var buf: ArrayBuffer[AnyRef] = _
+    @annotation.stableNull
+    private[this] var buf: ArrayBuffer[AnyRef] | Null = _
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       len = 0
@@ -507,7 +508,8 @@ object View extends IterableFactory[View] {
   private final class DropRightIterator[A](private[this] var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
     private[this] var len: Int = -1 // known size or -1 if the end of `underlying` has not been seen yet
     private[this] var pos: Int = 0
-    private[this] var buf: ArrayBuffer[AnyRef] = _
+    @annotation.stableNull
+    private[this] var buf: ArrayBuffer[AnyRef] | Null = _
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       while(pos < maxlen && underlying.hasNext) {

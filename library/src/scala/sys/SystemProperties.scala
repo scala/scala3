@@ -32,7 +32,7 @@ class SystemProperties
 extends mutable.AbstractMap[String, String] {
 
   override def empty: mutable.Map[String, String] = mutable.Map[String, String]()
-  override def default(key: String): String = null
+  override def default(key: String): String | Null = null
 
   def iterator: Iterator[(String, String)] = wrapAccess {
     val ps = System.getProperties()
@@ -41,7 +41,7 @@ extends mutable.AbstractMap[String, String] {
 
   override def isEmpty: Boolean = iterator.isEmpty
   def names: Iterator[String] = wrapAccess (
-    System.getProperties().stringPropertyNames().asScala.iterator
+    System.getProperties().stringPropertyNames().asScala.nn.iterator
   ) getOrElse Iterator.empty
 
   def get(key: String): Option[String] =
@@ -90,4 +90,3 @@ object SystemProperties {
   lazy val preferIPv6Addresses: BooleanProp = BooleanProp.keyExists(PreferIPv6AddressesKey)
   lazy val noTraceSuppression: BooleanProp  = BooleanProp.valueIsTrue(NoTraceSuppressionKey)
 }
-

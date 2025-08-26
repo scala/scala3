@@ -287,7 +287,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // after initialization (`_head ne Uninitialized`)
   //   - `null` if this is an empty lazy list
   //   - `head: A` otherwise (can be `null`, `_tail == null` is used to test emptiness)
-  @volatile private[this] var _head: Any /* Uninitialized | A */ =
+  @volatile private[this] var _head: Any | Null /* Uninitialized | A */ =
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
@@ -296,11 +296,11 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyList[A]` otherwise
-  private[this] var _tail: AnyRef /* () => LazyList[A] | MidEvaluation.type | LazyList[A] */ =
+  private[this] var _tail: AnyRef | Null /* () => LazyList[A] | MidEvaluation.type | LazyList[A] */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
-  private def rawTail: AnyRef = _tail
+  private def rawTail: AnyRef | Null = _tail
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
@@ -1112,22 +1112,22 @@ object LazyList extends SeqFactory[LazyList] {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
     var restRef = ll                          // val restRef = new ObjectRef(ll)
     newLL {
-      var it: Iterator[B] = null
+      var it: Iterator[B] | Null = null
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
         it        = f(rest.head).iterator
-        itHasNext = it.hasNext
+        itHasNext = it.nn.hasNext
         if (!itHasNext) {                     // wait to advance `rest` because `it.next()` can throw
           rest    = rest.tail
           restRef = rest                      // restRef.elem = rest
         }
       }
       if (itHasNext) {
-        val head = it.next()
+        val head = it.nn.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        eagerCons(head, newLL(eagerHeadPrependIterator(it)(flatMapImpl(rest, f))))
+        eagerCons(head, newLL(eagerHeadPrependIterator(it.nn)(flatMapImpl(rest, f))))
       } else Empty
     }
   }

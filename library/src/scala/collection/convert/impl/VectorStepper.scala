@@ -24,9 +24,9 @@ private[convert] abstract class VectorStepperBase[Sub >: Null, Semi <: Sub](
 )
 extends IndexedStepperBase[Sub, Semi](_i0, _iN) {
   protected var index: Int = 32  // Force an advanceData on the first element
-  protected var leaves: Array[AnyRef] = null
+  protected var leaves: Array[AnyRef] = _
   protected var index1: Int = 32 // Force advanceData to defer to initTo on the first element
-  protected var twigs: Array[AnyRef] = null
+  protected var twigs: Array[AnyRef] = _
 
   protected final def advanceData(iX: Int): Unit = {
     index1 += 1
@@ -92,7 +92,7 @@ with DoubleStepper {
     index1 = 32
     i0 = half
     ans
-  }    
+  }
 }
 
 private[collection] class IntVectorStepper(_i0: Int, _iN: Int, _displayN: Int, _trunk: Array[AnyRef])
@@ -110,7 +110,7 @@ with IntStepper {
     index1 = 32
     i0 = half
     ans
-  }    
+  }
 }
 
 private[collection] class LongVectorStepper(_i0: Int, _iN: Int, _displayN: Int, _trunk: Array[AnyRef])
@@ -128,5 +128,5 @@ with LongStepper {
     index1 = 32
     i0 = half
     ans
-  }    
+  }
 }

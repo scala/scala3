@@ -650,14 +650,14 @@ object Regex {
     def end(i: Int): Int
 
     /** The matched string, or `null` if nothing was matched. */
-    def matched: String =
+    def matched: String | Null =
       if (start >= 0) source.subSequence(start, end).toString
       else null
 
     /** The matched string in group `i`,
      *  or `null` if nothing was matched.
      */
-    def group(i: Int): String =
+    def group(i: Int): String | Null =
       if (start(i) >= 0) source.subSequence(start(i), end(i)).toString
       else null
 
@@ -667,28 +667,28 @@ object Regex {
     /** The char sequence before first character of match,
      *  or `null` if nothing was matched.
      */
-    def before: CharSequence =
+    def before: CharSequence | Null =
       if (start >= 0) source.subSequence(0, start)
       else null
 
     /** The char sequence before first character of match in group `i`,
      *  or `null` if nothing was matched for that group.
      */
-    def before(i: Int): CharSequence =
+    def before(i: Int): CharSequence | Null =
       if (start(i) >= 0) source.subSequence(0, start(i))
       else null
 
     /** Returns char sequence after last character of match,
      *  or `null` if nothing was matched.
      */
-    def after: CharSequence =
+    def after: CharSequence | Null =
       if (end >= 0) source.subSequence(end, source.length)
       else null
 
     /** The char sequence after last character of match in group `i`,
      *  or `null` if nothing was matched for that group.
      */
-    def after(i: Int): CharSequence =
+    def after(i: Int): CharSequence | Null =
       if (end(i) >= 0) source.subSequence(end(i), source.length)
       else null
 
@@ -708,7 +708,7 @@ object Regex {
      *  @return   The requested group
      *  @throws   IllegalArgumentException if the requested group name is not defined
      */
-    def group(id: String): String = (
+    def group(id: String): String | Null = (
       if (groupNamesNowarn.isEmpty)
         matcher group id
       else
@@ -719,7 +719,7 @@ object Regex {
     )
 
     /** The matched string; equivalent to `matched.toString`. */
-    override def toString: String = matched
+    override def toString: String = matched.nn
   }
 
   /** Provides information about a successful match. */
@@ -768,7 +768,7 @@ object Regex {
    *
    */
   object Match {
-    def unapply(m: Match): Some[String] = Some(m.matched)
+    def unapply(m: Match): Some[String] = Option.fromNullable(m.matched)
   }
 
   /** An extractor object that yields the groups in the match. Using this extractor
@@ -789,7 +789,7 @@ object Regex {
   }
 
   @inline private def extractGroupsFromMatch(m: Match): Option[List[String]] =
-     Some(List.tabulate(m.groupCount) { i => m.group(i + 1) })
+     Some(List.tabulate(m.groupCount) { i => m.group(i + 1).nn })
 
   /** A class to step through a sequence of regex matches.
    *

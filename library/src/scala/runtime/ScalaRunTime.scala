@@ -54,7 +54,7 @@ object ScalaRunTime {
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
   /** Retrieve generic array element */
-  def array_apply(xs: AnyRef, idx: Int): Any = {
+  def array_apply(xs: AnyRef | Null, idx: Int): Any = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx).asInstanceOf[Any]
       case x: Array[Int]     => x(idx).asInstanceOf[Any]
@@ -70,7 +70,7 @@ object ScalaRunTime {
   }
 
   /** update generic array element */
-  def array_update(xs: AnyRef, idx: Int, value: Any): Unit = {
+  def array_update(xs: AnyRef | Null, idx: Int, value: Any): Unit = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx) = value.asInstanceOf[AnyRef]
       case x: Array[Int]     => x(idx) = value.asInstanceOf[Int]
@@ -86,11 +86,11 @@ object ScalaRunTime {
   }
 
   /** Get generic array length */
-  @inline def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
+  @inline def array_length(xs: AnyRef | Null): Int = java.lang.reflect.Array.getLength(xs)
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
   // the type switch. See Array_clone comment in BCodeBodyBuilder.
-  def array_clone(xs: AnyRef): AnyRef = (xs: @unchecked) match {
+  def array_clone(xs: AnyRef | Null): AnyRef = (xs: @unchecked) match {
     case x: Array[AnyRef]  => x.clone()
     case x: Array[Int]     => x.clone()
     case x: Array[Double]  => x.clone()
@@ -107,7 +107,7 @@ object ScalaRunTime {
    *  Needed to deal with vararg arguments of primitive types that are passed
    *  to a generic Java vararg parameter T ...
    */
-  def toObjectArray(src: AnyRef): Array[Object] = {
+  def toObjectArray(src: AnyRef | Null): Array[Object] = {
     def copy[@specialized T <: AnyVal](src: Array[T]): Array[Object] = {
       val length = src.length
       if (length == 0) Array.emptyObjectArray

@@ -74,7 +74,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   override def contains(elem: A): Boolean = findNode(elem) ne null
 
-  @`inline` private[this] def findNode(elem: A): Node[A] = {
+  @`inline` private[this] def findNode(elem: A): Node[A] | Null = {
     val hash = computeHash(elem)
     table(index(hash)) match {
       case null => null
@@ -158,7 +158,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
       case null =>
         table(idx) = new Node(elem, hash, null)
       case old =>
-        var prev: Node[A] = null
+        var prev: Node[A] | Null = null
         var n = old
         while((n ne null) && n.hash <= hash) {
           if(n.hash == hash && elem == n.key) return false
@@ -204,7 +204,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   private[this] abstract class HashSetIterator[B] extends AbstractIterator[B] {
     private[this] var i = 0
-    private[this] var node: Node[A] = null
+    private[this] var node: Node[A] | Null = null
     private[this] val len = table.length
 
     protected[this] def extract(nd: Node[A]): B
@@ -435,14 +435,14 @@ object HashSet extends IterableFactory[HashSet] {
     def newBuilder: Builder[A, HashSet[A]] = HashSet.newBuilder(tableLength, loadFactor)
   }
 
-  private[collection] final class Node[K](_key: K, _hash: Int, private[this] var _next: Node[K]) {
+  private[collection] final class Node[K](_key: K, _hash: Int, private[this] var _next: Node[K] | Null) {
     def key: K = _key
     def hash: Int = _hash
-    def next: Node[K] = _next
-    def next_= (n: Node[K]): Unit = _next = n
+    def next: Node[K] | Null = _next
+    def next_= (n: Node[K] | Null): Unit = _next = n
 
     @tailrec
-    def findNode(k: K, h: Int): Node[K] =
+    def findNode(k: K, h: Int): Node[K] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
       else _next.findNode(k, h)

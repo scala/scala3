@@ -24,88 +24,88 @@ import java.{lang => jl, util => ju}
 trait AsJavaExtensions {
   import scala.jdk.javaapi.{CollectionConverters => conv}
 
-  implicit class IteratorHasAsJava[A](i: Iterator[A]) {
+  implicit class IteratorHasAsJava[A](i: Iterator[A] | Null) {
     /** Converts a Scala `Iterator` to a Java `Iterator`, see
       * [[AsJavaConverters.asJava[A](i:Iterator[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.Iterator[A] = conv.asJava(i)
+    def asJava: ju.Iterator[A] | Null = conv.asJava(i)
 
     /** Converts a Scala `Iterator` to a Java `Enumeration`, see
       * [[AsJavaConverters.asJavaEnumeration `scala.jdk.javaapi.CollectionConverters.asJavaEnumeration`]].
       */
-    def asJavaEnumeration: ju.Enumeration[A] = conv.asJavaEnumeration(i)
+    def asJavaEnumeration: ju.Enumeration[A] | Null = conv.asJavaEnumeration(i)
   }
 
-  implicit class IterableHasAsJava[A](i: Iterable[A]) {
+  implicit class IterableHasAsJava[A](i: Iterable[A] | Null) {
     /** Converts a Scala `Iterable` to a Java `Iterable`, see
       * [[AsJavaConverters.asJava[A](i:Iterable[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: jl.Iterable[A] = conv.asJava(i)
+    def asJava: jl.Iterable[A] | Null = conv.asJava(i)
 
     /** Converts a Scala `Iterator` to a Java `Collection`, see
       * [[AsJavaConverters.asJavaCollection `scala.jdk.javaapi.CollectionConverters.asJavaCollection`]].
       */
-    def asJavaCollection: ju.Collection[A] = conv.asJavaCollection(i)
+    def asJavaCollection: ju.Collection[A] | Null = conv.asJavaCollection(i)
   }
 
-  implicit class BufferHasAsJava[A](b: mutable.Buffer[A]) {
+  implicit class BufferHasAsJava[A](b: mutable.Buffer[A] | Null) {
     /** Converts a Scala `Buffer` to a Java `List`, see
       * [[AsJavaConverters.asJava[A](b:scala\.collection\.mutable\.Buffer[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.List[A] = conv.asJava(b)
+    def asJava: ju.List[A] | Null = conv.asJava(b)
   }
 
-  implicit class MutableSeqHasAsJava[A](s: mutable.Seq[A]) {
+  implicit class MutableSeqHasAsJava[A](s: mutable.Seq[A] | Null) {
     /** Converts a Scala `Seq` to a Java `List`, see
       * [[AsJavaConverters.asJava[A](s:scala\.collection\.mutable\.Seq[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.List[A] = conv.asJava(s)
+    def asJava: ju.List[A] | Null = conv.asJava(s)
   }
 
-  implicit class SeqHasAsJava[A](s: Seq[A]) {
+  implicit class SeqHasAsJava[A](s: Seq[A] | Null) {
     /** Converts a Scala `Seq` to a Java `List`, see
       * [[AsJavaConverters.asJava[A](s:scala\.collection\.Seq[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.List[A] = conv.asJava(s)
+    def asJava: ju.List[A] | Null = conv.asJava(s)
   }
 
-  implicit class MutableSetHasAsJava[A](s: mutable.Set[A]) {
+  implicit class MutableSetHasAsJava[A](s: mutable.Set[A] | Null) {
     /** Converts a Scala `mutable.Set` to a Java `Set`, see
       * [[AsJavaConverters.asJava[A](s:scala\.collection\.mutable\.Set[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.Set[A] = conv.asJava(s)
+    def asJava: ju.Set[A] | Null = conv.asJava(s)
   }
 
-  implicit class SetHasAsJava[A](s: Set[A]) {
+  implicit class SetHasAsJava[A](s: Set[A] | Null) {
     /** Converts a Scala `Set` to a Java `Set`, see
       * [[AsJavaConverters.asJava[A](s:scala\.collection\.Set[A])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.Set[A] = conv.asJava(s)
+    def asJava: ju.Set[A] | Null = conv.asJava(s)
   }
 
-  implicit class MutableMapHasAsJava[K, V](m: mutable.Map[K, V]) {
+  implicit class MutableMapHasAsJava[K, V](m: mutable.Map[K, V] | Null) {
     /** Converts a Scala `mutable.Map` to a Java `Map`, see
       * [[AsJavaConverters.asJava[K,V](m:scala\.collection\.mutable\.Map[K,V])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.Map[K, V] = conv.asJava(m)
+    def asJava: ju.Map[K, V] | Null = conv.asJava(m)
 
     /** Converts a Scala `mutable.Map` to a Java `Map`, see
       * [[AsJavaConverters.asJavaDictionary `scala.jdk.javaapi.CollectionConverters.asJavaDictionary`]].
       */
-    def asJavaDictionary: ju.Dictionary[K, V] = conv.asJavaDictionary(m)
+    def asJavaDictionary: ju.Dictionary[K, V] | Null = conv.asJavaDictionary(m)
   }
 
-  implicit class MapHasAsJava[K, V](m: Map[K, V]) {
+  implicit class MapHasAsJava[K, V](m: Map[K, V] | Null) {
     /** Converts a Scala `Map` to a Java `Map`, see
       * [[AsJavaConverters.asJava[K,V](m:scala\.collection\.Map[K,V])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: ju.Map[K, V] = conv.asJava(m)
+    def asJava: ju.Map[K, V] | Null = conv.asJava(m)
   }
 
-  implicit class ConcurrentMapHasAsJava[K, V](m: concurrent.Map[K, V]) {
+  implicit class ConcurrentMapHasAsJava[K, V](m: concurrent.Map[K, V] | Null) {
     /** Converts a Scala `concurrent.Map` to a Java `ConcurrentMap`, see
       * [[AsJavaConverters.asJava[K,V](m:scala\.collection\.concurrent\.Map[K,V])* `scala.jdk.javaapi.CollectionConverters.asJava`]].
       */
-    def asJava: juc.ConcurrentMap[K, V] = conv.asJava(m)
+    def asJava: juc.ConcurrentMap[K, V] | Null = conv.asJava(m)
   }
 }

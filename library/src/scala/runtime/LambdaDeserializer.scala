@@ -51,14 +51,14 @@ object LambdaDeserializer {
   }
 
   def deserializeLambdaOrNull(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle],
-                              targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef = {
+                              targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef | Null = {
     assert(targetMethodMap != null)
     def slashDot(name: String) = name.replaceAll("/", ".")
     val loader = lookup.lookupClass().getClassLoader
     val implClass = loader.loadClass(slashDot(serialized.getImplClass))
     val key = LambdaDeserialize.nameAndDescriptorKey(serialized.getImplMethodName, serialized.getImplMethodSignature)
 
-    def makeCallSite: CallSite = {
+    def makeCallSite: CallSite | Null = {
       import serialized._
       def parseDescriptor(s: String) =
         MethodType.fromMethodDescriptorString(s, loader)

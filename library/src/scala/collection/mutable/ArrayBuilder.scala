@@ -27,7 +27,7 @@ sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
   protected[this] var capacity: Int = 0
-  protected[this] def elems: Array[T] // may not be allocated at size = capacity = 0
+  protected[this] def elems: Array[T] | Null // may not be allocated at size = capacity = 0
   protected var size: Int = 0
 
   /** Current number of elements. */
@@ -61,7 +61,7 @@ sealed abstract class ArrayBuilder[T]
   private def doAddAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
     if (length > 0) {
       ensureSize(this.size + length)
-      Array.copy(xs, offset, elems, this.size, length)
+      Array.copy(xs, offset, elems.nn, this.size, length)
       size += length
     }
     this
@@ -71,7 +71,7 @@ sealed abstract class ArrayBuilder[T]
     val k = xs.knownSize
     if (k > 0) {
       ensureSize(this.size + k)
-      val actual = IterableOnce.copyElemsToArray(xs, elems, this.size)
+      val actual = IterableOnce.copyElemsToArray(xs, elems.nn, this.size)
       if (actual != k) throw new IllegalStateException(s"Copied $actual of $k")
       size += k
     } else if (k < 0) super.addAll(xs)
@@ -137,7 +137,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[T]]
         res
       }
       else mkArray(size)
@@ -184,7 +184,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Byte]]
         res
       }
       else mkArray(size)
@@ -226,7 +226,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Short]]
         res
       }
       else mkArray(size)
@@ -310,7 +310,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Int]]
         res
       }
       else mkArray(size)
@@ -352,7 +352,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Long]]
         res
       }
       else mkArray(size)
@@ -394,7 +394,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Float]]
         res
       }
       else mkArray(size)
@@ -436,7 +436,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Double]]
         res
       }
       else mkArray(size)
@@ -479,7 +479,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Boolean]]
         res
       }
       else mkArray(size)
