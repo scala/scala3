@@ -31,7 +31,7 @@ object NamedTuple:
   import NamedTupleDecomposition.{Names, DropNames}
   export NamedTupleDecomposition.{
     Names, DropNames,
-    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray
+    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray, toMap
   }
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
