@@ -1,5 +1,6 @@
 package scala
 import compiletime.ops.boolean.*
+import compiletime.summonAll
 
 import language.experimental.captureChecking
 
@@ -209,6 +210,14 @@ object NamedTupleDecomposition:
     /** An immutable array consisting of all element values */
     inline def toIArray: IArray[Object] = x.toTuple.toIArray
 
+    /** An immutable map consisting of all element values.
+     *  Keys are the names of the elements.
+     */
+    inline def toMap: collection.Map[String, Tuple.Union[V]] =
+      summonAll[Tuple.Map[N, ValueOf]].toList
+        .map(_.asInstanceOf[ValueOf[? <: String]].value)
+        .lazyZip(x.toList)
+        .toMap
   end extension
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
