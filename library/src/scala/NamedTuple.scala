@@ -213,7 +213,7 @@ object NamedTupleDecomposition:
     /** An immutable map consisting of all element values.
      *  Keys are the names of the elements.
      */
-    inline def toMap: collection.Map[String, Tuple.Union[V]] =
+    inline def toMap: collection.immutable.Map[String, Tuple.Union[V]] =
       summonAll[Tuple.Map[N, ValueOf]].toList
         .map(_.asInstanceOf[ValueOf[? <: String]].value)
         .lazyZip(x.toList)
