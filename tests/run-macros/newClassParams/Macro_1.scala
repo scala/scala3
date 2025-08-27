@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.quoted._
 
 inline def makeClassAndCall(inline name: String, idx: Int, str: String): Unit = ${ makeClassAndCallExpr('name, 'idx, 'str) }
