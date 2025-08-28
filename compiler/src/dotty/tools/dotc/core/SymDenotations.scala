@@ -879,6 +879,9 @@ object SymDenotations {
     final def mayDeriveFrom(base: Symbol)(using Context): Boolean =
       this.isInstanceOf[ClassDenotation] && (info.isInstanceOf[TempClassInfo] || derivesFrom(base))
 
+    final def derivesFrom(base: Symbol, defaultIfUnknown: Boolean)(using Context): Boolean =
+      if defaultIfUnknown/*== true*/ then mayDeriveFrom(base) else derivesFrom(base)
+
     /** Is this a Scala or Java annotation ? */
     def isAnnotation(using Context): Boolean =
       isClass && (derivesFrom(defn.AnnotationClass) || is(JavaAnnotation))
