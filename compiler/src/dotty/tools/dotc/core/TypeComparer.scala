@@ -3230,7 +3230,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       .filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
-      cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)
+      cls1.mayDeriveFrom(cls2) || cls2.mayDeriveFrom(cls1)
 
     def smallestNonTraitBase(cls: Symbol): Symbol =
       val classes = if cls.isClass then cls.asClass.baseClasses else cls.info.classSymbols
