@@ -58,7 +58,7 @@ class ScalaSettingsTests:
     assertTrue("Has the feature", set.contains("implicitConversions"))
     assertTrue("Has the feature", set.contains("dynamics"))
 
-  @Test def `Warn if multistring element is supplied multiply`: Unit =
+  @Test def `Don't warn if multistring element is supplied multiply`: Unit =
     class SUT extends SettingGroup:
       val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
@@ -67,7 +67,7 @@ class ScalaSettingsTests:
     val res  = sut.processArguments(sumy, processAll = true, skipped = Nil)
     val set  = sut.language.valueIn(res.sstate)
     assertEquals(3, args.length)
-    assertEquals("Must warn", 1, res.warnings.length)
+    assertTrue("Mustn't warn", res.warnings.isEmpty)
     assertTrue("No errors!", res.errors.isEmpty)
     assertTrue("Has the feature", set.contains("implicitConversions"))
     assertTrue("Has the feature", set.contains("dynamics"))
