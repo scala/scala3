@@ -3131,9 +3131,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        * unique value derives from the class.
        */
       case (tp1: SingletonType, tp2) =>
-        !tp1.derivesFrom(tp2.classSymbol)
+        !tp1.derivesFrom(tp2.classSymbol, defaultIfUnknown = true)
       case (tp1, tp2: SingletonType) =>
-        !tp2.derivesFrom(tp1.classSymbol)
+        !tp2.derivesFrom(tp1.classSymbol, defaultIfUnknown = true)
 
       /* Now both sides are possibly-parameterized class types `p.C[Ts]` and `q.D[Us]`.
        *
@@ -3189,7 +3189,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
             val commonBaseClasses = cls1.classDenot.baseClasses.filter(cls2BaseClassSet.contains(_))
             def isAncestorOfOtherBaseClass(cls: ClassSymbol): Boolean =
-              commonBaseClasses.exists(other => (other ne cls) && other.derivesFrom(cls))
+              commonBaseClasses.exists(other => (other ne cls) && other.mayDeriveFrom(cls))
             val result = commonBaseClasses.exists { baseClass =>
               !isAncestorOfOtherBaseClass(baseClass) && isBaseTypeWithDisjointArguments(baseClass, innerPending)
             }
