@@ -1168,7 +1168,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val m1Meth = getMethod(fooClass, "m1")
 
-      assertSameCode(m1Meth, List(
+      assertSameCode(m1Meth,List(
         VarOp(ALOAD, 1),
         VarOp(ASTORE, 2),
         VarOp(ALOAD, 2),
@@ -1189,29 +1189,27 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         VarOp(ILOAD, 5),
         Op(IRETURN),
         Label(19),
+        VarOp(ALOAD, 2),
         Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
         Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
-        VarOp(ALOAD, 2),
-        VarOp(ASTORE, 7),
         Op(DUP),
-        Jump(IFNONNULL, Label(31)),
+        Jump(IFNONNULL, Label(29)),
         Op(POP),
-        VarOp(ALOAD, 7),
-        Jump(IFNULL, Label(36)),
-        Jump(GOTO, Label(40)),
-        Label(31),
-        VarOp(ALOAD, 7),
+        Jump(IFNULL, Label(34)),
+        Jump(GOTO, Label(38)),
+        Label(29),
+        Op(SWAP),
         Invoke(INVOKEVIRTUAL, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", false),
-        Jump(IFEQ, Label(40)),
-        Label(36),
+        Jump(IFEQ, Label(38)),
+        Label(34),
         IntOp(BIPUSH, 20),
         Op(IRETURN),
-        Label(40),
+        Label(38),
         TypeOp(NEW, "scala/MatchError"),
         Op(DUP),
         VarOp(ALOAD, 2),
         Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
-        Op(ATHROW),
+        Op(ATHROW)
       ))
 
       // ---------------
