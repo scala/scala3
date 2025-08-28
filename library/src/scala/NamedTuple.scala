@@ -214,10 +214,8 @@ object NamedTupleDecomposition:
      *  Keys are the names of the elements.
      */
     inline def toMap: collection.immutable.Map[String, Tuple.Union[V]] =
-      summonAll[Tuple.Map[N, ValueOf]].toList
-        .map(_.asInstanceOf[ValueOf[? <: String]].value)
-        .lazyZip(x.toList)
-        .toMap
+      inline compiletime.constValueTuple[N].toList match
+        case names: List[String] => names.lazyZip(x.toList).toMap
   end extension
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
