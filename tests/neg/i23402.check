@@ -35,12 +35,11 @@
   |
   | 1. Rename one of the definitions, or
   | 2. Keep the same names in source but give one definition a distinct
-  |    bytecode-level name via `@targetName` for example:
+  |    bytecode-level name via `@targetName`; for example:
   |
   |       @targetName("apply_2")
   |       def apply(p1: String)(p2: Int): A
   |
   | Choose the `@targetName` argument carefully: it is the name that will be used
   | when calling the method externally, so it should be unique and descriptive.
-  |         
    ---------------------------------------------------------------------------------------------------------------------
