@@ -586,7 +586,7 @@ object Array {
     def get: UnapplySeqWrapper[T] = this
     def lengthCompare(len: Int): Int = a.lengthCompare(len)
     def apply(i: Int): T = a(i)
-    def drop(n: Int): scala.Seq[T] = ArraySeq.unsafeWrapArray(a.drop(n)) // clones the array, also if n == 0
+    def drop(n: Int): scala.Seq[T] = ArraySeq.unsafeWrapArray(a.drop(n)).nn // clones the array, also if n == 0
     def toSeq: scala.Seq[T] = a.toSeq // clones the array
   }
 }

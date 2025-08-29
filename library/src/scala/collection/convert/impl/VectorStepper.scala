@@ -16,7 +16,7 @@ package impl
 import scala.language.`2.13`
 import scala.collection._
 
-private[convert] abstract class VectorStepperBase[Sub >: Null, Semi <: Sub](
+private[convert] abstract class VectorStepperBase[Sub, Semi <: Sub](
   _i0: Int,
   _iN: Int,
   protected val displayN: Int,
