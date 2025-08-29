@@ -1173,7 +1173,7 @@ class Objects(using Context @constructorOnly):
 
     case v @ SafeValue(_) =>
       if v.typeSymbol != defn.NullClass then
-        // selection on Null is sensible on AST level; no warning for it
+        // selection on Null is sensible on AST level but not in practice
         report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + ". " + Trace.show, Trace.position)
       end if
       Bottom
