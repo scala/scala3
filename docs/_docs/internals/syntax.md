@@ -243,6 +243,7 @@ CapFilter         ::=  ‘.’ ‘as’ ‘[’ QualId ’]’                  
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  TypTypeParamClause ‘=>’ Expr                             PolyFunction(ts, expr)
+                    |  ExprCaseClause
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  TypTypeParamClause ‘=>’ Block
@@ -295,6 +296,8 @@ SimpleExpr        ::=  SimpleRef
                     |  XmlExpr							-- to be dropped
 ColonArgument     ::=  colon [LambdaStart]
                        indent (CaseClauses | Block) outdent
+                    |  colon LambdaStart expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
+                                                                                -- does not apply if enclosed in parens
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
                     |  TypTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
