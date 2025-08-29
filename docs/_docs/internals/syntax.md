@@ -298,6 +298,7 @@ ColonArgument     ::=  colon [LambdaStart]
                        indent (CaseClauses | Block) outdent
                     |  colon LambdaStart expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
                                                                                 -- does not apply if enclosed in parens
+                    |  colon ExprCaseClause
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
                     |  TypTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
