@@ -232,7 +232,7 @@ object ListMap extends MapFactory[ListMap] {
 
     override def removed(k: K): ListMap[K, V] = removeInternal(k, this, Nil)
 
-    override private[immutable] def next: ListMap[K, V] = _init
+    override private[immutable] def next: ListMap[K, V] = _init.nn
 
     override def last: (K, V) = (key, value)
     override def init: ListMap[K, V] = next

@@ -120,9 +120,10 @@ private[collection] class LongIteratorStepper(_underlying: Iterator[Long] | Null
 }
 
 /** Common functionality for Steppers that step through an Iterator, caching the results as needed when a split is requested. */
-private[convert] abstract class IteratorStepperBase[A, SP >: Null <: Stepper[A] | Null, Semi <: SP](final protected val underlying: Iterator[A] | Null) {
+private[convert] abstract class IteratorStepperBase[A, SP <: Stepper[A], Semi <: SP](final protected val underlying: Iterator[A] | Null) {
   final protected var nextChunkSize = 16
-  final protected var proxied: SP = null
+  @annotation.stableNull
+  final protected var proxied: SP | Null = null
   protected def semiclone(): Semi        // Must initialize with null iterator!
   def characteristics: Int = if (proxied ne null) Spliterator.ORDERED | Spliterator.SIZED | Spliterator.SUBSIZED else Spliterator.ORDERED
   def estimateSize: Long = if (proxied ne null) proxied.nn.estimateSize else Long.MaxValue
