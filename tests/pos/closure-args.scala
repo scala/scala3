@@ -13,3 +13,8 @@ val d2: String = xs
   .filter: z => !z.isEmpty
   (0)
 
+val d3: String = xs
+  .map: x => x.toString + xs.collect: case y if y > 0 => y
+  .filter: z => !z.isEmpty
+  (0)
+

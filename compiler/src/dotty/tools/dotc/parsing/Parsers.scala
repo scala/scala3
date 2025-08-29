@@ -1127,6 +1127,8 @@ object Parsers {
       else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
         lookahead.skipParens()
         isArrowIndent()
+      else if lookahead.token == CASE then
+        Some(() => singleCaseMatch())
       else
         None
 
@@ -2383,7 +2385,7 @@ object Parsers {
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  TypTypeParamClause ‘=>’ Expr
-     *                      |  ExprCaseClause
+     *                      |  ExprCaseClause                              -- under experimental.relaxedLambdaSyntax
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -2799,6 +2801,7 @@ object Parsers {
      *  ColonArgument ::= colon [LambdaStart]
      *                    indent (CaseClauses | Block) outdent
      *                 |  colon LambdaStart expr ENDlambda        -- under experimental.relaxedLambdaSyntax
+     *                 |  colon ExprCaseClause                    -- under experimental.relaxedLambdaSyntax
      *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
      *                 |  TypTypeParamClause ‘=>’
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent

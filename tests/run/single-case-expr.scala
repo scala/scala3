@@ -8,6 +8,10 @@ case class Foo(x: Int, y: Int)
   val foo = Foo(1, 2)
   assert(g(foo) == 1)
 
+  val h1: Foo => Int = identity: case Foo(a, b) => a
+  val h2: Foo => Int = identity: case Foo(a, b) =>
+    a
+
   val a1 = Seq((1, 2), (3, 4)).collect(case (a, b) if b > 2 => a)
   assert(a1 == Seq(3))
 
@@ -18,4 +22,9 @@ case class Foo(x: Int, y: Int)
   )
   assert(a2 == Seq(1, 3))
 
+  val a3 = Seq((1, 2), (3, 4)).collect: case (a, b) if b > 2 => a
+  assert(a3 == Seq(3))
+
   val partial: PartialFunction[(Int, Int), Int] = case (a, b) if b > 2 => a
+
+
