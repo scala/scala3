@@ -332,19 +332,19 @@ object IArray:
 
   // For backwards compatibility with code compiled without -Yexplicit-nulls
   private inline def mapNull[A, B](a: A, inline f: B): B =
-    if((a: A|Null) == null) null.asInstanceOf[B] else f
+    if((a: A | Null) == null) null.asInstanceOf[B] else f
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def genericWrapArray[T](arr: IArray[T]): ArraySeq[T] =
-    mapNull(arr, ArraySeq.unsafeWrapArray(arr))
+    mapNull(arr, ArraySeq.unsafeWrapArray(arr)).asInstanceOf[ArraySeq[T]]
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): ArraySeq.ofRef[T] =
-    // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
-    // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
+  implicit def wrapRefArray[T <: AnyRef | Null](arr: IArray[T]): ArraySeq.ofRef[T] =
+    // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef | Null]
+    // is as good as another for all T <: AnyRef | Null.  Instead of creating 100,000,000
     // unique ones by way of this implicit, let's share one.
     mapNull(arr,
-      if (arr.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
+      if (arr.length == 0) ArraySeq.empty[AnyRef | Null].asInstanceOf[ArraySeq.ofRef[T]]
       else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
     )
 
