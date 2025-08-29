@@ -1150,7 +1150,7 @@ private final class BitmapIndexedSetNode[A](
               if (newNodes eq null) {
                 newNodes = mutable.Queue.empty
               }
-              newNodes += newSubNode
+              newNodes.nn += newSubNode
             }
           } else if (newSubNode.size == 1) {
             newDataMap |= bitpos
@@ -1158,7 +1158,7 @@ private final class BitmapIndexedSetNode[A](
             if (nodesToMigrateToData eq null) {
               nodesToMigrateToData = mutable.Queue.empty
             }
-            nodesToMigrateToData += newSubNode
+            nodesToMigrateToData.nn += newSubNode
           }
 
           nodeIndex += 1
@@ -1209,7 +1209,7 @@ private final class BitmapIndexedSetNode[A](
         // not named `newNodesMap` (plural) to avoid confusion with `newNodeMap` (singular)
         var mapOfNewNodes = 0
         // each bit in `mapOfNewNodes` corresponds to one element in this queue
-        var newNodes: mutable.Queue[SetNode[A]] = _
+        var newNodes: mutable.Queue[SetNode[A]] | Null = null
 
         var newDataMap = 0
         var newNodeMap = 0
@@ -1265,7 +1265,7 @@ private final class BitmapIndexedSetNode[A](
                 if (newNodes eq null) {
                   newNodes = mutable.Queue.empty
                 }
-                newNodes += newSubNode
+                newNodes.nn += newSubNode
               }
             } else if (newSubNode.size == 1) {
               newDataMap |= bitpos
@@ -1273,7 +1273,7 @@ private final class BitmapIndexedSetNode[A](
               if (nodesToMigrateToData eq null) {
                 nodesToMigrateToData = mutable.Queue.empty
               }
-              nodesToMigrateToData += newSubNode
+              nodesToMigrateToData.nn += newSubNode
             }
 
             nodeIndex += 1
@@ -1327,9 +1327,9 @@ private final class BitmapIndexedSetNode[A](
     oldDataPassThrough: Int,
     nodesToPassThroughMap: Int,
     nodeMigrateToDataTargetMap: Int,
-    nodesToMigrateToData: mutable.Queue[SetNode[A]],
+    nodesToMigrateToData: mutable.Queue[SetNode[A]] | Null,
     mapOfNewNodes: Int,
-    newNodes: mutable.Queue[SetNode[A]],
+    newNodes: mutable.Queue[SetNode[A]] | Null,
     newCachedHashCode: Int): BitmapIndexedSetNode[A] = {
     if (newSize == 0) {
       SetNode.empty
@@ -1368,14 +1368,14 @@ private final class BitmapIndexedSetNode[A](
           oldNodeIndex += 1
         } else if ((bitpos & nodeMigrateToDataTargetMap) != 0) {
           // we need not check for null here. If nodeMigrateToDataTargetMap != 0, then nodesMigrateToData must not be null
-          val node = nodesToMigrateToData.dequeue()
+          val node = nodesToMigrateToData.nn.dequeue()
           newContent(newDataIndex) = node.getPayload(0)
           newOriginalHashes(newDataIndex) = node.getHash(0)
           newDataIndex += 1
           oldNodeIndex += 1
         } else if ((bitpos & mapOfNewNodes) != 0) {
           // we need not check for null here. If mapOfNewNodes != 0, then newNodes must not be null
-          newContent(newContentSize - newNodeIndex - 1) = newNodes.dequeue()
+          newContent(newContentSize - newNodeIndex - 1) = newNodes.nn.dequeue()
           newNodeIndex += 1
           oldNodeIndex += 1
         } else if ((bitpos & dataMap) != 0) {

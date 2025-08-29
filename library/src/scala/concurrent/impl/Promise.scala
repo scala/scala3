@@ -274,7 +274,7 @@ private[concurrent] object Promise {
 
     override final def isCompleted: Boolean = value0 ne null
 
-    override final def value: Option[Try[T]] = Option.fromNullable(value0)
+    override final def value: Some[Try[T]] = Some(value0.asInstanceOf[Try[T]])
 
     @tailrec // returns null if not completed
     private final def value0: Try[T] | Null = {
@@ -435,7 +435,7 @@ private[concurrent] object Promise {
     override final def toString: String = "ManyCallbacks"
   }
 
-  private[this] final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null, ExecutionContext.parasitic)
+  private[this] final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null: (Any => Any) | Null, ExecutionContext.parasitic)
 
   /**
    * A Transformation[F, T] receives an F (it is a Callback[F]) and applies a transformation function to that F,
@@ -449,8 +449,8 @@ private[concurrent] object Promise {
     @annotation.stableNull private[this] final var _arg: Try[F] | Null,
     private[this] final val _xform: Int
   ) extends DefaultPromise[T]() with Callbacks[F] with Runnable with Batchable {
-    final def this(xform: Int, f: _ => _, ec: ExecutionContext) =
-      this(f.asInstanceOf[Any => Any], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
+    final def this(xform: Int, f: (_ => _) | Null, ec: ExecutionContext) =
+      this(f.asInstanceOf[(Any => Any) | Null], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
 
     final def benefitsFromBatching: Boolean = _xform != Xform_onComplete && _xform != Xform_foreach
 

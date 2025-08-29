@@ -304,7 +304,7 @@ trait StreamExtensions {
       if (info.companion == AnyAccumulator) stream.collect(AnyAccumulator.supplier[Int], AnyAccumulator.unboxedIntAdder, AnyAccumulator.merger[Int]).asInstanceOf[C1]
       else if (info.companion == IntAccumulator) intAcc.asInstanceOf[C1]
       else if (stream.isParallel) intAcc.to(factory)
-      else factory.fromSpecific(stream.iterator.asInstanceOf[java.util.Iterator[Int]].asScala)
+      else factory.fromSpecific(stream.iterator.asInstanceOf[java.util.Iterator[Int]].asScala.nn)
     }
   }
 
@@ -331,7 +331,7 @@ trait StreamExtensions {
       if (info.companion == AnyAccumulator) stream.collect(AnyAccumulator.supplier[Long], AnyAccumulator.unboxedLongAdder, AnyAccumulator.merger[Long]).asInstanceOf[C1]
       else if (info.companion == LongAccumulator) longAcc.asInstanceOf[C1]
       else if (stream.isParallel) longAcc.to(factory)
-      else factory.fromSpecific(stream.iterator.asInstanceOf[java.util.Iterator[Long]].asScala)
+      else factory.fromSpecific(stream.iterator.asInstanceOf[java.util.Iterator[Long]].asScala.nn)
     }
   }
 
@@ -358,7 +358,7 @@ trait StreamExtensions {
       if (info.companion == AnyAccumulator) stream.collect(AnyAccumulator.supplier[Double], AnyAccumulator.unboxedDoubleAdder, AnyAccumulator.merger[Double]).asInstanceOf[C1]
       else if (info.companion == DoubleAccumulator) doubleAcc.asInstanceOf[C1]
       else if (stream.isParallel) doubleAcc.to(factory)
-      else factory.fromSpecific(stream.iterator.asInstanceOf[java.util.Iterator[Double]].asScala)
+      else factory.fromSpecific(stream.iterator.asInstanceOf[java.util.Iterator[Double]].asScala.nn)
     }
   }
 }

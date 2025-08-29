@@ -60,7 +60,7 @@ object ArrayOps {
   private class ArrayView[A](xs: Array[A]) extends AbstractIndexedSeqView[A] {
     def length = xs.length
     def apply(n: Int) = xs(n)
-    override def toString: String = immutable.ArraySeq.unsafeWrapArray(xs).mkString("ArrayView(", ", ", ")")
+    override def toString: String = immutable.ArraySeq.unsafeWrapArray(xs).nn.mkString("ArrayView(", ", ", ")")
   }
 
   /** A lazy filtered array. No filtering is applied until one of `foreach`, `map` or `flatMap` is called. */
@@ -429,7 +429,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     val s = (shape.shape: @unchecked) match {
       case StepperShape.ReferenceShape => (xs: Any) match {
         case bs: Array[Boolean] => new BoxedBooleanArrayStepper(bs, 0, xs.length)
-        case _ => new ObjectArrayStepper[AnyRef](xs.asInstanceOf[Array[AnyRef ]], 0, xs.length)
+        case _ => new ObjectArrayStepper[AnyRef](xs.asInstanceOf[Array[AnyRef]], 0, xs.length)
       }
       case StepperShape.IntShape    => new IntArrayStepper           (xs.asInstanceOf[Array[Int    ]], 0, xs.length)
       case StepperShape.LongShape   => new LongArrayStepper          (xs.asInstanceOf[Array[Long   ]], 0, xs.length)
@@ -1084,7 +1084,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     * @return a decorator `LazyZip2` that allows strict operations to be performed on the lazily evaluated pairs
     *         or chained calls to `lazyZip`. Implicit conversion to `Iterable[(A, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]^): LazyZip2[A, B, Array[A]]^{that} = new LazyZip2(xs, immutable.ArraySeq.unsafeWrapArray(xs), that)
+  def lazyZip[B](that: Iterable[B]^): LazyZip2[A, B, Array[A]]^{that} = new LazyZip2(xs, immutable.ArraySeq.unsafeWrapArray(xs).nn, that)
 
   /** Returns an array formed from this array and another iterable collection
     *  by combining corresponding elements in pairs.
@@ -1438,7 +1438,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   @`inline` final def toSeq: immutable.Seq[A] = toIndexedSeq
 
   def toIndexedSeq: immutable.IndexedSeq[A] =
-    immutable.ArraySeq.unsafeWrapArray(Array.copyOf(xs, xs.length))
+    immutable.ArraySeq.unsafeWrapArray(Array.copyOf(xs, xs.length)).nn
 
   /** Copy elements of this array to another array.
     *  Fills the given array `xs` starting at index 0.

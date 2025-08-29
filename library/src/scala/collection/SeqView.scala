@@ -138,7 +138,7 @@ object SeqView {
     extends SeqView[A] {
     outer: Sorted[A, B]^ =>
 
-    private var underlying = underlying_
+    private var underlying: SomeSeqOps[A] | Null = underlying_
 
     // force evaluation immediately by calling `length` so infinite collections
     // hang on `sorted`/`sortWith`/`sortBy` rather than on arbitrary method calls
@@ -169,10 +169,10 @@ object SeqView {
       val res = {
         val len = this.len
         if (len == 0) Nil
-        else if (len == 1) List(underlying.head)
+        else if (len == 1) List(underlying.nn.head)
         else {
           val arr = new Array[Any](len) // Array[Any] =:= Array[AnyRef]
-          @annotation.unused val copied = underlying.copyToArray(arr)
+          @annotation.unused val copied = underlying.nn.copyToArray(arr)
           //assert(copied == len)
           java.util.Arrays.sort(arr.asInstanceOf[Array[AnyRef]], ord.asInstanceOf[Ordering[AnyRef]])
           // casting the Array[AnyRef] to Array[A] and creating an ArraySeq from it
@@ -183,7 +183,7 @@ object SeqView {
           //     contains items of another type, we'd get a CCE anyway)
           //   - the cast doesn't actually do anything in the runtime because the
           //     type of A is not known and Array[_] is Array[AnyRef]
-          immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[A]])
+          immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[A]]).nn
         }
       }
       evaluated = true
@@ -192,7 +192,7 @@ object SeqView {
     }
 
     private[this] def elems: SomeSeqOps[A]^{this} = {
-      val orig: SomeSeqOps[A]^{this} = underlying
+      val orig: SomeSeqOps[A]^{this} = underlying.nn
       if (evaluated) _sorted else orig
     }
 

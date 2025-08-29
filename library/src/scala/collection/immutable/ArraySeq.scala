@@ -328,7 +328,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   }).asInstanceOf[ArraySeq[T]]
 
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](val unsafeArray: Array[T]) extends ArraySeq[T] {
+  final class ofRef[T <: AnyRef | Null](val unsafeArray: Array[T]) extends ArraySeq[T] {
     def elemTag: ClassTag[T] = ClassTag[T](unsafeArray.getClass.getComponentType)
     def length: Int = unsafeArray.length
     @throws[ArrayIndexOutOfBoundsException]

@@ -264,9 +264,9 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     while (i >= 0) {
       var e = oldTable(i)
       while (e != null) {
-        val h = index(elemHashCode(e.key))
+        val h = index(elemHashCode(e.nn.key))
         val e1 = e.nn.next
-        e.next = table(h).asInstanceOf[Entry | Null]
+        e.nn.next = table(h).asInstanceOf[Entry | Null]
         table(h) = e
         e = e1
         nnSizeMapAdd(h)

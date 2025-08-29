@@ -293,7 +293,7 @@ object StringContext {
     // Matched all of pattern to all of name. Success.
     Some(collection.immutable.ArraySeq.unsafeWrapArray(
       Array.tabulate(patternChunks.length - 1)(n => input.slice(matchStarts(n), matchEnds(n)))
-    ))
+    ).nn)
   }
 
   /** An exception that is thrown if a string contains a backslash (`\`) character
@@ -475,3 +475,4 @@ object StringContext {
         +") for interpolated string with "+ parts.length +" parts")
 
 }
+

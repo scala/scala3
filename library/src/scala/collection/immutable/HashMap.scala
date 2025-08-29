@@ -161,7 +161,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   def removed(key: K): HashMap[K, V] = {
     val keyUnimprovedHash = key.##
-    newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
+    newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0).nn)
   }
 
   override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
@@ -2182,7 +2182,7 @@ private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) 
         keyHash = improve(originalHash),
         originalHash = originalHash,
         shift = 0
-      )
+      ).nn
       currentValueCursor += 1
     }
     curr

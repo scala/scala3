@@ -341,7 +341,7 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
   def unapplySeq(m: Match): Option[List[String]] =
     if (m.matched == null) None
     else if (m.matcher.pattern == this.pattern) Regex.extractGroupsFromMatch(m)
-    else unapplySeq(m.matched)
+    else unapplySeq(m.matched.nn)
 
   //  @see UnanchoredRegex
   protected def runMatcher(m: Matcher): Boolean = m.matches()
@@ -662,7 +662,7 @@ object Regex {
       else null
 
     /** All capturing groups, i.e., not including group(0). */
-    def subgroups: List[String] = (1 to groupCount).toList map group
+    def subgroups: List[String | Null] = (1 to groupCount).toList map group
 
     /** The char sequence before first character of match,
      *  or `null` if nothing was matched.
@@ -768,7 +768,7 @@ object Regex {
    *
    */
   object Match {
-    def unapply(m: Match): Some[String] = Option.fromNullable(m.matched)
+    def unapply(m: Match): Some[String] = Some(m.matched.nn)
   }
 
   /** An extractor object that yields the groups in the match. Using this extractor

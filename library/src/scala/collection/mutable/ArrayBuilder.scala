@@ -111,7 +111,7 @@ object ArrayBuilder {
    *  @tparam T     type of elements for the array builder, subtype of `AnyRef` with a `ClassTag` context bound.
    */
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
+  final class ofRef[T <: AnyRef | Null](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
 
     protected var elems: Array[T] = _
 
@@ -268,7 +268,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Char]]
         res
       }
       else mkArray(size)
