@@ -109,6 +109,13 @@ object Typer {
    */
   private[typer] val HiddenSearchFailure = new Property.Key[List[SearchFailure]]
 
+
+  /** An attachment on a Typed node. Indicates that the Typed node was synthetically
+   *  inserted by the Typer phase. We might want to remove it for the purpose of inlining,
+   *  but only if it was not manually inserted by the user.
+   */
+  private[typer] val InsertedTyped = new Property.Key[Unit]
+
   /** Is tree a compiler-generated `.apply` node that refers to the
    *  apply of a function class?
    */
@@ -3029,7 +3036,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val rhs1 = excludeDeferredGiven(ddef.rhs, sym): rhs =>
       PrepareInlineable.dropInlineIfError(sym,
         if sym.isScala2Macro then typedScala2MacroBody(rhs)(using rhsCtx)
-        else typedExpr(rhs, tpt1.tpe.widenExpr)(using rhsCtx))
+        else
+          typedExpr(rhs, tpt1.tpe.widenExpr)(using rhsCtx)) match
+            case typed @ Typed(outer, _) if typed.hasAttachment(InsertedTyped) => outer
+            case other => other
 
     if sym.isInlineMethod then
       if StagingLevel.level > 0 then
@@ -4678,7 +4688,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             insertGadtCast(tree, wtp, pt)
           case CompareResult.OKwithOpaquesUsed if !tree.tpe.frozen_<:<(pt)(using ctx.withOwner(defn.RootClass)) =>
             // guard to avoid extra Typed trees, eg. from testSubType(O.T, O.T) which returns OKwithOpaquesUsed
-            Typed(tree, TypeTree(pt))
+            Typed(tree, TypeTree(pt)).withAttachment(InsertedTyped, ())
           case _ =>
             //typr.println(i"OK ${tree.tpe}\n${TypeComparer.explained(_.isSubType(tree.tpe, pt))}") // uncomment for unexpected successes
             tree
