@@ -125,8 +125,8 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     var e = h & mask
     var x = 0
     var g = 0
-    val hashes = _hashes
-    val keys = _keys
+    val hashes = _hashes.nn
+    val keys = _keys.nn
     while ({ g = hashes(e); g != 0}) {
       if (g == h && { val q = keys(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
       x += 1
@@ -428,7 +428,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       val h = _hashes.nn(i)
       if (h+h != 0) {
         j += 1
-        f(elems(i).asInstanceOf[A])
+        f(elems.nn(i).asInstanceOf[A])
       }
       i += 1
     }
