@@ -2378,6 +2378,7 @@ object Parsers {
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  TypTypeParamClause ‘=>’ Expr
+     *                      |  ExprCaseClause
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -2429,6 +2430,8 @@ object Parsers {
           val arrowOffset = accept(ARROW)
           val body = expr(location)
           makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
+        case CASE =>
+          singleCaseMatch()
         case _ =>
           val saved = placeholderParams
           placeholderParams = Nil
@@ -2492,9 +2495,8 @@ object Parsers {
             if in.token == CATCH then
               val span = in.offset
               in.nextToken()
-              (if in.token == CASE then Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
-                else subExpr(),
-                span)
+              (if in.token == CASE then singleCaseMatch() else subExpr(),
+               span)
             else (EmptyTree, -1)
 
           handler match {
@@ -3188,9 +3190,9 @@ object Parsers {
         case ARROW => atSpan(in.skipToken()):
           if exprOnly then
             if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
-              warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
+              warning(em"""Misleading indentation: this expression forms part of the preceding case.
                           |If this is intended, it should be indented for clarity.
-                          |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                          |Otherwise, if the handler is intended to be empty, use a multi-line match or catch with
                           |an indented case.""")
             expr()
           else block()
@@ -3205,6 +3207,9 @@ object Parsers {
 
       CaseDef(pat, grd1, body)
     }
+
+    def singleCaseMatch() =
+      Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
 
     /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
      */
