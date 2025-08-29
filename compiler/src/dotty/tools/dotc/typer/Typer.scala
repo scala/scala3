@@ -5052,11 +5052,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         Linter.warnOnImplausiblePattern(tree, pt)
 
-        val cmp =
-          untpd.Apply(
-            untpd.Select(untpd.TypedSplice(tree), nme.EQ),
-            untpd.TypedSplice(dummyTreeOfType(pt)))
-        typedExpr(cmp, defn.BooleanType)
+        if ! (tree.tpe <:< pt && (tree.symbol.flags.isAllOf(Flags.EnumValue) || (tree.symbol.flags.isAllOf(Flags.Module | Flags.Case)))) then
+          val cmp =
+            untpd.Apply(
+              untpd.Select(untpd.TypedSplice(tree), nme.EQ),
+              untpd.TypedSplice(dummyTreeOfType(pt)))
+          typedExpr(cmp, defn.BooleanType)
       case _ =>
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean = false)(using Context): Unit =
