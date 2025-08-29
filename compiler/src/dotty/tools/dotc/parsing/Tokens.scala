@@ -203,7 +203,7 @@ object Tokens extends TokensCommon {
     // A `:` recognized as starting an indentation block
   inline val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
-  inline val ENDLAMBDA = 99;        enter(ENDLAMBDA, "end of single-line lambda")
+  inline val ENDlambda = 99;        enter(ENDlambda, "end of single-line lambda")
 
   /** XML mode */
   inline val XMLSTART = 100;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
@@ -269,7 +269,7 @@ object Tokens extends TokensCommon {
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE, END)
 
-  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT, ENDLAMBDA)
+  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT, ENDlambda)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.

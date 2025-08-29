@@ -14,12 +14,16 @@
    |    Illegal start of toplevel definition
    |
    | longer explanation available when compiling with `-explain`
--- [E018] Syntax Error: tests/neg/closure-args.scala:18:46 -------------------------------------------------------------
-18 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error
-   |                                              ^^^^
-   |                                              expression expected but [31mcase[0m found
+-- [E018] Syntax Error: tests/neg/closure-args.scala:18:20 -------------------------------------------------------------
+18 |val e = xs.map: y => // error
+   |                    ^
+   |                    expression expected but [31mend of single-line lambda[0m found
    |
    | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/closure-args.scala:21:64 -------------------------------------------------------------
+21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error
+   |                                                                ^^^^
+   |                                                            end of single-line lambda expected, but 'case' found
 -- [E008] Not Found Error: tests/neg/closure-args.scala:10:4 -----------------------------------------------------------
  8 |val b: Int = xs
  9 |  .map: x => x

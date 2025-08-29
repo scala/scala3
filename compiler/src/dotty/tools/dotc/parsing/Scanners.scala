@@ -617,8 +617,8 @@ object Scanners {
         && !statCtdTokens.contains(lastToken)
         && !isTrailingBlankLine
 
-      if currentRegion.closedBy == ENDLAMBDA then
-        insert(ENDLAMBDA, lineOffset)
+      if currentRegion.closedBy == ENDlambda then
+        insert(ENDlambda, lineOffset)
       else if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
@@ -1685,7 +1685,7 @@ object Scanners {
   case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
   case class InBraces(outer: Region) extends Region(RBRACE)
   case class InCase(outer: Region) extends Region(OUTDENT)
-  case class SingleLineLambda(outer: Region) extends Region(ENDLAMBDA)
+  case class SingleLineLambda(outer: Region) extends Region(ENDlambda)
 
   /** A class describing an indentation region.
    *  @param width   The principal indentation width
