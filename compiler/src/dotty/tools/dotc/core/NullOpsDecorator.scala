@@ -9,7 +9,7 @@ object NullOpsDecorator:
 
   extension (self: Type)
     /** If explicit-nulls is enabled, syntactically strips the nullability from this type.
-     *  If explicit-nulls is not enabled, removes all Null in unions.
+     *  If explicit-nulls is not enabled and forceStrip is enabled, removes all Null in unions.
      *  If the type is `T1 | ... | Tn`, and `Ti` references to `Null`,
      *  then return `T1 | ... | Ti-1 | Ti+1 | ... | Tn`.
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
@@ -47,8 +47,8 @@ object NullOpsDecorator:
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
-    def isNullableUnion(using Context): Boolean = {
-      val stripped = self.stripNull()
+    def isNullableUnion(stripFlexibleTypes: Boolean = true, forceStrip: Boolean = false)(using Context): Boolean = {
+      val stripped = self.stripNull(stripFlexibleTypes, forceStrip)
       stripped ne self
     }
   end extension

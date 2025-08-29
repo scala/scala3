@@ -962,6 +962,12 @@ extends PatternMatchMsg(MatchCaseOnlyNullWarningID) {
   def explain(using Context) = ""
 }
 
+class MatchCaseUnnecessaryNullable(tp: Type)(using Context)
+extends PatternMatchMsg(MatchCaseUnnecessaryOrNullID) {
+  def msg(using Context) = i"""$tp is nullable, but will not be matched by ${hl("null")}."""
+  def explain(using Context) = ""
+}
+
 class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
 extends TypeMsg(MatchableWarningID) {
   def msg(using Context) =

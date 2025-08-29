@@ -324,12 +324,12 @@ object TypeTestsCasts {
          *  The transform happens before erasure of `testType`, thus cannot be merged
          *  with `transformIsInstanceOf`, which depends on erased type of `testType`.
          */
-        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias.stripNull(false, true) match {
+        def transformTypeTest(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = testType.dealias.stripNull(stripFlexibleTypes = false, forceStrip = true) match {
           case tref: TermRef if tref.symbol == defn.EmptyTupleModule =>
             ref(defn.RuntimeTuples_isInstanceOfEmptyTuple).appliedTo(expr)
           case _: SingletonType =>
             expr.isInstance(testType).withSpan(tree.span)
-          case t @ OrType(tp1, tp2) =>
+          case OrType(tp1, tp2) =>
             evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated = false)
                 .or(transformTypeTest(e, tp2, flagUnrelated = false))
@@ -337,7 +337,7 @@ object TypeTestsCasts {
           case AndType(tp1, tp2) =>
             evalOnce(expr) { e =>
               transformTypeTest(e, tp1, flagUnrelated)
-              .and(transformTypeTest(e, tp2, flagUnrelated))
+                .and(transformTypeTest(e, tp2, flagUnrelated))
             }
           case defn.MultiArrayOf(elem, ndims) if isGenericArrayElement(elem, isScala2 = false) =>
             def isArrayTest(arg: Tree) =
