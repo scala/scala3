@@ -1139,17 +1139,17 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
       var rest: LazyListIterable[A]^{ll} = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
         it        = f(rest.head).iterator
-        itHasNext = it.hasNext
+        itHasNext = it.nn.hasNext
         if (!itHasNext) {                     // wait to advance `rest` because `it.next()` can throw
           rest    = rest.tail
           restRef = rest                      // restRef.elem = rest
         }
       }
       if (itHasNext) {
-        val head = it.next()
+        val head = it.nn.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        eagerCons(head, newLL(eagerHeadPrependIterator(it)(flatMapImpl(rest, f))))
+        eagerCons(head, newLL(eagerHeadPrependIterator(it.nn)(flatMapImpl(rest, f))))
       } else Empty
     }
   }

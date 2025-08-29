@@ -15,6 +15,8 @@ package mutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import scala.language.unsafeNulls
+
 import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializationProxy
@@ -47,7 +49,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
    * - The sum of the lengths of all buckets is equal to contentSize.
    */
   /** The actual hash table. */
-  private[this] var table = new Array[Node[A]](tableSizeFor(initialCapacity))
+  private[this] var table = new Array[Node[A] | Null](tableSizeFor(initialCapacity))
 
   /** The next size value at which to resize (capacity * load factor). */
   private[this] var threshold: Int = newThreshold(table.length)
@@ -163,12 +165,12 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
         while((n ne null) && n.hash <= hash) {
           if(n.hash == hash && elem == n.key) return false
           prev = n
-          n = n.next
+          n = n.nn.next
         }
         if(prev eq null)
           table(idx) = new Node(elem, hash, old)
         else
-          prev.next = new Node(elem, hash, prev.next)
+          prev.nn.next = new Node(elem, hash, prev.nn.next)
     }
     contentSize += 1
     true
@@ -194,7 +196,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
             return true
           }
           prev = next
-          next = next.next
+          next = next.nn.next
         }
         false
     }
@@ -224,8 +226,8 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     def next(): B =
       if(!hasNext) Iterator.empty.next()
       else {
-        val r = extract(node)
-        node = node.next
+        val r = extract(node.nn)
+        node = node.nn.next
         r
       }
   }
@@ -242,10 +244,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
-      case StepperShape.IntShape    => new IntTableStepper[Node[A]]   (size, table, _.next, _.key.asInstanceOf[Int],    0, table.length)
-      case StepperShape.LongShape   => new LongTableStepper[Node[A]]  (size, table, _.next, _.key.asInstanceOf[Long],   0, table.length)
-      case StepperShape.DoubleShape => new DoubleTableStepper[Node[A]](size, table, _.next, _.key.asInstanceOf[Double], 0, table.length)
-      case _         => shape.parUnbox(new AnyTableStepper[A, Node[A]](size, table, _.next, _.key,                      0, table.length))
+      case StepperShape.IntShape    => new IntTableStepper[Node[A]]   (size, table, _.nn.next.nn, _.key.asInstanceOf[Int],    0, table.length)
+      case StepperShape.LongShape   => new LongTableStepper[Node[A]]  (size, table, _.nn.next.nn, _.key.asInstanceOf[Long],   0, table.length)
+      case StepperShape.DoubleShape => new DoubleTableStepper[Node[A]](size, table, _.nn.next.nn, _.key.asInstanceOf[Double], 0, table.length)
+      case _         => shape.parUnbox(new AnyTableStepper[A, Node[A]](size, table, _.nn.next.nn, _.key,                      0, table.length))
     }
     s.asInstanceOf[S with EfficientSplit]
   }
@@ -253,7 +255,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   private[this] def growTable(newlen: Int) = {
     var oldlen = table.length
     threshold = newThreshold(newlen)
-    if(size == 0) table = new Array(newlen)
+    if(size == 0) table = new Array[Node[A] | Null](newlen)
     else {
       table = java.util.Arrays.copyOf(table, newlen)
       val preLow: Node[A] = new Node(null.asInstanceOf[A], 0, null)
@@ -282,9 +284,9 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
               n = next
             }
             lastLow.next = null
-            if(old ne preLow.next) table(i) = preLow.next
+            if(old ne preLow.next) table(i) = preLow.nn.next
             if(preHigh.next ne null) {
-              table(i + oldlen) = preHigh.next
+              table(i + oldlen) = preHigh.nn.next
               lastHigh.next = null
             }
           }
@@ -303,7 +305,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
         var head = table(bucket)
 
         while ((head ne null) && !p(head.key)) {
-          head = head.next
+          head = head.nn.next
           contentSize -= 1
         }
 
@@ -318,7 +320,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
               prev.next = next.next
               contentSize -= 1
             }
-            next = next.next
+            next = next.nn.next
           }
         }
 
@@ -375,7 +377,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     var i = 0
     while(i < len) {
       val n = table(i)
-      if(n ne null) n.foreach(f)
+      if(n ne null) n.nn.foreach(f)
       i += 1
     }
   }
@@ -445,12 +447,12 @@ object HashSet extends IterableFactory[HashSet] {
     def findNode(k: K, h: Int): Node[K] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
-      else _next.findNode(k, h)
+      else _next.nn.findNode(k, h)
 
     @tailrec
     def foreach[U](f: K => U): Unit = {
       f(_key)
-      if(_next ne null) _next.foreach(f)
+      if(_next ne null) _next.nn.foreach(f)
     }
 
     override def toString = s"Node($key, $hash) -> $next"

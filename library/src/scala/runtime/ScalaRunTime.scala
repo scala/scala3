@@ -286,8 +286,8 @@ object ScalaRunTime {
   // In cases where an empty array would appear, the compiler uses a direct reference to Nil instead.
   // Synthetic Java varargs forwarders (@annotation.varargs or varargs bridges when overriding) may pass
   // `null` to these methods; but returning `null` or `ArraySeq(null)` makes little difference in practice.
-  def genericWrapArray[T](xs: Array[T]): ArraySeq[T] = ArraySeq.unsafeWrapArray(xs)
-  def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
+  def genericWrapArray[T](xs: Array[T]): ArraySeq[T] = ArraySeq.unsafeWrapArray(xs).asInstanceOf[ArraySeq[T]]
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
   def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = new ArraySeq.ofInt(xs)
   def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = new ArraySeq.ofDouble(xs)
   def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = new ArraySeq.ofLong(xs)
