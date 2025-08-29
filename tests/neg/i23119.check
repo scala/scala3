@@ -1,0 +1,6 @@
+-- [E161] Naming Error: tests/neg/i23119.scala:7:4 ---------------------------------------------------------------------
+7 |    given Option[List[Int]] = Some(List(x)) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    given_Option_List is already defined as given instance given_Option_List
+  |
+  |    Note that overloaded methods must all be defined in the same group of toplevel definitions
