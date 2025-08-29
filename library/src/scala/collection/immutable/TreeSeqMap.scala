@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.tailrec
 
 /** This class implements an immutable map that preserves order using
@@ -234,7 +236,7 @@ final class TreeSeqMap[K, +V] private (
     bdr.result()
   }
 
-  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): TreeSeqMap[K2, V2] = {
+  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): TreeSeqMap[K2, V2] = {
     val bdr = newBuilder[K2, V2](orderedBy)
     val iter = ordering.iterator
     while (iter.hasNext) {
@@ -249,7 +251,7 @@ final class TreeSeqMap[K, +V] private (
     bdr.result()
   }
 
-  override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]): TreeSeqMap[K2, V2] = {
+  override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]^): TreeSeqMap[K2, V2] = {
     val bdr = newBuilder[K2, V2](orderedBy)
     val iter = ordering.iterator
     while (iter.hasNext) {
@@ -260,7 +262,7 @@ final class TreeSeqMap[K, +V] private (
     bdr.result()
   }
 
-  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]): TreeSeqMap[K, V2] = {
+  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): TreeSeqMap[K, V2] = {
     var ong: Ordering[K] = ordering
     var mng: Mapping[K, V2] = mapping
     var ord = increment(ordinal)
@@ -303,7 +305,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     else EmptyByInsertion
   }.asInstanceOf[TreeSeqMap[K, V]]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): TreeSeqMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): TreeSeqMap[K, V] =
     it match {
       case om: TreeSeqMap[K, V] => om
       case _ => (newBuilder[K, V] ++= it).result()

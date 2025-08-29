@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.mutable.{Builder, ReusableBuilder}
 
 /** A base trait for ordered, immutable maps.
@@ -45,7 +47,7 @@ trait SeqMap[K, +V]
 object SeqMap extends MapFactory[SeqMap] {
   def empty[K, V]: SeqMap[K, V] = EmptySeqMap.asInstanceOf[SeqMap[K, V]]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): SeqMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): SeqMap[K, V] =
     it match {
       //case sm: SeqMap[K, V] => sm
       case m: ListMap[K, V]    => m
@@ -274,7 +276,7 @@ object SeqMap extends MapFactory[SeqMap] {
       this
     }
 
-    override def addAll(xs: IterableOnce[(K, V)]): this.type =
+    override def addAll(xs: IterableOnce[(K, V)]^): this.type =
       if (switchedToVectorMapBuilder) {
         vectorMapBuilder.addAll(xs)
         this

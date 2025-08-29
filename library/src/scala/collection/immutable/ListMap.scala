@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.ReusableBuilder
 import scala.collection.generic.DefaultSerializable
@@ -241,7 +243,7 @@ object ListMap extends MapFactory[ListMap] {
 
   private object EmptyListMap extends ListMap[Any, Nothing]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): ListMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): ListMap[K, V] =
     it match {
       case lm: ListMap[K, V] => lm
       case lhm: collection.mutable.LinkedHashMap[K, V] =>
@@ -324,7 +326,7 @@ private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuil
     }
     this
   }
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     if (isAliased) {
       super.addAll(xs)
     } else if (underlying.nonEmpty) {

@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 trait IndexedSeq[T] extends Seq[T]
   with scala.collection.IndexedSeq[T]
@@ -26,9 +27,10 @@ trait IndexedSeq[T] extends Seq[T]
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](ArrayBuffer)
 
-transparent trait IndexedSeqOps[A, +CC[_], +C <: AnyRef]
+transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   extends scala.collection.IndexedSeqOps[A, CC, C]
-    with SeqOps[A, CC, C] {
+    with SeqOps[A, CC, C]
+    with caps.Pure {
 
   /** Modifies this $coll by applying a function to all elements of this $coll.
     *

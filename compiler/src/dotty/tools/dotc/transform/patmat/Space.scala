@@ -883,7 +883,7 @@ object SpaceEngine {
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
-      val space = if x.guard.isEmpty then trace(i"project(${x.pat})")(project(x.pat)) else Empty
+      val space = if x.maybePartial then Empty else trace(i"project(${x.pat})")(project(x.pat))
       space :: acc
     })
 
@@ -925,7 +925,7 @@ object SpaceEngine {
     @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
       cases match
         case Nil =>
-        case (c @ CaseDef(pat, guard, _)) :: rest =>
+        case (c @ CaseDef(pat, _, _)) :: rest =>
           def checkForUnnecessaryNullable(p: Tree): Unit = p match {
             case Bind(_, body) => checkForUnnecessaryNullable(body)
             case Typed(expr, tpt) =>
@@ -981,8 +981,8 @@ object SpaceEngine {
                 hadNullOnly = true
                 report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
-            // in redundancy check, take guard as false in order to soundly approximate
-            val newPrev = if guard.isEmpty then covered :: prevs else prevs
+            // in redundancy check, take guard as false (or potential sub cases as partial) for a sound approximation
+            val newPrev = if c.maybePartial then prevs else covered :: prevs
             recur(rest, newPrev, Nil)
 
     recur(m.cases, Nil, Nil)

@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.CommonErrors
 import scala.collection.immutable.{::, List, Nil}
@@ -123,7 +124,7 @@ class ListBuffer[A]
   }
 
   // MUST only be called on fresh instances
-  private def freshFrom(xs: IterableOnce[A]): this.type = {
+  private def freshFrom(xs: IterableOnce[A]^): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
       var len = 1
@@ -142,7 +143,7 @@ class ListBuffer[A]
     this
   }
 
-  override final def addAll(xs: IterableOnce[A]): this.type = {
+  override final def addAll(xs: IterableOnce[A]^): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
       val fresh = new ListBuffer[A].freshFrom(it)
@@ -251,7 +252,7 @@ class ListBuffer[A]
     }
   }
 
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit = {
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
     if (idx < 0 || idx > len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
     val it = elems.iterator
     if (it.hasNext) {
@@ -318,7 +319,7 @@ class ListBuffer[A]
    *  @param f the mapping function
    *  @return this $coll
    */
-  def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
+  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
     mutationCount += 1
     var src = first
     var dst: List[A] = null
@@ -363,7 +364,7 @@ class ListBuffer[A]
     this
   }
 
-  def patchInPlace(from: Int, patch: collection.IterableOnce[A], replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: collection.IterableOnce[A]^, replaced: Int): this.type = {
     val _len = len
     val _from = math.max(from, 0)         // normalized
     val _replaced = math.max(replaced, 0) // normalized
@@ -413,7 +414,7 @@ class ListBuffer[A]
 @SerialVersionUID(3L)
 object ListBuffer extends StrictOptimizedSeqFactory[ListBuffer] {
 
-  def from[A](coll: collection.IterableOnce[A]): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
+  def from[A](coll: collection.IterableOnce[A]^): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
 
   def newBuilder[A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
 

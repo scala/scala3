@@ -12,6 +12,8 @@
 
 package scala
 
+import language.experimental.captureChecking
+
 //import scala.collection.generic._
 import scala.collection.{Factory, immutable, mutable}
 import mutable.ArrayBuilder
@@ -61,7 +63,7 @@ object Array {
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
-    def fromSpecific(it: IterableOnce[A]): Array[A] = Array.from[A](it)
+    def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
@@ -70,7 +72,7 @@ object Array {
    */
   def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](using t)
 
-  def from[A : ClassTag](it: IterableOnce[A]): Array[A] = {
+  def from[A: ClassTag](it: IterableOnce[A]^): Array[A] = {
     val n = it.knownSize
     if (n > -1) {
       val elements = new Array[A](n)
@@ -656,7 +658,7 @@ object Array {
  *  @define collectExample
  *  @define undefinedorder
  */
-final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable {
+final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self =>
 
   /** The length of the array */
   def length: Int = throw new Error()

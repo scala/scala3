@@ -39,6 +39,10 @@ class PatternMatcher extends MiniPhase {
 
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
+    else if tree.isSubMatch then
+      // A sub match in a case def body will be transformed when the outer match is processed.
+      // This assummes that no earlier miniphase needs sub matches to have been transformed before the outer match.
+      tree
     else {
       // Widen termrefs with underlying `=> T` types. Otherwise ElimByName will produce
       // inconsistent types. See i7743.scala.
@@ -487,12 +491,23 @@ object PatternMatcher {
       }
     }
 
-    private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan = {
-      var onSuccess: Plan = ResultPlan(cdef.body)
-      if (!cdef.guard.isEmpty)
-        onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.span, onSuccess)
-      patternPlan(scrutinee, cdef.pat, onSuccess)
-    }
+    private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan =
+      val CaseDef(pat, guard, body) = cdef
+      val caseDefBodyPlan: Plan = body match
+        case t: SubMatch => subMatchPlan(t)
+        case _ => ResultPlan(body)
+      val onSuccess: Plan =
+        if guard.isEmpty then caseDefBodyPlan
+        else TestPlan(GuardTest, guard, guard.span, caseDefBodyPlan)
+      patternPlan(scrutinee, pat, onSuccess)
+    end caseDefPlan
+
+    // like matchPlan but without a final matchError ResultPlan at the end of SeqPlans
+    // s.t. we fall back to the outer SeqPlan
+    private def subMatchPlan(tree: SubMatch): Plan =
+      letAbstract(tree.selector) { scrutinee =>
+        tree.cases.map(caseDefPlan(scrutinee, _)).reduceRight(SeqPlan(_, _))
+      }
 
     private def matchPlan(tree: Match): Plan =
       letAbstract(tree.selector) { scrutinee =>

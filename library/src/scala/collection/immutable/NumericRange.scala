@@ -13,6 +13,8 @@
 package scala.collection.immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import scala.collection.generic.CommonErrors
