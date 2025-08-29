@@ -870,7 +870,7 @@ object SymDenotations {
     def derivesFrom(base: Symbol)(using Context): Boolean = false
 
     /** Could `this` derive from `base` now or in the future.
-     *  For concistency with derivesFrom, The info is only forced when this is a ClassDenotation.
+     *  For concistency with derivesFrom, the info is only forced when this is a ClassDenotation.
      *  If the info is a TempClassInfo then the baseClassSet may be temporarily approximated as empty.
      *  This is problematic when stability of `!derivesFrom(base)` is assumed for soundness,
      *  e.g., in `TypeComparer#provablyDisjointClasses`.
