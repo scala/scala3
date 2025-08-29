@@ -1,0 +1,8 @@
+-- [E177] Syntax Error: tests/neg/i22310.scala:9:2 --------------------------------
+9 |  override def func(arg0: A0[Object], arg1: String): Unit = {} // error: overrides nothing
+  |  ^
+  |  override def func overrides nothing.
+-- [E177] Syntax Error: tests/neg/i22310.scala:16:2 -------------------------------
+16|  override def method(x: B0[Object, Int], y: String, z: Int): Unit = {} // error: overrides nothing
+  |  ^
+  |  override def method overrides nothing.

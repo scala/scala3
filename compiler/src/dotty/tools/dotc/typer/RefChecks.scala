@@ -974,7 +974,11 @@ object RefChecks {
 
       def isSignatureMatch(sym: Symbol) = sym.isType || {
         val self = clazz.thisType
-        sym.asSeenFrom(self).matches(member.asSeenFrom(self))
+        val symDenotation = sym.asSeenFrom(self)
+        val memberDenotation = member.asSeenFrom(self)
+        // Use matchesLoosely with alwaysCompareTypes = true to ensure strict type checking for overrides
+        // This fixes issue #22310 where A0[String] was incorrectly considered to match A0[Object]
+        symDenotation.matchesLoosely(memberDenotation, alwaysCompareTypes = true)
         && !incompatibleRepeatedParam(sym, member)
       }
 
