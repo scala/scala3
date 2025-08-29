@@ -1,3 +1,5 @@
+import language.experimental.relaxedLambdaSyntax
+
 def foo(x: Any) = ???
 
 def test(xs: List[Int]) =

@@ -1,3 +1,5 @@
+import language.experimental.relaxedLambdaSyntax
+
 case class Foo(x: Int, y: Int)
 @main def Test =
   val f: List[Int] => Int = case y :: ys => y

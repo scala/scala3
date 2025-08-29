@@ -1,3 +1,4 @@
+import language.experimental.relaxedLambdaSyntax
 
 val z = List(1).map: + => // ok
   ???
