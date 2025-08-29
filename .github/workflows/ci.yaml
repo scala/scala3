@@ -51,13 +51,75 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  test_non_bootstrapped:
+  build-non-bootstrapped:
+    name: Build Non-Bootstrapped Compiler
+    runs-on: [self-hosted, Linux]
+    if: github.event_name == 'pull_request'
+    container:
+      image: lampepfl/dotty:2024-10-18
+      options: --cpu-shares 4096
+      volumes:
+        - /nfs-cache/.develocity/build-cache-4/${{ github.event.pull_request.number }}:/root/.sbt/1.0/.develocity/build-cache
+        #- ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Checkout cleanup script
+        uses: actions/checkout@v4
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+      - name: Compile Non-Bootstrapped Dotty
+        run: ./project/scripts/sbt "; compile"
+
+  build-bootstrapped:
+    name: Build Bootstrapped Compiler
+    needs: build-non-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - /nfs-cache/.develocity/build-cache-4/${{ github.event.pull_request.number }}:/root/build-cache-source
+        #- ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    steps:
+      - name: Populate the Local Build Cache
+        run: |
+          mkdir -p /root/.sbt/1.0/.develocity/build-cache
+          cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Checkout cleanup script
+        uses: actions/checkout@v4
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+      - name: Compile Bootstrapped Dotty
+        run: ./project/scripts/sbt "; scala3-bootstrapped/compile"
+      - run: ls -alF /root/.sbt/1.0/.develocity/build-cache/
+      - name: Populate the Remote Build Cache
+        run: cp -r /root/.sbt/1.0/.develocity/build-cache/. /root/build-cache-source/
+
+
+  test_non_bootstrapped:
+    needs: build-non-bootstrapped
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2024-10-18
+      options: --cpu-shares 4096
+      volumes:
+        - /nfs-cache/.develocity/build-cache-4/${{ github.event.pull_request.number }}:/root/build-cache-source:ro
+        #- ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
@@ -72,6 +134,10 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
+      - name: Populate the Build Cache
+        run:  |
+          mkdir -p /root/.sbt/1.0/.develocity/build-cache
+          cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
       - name: Set JDK 17 as default
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
@@ -291,12 +357,14 @@ jobs:
 
   mima:
     name: MiMa
+    needs: build-bootstrapped
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - /nfs-cache/.develocity/build-cache-4/${{ github.event.pull_request.number }}:/root/build-cache-source
+        #- ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
@@ -312,6 +380,10 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
+      - name: Populate the Local Build Cache
+        run: |
+          mkdir -p /root/.sbt/1.0/.develocity/build-cache
+          cp -r /root/build-cache-source/. /root/.sbt/1.0/.develocity/build-cache
       - name: Set JDK 17 as default
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
@@ -340,6 +412,8 @@ jobs:
         run: |
           # This script cleans the compiler and recompiles it from scratch (keep as last run)
           ./project/scripts/scala2-library-tasty-mima.sh
+      - name: Populate the Remote Build Cache
+        run: cp -r /root/.sbt/1.0/.develocity/build-cache/. /root/build-cache-source/
 
   community_build_a:
     runs-on: [self-hosted, Linux]
