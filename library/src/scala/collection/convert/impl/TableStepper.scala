@@ -18,7 +18,7 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection._
 
 private[collection] abstract class TableStepperBase[A, I <: AnyRef, Sub, Semi <: Sub with TableStepperBase[A, I, _, _]](
-  protected var maxLength: Int, protected val table: Array[I], protected var i0: Int, protected val iN: Int
+  protected var maxLength: Int, protected val table: Array[I | Null], protected var i0: Int, protected val iN: Int
 )
 extends EfficientSplit {
   // Always holds table(i0); if `null` it is time to switch to the next element
@@ -71,7 +71,7 @@ extends EfficientSplit {
 
 
 private[collection] final class AnyTableStepper[A, I <: AnyRef](
-  _maxLength: Int, _table: Array[I], iterate: I => I, extract: I => A, _i0: Int, _iN: Int
+  _maxLength: Int, _table: Array[I | Null], iterate: I => I, extract: I => A, _i0: Int, _iN: Int
 )
 extends TableStepperBase[A, I, AnyStepper[A], AnyTableStepper[A, I]](_maxLength, _table, _i0, _iN)
 with AnyStepper[A] {
@@ -88,7 +88,7 @@ with AnyStepper[A] {
 
 
 private[collection] final class DoubleTableStepper[I <: AnyRef](
-  _maxLength: Int, _table: Array[I], iterate: I => I, extract: I => Double, _i0: Int, _iN: Int
+  _maxLength: Int, _table: Array[I | Null], iterate: I => I, extract: I => Double, _i0: Int, _iN: Int
 )
 extends TableStepperBase[Double, I, DoubleStepper, DoubleTableStepper[I]](_maxLength, _table, _i0, _iN)
 with DoubleStepper {
@@ -105,7 +105,7 @@ with DoubleStepper {
 
 
 private[collection] final class IntTableStepper[I <: AnyRef](
-  _maxLength: Int, _table: Array[I], iterate: I => I, extract: I => Int, _i0: Int, _iN: Int
+  _maxLength: Int, _table: Array[I | Null], iterate: I => I, extract: I => Int, _i0: Int, _iN: Int
 )
 extends TableStepperBase[Int, I, IntStepper, IntTableStepper[I]](_maxLength, _table, _i0, _iN)
 with IntStepper {
@@ -122,7 +122,7 @@ with IntStepper {
 
 
 private[collection] final class LongTableStepper[I <: AnyRef](
-  _maxLength: Int, _table: Array[I], iterate: I => I, extract: I => Long, _i0: Int, _iN: Int
+  _maxLength: Int, _table: Array[I | Null], iterate: I => I, extract: I => Long, _i0: Int, _iN: Int
 )
 extends TableStepperBase[Long, I, LongStepper, LongTableStepper[I]](_maxLength, _table, _i0, _iN)
 with LongStepper {
