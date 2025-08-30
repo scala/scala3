@@ -2364,7 +2364,7 @@ class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsN
 }
 
 class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context)
-extends NamingMsg(DoubleDefinitionID) {
+extends NamingMsg(DoubleDefinitionID):
   import Signature.MatchDegree.*
 
   private def erasedType: Type =
@@ -2426,6 +2426,16 @@ extends NamingMsg(DoubleDefinitionID) {
     } + details
   }
   def explain(using Context) =
+    def givenAddendum =
+      def isGivenName(sym: Symbol) = sym.name.startsWith("given_") // Desugar.inventGivenName
+      if decl.is(Given) && previousDecl.is(Given) && isGivenName(decl) && isGivenName(previousDecl) then
+        i"""
+           |3. Provide an explicit, unique name to given definitions, since the names
+           |   assigned to anonymous givens may clash. For example:
+           |
+           |      given myGiven: ${atPhase(typerPhase)(decl.info)}
+           |"""
+      else ""
     decl.signature.matchDegree(previousDecl.signature) match
       case FullMatch =>
        i"""
@@ -2439,8 +2449,8 @@ extends NamingMsg(DoubleDefinitionID) {
         |
         |In your code the two declarations
         |
-        |  ${previousDecl.showDcl}
-        |  ${decl.showDcl}
+        |  ${atPhase(typerPhase)(previousDecl.showDcl)}
+        |  ${atPhase(typerPhase)(decl.showDcl)}
         |
         |erase to the identical signature
         |
@@ -2452,17 +2462,16 @@ extends NamingMsg(DoubleDefinitionID) {
         |
         |1. Rename one of the definitions, or
         |2. Keep the same names in source but give one definition a distinct
-        |   bytecode-level name via `@targetName` for example:
+        |   bytecode-level name via `@targetName`; for example:
         |
         |      @targetName("${decl.name.show}_2")
-        |      ${decl.showDcl}
-        |
+        |      ${atPhase(typerPhase)(decl.showDcl)}
+        |$givenAddendum
         |Choose the `@targetName` argument carefully: it is the name that will be used
         |when calling the method externally, so it should be unique and descriptive.
-        """
+        |"""
       case _ => ""
-
-}
+end DoubleDefinition
 
 class ImportedTwice(sel: Name)(using Context) extends SyntaxMsg(ImportedTwiceID) {
   def msg(using Context) = s"${sel.show} is imported twice on the same import line."
