@@ -28,7 +28,7 @@ import scala.collection.mutable.GrowableBuilder
 import scala.util.Try
 import scala.util.hashing.Hashing
 
-private[collection] final class INode[K, V](bn: MainNode[K, V], g: Gen, equiv: Equiv[K]) extends INodeBase[K, V](g) {
+private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, equiv: Equiv[K]) extends INodeBase[K, V](g) {
   import INodeBase._
 
   WRITE(bn)
@@ -43,14 +43,14 @@ private[collection] final class INode[K, V](bn: MainNode[K, V], g: Gen, equiv: E
 
   def GCAS_READ(ct: TrieMap[K, V]): MainNode[K, V] = {
     val m = /*READ*/mainnode
-    val prevval = /*READ*/m.prev
+    val prevval: MainNode[K, V] | Null = /*READ*/m.prev
     if (prevval eq null) m
     else GCAS_Complete(m, ct)
   }
 
   @tailrec private def GCAS_Complete(m: MainNode[K, V], ct: TrieMap[K, V]): MainNode[K, V] = if (m eq null) null else {
     // complete the GCAS
-    val prev = /*READ*/m.prev
+    val prev: MainNode[K, V] | Null = /*READ*/m.prev
     val ctr = ct.readRoot(abort = true)
 
     prev match {
@@ -700,7 +700,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   private[this] var hashingobj = if (hashf.isInstanceOf[Hashing.Default[_]]) new TrieMap.MangledHashing[K] else hashf
   private[this] var equalityobj = ef
   @transient
-  private[this] var rootupdater = rtupd
+  private[this] var rootupdater: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef] | Null = rtupd
   def hashing = hashingobj
   def equality = equalityobj
   @volatile private var root = r
@@ -750,7 +750,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
     }
   }
 
-  private def CAS_ROOT(ov: AnyRef, nv: AnyRef) = rootupdater.compareAndSet(this, ov, nv)
+  private def CAS_ROOT(ov: AnyRef, nv: AnyRef) = rootupdater.nn.compareAndSet(this, ov, nv)
 
   private[collection] def readRoot(abort: Boolean = false): INode[K, V] = RDCSS_READ_ROOT(abort)
 
@@ -859,7 +859,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   @tailrec def snapshot(): TrieMap[K, V] = {
     val r = RDCSS_READ_ROOT()
     val expmain = r.gcasRead(this)
-    if (RDCSS_ROOT(r, expmain, r.copyToGen(new Gen, this))) new TrieMap(r.copyToGen(new Gen, this), rootupdater, hashing, equality)
+    if (RDCSS_ROOT(r, expmain, r.copyToGen(new Gen, this))) new TrieMap(r.copyToGen(new Gen, this), rootupdater.nn, hashing, equality)
     else snapshot()
   }
 
@@ -1075,23 +1075,23 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
   private val stack = new Array[Array[BasicNode]](7)
   private val stackpos = new Array[Int](7)
   private var depth = -1
-  private var subiter: Iterator[(K, V)] = null
-  private var current: KVNode[K, V] = null
+  @annotation.stableNull private var subiter: Iterator[(K, V)] | Null = null
+  @annotation.stableNull private var current: KVNode[K, V] | Null = null
 
   if (mustInit) initialize()
 
   def hasNext = (current ne null) || (subiter ne null)
 
   def next() = if (hasNext) {
-    var r: (K, V) = null
+    var r: (K, V) | Null = null
     if (subiter ne null) {
-      r = subiter.next()
+      r = subiter.nn.next()
       checkSubiter()
     } else {
-      r = current.kvPair
+      r = current.nn.kvPair
       advance()
     }
-    r
+    r.nn
   } else Iterator.empty.next()
 
   private def readin(in: INode[K, V]) = in.gcasRead(ct) match {
@@ -1110,7 +1110,7 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
     case mainNode => throw new MatchError(mainNode)
   }
 
-  private def checkSubiter() = if (!subiter.hasNext) {
+  private def checkSubiter() = if (!subiter.nn.hasNext) {
     subiter = null
     advance()
   }
@@ -1153,7 +1153,7 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
     // this one needs to be evaluated
     if (this.subiter == null) it.subiter = null
     else {
-      val lst = this.subiter.to(immutable.List)
+      val lst = this.subiter.nn.to(immutable.List)
       this.subiter = lst.iterator
       it.subiter = lst.iterator
     }
