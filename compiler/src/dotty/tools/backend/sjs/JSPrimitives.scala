@@ -30,7 +30,10 @@ object JSPrimitives {
   inline val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
   inline val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
-  inline val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
+  inline val JS_ASYNC = JS_IMPORT_META + 1 // js.async
+  inline val JS_AWAIT = JS_ASYNC + 1       // js.await
+
+  inline val CONSTRUCTOROF = JS_AWAIT + 1                               // runtime.constructorOf(clazz)
   inline val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
   inline val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   inline val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
@@ -112,6 +115,8 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
 
     addPrimitive(jsdefn.JSPackage_typeOf, TYPEOF)
     addPrimitive(jsdefn.JSPackage_native, JS_NATIVE)
+    addPrimitive(jsdefn.JSPackage_async, JS_ASYNC)
+    addPrimitive(jsdefn.JSPackage_await, JS_AWAIT)
 
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
 

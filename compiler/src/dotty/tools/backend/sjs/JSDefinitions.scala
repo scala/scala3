@@ -42,6 +42,10 @@ final class JSDefinitions()(using Context) {
     def JSPackage_undefined(using Context) = JSPackage_undefinedR.symbol
     @threadUnsafe lazy val JSPackage_dynamicImportR = ScalaJSJSPackageClass.requiredMethodRef("dynamicImport")
     def JSPackage_dynamicImport(using Context) = JSPackage_dynamicImportR.symbol
+    @threadUnsafe lazy val JSPackage_asyncR = ScalaJSJSPackageClass.requiredMethodRef("async")
+    def JSPackage_async(using Context) = JSPackage_asyncR.symbol
+    @threadUnsafe lazy val JSPackage_awaitR = ScalaJSJSPackageClass.requiredMethodRef("await")
+    def JSPackage_await(using Context) = JSPackage_awaitR.symbol
 
   @threadUnsafe lazy val JSNativeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.native")
   def JSNativeAnnot(using Context) = JSNativeAnnotType.symbol.asClass
@@ -211,6 +215,10 @@ final class JSDefinitions()(using Context) {
     def Special_wrapAsThrowable(using Context) = Special_wrapAsThrowableR.symbol
     @threadUnsafe lazy val Special_unwrapFromThrowableR = SpecialPackageClass.requiredMethodRef("unwrapFromThrowable")
     def Special_unwrapFromThrowable(using Context) = Special_unwrapFromThrowableR.symbol
+
+  @threadUnsafe lazy val WasmJSPIModuleRef = requiredModuleRef("scala.scalajs.js.wasm.JSPI")
+    @threadUnsafe lazy val WasmJSPI_allowOrphanJSAwaitModuleRef = requiredModuleRef("scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait")
+    def WasmJSPI_allowOrphanJSAwaitModuleClassRef(using Context) = WasmJSPIModuleRef.select(WasmJSPI_allowOrphanJSAwaitModuleRef.symbol)
 
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass
