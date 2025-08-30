@@ -77,6 +77,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   val currentClassSym = new ScopedVar[Symbol]
   private val delambdafyTargetDefDefs = new ScopedVar[MutableSymbolMap[DefDef]]
+  private val methodsAllowingJSAwait = new ScopedVar[mutable.Set[Symbol]]
   private val currentMethodSym = new ScopedVar[Symbol]
   private val localNames = new ScopedVar[LocalNameGenerator]
   private val thisLocalVarName = new ScopedVar[Option[LocalName]]
@@ -91,6 +92,7 @@ class JSCodeGen()(using genCtx: Context) {
     withScopedVars(
         currentClassSym := null,
         delambdafyTargetDefDefs := null,
+        methodsAllowingJSAwait := null,
         currentMethodSym := null,
         localNames := null,
         thisLocalVarName := null,
@@ -267,6 +269,7 @@ class JSCodeGen()(using genCtx: Context) {
         withScopedVars(
             currentClassSym := sym,
             delambdafyTargetDefDefs := MutableSymbolMap(),
+            methodsAllowingJSAwait := mutable.Set.empty,
         ) {
           val tree = if (sym.isJSType) {
             if (!sym.is(Trait) && sym.isNonNativeJSClass)
@@ -2424,6 +2427,7 @@ class JSCodeGen()(using genCtx: Context) {
       withScopedVars(
           currentClassSym := sym,
           delambdafyTargetDefDefs := MutableSymbolMap(),
+          methodsAllowingJSAwait := mutable.Set.empty,
       ) {
         genNonNativeJSClass(typeDef)
       }
@@ -4094,6 +4098,54 @@ class JSCodeGen()(using genCtx: Context) {
       case JS_IMPORT_META =>
         // js.import.meta
         js.JSImportMeta()
+
+      case JS_ASYNC =>
+        // js.async(arg)
+        assert(args.size == 1,
+            s"Expected exactly 1 argument for JS primitive $code but got " +
+            s"${args.size} at $pos")
+
+        def extractStatsAndClosure(arg: Tree): (List[Tree], Closure) = (arg: @unchecked) match
+          case arg: Closure =>
+            (Nil, arg)
+          case Block(outerStats, expr) =>
+            val (innerStats, closure) = extractStatsAndClosure(expr)
+            (outerStats ::: innerStats, closure)
+
+        val (stats, fun @ Closure(_, target, _)) = extractStatsAndClosure(args.head)
+        methodsAllowingJSAwait += target.symbol
+        val genStats = stats.map(genStat(_))
+        val asyncExpr = genClosure(fun) match {
+          case js.NewLambda(_, closure: js.Closure)
+              if closure.params.isEmpty && closure.resultType == jstpe.AnyType =>
+            val newFlags = closure.flags.withTyped(false).withAsync(true)
+            js.JSFunctionApply(closure.copy(flags = newFlags), Nil)
+          case other =>
+            throw FatalError(
+                s"Unexpected tree generated for the Function0 argument to js.async at ${tree.sourcePos}: $other")
+        }
+        js.Block(genStats, asyncExpr)
+
+      case JS_AWAIT =>
+        // js.await(arg)
+        val (arg, permitValue) = genArgs2
+        if (!methodsAllowingJSAwait.contains(currentMethodSym)) {
+          // This is an orphan await
+          if (!(args(1).tpe <:< jsdefn.WasmJSPI_allowOrphanJSAwaitModuleClassRef)) {
+            report.error(
+                "Illegal use of js.await().\n" +
+                "It can only be used inside a js.async {...} block, without any lambda,\n" +
+                "by-name argument or nested method in-between.\n" +
+                "If you compile for WebAssembly, you can allow arbitrary js.await()\n" +
+                "calls by adding the following import:\n" +
+                "import scala.scalajs.js.wasm.JSPI.allowOrphanJSAwait",
+                tree.sourcePos)
+          }
+        }
+        /* In theory we should evaluate `permit` after `arg` but before the `JSAwait`.
+         * It *should* always be side-effect-free, though, so we just discard it.
+         */
+        js.JSAwait(arg)
 
       case DYNAMIC_IMPORT =>
         // runtime.dynamicImport
