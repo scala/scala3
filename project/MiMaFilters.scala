@@ -17,7 +17,7 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.RuntimeChecked"),        
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.RuntimeChecked"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
@@ -138,6 +138,9 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ValDefModule.let"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolModule.newClass"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolModule.newModule"),
+
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),
