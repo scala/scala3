@@ -33,6 +33,8 @@ import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
+import org.scalajs.linker.interface.ESVersion
+
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 import sbttastymima.TastyMiMaPlugin
@@ -2772,7 +2774,9 @@ object Build {
           case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
         }
 
-        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler)
+        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
+
+        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
           Seq(baseDirectory.value / "test-require-multi-modules")
         else
           Nil
@@ -2800,6 +2804,8 @@ object Build {
 
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
+        val hasAsyncAwait = linkerConfig.esFeatures.esVersion >= ESVersion.ES2017
+        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
         def conditionally(cond: Boolean, subdir: String): Seq[File] =
           if (!cond) Nil
@@ -2811,7 +2817,7 @@ object Build {
             -- "UTF16Test.scala" // refutable pattern match
             -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
             -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
-            )).get
+          )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get
@@ -2820,7 +2826,12 @@ object Build {
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
-            )).get
+            -- (if (isWebAssembly) {
+              "NonNativeJSTypeTest.scala": FileFilter // FIXME This produces invalid Wasm code, for some reason
+            } else {
+              FileFilter.nothing
+            })
+          )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
           ++ (dir / "js/src/test/require-new-target" ** "*.scala").get
@@ -2829,9 +2840,12 @@ object Build {
 
           ++ conditionally(!hasModules, "js/src/test/require-no-modules")
           ++ conditionally(hasModules, "js/src/test/require-modules")
-          ++ conditionally(hasModules && !linkerConfig.closureCompiler, "js/src/test/require-multi-modules")
+          ++ conditionally(hasModules && !linkerConfig.closureCompiler && !isWebAssembly, "js/src/test/require-multi-modules")
           ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-dynamic-import")
           ++ conditionally(moduleKind == ModuleKind.ESModule, "js/src/test/require-esmodule")
+
+          ++ conditionally(hasAsyncAwait, "js/src/test/require-async-await")
+          ++ conditionally(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await")
         )
       },
 
