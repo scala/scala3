@@ -14,7 +14,6 @@ package scala.collection.convert
 package impl
 
 import scala.language.`2.13`
-import scala.language.unsafeNulls
 
 import java.util.Spliterator
 
@@ -90,7 +89,7 @@ extends EfficientSplit {
     *
     * Right now overwrites everything so could allow reuse, but isn't used for it.
     */
-  private[impl] final def initialize(root: T, size: Int): Unit =
+  private[impl] final def initialize(root: T | Null, size: Int): Unit =
     if (root eq null) {
       maxLength = 0
       myCurrent = null
@@ -158,11 +157,11 @@ with AnyStepper[A] {
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef | Null], ix: Int): AnyBinaryTreeStepper[A, T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): AnyBinaryTreeStepper[A, T] =
     new AnyBinaryTreeStepper[A, T](maxL, myC, stk, ix, left, right, extract)
 }
 private[collection] object AnyBinaryTreeStepper {
-  def from[A, T <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => A): AnyBinaryTreeStepper[A, T] = {
+  def from[A, T <: AnyRef](maxLength: Int, root: T | Null, left: T => T, right: T => T, extract: T => A): AnyBinaryTreeStepper[A, T] = {
     val ans = new AnyBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -184,11 +183,11 @@ with DoubleStepper {
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef | Null], ix: Int): DoubleBinaryTreeStepper[T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): DoubleBinaryTreeStepper[T] =
     new DoubleBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object DoubleBinaryTreeStepper {
-  def from[T <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Double): DoubleBinaryTreeStepper[T] = {
+  def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T, right: T => T, extract: T => Double): DoubleBinaryTreeStepper[T] = {
     val ans = new DoubleBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -210,11 +209,11 @@ with IntStepper {
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef | Null], ix: Int): IntBinaryTreeStepper[T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): IntBinaryTreeStepper[T] =
     new IntBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object IntBinaryTreeStepper {
-  def from[T <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Int): IntBinaryTreeStepper[T] = {
+  def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T, right: T => T, extract: T => Int): IntBinaryTreeStepper[T] = {
     val ans = new IntBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
@@ -237,11 +236,11 @@ with LongStepper {
     }
     else Stepper.throwNSEE()
 
-  def semiclone(maxL: Int, myC: T, stk: Array[AnyRef | Null], ix: Int): LongBinaryTreeStepper[T] =
+  def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): LongBinaryTreeStepper[T] =
     new LongBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object LongBinaryTreeStepper {
-  def from[T <: AnyRef](maxLength: Int, root: T, left: T => T, right: T => T, extract: T => Long): LongBinaryTreeStepper[T] = {
+  def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T, right: T => T, extract: T => Long): LongBinaryTreeStepper[T] = {
     val ans = new LongBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
     ans
