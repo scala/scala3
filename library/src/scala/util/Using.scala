@@ -177,7 +177,8 @@ object Using {
     import Manager._
 
     private var closed = false
-    private[this] var resources: List[Resource[_]] = Nil
+    @annotation.stableNull
+    private[this] var resources: List[Resource[_]] | Null = Nil
 
     /** Registers the specified resource with this manager, so that
       * the resource is released when the manager is closed, and then
@@ -194,11 +195,11 @@ object Using {
     def acquire[R: Releasable](resource: R): Unit = {
       if (resource == null) throw new NullPointerException("null resource")
       if (closed) throw new IllegalStateException("Manager has already been closed")
-      resources = new Resource(resource) :: resources
+      resources = new Resource(resource) :: resources.nn
     }
 
     private def manage[A](op: Manager => A): A = {
-      var toThrow: Throwable = null
+      var toThrow: Throwable | Null = null
       try {
         op(this)
       } catch {
@@ -209,14 +210,14 @@ object Using {
         closed = true
         var rs = resources
         resources = null // allow GC, in case something is holding a reference to `this`
-        while (rs.nonEmpty) {
+        while (rs != null && rs.nonEmpty) {
           val resource = rs.head
           rs = rs.tail
           try resource.release()
           catch {
             case t: Throwable =>
               if (toThrow == null) toThrow = t
-              else toThrow = preferentiallySuppress(toThrow, t)
+              else toThrow = preferentiallySuppress(toThrow.nn, t)
           }
         }
         if (toThrow != null) throw toThrow
@@ -292,7 +293,7 @@ object Using {
   def resource[R, A](resource: R)(body: R => A)(implicit releasable: Releasable[R]): A = {
     if (resource == null) throw new NullPointerException("null resource")
 
-    var toThrow: Throwable = null
+    var toThrow: Throwable | Null = null
     try {
       body(resource)
     } catch {

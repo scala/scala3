@@ -294,11 +294,11 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyListIterable[A]` otherwise
-  private[this] var _tail: AnyRef^{this} /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] */ =
+  private[this] var _tail: AnyRef^{this} | Null /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
-  private def rawTail: AnyRef^{this} = _tail
+  private def rawTail: AnyRef^{this} | Null = _tail
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
@@ -1134,22 +1134,22 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
     var restRef: LazyListIterable[A]^{ll} = ll                          // val restRef = new ObjectRef(ll)
     newLL {
-      var it: Iterator[B]^{f} = null
+      var it: Iterator[B]^{f} | Null = null
       var itHasNext = false
       var rest: LazyListIterable[A]^{ll} = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
         it        = f(rest.head).iterator
-        itHasNext = it.hasNext
+        itHasNext = it.nn.hasNext
         if (!itHasNext) {                     // wait to advance `rest` because `it.next()` can throw
           rest    = rest.tail
           restRef = rest                      // restRef.elem = rest
         }
       }
       if (itHasNext) {
-        val head = it.next()
+        val head = it.nn.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        eagerCons(head, newLL(eagerHeadPrependIterator(it)(flatMapImpl(rest, f))))
+        eagerCons(head, newLL(eagerHeadPrependIterator(it.nn)(flatMapImpl(rest, f))))
       } else Empty
     }
   }

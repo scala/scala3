@@ -452,19 +452,20 @@ object View extends IterableFactory[View] {
   private final class TakeRightIterator[A](private[this] var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
     private[this] var len: Int = -1
     private[this] var pos: Int = 0
-    private[this] var buf: ArrayBuffer[AnyRef] = _
+    @annotation.stableNull
+    private[this] var buf: ArrayBuffer[AnyRef] | Null = _
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       len = 0
       while(underlying.hasNext) {
         val n = underlying.next().asInstanceOf[AnyRef]
-        if(pos >= buf.length) buf.addOne(n)
-        else buf(pos) = n
+        if(pos >= buf.nn.length) buf.nn.addOne(n)
+        else buf.nn(pos) = n
         pos += 1
         if(pos == maxlen) pos = 0
         len += 1
       }
-      underlying = null
+      underlying = null.asInstanceOf // allow GC of underlying iterator
       if(len > maxlen) len = maxlen
       pos = pos - len
       if(pos < 0) pos += maxlen
@@ -478,7 +479,7 @@ object View extends IterableFactory[View] {
       init()
       if(len == 0) Iterator.empty.next()
       else {
-        val x = buf(pos).asInstanceOf[A]
+        val x = buf.nn(pos).asInstanceOf[A]
         pos += 1
         if(pos == maxlen) pos = 0
         len -= 1
@@ -507,11 +508,12 @@ object View extends IterableFactory[View] {
   private final class DropRightIterator[A](private[this] var underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
     private[this] var len: Int = -1 // known size or -1 if the end of `underlying` has not been seen yet
     private[this] var pos: Int = 0
-    private[this] var buf: ArrayBuffer[AnyRef] = _
+    @annotation.stableNull
+    private[this] var buf: ArrayBuffer[AnyRef] | Null = _
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       while(pos < maxlen && underlying.hasNext) {
-        buf.addOne(underlying.next().asInstanceOf[AnyRef])
+        buf.nn.addOne(underlying.next().asInstanceOf[AnyRef])
         pos += 1
       }
       if(!underlying.hasNext) len = 0
@@ -525,9 +527,9 @@ object View extends IterableFactory[View] {
     def next(): A = {
       if(!hasNext) Iterator.empty.next()
       else {
-        val x = buf(pos).asInstanceOf[A]
+        val x = buf.nn(pos).asInstanceOf[A]
         if(len == -1) {
-          buf(pos) = underlying.next().asInstanceOf[AnyRef]
+          buf.nn(pos) = underlying.next().asInstanceOf[AnyRef]
           if(!underlying.hasNext) len = 0
         } else len -= 1
         pos += 1
