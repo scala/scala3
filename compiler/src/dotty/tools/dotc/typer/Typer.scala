@@ -3749,12 +3749,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val ifpt = defn.asContextFunctionType(pt)
           val result =
             if ifpt.exists
-              && defn.functionArity(ifpt) > 0 // ContextFunction0 is only used after ElimByName
+              && !ctx.isAfterTyper
+              && {
+                // ContextFunction0 is only used after ElimByName
+                val arity = defn.functionArity(ifpt)
+                if arity == 0 then
+                  report.error(em"context function types require at least one parameter", xtree.srcPos)
+                arity > 0
+              }
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
               && !xtree.isInstanceOf[SplicePattern]
-              && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
               makeContextualFunction(xtree, ifpt)
