@@ -265,7 +265,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   /** Number of slices */
   protected[immutable] def vectorSliceCount: Int
   /** Slice at index */
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef]
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null]
   /** Length of all slices up to and including index */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
@@ -364,7 +364,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
   protected[this] def slice0(lo: Int, hi: Int): Vector[Nothing] = this
 
   protected[immutable] def vectorSliceCount: Int = 0
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] | Null = null
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = null.asInstanceOf[Array[_ <: AnyRef | Null]]
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int = 0
 
   override def equals(o: Any): Boolean = {
@@ -426,7 +426,7 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
     else new Vector1(copyInit(prefix1))
 
   protected[immutable] def vectorSliceCount: Int = 1
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = prefix1
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = prefix1
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int = prefix1.length
 
   override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
@@ -513,7 +513,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 3
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => data2
     case 2 => suffix1
@@ -631,7 +631,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 5
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => data3
@@ -770,7 +770,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 7
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => prefix3
@@ -930,7 +930,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 9
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => prefix3
@@ -1111,7 +1111,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 11
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => prefix3
@@ -2120,7 +2120,7 @@ private object VectorStatics {
   final val empty5: Arr5 = new Array(0)
   final val empty6: Arr6 = new Array(0)
 
-  final def foreachRec[T <: AnyRef, A, U](level: Int, a: Array[T], f: A => U): Unit = {
+  final def foreachRec[T <: AnyRef | Null, A, U](level: Int, a: Array[T], f: A => U): Unit = {
     var i = 0
     val len = a.length
     if(level == 0) {
@@ -2131,7 +2131,7 @@ private object VectorStatics {
     } else {
       val l = level-1
       while(i < len) {
-        foreachRec(l, a(i).asInstanceOf[Array[AnyRef]], f)
+        foreachRec(l, a(i).asInstanceOf[Array[AnyRef | Null]], f)
         i += 1
       }
     }
@@ -2274,7 +2274,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
   private[this] def advanceSlice(): Unit = {
     if(!hasNext) Iterator.empty.next()
     sliceIdx += 1
-    var slice: Array[_ <: AnyRef] = v.vectorSlice(sliceIdx)
+    var slice: Array[_ <: AnyRef | Null] = v.vectorSlice(sliceIdx)
     while(slice.length == 0) {
       sliceIdx += 1
       slice = v.vectorSlice(sliceIdx)

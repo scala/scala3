@@ -863,7 +863,7 @@ private final class BitmapIndexedMapNode[K, +V](
     }
   }
 
-  def removed[V1 >: V](key: K, originalHash: Int, keyHash: Int, shift: Int): BitmapIndexedMapNode[K, V1] | Null = {
+  def removed[V1 >: V](key: K, originalHash: Int, keyHash: Int, shift: Int): BitmapIndexedMapNode[K, V1] = {
     val mask = maskFrom(keyHash, shift)
     val bitpos = bitposFrom(mask)
 
