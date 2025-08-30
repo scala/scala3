@@ -1364,9 +1364,9 @@ class Objects(using Context @constructorOnly):
       case UnknownValue =>
         reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
       case Bottom => Bottom
-      case ValueSet(values) if values.size == 1 =>
-        evalByNameParam(values.head)
-      case _: ValueSet | _: Ref | _: ArrayRef | _: Package | SafeValue(_) =>
+      case ValueSet(values) =>
+        values.map(evalByNameParam(_)).join
+      case _: Ref | _: ArrayRef | _: Package | SafeValue(_) =>
         report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
         Bottom
     end evalByNameParam
