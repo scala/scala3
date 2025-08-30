@@ -756,7 +756,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     val leading = new Leading
 
     val trailing = new AbstractIterator[A] {
-      private[this] var myLeading: Leading | Null = leading
+      private[this] var myLeading = leading
       /* Status flag meanings:
        *   -1 not yet accessed
        *   0 single element waiting in leading
@@ -771,14 +771,14 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         case 1 => if (self.hasNext) { status = 2 ; true } else { status = 3 ; false }
         case 0 => true
         case _ =>
-          if (myLeading.nn.finish()) { status = 0 ; true } else { status = 1 ; myLeading = null ; hasNext }
+          if (myLeading.finish()) { status = 0 ; true } else { status = 1 ; myLeading = null.asInstanceOf[Leading]; hasNext }
       }
       def next() = {
         if (hasNext) {
           if (status == 0) {
             status = 1
-            val res = myLeading.nn.trailer
-            myLeading = null
+            val res = myLeading.trailer
+            myLeading = null.asInstanceOf[Leading]
             res
           } else {
             status = 1

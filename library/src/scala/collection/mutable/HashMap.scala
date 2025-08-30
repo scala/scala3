@@ -15,7 +15,6 @@ package mutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
-import scala.language.unsafeNulls
 
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
