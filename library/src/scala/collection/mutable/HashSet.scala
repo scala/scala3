@@ -15,7 +15,6 @@ package mutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
-import scala.language.unsafeNulls
 
 import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
@@ -161,7 +160,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
         table(idx) = new Node(elem, hash, null)
       case old =>
         var prev: Node[A] | Null = null
-        var n = old
+        var n: Node[A] | Null = old
         while((n ne null) && n.hash <= hash) {
           if(n.hash == hash && elem == n.key) return false
           prev = n
@@ -271,7 +270,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
             preHigh.next = null
             var lastLow: Node[A] = preLow
             var lastHigh: Node[A] = preHigh
-            var n = old
+            var n: Node[A] | Null = old
             while(n ne null) {
               val next = n.next
               if((n.hash & oldlen) == 0) { // keep low
