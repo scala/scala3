@@ -905,7 +905,7 @@ class Objects(using Context @constructorOnly):
             // the typer might mistakenly set the receiver to be a package instead of package object.
             // See pos/packageObjectStringInterpolator.scala
             if packageModuleClass == klass || (klass.denot.isPackageObject && klass.owner == packageModuleClass) then a else Bottom
-          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) then a else Bottom
+          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) && v.typeSymbol.asClass != defn.NullClass then a else Bottom
           case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
           case ValueSet(values) => values.map(v => v.filterClass(klass)).join
           case fun: Fun =>
