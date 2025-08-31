@@ -37,6 +37,7 @@ object Feature:
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val packageObjectValues = experimental("packageObjectValues")
+  val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
