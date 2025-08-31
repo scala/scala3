@@ -468,6 +468,11 @@ class Definitions {
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
 
+  @tu lazy val spreadMethod = enterMethod(OpsPackageClass, nme.spread,
+      PolyType(TypeBounds.empty :: Nil)(
+        tl => MethodType(AnyType :: Nil, tl.paramRefs(0))
+      ))
+
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
@@ -518,6 +523,8 @@ class Definitions {
   @tu lazy val DottyArraysModule: Symbol = requiredModule("scala.runtime.Arrays")
     @tu lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     @tu lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
+
+  @tu lazy val ArraySeqBuilderModule: Symbol = requiredModule("scala.runtime.ArraySeqBuilder")
 
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
@@ -2234,7 +2241,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   @tu lazy val syntheticCoreMethods: List[TermSymbol] =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, spreadMethod)
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 

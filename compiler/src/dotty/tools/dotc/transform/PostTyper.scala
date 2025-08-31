@@ -19,6 +19,9 @@ import config.Feature
 import util.{SrcPos, Stats}
 import reporting.*
 import NameKinds.WildcardParamName
+import typer.Applications.{spread, HasSpreads}
+import typer.Implicits.SearchFailureType
+import Constants.Constant
 import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
@@ -376,6 +379,73 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ =>
           tpt
 
+    /** Translate sequence literal containing spread operators. Example:
+     *
+     *    val xs, ys: List[Int]
+     *    [1, xs*, 2, ys*]
+     *
+     *  Here the sequence literal is translated at typer to
+     *
+     *    [1, spread(xs), 2, spread(ys)]
+     *
+     *  This then translates to
+     *
+     *    scala.runtime.ArraySeqBuilcder.ofInt(2 + xs.length + ys.length)
+     *      .add(1)
+     *      .addSeq(xs)
+     *      .add(2)
+     *      .addSeq(ys)
+     *
+     *   The reason for doing a two-step typer/postTyper translation is that
+     *   at typer, we don't have all type variables instantiated yet.
+     */
+    private def flattenSpreads[T](tree: SeqLiteral)(using Context): Tree =
+      val SeqLiteral(elems, elemtpt) = tree
+      val elemType = elemtpt.tpe
+      val elemCls = elemType.classSymbol
+
+      val lengthCalls = elems.collect:
+        case spread(elem) => elem.select(nme.length)
+      val singleElemCount: Tree = Literal(Constant(elems.length - lengthCalls.length))
+      val totalLength =
+        lengthCalls.foldLeft(singleElemCount): (acc, len) =>
+          acc.select(defn.Int_+).appliedTo(len)
+
+      def makeBuilder(name: String) =
+        ref(defn.ArraySeqBuilderModule).select(name.toTermName)
+      def genericBuilder = makeBuilder("generic")
+        .appliedToType(elemType)
+        .appliedTo(totalLength)
+
+      val builder =
+        if defn.ScalaValueClasses().contains(elemCls) then
+          makeBuilder(s"of${elemCls.name}").appliedTo(totalLength)
+        else if elemCls.derivesFrom(defn.ObjectClass) then
+          val classTagType = defn.ClassTagClass.typeRef.appliedTo(elemType)
+          val classTag = atPhase(Phases.typerPhase):
+            ctx.typer.inferImplicitArg(classTagType, tree.span.startPos)
+          classTag.tpe match
+            case _: SearchFailureType =>
+              genericBuilder
+            case _ =>
+              makeBuilder("ofRef")
+                .appliedToType(elemType)
+                .appliedTo(totalLength)
+                .appliedTo(classTag)
+        else
+          genericBuilder
+
+      elems.foldLeft(builder): (bldr, elem) =>
+        elem match
+          case spread(arg) =>
+            val selector =
+              if arg.tpe.derivesFrom(defn.SeqClass) then "addSeq"
+              else "addArray"
+            bldr.select(selector.toTermName).appliedTo(arg)
+          case _ => bldr.select("add".toTermName).appliedTo(elem)
+      .select("result".toTermName)
+    end flattenSpreads
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
@@ -592,6 +662,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: RefinedTypeTree =>
           Checking.checkPolyFunctionType(tree)
           super.transform(tree)
+        case tree: SeqLiteral if tree.hasAttachment(HasSpreads) =>
+          flattenSpreads(tree)
         case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)

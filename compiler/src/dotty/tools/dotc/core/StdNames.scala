@@ -619,6 +619,7 @@ object StdNames {
     val setSymbol: N            = "setSymbol"
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
+    val spread: N               = "spread"
     val standardInterpolator: N = "standardInterpolator"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"
