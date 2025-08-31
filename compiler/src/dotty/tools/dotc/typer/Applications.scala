@@ -24,6 +24,7 @@ import Inferencing.*
 import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.{Feature, MigrationVersion, SourceVersion}
+import util.Property
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -41,6 +42,17 @@ import dotty.tools.dotc.inlines.Inlines
 
 object Applications {
   import tpd.*
+
+  /** Attachment key for SeqLiterals containing spreads. Eliminated at PostTyper */
+  val HasSpreads = new Property.StickyKey[Unit]
+
+  /** An extractor for spreads in sequence literals */
+  object spread:
+    def apply(arg: Tree, elemtpt: Tree)(using Context) =
+      ref(defn.spreadMethod).appliedToTypeTree(elemtpt).appliedTo(arg)
+    def unapply(arg: Apply)(using Context): Option[Tree] = arg match
+      case Apply(fn, x :: Nil) if fn.symbol == defn.spreadMethod => Some(x)
+      case _ => None
 
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
@@ -797,14 +809,19 @@ trait Applications extends Compatibility {
                 addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedArgs =
-                  harmonic(harmonizeArgs, elemFormal) {
-                    args.map { arg =>
+                if Feature.enabled(Feature.multiSpreads)
+                    && !ctx.isAfterTyper && args.exists(isVarArg)
+                then
+                  args.foreach: arg =>
+                    if isVarArg(arg)
+                    then addArg(typedArg(arg, formal), formal)
+                    else addArg(typedArg(arg, elemFormal), elemFormal)
+                else
+                  val typedArgs = harmonic(harmonizeArgs, elemFormal):
+                    args.map: arg =>
                       checkNoVarArg(arg)
                       typedArg(arg, elemFormal)
-                    }
-                  }
-                typedArgs.foreach(addArg(_, elemFormal))
+                  typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
           else args match {
@@ -944,12 +961,18 @@ trait Applications extends Compatibility {
       typedArgBuf += typedArg
       ok = ok & !typedArg.tpe.isError
 
-    def makeVarArg(n: Int, elemFormal: Type): Unit = {
+    def makeVarArg(n: Int, elemFormal: Type): Unit =
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.dropRightInPlace(n)
-      val elemtpt = TypeTree(elemFormal.normalizedTupleType, inferred = true)
-      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
-    }
+      val elemTpe = elemFormal.normalizedTupleType
+      val elemtpt = TypeTree(elemTpe, inferred = true)
+      def wrapSpread(arg: Tree): Tree = arg match
+        case Typed(argExpr, tpt) if tpt.tpe.isRepeatedParam => spread(argExpr, elemtpt)
+        case _ => arg
+      val args1 = args.mapConserve(wrapSpread)
+      val seqLit = SeqLiteral(args1, elemtpt)
+      if args1 ne args then seqLit.putAttachment(HasSpreads, ())
+      typedArgBuf += seqToRepeated(seqLit)
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] =
       // harmonize args only if resType depends on parameter types
