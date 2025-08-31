@@ -1068,7 +1068,7 @@ trait Implicits:
     || locally:
       if strictEquality then
         strictEqualityPatternMatching && leftTreeOption.exists: leftTree =>
-          ltp <:< lift(rtp) && (leftTree.symbol.flags.isAllOf(Flags.EnumValue) || (leftTree.symbol.flags.isAllOf(Flags.Module | Flags.Case)))
+          ltp <:< lift(rtp) && (leftTree.symbol.flags.isAllOf(Flags.EnumValue) || leftTree.symbol.flags.isAllOf(Flags.Module | Flags.Case))
       else
         (ltp <:< lift(rtp) || rtp <:< lift(ltp))
   }
