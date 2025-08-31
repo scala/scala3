@@ -130,18 +130,18 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     if (v eq null) Option.empty else Some(v.key)
   }
 
-  def iterator: Iterator[A] = RB.keysIterator(tree)
+  def iterator: Iterator[A] = RB.keysIterator(tree.nn)
 
-  def iteratorFrom(start: A): Iterator[A] = RB.keysIterator(tree, Some(start))
+  def iteratorFrom(start: A): Iterator[A] = RB.keysIterator(tree.nn, Some(start))
 
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Tree[A, Any]
     val s = shape.shape match {
-      case StepperShape.IntShape    => IntBinaryTreeStepper.from[T]   (size, tree, _.left, _.right, _.key.asInstanceOf[Int])
-      case StepperShape.LongShape   => LongBinaryTreeStepper.from[T]  (size, tree, _.left, _.right, _.key.asInstanceOf[Long])
-      case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree, _.left, _.right, _.key.asInstanceOf[Double])
-      case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree, _.left, _.right, _.key))
+      case StepperShape.IntShape    => IntBinaryTreeStepper.from[T]   (size, tree.nn, _.left.nn, _.right.nn, _.key.asInstanceOf[Int])
+      case StepperShape.LongShape   => LongBinaryTreeStepper.from[T]  (size, tree.nn, _.left.nn, _.right.nn, _.key.asInstanceOf[Long])
+      case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.nn, _.left.nn, _.right.nn, _.key.asInstanceOf[Double])
+      case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree.nn, _.left.nn, _.right.nn, _.key))
     }
     s.asInstanceOf[S with EfficientSplit]
   }
