@@ -12,6 +12,7 @@ class SIP67Tests extends DottyTest:
   def sip67test1: Unit =
     val source = """
     import scala.language.strictEquality
+    import scala.language.experimental.strictEqualityPatternMatching
     enum Foo:
       case Bar
 
@@ -28,6 +29,7 @@ class SIP67Tests extends DottyTest:
   def sip67test2: Unit =
     val source = """
     import scala.language.strictEquality
+    import scala.language.experimental.strictEqualityPatternMatching
 
     sealed trait Foo
 

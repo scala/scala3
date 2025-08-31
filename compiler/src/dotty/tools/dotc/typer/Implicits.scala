@@ -84,6 +84,9 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
+  def strictEqualityPatternMatching(using Context): Boolean =
+    Feature.enabled(Feature.strictEqualityPatternMatching)
+
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -1064,7 +1067,7 @@ trait Implicits:
     || rtp.isError
     || locally:
       if strictEquality then
-        leftTreeOption.exists: leftTree =>
+        strictEqualityPatternMatching && leftTreeOption.exists: leftTree =>
           ltp <:< lift(rtp) && (leftTree.symbol.flags.isAllOf(Flags.EnumValue) || (leftTree.symbol.flags.isAllOf(Flags.Module | Flags.Case)))
       else
         (ltp <:< lift(rtp) || rtp <:< lift(ltp))
