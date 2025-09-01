@@ -56,10 +56,10 @@ private[collection] object RedBlackTree {
   object Node {
 
     @`inline` def apply[A, B](key: A, value: B, red: Boolean,
-                            left: Node[A, B], right: Node[A, B], parent: Node[A, B]): Node[A, B] =
+                            left: Node[A, B], right: Node[A, B], parent: Node[A, B] | Null): Node[A, B] =
       new Node(key, value, red, left, right, parent)
 
-    @`inline` def leaf[A, B](key: A, value: B, red: Boolean, parent: Node[A, B]): Node[A, B] =
+    @`inline` def leaf[A, B](key: A, value: B, red: Boolean, parent: Node[A, B] | Null): Node[A, B] =
       new Node(key, value, red, null, null, parent)
 
     def unapply[A, B](t: Node[A, B]) = Some((t.key, t.value, t.left, t.right, t.parent))
@@ -202,7 +202,7 @@ private[collection] object RedBlackTree {
 
     if (cmp == 0) y.nn.value = value
     else {
-      val z = Node.leaf(key, value, red = true, y.nn)
+      val z = Node.leaf(key, value, red = true, y)
 
       if (y eq null) tree.root = z
       else if (cmp < 0) y.left = z
