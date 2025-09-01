@@ -122,7 +122,7 @@ scala> `<>`(23)
 val res29: <> = less$greater@17
 
 scala> res29.toString
-val res30: String = "rs$line$40$less$greater@17"
+val res30: String = "rs$line$40$$less$greater@17"
 
 scala> class `🤪`(x: Int) extends AnyVal
 // defined class 🤪
@@ -131,7 +131,7 @@ scala> `🤪`(23)
 val res31: 🤪 = uD83E$uDD2A@17
 
 scala> res31.toString
-val res32: String = "rs$line$43$uD83E$uDD2A@17"
+val res32: String = "rs$line$43$$uD83E$uDD2A@17"
 
 scala> object Outer { class Foo(x: Int) extends AnyVal }
 // defined object Outer
