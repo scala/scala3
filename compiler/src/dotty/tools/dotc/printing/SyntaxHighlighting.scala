@@ -80,8 +80,8 @@ object SyntaxHighlighting {
           case IDENTIFIER if name == nme.??? =>
             highlightRange(start, end, Console.RED_B)
 
-          case IDENTIFIER if name.head.isUpper =>
-            highlightRange(start, end, TypeColor)
+          case IDENTIFIER if name.head.isUpper && name.exists(!_.isUpper) =>
+            highlightRange(start, end, KeywordColor)
 
           case _ =>
         }
