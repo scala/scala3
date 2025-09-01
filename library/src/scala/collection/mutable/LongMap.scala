@@ -76,8 +76,8 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   @annotation.stableNull private[this] var minValue: AnyRef | Null = null
   private[this] var _size = 0
   private[this] var _vacant = 0
-  @annotation.stableNull private[this] var _keys: Array[Long] | Null = null
-  @annotation.stableNull private[this] var _values: Array[AnyRef | Null] | Null = null
+  private[this] var _keys: Array[Long] = _
+  private[this] var _values: Array[AnyRef | Null] = _
 
   if (initBlank) defaultInitialize(initialBufferSize)
 
@@ -90,7 +90,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   }
 
   private[collection] def initializeTo(
-                                        m: Int, ek: Int, zv: AnyRef | Null, mv: AnyRef | Null, sz: Int, vc: Int, kz: Array[Long] | Null, vz: Array[AnyRef | Null] | Null
+                                        m: Int, ek: Int, zv: AnyRef | Null, mv: AnyRef | Null, sz: Int, vc: Int, kz: Array[Long], vz: Array[AnyRef | Null]
                                       ): Unit = {
     mask = m; extraKeys = ek; zeroValue = zv; minValue = mv; _size = sz; _vacant = vc; _keys = kz; _values = vz
   }
@@ -113,7 +113,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   private def seekEmpty(k: Long): Int = {
     var e = toIndex(k)
     var x = 0
-    while (_keys.nn(e) != 0) { x += 1; e = (e + 2*(x+1)*x - 3) & mask }
+    while (_keys(e) != 0) { x += 1; e = (e + 2*(x+1)*x - 3) & mask }
     e
   }
 
@@ -121,7 +121,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     var e = toIndex(k)
     var x = 0
     var q = 0L
-    while ({ q = _keys.nn(e); if (q==k) return e; q != 0}) { x += 1; e = (e + 2*(x+1)*x - 3) & mask }
+    while ({ q = _keys(e); if (q==k) return e; q != 0}) { x += 1; e = (e + 2*(x+1)*x - 3) & mask }
     e | MissingBit
   }
 
@@ -129,13 +129,13 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     var e = toIndex(k)
     var x = 0
     var q = 0L
-    while ({ q = _keys.nn(e); if (q==k) return e; q+q != 0}) {
+    while ({ q = _keys(e); if (q==k) return e; q+q != 0}) {
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
     }
     if (q == 0) return e | MissingBit
     val o = e | MissVacant
-    while ({ q = _keys.nn(e); if (q==k) return e; q != 0}) {
+    while ({ q = _keys(e); if (q==k) return e; q != 0}) {
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
     }
@@ -155,7 +155,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     }
     else {
       val i = seekEntry(key)
-      if (i < 0) None else Some(_values.nn(i).asInstanceOf[V])
+      if (i < 0) None else Some(_values(i).asInstanceOf[V])
     }
   }
 
@@ -167,7 +167,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     }
     else {
       val i = seekEntry(key)
-      if (i < 0) default else _values.nn(i).asInstanceOf[V1]
+      if (i < 0) default else _values(i).asInstanceOf[V1]
     }
   }
 
@@ -188,7 +188,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
       var i = seekEntryOrOpen(key)
       if (i < 0) {
         val value = {
-          val oks = _keys.nn
+          val oks = _keys
           val j = i & IndexMask
           val ok = oks(j)
           val ans = defaultValue
@@ -197,7 +197,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
           //   - element added at `j`: since `i < 0`, the key was missing and `ok` is either 0 or MinValue.
           //     If `defaultValue` added an element at `j` then `_keys(j)` must be different now.
           //     (`_keys` never contains 0 or MinValue.)
-          if (oks.ne(_keys.nn) || ok != _keys.nn(j)) {
+          if (oks.ne(_keys) || ok != _keys(j)) {
             i = seekEntryOrOpen(key)
             if (i >= 0) _size -= 1
           }
@@ -205,13 +205,13 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
         }
         _size += 1
         val j = i & IndexMask
-        _keys.nn(j) = key
-        _values.nn(j) = value.asInstanceOf[AnyRef]
+        _keys(j) = key
+        _values(j) = value.asInstanceOf[AnyRef]
         if ((i & VacantBit) != 0) _vacant -= 1
         else if (imbalanced) repack()
         value
       }
-      else _values.nn(i).asInstanceOf[V]
+      else _values(i).asInstanceOf[V]
     }
   }
 
@@ -230,7 +230,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     }
     else {
       val i = seekEntry(key)
-      if (i < 0) null else _values.nn(i).asInstanceOf[V]
+      if (i < 0) null else _values(i).asInstanceOf[V]
     }
   }
 
@@ -246,7 +246,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     }
     else {
       val i = seekEntry(key)
-      if (i < 0) defaultEntry(key) else _values.nn(i).asInstanceOf[V]
+      if (i < 0) defaultEntry(key) else _values(i).asInstanceOf[V]
     }
   }
 
@@ -256,8 +256,8 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   override def default(key: Long) = defaultEntry(key)
 
   private def repack(newMask: Int): Unit = {
-    val ok = _keys.nn
-    val ov = _values.nn
+    val ok = _keys
+    val ov = _values
     mask = newMask
     _keys = new Array[Long](mask+1)
     _values = new Array[AnyRef | Null](mask+1)
@@ -267,8 +267,8 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
       val k = ok(i)
       if (k != -k) {
         val j = seekEmpty(k)
-        _keys.nn(j) = k
-        _values.nn(j) = ov(i)
+        _keys(j) = k
+        _values(j) = ov(i)
       }
       i += 1
     }
@@ -303,17 +303,17 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
       val i = seekEntryOrOpen(key)
       if (i < 0) {
         val j = i & IndexMask
-        _keys.nn(j) = key
-        _values.nn(j) = value.asInstanceOf[AnyRef]
+        _keys(j) = key
+        _values(j) = value.asInstanceOf[AnyRef]
         _size += 1
         if ((i & VacantBit) != 0) _vacant -= 1
         else if (imbalanced) repack()
         None
       }
       else {
-        val ans = Some(_values.nn(i).asInstanceOf[V])
-        _keys.nn(i) = key
-        _values.nn(i) = value.asInstanceOf[AnyRef]
+        val ans = Some(_values(i).asInstanceOf[V])
+        _keys(i) = key
+        _values(i) = value.asInstanceOf[AnyRef]
         ans
       }
     }
@@ -338,15 +338,15 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
       val i = seekEntryOrOpen(key)
       if (i < 0) {
         val j = i & IndexMask
-        _keys.nn(j) = key
-        _values.nn(j) = value.asInstanceOf[AnyRef]
+        _keys(j) = key
+        _values(j) = value.asInstanceOf[AnyRef]
         _size += 1
         if ((i & VacantBit) != 0) _vacant -= 1
         else if (imbalanced) repack()
       }
       else {
-        _keys.nn(i) = key
-        _values.nn(i) = value.asInstanceOf[AnyRef]
+        _keys(i) = key
+        _values(i) = value.asInstanceOf[AnyRef]
       }
     }
   }
@@ -376,16 +376,16 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
       if (i >= 0) {
         _size -= 1
         _vacant += 1
-        _keys.nn(i) = Long.MinValue
-        _values.nn(i) = null
+        _keys(i) = Long.MinValue
+        _values(i) = null
       }
     }
     this
   }
 
   def iterator: Iterator[(Long, V)] = new AbstractIterator[(Long, V)] {
-    private[this] val kz = _keys.nn
-    private[this] val vz = _values.nn
+    private[this] val kz = _keys
+    private[this] val vz = _values
 
     private[this] var nextPair: (Long, V) | Null =
       if (extraKeys==0) null
@@ -398,11 +398,11 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
 
     private[this] var index = 0
 
-    def hasNext: Boolean = nextPair != null || (index < kz.nn.length && {
+    def hasNext: Boolean = nextPair != null || (index < kz.length && {
       var q = kz(index)
       while (q == -q) {
         index += 1
-        if (index >= kz.nn.length) return false
+        if (index >= kz.length) return false
         q = kz(index)
       }
       nextPair = (kz(index), vz(index).asInstanceOf[V])
@@ -429,11 +429,11 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     if ((extraKeys & 1) == 1) f((0L, zeroValue.asInstanceOf[V]))
     if ((extraKeys & 2) == 2) f((Long.MinValue, minValue.asInstanceOf[V]))
     var i,j = 0
-    while (i < _keys.nn.length & j < _size) {
-      val k = _keys.nn(i)
+    while (i < _keys.length & j < _size) {
+      val k = _keys(i)
       if (k != -k) {
         j += 1
-        f((k, _values.nn(i).asInstanceOf[V]))
+        f((k, _values(i).asInstanceOf[V]))
       }
       i += 1
     }
@@ -443,19 +443,19 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     if ((extraKeys & 1) == 1) f(0L, zeroValue.asInstanceOf[V])
     if ((extraKeys & 2) == 2) f(Long.MinValue, minValue.asInstanceOf[V])
     var i,j = 0
-    while (i < _keys.nn.length & j < _size) {
-      val k = _keys.nn(i)
+    while (i < _keys.length & j < _size) {
+      val k = _keys(i)
       if (k != -k) {
         j += 1
-        f(k, _values.nn(i).asInstanceOf[V])
+        f(k, _values(i).asInstanceOf[V])
       }
       i += 1
     }
   }
 
   override def clone(): LongMap[V] = {
-    val kz = java.util.Arrays.copyOf(_keys.nn, _keys.nn.length)
-    val vz = java.util.Arrays.copyOf(_values.nn,  _values.nn.length)
+    val kz = java.util.Arrays.copyOf(_keys, _keys.length)
+    val vz = java.util.Arrays.copyOf(_values,  _values.length)
     val lm = new LongMap[V](defaultEntry, 1, initBlank = false)
     lm.initializeTo(mask, extraKeys, zeroValue, minValue, _size, _vacant, kz,  vz)
     lm
@@ -491,8 +491,8 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     if ((extraKeys & 1) == 1) f(0L)
     if ((extraKeys & 2) == 2) f(Long.MinValue)
     var i,j = 0
-    while (i < _keys.nn.length & j < _size) {
-      val k = _keys.nn(i)
+    while (i < _keys.length & j < _size) {
+      val k = _keys(i)
       if (k != -k) {
         j += 1
         f(k)
@@ -506,11 +506,11 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V])
     if ((extraKeys & 2) == 2) f(minValue.asInstanceOf[V])
     var i,j = 0
-    while (i < _keys.nn.length & j < _size) {
-      val k = _keys.nn(i)
+    while (i < _keys.length & j < _size) {
+      val k = _keys(i)
       if (k != -k) {
         j += 1
-        f(_values.nn(i).asInstanceOf[V])
+        f(_values(i).asInstanceOf[V])
       }
       i += 1
     }
@@ -524,14 +524,14 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     val zv = if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null] else null
     val mv = if ((extraKeys & 2) == 2) f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null] else null
     val lm = new LongMap[V1](LongMap.exceptionDefault,  1,  initBlank = false)
-    val kz = java.util.Arrays.copyOf(_keys, _keys.nn.length)
-    val vz = new Array[AnyRef | Null](_values.nn.length)
+    val kz = java.util.Arrays.copyOf(_keys, _keys.length)
+    val vz = new Array[AnyRef | Null](_values.length)
     var i,j = 0
-    while (i < _keys.nn.length & j < _size) {
-      val k = _keys.nn(i)
+    while (i < _keys.length & j < _size) {
+      val k = _keys(i)
       if (k != -k) {
         j += 1
-        vz(i) = f(_values.nn(i).asInstanceOf[V]).asInstanceOf[AnyRef | Null]
+        vz(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef | Null]
       }
       i += 1
     }
@@ -552,11 +552,11 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     if ((extraKeys & 1) == 1) zeroValue = f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null]
     if ((extraKeys & 2) == 2) minValue = f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null]
     var i,j = 0
-    while (i < _keys.nn.length & j < _size) {
-      val k = _keys.nn(i)
+    while (i < _keys.length & j < _size) {
+      val k = _keys(i)
       if (k != -k) {
         j += 1
-        _values.nn(i) = f(_values.nn(i).asInstanceOf[V]).asInstanceOf[AnyRef | Null]
+        _values(i) = f(_values(i).asInstanceOf[V]).asInstanceOf[AnyRef | Null]
       }
       i += 1
     }

@@ -206,6 +206,6 @@ trait AsScalaConverters {
    */
   def asScala(p: ju.Properties | Null): mutable.Map[String, String] | Null = p match {
     case null => null
-    case _    => new JPropertiesWrapper(p.nn)
+    case _    => new JPropertiesWrapper(p)
   }
 }

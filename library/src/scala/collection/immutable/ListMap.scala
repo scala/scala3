@@ -202,7 +202,7 @@ object ListMap extends MapFactory[ListMap] {
           while (i < index) {
             val temp = new ListMap.Node(curr.key, curr.value, null)
             if (prev != null) {
-              prev.nn._init = temp
+              prev._init = temp
             }
             prev = temp
             curr = curr.init
@@ -213,10 +213,10 @@ object ListMap extends MapFactory[ListMap] {
           }
           val newNode = new ListMap.Node(curr.key, v, curr.init)
           if (prev != null) {
-            prev.nn._init = newNode
+            prev._init = newNode
           }
           releaseFence()
-          if (newHead == null) newNode else newHead.nn
+          if (newHead == null) newNode else newHead
         } else {
           this
         }

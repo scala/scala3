@@ -161,7 +161,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
 
   def removed(key: K): HashMap[K, V] = {
     val keyUnimprovedHash = key.##
-    newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0).nn)
+    newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
   override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
@@ -352,7 +352,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
           val (mergedK, mergedV) = mergef(payload, thatPayload)
           val mergedOriginalHash = mergedK.##
           val mergedImprovedHash = improve(mergedOriginalHash)
-          new HashMap(that.rootNode.removed(thatPayload._1, originalHash, improved, 0).nn.updated(mergedK, mergedV, mergedOriginalHash, mergedImprovedHash, 0, replaceValue = true))
+          new HashMap(that.rootNode.removed(thatPayload._1, originalHash, improved, 0).updated(mergedK, mergedV, mergedOriginalHash, mergedImprovedHash, 0, replaceValue = true))
         } else {
           new HashMap(that.rootNode.updated(k, v, originalHash, improved, 0, replaceValue = true))
         }
@@ -414,7 +414,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
               val next = iter.next()
               val originalHash = hashSet.unimproveHash(next.hash)
               val improved = improve(originalHash)
-              curr = curr.removed(next.key, originalHash, improved, 0).nn
+              curr = curr.removed(next.key, originalHash, improved, 0)
               if (curr.size == 0) {
                 return HashMap.empty
               }
@@ -432,7 +432,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
               val next = iter.next()
               val originalHash = lhashSet.unimproveHash(next.hash)
               val improved = improve(originalHash)
-              curr = curr.removed(next.key, originalHash, improved, 0).nn
+              curr = curr.removed(next.key, originalHash, improved, 0)
               if (curr.size == 0) {
                 return HashMap.empty
               }
@@ -446,7 +446,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
             val next = iter.next()
             val originalHash = next.##
             val improved = improve(originalHash)
-            curr = curr.removed(next, originalHash, improved, 0).nn
+            curr = curr.removed(next, originalHash, improved, 0)
             if (curr.size == 0) {
               return HashMap.empty
             }
@@ -1773,7 +1773,7 @@ private final class BitmapIndexedMapNode[K, +V](
               if (newNodes == null) {
                 newNodes = mutable.Queue.empty
               }
-              newNodes.nn += newSubNode
+              newNodes += newSubNode
             }
           } else if (newSubNode.size == 1) {
             newDataMap |= bitpos
@@ -1781,7 +1781,7 @@ private final class BitmapIndexedMapNode[K, +V](
             if (nodesToMigrateToData == null) {
               nodesToMigrateToData = mutable.Queue()
             }
-            nodesToMigrateToData.nn += newSubNode
+            nodesToMigrateToData += newSubNode
           }
 
           nodeIndex += 1
@@ -2017,9 +2017,9 @@ private final class HashCollisionMapNode[K, +V ](
           if (hc.indexOf(nextPayload._1) < 0) {
             if (newContent == null) {
               newContent = new VectorBuilder[(K, V1)]()
-              newContent.nn.addAll(hc.content)
+              newContent.addAll(hc.content)
             }
-            newContent.nn.addOne(nextPayload)
+            newContent.addOne(nextPayload)
           }
         }
         if (newContent eq null) hc else new HashCollisionMapNode(originalHash, hash, newContent.result())
@@ -2182,7 +2182,7 @@ private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) 
         keyHash = improve(originalHash),
         originalHash = originalHash,
         shift = 0
-      ).nn
+      )
       currentValueCursor += 1
     }
     curr
@@ -2339,11 +2339,11 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     if (rootNode.size == 0) {
       HashMap.empty
     } else if (aliased != null) {
-      aliased.nn
+      aliased
     } else {
       aliased = new HashMap(rootNode)
       releaseFence()
-      aliased.nn
+      aliased
     }
 
   override def addOne(elem: (K, V)): this.type = {

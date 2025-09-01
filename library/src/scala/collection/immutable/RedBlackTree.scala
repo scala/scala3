@@ -87,7 +87,7 @@ private[collection] object RedBlackTree {
           //    black(nl.L)      nl.KV      black
           //                          nl.R    KV   R
           val resultLeft = newLeft_left.nn.mutableBlack
-          val resultRight = tree.mutableBlackWithLeft(newLeft_right.nn)
+          val resultRight = tree.mutableBlackWithLeft(newLeft_right)
 
           newLeft.mutableWithLeftRight(resultLeft, resultRight)
         } else if (isRedTree(newLeft_right)) {
@@ -97,8 +97,8 @@ private[collection] object RedBlackTree {
 
           val newLeft_right_right = newLeft_right.nn.right
 
-          val resultLeft = newLeft.mutableBlackWithRight(newLeft_right.nn.left.nn)
-          val resultRight = tree.mutableBlackWithLeft(newLeft_right_right.nn)
+          val resultLeft = newLeft.mutableBlackWithRight(newLeft_right.nn.left)
+          val resultRight = tree.mutableBlackWithLeft(newLeft_right_right)
 
           newLeft_right.nn.mutableWithLeftRight(resultLeft, resultRight)
         } else {
@@ -129,8 +129,8 @@ private[collection] object RedBlackTree {
           //              black           nr.L.KV          black
           //     L         KV   nr.L.L             nr.L.R  nr.KV    nr.R
 
-          val resultLeft = tree.mutableBlackWithRight(newRight_left.nn.left.nn)
-          val resultRight = newRight.mutableBlackWithLeft(newRight_left.nn.right.nn)
+          val resultLeft = tree.mutableBlackWithRight(newRight_left.nn.left)
+          val resultRight = newRight.mutableBlackWithLeft(newRight_left.nn.right)
 
           newRight_left.nn.mutableWithLeftRight(resultLeft, resultRight)
 
@@ -141,7 +141,7 @@ private[collection] object RedBlackTree {
             //              black           nr.KV            black(nr.R)
             //     L         KV   nr.L
 
-            val resultLeft = tree.mutableBlackWithRight(newRight_left.nn)
+            val resultLeft = tree.mutableBlackWithRight(newRight_left)
             val resultRight = newRight_right.nn.mutableBlack
 
             newRight.mutableWithLeftRight(resultLeft, resultRight)
@@ -209,13 +209,13 @@ private[collection] object RedBlackTree {
 
   def smallest[A, B](tree: Tree[A, B] | Null): Tree[A, B] = {
     if (tree eq null) throw new NoSuchElementException("empty tree")
-    var result = tree.nn
+    var result = tree
     while (result.left ne null) result = result.left.nn
     result
   }
   def greatest[A, B](tree: Tree[A, B] | Null): Tree[A, B] = {
     if (tree eq null) throw new NoSuchElementException("empty tree")
-    var result = tree.nn
+    var result = tree
     while (result.right ne null) result = result.right.nn
     result
   }
@@ -238,7 +238,7 @@ private[collection] object RedBlackTree {
       else {
         val tr = tree.right
         if (tr eq null) tree.left
-        else if (tr.isBlack) balRight(tree, tree.left, _init(tr))
+        else if (tr.nn.isBlack) balRight(tree, tree.left, _init(tr))
         else tree.redWithRight(_init(tr))
       }
     blacken(_init(tree))
@@ -356,7 +356,7 @@ private[collection] object RedBlackTree {
           //    black(nl.L)      nl.KV      black
           //                          nl.R    KV   R
           val resultLeft = newLeft_left.nn.black
-          val resultRight = tree.blackWithLeft(newLeft_right.nn)
+          val resultRight = tree.blackWithLeft(newLeft_right)
 
           newLeft.withLeftRight(resultLeft, resultRight)
         } else if (isRedTree(newLeft_right)) {
@@ -365,8 +365,8 @@ private[collection] object RedBlackTree {
           //    nl.L   nl.KV  nl.R.L           nl.R.R  KV   R
           val newLeft_right_right = newLeft_right.nn.right
 
-          val resultLeft = newLeft.blackWithRight(newLeft_right.nn.left.nn)
-          val resultRight = tree.blackWithLeft(newLeft_right_right.nn)
+          val resultLeft = newLeft.blackWithRight(newLeft_right.nn.left)
+          val resultRight = tree.blackWithLeft(newLeft_right_right)
 
           newLeft_right.nn.withLeftRight(resultLeft, resultRight)
         } else {
@@ -395,8 +395,8 @@ private[collection] object RedBlackTree {
           //                                RED
           //              black           nr.L.KV          black
           //     L         KV   nr.L.L             nr.L.R  nr.KV    nr.R
-          val resultLeft = tree.blackWithRight(newRight_left.nn.left.nn)
-          val resultRight = newRight.blackWithLeft(newRight_left.nn.right.nn)
+          val resultLeft = tree.blackWithRight(newRight_left.nn.left)
+          val resultRight = newRight.blackWithLeft(newRight_left.nn.right)
 
           newRight_left.nn.withLeftRight(resultLeft, resultRight)
         } else {
@@ -405,10 +405,10 @@ private[collection] object RedBlackTree {
             //                                RED
             //              black           nr.KV            black(nr.R)
             //     L         KV   nr.L
-            val resultLeft = tree.blackWithRight(newRight_left.nn)
+            val resultLeft = tree.blackWithRight(newRight_left)
             val resultRight = newRight_right.nn.black
 
-            newRight.withLeftRight(resultLeft, resultRight)
+            newRight.nn.withLeftRight(resultLeft, resultRight)
           } else {
             //             tree
             //     L        KV         newRight
@@ -629,21 +629,21 @@ private[collection] object RedBlackTree {
       } else new Tree(_key, newValue.asInstanceOf[AnyRef], _left, _right, mutableRetainingColour)
     }
 
-    private[RedBlackTree] def mutableWithLeft[B1 >: B](newLeft: Tree[A, B1]): Tree[A, B1] = {
+    private[RedBlackTree] def mutableWithLeft[B1 >: B](newLeft: Tree[A, B1] | Null): Tree[A, B1] = {
       if (_left eq newLeft) this
       else if (isMutable) {
         _left = newLeft
         this
       } else new Tree(_key, _value, newLeft, _right, mutableRetainingColour)
     }
-    private[RedBlackTree] def mutableWithRight[B1 >: B](newRight: Tree[A, B1]): Tree[A, B1] = {
+    private[RedBlackTree] def mutableWithRight[B1 >: B](newRight: Tree[A, B1] | Null): Tree[A, B1] = {
       if (_right eq newRight) this
       else if (isMutable) {
         _right = newRight
         this
       } else new Tree(_key, _value, _left, newRight, mutableRetainingColour)
     }
-    private[RedBlackTree] def mutableWithLeftRight[B1 >: B](newLeft: Tree[A, B1], newRight: Tree[A, B1]): Tree[A, B1] = {
+    private[RedBlackTree] def mutableWithLeftRight[B1 >: B](newLeft: Tree[A, B1] | Null, newRight: Tree[A, B1] | Null): Tree[A, B1] = {
       if ((_left eq newLeft) && (_right eq newRight)) this
       else if (isMutable) {
         _left = newLeft
@@ -651,7 +651,7 @@ private[collection] object RedBlackTree {
         this
       } else new Tree(_key, _value, newLeft, newRight, mutableRetainingColour)
     }
-    private[RedBlackTree] def mutableBlackWithLeft[B1 >: B](newLeft: Tree[A, B1]): Tree[A, B1] = {
+    private[RedBlackTree] def mutableBlackWithLeft[B1 >: B](newLeft: Tree[A, B1] | Null): Tree[A, B1] = {
       if ((_left eq newLeft) && isBlack) this
       else if (isMutable) {
         _count = initialBlackCount
@@ -659,7 +659,7 @@ private[collection] object RedBlackTree {
         this
       } else new Tree(_key, _value, newLeft, _right, initialBlackCount)
     }
-    private[RedBlackTree] def mutableBlackWithRight[B1 >: B](newRight: Tree[A, B1]): Tree[A, B1] = {
+    private[RedBlackTree] def mutableBlackWithRight[B1 >: B](newRight: Tree[A, B1] | Null): Tree[A, B1] = {
       if ((_right eq newRight) && isBlack) this
       else if (isMutable) {
         _count = initialBlackCount
@@ -865,8 +865,8 @@ private[collection] object RedBlackTree {
       @tailrec def find(tree: Tree[A, B] | Null): Tree[A, B] | Null =
         if (tree eq null) popNext()
         else find(
-          if (ordering.lteq(key, tree.nn.key)) goLeft(tree.nn)
-          else goRight(tree.nn)
+          if (ordering.lteq(key, tree.key)) goLeft(tree)
+          else goRight(tree)
         )
       find(root)
     }
@@ -1057,12 +1057,12 @@ private[collection] object RedBlackTree {
       val newLeft = del(tree.left, k)
       if (newLeft eq tree.left) tree
       else if (isBlackTree(tree.left)) balLeft(tree, newLeft, tree.right)
-      else tree.redWithLeft(newLeft.nn)
+      else tree.redWithLeft(newLeft)
     } else if (cmp > 0) {
       val newRight = del(tree.right, k)
       if (newRight eq tree.right) tree
       else if (isBlackTree(tree.right)) balRight(tree, tree.left, newRight)
-      else tree.redWithRight(newRight.nn)
+      else tree.redWithRight(newRight)
     } else append(tree.left, tree.right)
   }
 
@@ -1082,14 +1082,14 @@ private[collection] object RedBlackTree {
     if (isRedTree(tl)) tree.redWithLeftRight(tl.nn.black, tr)
     else if (isBlackTree(tr)) balance(tree, tl, tr.nn.red)
     else if (isRedTree(tr) && isBlackTree(tr.nn.left))
-         tr.nn.left.nn.redWithLeftRight(tree.blackWithLeftRight(tl, tr.nn.left.nn.left), balance(tr.nn, tr.nn.left.nn.right.nn, tr.nn.right.nn.red))
+         tr.nn.left.nn.redWithLeftRight(tree.blackWithLeftRight(tl, tr.nn.left.nn.left), balance(tr.nn, tr.nn.left.nn.right, tr.nn.right.nn.red))
     else sys.error("Defect: invariance violation")
 
   private[this] def balRight[A, B](tree: Tree[A,B], tl: Tree[A, B] | Null, tr: Tree[A, B] | Null): Tree[A, B] =
     if (isRedTree(tr)) tree.redWithLeftRight(tl, tr.nn.black)
     else if (isBlackTree(tl)) balance(tree, tl.nn.red, tr)
     else if (isRedTree(tl) && isBlackTree(tl.nn.right))
-         tl.nn.right.nn.redWithLeftRight(balance(tl.nn, tl.nn.left.nn.red, tl.nn.right.nn.left.nn), tree.blackWithLeftRight(tl.nn.right.nn.right, tr))
+         tl.nn.right.nn.redWithLeftRight(balance(tl.nn, tl.nn.left.nn.red, tl.nn.right.nn.left), tree.blackWithLeftRight(tl.nn.right.nn.right, tr))
     else sys.error("Defect: invariance violation")
 
   /** `append` is similar to `join2` but requires that both subtrees have the same black height */
@@ -1100,21 +1100,21 @@ private[collection] object RedBlackTree {
            if (tr.isRed) {
              //tl is red, tr is red
              val bc = append(tl.right, tr.left)
-             if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left.nn), tr.withLeft(bc.nn.right.nn))
+             if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left), tr.withLeft(bc.nn.right))
              else tl.withRight(tr.withLeft(bc))
            } else {
              //tl is red, tr is black
-             tl.withRight(append(tl.right, tr).nn)
+             tl.withRight(append(tl.right, tr))
            }
          } else {
            if (tr.isBlack) {
              //tl is black tr is black
              val bc = append(tl.right, tr.left)
-             if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left.nn), tr.withLeft(bc.nn.right.nn))
+             if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left), tr.withLeft(bc.nn.right))
              else balLeft(tl, tl.left, tr.withLeft(bc))
            } else {
              //tl is black tr is red
-             tr.withLeft(append(tl, tr.left).nn)
+             tr.withLeft(append(tl, tr.left))
            }
          }
   }
@@ -1203,14 +1203,14 @@ private[collection] object RedBlackTree {
     if(t.right eq null) (t.left.nn, t.key, t.value)
     else {
       val (tt, kk, vv) = splitLast(t.right.nn)
-      (join(t.left, t.key, t.value, tt).nn, kk, vv)
+      (join(t.left, t.key, t.value, tt), kk, vv)
     }
 
   private[this] def join2[A, B](tl: Tree[A, B] | Null, tr: Tree[A, B] | Null): Tree[A, B] | Null =
     if(tl eq null) tr
     else if(tr eq null) tl
     else {
-      val (ttl, k, v) = splitLast(tl.nn)
+      val (ttl, k, v) = splitLast(tl)
       join(ttl, k, v, tr)
     }
 
@@ -1245,3 +1245,4 @@ private[collection] object RedBlackTree {
       join2(tl, tr)
     }
 }
+
