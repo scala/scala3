@@ -742,7 +742,7 @@ object Build {
         .filter(p => p.toString().endsWith(".scala"))
         .filter(p => !p.getFileName().toString().equals("CollectionName.scala"))
         .map[java.io.File] { (file: java.nio.file.Path) =>
-          val text = Files.readString(file)
+          val text = new String(Files.readAllBytes(path), java.nio.charset.StandardCharsets.UTF_8)
           Files.write(
             file,
             ("package dotty.shaded\n" +
