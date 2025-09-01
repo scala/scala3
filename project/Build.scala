@@ -719,7 +719,7 @@ object Build {
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
-        "com.lihaoyi" %% "pprint" % "0.9.3",
+        ("com.lihaoyi" %% "pprint" % "0.9.3").exclude("org.scala-lang", "*"),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
