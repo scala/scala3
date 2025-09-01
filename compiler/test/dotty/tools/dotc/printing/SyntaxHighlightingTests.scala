@@ -95,7 +95,7 @@ class SyntaxHighlightingTests extends DottyTest {
     test("val foo = 123", "<K|val> <V|foo> = <L|123>")
     test(
       "val foo: List[List[Int]] = List(List(1))",
-      "<K|val> <V|foo>: <T|List>[<T|List>[<T|Int>]] = List(List(<L|1>))"
+      "<K|val> <V|foo>: <T|List>[<T|List>[<T|Int>]] = <T|List>(<T|List>(<L|1>))"
     )
 
     test("var",                "<K|var>")
