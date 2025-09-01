@@ -27,7 +27,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
   /** (value, maxElements, maxCharacters) => String */
-  var myReplStringOf: (Object, Int, Int) => String = uninitialized
+  val myReplStringOf: (Object, Int, Int) => String =
+    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value).plainText
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -46,45 +47,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
-      myReplStringOf = {
-        // We need to use the ScalaRunTime class coming from the scala-library
-        // on the user classpath, and not the one available in the current
-        // classloader, so we use reflection instead of simply calling
-        // `ScalaRunTime.stringOf`. Also probe for new stringOf that does string quoting, etc.
-        val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
-        val renderer = "stringOf"
-        val stringOfInvoker: (Object, Int) => String =
-          def richStringOf: (Object, Int) => String =
-            val method = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
-            val richly = java.lang.Boolean.TRUE // add a repl option for enriched output
-            (value, maxElements) => method.invoke(null, value, maxElements, richly).asInstanceOf[String]
-          def poorStringOf: (Object, Int) => String =
-            try
-              val method = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
-              (value, maxElements) => method.invoke(null, value, maxElements).asInstanceOf[String]
-            catch case _: NoSuchMethodException => (value, maxElements) => String.valueOf(value).take(maxElements)
-          try richStringOf
-          catch case _: NoSuchMethodException => poorStringOf
-        def stringOfMaybeTruncated(value: Object, maxElements: Int): String = stringOfInvoker(value, maxElements)
-
-        // require value != null
-        // `ScalaRuntime.stringOf` returns null iff value.toString == null, let caller handle that.
-        // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
-        // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
-        // want to print, and once without a limit. If the first is shorter, truncation did occur.
-        // Note that `stringOf` has new API in flight to handle truncation, see stringOfMaybeTruncated.
-        (value: Object, maxElements: Int, maxCharacters: Int) =>
-          stringOfMaybeTruncated(value, Int.MaxValue) match
-            case null => null
-            case notTruncated =>
-              val maybeTruncated =
-                val maybeTruncatedByElementCount = stringOfMaybeTruncated(value, maxElements)
-                truncate(maybeTruncatedByElementCount, maxCharacters)
-              // our string representation may have been truncated by element and/or character count
-              // if so, append an info string - but only once
-              if notTruncated.length == maybeTruncated.length then maybeTruncated
-              else s"$maybeTruncated ... large output truncated, print value to show all"
-      }
       myClassLoader
     }
 
@@ -95,7 +57,17 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String =
-    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value).plainText
+    assert(myReplStringOf != null,
+      "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
+    val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
+    val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
+    // stringOf returns null if value.toString returns null. Show some text as a fallback.
+    def fallback = s"""null // result of "${sym.name}.toString" is null"""
+    if value == null then "null" else
+      myReplStringOf(value, maxPrintElements, maxPrintCharacters) match
+        case null => fallback
+        case res  => res
+    end if
 
   /** Load the value of the symbol using reflection.
    *
