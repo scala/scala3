@@ -1611,3 +1611,39 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       |            ^^^^^^
       """.stripMargin
     )
+
+  @Test def `proper-function-signature` =
+    check(
+      """
+        |object OOO {
+        |
+        |val function: (x: Int, y: String) => Unit =
+        |(_, _) =>
+        | ()
+        |
+        |function(@@, "one")
+        |}
+      """.stripMargin,
+      """|apply(v1: Int, v2: String): Unit
+         |      ^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `proper-function-signature-with-explicit-apply` =
+    check(
+      """
+        |object OOO {
+        |
+        |val function: (x: Int, y: String) => Unit =
+        |(_, _) =>
+        | ()
+        |
+        |function.apply(@@, "one")
+        |}
+      """.stripMargin,
+      """|apply(v1: Int, v2: String): Unit
+         |      ^^^^^^^
+         |""".stripMargin
+    )
+
+
