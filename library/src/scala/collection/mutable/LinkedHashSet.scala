@@ -129,8 +129,8 @@ class LinkedHashSet[A]
   override def foreach[U](f: A => U): Unit = {
     var cur: Entry | Null = firstEntry
     while (cur ne null) {
-      f(cur.nn.key)
-      cur = cur.nn.later
+      f(cur.key)
+      cur = cur.later
     }
   }
 
@@ -280,7 +280,7 @@ class LinkedHashSet[A]
             lastLow.next = null
             if (old ne preLow.next) table(i) = preLow.next.nn
             if (preHigh.next ne null) {
-              table(i + oldlen) = preHigh.next.nn
+              table(i + oldlen) = preHigh.next
               lastHigh.next = null
             }
           }

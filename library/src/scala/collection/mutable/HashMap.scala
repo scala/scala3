@@ -255,7 +255,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
           n = n.next
         }
         if(prev eq null) table(idx) = new Node(key, hash, value, old)
-        else prev.nn.next = new Node(key, hash, value, prev.nn.next)
+        else prev.next = new Node(key, hash, value, prev.next)
     }
     contentSize += 1
     null
@@ -410,9 +410,9 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
               n = next
             }
             lastLow.nn.next = null
-            if(old ne preLow.nn.next) table(i) = preLow.nn.next.nn
+            if(old ne preLow.nn.next) table(i) = preLow.nn.next
             if(preHigh.nn.next ne null) {
-              table(i + oldlen) = preHigh.nn.next.nn
+              table(i + oldlen) = preHigh.nn.next
               lastHigh.nn.next = null
             }
           }
@@ -504,7 +504,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     var i = 0
     while(i < len) {
       val n = table(i)
-      if(n ne null) n.nn.foreach(f)
+      if(n ne null) n.foreach(f)
       i += 1
     }
   }
@@ -514,7 +514,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     var i = 0
     while(i < len) {
       val n = table(i)
-      if(n ne null) n.nn.foreachEntry(f)
+      if(n ne null) n.foreachEntry(f)
       i += 1
     }
   }
@@ -529,7 +529,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
         var head = table(bucket)
 
         while ((head ne null) && !p(head.key, head.value)) {
-          head = head.next.nn
+          head = head.next
           contentSize -= 1
         }
 
@@ -544,7 +544,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
               prev.next = next.next
               contentSize -= 1
             }
-            next = next.next.nn
+            next = next.next
           }
         }
 
@@ -563,7 +563,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       var n = table(i)
       while (n ne null) {
         n.value = f(n.key, n.value)
-        n = n.next.nn
+        n = n.next
       }
       i += 1
     }

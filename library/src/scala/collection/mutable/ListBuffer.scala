@@ -211,7 +211,7 @@ class ListBuffer[A]
     if (idx < 0 || idx >= len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
     if (idx == 0) {
       val newElem = new :: (elem, first.tail)
-      if (last0.nn eq first) {
+      if (last0 eq first) {
         last0 = newElem
       }
       first = newElem
@@ -219,7 +219,7 @@ class ListBuffer[A]
       // `p` can not be `null` because the case where `idx == 0` is handled above
       val p = predecessor(idx)
       val newElem = new :: (elem, p.tail.tail)
-      if (last0.nn eq p.tail) {
+      if (last0 eq p.tail) {
         last0 = newElem
       }
       p.asInstanceOf[::[A]].next = newElem
@@ -276,7 +276,7 @@ class ListBuffer[A]
       first = nx.tail
       if(first.isEmpty) last0 = null
     } else {
-      if(last0.nn eq nx) last0 = p
+      if(last0 eq nx) last0 = p
       p.next = nx.tail
     }
     len -= 1

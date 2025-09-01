@@ -164,12 +164,12 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
         while((n ne null) && n.hash <= hash) {
           if(n.hash == hash && elem == n.key) return false
           prev = n
-          n = n.nn.next
+          n = n.next
         }
         if(prev eq null)
           table(idx) = new Node(elem, hash, old)
         else
-          prev.nn.next = new Node(elem, hash, prev.nn.next)
+          prev.next = new Node(elem, hash, prev.next)
     }
     contentSize += 1
     true
@@ -195,7 +195,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
             return true
           }
           prev = next
-          next = next.nn.next
+          next = next.next
         }
         false
     }
@@ -283,9 +283,9 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
               n = next
             }
             lastLow.next = null
-            if(old ne preLow.next) table(i) = preLow.nn.next
+            if(old ne preLow.next) table(i) = preLow.next
             if(preHigh.next ne null) {
-              table(i + oldlen) = preHigh.nn.next
+              table(i + oldlen) = preHigh.next
               lastHigh.next = null
             }
           }
@@ -304,7 +304,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
         var head = table(bucket)
 
         while ((head ne null) && !p(head.key)) {
-          head = head.nn.next
+          head = head.next
           contentSize -= 1
         }
 
@@ -319,7 +319,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
               prev.next = next.next
               contentSize -= 1
             }
-            next = next.nn.next
+            next = next.next
           }
         }
 
@@ -376,7 +376,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     var i = 0
     while(i < len) {
       val n = table(i)
-      if(n ne null) n.nn.foreach(f)
+      if(n ne null) n.foreach(f)
       i += 1
     }
   }

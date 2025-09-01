@@ -572,7 +572,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
         yIsRed = y.red
         x = y.right
 
-        if (y.parent.nn eq z) xParent = y
+        if (y.parent eq z) xParent = y
         else {
           xParent = y.parent
           root = transplant(root, y, y.right.nn)
@@ -729,8 +729,8 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
           case nn: RBNode @uc => (nn.key, nn.hash, nn.value)
         }
         val n = new RBNode(key, hash, value, red = false, left, right, null)
-        if(left ne null) left.nn.parent = n
-        if(right ne null) right.nn.parent = n
+        if(left ne null) left.parent = n
+        if(right ne null) right.parent = n
         n
     }
     f(1, size)
@@ -839,7 +839,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
       var y = x.parent
       while ((y ne null) && (x eq y.nn.right)) {
         x = y
-        y = y.nn.parent
+        y = y.parent
       }
       y
     }
@@ -870,22 +870,22 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): LLNode[K, V] | Null = {
       if(h == hash && eq(k, key) /*ord.compare(k, key) == 0*/) this
       else if((next eq null) || (hash > h)) null
-      else next.nn.getNode(k, h)
+      else next.getNode(k, h)
     }
 
     @tailrec def foreach[U](f: ((K, V)) => U): Unit = {
       f((key, value))
-      if(next ne null) next.nn.foreach(f)
+      if(next ne null) next.foreach(f)
     }
 
     @tailrec def foreachEntry[U](f: (K, V) => U): Unit = {
       f(key, value)
-      if(next ne null) next.nn.foreachEntry(f)
+      if(next ne null) next.foreachEntry(f)
     }
 
     @tailrec def foreachNode[U](f: LLNode[K, V] => U): Unit = {
       f(this)
-      if(next ne null) next.nn.foreachNode(f)
+      if(next ne null) next.foreachNode(f)
     }
   }
 }

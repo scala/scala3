@@ -226,7 +226,7 @@ private[collection] object RedBlackTree {
       else {
         val tl = tree.left
         if (tl eq null) tree.right
-        else if (tl.nn.isBlack) balLeft(tree, _tail(tl), tree.right)
+        else if (tl.isBlack) balLeft(tree, _tail(tl), tree.right)
         else tree.redWithLeft(_tail(tree.left))
       }
     blacken(_tail(tree))
@@ -238,7 +238,7 @@ private[collection] object RedBlackTree {
       else {
         val tr = tree.right
         if (tr eq null) tree.left
-        else if (tr.nn.isBlack) balRight(tree, tree.left, _init(tr))
+        else if (tr.isBlack) balRight(tree, tree.left, _init(tr))
         else tree.redWithRight(_init(tr))
       }
     blacken(_init(tree))
@@ -408,7 +408,7 @@ private[collection] object RedBlackTree {
             val resultLeft = tree.blackWithRight(newRight_left)
             val resultRight = newRight_right.nn.black
 
-            newRight.nn.withLeftRight(resultLeft, resultRight)
+            newRight.withLeftRight(resultLeft, resultRight)
           } else {
             //             tree
             //     L        KV         newRight
@@ -976,10 +976,10 @@ private[collection] object RedBlackTree {
   def transform[A, B, C](t: Tree[A, B] | Null, f: (A, B) => C): Tree[A, C] | Null =
     if(t eq null) null
     else {
-      val k = t.nn.key
-      val v = t.nn.value
-      val l = t.nn.left
-      val r = t.nn.right
+      val k = t.key
+      val v = t.value
+      val l = t.left
+      val r = t.right
       val l2 = transform(l, f)
       val v2 = f(k, v)
       val r2 = transform(r, f)
