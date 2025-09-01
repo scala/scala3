@@ -162,7 +162,7 @@ object Source {
     close: (() => Unit) | Null = null
   )(implicit codec: Codec): BufferedSource = {
     // workaround for default arguments being unable to refer to other parameters
-    val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(codec) else reset.nn
+    val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(codec) else reset
 
     new BufferedSource(inputStream, bufferSize)(codec) withReset resetFn withClose close
   }

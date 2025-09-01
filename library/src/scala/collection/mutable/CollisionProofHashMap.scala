@@ -463,8 +463,8 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   ///////////////////// RedBlackTree code derived from mutable.RedBlackTree:
 
-  @`inline` private[this] def isRed(node: RBNode | Null) = (node ne null) && node.nn.red
-  @`inline` private[this] def isBlack(node: RBNode | Null) = (node eq null) || !node.nn.red
+  @`inline` private[this] def isRed(node: RBNode | Null) = (node ne null) && node.red
+  @`inline` private[this] def isBlack(node: RBNode | Null) = (node eq null) || !node.red
 
   @unused @`inline` private[this] def compare(key: K, hash: Int, node: LLNode): Int = {
     val i = hash - node.hash
@@ -491,7 +491,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
         table(bucket) = fixAfterInsert(_root, z)
         return true
       }
-      else insertIntoExisting(_root, bucket, key, hash, value, next.nn)
+      else insertIntoExisting(_root, bucket, key, hash, value, next)
     }
   }
 
@@ -499,14 +499,14 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     if(tree eq null) {
       table(bucket) = CollisionProofHashMap.leaf(key, hash, value, red = false, null)
       true
-    } else insertIntoExisting(tree.nn, bucket, key, hash, value, tree.nn)
+    } else insertIntoExisting(tree, bucket, key, hash, value, tree)
   }
 
   private[this] def fixAfterInsert(_root: RBNode, node: RBNode): RBNode = {
     var root = _root
     var z = node
     while (isRed(z.parent)) {
-      if (z.parent.nn eq z.parent.nn.parent.nn.left) {
+      if (z.parent eq z.parent.nn.parent.nn.left) {
         val y = z.parent.nn.parent.nn.right
         if (isRed(y)) {
           z.parent.nn.red = false
@@ -651,7 +651,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       }
       xParent = x.nn.parent
     }
-    if (x ne null) x.nn.red = false
+    if (x ne null) x.red = false
     root
   }
 
@@ -667,8 +667,8 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     y.parent = xp
 
     if (xp eq null) root = y
-    else if (x eq xp.nn.left) xp.nn.left = y
-    else xp.nn.right = y
+    else if (x eq xp.left) xp.left = y
+    else xp.right = y
 
     y.left = x
     x.parent = y
@@ -685,8 +685,8 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     y.parent = xp
 
     if (xp eq null) root = y
-    else if (x eq xp.nn.right) xp.nn.right = y
-    else xp.nn.left = y
+    else if (x eq xp.right) xp.right = y
+    else xp.left = y
 
     y.right = x
     x.parent = y
@@ -838,7 +838,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
       var x = node
       var y = x.parent
       while ((y ne null) && (x eq y.nn.right)) {
-        x = y.nn
+        x = y
         y = y.nn.parent
       }
       y
@@ -846,7 +846,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   }
 
   private final class RBNodesIterator[A, B](tree: RBNode[A, B] | Null)(implicit @unused ord: Ordering[A]) extends AbstractIterator[RBNode[A, B]] {
-    private[this] var nextNode: RBNode[A, B] | Null = if(tree eq null) null else minNodeNonNull(tree.nn)
+    private[this] var nextNode: RBNode[A, B] | Null = if(tree eq null) null else minNodeNonNull(tree)
 
     def hasNext: Boolean = nextNode ne null
 
@@ -854,8 +854,8 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     def next(): RBNode[A, B] = nextNode match {
       case null => Iterator.empty.next()
       case node =>
-        nextNode = successor(node.nn)
-        node.nn
+        nextNode = successor(node)
+        node
     }
   }
 
@@ -889,3 +889,4 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 }
+

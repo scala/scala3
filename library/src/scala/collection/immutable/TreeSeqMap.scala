@@ -356,7 +356,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       if (aliased eq null) {
         aliased = new TreeSeqMap(ong, bdr.result(), ord, orderedBy)
       }
-      aliased.nn
+      aliased
     }
   }
 
@@ -589,8 +589,8 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
         if (!hasMatch(ordinal, p, m)) {
           val b2 = join(ordinal, Tip(ordinal, value), p, this)
           if (parent != null) {
-            parent.nn.right = b2
-            parent.nn
+            parent.right = b2
+            parent
           } else b2
         } else if (zero(ordinal, m)) throw new IllegalArgumentException(s"Append called with ordinal out of range: $ordinal is not greater than current max ordinal ${this.ordinal}")
         else {

@@ -36,4 +36,4 @@ object WeakReference {
 }
 
 private class WeakReferenceWithWrapper[T <: AnyRef](value: T, queue: ReferenceQueue[T] | Null, val wrapper: WeakReference[T])
-  extends java.lang.ref.WeakReference[T](value, if (queue == null) null else queue.nn.underlying.asInstanceOf[java.lang.ref.ReferenceQueue[T]]) with ReferenceWithWrapper[T]
+  extends java.lang.ref.WeakReference[T](value, if (queue == null) null else queue.underlying.asInstanceOf[java.lang.ref.ReferenceQueue[T]]) with ReferenceWithWrapper[T]

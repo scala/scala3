@@ -138,7 +138,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected[collection] final def findEntry0(key: A, h: Int): Entry | Null = {
     var e = table(h).asInstanceOf[Entry | Null]
-    while (e != null && !elemEquals(e.key, key)) e = e.nn.next
+    while (e != null && !elemEquals(e.key, key)) e = e.next
     e
   }
 
@@ -187,19 +187,19 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     var e = table(h).asInstanceOf[Entry | Null]
     if (e != null) {
       if (elemEquals(e.key, key)) {
-        table(h) = e.nn.next
+        table(h) = e.next
         tableSize = tableSize - 1
         nnSizeMapRemove(h)
         e.next = null
         return e
       } else {
-        var e1 = e.nn.next
+        var e1 = e.next
         while (e1 != null && !elemEquals(e1.key, key)) {
           e = e1
-          e1 = e1.nn.next
+          e1 = e1.next
         }
         if (e1 != null) {
-          e.nn.next = e1.nn.next
+          e.next = e1.next
           tableSize = tableSize - 1
           nnSizeMapRemove(h)
           e1.next = null
@@ -236,7 +236,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     var es        = iterTable(idx)
 
     while (es != null) {
-      val next = es.nn.next // Cache next in case f removes es.
+      val next = es.next // Cache next in case f removes es.
       f(es.asInstanceOf[Entry])
       es = next
 
@@ -264,9 +264,9 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     while (i >= 0) {
       var e = oldTable(i)
       while (e != null) {
-        val h = index(elemHashCode(e.nn.key))
-        val e1 = e.nn.next
-        e.nn.next = table(h).asInstanceOf[Entry | Null]
+        val h = index(elemHashCode(e.key))
+        val e1 = e.next
+        e.next = table(h).asInstanceOf[Entry | Null]
         table(h) = e
         e = e1
         nnSizeMapAdd(h)
@@ -296,17 +296,17 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    * there.
    */
   protected final def nnSizeMapAdd(h: Int) = if (sizemap ne null) {
-    sizemap.nn(h >> sizeMapBucketBitSize) += 1
+    sizemap(h >> sizeMapBucketBitSize) += 1
   }
 
   protected final def nnSizeMapRemove(h: Int) = if (sizemap ne null) {
-    sizemap.nn(h >> sizeMapBucketBitSize) -= 1
+    sizemap(h >> sizeMapBucketBitSize) -= 1
   }
 
   protected final def nnSizeMapReset(tableLength: Int) = if (sizemap ne null) {
     val nsize = calcSizeMapSize(tableLength)
-    if (sizemap.nn.length != nsize) sizemap = new Array[Int](nsize)
-    else java.util.Arrays.fill(sizemap.nn, 0)
+    if (sizemap.length != nsize) sizemap = new Array[Int](nsize)
+    else java.util.Arrays.fill(sizemap, 0)
   }
 
   private[collection] final def totalSizeMapBuckets = if (sizeMapBucketSize < table.length) 1 else table.length / sizeMapBucketSize
@@ -335,7 +335,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
         var e = tbl(tableidx)
         while (e ne null) {
           currbucketsize += 1
-          e = e.nn.next
+          e = e.next
         }
         tableidx += 1
       }

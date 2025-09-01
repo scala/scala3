@@ -182,7 +182,7 @@ object Sorting {
     if (iN - i0 < mergeThreshold) insertionSort(a, i0, iN, ord)
     else {
       val iK = (i0 + iN) >>> 1   // Bit shift equivalent to unsigned math, no overflow
-      val sc = if (scratch eq null) new Array[T](iK - i0) else scratch.nn
+      val sc = if (scratch eq null) new Array[T](iK - i0) else scratch
       mergeSort(a, i0, iK, ord, sc)
       mergeSort(a, iK, iN, ord, sc)
       mergeSorted(a, i0, iK, iN, ord, sc)
