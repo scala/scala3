@@ -72,7 +72,8 @@ class SyntheticsExtractor:
             range(tree.span, tree.source),
             s.ApplyTree(
               tree.fun.toSemanticOriginal,
-              tree.args.map(_.toSemanticTree)
+              tree.args.map(_.toSemanticTree),
+              SymbolInformation.Property.GIVEN.value
             )
           ).toOpt
 
