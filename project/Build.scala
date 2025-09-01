@@ -679,7 +679,7 @@ object Build {
     val downloads = Seq(
       "https://repo1.maven.org/maven2/com/lihaoyi/pprint_3/0.9.3/pprint_3-0.9.3-sources.jar",
       "https://repo1.maven.org/maven2/com/lihaoyi/fansi_3/0.5.1/fansi_3-0.5.1-sources.jar",
-      "https://repo1.maven.org/maven2/com/lihaoyi/sourcecode_3/0.4.3-M5/sourcecode_3-0.4.3-M5-sources.jar",
+      "https://repo1.maven.org/maven2/com/lihaoyi/sourcecode_3/0.4.4/sourcecode_3-0.4.4-sources.jar",
     )
     val dest = ((Compile / sourceManaged).value / "downloaded").toPath
     if (Files.exists(dest)) {
