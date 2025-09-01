@@ -68,7 +68,7 @@ scala> res15.toString
 val res16: String = NFloat@3f800000
 
 scala> 1.0F
-val res17: Float = 1.0
+val res17: Float = 1.0F
 
 scala> class NDouble(val x: Double) extends AnyVal
 // defined class NDouble
@@ -92,7 +92,7 @@ scala> res21.toString
 val res22: String = NChar@61
 
 scala> 'a'
-val res23: Char = a
+val res23: Char = 'a'
 
 scala> class NString(val x: String) extends AnyVal
 // defined class NString
@@ -104,7 +104,7 @@ scala> res24.toString
 val res25: String = NString@364492
 
 scala> "test"
-val res26: String = test
+val res26: String = "test"
 
 scala> class CustomToString(val x: Int) extends AnyVal { override def toString(): String = s"Test$x" }
 // defined class CustomToString

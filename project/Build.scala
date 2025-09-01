@@ -755,7 +755,8 @@ object Build {
                 .replace("if (head != null && head.hasNext) true", "if (head != null && head.nn.hasNext) true")
                 .replace("head.next()", "head.nn.next()")
                 .replace("abstract class Walker", "@scala.annotation.nowarn abstract class Walker")
-                .replace("object TPrintLowPri", "@scala.annotation.nowarn object TPrintLowPri")).getBytes
+                .replace("object TPrintLowPri", "@scala.annotation.nowarn object TPrintLowPri")
+                .replace("x.toString match{", "scala.runtime.ScalaRunTime.stringOf(x) match{")).getBytes
           )
           file.toFile
 
