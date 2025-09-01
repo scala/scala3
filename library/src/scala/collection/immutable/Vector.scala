@@ -1264,7 +1264,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
         if((pre ne null) && (suf ne null)) {
           // The highest-dimensional data consists of two slices: concatenate if they fit into the main data array,
           // otherwise increase the dimension
-          if(pre.nn.length + suf.nn.length <= WIDTH-2) {
+          if(pre.length + suf.length <= WIDTH-2) {
             slices(prefixIdx(maxDim)) = concatArrays(pre, suf)
             slices(suffixIdx(maxDim)) = null
           } else resultDim += 1

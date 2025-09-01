@@ -271,9 +271,9 @@ sealed abstract class List[+A]
         x = pf.applyOrElse(rest.head, List.partialNotApplied)
         if (x.asInstanceOf[AnyRef] ne List.partialNotApplied) h = new ::(x.asInstanceOf[B], Nil)
         rest = rest.tail
-        if (rest eq Nil) return if (h eq null) Nil else h.nn
+        if (rest eq Nil) return if (h eq null) Nil else h
       }
-      var t = h.nn
+      var t = h
       // Remaining elements
       while (rest ne Nil) {
         x = pf.applyOrElse(rest.head, List.partialNotApplied)
@@ -285,7 +285,7 @@ sealed abstract class List[+A]
         rest = rest.tail
       }
       releaseFence()
-      h.nn
+      h
     }
   }
 
@@ -300,7 +300,7 @@ sealed abstract class List[+A]
         if (t eq null) {
           h = nx
         } else {
-          t.nn.next = nx
+          t.next = nx
         }
         t = nx
       }
@@ -468,7 +468,7 @@ sealed abstract class List[+A]
         if (mappedHead eq null) unchanged
         else {
           mappedLast.nn.next = (unchanged: List[B])
-          mappedHead.nn
+          mappedHead
         }
       }
       else {
@@ -484,13 +484,13 @@ sealed abstract class List[+A]
           while (xc ne pending) {
             val next = new ::[B](xc.head, Nil)
             if (mappedHead1 eq null) mappedHead1 = next
-            if (mappedLast1 ne null) mappedLast1.nn.next = next
+            if (mappedLast1 ne null) mappedLast1.next = next
             mappedLast1 = next
             xc = xc.tail
           }
           val next = new ::(head1, Nil)
           if (mappedHead1 eq null) mappedHead1 = next
-          if (mappedLast1 ne null) mappedLast1.nn.next = next
+          if (mappedLast1 ne null) mappedLast1.next = next
           mappedLast1 = next
           val tail0 = pending.tail
           loop(mappedHead1, mappedLast1, tail0, tail0)

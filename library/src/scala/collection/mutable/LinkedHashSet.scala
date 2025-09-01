@@ -232,7 +232,7 @@ class LinkedHashSet[A]
         var next: Entry | Null = nd.next
         while ((next ne null) && next.hash <= hash) {
           if (next.hash == hash && next.key == elem) {
-            prev.next = next.next.nn
+            prev.next = next.next
             deleteEntry(next)
             contentSize -= 1
             return true
@@ -340,7 +340,7 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
     final def findEntry(k: A, h: Int): Entry[A] | Null =
       if (h == hash && k == key) this
       else if ((next eq null) || (hash > h)) null
-      else next.nn.findEntry(k, h)
+      else next.findEntry(k, h)
   }
 
   /** The default load factor for the hash table */
@@ -349,4 +349,3 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
   /** The default initial capacity for the hash table */
   private[collection] final def defaultinitialSize: Int = 16
 }
-

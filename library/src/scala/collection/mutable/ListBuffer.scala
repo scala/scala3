@@ -189,7 +189,7 @@ class ListBuffer[A]
       last0 = null
   }
 
-  private def locate(i: Int): Predecessor[A] =
+  private def locate(i: Int): Predecessor[A] | Null =
     if (i == 0) null
     else if (i == len) last0
     else {
@@ -202,8 +202,8 @@ class ListBuffer[A]
       p.asInstanceOf[Predecessor[A]]
     }
 
-  private def getNext(p: Predecessor[A]): List[A] =
-    if (p == null) first else p.nn.next
+  private def getNext(p: Predecessor[A] | Null): List[A] =
+    if (p == null) first else p.next
 
   def update(idx: Int, elem: A): Unit = {
     ensureUnaliased()
@@ -232,7 +232,7 @@ class ListBuffer[A]
     else {
       val p = locate(idx)
       val nx = elem :: getNext(p)
-      if(p eq null) first = nx else p.nn.next = nx
+      if(p eq null) first = nx else p.next = nx
       len += 1
     }
   }
@@ -243,10 +243,10 @@ class ListBuffer[A]
   }
 
   // `fresh` must be a `ListBuffer` that only we have access to
-  private def insertAfter(prev: Predecessor[A], fresh: ListBuffer[A]): Unit = {
+  private def insertAfter(prev: Predecessor[A] | Null, fresh: ListBuffer[A]): Unit = {
     if (!fresh.isEmpty) {
       val follow = getNext(prev)
-      if (prev eq null) first = fresh.first else prev.nn.next = fresh.first
+      if (prev eq null) first = fresh.first else prev.next = fresh.first
       fresh.last0.nn.next = follow
       if (follow.isEmpty) last0 = fresh.last0
       len += fresh.length
@@ -276,7 +276,7 @@ class ListBuffer[A]
       if(first.isEmpty) last0 = null
     } else {
       if(last0.nn eq nx) last0 = p
-      p.nn.next = nx.tail
+      p.next = nx.tail
     }
     len -= 1
     nx.head
@@ -291,11 +291,11 @@ class ListBuffer[A]
       throw new IllegalArgumentException("removing negative number of elements: " + count)
     }
 
-  private def removeAfter(prev: Predecessor[A], n: Int) = {
+  private def removeAfter(prev: Predecessor[A] | Null, n: Int) = {
     @tailrec def ahead(p: List[A], n: Int): List[A] =
       if (n == 0) p else ahead(p.tail, n - 1)
     val nx = ahead(getNext(prev), n)
-    if(prev eq null) first = nx else prev.nn.next = nx
+    if(prev eq null) first = nx else prev.next = nx
     if(nx.isEmpty) last0 = prev
     len -= n
   }
@@ -336,7 +336,7 @@ class ListBuffer[A]
       }
       src = src.tail
     }
-    first = if(dst eq null) Nil else dst.nn
+    first = if(dst eq null) Nil else dst
     aliased = false // we just rebuilt a fresh, unaliased instance
     this
   }
@@ -354,7 +354,7 @@ class ListBuffer[A]
       val follow = cur.tail
       if (!p(cur.head)) {
         if(prev eq null) first = follow
-        else prev.nn.next = follow
+        else prev.next = follow
         len -= 1
       } else {
         prev = cur.asInstanceOf[Predecessor[A]]

@@ -336,14 +336,14 @@ class BitSet(protected[collection] final var elems: Array[Long])
         if (newArray eq null) {
           newArray = new Array(i + 1)
         }
-        newArray.nn(i) = w
+        newArray(i) = w
       }
       i -= 1
     }
     if (newArray eq null) {
       empty
     } else {
-      fromBitMaskNoCopy(newArray.nn)
+      fromBitMaskNoCopy(newArray)
     }
   }
 
