@@ -2421,6 +2421,7 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+      shadedSourceGenerator
     )
 
   // ==============================================================================================
