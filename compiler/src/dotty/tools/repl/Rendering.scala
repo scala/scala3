@@ -95,7 +95,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String =
-    dotty.shaded.pprint.PPrinter.apply(value).plainText
+    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value).plainText
 
   /** Load the value of the symbol using reflection.
    *
