@@ -719,8 +719,30 @@ object Build {
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
-        ("com.lihaoyi" %% "pprint" % "0.9.3").exclude("org.scala-lang", "*"),
       ),
+
+      (Compile / sourceGenerators) += Def.task {
+        val downloads = Seq(
+          "https://repo1.maven.org/maven2/com/lihaoyi/pprint_3/0.9.3/pprint_3-0.9.3-sources.jar",
+          "https://repo1.maven.org/maven2/com/lihaoyi/fansi_3/0.5.1/fansi_3-0.5.1-sources.jar",
+          "https://repo1.maven.org/maven2/com/lihaoyi/sourcecode_3/0.4.3-M5/sourcecode_3-0.4.3-M5-sources.jar",
+        )
+        val sourceManagedPath = os.Path((Compile / sourceManaged).value)
+        for(download <- downloads) os.unzip.stream(requests.get.stream(download), dest = sourceManagedPath)
+        for(file <- os.walk(sourceManagedPath) if file.ext == "scala") yield{
+          val text = os.read(file)
+          if (!text.contains("package scala")){
+            os.write.over(
+              file,
+              "package dotty.shaded\n" +
+                text
+                  .replace("_root_.pprint", "_root_.dotty.shaded.pprint")
+                  .replace("_root_.fansi", "_root_.dotty.shaded.fansi")
+            )
+          }
+          file.toIO
+        }
+      }.taskValue,
 
       // For convenience, change the baseDirectory when running the compiler
       Compile / forkOptions := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
