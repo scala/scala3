@@ -1117,7 +1117,7 @@ object LazyList extends SeqFactory[LazyList] {
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
         it        = f(rest.head).iterator
-        itHasNext = it.nn.hasNext
+        itHasNext = it.hasNext
         if (!itHasNext) {                     // wait to advance `rest` because `it.next()` can throw
           rest    = rest.tail
           restRef = rest                      // restRef.elem = rest
@@ -1449,3 +1449,4 @@ object LazyList extends SeqFactory[LazyList] {
     private[this] def readResolve(): Any = coll
   }
 }
+

@@ -278,7 +278,7 @@ private[process] trait ProcessImpl {
       finally interrupt()
     }
     // we interrupt the input thread to notify it that it can terminate
-    private[this] def interrupt(): Unit = if (inputThread != null) inputThread.nn.interrupt()
+    private[this] def interrupt(): Unit = if (inputThread != null) inputThread.interrupt()
   }
   private[process] final class ThreadProcess(thread: Thread, success: LinkedBlockingQueue[Boolean]) extends Process {
     override def isAlive()   = thread.isAlive()
