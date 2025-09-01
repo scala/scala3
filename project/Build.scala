@@ -740,10 +740,9 @@ object Build {
     import collection.JavaConverters._
     Files.walk(dest)
         .filter(p => p.toString().endsWith(".scala"))
-        .filter(p => !p.getFileName().toString().equals("CollectionName.scala"))
         .map[java.io.File] { (file: java.nio.file.Path) =>
-          val text = new String(Files.readAllBytes(path), java.nio.charset.StandardCharsets.UTF_8)
-          Files.write(
+          val text = new String(Files.readAllBytes(file.path), java.nio.charset.StandardCharsets.UTF_8)
+          if (!file.getFileName().toString().equals("CollectionName.scala")) Files.write(
             file,
             ("package dotty.shaded\n" +
               text
@@ -755,11 +754,6 @@ object Build {
                 .replace("var head: Iterator[T] = null", "var head: Iterator[T] | Null = null")
                 .replace("if (head != null && head.hasNext) true", "if (head != null && head.nn.hasNext) true")
                 .replace("head.next()", "head.nn.next()")
-                .replace(
-                  "_root_.scala.collection.internal.pprint.CollectionName.get(i)",
-                  "import scala.reflect.Selectable.reflectiveSelectable\n" +
-                    "    i.asInstanceOf[{def collectionClassName: String}].collectionClassName"
-                )
                 .replace("abstract class Walker", "@scala.annotation.nowarn abstract class Walker")
                 .replace("object TPrintLowPri", "@scala.annotation.nowarn object TPrintLowPri")).getBytes
           )
