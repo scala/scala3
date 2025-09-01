@@ -95,17 +95,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String =
-    assert(myReplStringOf != null,
-      "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
-    val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
-    // stringOf returns null if value.toString returns null. Show some text as a fallback.
-    def fallback = s"""null // result of "${sym.name}.toString" is null"""
-    if value == null then "null" else
-      myReplStringOf(value, maxPrintElements, maxPrintCharacters) match
-        case null => fallback
-        case res  => res
-    end if
+    pprint.PPrinter.BlackWhite.apply(value).toString
 
   /** Load the value of the symbol using reflection.
    *

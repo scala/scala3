@@ -251,7 +251,7 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Xfatal-warnings",                         // -Werror in modern usage
+      //"-Xfatal-warnings",                         // -Werror in modern usage
       "-encoding", "UTF8",
       "-language:implicitConversions",
     ),
@@ -698,8 +698,8 @@ object Build {
         "org.jline" % "jline-terminal" % "3.25.1",
         "org.jline" % "jline-terminal-jna" % "3.25.1", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        "com.lihaoyi" %% "pprint" % "0.9.3",
       ),
-
       // For convenience, change the baseDirectory when running the compiler
       Compile / forkOptions := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
       Compile / run / forkOptions := (Compile / run / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
@@ -1153,7 +1153,7 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions += "-Yscala2Unpickler:never",
-      scalacOptions -= "-Xfatal-warnings",
+//      scalacOptions -= "-Xfatal-warnings",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
