@@ -16,7 +16,6 @@ package immutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
-// import scala.language.unsafeNulls
 
 import scala.annotation.meta.{getter, setter}
 import scala.annotation.tailrec
