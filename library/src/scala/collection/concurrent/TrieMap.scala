@@ -673,7 +673,7 @@ private[concurrent] object CNode {
 }
 
 
-private[concurrent] case class RDCSS_Descriptor[K, V](old: INode[K, V], expectedmain: MainNode[K, V], nv: INode[K, V]) {
+private[concurrent] case class RDCSS_Descriptor[K, V](old: INode[K, V], expectedmain: MainNode[K, V] | Null, nv: INode[K, V]) {
   @volatile var committed = false
 }
 
@@ -788,7 +788,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   }
 
   private def RDCSS_ROOT(ov: INode[K, V], expectedmain: MainNode[K, V] | Null, nv: INode[K, V]): Boolean = {
-    val desc = RDCSS_Descriptor(ov, expectedmain.nn, nv)
+    val desc = RDCSS_Descriptor(ov, expectedmain, nv)
     if (CAS_ROOT(ov, desc)) {
       RDCSS_Complete(abort = false)
       /*READ*/desc.committed
@@ -858,7 +858,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   @tailrec def snapshot(): TrieMap[K, V] = {
     val r = RDCSS_READ_ROOT()
     val expmain = r.gcasRead(this)
-    if (RDCSS_ROOT(r, expmain, r.copyToGen(new Gen, this))) new TrieMap(r.copyToGen(new Gen, this), rootupdater.nn, hashing, equality)
+    if (RDCSS_ROOT(r, expmain, r.copyToGen(new Gen, this))) new TrieMap(r.copyToGen(new Gen, this), rootupdater, hashing, equality)
     else snapshot()
   }
 
@@ -1084,13 +1084,13 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
   def next() = if (hasNext) {
     var r: (K, V) | Null = null
     if (subiter ne null) {
-      r = subiter.nn.next()
+      r = subiter.next()
       checkSubiter()
     } else {
       r = current.nn.kvPair
       advance()
     }
-    r.nn
+    r
   } else Iterator.empty.next()
 
   private def readin(in: INode[K, V]) = in.gcasRead(ct) match {
@@ -1152,7 +1152,7 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
     // this one needs to be evaluated
     if (this.subiter == null) it.subiter = null
     else {
-      val lst = this.subiter.nn.to(immutable.List)
+      val lst = this.subiter.to(immutable.List)
       this.subiter = lst.iterator
       it.subiter = lst.iterator
     }

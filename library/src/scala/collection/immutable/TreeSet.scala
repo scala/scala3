@@ -138,10 +138,10 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     import scala.collection.convert.impl._
     type T = RB.Tree[A, Any]
     val s = shape.shape match {
-      case StepperShape.IntShape    => IntBinaryTreeStepper.from[T]   (size, tree.nn, _.left.nn, _.right.nn, _.key.asInstanceOf[Int])
-      case StepperShape.LongShape   => LongBinaryTreeStepper.from[T]  (size, tree.nn, _.left.nn, _.right.nn, _.key.asInstanceOf[Long])
-      case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.nn, _.left.nn, _.right.nn, _.key.asInstanceOf[Double])
-      case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree.nn, _.left.nn, _.right.nn, _.key))
+      case StepperShape.IntShape    => IntBinaryTreeStepper.from[T]   (size, tree, _.left.nn, _.right.nn, _.key.asInstanceOf[Int])
+      case StepperShape.LongShape   => LongBinaryTreeStepper.from[T]  (size, tree, _.left.nn, _.right.nn, _.key.asInstanceOf[Long])
+      case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree, _.left.nn, _.right.nn, _.key.asInstanceOf[Double])
+      case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree, _.left.nn, _.right.nn, _.key))
     }
     s.asInstanceOf[S with EfficientSplit]
   }
@@ -256,7 +256,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
       case _ =>
         var t: RB.Tree[E, Null] | Null = null
         val i = it.iterator
-        while (i.hasNext) t = RB.update(t.nn, i.next(), null, overwrite = false)
+        while (i.hasNext) t = RB.update(t, i.next(), null, overwrite = false)
         new TreeSet[E](t)
     }
 
