@@ -217,7 +217,7 @@ object Using {
           catch {
             case t: Throwable =>
               if (toThrow == null) toThrow = t
-              else toThrow = preferentiallySuppress(toThrow.nn, t)
+              else toThrow = preferentiallySuppress(toThrow, t)
           }
         }
         if (toThrow != null) throw toThrow

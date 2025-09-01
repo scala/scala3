@@ -321,16 +321,16 @@ class LinkedHashMap[K, V]
   override def foreach[U](f: ((K, V)) => U): Unit = {
     var cur = firstEntry
     while (cur ne null) {
-      f((cur.nn.key, cur.nn.value))
-      cur = cur.nn.later
+      f((cur.key, cur.value))
+      cur = cur.later
     }
   }
 
   override def foreachEntry[U](f: (K, V) => U): Unit = {
     var cur = firstEntry
     while (cur ne null) {
-      f(cur.nn.key, cur.nn.value)
-      cur = cur.nn.later
+      f(cur.key, cur.value)
+      cur = cur.later
     }
   }
 
@@ -400,7 +400,7 @@ class LinkedHashMap[K, V]
           nnode.next = old
           table(idx) = nnode
         } else {
-          nnode.next = prev.nn.next
+          nnode.next = prev.next
           prev.nn.next = nnode
         }
     }

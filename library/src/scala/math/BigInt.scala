@@ -299,7 +299,7 @@ final class BigInt private (
     if (this.longEncoding) {
       if (that.longEncoding) java.lang.Long.compare(this._long, that._long) else -that._bigInteger.nn.signum()
     } else {
-      if (that.longEncoding) _bigInteger.nn.signum() else this._bigInteger.nn.compareTo(that._bigInteger.nn)
+      if (that.longEncoding) _bigInteger.nn.signum() else this._bigInteger.nn.compareTo(that._bigInteger)
     }
 
   /** Addition of BigInts

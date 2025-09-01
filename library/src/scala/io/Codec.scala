@@ -58,16 +58,16 @@ class Codec(val charSet: Charset) {
   def name = charSet.name
   def encoder: CharsetEncoder = {
     val enc = charSet.newEncoder()
-    if (_onMalformedInput ne null) enc onMalformedInput _onMalformedInput.nn
-    if (_onUnmappableCharacter ne null) enc onUnmappableCharacter _onUnmappableCharacter.nn
-    if (_encodingReplacement ne null) enc replaceWith _encodingReplacement.nn
+    if (_onMalformedInput ne null) enc onMalformedInput _onMalformedInput
+    if (_onUnmappableCharacter ne null) enc onUnmappableCharacter _onUnmappableCharacter
+    if (_encodingReplacement ne null) enc replaceWith _encodingReplacement
     enc
   }
   def decoder: CharsetDecoder = {
     val dec = charSet.newDecoder()
-    if (_onMalformedInput ne null) dec onMalformedInput _onMalformedInput.nn
-    if (_onUnmappableCharacter ne null) dec onUnmappableCharacter _onUnmappableCharacter.nn
-    if (_decodingReplacement ne null) dec replaceWith _decodingReplacement.nn
+    if (_onMalformedInput ne null) dec onMalformedInput _onMalformedInput
+    if (_onUnmappableCharacter ne null) dec onUnmappableCharacter _onUnmappableCharacter
+    if (_decodingReplacement ne null) dec replaceWith _decodingReplacement
     dec
   }
 

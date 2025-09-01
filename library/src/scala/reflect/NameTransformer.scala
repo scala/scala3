@@ -119,14 +119,14 @@ object NameTransformer {
           val ch2 = name.charAt(i+2)
           if ('a' <= ch2 && ch2 <= 'z') {
             ops = code2op((ch1 - 'a') * 26 + ch2 - 'a')
-            while ((ops ne null) && !name.startsWith(ops.nn.code, i)) ops = ops.nn.next
+            while ((ops ne null) && !name.startsWith(ops.code, i)) ops = ops.next
             if (ops ne null) {
               if (buf eq null) {
                 buf = new StringBuilder()
                 buf.append(name.substring(0, i))
               }
-              buf.append(ops.nn.op)
-              i += ops.nn.code.length()
+              buf.append(ops.op)
+              i += ops.code.length()
             }
             /* Handle the decoding of Unicode glyphs that are
              * not valid Java/JVM identifiers */

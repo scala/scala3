@@ -1150,7 +1150,7 @@ private final class BitmapIndexedSetNode[A](
               if (newNodes eq null) {
                 newNodes = mutable.Queue.empty
               }
-              newNodes.nn += newSubNode
+              newNodes += newSubNode
             }
           } else if (newSubNode.size == 1) {
             newDataMap |= bitpos
@@ -1158,7 +1158,7 @@ private final class BitmapIndexedSetNode[A](
             if (nodesToMigrateToData eq null) {
               nodesToMigrateToData = mutable.Queue.empty
             }
-            nodesToMigrateToData.nn += newSubNode
+            nodesToMigrateToData += newSubNode
           }
 
           nodeIndex += 1
@@ -1265,7 +1265,7 @@ private final class BitmapIndexedSetNode[A](
                 if (newNodes eq null) {
                   newNodes = mutable.Queue.empty
                 }
-                newNodes.nn += newSubNode
+                newNodes += newSubNode
               }
             } else if (newSubNode.size == 1) {
               newDataMap |= bitpos
@@ -1273,7 +1273,7 @@ private final class BitmapIndexedSetNode[A](
               if (nodesToMigrateToData eq null) {
                 nodesToMigrateToData = mutable.Queue.empty
               }
-              nodesToMigrateToData.nn += newSubNode
+              nodesToMigrateToData += newSubNode
             }
 
             nodeIndex += 1

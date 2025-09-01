@@ -269,7 +269,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)
     private[collection] def this(b: UnrolledBuffer[T] | Null) = this(0, new Array[T](unrolledlength), null, b)
 
-    private def nextlength = if (buff eq null) unrolledlength else buff.nn.calcNextLength(array.length)
+    private def nextlength = if (buff eq null) unrolledlength else buff.calcNextLength(array.length)
 
     // adds and returns itself or the new unrolled if full
     @tailrec final def append(elem: T): Unrolled[T] = if (size < array.length) {
@@ -284,23 +284,23 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       var unrolled: Unrolled[T] | Null = this
       var i = 0
       while (unrolled ne null) {
-        val chunkarr = unrolled.nn.array
-        val chunksz = unrolled.nn.size
+        val chunkarr = unrolled.array
+        val chunksz = unrolled.size
         while (i < chunksz) {
           val elem = chunkarr(i)
           f(elem)
           i += 1
         }
         i = 0
-        unrolled = unrolled.nn.next
+        unrolled = unrolled.next
       }
     }
     def mapInPlace(f: T => T): Unit = {
       var unrolled: Unrolled[T] | Null = this
       var i = 0
       while (unrolled ne null) {
-        val chunkarr = unrolled.nn.array
-        val chunksz = unrolled.nn.size
+        val chunkarr = unrolled.array
+        val chunksz = unrolled.size
         while (i < chunksz) {
           val elem = chunkarr(i)
           chunkarr(i) = f(elem)
@@ -326,7 +326,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
     } else {
       // allocate a new node and store element
       // then make it point to this
-      val newhead = new Unrolled[T](buff.nn)
+      val newhead = new Unrolled[T](buff)
       newhead append elem
       newhead.next = this
       newhead
@@ -438,7 +438,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
     }
 
     override def toString: String =
-      array.take(size).nn.mkString("Unrolled@%08x".format(System.identityHashCode(this)) + "[" + size + "/" + array.length + "](", ", ", ")") + " -> " + (if (next ne null) next.toString else "")
+      array.take(size).mkString("Unrolled@%08x".format(System.identityHashCode(this)) + "[" + size + "/" + array.length + "](", ", ", ")") + " -> " + (if (next ne null) next.toString else "")
   }
 }
 

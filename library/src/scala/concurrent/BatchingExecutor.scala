@@ -159,7 +159,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
       val f = resubmit(BlockContext.usingBlockContext(this)(this))
 
       if (f != null)
-        throw f.nn
+        throw f
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */

@@ -397,7 +397,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
             preHigh.nn.next = null
             var lastLow: Node[K, V] | Null = preLow
             var lastHigh: Node[K, V] | Null = preHigh
-            var n = old
+            var n: Node[K, V] | Null = old
             while(n ne null) {
               val next = n.next
               if((n.hash & oldlen) == 0) { // keep low
@@ -407,7 +407,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
                 lastHigh.nn.next = n
                 lastHigh = n
               }
-              n = next.nn
+              n = next
             }
             lastLow.nn.next = null
             if(old ne preLow.nn.next) table(i) = preLow.nn.next.nn

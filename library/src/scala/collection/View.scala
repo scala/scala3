@@ -459,8 +459,8 @@ object View extends IterableFactory[View] {
       len = 0
       while(underlying.hasNext) {
         val n = underlying.next().asInstanceOf[AnyRef]
-        if(pos >= buf.nn.length) buf.nn.addOne(n)
-        else buf.nn(pos) = n
+        if(pos >= buf.length) buf.addOne(n)
+        else buf(pos) = n
         pos += 1
         if(pos == maxlen) pos = 0
         len += 1
@@ -513,7 +513,7 @@ object View extends IterableFactory[View] {
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       while(pos < maxlen && underlying.hasNext) {
-        buf.nn.addOne(underlying.next().asInstanceOf[AnyRef])
+        buf.addOne(underlying.next().asInstanceOf[AnyRef])
         pos += 1
       }
       if(!underlying.hasNext) len = 0

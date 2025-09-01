@@ -357,9 +357,9 @@ private[concurrent] object Promise {
         val m = cs.asInstanceOf[ManyCallbacks[T]]
         if (m.first eq t) {
           if (result == null) m.rest
-          else concatCallbacks(m.rest, result.nn)
+          else concatCallbacks(m.rest, result)
         }
-        else removeCallback(m.rest, t, if (result == null) m.first else new ManyCallbacks(m.first, result.nn))
+        else removeCallback(m.rest, t, if (result == null) m.first else new ManyCallbacks(m.first, result))
       } else cs
 
     // IMPORTANT: Noop should not be passed in here, `callbacks` cannot be null
@@ -383,8 +383,8 @@ private[concurrent] object Promise {
             throw new IllegalStateException("Cannot link completed promises together")
         } else if (state.isInstanceOf[Callbacks[_]]) {
           val l = if (link ne null) link else new Link(target)
-          val p = l.nn.promise(this)
-          if ((this ne p) && compareAndSet(state, l.nn)) {
+          val p = l.promise(this)
+          if ((this ne p) && compareAndSet(state, l)) {
             if (state ne Noop) p.dispatchOrAddCallbacks(p.get(), state.asInstanceOf[Callbacks[T]]) // Noop-check is important here
           } else linkRootOf(p, l)
         } else /* if (state.isInstanceOf[Link[T]]) */
