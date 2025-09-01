@@ -58,7 +58,7 @@ class LinkedHashSet[A]
    * - Every bucket is sorted in ascendant hash order
    * - The sum of the lengths of all buckets is equal to contentSize.
    */
-  private[this] var table = new Array[Entry](tableSizeFor(LinkedHashSet.defaultinitialSize))
+  private[this] var table = new Array[Entry | Null](tableSizeFor(LinkedHashSet.defaultinitialSize))
 
   private[this] var threshold: Int = newThreshold(table.length)
 
@@ -278,7 +278,7 @@ class LinkedHashSet[A]
               n = next
             }
             lastLow.next = null
-            if (old ne preLow.next) table(i) = preLow.next.nn
+            if (old ne preLow.next) table(i) = preLow.next
             if (preHigh.next ne null) {
               table(i + oldlen) = preHigh.next
               lastHigh.next = null
