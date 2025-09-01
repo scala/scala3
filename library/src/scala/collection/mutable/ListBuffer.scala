@@ -125,7 +125,7 @@ class ListBuffer[A]
   }
 
   // MUST only be called on fresh instances
-  private def freshFrom(xs: IterableOnce[A]): this.type = {
+  private def freshFrom(xs: IterableOnce[A]^): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
       var len = 1
@@ -144,7 +144,7 @@ class ListBuffer[A]
     this
   }
 
-  override final def addAll(xs: IterableOnce[A]): this.type = {
+  override final def addAll(xs: IterableOnce[A]^): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
       val fresh = new ListBuffer[A].freshFrom(it)
@@ -254,7 +254,7 @@ class ListBuffer[A]
     }
   }
 
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit = {
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
     if (idx < 0 || idx > len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
     val it = elems.iterator
     if (it.hasNext) {

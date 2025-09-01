@@ -138,7 +138,7 @@ object SeqView {
     extends SeqView[A] {
     outer: Sorted[A, B]^ =>
 
-    private var underlying: SomeSeqOps[A] | Null = underlying_
+    private var underlying: SomeSeqOps[A]^{underlying_} | Null = underlying_
 
     // force evaluation immediately by calling `length` so infinite collections
     // hang on `sorted`/`sortWith`/`sortBy` rather than on arbitrary method calls
