@@ -108,7 +108,7 @@ Ground Type has no meaningful underlying type, typically it is the type of metho
 definitions, but also union types and intersection types, along with utility types of the
 compiler.
 
-Here's a diagram, serving as the mental model of the most important and distinct types available after the `typer` phase, derived from [dotty/tools/dotc/core/Types.scala][1]:
+Here's a diagram, serving as the mental model of the most important and distinct types available after the `typer` phase, derived from [Types.scala]:
 
 ```
 Type -+- proxy_type --+- NamedType --------+- TypeRef

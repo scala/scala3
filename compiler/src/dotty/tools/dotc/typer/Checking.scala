@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike}
+import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
 
 import collection.mutable
 import reporting.*
@@ -144,25 +144,30 @@ object Checking {
   def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
-        tp match
-          case AppliedType(tycon, argTypes)
-          if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
-            // Don't check bounds in Java units that refer to Java type constructors.
-            // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
-            // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
-            // Do check all bounds in Scala units and those bounds in Java units that
-            // occur in applications of Scala type constructors.
-            && !isCaptureChecking || tycon.typeSymbol.is(CaptureChecked)
-            // Don't check bounds when capture checking type constructors that were not
-            // themselves capture checked. Since the type constructor could not foresee
-            // possible capture sets, it's better to be lenient for backwards compatibility.
-          =>
-            checkAppliedType(
-              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
-                .withType(tp).withSpan(tpt.span.toSynthetic),
-              tpt)
+        tp.normalized match
+          case tp @ AppliedType(tycon, argTypes) =>
+            if !(isCaptureChecking && defn.MatchCase.isInstance(tp)) then
+              // Don't check match type cases under cc. For soundness it's enough
+              // to check bounds in reduced match types.
+              // See tuple-ops.scala and tuple-ops-2.scala for examples that would fail otherwise.
+              if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
+                  // Don't check bounds in Java units that refer to Java type constructors.
+                  // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
+                  // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
+                  // Do check all bounds in Scala units and those bounds in Java units that
+                  // occur in applications of Scala type constructors.
+                  && (!isCaptureChecking || tycon.typeSymbol.is(CaptureChecked))
+                  // When capture checking, types that are not themselves capture-checked
+                  // are exempted. Since the type constructor could not foresee possible
+                  // capture sets, it's better to be lenient for backwards compatibility.
+              then
+                checkAppliedType(
+                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
+                    .withType(tp).withSpan(tpt.span.toSynthetic),
+                  tpt)
+              traverseChildren(tp)
           case _ =>
-        traverseChildren(tp)
+            traverseChildren(tp)
     checker.traverse(tpt.tpe)
 
   def checkNoWildcard(tree: Tree)(using Context): Tree = tree.tpe match {
@@ -287,11 +292,16 @@ object Checking {
      */
     def checkInfo(tp: Type): Type = tp match {
       case tp @ TypeAlias(alias) =>
-        tp.derivedAlias(checkPart(alias, "alias"))
+        val lo1 = atVariance(-1)(checkPart(alias, "alias"))
+        val hi1 = checkUpper(alias, "alias")
+        if lo1 eq hi1 then
+          tp.derivedAlias(lo1)
+        else
+          tp.derivedTypeBounds(lo1, hi1)
       case tp @ MatchAlias(alias) =>
-        tp.derivedAlias(checkUpper(alias, "match"))
+        tp.derivedAlias(atVariance(0)(checkUpper(alias, "match")))
       case tp @ TypeBounds(lo, hi) =>
-        tp.derivedTypeBounds(checkPart(lo, "lower bound"), checkUpper(hi, "upper bound"))
+        tp.derivedTypeBounds(atVariance(-1)(checkPart(lo, "lower bound")), checkUpper(hi, "upper bound"))
       case _ =>
         tp
     }
@@ -312,12 +322,12 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
-      case tp @ AppliedType(tycon, args) =>
-        tp.derivedAppliedType(this(tycon), args.mapConserve(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ RefinedType(parent, name, rinfo) =>
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
+      case tp: LazyRef =>
+        tp
       case tp @ TypeRef(pre, _) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -350,14 +360,17 @@ object Checking {
 
           if isInteresting(pre) then
             CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
-              val pre1 = this(pre, false, false)
+              val pre1 = atVariance(variance max 0)(this(pre, false, false))
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
+                  && tp.symbol == sym
               then
                 throw CyclicReference(tp.symbol)
               locked += tp
               try
-                if tp.symbol.isOpaqueAlias then
+                if tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter] then
+                  ; // skip checking info (and avoid forcing the symbol with .isOpaqueAlias/etc)
+                else if tp.symbol.isOpaqueAlias then
                   checkInfo(TypeAlias(tp.translucentSuperType))
                 else if !tp.symbol.isClass then
                   checkInfo(tp.info)
@@ -375,6 +388,16 @@ object Checking {
         }
       case _ => mapOver(tp)
     }
+
+    override def mapArg(arg: Type, tparam: ParamInfo): Type =
+      val varianceDiff = variance != tparam.paramVarianceSign
+      atVariance(variance * tparam.paramVarianceSign):
+        // Using tests/pos/i22257.scala as an example,
+        // if we consider FP's lower-bound of Fixed[Node]
+        // than `Node` is a type argument in contravariant
+        // position, while the type parameter is covariant.
+        val nestedCycleOK1 = nestedCycleOK || variance != 0 && varianceDiff
+        this(arg, nestedCycleOK, nestedCycleOK1)
   }
 
   /** Under -Yrequire-targetName, if `sym` has an operator name, check that it has a
@@ -494,6 +517,86 @@ object Checking {
     }
   }
 
+  def checkScala2Implicit(sym: Symbol)(using Context): Unit =
+    def migration(msg: Message) =
+      report.errorOrMigrationWarning(msg, sym.srcPos, MigrationVersion.Scala2Implicits)
+    def info = sym match
+      case sym: ClassSymbol => sym.primaryConstructor.info
+      case _ => sym.info
+    def paramName = info.firstParamNames match
+      case pname :: _ => pname.show
+      case _ => "x"
+    def paramTypeStr = info.firstParamTypes match
+      case pinfo :: _ => pinfo.show
+      case _ => "T"
+    def toFunctionStr(info: Type): String = info match
+      case ExprType(resType) =>
+        i"() => $resType"
+      case info: MethodType =>
+        i"(${ctx.printer.paramsText(info).mkString()}) => ${toFunctionStr(info.resType)}"
+      case info: PolyType =>
+        i"[${ctx.printer.paramsText(info).mkString()}] => ${toFunctionStr(info.resType)}"
+      case _ =>
+        info.show
+
+    if sym.isClass then
+      migration(
+        em"""`implicit` classes are no longer supported. They can usually be replaced
+            |by extension methods. Example:
+            |
+            |    extension ($paramName: $paramTypeStr)
+            |      // class methods go here, replace `this` by `$paramName`
+            |
+            |Alternatively, convert to a regular class and define
+            |a given `Conversion` instance into that class. Example:
+            |
+            |    class ${sym.name} ...
+            |    given Conversion[$paramTypeStr, ${sym.name}] = ${sym.name}($paramName)
+            |
+            |""")
+    else if sym.isOldStyleImplicitConversion(directOnly = true) then
+      migration(
+        em"""`implicit` conversion methods are no longer supported. They can usually be
+            |replaced by given instances of class `Conversion`. Example:
+            |
+            |    given Conversion[$paramTypeStr, ${sym.info.finalResultType}] = $paramName => ...
+            |
+            |""")
+    else if sym.is(Method) then
+      if !sym.isOldStyleImplicitConversion(forImplicitClassOnly = true) then
+        migration(
+          em"""`implicit` defs are no longer supported, use a `given` clause instead. Example:
+              |
+              |   given ${sym.name}: ${toFunctionStr(sym.info)} = ...
+              |
+              |""")
+    else if sym.isTerm && !sym.isOneOf(TermParamOrAccessor) then
+      def note =
+        if sym.is(Lazy) then ""
+        else
+          i"""
+              |
+              |Note: given clauses are evaluated lazily unless the right hand side is
+              |a simple reference.  If eager evaluation of the value's right hand side
+              |is important, you can define a regular val and a given instance like this:
+              |
+              |    val ${sym.name} = ...
+              |    given ${sym.info} = ${sym.name}"""
+
+      migration(
+        em"""`implicit` vals are no longer supported, use a `given` clause instead. Example:
+            |
+            |   given ${sym.name}: ${sym.info} = ...$note
+            |
+            |""")
+  end checkScala2Implicit
+
+  def checkErasedOK(sym: Symbol)(using Context): Unit =
+    if sym.is(Method, butNot = Macro)
+        || sym.isOneOf(Mutable | Lazy)
+        || sym.isType
+    then report.error(IllegalErasedDef(sym), sym.srcPos)
+
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(using Context): Unit = {
     def fail(msg: Message) = report.error(msg, sym.srcPos)
@@ -519,11 +622,11 @@ object Checking {
       fail(ParamsNoInline(sym.owner))
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
-    if (sym.is(Implicit)) {
+    if sym.is(Implicit) then
       assert(!sym.owner.is(Package), s"top-level implicit $sym should be wrapped by a package after typer")
       if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
-    }
+      else checkScala2Implicit(sym)
     if sym.is(Transparent) then
       if sym.isType then
         if !sym.isExtensibleClass then fail(em"`transparent` can only be used for extensible classes and traits")
@@ -578,7 +681,7 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail(em"Traits cannot have secondary constructors$addendum")
-    checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
+    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor)
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -587,8 +690,9 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
-    checkApplicable(Erased,
-      !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
+      fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
+    if sym.is(Erased) then checkErasedOK(sym)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
@@ -609,8 +713,11 @@ object Checking {
    */
   def checkWellFormedModule(mdef: untpd.ModuleDef)(using Context) =
     val mods = mdef.mods
-    def flagSourcePos(flag: FlagSet) =
-      mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    def flagSourcePos(flag: Flag) = untpd.flagSourcePos(mdef, flag)
+    if mods.is(Open) then
+      report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
+    if mods.is(Into) then
+      report.error(ModifierNotAllowedForDefinition(Into), flagSourcePos(Open))
     if mods.is(Abstract) then
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
@@ -719,7 +826,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -727,20 +834,36 @@ object Checking {
         report.error(ValueClassesMayNotDefineNonParameterField(clazz, stat.symbol), stat.srcPos)
       case _: DefDef if stat.symbol.isConstructor =>
         report.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, stat.symbol), stat.srcPos)
-      case _: MemberDef | _: Import | EmptyTree =>
+      case _: MemberDef | _: Import | _: Export | EmptyTree =>
       // ok
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (clazz.isDerivedValueClass) {
+    inline def checkParentIsNotAnyValAlias(): Unit =
+      cdef.rhs match {
+        case impl: Template =>
+          val parent = impl.parents.head
+          if parent.symbol.isAliasType && parent.typeOpt.dealias =:= defn.AnyValType then
+            report.error(ValueClassCannotExtendAliasOfAnyVal(clazz, parent.symbol), cdef.srcPos)
+        case _ => ()
+      }
+    // We don't check synthesised enum anonymous classes that are generated from
+    // enum extending a value class type (AnyVal or an alias of it)
+    // The error message 'EnumMayNotBeValueClassesID' will take care of generating the error message (See #22236)
+    if (clazz.isDerivedValueClass && !clazz.isEnumAnonymClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
+      if (clazz.is(Enum))
+        report.error(EnumMayNotBeValueClasses(clazz), clazz.srcPos)
       if (clazz.is(Abstract))
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
+
+      checkParentIsNotAnyValAlias()
+
       if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
         report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
@@ -749,6 +872,8 @@ object Checking {
         }
         clParamAccessors match {
           case param :: params =>
+            if (defn.isContextFunctionType(param.info))
+              report.error("value classes are not allowed for context function types", param.srcPos)
             if (param.is(Mutable))
               report.error(ValueClassParameterMayNotBeAVar(clazz, param), param.srcPos)
             if (param.info.isInstanceOf[ExprType])
@@ -779,24 +904,6 @@ object Checking {
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
 
-  def checkValue(tree: Tree)(using Context): Unit =
-    val sym = tree.tpe.termSymbol
-    if sym.isNoValue && !ctx.isJava then
-      report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
-
-  /** Check that `tree` refers to a value, unless `tree` is selected or applied
-   *  (singleton types x.type don't count as selections).
-   */
-  def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
-    tree match
-      case tree: RefTree if tree.name.isTermName =>
-        proto match
-          case _: SelectionProto if proto ne SingletonTypeProto => // no value check
-          case _: FunOrPolyProto => // no value check
-          case _ => checkValue(tree)
-      case _ =>
-    tree
-
   /** Check that experimental language imports in `trees`
    *  are done only in experimental scopes. For top-level
    *  experimental imports, all top-level definitions are transformed
@@ -804,26 +911,27 @@ object Checking {
    *
    */
   def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def nonExperimentalTopLevelDefs(pack: Symbol): Iterator[Symbol] =
-      def isNonExperimentalTopLevelDefinition(sym: Symbol) =
-        sym.isDefinedInCurrentRun
-        && sym.source == ctx.compilationUnit.source
-        && !sym.isConstructor // not constructor of package object
-        && !sym.is(Package) && !sym.name.isPackageObjectName
-        && !sym.isExperimental
-
-      pack.info.decls.toList.iterator.flatMap: sym =>
-        if sym.isClass && (sym.is(Package) || sym.isPackageObject) then
-          nonExperimentalTopLevelDefs(sym)
-        else if isNonExperimentalTopLevelDefinition(sym) then
-          sym :: Nil
-        else Nil
+    def nonExperimentalTopLevelDefs(): List[Symbol] =
+      new TreeAccumulator[List[Symbol]] {
+        override def apply(x: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
+          def addIfNotExperimental(sym: Symbol) =
+            if !sym.isExperimental then sym :: x
+            else x
+          tree match {
+            case tpd.PackageDef(_, contents) => apply(x, contents)
+            case typeDef @ tpd.TypeDef(_, temp: Template) if typeDef.symbol.isPackageObject =>
+              apply(x, temp.body)
+            case mdef: tpd.MemberDef => addIfNotExperimental(mdef.symbol)
+            case _ => x
+          }
+      }.apply(Nil, ctx.compilationUnit.tpdTree)
 
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
         || name == Feature.captureChecking
+        || name == Feature.separationChecking
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match
@@ -835,7 +943,7 @@ object Checking {
 
     if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
       def markTopLevelDefsAsExperimental(why: String): Unit =
-        for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
+        for sym <- nonExperimentalTopLevelDefs() do
           sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
 
       unitExperimentalLanguageImports match
@@ -1029,6 +1137,8 @@ trait Checking {
             pats.forall(recur(_, pt))
           case Typed(arg, tpt) =>
             check(pat, pt) && recur(arg, pt)
+          case NamedArg(name, pat) =>
+            recur(pat, pt)
           case Ident(nme.WILDCARD) =>
             true
           case pat: QuotePattern =>
@@ -1131,7 +1241,7 @@ trait Checking {
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
-       && !expected.isInto
+       && !expected.isConversionTargetType
     then
       def conv = methPart(tree) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
@@ -1219,6 +1329,10 @@ trait Checking {
   /** A hook to exclude selected symbols from double declaration check */
   def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean = false
 
+  def matchesSameStatic(decl: Symbol, other: Symbol)(using Context): Boolean =
+    def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+    decl.matches(other) && !staticNonStaticPair
+
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
@@ -1230,8 +1344,7 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
-        if (decl.matches(other) && !javaFieldMethodPair && !staticNonStaticPair) {
+        if (matchesSameStatic(decl, other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
@@ -1289,8 +1402,8 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
-    Checking.checkDerivedValueClass(clazz, stats)
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit =
+    Checking.checkDerivedValueClass(cdef, clazz, stats)
 
   /** Check that case classes are not inherited by case classes.
    */
@@ -1413,6 +1526,10 @@ trait Checking {
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+      case Apply(tycon, arg :: Nil) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
+        arg.tpe.widenTermRefExpr.normalized match
+          case _: ConstantType => ()
+          case _ => report.error(em"@${cls.name} requires constant expressions as a parameter", arg.srcPos)
       case _ =>
     tree
 
@@ -1667,7 +1784,7 @@ trait NoChecking extends ReChecking {
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp

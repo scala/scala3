@@ -26,71 +26,6 @@ $ jdb -attach 5005 -sourcepath tests/debug/
 
 You can run `help` for commands that supported by JDB.
 
-## Debug Automatically with Expect
-
-### 1. Annotate the source code with debug information.
-
-Following file (`tests/debug/while.scala`) is an example of annotated source code:
-
-```scala
-object Test {
-
-  def main(args: Array[String]): Unit = {
-    var a = 1 + 2
-    a = a + 3
-    a = 4 + 5 // [break] [step: while]
-
-    while (a * 8 < 100) { // [step: a += 1]
-      a += 1              // [step: while] [cont: print]
-    }
-
-    print(a) // [break] [cont]
-  }
-}
-```
-
-The debugging information is annotated as comments to the code in brackets:
-
-```scala
-val x = f(3) // [break] [next: line=5]
-val y = 5
-```
-
-1. A JDB command must be wrapped in brackets, like `[step]`. All JDB commands can be used.
-2. To check output of JDB for a command, use `[cmd: expect]`.
-3. If `expect` is wrapped in double quotes, regex is supported.
-4. Break commands are collected and set globally.
-5. Other commands will be send to jdb in the order they appear in the source file
-
-Note that JDB uses line number starts from 1.
-
-### 2. Generate Expect File
-
-Now we can run the following command to generate an expect file:
-
-```shell
-compiler/test/debug/Gen tests/debug/while.scala > robot
-```
-
-### 3. Run the Test
-
-First, compile the file `tests/debug/while.scala`:
-
-```shell
-$ scalac tests/debug/while.scala
-```
-
-Second, run the compiled class with debugging enabled:
-
-```shell
-$ scala -d Test
-```
-
-Finally, run the expect script:
-
-```shell
-expect robot
-```
 ## Other tips
 ### Show for human readable output
 
@@ -137,19 +72,19 @@ assertPositioned(tree.reporting(s"Tree is: $result"))
 To print out the trees you are compiling after the FrontEnd (scanner, parser, namer, typer) phases:
 
 ```shell
-scalac -Xprint:typer ../issues/Playground.scala
+scalac -Vprint:typer ../issues/Playground.scala
 ```
 
 To print out the trees after Frontend and CollectSuperCalls phases:
 
 ```shell
-scalac -Xprint:typer,collectSuperCalls ../issues/Playground.scala
+scalac -Vprint:typer,collectSuperCalls ../issues/Playground.scala
 ```
 
 To print out the trees after all phases:
 
 ```shell
-scalac -Xprint:all ../issues/Playground.scala
+scalac -Vprint:all ../issues/Playground.scala
 ```
 
 To find out the list of all the phases and their names, check out [this](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
@@ -219,7 +154,7 @@ And is to be used as:
 scalac -Yprint-pos  ../issues/Playground.scala
 ```
 
-If used, all the trees output with `show` or via `-Xprint:typer` will also have positions attached to them, e.g.:
+If used, all the trees output with `show` or via `-Vprint:typer` will also have positions attached to them, e.g.:
 
 ```scala
 package <empty>@<Playground.scala:1> {
@@ -247,7 +182,7 @@ package <empty>@<Playground.scala:1> {
 Every [Positioned](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```shell
-scalac -Xprint:typer -Yshow-tree-ids  ../issues/Playground.scala
+scalac -Vprint:typer -Yshow-tree-ids  ../issues/Playground.scala
 ```
 
 Gives:

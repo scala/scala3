@@ -7,13 +7,11 @@ object Test extends App {
 
   case class Even(n: Int)
 
-  given FromDigits[Even] with {
-    def fromDigits(digits: String): Even = {
+  given FromDigits[Even]:
+    def fromDigits(digits: String): Even =
       val intValue = digits.toInt
       if (intValue % 2 == 0) Even(intValue)
       else throw FromDigits.MalformedNumber()
-    }
-  }
 
   val e: Even = 1234 // error
 

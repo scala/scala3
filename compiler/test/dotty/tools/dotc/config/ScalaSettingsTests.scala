@@ -105,7 +105,7 @@ class ScalaSettingsTests:
       createTestCase(settings.YdropComments         , settings.XdropComments),
       createTestCase(settings.YcookComments         , settings.XcookComments),
       createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoDecodeStacktraces),
+      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
       createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
       createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
       // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
@@ -134,7 +134,7 @@ class ScalaSettingsTests:
       createTestCase(settings.YdropComments         , settings.XdropComments),
       createTestCase(settings.YcookComments         , settings.XcookComments),
       createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoDecodeStacktraces),
+      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
       createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
       createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
       // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
@@ -175,7 +175,7 @@ class ScalaSettingsTests:
       createTestCase(settings.YdropComments         , settings.XdropComments),
       createTestCase(settings.YcookComments         , settings.XcookComments),
       createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoDecodeStacktraces),
+      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
       createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
       createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
       // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
@@ -298,5 +298,12 @@ class ScalaSettingsTests:
       )
     )
     assertEquals(result, Right(reporting.Action.Error))
+
+  @Test def `illegal source versions are not accepted when parsing the settings`: Unit =
+    for source <- SourceVersion.illegalInSettings do
+      val settings = ScalaSettings
+      val result = settings.processArguments(List("-source", source.toString()), true)
+      assertEquals(0, result.warnings.length)
+      assertEquals(1, result.errors.length)
 
 end ScalaSettingsTests

@@ -34,6 +34,9 @@ object Trees {
 
   val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Property key for marking capture-set variables and members */
+  val CaptureVar: Property.StickyKey[Unit] = Property.StickyKey()
+
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
    *  Untyped trees have type `Tree[Untyped]`.
@@ -461,8 +464,11 @@ object Trees {
         else if qualifier.span.exists && qualifier.span.start > span.point then // right associative
           val realName = name.stripModuleClassSuffix.lastPart
           Span(span.start, span.start + realName.length, point)
-        else
-          Span(point, span.end, point)
+        else if span.pointMayBeIncorrect then
+          val realName = name.stripModuleClassSuffix.lastPart
+          val probablyPoint = span.end - realName.length
+          Span(probablyPoint, span.end, probablyPoint)
+        else Span(point, span.end, point)
       else span
   }
 
@@ -506,9 +512,9 @@ object Trees {
 
   /** The kind of application */
   enum ApplyKind:
-    case Regular      // r.f(x)
-    case Using        // r.f(using x)
-    case InfixTuple   // r f (x1, ..., xN) where N != 1;  needs to be treated specially for an error message in typedApply
+    case Regular    // r.f(x)
+    case Using      // r.f(using x)
+    case InfixTuple // r f (x1, ..., xN) where N != 1; needs to be treated specially for an error message in typedApply
 
   /** fun(args) */
   case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
@@ -602,17 +608,25 @@ object Trees {
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = Match[T]
     def isInline = false
+    def isSubMatch = false
   }
   class InlineMatch[+T <: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends Match(selector, cases) {
     override def isInline = true
     override def toString = s"InlineMatch($selector, $cases)"
   }
+  /** with selector match { cases } */
+  final class SubMatch[+T <: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
+    extends Match(selector, cases) {
+    override def isSubMatch = true
+  }
 
   /** case pat if guard => body */
   case class CaseDef[+T <: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[+T <: Untyped] = CaseDef[T]
+    /** Should this case be considered partial for exhaustivity and unreachability checking */
+    def maybePartial(using Context): Boolean = !guard.isEmpty || body.isInstanceOf[SubMatch[T]]
   }
 
   /** label[tpt]: { expr } */
@@ -738,11 +752,11 @@ object Trees {
   }
 
   /** A tree representing a quote pattern `'{ type binding1; ...; body }` or `'[ type binding1; ...; body ]`.
-   *  `QuotePattern`s are created the type checker when typing an `untpd.Quote` in a pattern context.
+   *  `QuotePattern`s are created by the type checker when typing an `untpd.Quote` in a pattern context.
    *
    *  `QuotePattern`s are checked are encoded into `unapply`s  in the `staging` phase.
    *
-   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the oreder in
+   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the order in
    *   which they are defined in the source.
    *
    *   @param  bindings  Type variable definitions (`Bind` tree)
@@ -1174,6 +1188,7 @@ object Trees {
     type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
     type InlineMatch = Trees.InlineMatch[T]
+    type SubMatch = Trees.SubMatch[T]
     type CaseDef = Trees.CaseDef[T]
     type Labeled = Trees.Labeled[T]
     type Return = Trees.Return[T]
@@ -1323,6 +1338,7 @@ object Trees {
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = tree match {
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
         case tree: InlineMatch => finalize(tree, untpd.InlineMatch(selector, cases)(sourceFile(tree)))
+        case tree: SubMatch => finalize(tree, untpd.SubMatch(selector, cases)(sourceFile(tree)))
         case _ => finalize(tree, untpd.Match(selector, cases)(sourceFile(tree)))
       }
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef = tree match {

@@ -35,7 +35,7 @@ class PatmatExhaustivityTest {
         e.printStackTrace(printWriter)
     }
 
-    stringBuffer.toString.trim.nn.replaceAll("\\s+\n", "\n") match {
+    stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
       case "" => Nil
       case s  => s.linesIterator.toSeq
     }
@@ -63,14 +63,14 @@ class PatmatExhaustivityTest {
 
   @Test
   def patmatExhaustivity: Unit = {
-    val blacklisted = TestSources.patmatExhaustivityScala2LibraryTastyBlacklisted.toSet
+    val excluded = TestSources.patmatExhaustivityScala2LibraryTastyExcludelisted.toSet
     val res = Directory(testsDir).list.toList
       .filter(f => f.ext.isScala || f.isDirectory)
       .filter { f =>
         val path = if f.isDirectory then f.path + "/" else f.path
         Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
       }
-      .filterNot(f => blacklisted.contains(f.name))
+      .filterNot(f => excluded.contains(f.name))
       .map(f => if f.isDirectory then compileDir(f.jpath) else compileFile(f.jpath))
 
     val failed = res.filter(!_)

@@ -9,6 +9,8 @@ import Annotations.Annotation
 import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
+import config.Feature
+import util.SrcPos
 
 import Decorators.*
 import Constants.Constant
@@ -141,10 +143,18 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     loop(tree, Nil)
 
   /** All term arguments of an application in a single flattened list */
+  def allTermArguments(tree: Tree): List[Tree] = unsplice(tree) match {
+    case Apply(fn, args) => allTermArguments(fn) ::: args
+    case TypeApply(fn, args) => allTermArguments(fn)
+    case Block(Nil, expr) => allTermArguments(expr)
+    case _ => Nil
+  }
+
+  /** All type and term arguments of an application in a single flattened list */
   def allArguments(tree: Tree): List[Tree] = unsplice(tree) match {
     case Apply(fn, args) => allArguments(fn) ::: args
-    case TypeApply(fn, _) => allArguments(fn)
-    case Block(_, expr) => allArguments(expr)
+    case TypeApply(fn, args) => allArguments(fn) ::: args
+    case Block(Nil, expr) => allArguments(expr)
     case _ => Nil
   }
 
@@ -256,6 +266,19 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _                            => false
   }
 
+  /** Expression was written `e: Unit` to quell warnings. Looks into adapted tree. */
+  def isAscribedToUnit(tree: Tree): Boolean =
+    import typer.Typer.AscribedToUnit
+       tree.hasAttachment(AscribedToUnit)
+    || {
+      def loop(tree: Tree): Boolean = tree match
+        case Apply(fn, _)     => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case TypeApply(fn, _) => fn.hasAttachment(AscribedToUnit) || loop(fn)
+        case Block(_, expr)   => expr.hasAttachment(AscribedToUnit) || loop(expr)
+        case _                => false
+      loop(tree)
+    }
+
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
     catchesAllOf(cdef, defn.ThrowableType)
@@ -327,14 +350,16 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   }
 
   /** Checks whether predicate `p` is true for all result parts of this expression,
-   *  where we zoom into Ifs, Matches, and Blocks.
+   *  where we zoom into Ifs, Matches, Tries, and Blocks.
    */
-  def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match {
+  def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match
     case If(_, thenp, elsep) => forallResults(thenp, p) && forallResults(elsep, p)
-    case Match(_, cases) => cases forall (c => forallResults(c.body, p))
+    case Match(_, cases) => cases.forall(c => forallResults(c.body, p))
+    case Try(_, cases, finalizer) =>
+      cases.forall(c => forallResults(c.body, p))
+      && (finalizer.isEmpty || forallResults(finalizer, p))
     case Block(_, expr) => forallResults(expr, p)
     case _ => p(tree)
-  }
 
   /** The tree stripped of the possibly nested applications (term and type).
    *  The original tree if it's not an application.
@@ -458,6 +483,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef if Feature.shouldBehaveAsScala2 =>
+      if (tree.isClassDef) EmptyFlags else NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
     case tree: DefDef =>
       if tree.unforcedRhs == EmptyTree
@@ -469,6 +496,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
         NoInitsInterface
       else if tree.mods.is(Given) && tree.paramss.isEmpty then
         EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
+      else if Feature.shouldBehaveAsScala2 then
+        EmptyFlags
       else
         NoInits
     case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
@@ -510,6 +539,10 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
+
+  /** The position of the modifier associated with given flag in this definition. */
+  def flagSourcePos(mdef: DefTree, flag: FlagSet): SrcPos =
+    mdef.mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
@@ -557,14 +590,22 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case New(_) | Closure(_, _, _) =>
       Pure
     case TypeApply(fn, _) =>
-      if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
+      val sym = fn.symbol
+      if tree.tpe.isInstanceOf[MethodOrPoly] then exprPurity(fn)
+      else if sym == defn.QuotedTypeModule_of
+          || sym == defn.Predef_classOf
+          || sym == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType]
+          || defn.capsErasedValueMethods.contains(sym)
+      then Pure
+      else Impure
     case Apply(fn, args) =>
-      if isPureApply(tree, fn) then
-        minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else if fn.symbol.is(Erased) then
-        Pure
+      val factorPurity = minOf(exprPurity(fn), args.map(exprPurity))
+      if tree.tpe.isInstanceOf[MethodOrPoly] then // no evaluation
+        factorPurity `min` Pure
+      else if isPureApply(tree, fn) then
+        factorPurity `min` Pure
       else if fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */ then
-        minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
+        factorPurity `min` Idempotent
       else
         Impure
     case Typed(expr, _) =>
@@ -599,6 +640,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   def isPureBinding(tree: Tree)(using Context): Boolean = statPurity(tree) >= Pure
 
+  def isPureSyntheticCaseApply(sym: Symbol)(using Context): Boolean =
+    sym.isAllOf(SyntheticMethod)
+    && sym.name == nme.apply
+    && sym.owner.is(Module)
+    && {
+      val cls = sym.owner.companionClass
+      cls.is(Case) && cls.isNoInitsRealClass
+    }
+
   /** Is the application `tree` with function part `fn` known to be pure?
    *  Function value and arguments can still be impure.
    */
@@ -610,6 +660,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
     tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && fn.symbol.isConstructor // constructors of no-inits classes are stable
+    || isPureSyntheticCaseApply(fn.symbol)
 
   /** The purity level of this reference.
    *  @return
@@ -618,8 +669,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *                    or its type is a constant type
    *    IdempotentPath  if reference is lazy and stable
    *    Impure          otherwise
-   *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
-   *               flags set.
    */
   def refPurity(tree: Tree)(using Context): PurityLevel = {
     val sym = tree.symbol
@@ -747,7 +796,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def isVariableOrGetter(tree: Tree)(using Context): Boolean = {
     def sym = tree.symbol
-    def isVar = sym.is(Mutable)
+    def isVar = sym.isMutableVarOrAccessor
     def isGetter =
       mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 
@@ -806,21 +855,35 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case _ => false
     }
 
-  /** An extractor for closures, either contained in a block or standalone.
+  /** An extractor for closures, possibly typed, and possibly including the
+   *  definition of the anonymous def.
    */
   object closure {
-    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
-      case Block(_, expr) => unapply(expr)
-      case Closure(env, meth, tpt) => Some(env, meth, tpt)
-      case Typed(expr, _)  => unapply(expr)
+    def unapply(tree: Tree)(using Context): Option[(List[Tree], Tree, Tree)] = tree match {
+      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+        unapply(closure)
+      case Block(Nil, expr) =>
+        unapply(expr)
+      case Closure(env, meth, tpt) =>
+        Some(env, meth, tpt)
+      case Typed(expr, _)  =>
+        unapply(expr)
       case _ => None
     }
   }
 
+  /** An extractor for a closure or a block ending in one. This was
+   *  previously `closure` before that one was tightened.
+   */
+  object blockEndingInClosure:
+    def unapply(tree: Tree)(using Context): Option[(List[Tree], Tree, Tree)] = tree match
+      case Block(_, expr) => unapply(expr)
+      case _ => closure.unapply(tree)
+
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
-      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+      case Block((meth: DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
       case Block(Nil, expr) =>
         unapply(expr)

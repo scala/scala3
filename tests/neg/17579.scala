@@ -16,7 +16,7 @@ class C:
     {
       // No error in this case, because the `given` is translated to a class
       // definition, for which `final` is redundant but not illegal.
-      final given Object with {} // warning: modifier `final` is redundant for this definition
+      final given Object() // warning: modifier `final` is redundant for this definition
     }
 
     {

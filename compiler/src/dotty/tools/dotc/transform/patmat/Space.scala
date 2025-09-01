@@ -7,13 +7,14 @@ import core.*
 import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
 import Names.*, NameOps.*, StdNames.*
 import ast.*, tpd.*
-import config.Printers.*
+import config.Printers.exhaustivity
 import printing.{ Printer, * }, Texts.*
 import reporting.*
 import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
 import util.*
 
 import scala.annotation.internal.sharable
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 import SpaceEngine.*
@@ -115,6 +116,7 @@ object SpaceEngine {
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
   def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
   def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
+  def nullSpace(using Context): Space = Typ(ConstantType(Constant(null)), decomposed = false)
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def computeSimplify(space: Space)(using Context): Space = trace(i"simplify($space)")(space match {
@@ -235,7 +237,7 @@ object SpaceEngine {
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1, tp2) && covers(fun, tp1, ss.length) then
+        if isSubType(tp1.stripNamedTuple, tp2) && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a
@@ -277,7 +279,7 @@ object SpaceEngine {
     || unappResult <:< ConstantType(Constant(true)) // only for unapply
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
-    || isProductMatch(unappResult, argLen)
+    || isProductMatch(unappResult.stripNamedTuple, argLen)
     || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
     || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
@@ -453,8 +455,8 @@ object SpaceEngine {
         val inArray = tycon.isRef(defn.ArrayClass) || tp.translucentSuperType.isRef(defn.ArrayClass)
         val args2 =
           if isTyped && !inArray then args.map(_ => WildcardType)
-          else args.map(arg => erase(arg, inArray = inArray, isValue = false))
-        tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
+          else args.map(arg => erase(arg, inArray = inArray, isValue = false, isTyped = false))
+        tp.derivedAppliedType(erase(tycon, inArray = inArray, isValue = false, isTyped = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
         OrType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped), tp.isSoft)
@@ -524,14 +526,25 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
+        scrutineeTp match
+        case AppliedType(tycon, targs)
+            if unappSym.is(Synthetic)
+            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor eq tycon) =>
+          // Special case synthetic unapply/unapplySeq's
+          // Provided the shapes of the types match:
+          // the scrutinee type being unapplied and
+          // the unapply parameter type
+          pt.instantiate(targs).asInstanceOf[MethodType]
+        case _ =>
           val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-          scrutineeTp <:< mt.paramInfos(0)
+          val unapplyArgType = mt.paramInfos.head
+          scrutineeTp <:< unapplyArgType
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
-          mt.paramInfos(0) <:< scrutineeTp
-          maximizeType(mt.paramInfos(0), Spans.NoSpan)
+          unapplyArgType <:< scrutineeTp
+          maximizeType(unapplyArgType, Spans.NoSpan)
           if !(ctx.typerState.ownedVars -- locked).isEmpty then
             // constraining can create type vars out of wildcard types
             // (in legalBound, by using a LevelAvoidMap)
@@ -543,7 +556,7 @@ object SpaceEngine {
             // but I'd rather have an unassigned new-new type var, than an infinite loop.
             // After all, there's nothing strictly "wrong" with unassigned type vars,
             // it just fails TreeChecker's linting.
-            maximizeType(mt.paramInfos(0), Spans.NoSpan)
+            maximizeType(unapplyArgType, Spans.NoSpan)
           mt
     }
 
@@ -557,7 +570,10 @@ object SpaceEngine {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = wildApprox(ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType)
+    var resTp0 = mt.resultType
+    if mt.isResultDependent then
+      resTp0 = ctx.typeAssigner.safeSubstParam(resTp0, mt.paramRefs.head, scrutineeTp)
+    val resTp = wildApprox(resTp0.finalResultType)
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
@@ -668,18 +684,22 @@ object SpaceEngine {
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
+          def containsUninhabitedField(tp: Type): Boolean =
+            !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
+              !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
+            }
+
           def inhabited(tp: Type): Boolean = tp.dealias match
             case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)
             case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
             case tp: RefinedType => inhabited(tp.parent)
-            case tp: TypeRef => inhabited(tp.prefix)
-            case _ => true
+            case tp: TypeRef => !containsUninhabitedField(tp) && inhabited(tp.prefix)
+            case _ => !containsUninhabitedField(tp)
 
           if inhabited(refined) then refined
           else NoType
         }.filter(_.exists)
         parts
-
       case _ => ListOfNoType
     end rec
 
@@ -775,8 +795,8 @@ object SpaceEngine {
         else tp.symbol.showName
       case Typ(tp, decomposed) =>
         val cls = tp.classSymbol
-        if ctx.definitions.isTupleNType(tp) then
-          params(tp).map(_ => "_").mkString("(", ", ", ")")
+        if ctx.definitions.isTupleNType(tp.stripNamedTuple) then
+          params(tp.stripNamedTuple).map(_ => "_").mkString("(", ", ", ")")
         else if defn.ListType.isRef(cls) then
           if flattenList then "_*" else "_: List"
         else if (defn.ConsType.isRef(cls))
@@ -812,8 +832,6 @@ object SpaceEngine {
     if Nullables.unsafeNullsEnabled then self.stripNull() else self
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
-    val seen = collection.mutable.Set.empty[Symbol]
-
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
       val tpw = tp.widen.dealias.stripUnsafeNulls()
@@ -827,10 +845,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) && {
-        if seen.add(classSym) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
-        else true // recursive case class: return true and other members can still fail the check
-      }
+      classSym.is(Case)
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
@@ -859,6 +874,7 @@ object SpaceEngine {
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
+    case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
     case _                                          => tp
   })
 
@@ -867,7 +883,7 @@ object SpaceEngine {
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
-      val space = if x.guard.isEmpty then trace(i"project(${x.pat})")(project(x.pat)) else Empty
+      val space = if x.maybePartial then Empty else trace(i"project(${x.pat})")(project(x.pat))
       space :: acc
     })
 
@@ -892,53 +908,55 @@ object SpaceEngine {
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
+    && tpd.enclosingInlineds.isEmpty // Skip reachability on inlined code (eg i19157/i22212)
 
-  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)") {
-    val cases = m.cases.toIndexedSeq
-
+  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-
-    val isNullable = selTyp.classSymbol.isNullableClass
-    val targetSpace = trace(i"targetSpace($selTyp)")(if isNullable
+    val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
+    val targetSpace = trace(i"targetSpace($selTyp)"):
+      if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
-    )
+    var hadNullOnly = false
+    def projectPat(pat: Tree): Space =
+      // Project toplevel wildcard pattern to nullable
+      if isNullable && isWildcardArg(pat) then Or(project(pat) :: nullSpace :: Nil)
+      else project(pat)
+    @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
+      cases match
+        case Nil =>
+        case (c @ CaseDef(pat, _, _)) :: rest =>
+          val curr = trace(i"project($pat)")(projectPat(pat))
+          val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
+          val prev = trace("prev")(simplify(Or(prevs)))
+          if prev == Empty && covered == Empty then // defer until a case is reachable
+            recur(rest, prevs, pat :: deferred)
+          else
+            for pat <- deferred.reverseIterator
+            do report.warning(MatchCaseUnreachable(), pat.srcPos)
 
-    var i        = 0
-    val len      = cases.length
-    var prevs    = List.empty[Space]
-    var deferred = List.empty[Tree]
+            if pat != EmptyTree // rethrow case of catch uses EmptyTree
+                && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
+            then
+              if isSubspace(covered, prev) then
+                report.warning(MatchCaseUnreachable(), pat.srcPos)
+              else if isNullable && !hadNullOnly && isWildcardArg(pat)
+                && isSubspace(covered, Or(prev :: nullSpace :: Nil)) then
+                // Issue OnlyNull warning only if:
+                // 1. The target space is nullable;
+                // 2. OnlyNull warning has not been issued before;
+                // 3. The pattern is a wildcard pattern;
+                // 4. The pattern is not covered by the previous cases,
+                //    but covered by the previous cases with null.
+                hadNullOnly = true
+                report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
-    while (i < len) {
-      val CaseDef(pat, guard, _) = cases(i)
+            // in redundancy check, take guard as false (or potential sub cases as partial) for a sound approximation
+            val newPrev = if c.maybePartial then prevs else covered :: prevs
+            recur(rest, newPrev, Nil)
 
-      val curr = trace(i"project($pat)")(project(pat))
-
-      val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
-
-      val prev = trace("prev")(simplify(Or(prevs)))
-
-      if prev == Empty && covered == Empty then // defer until a case is reachable
-        deferred ::= pat
-      else {
-        for (pat <- deferred.reverseIterator)
-          report.warning(MatchCaseUnreachable(), pat.srcPos)
-        if pat != EmptyTree // rethrow case of catch uses EmptyTree
-            && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
-            && isSubspace(covered, prev)
-        then {
-          val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
-          val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
-          report.warning(msg, pat.srcPos)
-        }
-        deferred = Nil
-      }
-
-      // in redundancy check, take guard as false in order to soundly approximate
-      prevs ::= (if guard.isEmpty then covered else Empty)
-      i += 1
-    }
-  }
+    recur(m.cases, Nil, Nil)
+  end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)

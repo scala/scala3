@@ -24,7 +24,7 @@ final class Slice[Base: Collection as b](
 
 }
 
-given sliceIsCollection[T: Collection as c]: Collection[Slice[T]] with {
+given sliceIsCollection: [T: Collection as c] => Collection[Slice[T]] {
 
   type Element = c.Element
   type Position = c.Position

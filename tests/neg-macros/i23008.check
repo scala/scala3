@@ -1,0 +1,21 @@
+
+-- Error: tests/neg-macros/i23008/Test_2.scala:1:24 --------------------------------------------------------------------
+1 |@main def Test = Macros.buildString // error
+  |                 ^^^^^^^^^^^^^^^^^^
+  |                 Exception occurred while executing macro expansion.
+  |                 java.lang.IllegalArgumentException: requirement failed: value of StringConstant cannot be `null`
+  |                 	at scala.Predef$.require(Predef.scala:337)
+  |                 	at scala.quoted.runtime.impl.QuotesImpl$reflect$StringConstant$.apply(QuotesImpl.scala:2540)
+  |                 	at scala.quoted.runtime.impl.QuotesImpl$reflect$StringConstant$.apply(QuotesImpl.scala:2539)
+  |                 	at scala.quoted.ToExpr$StringToExpr.apply(ToExpr.scala:82)
+  |                 	at scala.quoted.ToExpr$StringToExpr.apply(ToExpr.scala:80)
+  |                 	at scala.quoted.Expr$.apply(Expr.scala:72)
+  |                 	at Macros$.buildStringCode(Macro_1.scala:9)
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:4
+4 |  inline def buildString = ${buildStringCode}
+  |                           ^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

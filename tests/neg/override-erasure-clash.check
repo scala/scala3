@@ -4,4 +4,6 @@
   |      Name clash between defined and inherited member:
   |      def f(): Int in class A at line 3 and
   |      def g(): Int in class B at line 5
-  |      have the same name and type after erasure.
+  |      have the same name and type (): Int after erasure.
+  |
+  | longer explanation available when compiling with `-explain`

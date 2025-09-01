@@ -1,18 +1,18 @@
 //> using options -experimental
 
 trait Wrappable[T] { }
-given Wrappable[Float] with { }
+given Wrappable[Float]()
 
 case class Wrapped[T: Wrappable](value: T)
 
 trait Wrapper[T] { type WrappedT }
 object Wrapper { type Aux[T <: Tuple, WrappedT0 <: Tuple] = Wrapper[T] { type WrappedT = WrappedT0 } }
 
-given Wrapper[EmptyTuple] with { type WrappedT = EmptyTuple }
+given Wrapper[EmptyTuple] { type WrappedT = EmptyTuple }
 
-given [T: Wrappable]: Wrapper[T] with { type WrappedT = Wrapped[T] }
+given [T: Wrappable] => Wrapper[T] { type WrappedT = Wrapped[T] }
 
-given [H: Wrappable, T <: Tuple, WrappedT0 <: Tuple](using Wrapper.Aux[T, WrappedT0]): Wrapper[H *: T] with {
+given [H: Wrappable, T <: Tuple, WrappedT0 <: Tuple] => Wrapper.Aux[T, WrappedT0] => Wrapper[H *: T] {
   type WrappedT = Wrapped[H] *: WrappedT0
 }
 

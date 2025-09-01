@@ -42,13 +42,13 @@ object AnyCollection {
 
 }
 
-given anyCollectionIsCollection[T](using tIsValue: Value[T]): Collection[AnyCollection[T]] with {
+given anyCollectionIsCollection: [T] => (tIsValue: Value[T]) => Collection[AnyCollection[T]] {
 
   type Element = T
   //given elementIsValue: Value[Element] = tIsValue
 
   type Position = AnyValue
-  given positionIsValue: Value[Position] = anyValueIsValue
+  override given positionIsValue: Value[Position] = anyValueIsValue
 
   extension (self: AnyCollection[T]) {
 

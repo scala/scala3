@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.{migrateTo3, fewerBracesEnabled}
+import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
@@ -184,7 +184,7 @@ object Scanners {
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
-    val newSyntax = ctx.settings.newSyntax.value
+    val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
     val rewriteToIndent = ctx.settings.indent.value && rewrite
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite
@@ -212,6 +212,7 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
+    def trackedEnabled = featureEnabled(Feature.modularity)
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -306,11 +307,15 @@ object Scanners {
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       var noProgress = 0
         // Defensive measure to ensure we always get out of the following while loop
-        // even if source file is weirly formatted (i.e. we never reach EOF
+        // even if source file is weirly formatted (i.e. we never reach EOF)
+      var prevOffset = offset
       while !atStop && noProgress < 3 do
-        val prevOffset = offset
         nextToken()
-        if offset == prevOffset then noProgress += 1 else noProgress = 0
+        if offset <= prevOffset then
+          noProgress += 1
+        else
+          prevOffset = offset
+          noProgress = 0
       if debugTokenStream then
         println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       if token == OUTDENT then dropUntil(_.isInstanceOf[Indented])
@@ -598,6 +603,20 @@ object Scanners {
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
+      // can emit OUTDENT if line is not non-empty blank line at EOF
+      inline def isTrailingBlankLine: Boolean =
+        token == EOF && {
+          val end = buf.length - 1 // take terminal NL as empty last line
+          val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
+          prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
+        }
+
+      inline def canDedent: Boolean =
+           lastToken != INDENT
+        && !isLeadingInfixOperator(nextWidth)
+        && !statCtdTokens.contains(lastToken)
+        && !isTrailingBlankLine
+
       if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
@@ -610,7 +629,7 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
+          else if canDedent then
             currentRegion match
               case r: Indented =>
                 insert(OUTDENT, offset)
@@ -632,7 +651,6 @@ object Scanners {
                     insert(OUTDENT, offset)
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
                   report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
-
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
@@ -652,19 +670,36 @@ object Scanners {
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth): Message =
       em"""Incompatible combinations of tabs and spaces in indentation prefixes.
           |Previous indent : $lastWidth
-         |Latest indent   : $nextWidth"""
+          |Latest indent   : $nextWidth"""
 
     def observeColonEOL(inTemplate: Boolean): Unit =
       val enabled =
         if token == COLONop && inTemplate then
           report.deprecationWarning(em"`:` after symbolic operator is deprecated; use backticks around operator instead", sourcePos(offset))
           true
-        else token == COLONfollow && (inTemplate || fewerBracesEnabled)
+        else token == COLONfollow && (inTemplate || sourceVersion.enablesFewerBraces)
       if enabled then
         peekAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
         if atEOL then token = COLONeol
+
+    // consume => and insert <indent> if applicable. Used to detect colon arrow: x =>
+    def observeArrowIndented(): Unit =
+      if isArrow && indentSyntax then
+        peekAhead()
+        val atEOL = isAfterLineEnd
+        val atEOF = token == EOF
+        reset()
+        if atEOF then
+          token = EOF
+        else if atEOL then
+          val nextWidth = indentWidth(next.offset)
+          val lastWidth = currentRegion.indentWidth
+          if lastWidth < nextWidth then
+            currentRegion = Indented(nextWidth, COLONeol, currentRegion)
+            offset = next.offset
+            token = INDENT
 
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
@@ -674,7 +709,6 @@ object Scanners {
           currentRegion = Indented(nextWidth, COLONeol, currentRegion)
           offset = next.offset
           token = INDENT
-    end observeIndented
 
     /** Insert an <outdent> token if next token closes an indentation region.
      *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
@@ -1094,7 +1128,7 @@ object Scanners {
         reset()
       next
 
-    class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
+    class LookaheadScanner(allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
       override protected def initialCharBufferSize = 8
       override def languageImportContext = Scanner.this.languageImportContext
     }
@@ -1114,7 +1148,7 @@ object Scanners {
       val lookahead = LookaheadScanner()
       while
         lookahead.nextToken()
-        lookahead.isNewLine || lookahead.isSoftModifier
+        lookahead.token == NEWLINE || lookahead.isSoftModifier
       do ()
       modifierFollowers.contains(lookahead.token)
     }
@@ -1191,15 +1225,17 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled)
+      && (softModifierNames.contains(name)
+        || name == nme.erased && erasedEnabled
+        || name == nme.tracked && trackedEnabled
+        || name == nme.update && Feature.ccEnabled
+        || name == nme.consume && Feature.ccEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && !lookahead.isColon
-
-    def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3
@@ -1646,7 +1682,7 @@ object Scanners {
   case class InCase(outer: Region) extends Region(OUTDENT)
 
   /** A class describing an indentation region.
-   *  @param width   The principal indendation width
+   *  @param width   The principal indentation width
    *  @param prefix  The token before the initial <indent> of the region
    */
   case class Indented(width: IndentWidth, prefix: Token, outer: Region | Null) extends Region(OUTDENT):

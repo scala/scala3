@@ -1,5 +1,7 @@
 package dotty.tools.pc.utils
 
+import java.util.Optional
+
 import scala.annotation.tailrec
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.CommonMtagsEnrichments
@@ -99,12 +101,6 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def focusAt(point: Int): SourcePosition =
       pos.withSpan(pos.span.withPoint(point).focus)
 
-    def toLocation: Option[l.Location] =
-      for
-        uri <- InteractiveDriver.toUriOption(pos.source)
-        range <- if pos.exists then Some(pos.toLsp) else None
-      yield new l.Location(uri.toString(), range)
-
     def encloses(other: SourcePosition): Boolean =
       pos.start <= other.start && pos.end >= other.end
 
@@ -170,7 +166,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       @tailrec
       def loop(acc: List[String], sym: Symbol): List[String] =
         if sym == NoSymbol || sym.isRoot || sym.isEmptyPackage then acc
-        else if sym.isPackageObject then loop(acc, sym.owner)
+        else if sym.isPackageObject || sym.isConstructor then loop(acc, sym.owner)
         else
           val v = this.nameBackticked(sym)(exclusions)
           loop(v :: acc, sym.owner)
@@ -180,6 +176,9 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
 
     def companion: Symbol =
       if sym.is(Module) then sym.companionClass else sym.companionModule
+
+    def dealiasType: Symbol =
+      if sym.isType then sym.info.deepDealiasAndSimplify.typeSymbol else sym
 
     def nameBackticked: String = nameBackticked(Set.empty[String])
 
@@ -278,11 +277,14 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
             symbol.maybeOwner.companion,
           ).filter(_ != NoSymbol) ++ symbol.allOverriddenSymbols
         else symbol.allOverriddenSymbols
-      val documentation = search.documentation(
-        sym,
-        () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
-        contentType,
-      )
+      val documentation =
+        if symbol.isLocal then Optional.empty
+        else
+          search.documentation(
+            sym,
+            () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
+            contentType,
+          )
       documentation.nn.toScala
     end symbolDocumentation
   end extension
@@ -337,7 +339,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     end enclosedChildren
   end extension
 
-  extension (imp: Import)
+  extension (imp: ImportOrExport)
     def selector(span: Span)(using Context): Option[Symbol] =
       for sel <- imp.selectors.find(_.span.contains(span))
       yield imp.expr.symbol.info.member(sel.name).symbol
@@ -400,17 +402,18 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
   end extension
 
   extension (tpe: Type)
-    def deepDealias(using Context): Type =
-      tpe.dealias match
+    def deepDealiasAndSimplify(using Context): Type =
+      val dealiased = tpe.dealias match
         case app @ AppliedType(tycon, params) =>
-          AppliedType(tycon, params.map(_.deepDealias))
+          AppliedType(tycon, params.map(_.deepDealiasAndSimplify))
         case aliasingBounds: AliasingBounds =>
-          aliasingBounds.derivedAlias(aliasingBounds.alias.dealias)
+          aliasingBounds.derivedAlias(aliasingBounds.alias.deepDealiasAndSimplify)
         case TypeBounds(lo, hi) =>
           TypeBounds(lo.dealias, hi.dealias)
         case RefinedType(parent, name, refinedInfo) =>
-          RefinedType(parent.dealias, name, refinedInfo.deepDealias)
+          RefinedType(parent.dealias, name, refinedInfo.deepDealiasAndSimplify)
         case dealised => dealised
+      dealiased.simplified
 
   extension[T] (list: List[T])
     def get(n: Int): Option[T] = if 0 <= n && n < list.size then Some(list(n)) else None

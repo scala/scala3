@@ -5,7 +5,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21313.scala:15:12 ---------------------------------------
 15 |  ac1.await(src2) // error
    |            ^^^^
-   |            Found:    (src2 : Source[Int, caps.CapSet^{ac2}]^?)
-   |            Required: Source[Int, caps.CapSet^{ac1}]^
+   |Found:    (src2 : Source[Int, scala.caps.CapSet^{ac2}]^{})
+   |Required: Source[Int, scala.caps.CapSet^{ac1}]^
+   |
+   |Note that capability ac1 cannot be included in capture set {ac2} of value src2.
+   |
+   |where:    ^ refers to a fresh root capability created in method test when checking argument to parameter src of method await
    |
    | longer explanation available when compiling with `-explain`

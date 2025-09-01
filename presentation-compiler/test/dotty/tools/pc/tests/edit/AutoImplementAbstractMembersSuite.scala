@@ -75,39 +75,59 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `no-new-line` =
+    checkEdit(
+      """|package a
+          |
+          |trait X:
+          |  def foo: Unit
+          |
+          |class <<Y>> extends X""".stripMargin,
+      """|package a
+         |
+         |trait X:
+         |  def foo: Unit
+         |
+         |class Y extends X {
+         |
+         |  override def foo: Unit = ???
+         |
+         |}""".stripMargin,
+    )
+
   @Test def `empty-lines-between-members` =
     checkEdit(
       """|package a
-         |
-         |object A {
-         |  trait Base {
-         |    def foo(x: Int): Int
-         |    def bar(x: String): String
-         |  }
-         |  class <<Concrete>> extends Base {
-         |
-         |    def bar(x: String): String = ???
-         |
-         |  }
-         |}
-         |""".stripMargin,
+        |
+        |object A {
+        |  trait Base {
+        |    def foo(x: Int): Int
+        |    def bar(x: String): String
+        |  }
+        |  class <<Concrete>> extends Base {
+        |
+        |    def bar(x: String): String = ???
+        |
+        |  }
+        |}
+        |""".stripMargin,
       """|package a
-         |
-         |object A {
-         |  trait Base {
-         |    def foo(x: Int): Int
-         |    def bar(x: String): String
-         |  }
-         |  class Concrete extends Base {
-         |
-         |
-         |    override def foo(x: Int): Int = ???
-         |
-         |    def bar(x: String): String = ???
-         |
-         |  }
-         |}
-         |""".stripMargin
+        |
+        |object A {
+        |  trait Base {
+        |    def foo(x: Int): Int
+        |    def bar(x: String): String
+        |  }
+        |  class Concrete extends Base {
+        |
+        |
+        |    override def foo(x: Int): Int = ???
+        |
+        |    def bar(x: String): String = ???
+        |
+        |  }
+        |}
+        |""".stripMargin
     )
 
   @Test def `objectdef` =
@@ -1089,11 +1109,13 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  def foo(x: Int): Int
          |  def bar(x: String): String
          |
-         |given Foo with
+         |given Foo {
          |
          |  override def foo(x: Int): Int = ???
          |
          |  override def bar(x: String): String = ???
+         |
+         |}
          |""".stripMargin
     )
 

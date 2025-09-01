@@ -172,6 +172,19 @@ class InlineReducer(inliner: Inliner)(using Context):
 
     val isImplicit = scrutinee.isEmpty
 
+    val unusable: util.EqHashSet[Symbol] = util.EqHashSet()
+
+    /** Adjust internaly generated value definitions;
+     *   - If the RHS refers to an erased symbol, mark the val as erased
+     *   - If the RHS refers to an unusable symbol, mark the val as unusable
+     */
+    def adjustErased(sym: TermSymbol, rhs: Tree): Unit =
+      rhs.foreachSubTree:
+        case id: Ident if id.symbol.isErased =>
+          sym.setFlag(Erased)
+          if unusable.contains(id.symbol) then unusable += sym
+        case _ =>
+
     /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
      *  bindings for variables bound in this pattern to `caseBindingMap`.
      */
@@ -184,10 +197,11 @@ class InlineReducer(inliner: Inliner)(using Context):
       /** Create a binding of a pattern bound variable with matching part of
        *  scrutinee as RHS and type that corresponds to RHS.
        */
-      def newTermBinding(sym: TermSymbol, rhs: Tree): Unit = {
-        val copied = sym.copy(info = rhs.tpe.widenInlineScrutinee, coord = sym.coord, flags = sym.flags &~ Case).asTerm
+      def newTermBinding(sym: TermSymbol, rhs: Tree): Unit =
+        val copied = sym.copy(info = rhs.tpe.widenInlineScrutinee, coord = sym.coord,
+          flags = sym.flags &~ Case).asTerm
+        adjustErased(copied, rhs)
         caseBindingMap += ((sym, ValDef(copied, constToLiteral(rhs)).withSpan(sym.span)))
-      }
 
       def newTypeBinding(sym: TypeSymbol, alias: Type): Unit = {
         val copied = sym.copy(info = TypeAlias(alias), coord = sym.coord).asType
@@ -216,31 +230,21 @@ class InlineReducer(inliner: Inliner)(using Context):
       type TypeBindsMap = SimpleIdentityMap[TypeSymbol, java.lang.Boolean]
 
       def getTypeBindsMap(pat: Tree, tpt: Tree): TypeBindsMap = {
-        val getBinds = new TreeAccumulator[Set[TypeSymbol]] {
-          def apply(syms: Set[TypeSymbol], t: Tree)(using Context): Set[TypeSymbol] = {
-            val syms1 = t match {
-              case t: Bind if t.symbol.isType =>
-                syms + t.symbol.asType
-              case _ => syms
-            }
-            foldOver(syms1, t)
-          }
-        }
-
         // Extractors can contain Bind nodes in type parameter lists,
         // for that case tree looks like this:
         //   UnApply[t @ t](pats)(implicits): T[t]
         // Test case is pos/inline-caseclass.scala.
+        //
         // Alternatively, for explicitly specified type binds in type annotations like in
         //   case A(B): A[t]
         // the tree will look like this:
         //   Unapply[t](pats)(implicits) : T[t @ t]
         // and the binds will be found in the type tree instead
         // Test case is pos-macros/i15971
-        val tptBinds = getBinds(Set.empty[TypeSymbol], tpt)
+        val tptBinds = tpt.bindTypeSymbols.toSet
         val binds: Set[TypeSymbol] = pat match {
           case UnApply(TypeApply(_, tpts), _, _) =>
-            getBinds(Set.empty[TypeSymbol], tpts) ++ tptBinds
+            tpts.flatMap(_.bindTypeSymbols).toSet ++ tptBinds
           case _ => tptBinds
         }
 
@@ -316,6 +320,7 @@ class InlineReducer(inliner: Inliner)(using Context):
                 case (Nil, Nil) => true
                 case (pat :: pats1, selector :: selectors1) =>
                   val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenInlineScrutinee).asTerm
+                  adjustErased(elem, selector)
                   val rhs = constToLiteral(selector)
                   elem.defTree = rhs
                   caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
@@ -351,6 +356,19 @@ class InlineReducer(inliner: Inliner)(using Context):
     val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
     val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
+    // If scrutinee has embedded references to `compiletime.erasedValue` or to
+    // other erased values, mark scrutineeSym as Erased. In addition, if scrutinee
+    // is not a pure expression, mark scrutineeSym as unusable. The reason is that
+    // scrutinee would then fail the tests in erasure that demand that the RHS of
+    // an erased val is a pure expression. At the end of the inline match reduction
+    // we throw out all unusable vals and check that the remaining code does not refer
+    // to unusable symbols.
+    // Note that compiletime.erasedValue is treated as erased but not pure, so scrutinees
+    // containing references to it becomes unusable.
+    if scrutinee.existsSubTree(_.symbol.isErased) then
+      scrutineeSym.setFlag(Erased)
+      if !tpd.isPureExpr(scrutinee) then unusable += scrutineeSym
+
     def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
       val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
 
@@ -372,13 +390,17 @@ class InlineReducer(inliner: Inliner)(using Context):
         val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
         val (guardOK, canReduceGuard) =
           if cdef.guard.isEmpty then (true, true)
-          else typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match {
+          else stripInlined(typer.typed(cdef.guard.subst(from, to), defn.BooleanType)) match {
             case ConstantValue(v: Boolean) => (v, true)
             case _ => (false, false)
           }
-        if guardOK then Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
-        else if canReduceGuard then None
-        else Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
+        if !canReduceGuard then Some((List.empty, EmptyTree, false))
+        else if !guardOK then None
+        else cdef.body.subst(from, to) match
+          case t: SubMatch => // a sub match of an inline match is also inlined
+            reduceInlineMatch(t.selector, t.selector.tpe, t.cases, typer).map:
+              (subCaseBindings, rhs) => (caseBindings.map(_.subst(from, to)) ++ subCaseBindings, rhs, true)
+          case b => Some((caseBindings.map(_.subst(from, to)), b, true))
       }
       else None
     }
@@ -392,7 +414,25 @@ class InlineReducer(inliner: Inliner)(using Context):
           case _ => None
     }
 
-    recur(cases)
+    for (bindings, expr) <- recur(cases) yield
+      // drop unusable vals and check that no referenes to unusable symbols remain
+      val cleanupUnusable = new TreeMap:
+        override def transform(tree: Tree)(using Context): Tree =
+          tree match
+            case tree: ValDef if unusable.contains(tree.symbol) => EmptyTree
+            case id: Ident if unusable.contains(id.symbol) =>
+              report.error(
+                em"""${id.symbol} is unusable in ${ctx.owner} because it refers to an erased expression
+                    |in the selector of an inline match that reduces to
+                    |
+                    |${Block(bindings, expr)}""",
+                tree.srcPos)
+              tree
+            case _ => super.transform(tree)
+
+      val bindings1 = bindings.mapConserve(cleanupUnusable.transform).collect:
+        case mdef: MemberDef => mdef
+      (bindings1, cleanupUnusable.transform(expr))
   }
 end InlineReducer
 

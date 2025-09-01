@@ -227,7 +227,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
-                  INVISIBLE                                                        -- invisible during typechecking
+                  INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
                   TRACKED                                                          -- a tracked class parameter / a dependent class
                   Annotation
 
@@ -324,7 +324,7 @@ object TastyFormat {
    *  compatibility, but remains backwards compatible, with all
    *  preceding `MinorVersion`.
    */
-  final val MinorVersion: Int = 6
+  final val MinorVersion: Int = 8
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing

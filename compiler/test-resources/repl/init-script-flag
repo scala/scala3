@@ -1,0 +1,5 @@
+scala>:reset --repl-init-script:'println("Hello from init script!")'
+Resetting REPL state with the following settings:
+  --repl-init-script:println("Hello from init script!")
+
+Hello from init script!

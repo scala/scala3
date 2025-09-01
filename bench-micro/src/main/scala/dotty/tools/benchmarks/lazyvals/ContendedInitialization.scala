@@ -1,5 +1,6 @@
 package dotty.tools.benchmarks.lazyvals
 
+import compiletime.uninitialized
 import org.openjdk.jmh.annotations._
 import LazyVals.LazyHolder
 import org.openjdk.jmh.infra.Blackhole
@@ -16,12 +17,12 @@ import java.util.concurrent.{Executors, ExecutorService}
 class ContendedInitialization {
 
   @Param(Array("2000000", "5000000"))
-  var size: Int = _
+  var size: Int = uninitialized
 
   @Param(Array("2", "4", "8"))
-  var nThreads: Int = _
+  var nThreads: Int = uninitialized
 
-  var executor: ExecutorService = _
+  var executor: ExecutorService = uninitialized
 
   @Setup
   def prepare: Unit = {

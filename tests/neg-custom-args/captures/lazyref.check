@@ -1,28 +1,60 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:19:28 --------------------------------------
-19 |  val ref1c: LazyRef[Int] = ref1 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:20:28 --------------------------------------
+20 |  val ref1c: LazyRef[Int] = ref1 // error
    |                            ^^^^
    |                            Found:    (ref1 : LazyRef[Int]{val elem: () ->{cap1} Int}^{cap1})
    |                            Required: LazyRef[Int]
    |
+   |                            Note that capability cap1 is not included in capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:21:35 --------------------------------------
-21 |  val ref2c: LazyRef[Int]^{cap2} = ref2 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:22:35 --------------------------------------
+22 |  val ref2c: LazyRef[Int]^{cap2} = ref2 // error
    |                                   ^^^^
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref2*} Int}^{ref2}
    |                                   Required: LazyRef[Int]^{cap2}
    |
+   |                                   Note that capability ref2 is not included in capture set {cap2}.
+   |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:23:35 --------------------------------------
-23 |  val ref3c: LazyRef[Int]^{ref1} = ref3 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:24:35 --------------------------------------
+24 |  val ref3c: LazyRef[Int]^{ref1} = ref3 // error
    |                                   ^^^^
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref3*} Int}^{ref3}
    |                                   Required: LazyRef[Int]^{ref1}
    |
+   |                                   Note that capability ref3 is not included in capture set {ref1}.
+   |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:25:35 --------------------------------------
-25 |  val ref4c: LazyRef[Int]^{cap1} = ref4 // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:30:35 --------------------------------------
+30 |  val ref4c: LazyRef[Int]^{cap1} = ref4 // error
    |                                   ^^^^
    |                                   Found:    LazyRef[Int]{val elem: () ->{ref4*} Int}^{ref4}
    |                                   Required: LazyRef[Int]^{cap1}
    |
+   |                                   Note that capability ref4 is not included in capture set {cap1}.
+   |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazyref.scala:8:24 ------------------------------------------------------------
+8 |    new LazyRef(() => f(elem())) // error: separation failure
+  |                        ^^^^
+  |              Separation failure: Illegal access to {LazyRef.this.elem} which is hidden by the previous definition
+  |              of value get with type () => T.
+  |              This type hides capabilities  {LazyRef.this.elem}
+  |
+  |              where:    => refers to a fresh root capability in the type of value get
+-- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
+29 |    .map(g) // error: separation failure
+   |         ^
+   |Separation failure: argument of type  (x: Int) ->{cap2} Int
+   |to method map: [U](f: T => U): LazyRef[U]^{f, LazyRef.this}
+   |corresponds to capture-polymorphic formal parameter f of type  Int => Int
+   |and hides capabilities  {cap2}.
+   |Some of these overlap with the captures of the function prefix with type  (LazyRef[Int]{val elem: () ->{ref2*} Int} | (ref1 : LazyRef[Int]{val elem: () ->{cap1} Int}^{cap1}))^{ref2}.
+   |
+   |  Hidden set of current argument        : {cap2}
+   |  Hidden footprint of current argument  : {cap2}
+   |  Capture set of function prefix        : {ref1, ref2, ref2*}
+   |  Footprint set of function prefix      : {ref1, ref2, ref2*, cap1, cap2}
+   |  The two sets overlap at               : {cap2}
+   |
+   |where:    => refers to a fresh root capability created in value ref4 when checking argument to parameter f of method map

@@ -11,12 +11,12 @@ trait TSNamedType[T] extends TSType[T]
 
 trait DefaultTSTypes extends JavaTSTypes
 trait JavaTSTypes {
-  given javaEnumTSType[E <: java.lang.Enum[E]: ClassTag]: TSType[E] = ???
-  given javaEnumTSNamedType[E <: java.lang.Enum[E]: ClassTag]: TSNamedType[E] = ???
+  given javaEnumTSType: [E <: java.lang.Enum[E]: ClassTag] => TSType[E] = ???
+  given javaEnumTSNamedType: [E <: java.lang.Enum[E]: ClassTag] => TSNamedType[E] = ???
 }
 object DefaultTSTypes extends DefaultTSTypes
 trait TSTypeMacros {
-  inline given [T: Mirror.Of]: TSType[T] = derived[T]
+  inline given [T: Mirror.Of] => TSType[T] = derived[T]
   inline def derived[T](using m: Mirror.Of[T]): TSType[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     ???

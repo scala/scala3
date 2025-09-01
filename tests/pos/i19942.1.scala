@@ -13,11 +13,11 @@ object DerivedAlternative:
   inline def apply[F[_]]: Alternative[F] =
     import DerivedAlternative.given
     summonInline[DerivedAlternative[F]].instance
-  given nested[F[_], G[_]]: DerivedAlternative[F <<< G] = ???
+  given nested: [F[_], G[_]] => DerivedAlternative[F <<< G] = ???
 
 object auto:
   object alternative:
-    transparent inline given [F[_]]: Alternative[F] = DerivedAlternative[F]
+    transparent inline given [F[_]] => Alternative[F] = DerivedAlternative[F]
 
 trait Test:
   import Test.*

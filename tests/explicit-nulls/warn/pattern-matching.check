@@ -1,0 +1,24 @@
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/pattern-matching.scala:7:9 -------------------------
+7 |    case _ => 200 // warn: unreachable
+  |         ^
+  |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/pattern-matching.scala:11:9 ------------------------
+11 |    case null => 200 // warn: unreachable
+   |         ^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/pattern-matching.scala:14:9 ------------------------
+14 |    case null => 100 // warn: unreachable
+   |         ^^^^
+   |         Unreachable case
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/pattern-matching.scala:21:9 ---------------------------------
+21 |    case _ => 200 // warn: unreachable case except for null
+   |         ^
+   |         Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/pattern-matching.scala:39:9 ------------------------
+39 |    case _ => 300 // warn: unreachable case except for null
+   |         ^
+   |         Unreachable case
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/pattern-matching.scala:45:9 ---------------------------------
+45 |    case _ => 300 // warn: unreachable case except for null
+   |         ^
+   |         Unreachable case except for null (if this is intentional, consider writing case null => instead).

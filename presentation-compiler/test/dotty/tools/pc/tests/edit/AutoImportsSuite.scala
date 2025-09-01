@@ -13,6 +13,69 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
          |}
          |""".stripMargin,
       """|scala.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `basic-apply` =
+    check(
+      """|object A {
+          |  <<Future>>(2)
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
+         |""".stripMargin,
+    )
+
+  @Test def `basic-function-apply` =
+    check(
+      """|
+          |object ForgeFor{
+          |  def importMe(): Int = ???
+          |}
+          |object ForgeFor2{
+          |  case class importMe()
+          |}
+          |
+          |
+          |object test2 {
+          |  <<importMe>>()
+          |}
+          |""".stripMargin,
+      """|ForgeFor2
+         |ForgeFor
+         |""".stripMargin
+    )
+
+  @Test def `basic-apply-wrong` =
+    check(
+      """|object A {
+          |  new <<Future>>(2)
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
+         |java.util.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `basic-fuzzy` =
+    check(
+      """|object A {
+          |  <<Future>>.thisMethodDoesntExist(2)
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
+         |java.util.concurrent
+         |""".stripMargin
+    )
+
+  @Test def `typed-simple` =
+    check(
+      """|object A {
+          |  import scala.concurrent.Promise
+          |  val fut: <<Future>> = Promise[Unit]().future
+          |}
+          |""".stripMargin,
+      """|scala.concurrent
          |java.util.concurrent
          |""".stripMargin
     )
@@ -499,4 +562,58 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
           |object $keyword{ object ABC }
           |object Main{ val obj = ABC }
           |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterDirective =
+    checkEdit(
+      """|//> using scala 3.5.0
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|//> using scala 3.5.0
+         |import java.nio.file.Files
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicense =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicenseWithPackage =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
     )

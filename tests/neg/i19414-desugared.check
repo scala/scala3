@@ -1,0 +1,13 @@
+-- [E172] Type Error: tests/neg/i19414-desugared.scala:22:34 -----------------------------------------------------------
+22 |  summon[BodySerializer[JsObject]] // error: Ambiguous given instances
+   |                                  ^
+   |No best given instance of type BodySerializer[JsObject] was found for parameter x of method summon in object Predef.
+   |I found:
+   |
+   |    given_BodySerializer_B[B](
+   |      writer =
+   |        /* ambiguous: both given instance given_Writer_JsValue and given instance given_Writer_JsObject match type Writer[B] */
+   |          summon[Writer[B]]
+   |    )
+   |
+   |But both given instance given_Writer_JsValue and given instance given_Writer_JsObject match type Writer[B].

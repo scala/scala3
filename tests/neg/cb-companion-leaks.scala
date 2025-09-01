@@ -1,4 +1,4 @@
-//> using options -language:experimental.modularity -source future -explain
+//> using options -language:experimental.modularity -explain
 
 class C[Self]
 

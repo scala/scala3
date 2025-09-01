@@ -22,10 +22,10 @@ object Test extends App {
   {
     trait Functor[F[_]]
     object Functor {
-      given [C]: Functor[[T] =>> C]()
+      given [C] => Functor[[T] =>> C]()
       given Functor[[T] =>> Tuple1[T]]()
-      given t2 [T]: Functor[[U] =>> (T, U)]()
-      given t3 [T, U]: Functor[[V] =>> (T, U, V)]()
+      given t2: [T] => Functor[[U] =>> (T, U)]()
+      given t3: [T, U] => Functor[[V] =>> (T, U, V)]()
 
       def derived[F[_]](using m: Mirror { type MirroredType[X] = F[X] ; type MirroredElemTypes[_] }, r: Functor[m.MirroredElemTypes]): Functor[F] = new Functor[F] {}
     }
@@ -40,8 +40,8 @@ object Test extends App {
   {
     trait FunctorK[F[_[_]]]
     object FunctorK {
-      given [C]: FunctorK[[F[_]] =>> C]()
-      given [T]: FunctorK[[F[_]] =>> Tuple1[F[T]]]()
+      given [C] => FunctorK[[F[_]] =>> C]()
+      given [T] => FunctorK[[F[_]] =>> Tuple1[F[T]]]()
 
       def derived[F[_[_]]](using m: Mirror { type MirroredType[X[_]] = F[X] ; type MirroredElemTypes[_[_]] }, r: FunctorK[m.MirroredElemTypes]): FunctorK[F] = new FunctorK[F] {}
     }
@@ -56,10 +56,10 @@ object Test extends App {
   {
     trait Bifunctor[F[_, _]]
     object Bifunctor {
-      given [C]: Bifunctor[[T, U] =>> C]()
+      given [C] => Bifunctor[[T, U] =>> C]()
       given Bifunctor[[T, U] =>> Tuple1[U]]()
       given t2: Bifunctor[[T, U] =>> (T, U)]()
-      given t3 [T]: Bifunctor[[U, V] =>> (T, U, V)]()
+      given t3: [T] => Bifunctor[[U, V] =>> (T, U, V)]()
 
       def derived[F[_, _]](using m: Mirror { type MirroredType[X, Y] = F[X, Y] ; type MirroredElemTypes[_, _] }, r: Bifunctor[m.MirroredElemTypes]): Bifunctor[F] = ???
     }

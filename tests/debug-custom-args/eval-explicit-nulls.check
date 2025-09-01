@@ -1,0 +1,13 @@
+break Test$ 4
+eval msg.size
+result 13
+eval msg = null
+error Type Mismatch Error
+eval
+  val x: String = null
+  println(x)
+error Type Mismatch Error
+eval
+  val x: String | Null = null
+  x.nn
+result java.lang.NullPointerException: tried to cast away nullability, but value is null

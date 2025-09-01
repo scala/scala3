@@ -41,6 +41,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
    */
   private val annotTrees = util.EqHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
+  /** A set of annotation trees appearing in annotated types.
+   */
+  private val annotatedTypeTrees = mutable.ListBuffer[Tree]()
+
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
    *  would involve accessing symbols of named types and possibly changing phases
@@ -56,6 +60,8 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
     if ts == null then Nil else ts.toList
+
+  def typeAnnots: List[Tree] = annotatedTypeTrees.toList
 
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
@@ -278,6 +284,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
       withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
+      annotatedTypeTrees += tpe.annot.tree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -385,7 +392,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         }
       catch
         case ex: Throwable =>
-          if !ctx.settings.XnoDecodeStacktraces.value
+          if !ctx.settings.XnoEnrichErrorMessages.value
             && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
             throw StackSizeExceeded(mdef)
           else
@@ -583,6 +590,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             if (tree.isInline)
               if (selector.isEmpty) writeByte(IMPLICIT)
               else { writeByte(INLINE); pickleTree(selector) }
+            else if tree.isSubMatch then { writeByte(LAZY); pickleTree(selector) }
             else pickleTree(selector)
             tree.cases.foreach(pickleTree)
           }
@@ -709,8 +717,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           if passesConditionForErroringBestEffortCode(tree.hasType) then pickleType(tree.tpe)
           else pickleErrorType()
         case SingletonTypeTree(ref) =>
-          writeByte(SINGLETONtpt)
-          pickleTree(ref)
+          val tp = ref.tpe
+          val tp1 = tp.deskolemized
+          if tp1 ne tp then
+            pickleType(tp1)
+          else
+            writeByte(SINGLETONtpt)
+            pickleTree(ref)
         case RefinedTypeTree(parent, refinements) =>
           if (refinements.isEmpty) pickleTree(parent)
           else {
@@ -845,6 +858,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if (flags.is(ParamAccessor) && sym.isTerm && !sym.isSetter)
       flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
     pickleFlags(flags, sym.isTerm)
+    if flags.is(Into) then
+      // Temporary measure until we can change TastyFormat to include an INTO tag
+      pickleAnnotation(sym, mdef, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
     val annots = sym.annotations.foreach(pickleAnnotation(sym, mdef, _))
   }
 
@@ -854,7 +870,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       assert(isModifierTag(tag))
       writeByte(tag)
     }
-    assert(!flags.is(Scala2x))
+    if flags.is(Scala2x) then assert(attributes.scala2StandardLibrary)
     if (flags.is(Private)) writeModTag(PRIVATE)
     if (flags.is(Protected)) writeModTag(PROTECTED)
     if (flags.is(Final, butNot = Module)) writeModTag(FINAL)
@@ -934,7 +950,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           em"""Recursion limit exceeded while pickling ${ex.mdef}
               |in ${ex.mdef.symbol.showLocated}.
               |You could try to increase the stacksize using the -Xss JVM option.
-              |For the unprocessed stack trace, compile with -Xno-decode-stacktraces.""",
+              |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.""",
           ex.mdef.srcPos)
 
     def missing = forwardSymRefs.keysIterator
@@ -951,7 +967,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       val it = mp.keysIterator
       var i = 0
       while i < keys.length do
-        keys(i) = it.next
+        keys(i) = it.next()
         i += 1
       assert(!it.hasNext)
       i = 0

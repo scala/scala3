@@ -103,6 +103,9 @@ class ElimByName extends MiniPhase, InfoTransformer:
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
         targetType = defn.ByNameFunction(argType)
+          // Note: this will forget any captures on the original by-name type
+          // But that's not a problem since we treat these closures specially
+          // anyway during recheck.
       ).withSpan(arg.span)
 
   private def isByNameRef(tree: Tree)(using Context): Boolean =

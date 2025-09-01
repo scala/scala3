@@ -5,7 +5,7 @@ opaque type Position[Buffer] = Int
 trait TokenParser[Token, R]
 
 object TextParser {
-  given TP: TokenParser[Char, Position[CharSequence]] with {}
+  given TP: TokenParser[Char, Position[CharSequence]]()
 
   given FromCharToken(using T: TokenParser[Char, Position[CharSequence]])
     : Conversion[Char, Position[CharSequence]] = ???

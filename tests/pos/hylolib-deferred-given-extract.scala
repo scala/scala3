@@ -13,7 +13,7 @@ trait Collection[Self]:
 
 class BitArray
 
-given Value[Boolean] {}
+given Value[Boolean]()
 
-given Collection[BitArray] with
+given Collection[BitArray]:
   type Element = Boolean

@@ -216,6 +216,7 @@ object KeywordsCompletions:
       case untpd.TypeDef(_, template: Template) => checkForPossibleKeywords(template)
       case untpd.ModuleDef(_, template: Template) => checkForPossibleKeywords(template)
       case template: Template => checkForPossibleKeywords(template)
+      case _ => TemplateKeywordAvailability.default
     }.getOrElse(TemplateKeywordAvailability.default)
 
 

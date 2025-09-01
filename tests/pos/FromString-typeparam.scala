@@ -1,4 +1,3 @@
-//> using options -language:experimental.modularity -source future
 
 trait FromString[A]:
   def fromString(s: String): A

@@ -19,7 +19,6 @@ object Properties {
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
-  || sys.env.isDefinedAt("DRONE")  // TODO remove this when we drop Drone
 
   val testCache: Path =
     sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
@@ -82,14 +81,11 @@ object Properties {
   /** scala-library jar */
   def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
 
-  /** scala-library TASTy jar */
-  def scalaLibraryTasty: Option[String] = sys.props.get("dotty.tests.tasties.scalaLibrary")
+  // TODO: Remove this once we migrate the test suite
+  def usingScalaLibraryCCTasty: Boolean = false
 
-  /** If we are using the scala-library TASTy jar */
-  def usingScalaLibraryTasty: Boolean = scalaLibraryTasty.isDefined
-  /** If we are using the scala-library TASTy jar */
-
-  def usingScalaLibraryCCTasty: Boolean = scalaLibraryTasty.exists(_.contains("scala2-library-cc-tasty"))
+  // TODO: Remove this once we migrate the test suite
+  def usingScalaLibraryTasty: Boolean = false
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")

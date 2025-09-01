@@ -10,10 +10,10 @@ object A
 
 object B
 
-given Printer[A.type] with
+given Printer[A.type]:
    def print(a:A.type):String = "a"
 
-given Printer[B.type] with
+given Printer[B.type]:
    def print(b:B.type):String = "b"
 
 

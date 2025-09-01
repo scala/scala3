@@ -1,6 +1,6 @@
-Dotty (https://dotty.epfl.ch)
-Copyright 2012-2024 EPFL
-Copyright 2012-2024 Lightbend, Inc.
+Scala 3 (https://www.scala-lang.org)
+Copyright 2012-2025 EPFL
+Copyright 2012-2025 Lightbend, Inc. dba Akka
 
 Licensed under the Apache License, Version 2.0 (the "License"):
 http://www.apache.org/licenses/LICENSE-2.0
@@ -11,12 +11,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-The dotty compiler frontend has been developed since November 2012 by Martin
-Odersky. It is expected and hoped for that the list of contributors to the
-codebase will grow quickly. Dotty draws inspiration and code from the original
-Scala compiler "nsc", which is developed at scala/scala [1].
+The Scala 3 compiler is also known as Dotty. The Dotty compiler
+frontend has been developed since November 2012 by Martin Odersky. It
+is expected and hoped for that the list of contributors to the
+codebase will grow quickly. Dotty draws inspiration and code from the
+original Scala 2 compiler "nsc", which is still developed at scala/scala [1].
 
-The majority of the dotty codebase is new code, with the exception of the
+The majority of the Dotty codebase is new code, with the exception of the
 components mentioned below. We have for each component tried to come up with a
 list of the original authors in the scala/scala [1] codebase. Apologies if some
 major authors were omitted by oversight.
@@ -28,7 +29,7 @@ major authors were omitted by oversight.
 
   * dotty.tools.dotc.classpath: The classpath handling is taken mostly as is
     from scala/scala [1]. The original authors were Grzegorz Kossakowski,
-    Michał Pociecha, Lukas  Rytz, Jason Zaugg and others.
+    Michał Pociecha, Lukas Rytz, Jason Zaugg and others.
 
   * dotty.tools.dotc.config: The configuration components were adapted and
     extended from scala/scala [1]. The original sources were authored by Paul

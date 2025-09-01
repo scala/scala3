@@ -26,7 +26,7 @@ jobs:
   publish:
     runs-on: windows-latest
     steps:
-      - uses: vedantmgoyal9/winget-releaser@b87a066d9e624db1394edcd947f8c4e5a7e30cd7
+      - uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e
         with:
           identifier      : Scala.Scala.3
           version         : ${{ inputs.version }}

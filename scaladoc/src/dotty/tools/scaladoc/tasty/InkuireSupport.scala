@@ -184,10 +184,10 @@ trait InkuireSupport(using DocContext) extends Resources:
     else ownerNameChain(sym.owner) :+ sym.normalizedName
 
   private def viableSymbol(s: Symbol): Boolean =
-      !s.flags.is(Flags.Private) &&
-        !s.flags.is(Flags.Protected) &&
-        !s.flags.is(Flags.Override) &&
-        !s.flags.is(Flags.Synthetic)
+    !s.flags.is(Flags.Private) &&
+      !s.flags.is(Flags.Protected) &&
+      !s.flags.is(Flags.Override) &&
+      !s.flags.is(Flags.Synthetic)
 
   private def varName(t: Inkuire.TypeLike): Option[String] = t match {
     case tpe: Inkuire.Type      => Some(tpe.name.name)
@@ -314,6 +314,8 @@ trait InkuireSupport(using DocContext) extends Resources:
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, vars) //TODO [Inkuire] Repeated types
       case AnnotatedType(tpe, _) =>
+        inner(tpe, vars)
+      case FlexibleType(tpe) =>
         inner(tpe, vars)
       case tl @ TypeLambda(paramNames, _, resType) =>
         Inkuire.TypeLambda(paramNames.map(Inkuire.TypeLambda.argument), inner(resType, vars)) //TODO [Inkuire] Type bounds

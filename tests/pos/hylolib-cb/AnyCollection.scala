@@ -42,12 +42,12 @@ object AnyCollection {
 
 }
 
-given anyCollectionIsCollection[T: Value]: Collection[AnyCollection[T]] with {
+given anyCollectionIsCollection: [T: Value] => Collection[AnyCollection[T]]:
 
   type Element = T
   type Position = AnyValue
 
-  extension (self: AnyCollection[T]) {
+  extension (self: AnyCollection[T])
 
     def startPosition =
       self._start()
@@ -60,7 +60,3 @@ given anyCollectionIsCollection[T: Value]: Collection[AnyCollection[T]] with {
 
     def at(p: Position) =
       self._at(p)
-
-  }
-
-}

@@ -6,7 +6,7 @@ def f1[S, T: TC[S] as tc](x: S, y: tc.Self) = ()
 def f2[S, T: TC[S]](x: S, y: T.Self) = ()
 def f3[S, T: TC[S]](x: S, y: Int) = ()
 
-given TC[String] with
+given TC[String]:
   type Self = Int
   def unit = 42
 

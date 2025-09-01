@@ -9,8 +9,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import xsbti.api.*
 
 import scala.util.Try

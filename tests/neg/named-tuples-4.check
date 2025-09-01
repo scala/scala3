@@ -1,0 +1,16 @@
+-- Error: tests/neg/named-tuples-4.scala:10:35 -------------------------------------------------------------------------
+10 |    case PersonCaseClass(name = n, age) => () // error
+   |                                   ^^^
+   |                                   Illegal combination of named and unnamed tuple elements
+-- Error: tests/neg/named-tuples-4.scala:11:31 -------------------------------------------------------------------------
+11 |    case PersonCaseClass(name, age = a) => () // error
+   |                               ^^^^^^^
+   |                               Illegal combination of named and unnamed tuple elements
+-- Error: tests/neg/named-tuples-4.scala:15:20 -------------------------------------------------------------------------
+15 |    case (name = n, age) => () // error
+   |                    ^^^
+   |                    Illegal combination of named and unnamed tuple elements
+-- Error: tests/neg/named-tuples-4.scala:16:16 -------------------------------------------------------------------------
+16 |    case (name, age = a) => () // error
+   |                ^^^^^^^
+   |                Illegal combination of named and unnamed tuple elements

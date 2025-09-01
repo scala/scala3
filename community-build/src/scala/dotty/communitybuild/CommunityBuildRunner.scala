@@ -13,16 +13,14 @@ object CommunityBuildRunner:
    *  is necessary since we run tests each time on a fresh
    *  Docker container. We run the update on Docker container
    *  creation time to create the cache of the dependencies
-   *  and avoid network overhead. See https://github.com/lampepfl/dotty-drone
-   *  for more infrastructural details.
+   *  and avoid network overhead.
    */
-  extension (self: CommunityProject) def run()(using suite: CommunityBuildRunner): Unit =
-    if self.requiresExperimental && !compilerSupportExperimental then
-      log(s"Skipping ${self.project} - it needs experimental features unsupported in this build.")
-      return
-    self.dependencies.foreach(_.publish())
-    self.testOnlyDependencies().foreach(_.publish())
-    suite.runProject(self)
+  extension (self: CommunityProject) 
+    def run()(using suite: CommunityBuildRunner): Unit =
+      self.dependencies.foreach(_.publish())
+      self.testOnlyDependencies().foreach(_.publish())
+      suite.runProject(self)
+  end extension
 
 trait CommunityBuildRunner:
 

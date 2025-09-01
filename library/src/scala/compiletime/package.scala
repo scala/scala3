@@ -1,6 +1,8 @@
 package scala
 package compiletime
 
+import language.experimental.captureChecking
+
 import annotation.{compileTimeOnly, experimental}
 
 /** Use this method when you have a type, do not have a value for it but want to
@@ -23,7 +25,6 @@ import annotation.{compileTimeOnly, experimental}
  *  the branches.
  *  @syntax markdown
  */
-// TODO add `erased` once it is not an experimental feature anymore
 def erasedValue[T]: T = erasedValue[T]
 
 /** Used as the initializer of a mutable class or object field, like this:
@@ -52,7 +53,6 @@ def uninitialized: Nothing = ???
  *  that implement the enclosing trait and that do not contain an explicit overriding
  *  definition of that given.
  */
-@experimental
 @compileTimeOnly("`deferred` can only be used as the right hand side of a given definition in a trait")
 def deferred: Nothing = ???
 

@@ -1,4 +1,3 @@
-import language.experimental.namedTuples
 import NamedTuple.{NamedTuple, AnyNamedTuple}
 
 /* This is a demonstrator that shows how to map regular for expressions to
@@ -94,7 +93,7 @@ object Expr:
   extension [A <: AnyNamedTuple](x: A) def toRow: Join[A] = Join(x)
 
   /** Same as _.toRow, as an implicit conversion */
-  given [A <: AnyNamedTuple]: Conversion[A, Expr.Join[A]] = Expr.Join(_)
+  given [A <: AnyNamedTuple] => Conversion[A, Expr.Join[A]] = Expr.Join(_)
 
 end Expr
 

@@ -8,7 +8,7 @@ object Test:
   var defaultIncompleteHandler: ErrorHandler = ???
   @uncheckedCaptures
   var incompleteHandler: ErrorHandler = defaultIncompleteHandler
-  private val x = incompleteHandler.unsafeUnbox
+  private val x = incompleteHandler
   val _ : ErrorHandler = x
   val _ = x(1, "a")
 

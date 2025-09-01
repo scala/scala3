@@ -11,5 +11,5 @@ class ParsersBase {
   abstract class Parser[+T]:
     def map[U](f: T => U): Parser[U] = ???
 
-  given [A, B, X]: Conversion[(A, B) => X, (A ~ B) => X] = ???
+  given [A, B, X] => Conversion[(A, B) => X, (A ~ B) => X] = ???
 }

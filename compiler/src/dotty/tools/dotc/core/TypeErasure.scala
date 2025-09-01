@@ -5,7 +5,6 @@ package core
 import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, StdNames.*, Phases.*
 import Flags.JavaDefined
 import Uniques.unique
-import TypeOps.makePackageObjPrefixExplicit
 import backend.sjs.JSDefinitions
 import transform.ExplicitOuter.*
 import transform.ValueClasses.*
@@ -24,11 +23,16 @@ enum SourceLanguage:
 object SourceLanguage:
   /** The language in which `sym` was defined. */
   def apply(sym: Symbol)(using Context): SourceLanguage =
-    if sym.is(JavaDefined) then
+    // We might be using this method while recalculating the denotation,
+    // so let's use `lastKnownDenotation`.
+    // This is ok as the source of the symbol and whether it is inline should
+    // not change between runs/phases.
+    val denot = sym.lastKnownDenotation
+    if denot.is(JavaDefined) then
       SourceLanguage.Java
     // Scala 2 methods don't have Inline set, except for the ones injected with `patchStdlibClass`
     // which are really Scala 3 methods.
-    else if sym.isClass && sym.is(Scala2x) || (sym.maybeOwner.is(Scala2x) && !sym.is(Inline)) then
+    else if denot.isClass && denot.is(Scala2x) || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline)) then
       SourceLanguage.Scala2
     else
       SourceLanguage.Scala3
@@ -105,9 +109,9 @@ object TypeErasure {
         case _ => -1
 
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
+    if (defn.specialErasure.contains(cls))
+      return defn.specialErasure(cls).uncheckedNN
     if (cls.owner == defn.ScalaPackageClass) {
-      if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls).uncheckedNN
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }
@@ -267,7 +271,7 @@ object TypeErasure {
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractOrParamType) TypeAlias(WildcardType)
-    else if sym.is(ConstructorProxy) then NoType
+    else if sym.is(PhantomSymbol) then NoType
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(using preErasureCtx))
     else if (sym.is(Label)) erase.eraseResult(sym.info)(using preErasureCtx)
     else erase.eraseInfo(tp, sym)(using preErasureCtx) match {
@@ -322,7 +326,7 @@ object TypeErasure {
         val sym = t.symbol
         // Only a few classes have both primitives and references as subclasses.
         if (sym eq defn.AnyClass) || (sym eq defn.AnyValClass) || (sym eq defn.MatchableClass) || (sym eq defn.SingletonClass)
-           || isScala2 && !(t.derivesFrom(defn.ObjectClass) || t.isNullType) then
+           || isScala2 && !(t.derivesFrom(defn.ObjectClass) || t.isNullType | t.isNothingType) then
           NoSymbol
         // We only need to check for primitives because derived value classes in arrays are always boxed.
         else if sym.isPrimitiveValueClass then
@@ -360,6 +364,8 @@ object TypeErasure {
       case tp: MatchType =>
         val alts = tp.alternatives
         alts.nonEmpty && !fitsInJVMArray(alts.reduce(OrType(_, _, soft = true)))
+      case tp @ AppliedType(tycon, _) if tycon.isLambdaSub =>
+        !fitsInJVMArray(tp.translucentSuperType)
       case tp: TypeProxy =>
         isGenericArrayElement(tp.translucentSuperType, isScala2)
       case tp: AndType =>
@@ -592,8 +598,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *   will be returned.
    *
    *  In all other situations, |T| will be computed as follow:
-   *   - For a refined type scala.Array+[T]:
-   *      - if T is Nothing or Null, []Object
+   *   - For a refined type scala.Array[T]:
+   *      - {Scala 2} if T is Nothing or Null, []Object
    *      - otherwise, if T <: Object, []|T|
    *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
@@ -691,7 +697,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         val (names, formals0) = if tp.hasErasedParams then
           tp.paramNames
             .zip(tp.paramInfos)
-            .zip(tp.erasedParams)
+            .zip(tp.paramErasureStatuses)
             .collect{ case (param, isErased) if !isErased => param }
             .unzip
         else (tp.paramNames, tp.paramInfos)
@@ -777,12 +783,14 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp: @unchecked
-    if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
+    if isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2) then
+      defn.ObjectType
+    else if sourceLanguage.isScala2 && (elemtp.hiBound.isNullType || elemtp.hiBound.isNothingType) then
+      JavaArrayType(defn.ObjectType)
     else
-      try
-        val eElem = erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp)
-        if eElem.isInstanceOf[WildcardType] then WildcardType
-        else JavaArrayType(eElem)
+      try erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
+        case _: WildcardType => WildcardType
+        case elem => JavaArrayType(elem)
       catch case ex: Throwable =>
         handleRecursive("erase array type", tp.show, ex)
   }

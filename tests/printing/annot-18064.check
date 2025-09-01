@@ -1,0 +1,16 @@
+[[syntax trees at end of                     typer]] // tests/printing/annot-18064.scala
+package <empty> {
+  class myAnnot[T >: Nothing <: Any]() extends annotation.Annotation() {
+    T
+  }
+  trait Tensor[T >: Nothing <: Any]() extends Object {
+    T
+    def add: Tensor[Tensor.this.T] @myAnnot[T]
+  }
+  class TensorImpl[A >: Nothing <: Any]() extends Object(), Tensor[
+    TensorImpl.this.A] {
+    A
+    def add: Tensor[A] @myAnnot[A] = this
+  }
+}
+

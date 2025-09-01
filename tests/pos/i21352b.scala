@@ -6,7 +6,7 @@ object serializer:
   implicit val UnitReader: Reader[Unit] = ???
   implicit val StringReader: Reader[String] = ???
   // A way to derive instances needs to be available
-  inline given superTypeReader[T: scala.reflect.ClassTag]: Reader[T] = ???
+  inline given superTypeReader: [T: scala.reflect.ClassTag] => Reader[T] = ???
 import serializer.Reader
 
 trait Codec[T]
@@ -25,7 +25,7 @@ trait Communicate[F[_]]:
   def notification[X <: LSPNotification](notif: X, in: notif.In): F[Unit]
 
 object Communicate:
-  given codec[T: Reader]: Codec[T] = ???
+  given codec: [T: Reader] => Codec[T] = ???
 
   def channel[F[_]: Monadic](channel: Channel[F]) =
     new Communicate[F]:

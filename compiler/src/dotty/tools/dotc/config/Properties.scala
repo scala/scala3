@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-import scala.language.unsafeNulls
 
 import scala.annotation.internal.sharable
 
@@ -10,7 +9,7 @@ import java.io.IOException
 import java.util.jar.Attributes.{ Name => AttributeName }
 import java.nio.charset.StandardCharsets
 
-/** Loads `library.properties` from the jar. */
+/** Loads `compiler.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
   protected def pickJarBasedOn: Class[PropertiesTrait] = classOf[PropertiesTrait]
@@ -45,19 +44,19 @@ trait PropertiesTrait {
 
   def propIsSet(name: String): Boolean                  = System.getProperty(name) != null
   def propIsSetTo(name: String, value: String): Boolean = propOrNull(name) == value
-  def propOrElse(name: String, alt: String): String     = System.getProperty(name, alt)
+  def propOrNone(name: String): Option[String]          = Option[String](System.getProperty(name))
+  def propOrElse(name: String, alt: => String): String  = propOrNone(name).getOrElse(alt)
   def propOrEmpty(name: String): String                 = propOrElse(name, "")
-  def propOrNull(name: String): String                  = propOrElse(name, null)
-  def propOrNone(name: String): Option[String]          = Option(propOrNull(name))
+  def propOrNull(name: String): String|Null             = propOrNone(name).orNull
   def propOrFalse(name: String): Boolean                = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
   def setProp(name: String, value: String): String      = System.setProperty(name, value)
   def clearProp(name: String): String                   = System.clearProperty(name)
 
-  def envOrElse(name: String, alt: String): String      = Option(System getenv name) getOrElse alt
+  def envOrElse(name: String, alt: => String): String   = Option(System getenv name) getOrElse alt
   def envOrNone(name: String): Option[String]           = Option(System getenv name)
 
   // for values based on propFilename
-  def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)
+  def scalaPropOrElse(name: String, alt: => String): String = scalaProps.getProperty(name, alt)
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
   def scalaPropOrNone(name: String): Option[String]      = Option(scalaProps.getProperty(name))
 

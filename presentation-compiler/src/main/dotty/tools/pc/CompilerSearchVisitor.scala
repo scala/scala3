@@ -4,7 +4,7 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 import scala.meta.internal.metals.Report
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.*
 import scala.util.control.NonFatal
 
@@ -19,7 +19,7 @@ class CompilerSearchVisitor(
 )(using ctx: Context, reports: ReportContext)
     extends SymbolSearchVisitor:
 
-  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName().nn).nn
+  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName()).nn
 
   private def isAccessibleImplicitClass(sym: Symbol) =
     val owner = sym.maybeOwner
@@ -28,14 +28,14 @@ class CompilerSearchVisitor(
     owner.isStatic && owner.isPublic
 
   private def isAccessible(sym: Symbol): Boolean = try
-    sym != NoSymbol && sym.isPublic && sym.isStatic || isAccessibleImplicitClass(sym)
+    (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
   catch
     case err: AssertionError =>
       logger.log(Level.WARNING, err.getMessage())
       false
     case NonFatal(e) =>
       reports.incognito.create(
-        Report(
+        () => Report(
           "is_public",
           s"""Symbol: $sym""".stripMargin,
           e
@@ -105,6 +105,6 @@ class CompilerSearchVisitor(
   override def isCancelled: Boolean = false
 
   private def normalizePackage(pkg: String): String =
-    pkg.replace("/", ".").nn.stripSuffix(".")
+    pkg.replace("/", ".").stripSuffix(".")
 
 end CompilerSearchVisitor

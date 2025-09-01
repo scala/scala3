@@ -4,9 +4,9 @@ package transform
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.em
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import Constants.Constant
-import NameKinds.{TailLabelName, TailLocalName, TailTempName}
+import NameKinds.{DefaultGetterName, TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
@@ -196,7 +196,8 @@ class TailRec extends MiniPhase {
         def isInfiniteRecCall(tree: Tree): Boolean = {
           def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
-            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => tailArgOrPureExpr(rhs)
+            case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) =>
+              tailArgOrPureExpr(rhs) || varForRewrittenThis.exists(_ == lhs.symbol && rhs.tpe.isStable)
             case Assign(lhs: Ident, rhs: Ident) => lhs.symbol == rhs.symbol
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
@@ -324,7 +325,14 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
-        if (isRecursiveCall)
+        if isRecursiveCall then
+          if ctx.settings.Whas.recurseWithDefault then
+            tree.args.find(_.symbol.name.is(DefaultGetterName)) match
+            case Some(arg) =>
+              val DefaultGetterName(_, index) = arg.symbol.name: @unchecked
+              report.warning(RecurseWithDefault(calledMethod.info.firstParamNames(index)), tree.srcPos)
+            case _ =>
+
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
@@ -344,6 +352,12 @@ class TailRec extends MiniPhase {
                 assignParamPairs
               case prefix: This if prefix.symbol == enclosingClass =>
                 // Avoid assigning `this = this`
+                assignParamPairs
+              case prefix
+              if prefix.symbol.is(Module)
+              && prefix.symbol.moduleClass == enclosingClass
+              && isPurePath(prefix) =>
+                // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs

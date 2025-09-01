@@ -119,7 +119,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class ExtMethods(paramss: List[ParamClause], methods: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBoundTypeTree(tycon: Tree, paramName: TypeName, ownName: TermName)(implicit @constructorOnly src: SourceFile) extends Tree
-    // `paramName: tycon as ownName`, ownName != EmptyTermName only under x.modularity
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -207,6 +206,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Var()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
+    case class Update()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
+
     case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
 
     case class Given()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Given)
@@ -234,6 +235,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
 
     case class Tracked()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Tracked)
+
+    case class Into()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Into)
 
     /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
@@ -333,6 +336,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
+    def isMutableVar: Boolean = is(Mutable) && mods.exists(_.isInstanceOf[Mod.Var])
   }
 
   @sharable val EmptyModifiers: Modifiers = Modifiers()
@@ -384,6 +388,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** Property key for contextual Apply trees of the form `fn given arg` */
   val KindOfApply: Property.StickyKey[ApplyKind] = Property.StickyKey()
 
+  val RetainsAnnot: Property.StickyKey[Unit] = Property.StickyKey()
+
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
@@ -405,6 +411,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit src: SourceFile): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new Match(selector, cases)
   def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new InlineMatch(selector, cases)
+  def SubMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): SubMatch = new SubMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit src: SourceFile): CaseDef = new CaseDef(pat, guard, body)
   def Labeled(bind: Bind, expr: Tree)(implicit src: SourceFile): Labeled = new Labeled(bind, expr)
   def Return(expr: Tree, from: Tree)(implicit src: SourceFile): Return = new Return(expr, from)
@@ -519,19 +526,42 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
 
+  def capsInternalDot(name: Name)(using SourceFile): Select =
+    Select(Select(scalaDot(nme.caps), nme.internal), name)
+
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
-    Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
+    var annot: Tree = scalaAnnotationDot(annotName)
+    if annotName == tpnme.retainsCap then
+      annot = New(annot, Nil)
+    else
+      val trefs =
+        if refs.isEmpty then
+          // The NothingType is used to represent the empty capture set.
+          ref(defn.NothingType)
+        else
+          // Treat all references as term references before typing.
+          // A dummy term symbol will be created for each capture variable,
+          // and references to them will be replaced with the corresponding
+          // type references during typing.
+          refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
+      annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
+      annot.putAttachment(RetainsAnnot, ())
+    Annotated(parent, annot)
 
-  def makeCapsOf(id: Ident)(using Context): Tree =
-    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), id :: Nil)
+  def makeReachAnnot()(using Context): Tree =
+    New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil)
 
-  def makeCapsBound()(using Context): Tree =
-    makeRetaining(
-      Select(scalaDot(nme.caps), tpnme.CapSet),
-      Nil, tpnme.retainsCap)
+  def makeReadOnlyAnnot()(using Context): Tree =
+    New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil)
+
+  def makeOnlyAnnot(qid: Tree)(using Context) =
+    New(AppliedTypeTree(ref(defn.OnlyCapabilityAnnot.typeRef), qid :: Nil), Nil :: Nil)
+
+  def makeConsumeAnnot()(using Context): Tree =
+    New(ref(defn.ConsumeAnnot.typeRef), Nil :: Nil)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
@@ -555,6 +585,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeAndType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
     AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
 
+  def makeOrType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
+    AppliedTypeTree(ref(defn.orType.typeRef), left :: right :: Nil)
+
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(using Context): ValDef = {
     val vdef = ValDef(pname, tpe, EmptyTree)
     if (isBackquoted) vdef.pushAttachment(Backquoted, ())
@@ -564,12 +597,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeSyntheticParameter(n: Int = 1, tpt: Tree | Null = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
-
-  def isInto(t: Tree)(using Context): Boolean = t match
-    case PrefixOp(Ident(tpnme.into), _) => true
-    case Function(_, res) => isInto(res)
-    case Parens(t) => isInto(t)
-    case _ => false
 
   def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
     params match

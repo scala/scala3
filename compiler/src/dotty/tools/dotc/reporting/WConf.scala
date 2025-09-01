@@ -10,15 +10,18 @@ import dotty.tools.dotc.interfaces.SourceFile
 import dotty.tools.dotc.reporting.MessageFilter.SourcePattern
 
 import java.util.regex.PatternSyntaxException
+import scala.PartialFunction.cond
 import scala.annotation.internal.sharable
 import scala.util.matching.Regex
 
 enum MessageFilter:
-  def matches(message: Diagnostic): Boolean = this match
+  def matches(message: Diagnostic): Boolean =
+    import Diagnostic.*
+    this match
     case Any => true
-    case Deprecated => message.isInstanceOf[Diagnostic.DeprecationWarning]
-    case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
-    case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
+    case Deprecated => message.isInstanceOf[DeprecationWarning]
+    case Feature => message.isInstanceOf[FeatureWarning]
+    case Unchecked => message.isInstanceOf[UncheckedWarning]
     case MessageID(errorId) => message.msg.errorId == errorId
     case MessagePattern(pattern) =>
       val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
@@ -31,7 +34,7 @@ enum MessageFilter:
       pattern.findFirstIn(path).nonEmpty
     case Origin(pattern) =>
       message match
-      case message: Diagnostic.DeprecationWarning => pattern.findFirstIn(message.origin).nonEmpty
+      case message: OriginWarning => pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
 
@@ -56,12 +59,12 @@ object WConf:
   private type Conf = (List[MessageFilter], Action)
 
   def parseAction(s: String): Either[List[String], Action] = s match
-    case "error" | "e"            => Right(Error)
-    case "warning" | "w"          => Right(Warning)
-    case "verbose" | "v"          => Right(Verbose)
-    case "info" | "i"             => Right(Info)
-    case "silent" | "s"           => Right(Silent)
-    case _                        => Left(List(s"unknown action: `$s`"))
+    case "error"   | "e" => Right(Error)
+    case "warning" | "w" => Right(Warning)
+    case "verbose" | "v" => Right(Verbose)
+    case "info"    | "i" => Right(Info)
+    case "silent"  | "s" => Right(Silent)
+    case _               => Left(List(s"unknown action: `$s`"))
 
   private def regex(s: String) =
     try Right(s.r)
@@ -134,11 +137,20 @@ object WConf:
       if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
       else Right(WConf(configs))
 
-class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, end: Int, val verbose: Boolean):
-  private var _used = false
-  def used: Boolean = _used
-  def markUsed(): Unit = { _used = true }
-
+class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
+  inline def unusedState = 0
+  inline def usedState = 1
+  inline def supersededState = 2
+  private var _used = unusedState
+  def used: Boolean = _used == usedState
+  def superseded: Boolean = _used == supersededState
+  def markUsed(): Unit =
+    _used = usedState
+  def markSuperseded(): Unit =
+    _used = supersededState
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
     pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+
+  override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
+end Suppression

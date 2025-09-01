@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
 import org.junit.Assume._
+import org.junit.Ignore
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -31,13 +32,6 @@ class BootstrappedOnlyCompilationTests {
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
     ).checkCompile()
   }
-
-  // @Test
-  def posWithCompilerCC: Unit =
-    implicit val testGroup: TestGroup = TestGroup("compilePosWithCompilerCC")
-    aggregateTests(
-      compileDir("tests/pos-with-compiler-cc/dotc", withCompilerOptions.and("-language:experimental.captureChecking"))
-    ).checkCompile()
 
   @Test def posWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompiler")
@@ -120,7 +114,7 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyBlacklisted))
+    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted))
       .checkRuns()
   }
 
@@ -138,7 +132,7 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(tests*).checkRuns()
   }
 
-  @Test def runScala2LibraryFromTasty: Unit = {
+  @Ignore @Test def runScala2LibraryFromTasty: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runScala2LibraryFromTasty")
     // These tests recompile the entire scala2-library from TASTy,
     // they are resource intensive and should not run alongside other tests to avoid timeouts
@@ -162,11 +156,15 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def picklingWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
+    // Exclude this file from the test as it contains some changes that require scala 2.13.17
+    // This filter can be dropped once we drop the dependency to Scala 2 (in 3.8.0)
+    val rlibscala3 = FileFilter.exclude(List("ScalaRunTime.scala"))
+
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),
       compileDir("library/src/scala/runtime/function", picklingWithCompilerOptions),
-      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions),
+      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions, rlibscala3),
       compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/ast", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", picklingWithCompilerOptions, recursive = false),
@@ -193,7 +191,7 @@ class BootstrappedOnlyCompilationTests {
 
     // 1. hack with absolute path for -Xplugin
     // 2. copy `pluginFile` to destination
-    def compileFilesInDir(dir: String): CompilationTest = {
+    def compileFilesInDir(dir: String, run: Boolean = false): CompilationTest = {
       val outDir = defaultOutputDir + "testPlugins/"
       val sourceDir = new java.io.File(dir)
 
@@ -201,7 +199,10 @@ class BootstrappedOnlyCompilationTests {
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)
-        val flags = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+        val flags = {
+          val base = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+          if run then base.withRunClasspath(withCompilerClasspath) else base
+        }
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)
       }
 
@@ -210,6 +211,7 @@ class BootstrappedOnlyCompilationTests {
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
     compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
+    compileFilesInDir("tests/plugins/run", run = true).checkRuns()
   }
 }
 

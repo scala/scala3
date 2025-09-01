@@ -28,7 +28,7 @@ import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
 
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
-import scala.util.chaining.*
+import dotty.tools.dotc.util.chaining.*
 
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *
@@ -418,7 +418,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       apiClass(sym.asClass)
     } else if (sym.isType) {
       apiTypeMember(sym.asType)
-    } else if (sym.is(Mutable, butNot = Accessor)) {
+    } else if (sym.isMutableVar) {
       api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym, inlineOrigin).toArray, apiType(sym.info))
     } else if (sym.isStableMember && !sym.isRealMethod) {

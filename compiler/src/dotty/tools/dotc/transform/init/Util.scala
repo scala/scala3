@@ -15,6 +15,9 @@ import config.Printers.init as printer
 import Trace.*
 
 object Util:
+  /** Exception used for errors encountered when reading TASTy. */
+  case class TastyTreeException(msg: String) extends RuntimeException(msg)
+
   /** Utility definition used for better error-reporting of argument errors */
   case class TraceValue[T](value: T, trace: Trace)
 
@@ -43,6 +46,8 @@ object Util:
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
+        if (args.size != argTps.size)
+          report.warning("[Internal error] Number of arguments do not match number of argument types in " + tree.symbol.name)
         val normArgs: List[Arg] = args.zip(argTps).map {
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
@@ -91,7 +96,7 @@ object Util:
     else sym.matchingMember(cls.appliedRef)
 
   extension (sym: Symbol)
-    def hasSource(using Context): Boolean = !sym.defTree.isEmpty
+    def hasSource(using Context): Boolean = !sym.is(Flags.JavaDefined) && !sym.defTree.isEmpty
 
     def isStaticObject(using Context) =
       sym.is(Flags.Module, butNot = Flags.Package) && sym.isStatic
@@ -112,5 +117,5 @@ object Util:
 
   /** Whether the class or its super class/trait contains any mutable fields? */
   def isMutable(cls: ClassSymbol)(using Context): Boolean =
-    cls.classInfo.decls.exists(_.is(Flags.Mutable)) ||
+    cls.classInfo.decls.exists(_.isMutableVarOrAccessor) ||
     cls.parentSyms.exists(parentCls => isMutable(parentCls.asClass))

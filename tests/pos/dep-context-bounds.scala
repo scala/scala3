@@ -1,4 +1,4 @@
-//> using options -language:experimental.modularity -source future
+//> using options -language:experimental.modularity
 trait A:
   type Self
 

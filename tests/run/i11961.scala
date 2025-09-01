@@ -17,10 +17,10 @@ trait Printable[T]:
 
 object Printable:
 
-   given Printable[String] with
+   given Printable[String]:
       def print: Unit = println("STRING")
 
-   given Printable[Boolean] with
+   given Printable[Boolean]:
       def print: Unit = println("BOOLEAN")
 
    def printProduct[T](p: Mirror.ProductOf[T], elems: => List[Printable[_]]): Printable[T] =
@@ -28,7 +28,7 @@ object Printable:
          def print: Unit =
             elems.foreach(_.print)
 
-   inline given derived[T](using m: Mirror.Of[T]): Printable[T] =
+   inline given derived: [T] => (m: Mirror.Of[T]) => Printable[T] =
       val elemInstances = summonAllPrintable[m.MirroredElemTypes]
       inline m match
          case p: Mirror.ProductOf[T] => printProduct(p, elemInstances)

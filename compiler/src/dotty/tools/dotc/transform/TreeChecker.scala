@@ -63,7 +63,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     if (prev.exists)
-      assert(cur.exists || prev.is(ConstructorProxy), i"companion disappeared from $symd")
+      assert(cur.exists || prev.is(PhantomSymbol), i"companion disappeared from $symd")
   }
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
@@ -236,7 +236,7 @@ object TreeChecker {
   private[TreeChecker] def isValidJVMMethodName(name: Name): Boolean = name.toString.forall(isValidJVMMethodChar)
 
 
-  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
+  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
     import ast.tpd.*
 
     protected val nowDefinedSyms = util.HashSet[Symbol]()
@@ -244,7 +244,7 @@ object TreeChecker {
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+    override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
 
     def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
       var locally = List.empty[Symbol]
@@ -387,7 +387,7 @@ object TreeChecker {
     }
 
     def isSymWithoutDef(sym: Symbol)(using Context): Boolean =
-      sym.is(ConstructorProxy) || sym.isContextBoundCompanion
+      sym.is(PhantomSymbol) || sym.isContextBoundCompanion
 
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
@@ -854,30 +854,34 @@ object TreeChecker {
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
 
+      def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
+        val stack =
+          if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
+          else if err.getStackTrace == null then "  no stacktrace"
+          else err.getStackTrace.mkString("  ", "  \n", "")
+        report.error(
+          em"""Malformed tree was found while expanding macro with -Xcheck-macros.
+              |The tree does not conform to the compiler's tree invariants.
+              |
+              |Macro was:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
+              |
+              |The macro returned:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
+              |
+              |Error:
+              |$msg
+              |$stack
+              |""",
+          original
+        )
+
       try treeChecker.typed(expansion)(using checkingCtx)
       catch
         case err: java.lang.AssertionError =>
-          val stack =
-            if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
-            else if err.getStackTrace == null then "  no stacktrace"
-            else err.getStackTrace.nn.mkString("  ", "  \n", "")
-
-          report.error(
-            em"""Malformed tree was found while expanding macro with -Xcheck-macros.
-               |The tree does not conform to the compiler's tree invariants.
-               |
-               |Macro was:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
-               |
-               |The macro returned:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
-               |
-               |Error:
-               |${err.getMessage}
-               |$stack
-               |""",
-            original
-          )
+          reportMalformedMacroTree(err.getMessage(), err)
+        case err: UnhandledError =>
+          reportMalformedMacroTree(err.diagnostic.message, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>

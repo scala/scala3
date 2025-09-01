@@ -18,7 +18,7 @@ end Combinator
 final case class Apply[C, E](action: C => Option[E])
 final case class Combine[A, B](first: A, second: B)
 
-given apply[C, E]: Combinator[Apply[C, E]] with {
+given apply: [C, E] => Combinator[Apply[C, E]] {
   type Context = C
   type Element = E
   extension(self: Apply[C, E]) {
@@ -26,16 +26,14 @@ given apply[C, E]: Combinator[Apply[C, E]] with {
   }
 }
 
-given combine[A, B](using
-    tracked val f: Combinator[A],
-    tracked val s: Combinator[B] { type Context = f.Context }
-): Combinator[Combine[A, B]] with {
+given combine
+  : [A, B]
+    => (tracked val f: Combinator[A], tracked val s: Combinator[B] { type Context = f.Context })
+    => Combinator[Combine[A, B]]:
   type Context = f.Context
   type Element = (f.Element, s.Element)
-  extension(self: Combine[A, B]) {
+  extension (self: Combine[A, B])
     def parse(context: Context): Option[Element] = ???
-  }
-}
 
 extension [A] (buf: mutable.ListBuffer[A]) def popFirst() =
   if buf.isEmpty then None

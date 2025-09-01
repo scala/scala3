@@ -2,7 +2,7 @@ trait Magic[F]:
   extension (x: Int) def read: F
 
 trait LowPrio:
-  given Magic[String] with
+  given Magic[String]:
     extension(x: Int) def read: String =
       println("In string")
       s"$x"
@@ -15,7 +15,7 @@ object test1:
     import Magic.given
     def apply(s: String): Foo = s
 
-    given Magic[Foo] with
+    given Magic[Foo]:
       extension (x: Int) def read: Foo =
         println("In foo")
         Foo(s"$x")
@@ -25,7 +25,7 @@ object test1:
 
 object test2:
   object Magic extends LowPrio:
-    given Magic[Foo] with
+    given Magic[Foo]:
       extension (x: Int) def read: Foo =
         println("In foo")
         Foo(s"$x")

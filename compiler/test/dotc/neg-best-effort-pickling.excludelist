@@ -1,0 +1,24 @@
+export-in-extension.scala
+i12456.scala
+i8623.scala
+i1642.scala
+i16696.scala
+constructor-proxy-values.scala
+i9328.scala
+i15414.scala
+i6796.scala
+i14013.scala
+toplevel-cyclic
+curried-dependent-ift.scala
+i17121.scala
+illegal-match-types.scala
+i13780-1.scala
+
+i20317a.scala # recursion limit exceeded
+i11226.scala # missing type
+i974.scala # cyclic reference
+i13864.scala # missing symbol in pickling
+type-params.scala # recursion limit exceeded
+
+# semantic db generation fails in the first compilation
+i15158.scala # cyclic reference - stack overflow

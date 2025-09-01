@@ -11,6 +11,7 @@ import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
+import Annotations.PreviewAnnotation
 import Settings.Setting.ChoiceWithHelp
 
 object Feature:
@@ -28,22 +29,20 @@ object Feature:
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals = deprecated("symbolLiterals")
-  val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
-  val clauseInterleaving = experimental("clauseInterleaving")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val separationChecking = experimental("separationChecking")
   val into = experimental("into")
-  val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
-  val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
-  val betterFors = experimental("betterFors")
+  val packageObjectValues = experimental("packageObjectValues")
+  val subCases = experimental("subCases")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
-      .filterNot(_ == captureChecking) // TODO is this correct?
+      .filterNot(sym => sym == captureChecking || sym == separationChecking) // TODO is this correct?
 
   val values = List(
     (nme.help, "Display all available features"),
@@ -60,16 +59,13 @@ object Feature:
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
     (symbolLiterals, "Allow symbol literals"),
-    (fewerBraces, "Enable support for using indentation for arguments"),
     (saferExceptions, "Enable safer exceptions"),
-    (clauseInterleaving, "Enable clause interleaving"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
+    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
     (into, "Allow into modifier on parameter types"),
-    (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
-    (betterMatchTypeExtractors, "Enable better match type extractors"),
-    (betterFors, "Enable improvements in `for` comprehensions")
+    (packageObjectValues, "Enable experimental package objects as values"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -124,11 +120,6 @@ object Feature:
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
-  def clauseInterleavingEnabled(using Context) =
-    sourceVersion.isAtLeast(`3.6`) || enabled(clauseInterleaving)
-
-  def betterForsEnabled(using Context) = enabled(betterFors)
-
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
@@ -145,7 +136,7 @@ object Feature:
   /** Is captureChecking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
-    || ctx.compilationUnit.needsCaptureChecking
+    || ctx.originalCompilationUnit.needsCaptureChecking
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -166,11 +157,12 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
+  /* Should we behave as scala 2?*/
+  def shouldBehaveAsScala2(using Context): Boolean =
+    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
+
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`
-
-  def fewerBracesEnabled(using Context) =
-    sourceVersion.isAtLeast(`3.3`) || enabled(fewerBraces)
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
@@ -242,4 +234,29 @@ object Feature:
       true
     else
       false
+
+  def isPreviewEnabled(using Context): Boolean =
+    ctx.settings.preview.value
+
+  def checkPreviewFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
+    if !isPreviewEnabled then
+      report.error(previewUseSite(which) + note, srcPos)
+
+  def checkPreviewDef(sym: Symbol, srcPos: SrcPos)(using Context) = if !isPreviewEnabled then
+    val previewSym =
+      if sym.hasAnnotation(defn.PreviewAnnot) then sym
+      else if sym.owner.hasAnnotation(defn.PreviewAnnot) then sym.owner
+      else NoSymbol
+    val msg =
+      previewSym.getAnnotation(defn.PreviewAnnot).collectFirst {
+        case PreviewAnnotation(msg) if msg.nonEmpty => s": $msg"
+      }.getOrElse("")
+    val markedPreview =
+      if previewSym.exists
+      then i"$previewSym is marked @preview$msg"
+      else i"$sym inherits @preview$msg"
+    report.error(i"${markedPreview}\n\n${previewUseSite("definition")}", srcPos)
+
+  private def previewUseSite(which: String): String =
+    s"Preview $which may only be used when compiling with the `-preview` compiler flag"
 end Feature

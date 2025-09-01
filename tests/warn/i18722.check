@@ -1,7 +1,7 @@
 -- [E190] Potential Issue Warning: tests/warn/i18722.scala:3:15 --------------------------------------------------------
 3 |def f1: Unit = null // warn
   |               ^^^^
-  |               Discarded non-Unit value of type Null. You may want to use `()`.
+  |               Discarded non-Unit value of type Null. Add `: Unit` to discard silently.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -12,7 +12,7 @@
 -- [E190] Potential Issue Warning: tests/warn/i18722.scala:4:15 --------------------------------------------------------
 4 |def f2: Unit = 1 // warn
   |               ^
-  |               Discarded non-Unit value of type Int. You may want to use `()`.
+  |               Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -23,7 +23,7 @@
 -- [E190] Potential Issue Warning: tests/warn/i18722.scala:5:15 --------------------------------------------------------
 5 |def f3: Unit = "a" // warn
   |               ^^^
-  |               Discarded non-Unit value of type String. You may want to use `()`.
+  |               Discarded non-Unit value of type String. Add `: Unit` to discard silently.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -34,7 +34,7 @@
 -- [E190] Potential Issue Warning: tests/warn/i18722.scala:7:15 --------------------------------------------------------
 7 |def f4: Unit = i // warn
   |               ^
-  |               Discarded non-Unit value of type Int. You may want to use `()`.
+  |               Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

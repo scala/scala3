@@ -5,7 +5,7 @@ class Has[A]
 object Has:
   class Union[B, C]
   object Union:
-    given HasHasUnion[B0 <: Has[?], C0 <: Has[?]]: Union[B0, C0] = ???
+    given HasHasUnion: [B0 <: Has[?], C0 <: Has[?]] => Union[B0, C0] = ???
 
 class Lay[+D]:
   def and1[B1 >: D, C1](that: Lay[C1])(using Has.Union[B1, C1]): Lay[B1 & C1] = ???

@@ -1,10 +1,5 @@
-import language.experimental.namedTuples
+class Cap extends caps.ExclusiveCapability
 
-type Person = (name: String, age: Int)
+def test(consume x: Cap) = ???
 
-trait A:
-  type T
-
-class B:
-  type U =:= A { type T = U }
-
+def impl(using consume x: Cap) = ???

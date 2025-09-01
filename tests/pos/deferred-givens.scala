@@ -1,4 +1,4 @@
-//> using options -language:experimental.modularity -source future
+
 import compiletime.*
 class Ord[Elem]
 given Ord[Double]()

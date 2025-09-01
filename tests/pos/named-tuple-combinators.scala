@@ -1,4 +1,3 @@
-import scala.language.experimental.namedTuples
 
 object Test:
   // original code from issue https://github.com/scala/scala3/issues/20427

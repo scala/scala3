@@ -73,19 +73,23 @@ object ErrorReporting {
 
   /** A mixin trait that can produce added elements for an error message */
   trait Addenda:
-    self =>
-    def toAdd(using Context): List[String] = Nil
-    def ++ (follow: Addenda) = new Addenda:
-      override def toAdd(using Context) = self.toAdd ++ follow.toAdd
+    def toAdd(using Context): List[String]
+    def ++(follow: Addenda) = new Addenda:
+      def toAdd(using Context) = Addenda.this.toAdd ++ follow.toAdd
 
-  object NothingToAdd extends Addenda
+  object Addenda:
+    def apply(msg: Context ?=> String): Addenda = new Addenda:
+      def toAdd(using Context) = msg :: Nil
+
+  object NothingToAdd extends Addenda:
+    def toAdd(using Context): List[String] = Nil
 
   class Errors(using Context) {
 
     /** An explanatory note to be added to error messages
      *  when there's a problem with abstract var defs */
     def abstractVarMessage(sym: Symbol): String =
-      if (sym.underlyingSymbol.is(Mutable))
+      if sym.underlyingSymbol.isMutableVarOrAccessor then
         "\n(Note that variables need to be initialized to be defined)"
       else ""
 
@@ -110,7 +114,11 @@ object ErrorReporting {
             case tp => i" and expected result type $tp"
           }
           i"(${tp.typedArgs().tpes}%, %)$result"
-        s"arguments ${argStr(tp)}"
+        def hasNames = tp.args.exists:
+          case tree: untpd.Tuple => tree.trees.exists(_.isInstanceOf[NamedArg])
+          case _ => false
+        val addendum = if hasNames then " (a named tuple)" else ""
+        s"arguments ${argStr(tp)}$addendum"
       case _ =>
         i"expected type $tp"
     }
@@ -191,10 +199,11 @@ object ErrorReporting {
 
       def missingElse = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
-          "\nMaybe you are missing an else part for the conditional?"
-        case _ => ""
+          Addenda("\nMaybe you are missing an else part for the conditional?")
+        case _ =>
+          NothingToAdd
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), (addenda.toAdd :+ missingElse)*))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), addenda ++ missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -290,7 +299,7 @@ object ErrorReporting {
 
   def dependentMsg =
     """Term-dependent types are experimental,
-      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
+      |they must be enabled with a `experimental.modularity` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
 }

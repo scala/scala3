@@ -17,7 +17,7 @@ import Types.*
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
-import org.scalajs.ir.{Trees => js}
+import dotty.tools.sjs.ir.{Trees => js}
 
 /** Additional extensions for `Symbol`s that are only relevant for Scala.js. */
 object JSSymUtils {

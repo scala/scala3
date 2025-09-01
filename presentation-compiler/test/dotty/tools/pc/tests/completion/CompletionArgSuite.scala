@@ -238,6 +238,65 @@ class CompletionArgSuite extends BaseCompletionSuite:
       ""
     )
 
+  @Test def `using` =
+    checkEdit(
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(st@@)
+          |""".stripMargin,
+          s"""|def hello(using String): Unit = ???
+              |@main def main1(): Unit =
+              |  val str = "hello"
+              |  hello(using str)
+              |""".stripMargin,
+          assertSingleItem = false)
+
+  @Test def `using2` =
+    checkEdit(
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(using st@@)
+          |""".stripMargin,
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(using str)
+          |""".stripMargin,
+          assertSingleItem = false)
+
+  @Test def `using3` =
+    checkEdit(
+      s"""|def hello(using String, Int): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  val int = 4
+          |  hello(str, in@@)
+          |""".stripMargin,
+      s"""|def hello(using String, Int): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  val int = 4
+          |  hello(str, int)
+          |""".stripMargin,
+          assertSingleItem = false)
+
+  @Test def `using4` =
+    checkEdit(
+      s"""|def hello(name: String)(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello("name")(str@@)
+          |""".stripMargin,
+      s"""|def hello(name: String)(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello("name")(using str)
+          |""".stripMargin,
+          assertSingleItem = false
+          )
+
   @Test def `default-args` =
     check(
       s"""|object Main {
@@ -796,7 +855,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |  def k: Int = m(1, a@@)
          |""".stripMargin,
       """|aaa = : Int
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(2),
     )
@@ -810,7 +869,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |  def k: Int = m(inn = 1, a@@)
          |""".stripMargin,
       """|aaa = : Int
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(2),
     )
@@ -826,8 +885,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |aaa = g : Int
-         |abb = : Option[Int]
          |abb = : Int
+         |abb = : Option[Int]
          |abb = g : Int
          |""".stripMargin,
       topLines = Some(5),
@@ -912,7 +971,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -927,7 +986,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -945,7 +1004,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -963,7 +1022,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|abb = : Option[Int]
          |acc = : List[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -1127,4 +1186,17 @@ class CompletionArgSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """x: Int
         |x = : Any""".stripMargin,
+    )
+
+  @Test def `autofill-arguments-case-class` =
+    check(
+      """
+        |case class A(x: Int, y: Int)
+        |
+        |def main() =
+        |  A(x@@)
+        |""".stripMargin,
+      """x = : Int
+        |x = ???, y = ???""".stripMargin,
+      // this looks strange due to the Autofill message belonging to the description
     )

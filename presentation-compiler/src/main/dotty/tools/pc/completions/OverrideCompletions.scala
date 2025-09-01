@@ -4,7 +4,7 @@ package completions
 import java.util as ju
 
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.reports.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
@@ -191,7 +191,7 @@ object OverrideCompletions:
               template :: path
             case path => path
 
-        val indexedContext = IndexedContext(
+        val indexedContext = IndexedContext(pos)(using
           Interactive.contextOfPath(path)(using newctx)
         )
         import indexedContext.ctx
@@ -511,10 +511,10 @@ object OverrideCompletions:
       Context
   ): Option[Int] =
     defn match
-      case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
+      case td: TypeDef if (td.rhs.span.end < text.length) && text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
       case TypeDef(_, temp : Template) =>
-        temp.parentsOrDerived.lastOption.map(_.span.end).filter(text.charAt(_) == ':')
+        temp.parentsOrDerived.lastOption.map(_.span.end).filter(idx => text.length > idx && text.charAt(idx) == ':')
       case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =

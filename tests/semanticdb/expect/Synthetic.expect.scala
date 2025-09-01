@@ -30,7 +30,7 @@ class Synthetic/*<-example::Synthetic#*/ {
     null.asInstanceOf/*->scala::Any#asInstanceOf().*/[Int/*->scala::Int#*/ => Int/*->scala::Int#*/](2)
   }
 
-  class J/*<-example::Synthetic#J#*/[T/*<-example::Synthetic#J#[T]*/: /*<-example::Synthetic#J#evidence$1.*/Manifest/*->scala::Predef.Manifest#*//*->example::Synthetic#J#[T]*/] { val arr/*<-example::Synthetic#J#arr.*/ = Array/*->scala::Array.*/.empty/*->scala::Array.empty().*/[T/*->example::Synthetic#J#[T]*/] }
+  class J/*<-example::Synthetic#J#*/[T/*<-example::Synthetic#J#[T]*/: Manifest/*->scala::Predef.Manifest#*//*->example::Synthetic#J#[T]*//*<-example::Synthetic#J#evidence$1.*/] { val arr/*<-example::Synthetic#J#arr.*/ = Array/*->scala::Array.*/.empty/*->scala::Array.empty().*/[T/*->example::Synthetic#J#[T]*/] }
 
   class F/*<-example::Synthetic#F#*/
   implicit val ordering/*<-example::Synthetic#ordering.*/: Ordering/*->scala::package.Ordering#*/[F/*->example::Synthetic#F#*/] = ???/*->scala::Predef.`???`().*/
@@ -58,4 +58,13 @@ class Synthetic/*<-example::Synthetic#*/ {
       given Int/*->scala::Int#*/ = 1
       foo/*->example::Synthetic#Contexts.foo().*/(0)
   }
+
+  // Argument lifting
+  val _ =
+    def f/*<-local14*/(s/*<-local12*/: String/*->scala::Predef.String#*/)(i/*<-local13*/: Int/*->scala::Int#*/ = s/*->local12*/.length/*->java::lang::String#length().*/()) = i/*->local13*/ +/*->scala::Int#`+`(+4).*/ 1
+    def g/*<-local18*/(s/*<-local16*/: String/*->scala::Predef.String#*/, t/*<-local17*/: String/*->scala::Predef.String#*/) = s/*->local16*/ +/*->java::lang::String#`+`().*/ t/*->local17*/
+
+    def impure/*<-local20*/(s/*<-local19*/: String/*->scala::Predef.String#*/) = { ???/*->scala::Predef.`???`().*/; s/*->local19*/ }
+    val _ = f/*->local14*/(impure/*->local20*/(""))()
+    val _ = g/*->local18*/(t/*->local17*/ = impure/*->local20*/(""), s/*->local16*/ = "a")
 }

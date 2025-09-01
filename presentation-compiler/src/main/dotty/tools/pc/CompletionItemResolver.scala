@@ -62,7 +62,7 @@ object CompletionItemResolver extends ItemResolver:
     if companion == NoSymbol || gsym.is(JavaDefined) then
       if gsymDoc.isEmpty() then
         if gsym.isAliasType then
-          fullDocstring(gsym.info.deepDealias.typeSymbol, search)
+          fullDocstring(gsym.info.deepDealiasAndSimplify.typeSymbol, search)
         else if gsym.is(Method) then
           gsym.info.finalResultType match
             case tr @ TermRef(_, sym) =>
@@ -75,7 +75,7 @@ object CompletionItemResolver extends ItemResolver:
       else gsymDoc
     else
       val companionDoc = docs(companion)
-      if companionDoc.isEmpty() then gsymDoc
+      if companionDoc.isEmpty() || companionDoc == gsymDoc then gsymDoc
       else if gsymDoc.isEmpty() then companionDoc
       else
         List(

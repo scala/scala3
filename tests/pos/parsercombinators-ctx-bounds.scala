@@ -17,7 +17,7 @@ end Combinator
 final case class Apply[C, E](action: C => Option[E])
 final case class Combine[A, B](first: A, second: B)
 
-given apply[C, E]: Combinator[Apply[C, E]] with {
+given apply: [C, E] => Combinator[Apply[C, E]] {
   type Context = C
   type Element = E
   extension(self: Apply[C, E]) {
@@ -25,8 +25,9 @@ given apply[C, E]: Combinator[Apply[C, E]] with {
   }
 }
 
-given combine[A: Combinator, B: [X] =>> Combinator[X] { type Context = A.Context }]
-    : Combinator[Combine[A, B]] with
+given combine
+  : [A: Combinator, B: [X] =>> Combinator[X] { type Context = A.Context }]
+    => Combinator[Combine[A, B]]:
   type Context = A.Context
   type Element = (A.Element, B.Element)
   extension(self: Combine[A, B])

@@ -9,13 +9,13 @@ import core.Annotations.Annotation
 import core.Flags
 import core.Names.Name
 import core.StdNames.tpnme
-import scala.util.chaining.scalaUtilChainingOps
 
 import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
 import dotty.tools.dotc.core.Names.Designator
+import dotty.tools.dotc.util.chaining.*
 
 class TypeOps:
   import SymbolScopeOps.*
@@ -96,7 +96,11 @@ class TypeOps:
             // We try to find the "actual" binder of <y>: `inner`,
             // and register them to the symbol table with `(<y>, inner) -> <y>`
             // instead of `("y", outer) -> <y>`
-            if lam.paramNames.contains(sym.name) then
+            // We must also check for parameter shadowing such as def shadowParam(x: Int) = {val x = true}
+            // We skip param symbol check if owner is not a LambdaType for proper MatchType paramRef entry in the paramRefSymtab
+            // for more information: https://github.com/scala/scala3/pull/23161#discussion_r2097755983
+
+            if (sym.is(Flags.Param) || !sym.owner.info.isInstanceOf[LambdaType]) &&  lam.paramNames.contains(sym.name) then
               paramRefSymtab((lam, sym.name)) = sym
             else
               enterParamRef(lam.resType)

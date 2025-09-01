@@ -26,13 +26,13 @@ final class Slice[Base](using
 
 }
 
-given sliceIsCollection[T](using c: Collection[T]): Collection[Slice[T]] with {
+given sliceIsCollection: [T] => (c: Collection[T]) => Collection[Slice[T]] {
 
   type Element = c.Element
   //given elementIsValue: Value[Element] = c.elementIsValue
 
   type Position = c.Position
-  given positionIsValue: Value[Position] = c.positionIsValue
+  override given positionIsValue: Value[Position] = c.positionIsValue
 
   extension (self: Slice[T]) {
 

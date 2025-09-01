@@ -16,7 +16,7 @@ trait AutoLayer[A]:
             ): ZLayer[IAnyType[p.MirroredElemTypes], Nothing, A]
 
 object AutoLayer:
-  inline given derived[A](using p: Mirror.ProductOf[A]): AutoLayer[A] = {
+  inline given derived: [A] => (p: Mirror.ProductOf[A]) => AutoLayer[A] = {
     val a: ZIO[IAnyType[p.MirroredElemTypes], Nothing, A] = ???
     new AutoLayer[A]:
       override def zlayer(using

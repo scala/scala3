@@ -31,9 +31,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Fetch the Chocolatey package from GitHub
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: scala.nupkg
       - name: Publish the package to Chocolatey
-        run: choco push scala.nupkg --source https://push.chocolatey.org/ --api-key ${{ secrets.API-KEY }}
+        run: choco push scala.${{inputs.version}}.nupkg --source https://push.chocolatey.org/ --api-key ${{ secrets.API-KEY }}
         

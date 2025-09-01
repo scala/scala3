@@ -169,7 +169,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef) = cd0 match {
+    def genPlainClass(cd0: TypeDef) = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
 
@@ -515,7 +515,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     object locals {
 
-      private val slots = mutable.AnyRefMap.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
+      private val slots = mutable.HashMap.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
 
       private var nxtIdx = -1 // next available index for local-var
 
@@ -623,7 +623,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       if (emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
-        val nr = ctx.source.offsetToLine(tree.span.point) + 1
+        val nr =
+          val sourcePos = tree.sourcePos
+          (
+            if sourcePos.exists then sourcePos.source.positionInUltimateSource(sourcePos).line
+            else ctx.source.offsetToLine(tree.span.point) // fallback
+          ) + 1
+
         if (nr != lastEmittedLineNr) {
           lastEmittedLineNr = nr
           getNonLabelNode(lastInsn) match {
@@ -812,7 +818,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       methSymbol  = dd.symbol
       jMethodName = methSymbol.javaSimpleName
-      returnType  = asmMethodType(dd.symbol).returnType
+      returnType  = asmMethodType(methSymbol).returnType
       isMethSymStaticCtor = methSymbol.isStaticConstructor
 
       resetMethodBookkeeping(dd)
@@ -909,7 +915,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             for (p <- params) { emitLocalVarScope(p.symbol, veryFirstProgramPoint, onePastLastProgramPoint, force = true) }
           }
 
-          if (isMethSymStaticCtor) { appendToStaticCtor(dd) }
+          if (isMethSymStaticCtor) { appendToStaticCtor() }
         } // end of emitNormalMethodBody()
 
         lineNumber(rhs)
@@ -930,7 +936,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      *
      *  TODO document, explain interplay with `fabricateStaticInitAndroid()`
      */
-    private def appendToStaticCtor(dd: DefDef): Unit = {
+    private def appendToStaticCtor(): Unit = {
 
       def insertBefore(
             location: asm.tree.AbstractInsnNode,

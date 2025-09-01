@@ -1,0 +1,24 @@
+-- [E208] Potential Issue Warning: tests/warn/i12460.scala:3:23 --------------------------------------------------------
+3 |extension (s: String = "hello, world") def invert = s.reverse.toUpperCase // warn
+  |                       ^
+  |                       Extension method invert should not have a default argument for its receiver.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The receiver cannot be omitted when an extension method is invoked as a selection.
+  | A default argument for that parameter would never be used in that case.
+  | An extension method can be invoked as a regular method, but if that is the intended usage,
+  | it should not be defined as an extension.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E208] Potential Issue Warning: tests/warn/i12460.scala:5:37 --------------------------------------------------------
+5 |extension (using String)(s: String = "hello, world") def revert = s.reverse.toUpperCase // warn
+  |                                     ^
+  |                                     Extension method revert should not have a default argument for its receiver.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The receiver cannot be omitted when an extension method is invoked as a selection.
+  | A default argument for that parameter would never be used in that case.
+  | An extension method can be invoked as a regular method, but if that is the intended usage,
+  | it should not be defined as an extension.
+   ---------------------------------------------------------------------------------------------------------------------

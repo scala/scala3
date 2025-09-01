@@ -1,5 +1,6 @@
 package dotty.tools.pc
 
+import java.net.URI
 import java.nio.file.Paths
 import java.util.ArrayList
 
@@ -16,6 +17,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.{Exported, ModuleClass}
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.Interactive.Include
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
@@ -49,12 +51,12 @@ class PcDefinitionProvider(
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
     given ctx: Context = driver.localContext(params)
-    val indexedContext = IndexedContext(ctx)
+    val indexedContext = IndexedContext(pos)(using ctx)
     val result =
-      if findTypeDef then findTypeDefinitions(path, pos, indexedContext)
-      else findDefinitions(path, pos, indexedContext)
+      if findTypeDef then findTypeDefinitions(path, pos, indexedContext, uri)
+      else findDefinitions(path, pos, indexedContext, uri)
 
-    if result.locations().nn.isEmpty() then fallbackToUntyped(pos)(using ctx)
+    if result.locations().nn.isEmpty() then fallbackToUntyped(pos, uri)(using ctx)
     else result
   end definitions
 
@@ -70,24 +72,26 @@ class PcDefinitionProvider(
    * @param pos cursor position
    * @return definition result
    */
-  private def fallbackToUntyped(pos: SourcePosition)(
+  private def fallbackToUntyped(pos: SourcePosition, uri: URI)(
     using ctx: Context
   ) =
     lazy val untpdPath = NavigateAST
       .untypedPath(pos.span)
       .collect { case t: untpd.Tree => t }
 
-    definitionsForSymbol(untpdPath.headOption.map(_.symbol).toList, pos)
+    definitionsForSymbols(untpdPath.headOption.map(_.symbol).toList, uri, pos)
   end fallbackToUntyped
 
   private def findDefinitions(
       path: List[Tree],
       pos: SourcePosition,
-      indexed: IndexedContext
+      indexed: IndexedContext,
+      uri: URI,
   ): DefinitionResult =
     import indexed.ctx
-    definitionsForSymbol(
+    definitionsForSymbols(
       MetalsInteractive.enclosingSymbols(path, pos, indexed),
+      uri,
       pos
     )
   end findDefinitions
@@ -95,80 +99,72 @@ class PcDefinitionProvider(
   private def findTypeDefinitions(
       path: List[Tree],
       pos: SourcePosition,
-      indexed: IndexedContext
+      indexed: IndexedContext,
+      uri: URI,
   ): DefinitionResult =
     import indexed.ctx
     val enclosing = path.expandRangeToEnclosingApply(pos)
     val typeSymbols = MetalsInteractive
       .enclosingSymbolsWithExpressionType(enclosing, pos, indexed)
-      .map { case (_, tpe) =>
+      .map { case (_, tpe, _) =>
         tpe.typeSymbol
       }
     typeSymbols match
       case Nil =>
         path.headOption match
           case Some(value: Literal) =>
-            definitionsForSymbol(List(value.typeOpt.widen.typeSymbol), pos)
+            definitionsForSymbols(List(value.typeOpt.widen.typeSymbol), uri, pos)
           case _ => DefinitionResultImpl.empty
       case _ =>
-        definitionsForSymbol(typeSymbols, pos)
-
+        definitionsForSymbols(typeSymbols, uri, pos)
   end findTypeDefinitions
 
-  private def definitionsForSymbol(
+  private def definitionsForSymbols(
       symbols: List[Symbol],
+      uri: URI,
       pos: SourcePosition
   )(using ctx: Context): DefinitionResult =
-    symbols match
-      case symbols @ (sym :: other) =>
-        val isLocal = sym.source == pos.source
-        if isLocal then
-          val (exportedDefs, otherDefs) =
-            Interactive.findDefinitions(List(sym), driver, false, false)
-              .filter(_.source == sym.source)
-              .partition(_.tree.symbol.is(Exported))
-
-          otherDefs.headOption.orElse(exportedDefs.headOption)  match
-            case Some(srcTree) =>
-              val pos = srcTree.namePos
-              pos.toLocation match
-                case None => DefinitionResultImpl.empty
-                case Some(loc) =>
-                  DefinitionResultImpl(
-                    SemanticdbSymbols.symbolName(sym),
-                    List(loc).asJava
-                  )
-            case None =>
-              DefinitionResultImpl.empty
-        else
-          val res = new ArrayList[Location]()
-          semanticSymbolsSorted(symbols)
-            .foreach { sym =>
-              res.addAll(search.definition(sym, params.uri()))
-            }
-          DefinitionResultImpl(
-            SemanticdbSymbols.symbolName(sym),
-            res
-          )
-        end if
+    semanticSymbolsSorted(symbols) match
       case Nil => DefinitionResultImpl.empty
-    end match
-  end definitionsForSymbol
+      case syms @ ((_, headSym) :: tail) =>
+        val locations = syms.flatMap:
+          case (sym, semanticdbSymbol) =>
+            locationsForSymbol(sym, semanticdbSymbol, uri, pos)
+        DefinitionResultImpl(headSym, locations.asJava)
+
+  private def locationsForSymbol(
+      symbol: Symbol,
+      semanticdbSymbol: String,
+      uri: URI,
+      pos: SourcePosition
+  )(using ctx: Context): List[Location] =
+    val isLocal = symbol.source == pos.source
+    if isLocal then
+      val trees = driver.openedTrees(uri)
+      val include = Include.definitions | Include.local
+      val (exportedDefs, otherDefs) =
+        Interactive.findTreesMatching(trees, include, symbol)
+          .partition(_.tree.symbol.is(Exported))
+      otherDefs.headOption.orElse(exportedDefs.headOption).collect:
+        case srcTree if srcTree.namePos.exists =>
+          new Location(params.uri().toString(), srcTree.namePos.toLsp)
+      .toList
+    else search.definition(semanticdbSymbol, uri).asScala.toList
 
   def semanticSymbolsSorted(
       syms: List[Symbol]
-  )(using ctx: Context): List[String] =
+  )(using ctx: Context): List[(Symbol, String)] =
     syms
-      .map { sym =>
+      .collect { case sym if sym.exists =>
         // in case of having the same type and teerm symbol
         // term comes first
         // used only for ordering symbols that come from `Import`
         val termFlag =
           if sym.is(ModuleClass) then sym.sourceModule.isTerm
           else sym.isTerm
-        (termFlag, SemanticdbSymbols.symbolName(sym))
+        (termFlag, sym.sourceSymbol, SemanticdbSymbols.symbolName(sym))
       }
-      .sorted
-      .map(_._2)
+      .sortBy { case (termFlag, _, name) => (termFlag, name) }
+      .map(_.tail)
 
 end PcDefinitionProvider

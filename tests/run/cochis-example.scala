@@ -1,7 +1,7 @@
 
 import Predef.{assert, $conforms as _}
 trait A {
-  given id[X]: (X => X) = x => x
+  given id: [X] => (X => X) = x => x
   def trans[X](x: X)(using f: X => X) = f(x)  // (2)
 }
 object Test extends A with App{

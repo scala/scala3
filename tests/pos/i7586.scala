@@ -5,14 +5,15 @@ case class S[N <: Nat](pred: N) extends Nat
 
 type Z = Z.type
 given zero: Z = Z
-given succ[N <: Nat](using n: N): S[N] = S(n)
+given succ: [N <: Nat] => (n: N) => S[N] = S(n)
 
 case class Sum[N <: Nat, M <: Nat, R <: Nat](result: R)
 
-given sumZ[N <: Nat](using n: N): Sum[Z, N, N] = Sum(n)
-given sumS[N <: Nat, M <: Nat, R <: Nat](
-	using sum: Sum[N, M, R]
-): Sum[S[N], M, S[R]] = Sum(S(sum.result))
+given sumZ: [N <: Nat] => (n: N) => Sum[Z, N, N] = Sum(n)
+given sumS: [N <: Nat, M <: Nat, R <: Nat]
+	=> (sum: Sum[N, M, R])
+  => Sum[S[N], M, S[R]]
+	= Sum(S(sum.result))
 
 def add[N <: Nat, M <: Nat, R <: Nat](n: N, m: M)(
 	using sum: Sum[N, M, R]

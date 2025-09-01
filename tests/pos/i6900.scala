@@ -8,7 +8,7 @@ object Test1 {
 
   // But not with newstyle
   /*
-  given [A]: Conversion[A, Foo[A]] with
+  given [A]: Conversion[A, Foo[A]]:
     def apply(a: A) = new Foo[A]:
       def foo[C]: C => A = _ => a
   */

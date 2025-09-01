@@ -1,5 +1,4 @@
 import language.experimental.modularity
-import language.future
 
 trait M[Self]:
   extension (x: Self) def combine (y: Self): String

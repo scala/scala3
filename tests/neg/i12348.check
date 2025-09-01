@@ -1,4 +1,4 @@
--- [E040] Syntax Error: tests/neg/i12348.scala:2:15 --------------------------------------------------------------------
+-- [E040] Syntax Error: tests/neg/i12348.scala:2:16 --------------------------------------------------------------------
 2 |  given inline x: Int = 0 // error
-  |               ^
-  |               'with' expected, but identifier found
+  |                ^
+  |                an identifier expected, but ':' found

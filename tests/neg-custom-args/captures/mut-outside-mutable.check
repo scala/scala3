@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:5:13 ------------------------------------------------
+5 |  update def foreach(op: T => Unit): Unit // error
+  |             ^
+  |             Update methods can only be used as members of classes extending the `Mutable` trait
+-- Error: tests/neg-custom-args/captures/mut-outside-mutable.scala:9:15 ------------------------------------------------
+9 |    update def baz() = 1 // error
+  |               ^
+  |               Update methods can only be used as members of classes extending the `Mutable` trait

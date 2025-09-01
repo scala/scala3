@@ -30,7 +30,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
   def tracked: Iterable[Symbol] = free.keys
 
   /** The outermost class that captures all free variables of a function
-   *  that are captured by enclosinh classes (this means that the function could
+   *  that are captured by enclosing classes (this means that the function could
    *  be placed in that class without having to add more environment parameters)
    */
   def logicalOwner: collection.Map[Symbol, Symbol] = logicOwner
@@ -45,9 +45,9 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
 
   /** A map from local methods and classes to the owners to which they will be lifted as members.
    *  For methods and classes that do not have any dependencies this will be the enclosing package.
-   *  symbols with packages as lifted owners will subsequently represented as static
+   *  Symbols with packages as lifted owners will be subsequently represented as static
    *  members of their toplevel class, unless their enclosing class was already static.
-   *  Note: During tree transform (which runs at phase LambdaLift + 1), liftedOwner
+   *  Note: During tree transform (which runs at phase LambdaLift + 1), logicOwner
    *  is also used to decide whether a method had a term owner before.
    */
   private val logicOwner = new LinkedHashMap[Symbol, Symbol]
@@ -75,8 +75,8 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
     || owner.is(Trait) && isLocal(owner)
     || sym.isConstructor && isLocal(owner)
 
-  /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
-   *  than the previous value of `liftedowner(sym)`.
+  /** Set `logicOwner(sym)` to `owner` if `owner` is more deeply nested
+   *  than the previous value of `logicOwner(sym)`.
    */
   private def narrowLogicOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
     if sym.maybeOwner.isTerm
@@ -89,7 +89,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
 
   /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
    *  in `enclosure` or there is an intermediate class properly containing `enclosure`
-   *  in which `sym` is also free. Also, update `liftedOwner` of `enclosure` so
+   *  in which `sym` is also free. Also, update `logicOwner` of `enclosure` so
    *  that `enclosure` can access `sym`, or its proxy in an intermediate class.
    *  This means:
    *
@@ -137,6 +137,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
       if !enclosure.exists then throw NoPath()
       if enclosure == sym.enclosure then NoSymbol
       else
+        /** is sym a constructor or a term that is nested in a constructor? */
         def nestedInConstructor(sym: Symbol): Boolean =
           sym.isConstructor
           || sym.isTerm && nestedInConstructor(sym.enclosure)
@@ -237,6 +238,10 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         captureImplicitThis(tree.tpe)
       case tree: Select =>
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
+      case tree: New =>
+        val constr = tree.tpe.typeSymbol.primaryConstructor
+        if constr.exists then
+          symSet(called, enclosure) += constr
       case tree: This =>
         narrowTo(tree.symbol.asClass)
       case tree: MemberDef if isExpr(sym) && sym.owner.isTerm =>
@@ -279,7 +284,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
       changedFreeVars
     do ()
 
-  /** Compute final liftedOwner map by closing over caller dependencies */
+  /** Compute final logicOwner map by closing over caller dependencies */
   private def computeLogicOwners()(using Context): Unit =
     while
       changedLogicOwner = false
@@ -291,7 +296,6 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         val calleeOwner = normalizedCallee.owner
         if calleeOwner.isTerm then narrowLogicOwner(caller, logicOwner(normalizedCallee))
         else
-          assert(calleeOwner.is(Trait))
           // methods nested inside local trait methods cannot be lifted out
           // beyond the trait. Note that we can also call a trait method through
           // a qualifier; in that case no restriction to lifted owner arises.

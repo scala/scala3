@@ -6,7 +6,7 @@ trait ConfigMonoid[T]:
   def orElse(main: T, defaults: T): T
 
 object ConfigMonoid:
-  given option[T]: ConfigMonoid[Option[T]] = ???
+  given option: [T] => ConfigMonoid[Option[T]] = ???
 
   inline def zeroTuple[C <: Tuple]: Tuple =
     inline erasedValue[C] match
@@ -25,7 +25,7 @@ object ConfigMonoid:
           defaults
         )
 
-  inline given derive[T](using m: Mirror.ProductOf[T]): ConfigMonoid[T] =
+  inline given derive: [T] => (m: Mirror.ProductOf[T]) => ConfigMonoid[T] =
     new ConfigMonoid[T]:
       def zero: T = m.fromProduct(zeroTuple[m.MirroredElemTypes])
       def orElse(main: T, defaults: T): T = m.fromProduct(valueTuple[m.MirroredElemTypes, T](0, main, defaults))

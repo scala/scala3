@@ -44,7 +44,10 @@ object ProtectedAccessors {
   /** Do we need a protected accessor for accessing sym from the current context's owner? */
   def needsAccessor(sym: Symbol)(using Context): Boolean =
     needsAccessorIfNotInSubclass(sym) &&
-    !ctx.owner.enclosingClass.derivesFrom(sym.owner)
+    !needsAccessorIsSubclass(sym)
+
+  def needsAccessorIsSubclass(sym: Symbol)(using Context): Boolean =
+    ctx.owner.enclosingClass.derivesFrom(sym.owner)
 }
 
 class ProtectedAccessors extends MiniPhase {

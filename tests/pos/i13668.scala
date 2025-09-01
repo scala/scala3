@@ -1,6 +1,6 @@
 class MyType()
 trait Candidate[R]
-given Candidate[MyType] with {}
+given Candidate[MyType]()
 class Fuzzy[W]()
 class Fuzzy1()
 class Bear()

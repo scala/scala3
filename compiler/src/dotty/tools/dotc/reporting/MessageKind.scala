@@ -22,6 +22,8 @@ enum MessageKind:
   case Compatibility
   case PotentialIssue
   case UnusedSymbol
+  case Staging
+  case Interpolation
 
   /** Human readable message that will end up being shown to the user.
    *  NOTE: This is only used in the situation where you have multiple words
@@ -39,5 +41,6 @@ enum MessageKind:
       case MatchCaseUnreachable => "Match case Unreachable"
       case PotentialIssue => "Potential Issue"
       case UnusedSymbol => "Unused Symbol"
+      case Staging => "Staging Issue"
       case kind => kind.toString
 end MessageKind

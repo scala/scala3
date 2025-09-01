@@ -77,12 +77,12 @@ def test2a = {
  */
 object Impl3 {
   trait LowPriority // A marker trait to indicate a lower priority
-  given t1[T]: E[T]("low") with LowPriority
+  given t1: [T] => E[T]("low"), LowPriority
 }
 
 object Override {
 
-  given over[T]: E[T]("hi") with {}
+  given over: [T] => E[T]("hi")
 }
 
 def test3 = {
@@ -135,7 +135,7 @@ object HigherPriority {
 }
 
 object fallback5 {
-  given [T](using ev: E[T] = new E[T]("fallback")): (E[T] & HigherPriority.Type) = HigherPriority.inject(ev)
+  given [T] => (ev: E[T] = new E[T]("fallback")) => E[T] & HigherPriority.Type = HigherPriority.inject(ev)
 }
 
 def test5 = {

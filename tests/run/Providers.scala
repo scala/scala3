@@ -1,4 +1,3 @@
-import language.experimental.modularity
 import compiletime.constValue
 import compiletime.ops.int.S
 

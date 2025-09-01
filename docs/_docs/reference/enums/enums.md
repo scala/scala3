@@ -117,6 +117,9 @@ The fields referenced by `Mercury` are not visible, and the fields referenced by
 be referenced directly (using `import Planet.*`). You must use an indirect reference,
 such as demonstrated with `Earth`.
 
+Enum cases accept only access modifiers.
+Enum classes accept only access modifiers and `into` or `infix`.
+
 ## Deprecation of Enum Cases
 
 As a library author, you may want to signal that an enum case is no longer intended for use. However you could still want to gracefully handle the removal of a case from your public API, such as special casing deprecated cases.
@@ -147,16 +150,13 @@ We now want to deprecate the `Pluto` case. First we add the `scala.deprecated` a
 Outside the lexical scopes of `enum Planet` or `object Planet`, references to `Planet.Pluto` will produce a deprecation warning, but within those scopes we can still reference it to implement introspection over the deprecated cases:
 
 ```scala
-trait Deprecations[T <: reflect.Enum] {
+trait Deprecations[T <: reflect.Enum]:
   extension (t: T) def isDeprecatedCase: Boolean
-}
 
-object Planet {
-  given Deprecations[Planet] with {
+object Planet:
+  given Deprecations[Planet]:
     extension (p: Planet)
       def isDeprecatedCase = p == Pluto
-  }
-}
 ```
 
 We could imagine that a library may use [type class derivation](../contextual/derivation.md) to automatically provide an instance for `Deprecations`.
@@ -167,7 +167,8 @@ If you want to use the Scala-defined enums as [Java enums](https://docs.oracle.c
 the class `java.lang.Enum`, which is imported by default, as follows:
 
 ```scala
-enum Color extends Enum[Color] { case Red, Green, Blue }
+enum Color extends Enum[Color]:
+  case Red, Green, Blue
 ```
 
 The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.

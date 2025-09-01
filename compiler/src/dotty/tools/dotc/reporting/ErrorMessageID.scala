@@ -132,7 +132,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MissingCompanionForStaticID // errorNumber: 116
   case PolymorphicMethodMissingTypeInParentID // errorNumber: 117
   case ParamsNoInlineID // errorNumber: 118
-  case JavaSymbolIsNotAValueID // errorNumber: 119
+  case SymbolIsNotAValueID // errorNumber: 119
   case DoubleDefinitionID // errorNumber: 120
   case MatchCaseOnlyNullWarningID // errorNumber: 121
   case ImportedTwiceID // errorNumber: 122
@@ -208,13 +208,33 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnstableInlineAccessorID // errorNumber: 192
   case VolatileOnValID // errorNumber: 193
   case ExtensionNullifiedByMemberID // errorNumber: 194
-  case ConstructorProxyNotValueID // errorNumber: 195
+  case PhantomSymbolNotValueID // errorNumber: 195
   case ContextBoundCompanionNotValueID // errorNumber: 196
   case InlinedAnonClassWarningID // errorNumber: 197
   case UnusedSymbolID // errorNumber: 198
   case TailrecNestedCallID //errorNumber: 199
   case FinalLocalDefID // errorNumber: 200
   case NonNamedArgumentInJavaAnnotationID // errorNumber: 201
+  case QuotedTypeMissingID // errorNumber: 202
+  case DeprecatedAssignmentSyntaxID // errorNumber: 203
+  case DeprecatedInfixNamedArgumentSyntaxID // errorNumber: 204
+  case GivenSearchPriorityID // errorNumber: 205
+  case EnumMayNotBeValueClassesID // errorNumber: 206
+  case IllegalUnrollPlacementID // errorNumber: 207
+  case ExtensionHasDefaultID // errorNumber: 208
+  case FormatInterpolationErrorID // errorNumber: 209
+  case ValueClassCannotExtendAliasOfAnyValID // errorNumber: 210
+  case MatchIsNotPartialFunctionID // errorNumber: 211
+  case OnlyFullyDependentAppliedConstructorTypeID // errorNumber: 212
+  case PointlessAppliedConstructorTypeID // errorNumber: 213
+  case IllegalContextBoundsID // errorNumber: 214
+  case NamedPatternNotApplicableID // errorNumber: 215
+  case UnnecessaryNN // errorNumber: 216
+  case ErasedNotPureID // errorNumber: 217
+  case IllegalErasedDefID // errorNumber: 218
+  case CannotInstantiateQuotedTypeVarID // errorNumber: 219
+  case DefaultShadowsGivenID // errorNumber: 220
+  case RecurseWithDefaultID // errorNumber: 221
 
   def errorNumber = ordinal - 1
 

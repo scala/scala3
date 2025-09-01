@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/contracap.scala:15:48 ------------------------------------
+15 |  val g: (Ref[Int]^{a}, Ref[Int]^{a}) -> Unit = f // error
+   |                                                ^
+   |                                                Found:    (f : (Ref[Int]^, Ref[Int]^) -> Unit)
+   |                                                Required: (Ref[Int]^{a}, Ref[Int]^{a}) -> Unit
+   |
+   |                                                Note that capability a is not included in capture set {cap}.
+   |
+   |                                                where:    ^   refers to the universal root capability
+   |                                                          cap is the universal root capability
+   |
+   | longer explanation available when compiling with `-explain`

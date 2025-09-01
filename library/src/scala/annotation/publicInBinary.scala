@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 /** A binary API is a definition that is annotated with `@publicInBinary`.
  *  This annotation can be placed on `def`, `val`, `lazy val`, `var`, class constructors, `object`, and `given` definitions.
  *  A binary API will be publicly available in the bytecode. Tools like TASTy MiMa will take this into account to check
@@ -16,5 +18,4 @@ package scala.annotation
  *  Adding this annotation to a non-public definition can also cause binary incompatibilities
  *  if the definition is accessed in an inline definition (these can be checked using `-WunstableInlineAccessors`).
  */
-@experimental
 final class publicInBinary extends scala.annotation.StaticAnnotation

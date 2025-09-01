@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 /** Quoted expression of type `T`.
  *
  *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.
@@ -256,7 +258,7 @@ object Expr {
   private def tupleTypeFromSeq(seq: Seq[Expr[Any]])(using Quotes): quotes.reflect.TypeRepr =
     import quotes.reflect.*
     val consRef = Symbol.classSymbol("scala.*:").typeRef
-    seq.foldLeft(TypeRepr.of[EmptyTuple]) { (ts, expr) =>
+    seq.foldRight(TypeRepr.of[EmptyTuple]) { (expr, ts) =>
       AppliedType(consRef, expr.asTerm.tpe :: ts :: Nil)
     }
 
@@ -275,6 +277,25 @@ object Expr {
   def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
     import quotes.reflect.*
     Implicits.search(TypeRepr.of[T]) match {
+      case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
+      case isf: ImplicitSearchFailure => None
+    }
+  }
+
+  /** Find a given instance of type `T` in the current scope,
+   *  while excluding certain symbols from the initial implicit search.
+   *  Return `Some` containing the expression of the implicit or
+   * `None` if implicit resolution failed.
+   *
+   *  @tparam T type of the implicit parameter
+   *  @param ignored Symbols ignored during the initial implicit search
+   *
+   *  @note if the found given requires additional search for other given instances,
+   *  this additional search will NOT exclude the symbols from the `ignored` list.
+   */
+  def summonIgnoring[T](using Type[T])(using quotes: Quotes)(ignored: quotes.reflect.Symbol*): Option[Expr[T]] = {
+    import quotes.reflect._
+    Implicits.searchIgnoring(TypeRepr.of[T])(ignored*) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }

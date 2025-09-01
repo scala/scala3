@@ -46,7 +46,7 @@ trait DottyTest extends ContextEscapeDetection {
 
   protected def defaultCompiler: Compiler = new Compiler()
 
-  private def compilerWithChecker(phase: String)(assertion: (tpd.Tree, Context) => Unit) = new Compiler {
+  protected def compilerWithChecker(phase: String)(assertion: (tpd.Tree, Context) => Unit) = new Compiler {
 
     private val baseCompiler = defaultCompiler
 

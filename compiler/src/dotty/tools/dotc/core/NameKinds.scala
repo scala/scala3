@@ -312,6 +312,7 @@ object NameKinds {
 
   /** Other unique names */
   val CanThrowEvidenceName: UniqueNameKind   = new UniqueNameKind("canThrow$")
+  val TryOwnerName: UniqueNameKind           = new UniqueNameKind("try$")
   val TempResultName: UniqueNameKind         = new UniqueNameKind("ev$")
   val DepParamName: UniqueNameKind           = new UniqueNameKind("(param)")
   val LazyImplicitName: UniqueNameKind       = new UniqueNameKind("$_lazy_implicit_$")
@@ -327,6 +328,7 @@ object NameKinds {
   val ExceptionBinderName: UniqueNameKind    = new UniqueNameKind("ex")
   val ExistentialBinderName: UniqueNameKind  = new UniqueNameKind("ex$")
   val SkolemName: UniqueNameKind             = new UniqueNameKind("?")
+  val CapsetName: UniqueNameKind             = new UniqueNameKind("'s")
   val SuperArgName: UniqueNameKind           = new UniqueNameKind("$superArg$")
   val DocArtifactName: UniqueNameKind        = new UniqueNameKind("$doc")
   val UniqueInlineName: UniqueNameKind       = new UniqueNameKind("$i")

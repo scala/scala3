@@ -1,9 +1,9 @@
--- [E008] Not Found Error: tests/neg/missing-implicit6.scala:34:8 ------------------------------------------------------
-34 |    "a".xxx // error, no suggested import
+-- [E008] Not Found Error: tests/neg/missing-implicit6.scala:32:8 ------------------------------------------------------
+32 |    "a".xxx // error, no suggested import
    |    ^^^^^^^
    |    value xxx is not a member of String
--- [E008] Not Found Error: tests/neg/missing-implicit6.scala:35:8 ------------------------------------------------------
-35 |    123.xxx // error, suggested import
+-- [E008] Not Found Error: tests/neg/missing-implicit6.scala:33:8 ------------------------------------------------------
+33 |    123.xxx // error, suggested import
    |    ^^^^^^^
    |    value xxx is not a member of Int, but could be made available as an extension method.
    |
@@ -11,8 +11,8 @@
    |
    |      import Test.Ops.xxx
    |
--- [E008] Not Found Error: tests/neg/missing-implicit6.scala:36:8 ------------------------------------------------------
-36 |    123.yyy // error, suggested import
+-- [E008] Not Found Error: tests/neg/missing-implicit6.scala:34:8 ------------------------------------------------------
+34 |    123.yyy // error, suggested import
    |    ^^^^^^^
    |    value yyy is not a member of Int, but could be made available as an extension method.
    |
@@ -20,16 +20,16 @@
    |
    |      import Test.Ops.yyy
    |
--- [E008] Not Found Error: tests/neg/missing-implicit6.scala:41:8 ------------------------------------------------------
-41 |    123.xxx // error, no suggested import
+-- [E008] Not Found Error: tests/neg/missing-implicit6.scala:39:8 ------------------------------------------------------
+39 |    123.xxx // error, no suggested import
    |    ^^^^^^^
    |    value xxx is not a member of Int
--- [E008] Not Found Error: tests/neg/missing-implicit6.scala:42:8 ------------------------------------------------------
-42 |    123.yyy // error, no suggested import
+-- [E008] Not Found Error: tests/neg/missing-implicit6.scala:40:8 ------------------------------------------------------
+40 |    123.yyy // error, no suggested import
    |    ^^^^^^^
    |    value yyy is not a member of Int
--- [E008] Not Found Error: tests/neg/missing-implicit6.scala:43:8 ------------------------------------------------------
-43 |    123.zzz // error, suggested import even though there's no instance of Bar in scope
+-- [E008] Not Found Error: tests/neg/missing-implicit6.scala:41:8 ------------------------------------------------------
+41 |    123.zzz // error, suggested import even though there's no instance of Bar in scope
    |    ^^^^^^^
    |    value zzz is not a member of Int, but could be made available as an extension method.
    |

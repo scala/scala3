@@ -63,9 +63,15 @@ object Scala2Unpickler {
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
-  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit = {
-    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
-      val constr = newDefaultConstructor(cls)
+  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit =
+    doEnsureConstructor(cls, clsDenot, scope, fromScala2 = true)
+
+  private def doEnsureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope, fromScala2: Boolean)
+      (using Context): Unit =
+    if scope.lookup(nme.CONSTRUCTOR) == NoSymbol then
+      val constr =
+        if fromScala2 || cls.isAllOf(Trait | JavaDefined) then newDefaultConstructor(cls)
+        else newConstructor(cls, Private, paramNames = Nil, paramTypes = Nil)
       // Scala 2 traits have a constructor iff they have initialization code
       // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
       if clsDenot.flagsUNSAFE.is(Trait) then
@@ -73,8 +79,6 @@ object Scala2Unpickler {
         clsDenot.setFlag(NoInits)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
-    }
-  }
 
   def setClassInfo(denot: ClassDenotation, info: Type, fromScala2: Boolean, selfInfo: Type = NoType)(using Context): Unit = {
     val cls = denot.classSymbol
@@ -108,7 +112,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(cls, denot, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) doEnsureConstructor(cls, denot, decls, fromScala2)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
@@ -161,7 +165,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val entries = new Array[AnyRef](index.length)
 
   /** A map from symbols to their associated `decls` scopes */
-  private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
+  private val symScopes = mutable.HashMap[Symbol, Scope]()
 
   /** A mapping from method types to the parameters used in constructing them */
   private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
@@ -535,7 +539,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 true) &&
             // We discard the private val representing a case accessor. We only enter the case accessor def.
             // We do need to load these symbols to read properly unpickle the annotations on the symbol (see sbt-test/scala2-compat/i19421).
-            !flags.isAllOf(CaseAccessor | PrivateLocal, butNot = Method)
+            !flags.isAllOf(CaseAccessor | PrivateLocal, butNot = Method) &&
+            // Skip entering extension methods: they will be recreated by the ExtensionMethods phase.
+            // Same trick is used by tasty-query (see
+            //https://github.com/scalacenter/tasty-query/blob/fdefadcabb2f21d5c4b71f728b81c68f6fddcc0f/tasty-query/shared/src/main/scala/tastyquery/reader/pickles/PickleReader.scala#L261-L273
+            //)
+            // This trick is also useful when reading the Scala 2 Standard library from tasty, since
+            // the extension methods will not be present, and it avoid having to distinguish between Scala2 pickles and Scala2 tasty (stdlib)
+            !(owner.is(ModuleClass) && sym.name.endsWith("$extension"))
 
         if (canEnter)
           owner.asClass.enter(sym, symScope(owner))

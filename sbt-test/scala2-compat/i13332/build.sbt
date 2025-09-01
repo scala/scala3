@@ -10,5 +10,5 @@ lazy val app = project.in(file("app"))
   .dependsOn(lib)
   .settings(
     scalaVersion := scala3Version,
-    scalacOptions += "-Xprint:inlining"
+    scalacOptions += "-Vprint:inlining"
   )

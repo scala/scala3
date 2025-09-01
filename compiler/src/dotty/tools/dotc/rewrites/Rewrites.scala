@@ -7,7 +7,7 @@ import core.Contexts.*
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.util.SourcePosition;
+import dotty.tools.dotc.util.SourcePosition
 
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets.UTF_8
@@ -36,6 +36,11 @@ object Rewrites {
 
     def addPatch(span: Span, replacement: String): Unit =
       pbuf += Patch(span, replacement)
+
+    // remove patches which match either end point
+    def removePatch(span: Span): Unit =
+      def p(other: Span): Boolean = span.start == other.start || span.end == other.end
+      pbuf.filterInPlace(x => !p(x.span))
 
     def apply(cs: Array[Char]): Array[Char] = {
       val delta = pbuf.map(_.delta).sum
@@ -86,6 +91,16 @@ object Rewrites {
   /** Patch position in `ctx.compilationUnit.source`. */
   def patch(span: Span, replacement: String)(using Context): Unit =
     patch(ctx.compilationUnit.source, span, replacement)
+
+  /** Delete patches matching the given span,
+   *  where a match has the same start or end offset.
+   */
+  def unpatch(source: SourceFile, span: Span)(using Context): Unit =
+    if ctx.reporter != Reporter.NoReporter // NoReporter is used for syntax highlighting
+    then ctx.settings.rewrite.value.foreach: rewrites =>
+      rewrites.patched
+        .get(source)
+        .foreach(_.removePatch(span))
 
   /** Does `span` overlap with a patch region of `source`? */
   def overlapsPatch(source: SourceFile, span: Span)(using Context): Boolean =

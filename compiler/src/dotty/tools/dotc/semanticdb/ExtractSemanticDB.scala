@@ -63,7 +63,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
 
   private def computeDiagnostics(
       sourceRoot: String,
-      warnings: Map[SourceFile, List[Warning]],
+      warnings: Map[SourceFile, List[dotty.tools.dotc.reporting.Diagnostic]],
       append: ((Path, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
     val unit = ctx.compilationUnit
     warnings.get(unit.source).foreach { ws =>
@@ -104,14 +104,14 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     val unitContexts = units.map(ctx.fresh.setCompilationUnit(_).withRootImports)
     if (appendDiagnostics)
-      val warnings = ctx.reporter.allWarnings.groupBy(w => w.pos.source)
+      val warningsAndInfos = (ctx.reporter.allWarnings ++ ctx.reporter.allInfos).groupBy(w => w.pos.source)
       val buf = mutable.ListBuffer.empty[(Path, Seq[Diagnostic])]
       val units0 =
-        for unitCtx <- unitContexts if computeDiagnostics(sourceRoot, warnings, buf += _)(using unitCtx)
+        for unitCtx <- unitContexts if computeDiagnostics(sourceRoot, warningsAndInfos, buf += _)(using unitCtx)
         yield unitCtx.compilationUnit
       cancellable {
-        buf.toList.asJava.parallelStream().forEach { case (out, warnings) =>
-          ExtractSemanticDB.appendDiagnostics(warnings, out)
+        buf.toList.asJava.parallelStream().forEach { case (out, diagnostics) =>
+          ExtractSemanticDB.appendDiagnostics(diagnostics, out)
         }
       }
       units0
@@ -262,7 +262,7 @@ object ExtractSemanticDB:
 
     private def excludeSymbol(sym: Symbol)(using Context): Boolean =
       !sym.exists
-      || sym.is(ConstructorProxy)
+      || sym.is(PhantomSymbol)
       || sym.name.isWildcard
       || excludeQual(sym)
 
@@ -285,6 +285,14 @@ object ExtractSemanticDB:
       || sym == defn.Any_typeCast
       || sym.owner == defn.OpsPackageClass
       || qualifier.exists(excludeQual)
+
+    /** This block is created by lifting i.e. EtaExpansion */
+    private def isProbablyLifted(block: Block)(using Context) =
+      def isSyntheticDef(t: Tree) =
+        t match
+          case t: (ValDef | DefDef) => t.symbol.isSyntheticWithIdent
+          case _ => false
+      block.stats.forall(isSyntheticDef)
 
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
       for annot <- sym.annotations do
@@ -312,7 +320,7 @@ object ExtractSemanticDB:
                 registerDefinition(tree.symbol, selectSpan(tree), Set.empty, tree.source)
               case tree => registerDefinition(tree.symbol, tree.span, Set.empty, tree.source)
         case tree: NamedDefTree =>
-          if !tree.symbol.isAllOf(ModuleValCreationFlags) then
+          if tree.symbol.exists && !tree.symbol.isAllOf(ModuleValCreationFlags) then
             tree match {
               case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
                 tree.rhs match
@@ -371,7 +379,7 @@ object ExtractSemanticDB:
             traverseAnnotsOfDefinition(ctorSym)
             ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-        case tree: Apply =>
+        case tree: Apply if tree.fun.symbol.exists =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
           synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
@@ -438,6 +446,12 @@ object ExtractSemanticDB:
               registerUseGuarded(None, sym, tree.span, tree.source)
             case _ => ()
 
+        // If tree is lifted, ignore Synthetic status on all the definitions and traverse all childrens
+        case tree: Block if isProbablyLifted(tree) =>
+          tree.stats.foreach:
+            case t: (ValDef | DefDef) if !excludeChildren(t.symbol) => traverseChildren(t)
+            case _ => ()
+          traverse(tree.expr)
 
         case _ =>
           traverseChildren(tree)

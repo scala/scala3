@@ -7,7 +7,7 @@ object functorInterleaving:
     def map[A](x: F[A])[B](f: A => B): F[B]
 
 
-  given Functor[List] with
+  given Functor[List]:
     def map[A](x: List[A])[B](f: A => B): List[B] =
       x.map(f)
 

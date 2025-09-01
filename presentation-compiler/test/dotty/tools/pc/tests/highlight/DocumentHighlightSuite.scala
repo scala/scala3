@@ -1462,5 +1462,69 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |""".stripMargin
     )
 
+  @Test def i3053 =
+    check(
+      s"""import Aaaa.*
+        |
+        |def classDef2(cdef: List[Int]): Int = {
+        |  def aaa(ddef: Thicket2): List[Int] = ddef match {
+        |    case Thicket2(_) => ???
+        |  }
+        |${("//" + "x" * 64 + "\n") * 64}
+        |  1
+        |}.<<showing2>>("aaa")
+        |
+        |case class Thicket2(trees: List[Int]) {}
+        |
+        |object Aaaa {
+        |  extension [T](x: T)
+        |    def <<show@@ing2>>[U](aaa: String): T = {
+        |      x
+        |    }
+        |}
+        |
+        |""".stripMargin
+    )
+
+  @Test def i7256 =
+    check(
+      """|package a
+         |object Test:
+         |  def <<methodA>>: Unit = ???
+         |export Test.<<me@@thodA>>
+         |val i = <<methodA>>
+         |""".stripMargin
+    )
+
+  @Test def `i7256-2` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{<<me@@thodA>>, methodB}
+         |val i = <<methodA>>
+         |""".stripMargin
+    )
+
+
+  @Test def `i7256-3` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.<<methodA>>
+         |val i = <<met@@hodA>>
+         |val j = <<methodA>>
+         |""".stripMargin
+    )
+
+  @Test def `i7256-4` =
+    check(
+      """|object Test:
+         |  class <<Foo>>
+         |  object <<Foo>>
+         |export Test.<<F@@oo>>
+         |""".stripMargin
+    )
 
 end DocumentHighlightSuite

@@ -3,6 +3,8 @@
    |                        ^^^^^^
    |                      Found:    Tuple.Head[VS & h *: t]
    |                      Required: h
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than h
    |
    |                      where:    VS is a type in method foo with bounds <: Tuple
    |                                h  is a type in method foo
@@ -17,8 +19,6 @@
    |                          case x *: _ => x
    |                        The computed bounds for the parameter are:
    |                          x <: h
-   |                      Note that implicit conversions were not tried because the result of an implicit conversion
-   |                      must be more specific than h
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:52:31 ----------------------------------------------------------

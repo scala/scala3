@@ -18,6 +18,6 @@ type FromProduct[T <: Product] <: DFTypeAny = T match
 trait Width2[T]
 
 object Width2:
-  inline given [T]: Width2[T] = new Width2[T] {}
+  inline given [T] => Width2[T] = new Width2[T] {}
 
 val x = summon[Width2[Of[(DFBit, DFBit)]]]

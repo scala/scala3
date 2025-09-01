@@ -27,12 +27,14 @@ class CompletionTest {
 
   @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }"
-      .completion(("summon", Method, "[T](using x: T): x.type"))
+      .completion(("summon", Method, "[T](using x: T): (x : T)"))
   }
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "Conversion"))
+      .completion(
+        ("Conversion", Class, "Conversion"),
+        ("Conversion", Module, "Conversion"))
   }
 
   @Test def implicitSearchCrash: Unit =
@@ -987,7 +989,7 @@ class CompletionTest {
 
   @Test def importAnnotationAfterImport : Unit =
     code"""import java.lang.annotation; import annot${m1}"""
-      .completion(("annotation", Module, "scala.annotation"))
+      .completion(("annotation", Module, "java.lang.annotation"))
 
   @Test def completeTemplateConstrArgType: Unit = {
     code"""import scala.concurrent.Future
@@ -1725,8 +1727,7 @@ class CompletionTest {
      .completion(m6, Set())
 
   @Test def namedTupleCompletion: Unit =
-    code"""|import scala.language.experimental.namedTuples
-           |
+    code"""|
            |val person: (name: String, city: String) =
            |  (name = "Jamie", city = "Lausanne")
            |

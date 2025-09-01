@@ -11,11 +11,11 @@ given Fragable[Int] =
   x => List(IntFrag(x))
 given Fragable[String] =
   x => List(StringFrag(x))
-given [A: Fragable]: Fragable[List[A]] =
+given [A: Fragable] => Fragable[List[A]] =
   x => x.flatMap(_.toFrags)
 given Fragable[EmptyTuple] =
   x => Nil
-given [A: Fragable, B <: Tuple: Fragable]: Fragable[A *: B] =
+given [A: Fragable, B <: Tuple: Fragable] => Fragable[A *: B] =
   x => x.head.toFrags ++ x.tail.toFrags
 
 def f[T: Fragable](x: T) =

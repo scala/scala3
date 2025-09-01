@@ -5,11 +5,11 @@ infix abstract class TupleOf[T, +A]:
 
 object TupleOf:
 
-  given TupleOf[EmptyTuple, Nothing] with
+  given TupleOf[EmptyTuple, Nothing]:
     type Mapped[+A] = EmptyTuple
     def map[B](x: EmptyTuple)(f: Nothing => B): Mapped[B] = x
 
-  given [A, Rest <: Tuple](using tracked val tup: Rest TupleOf A): TupleOf[A *: Rest, A] with
+  given [A, Rest <: Tuple] => (tracked val tup: Rest TupleOf A) => TupleOf[A *: Rest, A]:
     type Mapped[+A] = A *: tup.Mapped[A]
     def map[B](x: A *: Rest)(f: A => B): Mapped[B] =
       (f(x.head) *: tup.map(x.tail)(f))

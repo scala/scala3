@@ -254,3 +254,15 @@ class HoverDocSuite extends BaseHoverSuite:
          |Found documentation for _empty_/Alpha#
          |""".stripMargin,
     )
+
+  @Test def `i7093` =
+    check(
+      """|object O:
+         |  /** Ooopsie daisy */
+         |  val computeLogicOwners: Unit =
+         |    /** This is a comment */
+         |    <<def logi@@cOwners = ???>>
+         |    ???
+         |""".stripMargin,
+      """def logicOwners: Nothing""".hover.stripMargin
+    )

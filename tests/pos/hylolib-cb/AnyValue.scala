@@ -58,7 +58,7 @@ object AnyValue {
 
 }
 
-given anyValueIsValue: Value[AnyValue] with {
+given anyValueIsValue: Value[AnyValue] {
 
   extension (self: AnyValue) {
 

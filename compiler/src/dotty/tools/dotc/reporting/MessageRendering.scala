@@ -11,7 +11,7 @@ import core.Decorators.*
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
-import util.{ SourcePosition, NoSourcePosition }
+import util.{SourcePosition, NoSourcePosition}
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
@@ -62,7 +62,7 @@ trait MessageRendering {
     }
 
     val syntax =
-      if (ctx.settings.color.value != "never")
+      if (ctx.settings.color.value != "never" && !ctx.isJava)
         SyntaxHighlighting.highlight(new String(pos.linesSlice)).toCharArray
       else pos.linesSlice
     val lines = linesFrom(syntax)
@@ -209,20 +209,21 @@ trait MessageRendering {
     sb.toString
   }
 
-  private def appendFilterHelp(dia: Diagnostic, sb: StringBuilder): Unit =
+  private def appendFilterHelp(dia: Diagnostic, sb: StringBuilder)(using Context, Level, Offset): Unit =
+    extension (sb: StringBuilder) def nl: sb.type = sb.append(EOL).append(offsetBox)
     import dia.msg
     val hasId = msg.errorId.errorNumber >= 0
     val (category, origin) = dia match
-      case _: UncheckedWarning => ("unchecked", "")
+      case _: UncheckedWarning   => ("unchecked", "")
       case w: DeprecationWarning => ("deprecation", w.origin)
-      case _: FeatureWarning => ("feature", "")
-      case _ => ("", "")
+      case _: FeatureWarning     => ("feature", "")
+      case _                     => ("", "")
     var entitled = false
     def addHelp(what: String)(value: String): Unit =
       if !entitled then
-        sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
+        sb.nl.append("Matching filters for @nowarn or -Wconf:")
         entitled = true
-      sb.append(EOL).append("  - ").append(what).append(value)
+      sb.nl.append("  - ").append(what).append(value)
     if hasId then
       addHelp("id=E")(msg.errorId.errorNumber.toString)
       addHelp("name=")(msg.errorId.productPrefix.stripSuffix("ID"))
@@ -242,14 +243,28 @@ trait MessageRendering {
     given Level = Level(level)
     given Offset = Offset(maxLineNumber.toString.length + 2)
     val sb = StringBuilder()
-    val posString = posStr(pos, msg, diagnosticLevel(dia))
+    def adjust(pos: SourcePosition): SourcePosition =
+      if pos.span.isSynthetic
+      && pos.span.isZeroExtent
+      && pos.span.exists
+      && pos.span.start == pos.source.length
+      && pos.source(pos.span.start - 1) == '\n'
+      then
+        pos.withSpan(pos.span.shift(-1))
+      else
+        pos
+    val adjusted = adjust(pos)
+    val posString = posStr(adjusted, msg, diagnosticLevel(dia))
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
       val pos1 = pos.nonInlined
       if (pos1.exists && pos1.source.file.exists) {
-        val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-        val marker = positionMarker(pos1)
-        val err = errorMsg(pos1, msg.message)
+        val readjusted =
+          if pos1 == pos then adjusted
+          else adjust(pos1)
+        val (srcBefore, srcAfter, offset) = sourceLines(readjusted)
+        val marker = positionMarker(readjusted)
+        val err = errorMsg(readjusted, msg.message)
         sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
         if inlineStack.nonEmpty then

@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import scala.language.unsafeNulls
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
@@ -47,7 +46,8 @@ object Splicer {
   def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quote(quotedTree, Nil) => quotedTree
     case _ =>
-      val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
+      val owner = ctx.owner
+      val macroOwner = newSymbol(owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
         val sliceContext = SpliceScope.contextWithNewSpliceScope(splicePos.sourcePos).withOwner(macroOwner)
         inContext(sliceContext) {

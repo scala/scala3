@@ -1,0 +1,7 @@
+-- Error: tests/neg/unroll-clause-interleaving.scala:6:12 --------------------------------------------------------------
+6 |  final def foo(@unroll x: Int = 0)[T](// error
+  |  ^
+  |  Cannot have multiple parameter lists containing `@unroll` annotation
+7 |    s: T,
+8 |    @unroll y: Boolean = true,
+9 |  ): String = "" + x + s + y

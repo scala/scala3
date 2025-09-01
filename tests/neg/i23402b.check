@@ -1,0 +1,12 @@
+-- [E120] Naming Error: tests/neg/i23402b.scala:4:5 --------------------------------------------------------------------
+4 | def apply[T](p1: String)(p2: Int): A = A(p1, p2) // error
+  |     ^
+  |     Conflicting definitions:
+  |     def apply[T](p1: String, p2: Int): A in object A at line 3 and
+  |     def apply[T](p1: String)(p2: Int): A in object A at line 4
+  |     have the same type (p1: String, p2: Int): A after erasure.
+  |
+  |     Consider adding a @targetName annotation to one of the conflicting definitions
+  |     for disambiguation.
+  |
+  | longer explanation available when compiling with `-explain`

@@ -10,7 +10,7 @@ object Macros {
     '{ () }
 
   }
-  given [A](using Type[A]): FromExpr[Assertion[A]] with {
+  given [A] => Type[A] => FromExpr[Assertion[A]] {
     def unapply(assertion: Expr[Assertion[A]])(using Quotes): Option[Assertion[A]] = {
       import quotes.reflect.*
 

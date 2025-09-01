@@ -8,12 +8,38 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
-        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.betterFors"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$betterFors$"),
+        // Scala.js-only class
+        ProblemFilters.exclude[FinalClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
+
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.2.13"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$2$u002E13$"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.RuntimeChecked"),        
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$namedTupleOrdering"),
+
+		// cc related
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.onlyCapability"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.separationChecking"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$separationChecking$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Capability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.SharedCapability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
       ),
 
       // Additions since last LTS
       Build.mimaPreviousLTSDottyVersion -> Seq(
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTupleDecomposition"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTupleDecomposition$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefMethods"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefTypeTest"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#defnModule.FunctionClass"),
@@ -23,9 +49,11 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeLambdaMethods.paramVariances"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.dealiasKeepOpaques"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.reverse"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.publicInBinary"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.AssignedNonLocally"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.CaptureChecked"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.reachCapability"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedCaptures"),
         ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$ValOrDefDefMethods"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$"),
@@ -59,16 +87,29 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Expr.summonIgnoring"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.Patterns.higherOrderHoleWithTypes"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.betterMatchTypeExtractors"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$betterMatchTypeExtractors$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.betterFors"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$betterFors$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.quotedPatternsWithPolymorphicFunctions"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$quotedPatternsWithPolymorphicFunctions$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.packageObjectValues"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$packageObjectValues$"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.7-migration"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.7"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E7$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E7$minusmigration$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.8-migration"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.8"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E8$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E8$minusmigration$"),
       ),
     )
 
@@ -79,6 +120,13 @@ object MiMaFilters {
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> // Seq.empty, // We should never break backwards compatibility
         Seq(
+          // Scala.js-only class, which is subject to IR deserializatiation hacks to preserve bincompat.
+          // It's OK. Scala.js did the same:
+          // https://github.com/scala-js/scala-js/blob/v1.19.0/project/BinaryIncompatibilities.scala#L66-L71
+          ProblemFilters.exclude[AbstractClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.runtime.AnonFunctionXXL.apply"),
+
           // `ReversedMissingMethodProblem`s are acceptable. See comment in `Breaking changes since last LTS`.
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleType"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeTypeTest"),
@@ -88,6 +136,8 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ImplicitsModule.searchIgnoring"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ValDefModule.let"),
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),

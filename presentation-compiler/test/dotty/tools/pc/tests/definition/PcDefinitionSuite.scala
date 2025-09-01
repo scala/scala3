@@ -28,7 +28,8 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       MockLocation("scala/Predef.Ensuring#ensuring(+2).", "Predef.scala"),
       MockLocation("scala/Predef.Ensuring#ensuring(+3).", "Predef.scala"),
       MockLocation("scala/collection/immutable/List#`::`().", "List.scala"),
-      MockLocation("scala/package.List.", "package.scala")
+      MockLocation("scala/package.List.", "package.scala"),
+      MockLocation("scala/collection/immutable/Vector.", "Vector.scala"),
     )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
@@ -478,6 +479,33 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
+  @Test def `enum-class-type-param` =
+    check(
+      """|
+         |enum Options[<<AA>>]:
+         |  case Some(x: A@@A)
+         |  case None extends Options[Nothing]
+         |""".stripMargin
+    )
+
+  @Test def `enum-class-type-param-covariant` =
+    check(
+      """|
+         |enum Options[+<<AA>>]:
+         |  case Some(x: A@@A)
+         |  case None extends Options[Nothing]
+         |""".stripMargin
+    )
+
+  @Test def `enum-class-type-param-duplicate` =
+    check(
+      """|
+         |enum Testing[AA]:
+         |  case Some[<<AA>>](x: A@@A) extends Testing[AA]
+         |  case None extends Testing[Nothing]
+         |""".stripMargin
+    )
+
   @Test def `derives-def` =
     check(
       """|
@@ -503,4 +531,119 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |
          |val a = MyIntOut(1).un@@even
          |""".stripMargin,
+    )
+
+  @Test def `named-tuples` =
+    check(
+      """|
+         |val <<foo>> = (name = "Bob", age = 42, height = 1.9d)
+         |val foo_name = foo.na@@me
+         |""".stripMargin
+    )
+
+  @Test def `object` =
+    check(
+      """|package a
+         |object <<Bar>> {
+         |  def foo = 42
+         |}
+         |val m = B@@ar.foo
+         |""".stripMargin
+    )
+
+  @Test def i7267 =
+    check(
+      """|package a
+        |trait Foo {
+        |  def someNum: Int
+        |  def <<apply>>(i: Int): Unit = println(someNum)
+        |}
+        |object <<Bar>> extends Foo {
+        |  def someNum = 42
+        |}
+        |
+        |object Test {
+        |  B@@ar(2)
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i7267-2` =
+    check(
+      """|package b
+        |trait Foo {
+        |  def someNum: Int
+        |  def <<unapply>>(i: Int): Option[Int] = Some(i)
+        |}
+        |object <<Bar>> extends Foo {
+        |  def someNum = 42
+        |}
+        |
+        |object Test {
+        |  Bar.someNum match {
+        |    case B@@ar(1) => ???
+        |    case _ =>
+        |  }
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i7267-3` =
+    check(
+      """|package c
+        |case class <<Bar>>()
+        |object <<Bar>>
+        |object O {
+        |  val a = B@@ar()
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i7267-4` =
+    check(
+      """|package d
+        |class <<Bar>>()
+        |object <<Bar>> {
+        |  def <<apply>>(): Bar = new Bar()
+        |}
+        |object O {
+        |  val a = B@@ar()
+        |}
+        |""".stripMargin
+    )
+
+  @Test def i7256 =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |export Test.me@@thodA
+         |""".stripMargin
+    )
+
+  @Test def `i7256-2` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{me@@thodA, methodB}
+         |""".stripMargin
+    )
+
+  @Test def `i7256-3` =
+    check(
+      """|object Test:
+         |  def <<methodA>>: Unit = ???
+         |  def methodB: Unit = ???
+         |export Test.{methodA, methodB}
+         |
+         |val i = met@@hodA
+         |""".stripMargin
+    )
+
+  @Test def i7427 =
+    check(
+      """|package a
+         |object Repro:
+         |    export scala.collection.immutable.V/*scala/collection/immutable/Vector. Vector.scala*/@@ector
+         |""".stripMargin
     )

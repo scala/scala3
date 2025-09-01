@@ -28,6 +28,8 @@ object TyperState {
 
   opaque type Snapshot = (Constraint, TypeVars, LevelMap)
 
+  class BadTyperStateAssertion(msg: String) extends AssertionError(msg)
+
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
       (ts.constraint, ts.ownedVars, ts.upLevels)
@@ -43,7 +45,7 @@ object TyperState {
 }
 
 class TyperState() {
-  import TyperState.LevelMap
+  import TyperState.{LevelMap, BadTyperStateAssertion}
 
   private var myId: Int = uninitialized
   def id: Int = myId
@@ -139,14 +141,15 @@ class TyperState() {
   def uncommittedAncestor: TyperState =
     if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
 
-  /** Commit typer state so that its information is copied into current typer state
+  /** Commit `this` typer state by copying information into the current typer state,
+   *  where "current" means contextual, so meaning `ctx.typerState`.
    *  In addition (1) the owning state of undetermined or temporarily instantiated
    *  type variables changes from this typer state to the current one. (2) Variables
    *  that were temporarily instantiated in the current typer state are permanently
    *  instantiated instead.
    *
    *  A note on merging: An interesting test case is isApplicableSafe.scala. It turns out that this
-   *  requires a context merge using the new `&' operator. Sequence of actions:
+   *  requires a context merge using the new `&` operator. Sequence of actions:
    *  1) Typecheck argument in typerstate 1.
    *  2) Cache argument.
    *  3) Evolve same typer state (to typecheck other arguments, say)
@@ -268,8 +271,10 @@ class TyperState() {
    */
   private def includeVar(tvar: TypeVar)(using Context): Unit =
     val oldState = tvar.owningState.nn.get
-    assert(oldState == null || !oldState.isCommittable,
-      i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
+
+    if oldState != null && oldState.isCommittable then
+      throw BadTyperStateAssertion(
+        i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 

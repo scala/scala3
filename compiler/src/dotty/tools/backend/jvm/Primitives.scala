@@ -150,13 +150,12 @@ object Primitives {
   case object XOR extends LogicalOp
 
   /** Signals the beginning of a series of concatenations.
-    *  On the JVM platform, it should create a new StringBuffer
-    */
+   *  On the JVM platform, it should create a new StringBuilder.
+   */
   case object StartConcat extends Primitive
 
-  /**
-   * type: (buf) => STR
-   * jvm : It should turn the StringBuffer into a String.
+  /** type: (buf) => STR
+   *  jvm : It should turn the StringBuilder into a String.
    */
   case object EndConcat extends Primitive
 

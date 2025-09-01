@@ -1,4 +1,3 @@
-import language.experimental.namedTuples
 import NamedTuple.{NamedTuple, AnyNamedTuple}
 
 // Repros for bugs or questions
@@ -6,7 +5,7 @@ class ClassToMap[A]()
 abstract class ClassToFind[Rows <: AnyNamedTuple]:
   def mapped: NamedTuple.Map[Rows, ClassToMap]
 
-given TDB: ClassToFind[(t1: Int, t2: String)] with
+given TDB: ClassToFind[(t1: Int, t2: String)]:
   override def mapped = (
     t1 = ClassToMap[Int](),
     t2 = ClassToMap[String]()

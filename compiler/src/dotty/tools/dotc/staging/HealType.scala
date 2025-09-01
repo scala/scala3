@@ -1,17 +1,19 @@
 package dotty.tools.dotc
 package staging
 
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.staging.StagingLevel.*
-import dotty.tools.dotc.staging.QuoteTypeTags.*
+import reporting.*
 
-import dotty.tools.dotc.typer.Implicits.SearchFailureType
-import dotty.tools.dotc.util.SrcPos
+import core.Contexts.*
+import core.Decorators.*
+import core.Flags.*
+import core.StdNames.*
+import core.Symbols.*
+import core.Types.*
+import StagingLevel.*
+import QuoteTypeTags.*
+
+import typer.Implicits.SearchFailureType
+import util.SrcPos
 
 class HealType(pos: SrcPos)(using Context) extends TypeMap {
 
@@ -74,7 +76,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
     tp match
       case tp @ NamedType(NoPrefix, _) if level > levelOf(tp.symbol) => tp.symbol
       case tp: NamedType if !tp.symbol.isStatic => levelInconsistentRootOfPath(tp.prefix)
-      case tp: ThisType if level > levelOf(tp.cls) => tp.cls
+      case tp: ThisType if level > levelOf(tp.cls) && !tp.cls.isRefinementClass => tp.cls
       case _ => NoSymbol
 
   /** Try to heal reference to type `T` used in a higher level than its definition.
@@ -98,9 +100,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
             pos)
         tp
       case _ =>
-        report.error(em"""Reference to $tp within quotes requires a given $reqType in scope.
-                      |
-                      |""", pos)
+        report.error(QuotedTypeMissing(tp), pos)
         tp
   }
 

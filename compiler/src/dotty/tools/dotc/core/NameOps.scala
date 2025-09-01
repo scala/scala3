@@ -7,7 +7,7 @@ import java.nio.CharBuffer
 import scala.io.Codec
 import Int.MaxValue
 import Names.*, StdNames.*, Contexts.*, Symbols.*, Flags.*, NameKinds.*, Types.*
-import util.Chars.{isOperatorPart, digit2int}
+import util.Chars.{isOperatorPart, isIdentifierPart, digit2int}
 import Decorators.*
 import Definitions.*
 import nme.*
@@ -15,7 +15,7 @@ import nme.*
 object NameOps {
 
   object compactify {
-    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5").nn
+    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
 
     inline val CLASSFILE_NAME_CHAR_LIMIT = 240
 
@@ -43,9 +43,9 @@ object NameOps {
         val suffix = s.takeRight(edge)
 
         val cs = s.toArray
-        val bytes = Codec.toUTF8(CharBuffer.wrap(cs).nn)
+        val bytes = Codec.toUTF8(CharBuffer.wrap(cs))
         md5.update(bytes)
-        val md5chars = md5.digest().nn.map(b => (b & 0xFF).toHexString).mkString
+        val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
       }
@@ -78,9 +78,22 @@ object NameOps {
     def isUnapplyName: Boolean = name == nme.unapply || name == nme.unapplySeq
     def isRightAssocOperatorName: Boolean = name.lastPart.last == ':'
 
-    def isOperatorName: Boolean = name match
-      case name: SimpleName => name.exists(isOperatorPart)
-      case _ => false
+    /** Does this name match `[{letter | digit} '_'] op`?
+      *
+      * See examples in [[NameOpsTest]].
+      */
+    def isOperatorName: Boolean =
+      name match
+        case name: SimpleName =>
+          var i = name.length - 1
+          // Ends with operator characters
+          while i >= 0 && isOperatorPart(name(i)) do i -= 1
+          if i == -1 then return true
+          // Optionnally prefixed with alpha-numeric characters followed by `_`
+          if name(i) != '_' then return false
+          while i >= 0 && isIdentifierPart(name(i)) do i -= 1
+          i == -1
+        case _ => false
 
     /** Is name of a variable pattern? */
     def isVarPattern: Boolean =

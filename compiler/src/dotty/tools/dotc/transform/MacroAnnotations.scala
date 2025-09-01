@@ -127,6 +127,8 @@ object MacroAnnotations:
       //       Replace this case with the nested cases.
       case ex0: InvocationTargetException =>
         ex0.getCause match
+          case ex: CompilationUnit.SuspendException =>
+            throw ex
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             if !ctx.reporter.hasErrors then
               report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", annot.tree)
@@ -137,7 +139,7 @@ object MacroAnnotations:
             val stack0 = ex.getStackTrace.takeWhile(_.getClassName != this.getClass().getName())
             val stack = stack0.take(1 + stack0.lastIndexWhere(_.getMethodName == "transform"))
             val msg =
-              em"""Failed to evaluate macro.
+              em"""Failed to evaluate macro annotation '$annot'.
                   |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
                   |    ${stack.mkString("\n    ")}
                   |"""

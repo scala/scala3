@@ -1,0 +1,22 @@
+-- [E007] Type Mismatch Error: tests/neg/i21543.scala:10:15 ------------------------------------------------------------
+10 |      Cmd(List("1", "2")) // error // error
+   |               ^^^
+   |               Found:    ("1" : String)
+   |               Required: Event
+   |
+   |               Note that I could not resolve reference Event.
+   |               Event is a private member in a base class
+   |                                
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i21543.scala:10:20 ------------------------------------------------------------
+10 |      Cmd(List("1", "2")) // error // error
+   |                    ^^^
+   |                    Found:    ("2" : String)
+   |                    Required: Event
+   |
+   |                    Note that I could not resolve reference Event.
+   |                    Event is a private member in a base class
+   |                                     
+   |
+   | longer explanation available when compiling with `-explain`

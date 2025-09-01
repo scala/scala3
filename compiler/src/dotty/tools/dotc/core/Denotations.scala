@@ -478,12 +478,11 @@ object Denotations {
                 else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
-          val relaxedOverriding = ctx.explicitNulls && (sym1.is(JavaDefined) || sym2.is(JavaDefined))
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, relaxedOverriding, matchLoosely, checkClassInfo = false) then
+          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, relaxedOverriding, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
@@ -742,6 +741,8 @@ object Denotations {
      *     the old version otherwise.
      *   - If the symbol did not have a denotation that was defined at the current phase
      *     return a NoDenotation instead.
+     *   - If the symbol was first defined in one of the transform phases (after pickling), it should not
+     *     be visible in new runs, so also return a NoDenotation.
      */
     private def bringForward()(using Context): SingleDenotation = {
       this match {
@@ -755,6 +756,7 @@ object Denotations {
       }
       if (!symbol.exists) return updateValidity()
       if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
+      if (coveredInterval.firstPhaseId >= Phases.firstTransformPhase.id) return NoDenotation
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
@@ -956,7 +958,7 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      if symbol.lastKnownDenotation.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
       then throw StaleSymbolTypeError(symbol)
       else throw StaleSymbolException(staleSymbolMsg)
 
@@ -1069,7 +1071,9 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
-      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
+      val realExcluded =
+        if ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy) then excluded
+        else excluded | Invisible
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
@@ -1306,9 +1310,9 @@ object Denotations {
   }
 
   /** The current denotation of the static reference given by path,
-    *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
-    *  if generateStubs is set, generates stubs for missing top-level symbols
-    */
+   *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+   *  if generateStubs is set, generates stubs for missing top-level symbols
+   */
   def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)

@@ -59,6 +59,9 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   var hasMacroAnnotations: Boolean = false
 
+  def hasUnrollDefs: Boolean = unrolledClasses.nonEmpty
+  var unrolledClasses: Set[Symbol] = Set.empty
+
   /** Set to `true` if inliner added anonymous mirrors that need to be completed */
   var needsMirrorSupport: Boolean = false
 
@@ -153,6 +156,14 @@ object CompilationUnit {
       unit1.hasMacroAnnotations = force.containsMacroAnnotation
     }
     unit1
+  }
+
+  /** Create a compilation unit corresponding to an in-memory String.
+   *  Used for `compiletime.testing.typeChecks`.
+   */
+  def apply(name: String, source: String): CompilationUnit = {
+    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+    new CompilationUnit(src, null)
   }
 
   /** Create a compilation unit corresponding to `source`.

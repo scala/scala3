@@ -1,0 +1,12 @@
+-- [E008] Not Found Error: tests/neg/i22320.scala:19:19 ----------------------------------------------------------------
+19 |    val z = system.z // error
+   |            ^^^^^^^^
+   |            value z is not a member of a.System.
+   |            An extension method was tried, but could not be fully constructed:
+   |
+   |                a.z(system)
+   |
+   |                failed with:
+   |
+   |                    Found:    (system : a.System)
+   |                    Required: a.SimulatedSystem

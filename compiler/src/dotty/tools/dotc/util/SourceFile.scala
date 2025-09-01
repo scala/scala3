@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import dotty.tools.io.*
 import Spans.*
 import core.Contexts.*
+import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
@@ -14,7 +15,7 @@ import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 
 import java.io.File.separator
 import java.net.URI
@@ -60,6 +61,36 @@ object ScriptSourceFile {
     }
   }
 }
+
+object WrappedSourceFile:
+  enum MagicHeaderInfo:
+    case HasHeader(offset: Int, originalFile: SourceFile)
+    case NoHeader
+  import MagicHeaderInfo.*
+
+  private val cache: mutable.HashMap[SourceFile, MagicHeaderInfo] = mutable.HashMap.empty
+
+  def locateMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
+    def findOffset: MagicHeaderInfo =
+      val magicHeader = ctx.settings.YmagicOffsetHeader.value
+      if magicHeader.isEmpty then NoHeader
+      else
+        val text = new String(sourceFile.content)
+        val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+        val regex = s"(?m)^$headerQuoted:(.+)$$".r
+        regex.findFirstMatchIn(text) match
+          case Some(m) =>
+            val markerOffset = m.start
+            val sourceStartOffset = sourceFile.nextLine(markerOffset)
+            val file = ctx.getFile(m.group(1))
+            if file.exists then
+              HasHeader(sourceStartOffset, ctx.getSource(file))
+            else
+              report.warning(em"original source file not found: ${file.path}")
+              NoHeader
+          case None => NoHeader
+    val result = cache.getOrElseUpdate(sourceFile, findOffset)
+    result
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile.*
@@ -119,7 +150,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    *  For regular source files, simply return the argument.
    */
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
-    SourcePosition(underlying, position.span shift start)
+    if isSelfContained then position // return the argument
+    else SourcePosition(underlying, position.span shift start)
 
   private def calculateLineIndicesFromContents() = {
     val cs = content()
@@ -228,8 +260,7 @@ object SourceFile {
    *  It relies on SourceFile#virtual implementation to create the virtual file.
    */
   def virtual(uri: URI, content: String): SourceFile =
-    val path = Paths.get(uri).toString
-    SourceFile.virtual(path, content)
+    SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
 
   /** Returns the relative path of `source` within the `reference` path
    *
@@ -275,12 +306,11 @@ object SourceFile {
 
   def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // so cope with failure; also deal with path prefix "Not a directory".
+    // so cope with failure.
     val chars =
       try new String(file.toByteArray, codec.charSet).toCharArray
       catch
-        case _: NoSuchFileException => Array.empty[Char]
-        case fse: FileSystemException if fse.getMessage.endsWith("Not a directory") => Array.empty[Char]
+        case _: FileSystemException => Array.empty[Char]
 
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)

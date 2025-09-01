@@ -3,7 +3,7 @@ package x
 import scala.language.implicitConversions
 import scala.concurrent.Future
 
-given FutureAsyncMonad: CpsMonad[Future] with
+given FutureAsyncMonad: CpsMonad[Future]:
   def pure[T](t:T): Future[T] = ???
   def impure[T](t:Future[T]): T = ???
   def map[A,B](x:Future[A])(f: A=>B): Future[B] = ???

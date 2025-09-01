@@ -1,6 +1,6 @@
 trait A[T <: Tuple] { val x: Int }
-given empty: A[EmptyTuple] with { val x = 1 }
-given inductive[Tup <: NonEmptyTuple](using A[Tuple.Tail[Tup]]): A[Tup] with { val x = summon[A[Tuple.Tail[Tup]]].x + 1 }
+given empty: A[EmptyTuple] { val x = 1 }
+given inductive: [Tup <: NonEmptyTuple] => A[Tuple.Tail[Tup]] => A[Tup] { val x = summon[A[Tuple.Tail[Tup]]].x + 1 }
 
 object Test:
   def main(args: Array[String]): Unit =

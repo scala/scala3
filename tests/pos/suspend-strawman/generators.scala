@@ -15,7 +15,7 @@ object generate:
 
     var step: () => Unit = () =>
       boundary[Unit]:
-        given CanProduce[T] with
+        given CanProduce[T]:
           def produce(x: T): Unit =
             nextElem = Some(x)
             suspend[Unit, Unit]: k =>
@@ -55,7 +55,7 @@ object Variant2:
 
     var step: () => Option[T] = () =>
       boundary:
-        given CanProduce[T] with
+        given CanProduce[T]:
           def produce(x: T): Unit =
             suspend[Unit, Option[T]]: k =>
               step = () => k.resume(())

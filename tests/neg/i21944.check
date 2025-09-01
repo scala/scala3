@@ -1,0 +1,4 @@
+-- [E206] Syntax Error: tests/neg/i21944.scala:1:5 ---------------------------------------------------------------------
+1 |enum Orientation extends AnyVal: // error
+  |     ^
+  |     class Orientation may not be a value class

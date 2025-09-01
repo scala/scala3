@@ -462,10 +462,64 @@ class ReplCompilerTests extends ReplTest:
     .andThen:
       run("0") // check for crash
       val last = lines()
-      println(last)
       assertTrue(last(0), last(0) == ("Options incompatible with repl will be ignored: -Ybest-effort, -Ywith-best-effort-tasty"))
       assertTrue(last(1), last(1) == ("val res0: Int = 0"))
 
+  @Test def `i9879`: Unit = initially:
+    run {
+      """|opaque type A = Int; def getA: A = 0
+         |object Wrapper { opaque type A = Int; def getA: A = 1 }
+         |val x = getA
+         |val y = Wrapper.getA""".stripMargin
+    }
+    val expected = List(
+      "def getA: A",
+      "// defined object Wrapper",
+      "val x: A = 0",
+      "val y: Wrapper.A = 1"
+    )
+    assertEquals(expected, lines())
+
+  @Test def `i9879b`: Unit = initially:
+    run {
+      """|def test =
+         |  type A = Int
+         |  opaque type B = String
+         |  object Wrapper { opaque type C = Int }
+         |  ()""".stripMargin
+    }
+    val all = lines()
+    assertEquals(6, all.length)
+    assertTrue(all.head.startsWith("-- [E103] Syntax Error"))
+    assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
+
+  @Test def `i16250a`: Unit = initially:
+    val hints = List(
+      "this language import is not allowed in the REPL",
+      "To use this language feature, include the flag `-language:experimental.captureChecking` when starting the REPL"
+    )
+    run("import language.experimental.captureChecking")
+    val all = lines()
+    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+
+  @Test def `i16250b`: Unit = initially:
+    val hints = List(
+      "this language import is not allowed in the REPL",
+      "To use this language feature, include the flag `-language:experimental.pureFunctions` when starting the REPL"
+    )
+    run("import language.experimental.pureFunctions")
+    val all = lines()
+    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+
+  @Test def `i22844 regression colon eol`: Unit = initially:
+    run:
+      """|println:
+         |  "hello, world"
+         |""".stripMargin // outdent, but this test does not exercise the bug
+    assertEquals(List("hello, world"), lines())
+
+  @Test def `i22844b regression colon arrow eol`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete("List(42).map: x =>"))
 
 object ReplCompilerTests:
 
@@ -479,7 +533,7 @@ object ReplCompilerTests:
 
 end ReplCompilerTests
 
-class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Xprint:typer"):
+class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Vprint:typer"):
   @Test def i9111 = initially {
     run("""|enum E {
            |  case A
@@ -528,3 +582,34 @@ class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.st
       case class Tree(left: Tree, right: Tree)
       def deepTree(depth: Int): Tree
       deepTree(300)""")
+
+class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-experimental", "-Xprint:pickler")):
+  override val redirectOutput = true
+  @Test def i23408: Unit = initially:
+    run("""
+      import scala.annotation.unroll
+      case class Foo(x: Int, @unroll y: Option[String] = None)"""
+    )
+    val expected = List(
+      "def copy(x: Int, y: Option[String]): Foo = new Foo(x, y)",
+      "def copy(x: Int): Foo = this.copy(x, this.copy$default$2)",
+      "def copy$default$1: Int @uncheckedVariance = Foo.this.x",
+      "def copy$default$2: Option[String] @uncheckedVariance = Foo.this.y",
+      "def apply(x: Int, y: Option[String]): Foo = new Foo(x, y)",
+      "def apply(x: Int): Foo = this.apply(x, Foo.$lessinit$greater$default$2)",
+      """def fromProduct(x$0: Product): Foo.MirroredMonoType = {
+          val arity: Int = x$0.productArity
+          val x$1: Int = x$0.productElement(0).$asInstanceOf[Int]
+          val y$1: Option[String] = (if arity > 1 then x$0.productElement(1) else Foo.$lessinit$greater$default$2).$asInstanceOf[Option[String]]
+          new Foo(x$1, y$1)
+        }"""
+    )
+    def trimWhitespaces(input: String): String = input.replaceAll("\\s+", " ")
+    val output = storedOutput()
+    val normalizedOutput = trimWhitespaces(output)
+    expected.foreach: defn =>
+      val normalizedDefn = trimWhitespaces(defn)
+      assertTrue(
+        s"Output: '$output' did not contain expected definition: ${defn}",
+        normalizedOutput.contains(normalizedDefn)
+      )

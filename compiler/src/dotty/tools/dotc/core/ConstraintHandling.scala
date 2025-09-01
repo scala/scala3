@@ -295,11 +295,24 @@ trait ConstraintHandling {
   end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
+
+    // Replace top-level occurrences of `param` in `bound` by `Nothing`
+    def sanitize(bound: Type): Type =
+      if bound.stripped eq param then defn.NothingType
+      else bound match
+        case bound: AndOrType =>
+          bound.derivedAndOrType(sanitize(bound.tp1), sanitize(bound.tp2))
+        case _ =>
+          bound
+
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(rawBound) then
-      // We don't allow recursive lower bounds when defining a type,
-      // so we shouldn't allow them as constraints either.
-      false
+    else if !isUpper && param.occursIn(rawBound.widen) then
+      val rawBound1 = sanitize(rawBound.widenDealias)
+      if param.occursIn(rawBound1) then
+        // We don't allow recursive lower bounds when defining a type,
+        // so we shouldn't allow them as constraints either.
+        false
+      else addOneBound(param, rawBound1, isUpper)
     else
 
       // Narrow one of the bounds of type parameter `param`

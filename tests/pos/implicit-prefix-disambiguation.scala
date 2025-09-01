@@ -4,7 +4,7 @@ class J[X]
 
 trait A:
   given I[B] = ???
-  given (using I[B]): J[B] = ???
+  given I[B] => J[B] = ???
 object A extends A
 
 trait B extends A

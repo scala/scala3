@@ -32,7 +32,7 @@ object Future:
   // a handler for Async
   def async(body: Async ?=> Unit): Unit =
     boundary [Unit]:
-      given Async with
+      given Async:
         def await[T](f: Future[T]): T = f.result match
           case Some(x) => x
           case None => suspend[T, Unit](s => f.addWaiting(s.resume))

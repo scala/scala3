@@ -260,7 +260,8 @@ object JavaParsers {
       t
     }
 
-    def optArrayBrackets(tpt: Tree): Tree =
+    def optArrayBrackets(tpt: Tree): Tree = {
+      annotations()
       if (in.token == LBRACKET) {
         val tpt1 = atSpan(tpt.span.start, in.offset) { arrayOf(tpt) }
         in.nextToken()
@@ -268,6 +269,7 @@ object JavaParsers {
         optArrayBrackets(tpt1)
       }
       else tpt
+    }
 
     def basicType(): Tree =
       atSpan(in.offset) {
@@ -298,6 +300,7 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
+            annotations()
             t = typeArgs(atSpan(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
@@ -340,7 +343,7 @@ object JavaParsers {
     }
 
     def annotations(): List[Tree] = {
-      var annots = new ListBuffer[Tree]
+      val annots = new ListBuffer[Tree]
       while (in.token == AT) {
         in.nextToken()
         annotation() match {
@@ -369,8 +372,8 @@ object JavaParsers {
     def annotation(): Option[Tree] = {
       def classOrId(): Tree =
         val id = qualId()
-        if in.lookaheadToken == CLASS then
-          in.nextToken()
+        if in.token == DOT && in.lookaheadToken == CLASS then
+          accept(DOT)
           accept(CLASS)
           TypeApply(
             Select(

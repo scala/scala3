@@ -2,13 +2,13 @@
 12 |  class D extends C // warn
    |                  ^
    |                  class C in package p is deprecated since 1.0: Old style
-Matching filters for @nowarn or -Wconf:
-  - cat=deprecation
-  - origin=p.C
+   |Matching filters for @nowarn or -Wconf:
+   |  - cat=deprecation
+   |  - origin=p.C
 -- Deprecation Warning: tests/warn/deprecated-origin-verbose.scala:13:20 -----------------------------------------------
 13 |  class Oil extends Crude // warn
    |                    ^^^^^
    |                    class Crude in package p is deprecated since 1.0: Bad style
-Matching filters for @nowarn or -Wconf:
-  - cat=deprecation
-  - origin=p.Crude
+   |Matching filters for @nowarn or -Wconf:
+   |  - cat=deprecation
+   |  - origin=p.Crude

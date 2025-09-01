@@ -20,6 +20,7 @@ import ast.tpd.*
 import Synthesizer.*
 import sbt.ExtractDependencies.*
 import xsbti.api.DependencyContext.*
+import TypeComparer.{fullLowerBound, fullUpperBound}
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -29,17 +30,43 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
-    def instArg(tp: Type): Type = tp.stripTypeVar match
-      // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
-      // i16328.scala. The intersection comes from an earlier instantiation
-      // to an upper bound.
-      // The dual situation with unions is harder to trigger because lower
-      // bounds are usually widened during instantiation.
+    def instArg(tp: Type): Type = tp.dealias match
       case tp: AndOrType if tp.tp1 =:= tp.tp2 =>
+        // Special case to avoid instantiating `Int & S` to `Int & Nothing` in
+        // i16328.scala. The intersection comes from an earlier instantiation
+        // to an upper bound.
+        // The dual situation with unions is harder to trigger because lower
+        // bounds are usually widened during instantiation.
         instArg(tp.tp1)
+      case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) =>
+        // If tvar has a lower or upper bound:
+        //   1. If the bound is not another type variable, use this as approximation.
+        //   2. Otherwise, if the type can be forced to be fully defined, use that type
+        //      as approximation.
+        //   3. Otherwise leave argument uninstantiated.
+        // The reason for (2) is that we observed complicated constraints in i23611.scala
+        // that get better types if a fully defined type is computed than if several type
+        // variables are approximated incrementally. This is a minimization of some ZIO code.
+        // So in order to keep backwards compatibility (where before we _only_ did 2) we
+        // add that special case.
+        def isGroundConstr(tp: Type): Boolean = tp.dealias match
+          case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) => false
+          case pref: TypeParamRef if ctx.typerState.constraint.contains(pref) => false
+          case tp: AndOrType => isGroundConstr(tp.tp1) && isGroundConstr(tp.tp2)
+          case _ => true
+        instArg(
+            if tvar.hasLowerBound then
+              if isGroundConstr(fullLowerBound(tvar.origin)) then tvar.instantiate(fromBelow = true)
+              else if isFullyDefined(tp, ForceDegree.all) then tp
+              else NoType
+            else if tvar.hasUpperBound then
+              if isGroundConstr(fullUpperBound(tvar.origin)) then tvar.instantiate(fromBelow = false)
+              else if isFullyDefined(tp, ForceDegree.all) then tp
+              else NoType
+            else
+              NoType)
       case _ =>
-        if isFullyDefined(tp, ForceDegree.all) then tp
-        else NoType // this happens in tests/neg/i15372.scala
+        tp
 
     val tag = formal.argInfos match
       case arg :: Nil =>
@@ -53,7 +80,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             if defn.SpecialClassTagClasses.contains(sym) then
               classTagModul.select(sym.name.toTermName).withSpan(span)
             else
-              val ctype = escapeJavaArray(erasure(tp))
+              val ctype = escapeJavaArray(erasure(tp.normalizedTupleType))
               if ctype.exists then
                 classTagModul.select(nme.apply)
                   .appliedToType(tp)
@@ -176,19 +203,6 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           cmpWithBoxed(cls1, cls2)
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
-      else if ctx.mode.is(Mode.SafeNulls) then
-        // If explicit nulls is enabled, and unsafeNulls is not enabled,
-        // we want to disallow comparison between Object and Null.
-        // If we have to check whether a variable with a non-nullable type has null value
-        // (for example, a NotNull java method returns null for some reasons),
-        // we can still cast it to a nullable type then compare its value.
-        //
-        // Example:
-        // val x: String = null.asInstanceOf[String]
-        // if (x == null) {} // error: x is non-nullable
-        // if (x.asInstanceOf[String|Null] == null) {} // ok
-        if cls1 == defn.NullClass || cls2 == defn.NullClass then cls1 == cls2
-        else cls1 == defn.NothingClass || cls2 == defn.NothingClass
       else if cls1 == defn.NullClass then
         cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
       else if cls2 == defn.NullClass then
@@ -232,6 +246,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             withNoErrors(success(Literal(Constant(()))))
           case n: TermRef =>
             withNoErrors(success(ref(n)))
+          case ts: ThisType =>
+            withNoErrors(success(This(ts.cls)))
           case tp =>
             EmptyTreeNoError
       case _ =>
@@ -242,7 +258,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     case PreciseConstrained(tp, true) =>
       if tp.isSingletonBounded(frozen = false) then
         withNoErrors:
-          ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
+          ref(defn.Caps_erasedValue).appliedToType(formal).withSpan(span)
       else
         withErrors(i"$tp is not a singleton")
     case _ =>
@@ -251,7 +267,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedPrecise: SpecialHandler = (formal, span) => formal match
     case PreciseConstrained(tp, false) =>
       withNoErrors:
-        ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
+        ref(defn.Caps_erasedValue).appliedToType(formal).withSpan(span)
     case _ =>
       EmptyTreeNoError
 
@@ -322,6 +338,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     case ClassSymbol(pre: Type, cls: Symbol)
     case Singleton(src: Symbol, tref: TermRef)
     case GenericTuple(tps: List[Type])
+    case NamedTuple(nameTypePairs: List[(TermName, Type)])
 
     /** Tests that both sides are tuples of the same arity */
     infix def sameTuple(that: MirrorSource)(using Context): Boolean =
@@ -351,6 +368,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         val arity = tps.size
         if arity <= Definitions.MaxTupleArity then s"class Tuple$arity"
         else s"trait Tuple { def size: $arity }"
+      case NamedTuple(nameTypePairs) =>
+        val (names, types) = nameTypePairs.unzip
+        val namesStr = names.map(_.show).mkString("(\"", "\", \"", "\")")
+        val typesStr = types.map(_.show).mkString("(", ", ", ")")
+        s"NamedTuple.NamedTuple[${namesStr}, ${typesStr}]"
 
   private[Synthesizer] object MirrorSource:
 
@@ -398,6 +420,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 // avoid type aliases for tuples
                 Right(MirrorSource.GenericTuple(types))
               case _ => reduce(tp.underlying)
+          case defn.NamedTupleDirect(_, _) =>
+            Right(MirrorSource.NamedTuple(tp.namedTupleElementTypes(derived = false)))
           case tp: MatchType =>
             val n = tp.tryNormalize
             if n.exists then reduce(n) else Left(i"its subpart `$tp` is an unreducible match type.")
@@ -428,10 +452,36 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def newTupleMirror(arity: Int): Tree =
       New(defn.RuntimeTupleMirrorTypeRef, Literal(Constant(arity)) :: Nil)
 
-    def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
+    def makeNamedTupleProductMirror(nameTypePairs: List[(TermName, Type)]): TreeWithErrors =
+      val (labels, typeElems) = nameTypePairs.unzip
+      val elemLabels = labels.map(label => ConstantType(Constant(label.toString)))
+      val mirrorRef: Type => Tree = _ => newTupleMirror(typeElems.size)
+      makeProductMirror(typeElems, elemLabels, tpnme.NamedTuple, mirrorRef)
+    end makeNamedTupleProductMirror
+
+    def makeTupleProductMirror(tps: List[Type]): TreeWithErrors =
+      val arity = tps.size
+      if arity <= Definitions.MaxTupleArity then
+        val tupleCls = defn.TupleType(arity).nn.classSymbol
+        makeClassProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
+      else
+        val elemLabels = (for i <- 1 to arity yield ConstantType(Constant(s"_$i"))).toList
+        val mirrorRef: Type => Tree = _ => newTupleMirror(arity)
+        makeProductMirror(tps, elemLabels, tpnme.Tuple, mirrorRef)
+    end makeTupleProductMirror
+
+    def makeClassProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]) =
       val accessors = cls.caseAccessors
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
       val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
+      val mirrorRef = (monoType: Type) =>
+        if cls.useCompanionAsProductMirror then companionPath(pre, cls, span)
+        else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size)
+        else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
+      makeProductMirror(typeElems, elemLabels, cls.name, mirrorRef)
+    end makeClassProductMirror
+
+    def makeProductMirror(typeElems: List[Type], elemLabels: List[Type], label: Name, mirrorRef: Type => Tree): TreeWithErrors =
       val nestedPairs = TypeOps.nestedPairs(typeElems)
       val (monoType, elemsType) = mirroredType match
         case mirroredType: HKTypeLambda =>
@@ -442,15 +492,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
       checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
       val mirrorType = formal.constrained_& {
-        mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name)
+        mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, label)
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
       }
-      val mirrorRef =
-        if cls.useCompanionAsProductMirror then companionPath(pre, cls, span)
-        else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
-        else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
-      withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
+      withNoErrors(mirrorRef(monoType).cast(mirrorType).withSpan(span))
     end makeProductMirror
 
     MirrorSource.reduce(mirroredType) match
@@ -470,14 +516,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             }
             withNoErrors(singletonPath.cast(mirrorType).withSpan(span))
         case MirrorSource.GenericTuple(tps) =>
-          val maxArity = Definitions.MaxTupleArity
-          val arity = tps.size
-          if tps.size <= maxArity then
-            val tupleCls = defn.TupleType(arity).nn.classSymbol
-            makeProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
-          else
-            val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
-            withErrors(i"${defn.PairClass} is not a generic product because $reason")
+          makeTupleProductMirror(tps)
+        case MirrorSource.NamedTuple(nameTypePairs) =>
+          makeNamedTupleProductMirror(nameTypePairs)
         case MirrorSource.ClassSymbol(pre, cls) =>
           if cls.isGenericProduct then
             if ctx.runZincPhases then
@@ -486,7 +527,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               val rec = ctx.compilationUnit.depRecorder
               rec.addClassDependency(cls, DependencyByMemberRef)
               rec.addUsedName(cls.primaryConstructor)
-            makeProductMirror(pre, cls, None)
+            makeClassProductMirror(pre, cls, None)
           else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
       case Left(msg) =>
         withErrors(i"type `$mirroredType` is not a generic product because $msg")
@@ -501,6 +542,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         val arity = tps.size
         val cls = if arity <= Definitions.MaxTupleArity then defn.TupleType(arity).nn.classSymbol else defn.PairClass
         ("", NoType, cls)
+      case Right(MirrorSource.NamedTuple(_)) =>
+        ("named tuples are not sealed classes", NoType, NoSymbol)
       case Left(msg) => (msg, NoType, NoSymbol)
 
     val clsIsGenericSum = cls.isGenericSum(pre)
@@ -553,9 +596,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   resType <:< target
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
+                  val instanceTypes = tparams.lazyZip(variances).map: (tparam, variance) =>
                     TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
-                  )
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,
                   // because type parameters are not correctly inferred.

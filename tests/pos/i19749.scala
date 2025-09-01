@@ -5,7 +5,7 @@ case class A(x: Int, y: String)
 trait SomeTrait[T]
 
 object SomeTrait:
-  given [T]: SomeTrait[T] with {}
+  given [T] => SomeTrait[T]()
 
 def f1[T](using p: Mirror.ProductOf[T]): Tuple.Elem[p.MirroredElemTypes, 0] = ???
 

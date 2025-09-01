@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
 import java.nio.file.{Path as JPath, Files as JFiles}
 import java.nio.channels.ClosedByInterruptException
 import java.io.DataOutputStream

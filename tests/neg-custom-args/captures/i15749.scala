@@ -1,3 +1,5 @@
+//> using options -source 3.5
+// (to make sure we use the unsealed policy)
 class Unit
 object unit extends Unit
 

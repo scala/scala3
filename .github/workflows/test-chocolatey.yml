@@ -21,18 +21,21 @@ on:
 
 env:
   CHOCOLATEY-REPOSITORY: chocolatey-pkgs
-  DOTTY_CI_INSTALLATION: ${{ secrets.GITHUB_TOKEN }}
+  # Controls behaviour of chocolatey{Install,Uninstall}.ps1 scripts
+  # During snapshot releases it uses a different layout and requires access token to GH Actions artifacts
+  # During stable releases it uses publically available archives
+  DOTTY_CI_INSTALLATION: ${{ endsWith(inputs.version, '-SNAPSHOT') && secrets.GITHUB_TOKEN || '' }}
 
 jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
       - name: Download the 'nupkg' from GitHub Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: scala.nupkg
           path: ${{ env.CHOCOLATEY-REPOSITORY }}

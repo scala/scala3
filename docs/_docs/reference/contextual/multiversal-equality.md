@@ -109,7 +109,7 @@ By the usual rules of [type class derivation](./derivation.md),
 this generates the following `CanEqual` instance in the companion object of `Box`:
 
 ```scala
-given [T, U](using CanEqual[T, U]): CanEqual[Box[T], Box[U]] =
+given [T, U] => CanEqual[T, U] => CanEqual[Box[T], Box[U]] =
   CanEqual.derived
 ```
 

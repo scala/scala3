@@ -6,9 +6,11 @@ import dotty.tools.pc.ScalaPresentationCompiler
 import org.junit.{Before, Test}
 
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.internal.metals.CompilerOffsetParams
+import scala.meta.internal.metals.EmptyCancelToken
+import scala.meta.internal.metals.PcQueryContext
 import scala.meta.pc.OffsetParams
+import scala.meta.pc.reports.EmptyReportContext
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.meta.pc.VirtualFileParams
@@ -26,19 +28,21 @@ class CompilerCachingSuite extends BasePCSuite:
   private def checkCompilationCount(expected: Int): Unit =
     presentationCompiler match
       case pc: ScalaPresentationCompiler =>
-        val compilations = pc.compilerAccess.withNonInterruptableCompiler(None)(-1, EmptyCancelToken) { driver =>
+        val compilations = pc.compilerAccess.withNonInterruptableCompiler(-1, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx.runId
-        }.get(timeout.length, timeout.unit)
+        }(emptyQueryContext).get(timeout.length, timeout.unit)
         assertEquals(expected, compilations, s"Expected $expected compilations but got $compilations")
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
   private def getContext(): Context =
     presentationCompiler match
       case pc: ScalaPresentationCompiler =>
-        pc.compilerAccess.withNonInterruptableCompiler(None)(null, EmptyCancelToken) { driver =>
+        pc.compilerAccess.withNonInterruptableCompiler(null, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx
-        }.get(timeout.length, timeout.unit)
+        }(emptyQueryContext).get(timeout.length, timeout.unit)
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
+
+  private def emptyQueryContext = PcQueryContext(None, () => "")(using EmptyReportContext())
 
   @Before
   def beforeEach: Unit =
@@ -77,6 +81,22 @@ class CompilerCachingSuite extends BasePCSuite:
     assert(contextPreCompilation != contextPostSecond)
     assert(contextPostFirst == contextPostCursor)
     assert(contextPostCursor == contextPostSecond)
+    checkCompilationCount(4)
+
+  @Test
+  def `dot-compilation-does-not-corrupt-cache`: Unit =
+    val contextPreCompilation = getContext()
+
+    val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = 1.", 14, EmptyCancelToken)
+    presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
+    val contextPostFirst = getContext()
+    assert(contextPreCompilation != contextPostFirst)
+    checkCompilationCount(4)
+
+    presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
+    val contextPostSecond = getContext()
+    assert(contextPreCompilation != contextPostFirst)
+    assert(contextPostSecond == contextPostFirst)
     checkCompilationCount(4)
 
   @Test

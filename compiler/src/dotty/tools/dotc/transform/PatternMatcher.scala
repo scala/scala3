@@ -14,9 +14,11 @@ import Flags.*, Constants.*
 import Decorators.*
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
+import config.Feature
 import reporting.*
 import ast.*
 import util.Property.*
+import cc.{CapturingType, Capabilities}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -37,6 +39,10 @@ class PatternMatcher extends MiniPhase {
 
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
+    else if tree.isSubMatch then
+      // A sub match in a case def body will be transformed when the outer match is processed.
+      // This assummes that no earlier miniphase needs sub matches to have been transformed before the outer match.
+      tree
     else {
       // Widen termrefs with underlying `=> T` types. Otherwise ElimByName will produce
       // inconsistent types. See i7743.scala.
@@ -46,10 +52,8 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      // Skip analysis on inlined code (eg pos/i19157)
-      if !tpd.enclosingInlineds.nonEmpty then
-        // check exhaustivity and unreachability
-        SpaceEngine.checkMatch(tree)
+      // check exhaustivity and unreachability
+      SpaceEngine.checkMatch(tree)
 
       translated.ensureConforms(matchType)
     }
@@ -107,7 +111,7 @@ object PatternMatcher {
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     private def dropNamedTuple(tree: Tree): Tree =
-      val tpe = tree.tpe.widen
+      val tpe = tree.tpe.widenDealias
       if tpe.isNamedTupleType then tree.cast(tpe.stripNamedTuple) else tree
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
@@ -269,8 +273,14 @@ object PatternMatcher {
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
           args match {
             case arg :: args1 =>
-              val sym :: syms1 = syms: @unchecked
-              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
+              if (args.length != syms.length)
+                report.error(UnapplyInvalidNumberOfArguments(tree, tree.tpe :: Nil), arg.srcPos)
+                // Generate a throwaway but type-correct plan.
+                // This plan will never execute because it'll be guarded by a `NonNullTest`.
+                ResultPlan(tpd.Throw(tpd.nullLiteral))
+              else
+                val sym :: syms1 = syms: @unchecked
+                patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
             case Nil =>
               assert(syms.isEmpty)
               onSuccess
@@ -345,7 +355,13 @@ object PatternMatcher {
               receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
               Literal(Constant(i)))
 
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
+        def getOfGetMatch(gm: Tree) = gm.select(nme.get, _.info.isParameterless)
+        // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
+        // enable selecting the field. See i23131.scala for test cases.
+        val wasUnaryNamedTupleSelectArgForNamedTuple =
+          args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined &&
+            isGetMatch(unappType) && getOfGetMatch(unapp).tpe.widenDealias.isNamedTupleType
+        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && !wasUnaryNamedTupleSelectArgForNamedTuple)
           def tupleSel(sym: Symbol) =
             // If scrutinee is a named tuple, cast to underlying tuple, so that we can
             // continue to select with _1, _2, ...
@@ -378,7 +394,7 @@ object PatternMatcher {
             else {
               assert(isGetMatch(unappType))
               val argsPlan = {
-                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
+                val get = getOfGetMatch(ref(unappResult))
                 val arity = productArity(get.tpe.stripNamedTuple, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
@@ -388,9 +404,17 @@ object PatternMatcher {
                   }
                 else
                   letAbstract(get) { getResult =>
-                    val selectors =
-                      if (args.tail.isEmpty) ref(getResult) :: Nil
-                      else productSelectors(getResult.info).map(ref(getResult).select(_))
+                    // Special case: Normally, we pull out the argument wholesale if
+                    // there is only one. But if the argument is a named argument for
+                    // a single-element named tuple, we have to select the field instead.
+                    // NamedArg trees are eliminated in FirstTransform but for named arguments
+                    // of patterns we add a WasNamedArg attachment, which is used to guide the
+                    // logic here. See i22900.scala for test cases.
+                    val selectors = args match
+                      case arg :: Nil if !wasUnaryNamedTupleSelectArgForNamedTuple =>
+                        ref(getResult) :: Nil
+                      case _ =>
+                        productSelectors(getResult.info).map(ref(getResult).select(_))
                     matchArgsPlan(selectors, args, onSuccess)
                   }
               }
@@ -409,8 +433,11 @@ object PatternMatcher {
               && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
+          val castTp = if Feature.ccEnabled
+            then CapturingType(tpt.tpe, scrutinee.termRef.singletonCaptureSet)
+            else tpt.tpe
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
-            letAbstract(ref(scrutinee).cast(tpt.tpe)) { casted =>
+            letAbstract(ref(scrutinee).cast(castTp)) { casted =>
               nonNull += casted
               patternPlan(casted, pat, onSuccess)
             })
@@ -464,12 +491,23 @@ object PatternMatcher {
       }
     }
 
-    private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan = {
-      var onSuccess: Plan = ResultPlan(cdef.body)
-      if (!cdef.guard.isEmpty)
-        onSuccess = TestPlan(GuardTest, cdef.guard, cdef.guard.span, onSuccess)
-      patternPlan(scrutinee, cdef.pat, onSuccess)
-    }
+    private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan =
+      val CaseDef(pat, guard, body) = cdef
+      val caseDefBodyPlan: Plan = body match
+        case t: SubMatch => subMatchPlan(t)
+        case _ => ResultPlan(body)
+      val onSuccess: Plan =
+        if guard.isEmpty then caseDefBodyPlan
+        else TestPlan(GuardTest, guard, guard.span, caseDefBodyPlan)
+      patternPlan(scrutinee, pat, onSuccess)
+    end caseDefPlan
+
+    // like matchPlan but without a final matchError ResultPlan at the end of SeqPlans
+    // s.t. we fall back to the outer SeqPlan
+    private def subMatchPlan(tree: SubMatch): Plan =
+      letAbstract(tree.selector) { scrutinee =>
+        tree.cases.map(caseDefPlan(scrutinee, _)).reduceRight(SeqPlan(_, _))
+      }
 
     private def matchPlan(tree: Match): Plan =
       letAbstract(tree.selector) { scrutinee =>

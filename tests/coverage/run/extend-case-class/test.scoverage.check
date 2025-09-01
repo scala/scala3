@@ -21,6 +21,91 @@
 0
 extend-case-class/test.scala
 <empty>
+DecimalConf
+Object
+<empty>.DecimalConf
+<init>
+194
+198
+4
+<none>
+Literal
+false
+0
+false
+6178
+
+1
+extend-case-class/test.scala
+<empty>
+DecimalConf
+Object
+<empty>.DecimalConf
+<init>
+200
+203
+4
+<none>
+Literal
+false
+0
+false
+308
+
+2
+extend-case-class/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+239
+279
+8
+apply
+Apply
+false
+0
+false
+DecimalConf(MathContext.DECIMAL32, 1, 0)
+
+3
+extend-case-class/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+274
+275
+8
+<none>
+Literal
+false
+0
+false
+1
+
+4
+extend-case-class/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+277
+278
+8
+<none>
+Literal
+false
+0
+false
+0
+
+5
+extend-case-class/test.scala
+<empty>
 test$package
 Object
 <empty>.test$package
@@ -35,7 +120,7 @@ false
 false
 println(c.scaleLimit)
 
-1
+6
 extend-case-class/test.scala
 <empty>
 test$package
@@ -52,7 +137,7 @@ false
 false
 println(DecimalConf.scaleLimit)
 
-2
+7
 extend-case-class/test.scala
 <empty>
 test$package

@@ -1,11 +1,11 @@
-class C extends caps.Capability
+class C extends caps.SharedCapability
 def test(c: C) =
   val pure: () -> Unit = () => ()
   val impure: () => Unit = pure
   val mixed: () ->{c} Unit = pure
   val x = Ref(impure)
   val _: Ref = x // error
-  val y = x.copy()
+  val y = caps.unsafe.unsafeAssumeSeparate(x.copy()) // TODO remove
   val yc: Ref = y // error
   val y0 = x.copy(pure)
   val yc0: Ref = y0

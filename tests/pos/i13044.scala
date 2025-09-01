@@ -36,7 +36,7 @@ trait SchemaDerivation {
         }
     }
 
-  inline given gen[A]: Schema[A] = derived
+  inline given gen: [A] => Schema[A] = derived
 }
 
 case class H(i: Int)

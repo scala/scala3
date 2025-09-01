@@ -1,6 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
 
 import collection.mutable
 
@@ -18,11 +17,17 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
     var acc: SimpleIdentitySet[B] = SimpleIdentitySet.empty
     foreach(x => acc += f(x))
     acc
+  def flatMap[B <: AnyRef](f: Elem => SimpleIdentitySet[B]): SimpleIdentitySet[B] =
+    var acc: SimpleIdentitySet[B] = SimpleIdentitySet.empty
+    foreach(x => acc ++= f(x))
+    acc
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
-  def iterator: Iterator[Elem]
+  def nth(n: Int): Elem
 
   final def isEmpty: Boolean = size == 0
+
+  final def iterator: Iterator[Elem] = Iterator.tabulate(size)(nth)
 
   def forall[E >: Elem <: AnyRef](p: E => Boolean): Boolean = !exists(!p(_))
 
@@ -42,8 +47,16 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
         if (that.contains(x)) s else s + x
       }
 
+  def ** [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+    if this.size == 0 then this
+    else if that.size == 0 then that
+    else this.filter(that.contains)
+
   def == [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
-    this.size == that.size && forall(that.contains)
+    (this eq that) || this.size == that.size && forall(that.contains)
+
+  def != [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
+    !(this == that)
 
   override def toString: String = toList.mkString("{", ", ", "}")
 }
@@ -69,7 +82,7 @@ object SimpleIdentitySet {
     override def map[B <: AnyRef](f: Nothing => B): SimpleIdentitySet[B] = empty
     def /: [A, E <: AnyRef](z: A)(f: (A, E) => A): A = z
     def toList = Nil
-    def iterator = Iterator.empty
+    def nth(n: Int): Nothing = throw new IndexOutOfBoundsException(n.toString)
   }
 
   private class Set1[+Elem <: AnyRef](x0: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -87,7 +100,9 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(z, x0.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: Nil
-    def iterator = Iterator.single(x0.asInstanceOf[Elem])
+    def nth(n: Int) =
+      if n == 0 then x0.asInstanceOf[Elem]
+      else throw new IndexOutOfBoundsException(n.toString)
   }
 
   private class Set2[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -109,10 +124,10 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
-    def iterator = Iterator.tabulate(2) {
+    def nth(n: Int) = n match
       case 0 => x0.asInstanceOf[Elem]
       case 1 => x1.asInstanceOf[Elem]
-    }
+      case _ => throw new IndexOutOfBoundsException(n.toString)
   }
 
   private class Set3[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef, x2: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -149,11 +164,11 @@ object SimpleIdentitySet {
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
-    def iterator = Iterator.tabulate(3) {
+    def nth(n: Int) = n match
       case 0 => x0.asInstanceOf[Elem]
       case 1 => x1.asInstanceOf[Elem]
       case 2 => x2.asInstanceOf[Elem]
-    }
+      case _ => throw new IndexOutOfBoundsException(n.toString)
   }
 
   private class SetN[+Elem <: AnyRef](val xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
@@ -200,11 +215,13 @@ object SimpleIdentitySet {
       foreach(buf += _)
       buf.toList
     }
-    def iterator = xs.iterator.asInstanceOf[Iterator[Elem]]
+    def nth(n: Int) =
+      if 0 <= n && n < size then xs(n).asInstanceOf[Elem]
+      else throw new IndexOutOfBoundsException(n.toString)
     override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {
         case that: SetN[?] =>
-          var toAdd: mutable.ArrayBuffer[AnyRef] = null
+          var toAdd: mutable.ArrayBuffer[AnyRef] | Null = null
           var i = 0
           val limit = that.xs.length
           while (i < limit) {
@@ -234,7 +251,7 @@ object SimpleIdentitySet {
         case that: SetN[?] =>
           // both sets are large, optimize assuming they are similar
           // by starting from empty set and adding elements
-          var toAdd: mutable.ArrayBuffer[AnyRef] = null
+          var toAdd: mutable.ArrayBuffer[AnyRef] | Null = null
           val thisSize = this.size
           val thatSize = that.size
           val thatElems = that.xs

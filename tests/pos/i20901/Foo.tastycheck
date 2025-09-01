@@ -92,7 +92,7 @@ Trees (98 bytes, starting from <elided base index>):
     96:         STRINGconst 32 [<elided source file name>]
     98:
 
-Positions (73 bytes, starting from <elided base index>):
+Positions (75 bytes, starting from <elided base index>):
   lines: 7
   line sizes:
      38, 0, 23, 0, 10, 41, 0

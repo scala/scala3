@@ -25,6 +25,7 @@ trait T:
   def x(n: Int): Int = 42 + n
   def y(n: Int): Int = u + n
   def y(s: String): String = s + u
+  def z(s: String): String = s + m
 
 extension (_t: T)
   def t = 27 // warn
@@ -45,6 +46,7 @@ extension (_t: T)
   def w(using String)(n: String): Int = (summon[String] + n).toInt
   def x(using String)(n: Int): Int = summon[String].toInt + n // warn
   def y(using String)(s: String): String = s + summon[String] // warn
+  def z(): String = "extension"
 
 // deferred extension is defined in subclass
 trait Foo:
@@ -66,7 +68,7 @@ trait DungeonDweller:
 trait SadDungeonDweller:
   def f[A](x: Dungeon.IArray[A]) = 27 // x.length // just to confirm, length is not a member
 
-trait Quote:
+trait Quote: // see tests/warn/ext-override.scala
   type Tree <: AnyRef
   given TreeMethods: TreeMethods
   trait TreeMethods:
@@ -87,7 +89,7 @@ class Depends:
 object Depending:
   extension (using depends: Depends)(x: depends.Thing)
     def y = 42
-    def length() = 42 // nowarn see Quote above
+    def length() = 42 // warn This extension method will be shadowed by .length() on String.
   def f(using d: Depends) = d.thing.y
   def g(using d: Depends) = d.thing.length()
 

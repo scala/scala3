@@ -213,10 +213,15 @@ class TabcompleteTests extends ReplTest {
         ":exit",
         ":help",
         ":imports",
+        ":jar",
+        ":kind",
         ":load",
         ":quit",
+        ":require",
         ":reset",
         ":settings",
+        ":sh",
+        ":silent",
         ":type"
       ),
       tabComplete(":")

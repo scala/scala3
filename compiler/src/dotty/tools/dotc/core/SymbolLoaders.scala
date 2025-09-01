@@ -7,8 +7,9 @@ import java.nio.channels.ClosedByInterruptException
 
 import scala.util.control.NonFatal
 
+import dotty.tools.dotc.classpath.{ ClassPathFactory, PackageNameUtils }
 import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
+import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
@@ -51,8 +52,9 @@ object SymbolLoaders {
    */
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, compUnitInfo = completer.compilationUnitInfo)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
+    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, privateWithin, compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -60,10 +62,13 @@ object SymbolLoaders {
    */
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
+      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags,
+      scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
     val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
+      privateWithin,
       compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -73,7 +78,7 @@ object SymbolLoaders {
    *  and give them `completer` as type.
    */
   def enterPackage(owner: Symbol, pname: TermName, completer: (TermSymbol, ClassSymbol) => PackageLoader)(using Context): Symbol = {
-    val preExisting = owner.info.decls lookup pname
+    val preExisting = owner.info.decls.lookup(pname)
     if (preExisting != NoSymbol)
       // Some jars (often, obfuscated ones) include a package and
       // object with the same name. Rather than render them unusable,
@@ -90,6 +95,18 @@ object SymbolLoaders {
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
+      else if pname == nme.caps && owner == defn.ScalaPackageClass then
+        // `scala.caps`` was an object until 3.6, it is a package from 3.7. Without special handling
+        // this would cause a TypeError to be thrown below if a build has several versions of the
+        // Scala standard library on the classpath. This was the case for 29 projects in OpenCB.
+        // These projects should be updated. But until that's the case we issue a warning instead
+        // of a hard failure.
+        report.warning(
+          em"""$owner contains object and package with same name: $pname.
+             |This indicates that there are several versions of the Scala standard library on the classpath.
+             |The build should be reconfigured so that only one version of the standard library is on the classpath.""")
+        owner.info.decls.openForMutations.unlink(preExisting)
+        owner.info.decls.openForMutations.unlink(preExisting.moduleClass)
       else
         throw TypeError(
           em"""$owner contains object and package with same name: $pname
@@ -103,13 +120,16 @@ object SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Unit = {
-    val clazz = enterClass(owner, name, completer, flags, scope)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Unit = {
+    val clazz = enterClass(owner, name, completer, flags, scope, privateWithin)
     val module = enterModule(
       owner, name, completer,
       modFlags = flags.toTermFlags & RetainedModuleValFlags,
       clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
-      scope = scope)
+      scope = scope,
+      privateWithin = privateWithin,
+    )
   }
 
   /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
@@ -138,7 +158,7 @@ object SymbolLoaders {
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
-                           |But it is found in directory     ${filePath.reverse.mkString(File.separator.nn)}""",
+                           |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
               tree.srcPos.focus)
           ok
         }
@@ -265,7 +285,7 @@ object SymbolLoaders {
     def maybeModuleClass(classRep: ClassRepresentation): Boolean =
       classRep.name.nonEmpty && classRep.name.last == '$'
 
-    private def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
+    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
       def isAbsent(classRep: ClassRepresentation) =
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
@@ -309,6 +329,32 @@ object SymbolLoaders {
         }
     }
   }
+
+  def mergeNewEntries(
+    packageClass: ClassSymbol, fullPackageName: String,
+    jarClasspath: ClassPath, fullClasspath: ClassPath,
+  )(using Context): Unit =
+    if jarClasspath.classes(fullPackageName).nonEmpty then
+      // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
+      val packageVal = packageClass.sourceModule.asInstanceOf[TermSymbol]
+      if packageClass.isRoot then
+        val loader = new PackageLoader(packageVal, fullClasspath)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
+      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
+        () // skip
+      else if fullClasspath.hasPackage(fullPackageName) then
+        packageClass.info = new PackageLoader(packageVal, fullClasspath)
+      else
+        packageClass.owner.info.decls.openForMutations.unlink(packageVal)
+    else
+      for p <- jarClasspath.packages(fullPackageName) do
+        val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+        val subPackage = packageClass.info.decl(subPackageName).orElse:
+          // package does not exist in symbol table, create a new symbol
+          enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
+        mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+  end mergeNewEntries
 }
 
 /** A lazy type that completes itself by calling parameter doComplete.
@@ -333,7 +379,15 @@ abstract class SymbolLoader extends LazyType { self =>
     def description(using Context): String = s"proxy to ${self.description}"
   }
 
-  override def complete(root: SymDenotation)(using Context): Unit = {
+  private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
+    val sym = root.symbol
+    def associatedFile = root.symbol.associatedFile match
+      case file: AbstractFile => file
+      case null => NoAbstractFile
+    ctx.profiler.onCompletion(sym, associatedFile)(body)
+  }
+
+  override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
     def signalError(ex: Exception): Unit = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()

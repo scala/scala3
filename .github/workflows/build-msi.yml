@@ -14,18 +14,18 @@ on:
   workflow_call:
 
 env:
-  # NECESSARY FLAG TO CORRECTLY CONFIGURE THE VERSION FOR SCALA
-  RELEASEBUILD: yes
+  # Release only happends when triggering CI by pushing tag
+  RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: 'adopt'
-          java-version: '8'
+          java-version: 17
           cache: 'sbt'
       - name: Build MSI package
         run: sbt 'dist-win-x86_64/Windows/packageBin'

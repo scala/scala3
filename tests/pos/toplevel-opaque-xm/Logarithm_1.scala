@@ -14,7 +14,7 @@ object Logarithm {
   def exponent(l: Logarithm): Double = l
 
 
-  given AnyRef with {
+  given AnyRef {
     // This is the second way to unlift the logarithm type
     extension (x: Logarithm) def toDouble: Double = math.exp(x)
     extension (x: Logarithm) def + (y: Logarithm) = Logarithm(math.exp(x) + math.exp(y))

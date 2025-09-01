@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.language.unsafeNulls
-
 import scala.collection.*
 
 import ast.{NavigateAST, Trees, tpd, untpd}
@@ -144,6 +142,7 @@ object Interactive {
 
     (  sym == tree.symbol
     || sym.exists && sym == tree.symbol.sourceSymbol
+    || sym.exists && sym.sourceSymbol == tree.symbol
     || !include.isEmpty && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
        && (  include.isOverridden && overrides(sym, tree.symbol)
           || include.isOverriding && overrides(tree.symbol, sym)

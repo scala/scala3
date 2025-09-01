@@ -1,0 +1,17 @@
+trait Container:
+    def loopDef: Container
+    val loopVal: Container
+    def fun(x: Int)(y: Int): Int
+
+def test(c: Container): Int =
+    use(c.fun)
+    + use(c.loopDef.fun)
+    + use(c.loopVal.fun)
+    + use(c.loopDef.loopDef.fun)
+    + use(c.loopVal.loopVal.fun)
+    + use(c.loopVal.loopDef.fun)
+    + use(c.loopDef.loopVal.fun)
+    + use(c.loopVal.loopDef.loopVal.fun)
+    + use(c.loopVal.loopDef.loopVal.loopDef.fun)
+
+def use(f: Int => Int => Int): Int = ???
