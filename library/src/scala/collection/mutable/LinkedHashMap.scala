@@ -401,7 +401,7 @@ class LinkedHashMap[K, V]
           table(idx) = nnode
         } else {
           nnode.next = prev.next
-          prev.nn.next = nnode
+          prev.next = nnode
         }
     }
     contentSize += 1
