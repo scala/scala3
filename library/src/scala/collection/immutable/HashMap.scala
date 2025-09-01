@@ -2206,7 +2206,7 @@ object HashMap extends MapFactory[HashMap] {
   def empty[K, V]: HashMap[K, V] =
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
-  def from[K, V](source: collection.IterableOnce[(K, V)]): HashMap[K, V] =
+  def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     source match {
       case hs: HashMap[K, V] => hs
       case _ => (newBuilder[K, V] ++= source).result()

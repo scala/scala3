@@ -243,10 +243,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
-      case StepperShape.IntShape    => new IntTableStepper[Node[A]]   (size, table, _.nn.next.nn, _.key.asInstanceOf[Int],    0, table.length)
-      case StepperShape.LongShape   => new LongTableStepper[Node[A]]  (size, table, _.nn.next.nn, _.key.asInstanceOf[Long],   0, table.length)
-      case StepperShape.DoubleShape => new DoubleTableStepper[Node[A]](size, table, _.nn.next.nn, _.key.asInstanceOf[Double], 0, table.length)
-      case _         => shape.parUnbox(new AnyTableStepper[A, Node[A]](size, table, _.nn.next.nn, _.key,                      0, table.length))
+      case StepperShape.IntShape    => new IntTableStepper[Node[A]]   (size, table, _.next.nn, _.key.asInstanceOf[Int],    0, table.length)
+      case StepperShape.LongShape   => new LongTableStepper[Node[A]]  (size, table, _.next.nn, _.key.asInstanceOf[Long],   0, table.length)
+      case StepperShape.DoubleShape => new DoubleTableStepper[Node[A]](size, table, _.next.nn, _.key.asInstanceOf[Double], 0, table.length)
+      case _         => shape.parUnbox(new AnyTableStepper[A, Node[A]](size, table, _.next.nn, _.key,                      0, table.length))
     }
     s.asInstanceOf[S with EfficientSplit]
   }

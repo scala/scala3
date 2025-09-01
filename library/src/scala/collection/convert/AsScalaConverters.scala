@@ -43,7 +43,7 @@ trait AsScalaConverters {
    */
   def asScala[A](i: ju.Iterator[A] | Null): Iterator[A] | Null = i match {
     case null                            => null
-    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying
+    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JIteratorWrapper(i.nn)
   }
 
@@ -61,7 +61,7 @@ trait AsScalaConverters {
    */
   def asScala[A](e: ju.Enumeration[A] | Null): Iterator[A] | Null = e match {
     case null                            => null
-    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying
+    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JEnumerationWrapper(e.nn)
   }
 
@@ -79,7 +79,7 @@ trait AsScalaConverters {
    */
   def asScala[A](i: jl.Iterable[A] | Null): Iterable[A] | Null = i match {
     case null                            => null
-    case wrapper: IterableWrapper[A @uc] => wrapper.underlying
+    case wrapper: IterableWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JIterableWrapper(i.nn)
   }
 
@@ -94,7 +94,7 @@ trait AsScalaConverters {
    */
   def asScala[A](c: ju.Collection[A] | Null): Iterable[A] | Null = c match {
     case null                            => null
-    case wrapper: IterableWrapper[A @uc] => wrapper.underlying
+    case wrapper: IterableWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JCollectionWrapper(c.nn)
   }
 
