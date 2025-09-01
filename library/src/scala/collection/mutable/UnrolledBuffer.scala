@@ -380,7 +380,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       if (next eq null) true else false // checks if last node was thrown out
     } else false
 
-    @tailrec final def insertAll(idx: Int, t: scala.collection.IterableOnce[T], buffer: UnrolledBuffer[T]): Int = {
+    @tailrec final def insertAll(idx: Int, t: scala.collection.IterableOnce[T]^, buffer: UnrolledBuffer[T]): Int = {
       if (idx < size) {
         // divide this node at the appropriate position and insert all into head
         // update new next
