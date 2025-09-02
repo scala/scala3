@@ -465,7 +465,7 @@ object View extends IterableFactory[View] {
         if(pos == maxlen) pos = 0
         len += 1
       }
-      underlying = null.asInstanceOf // allow GC of underlying iterator
+      underlying = null.asInstanceOf[Iterator[A]] // allow GC of underlying iterator
       if(len > maxlen) len = maxlen
       pos = pos - len
       if(pos < 0) pos += maxlen
