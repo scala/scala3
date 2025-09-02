@@ -73,3 +73,9 @@ object M {
   def test(input: => String): String = "foo " + input
 }
 
+class S[X]
+object S {  def show[X] = "dummyStr" }
+class T
+class U[Y](a: Y)
+def expects(take: (T) ?=> U[String]) = ???
+

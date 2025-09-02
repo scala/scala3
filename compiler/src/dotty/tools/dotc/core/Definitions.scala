@@ -1996,6 +1996,8 @@ class Definitions {
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
+      case tp1: FlexibleType =>
+        asContextFunctionType(tp1.underlying)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
