@@ -59,10 +59,10 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
     import scala.collection.convert.impl._
     type T = RB.Node[A, Null]
     val s = shape.shape match {
-      case StepperShape.IntShape    => IntBinaryTreeStepper.from[T]   (size, tree.root, _.left.nn, _.right.nn, _.key.asInstanceOf[Int])
-      case StepperShape.LongShape   => LongBinaryTreeStepper.from[T]  (size, tree.root, _.left.nn, _.right.nn, _.key.asInstanceOf[Long])
-      case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.root, _.left.nn, _.right.nn, _.key.asInstanceOf[Double])
-      case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree.root, _.left.nn, _.right.nn, _.key))
+      case StepperShape.IntShape    => IntBinaryTreeStepper.from[T]   (size, tree.root, _.left, _.right, _.key.asInstanceOf[Int])
+      case StepperShape.LongShape   => LongBinaryTreeStepper.from[T]  (size, tree.root, _.left, _.right, _.key.asInstanceOf[Long])
+      case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.root, _.left, _.right, _.key.asInstanceOf[Double])
+      case _         => shape.parUnbox(AnyBinaryTreeStepper.from[A, T](size, tree.root, _.left, _.right, _.key))
     }
     s.asInstanceOf[S with EfficientSplit]
   }

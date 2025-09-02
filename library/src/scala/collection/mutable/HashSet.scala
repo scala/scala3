@@ -436,7 +436,7 @@ object HashSet extends IterableFactory[HashSet] {
     def newBuilder: Builder[A, HashSet[A]] = HashSet.newBuilder(tableLength, loadFactor)
   }
 
-  private[collection] final class Node[K](_key: K, _hash: Int, private[this] var _next: Node[K] | Null) {
+  private[collection] final class Node[K](_key: K, _hash: Int, @annotation.stableNull private[this] var _next: Node[K] | Null) {
     def key: K = _key
     def hash: Int = _hash
     def next: Node[K] | Null = _next
@@ -446,12 +446,12 @@ object HashSet extends IterableFactory[HashSet] {
     def findNode(k: K, h: Int): Node[K] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
-      else _next.nn.findNode(k, h)
+      else _next.findNode(k, h)
 
     @tailrec
     def foreach[U](f: K => U): Unit = {
       f(_key)
-      if(_next ne null) _next.nn.foreach(f)
+      if(_next ne null) _next.foreach(f)
     }
 
     override def toString = s"Node($key, $hash) -> $next"

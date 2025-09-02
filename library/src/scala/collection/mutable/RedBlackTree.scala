@@ -398,33 +398,33 @@ private[collection] object RedBlackTree {
 
   private[this] def rotateLeft[A, B](tree: Tree[A, B], x: Node[A, B]): Unit = if (x ne null) {
     // assert(x.right ne null)
-    val y = x.right
-    x.right = y.nn.left
+    val y = x.right.nn
+    x.right = y.left
 
-    if (y.nn.left ne null) y.nn.left.parent = x
-    y.nn.parent = x.parent
+    if (y.left ne null) y.left.parent = x
+    y.parent = x.parent
 
     if (x.parent eq null) tree.root = y
     else if (x eq x.parent.nn.left) x.parent.left = y
     else x.parent.right = y
 
-    y.nn.left = x
+    y.left = x
     x.parent = y
   }
 
   private[this] def rotateRight[A, B](tree: Tree[A, B], x: Node[A, B]): Unit = if (x ne null) {
     // assert(x.left ne null)
-    val y = x.left
-    x.left = y.nn.right
+    val y = x.left.nn
+    x.left = y.right
 
-    if (y.nn.right ne null) y.nn.right.parent = x
-    y.nn.parent = x.parent
+    if (y.right ne null) y.right.parent = x
+    y.parent = x.parent
 
     if (x.parent eq null) tree.root = y
     else if (x eq x.parent.right) x.parent.right = y
     else x.parent.left = y
 
-    y.nn.right = x
+    y.right = x
     x.parent = y
   }
 

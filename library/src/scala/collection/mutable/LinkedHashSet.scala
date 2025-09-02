@@ -222,7 +222,7 @@ class LinkedHashSet[A]
       case null => false
       case nd if nd.hash == hash && nd.key == elem =>
         // first element matches
-        table(idx) = nd.next.nn
+        table(idx) = nd.next
         deleteEntry(nd)
         contentSize -= 1
         true

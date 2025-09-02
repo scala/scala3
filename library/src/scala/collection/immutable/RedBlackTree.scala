@@ -1097,26 +1097,26 @@ private[collection] object RedBlackTree {
     if (tl eq null) tr
     else if (tr eq null) tl
     else if (tl.isRed) {
-           if (tr.isRed) {
-             //tl is red, tr is red
-             val bc = append(tl.right, tr.left)
-             if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left), tr.withLeft(bc.nn.right))
-             else tl.withRight(tr.withLeft(bc))
-           } else {
-             //tl is red, tr is black
-             tl.withRight(append(tl.right, tr))
-           }
-         } else {
-           if (tr.isBlack) {
-             //tl is black tr is black
-             val bc = append(tl.right, tr.left)
-             if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left), tr.withLeft(bc.nn.right))
-             else balLeft(tl, tl.left, tr.withLeft(bc))
-           } else {
-             //tl is black tr is red
-             tr.withLeft(append(tl, tr.left))
-           }
-         }
+      if (tr.isRed) {
+        //tl is red, tr is red
+        val bc = append(tl.right, tr.left)
+        if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left), tr.withLeft(bc.nn.right))
+        else tl.withRight(tr.withLeft(bc))
+      } else {
+        //tl is red, tr is black
+        tl.withRight(append(tl.right, tr))
+      }
+    } else {
+      if (tr.isBlack) {
+        //tl is black tr is black
+        val bc = append(tl.right, tr.left)
+        if (isRedTree(bc)) bc.nn.withLeftRight(tl.withRight(bc.nn.left), tr.withLeft(bc.nn.right))
+        else balLeft(tl, tl.left, tr.withLeft(bc))
+      } else {
+        //tl is black tr is red
+        tr.withLeft(append(tl, tr.left))
+      }
+    }
   }
 
 

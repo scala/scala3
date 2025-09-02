@@ -564,11 +564,11 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       }
       else if (z.right eq null) {
         x = z.left
-        root = transplant(root, z, z.left.nn)
+        root = transplant(root, z, z.left)
         xParent = z.parent
       }
       else {
-        y = CollisionProofHashMap.minNodeNonNull(z.right.nn)
+        y = CollisionProofHashMap.minNodeNonNull(z.right)
         yIsRed = y.red
         x = y.right
 
@@ -663,7 +663,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     x.right = y.left
 
     val xp = x.parent
-    if (y.left ne null) y.left.nn.parent = x
+    if (y.left ne null) y.left.parent = x
     y.parent = xp
 
     if (xp eq null) root = y
@@ -681,7 +681,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     x.left = y.right
 
     val xp = x.parent
-    if (y.right ne null) y.right.nn.parent = x
+    if (y.right ne null) y.right.parent = x
     y.parent = xp
 
     if (xp eq null) root = y
@@ -700,8 +700,8 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   private[this] def transplant(_root: RBNode, to: RBNode, from: RBNode): RBNode = {
     var root = _root
     if (to.parent eq null) root = from
-    else if (to eq to.parent.nn.left) to.parent.nn.left = from
-    else to.parent.nn.right = from
+    else if (to eq to.parent.left) to.parent.left = from
+    else to.parent.right = from
     if (from ne null) from.parent = to.parent
     root
   }
@@ -791,34 +791,42 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   /////////////////////////// Red-Black Tree Node
 
-  final class RBNode[K, V](var key: K, var hash: Int, var value: V, var red: Boolean, var left: RBNode[K, V] | Null, var right: RBNode[K, V] | Null, var parent: RBNode[K, V] | Null) extends Node {
+  final class RBNode[K, V](
+      var key: K, var hash: Int, var value: V, var red: Boolean,
+      @annotation.stableNull
+      var left: RBNode[K, V] | Null,
+      @annotation.stableNull
+      var right: RBNode[K, V] | Null,
+      @annotation.stableNull
+      var parent: RBNode[K, V] | Null
+    ) extends Node {
     override def toString: String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
 
     @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): RBNode[K, V] | Null = {
       val cmp = compare(k, h, this)
       if (cmp < 0) {
-        if(left ne null) left.nn.getNode(k, h) else null
+        if(left ne null) left.getNode(k, h) else null
       } else if (cmp > 0) {
-        if(right ne null) right.nn.getNode(k, h) else null
+        if(right ne null) right.getNode(k, h) else null
       } else this
     }
 
     def foreach[U](f: ((K, V)) => U): Unit = {
-      if(left ne null) left.nn.foreach(f)
+      if(left ne null) left.foreach(f)
       f((key, value))
-      if(right ne null) right.nn.foreach(f)
+      if(right ne null) right.foreach(f)
     }
 
     def foreachEntry[U](f: (K, V) => U): Unit = {
-      if(left ne null) left.nn.foreachEntry(f)
+      if(left ne null) left.foreachEntry(f)
       f(key, value)
-      if(right ne null) right.nn.foreachEntry(f)
+      if(right ne null) right.foreachEntry(f)
     }
 
     def foreachNode[U](f: RBNode[K, V] => U): Unit = {
-      if(left ne null) left.nn.foreachNode(f)
+      if(left ne null) left.foreachNode(f)
       f(this)
-      if(right ne null) right.nn.foreachNode(f)
+      if(right ne null) right.foreachNode(f)
     }
   }
 
@@ -826,18 +834,18 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     new RBNode(key, hash, value, red, null, null, parent)
 
   @tailrec private def minNodeNonNull[A, B](node: RBNode[A, B]): RBNode[A, B] =
-    if (node.left eq null) node else minNodeNonNull(node.left.nn)
+    if (node.left eq null) node else minNodeNonNull(node.left)
 
   /**
     * Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
     * therefore, the last node), this method returns `null`.
     */
   private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] | Null = {
-    if (node.right ne null) minNodeNonNull(node.right.nn)
+    if (node.right ne null) minNodeNonNull(node.right)
     else {
       var x = node
       var y = x.parent
-      while ((y ne null) && (x eq y.nn.right)) {
+      while ((y ne null) && (x eq y.right)) {
         x = y
         y = y.parent
       }
