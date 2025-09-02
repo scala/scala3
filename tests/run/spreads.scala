@@ -13,9 +13,20 @@ def useInt(xs: Int*) = ???
 
   val xs = List(1, 2, 3)
   val ys = List("A")
+  val ao = Option(1.0).toList
 
   val x: Unit = use[Int](1, 2, xs*)
   val y = use(1, 2, xs*)
   use(1, xs*, 2)
   use(1, xs*, 2, xs*, 3)
   use(1, xs*, true, ys*, false)
+  use(1, identity(xs)*, 2)
+
+  def one = { println("one"); 1 }
+  def two = { println("two"); 2 }
+  def oneTwoThree = { println("one-two-three"); xs }
+  use(one, oneTwoThree*, two)
+  //use(1.0, ao*, 2.0)
+
+
+
