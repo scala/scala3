@@ -329,6 +329,15 @@ object RefChecks {
 
     val mixinOverrideErrors = new mutable.ListBuffer[MixinOverrideError]()
 
+    /** Returns a `SourcePosition` containing the full span (with the correct
+     *  end) of the class name. */
+    def clazzNamePos =
+      if clazz.name == tpnme.ANON_CLASS then
+        clazz.srcPos
+      else
+        val clazzNameEnd = clazz.srcPos.span.start + clazz.name.stripModuleClassSuffix.lastPart.length
+        clazz.srcPos.sourcePos.copy(span = clazz.srcPos.span.withEnd(clazzNameEnd))
+
     def printMixinOverrideErrors(): Unit =
       mixinOverrideErrors.toList match {
         case Nil =>
@@ -914,7 +923,7 @@ object RefChecks {
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazz.srcPos)
+        report.error(abstractErrorMessage, clazzNamePos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
