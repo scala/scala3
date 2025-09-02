@@ -384,8 +384,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     if(size == 0) table = new Array[Node[K, V] | Null](newlen)
     else {
       table = java.util.Arrays.copyOf(table, newlen)
-      val preLow: Node[K, V] | Null = new Node(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
-      val preHigh: Node[K, V] | Null = new Node(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
+      val preLow: Node[K, V] = new Node(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
+      val preHigh: Node[K, V] = new Node(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
       // Split buckets until the new length has been reached. This could be done more
       // efficiently when growing an already filled table to more than double the size.
       while(oldlen < newlen) {
@@ -393,27 +393,27 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
         while (i < oldlen) {
           val old = table(i)
           if(old ne null) {
-            preLow.nn.next = null
-            preHigh.nn.next = null
-            var lastLow: Node[K, V] | Null = preLow
-            var lastHigh: Node[K, V] | Null = preHigh
+            preLow.next = null
+            preHigh.next = null
+            var lastLow: Node[K, V] = preLow
+            var lastHigh: Node[K, V] = preHigh
             var n: Node[K, V] | Null = old
             while(n ne null) {
               val next = n.next
               if((n.hash & oldlen) == 0) { // keep low
-                lastLow.nn.next = n
+                lastLow.next = n
                 lastLow = n
               } else { // move to high
-                lastHigh.nn.next = n
+                lastHigh.next = n
                 lastHigh = n
               }
               n = next
             }
-            lastLow.nn.next = null
-            if(old ne preLow.nn.next) table(i) = preLow.nn.next
-            if(preHigh.nn.next ne null) {
-              table(i + oldlen) = preHigh.nn.next
-              lastHigh.nn.next = null
+            lastLow.next = null
+            if(old ne preLow.next) table(i) = preLow.next
+            if(preHigh.next ne null) {
+              table(i + oldlen) = preHigh.next
+              lastHigh.next = null
             }
           }
           i += 1
@@ -626,7 +626,7 @@ object HashMap extends MapFactory[HashMap] {
     def newBuilder: Builder[(K, V), HashMap[K, V]] = HashMap.newBuilder(tableLength, loadFactor)
   }
 
-  private[collection] final class Node[K, V](_key: K, _hash: Int, private[this] var _value: V, private[this] var _next: Node[K, V] | Null) {
+  private[collection] final class Node[K, V](_key: K, _hash: Int, private[this] var _value: V, @annotation.stableNull private[this] var _next: Node[K, V] | Null) {
     def key: K = _key
     def hash: Int = _hash
     def value: V = _value
@@ -638,18 +638,18 @@ object HashMap extends MapFactory[HashMap] {
     def findNode(k: K, h: Int): Node[K, V] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
-      else _next.nn.findNode(k, h)
+      else _next.findNode(k, h)
 
     @tailrec
     def foreach[U](f: ((K, V)) => U): Unit = {
       f((_key, _value))
-      if(_next ne null) _next.nn.foreach(f)
+      if(_next ne null) _next.foreach(f)
     }
 
     @tailrec
     def foreachEntry[U](f: (K, V) => U): Unit = {
       f(_key, _value)
-      if(_next ne null) _next.nn.foreachEntry(f)
+      if(_next ne null) _next.foreachEntry(f)
     }
 
     override def toString = s"Node($key, $value, $hash) -> $next"
