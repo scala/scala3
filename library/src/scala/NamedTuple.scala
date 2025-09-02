@@ -1,6 +1,7 @@
 package scala
 import compiletime.ops.boolean.*
 import compiletime.summonAll
+import collection.immutable.ListMap
 
 import language.experimental.captureChecking
 
@@ -31,7 +32,7 @@ object NamedTuple:
   import NamedTupleDecomposition.{Names, DropNames}
   export NamedTupleDecomposition.{
     Names, DropNames,
-    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray, toMap
+    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray, toListMap
   }
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
@@ -210,12 +211,12 @@ object NamedTupleDecomposition:
     /** An immutable array consisting of all element values */
     inline def toIArray: IArray[Object] = x.toTuple.toIArray
 
-    /** An immutable map consisting of all element values.
+    /** An immutable map consisting of all element values preserving an order of fields.
      *  Keys are the names of the elements.
      */
-    inline def toMap: collection.immutable.Map[String, Tuple.Union[V]] =
+    inline def toListMap: ListMap[String, Tuple.Union[V]] =
       inline compiletime.constValueTuple[N].toList match
-        case names: List[String] => names.lazyZip(x.toList).toMap
+        case names: List[String] => ListMap.from(names.zip(x.toList))
   end extension
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
