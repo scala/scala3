@@ -2216,7 +2216,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var alreadyStripped = false
     val cases1 = tree.cases.zip(pt.cases)
       .map { case (cas, tpe) =>
-        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
+        given Context = caseCtx
+        val case1 = typedCase(cas, sel, wideSelType, tpe)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
         if !alreadyStripped && Nullables.matchesNull(case1) then
           wideSelType = wideSelType.stripNull()
@@ -2248,7 +2249,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var wideSelType = wideSelType0
     var alreadyStripped = false
     cases.mapconserve { cas =>
-      val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
+      given Context = caseCtx
+      val case1 = typedCase(cas, sel, wideSelType, pt)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       if !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull()
