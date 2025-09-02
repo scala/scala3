@@ -344,7 +344,9 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, "warning! " + msg, out)
   }
 
+  @annotation.stableNull
   private[this] var resetFunction: (() => Source) | Null = null
+  @annotation.stableNull
   private[this] var closeFunction: (() => Unit) | Null = null
   private[this] var positioner: Positioner = RelaxedPositioner
 
@@ -372,11 +374,11 @@ abstract class Source extends Iterator[Char] with Closeable {
 
   /** The close() method closes the underlying resource. */
   def close(): Unit = {
-    if (closeFunction != null) closeFunction.nn()
+    if (closeFunction != null) closeFunction()
   }
 
   /** The reset() method creates a fresh copy of this Source. */
   def reset(): Source =
-    if (resetFunction != null) resetFunction.nn()
+    if (resetFunction != null) resetFunction()
     else throw new UnsupportedOperationException("Source's reset() method was not set.")
 }
