@@ -392,9 +392,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           case _ if tpd.exprPurity(tree) >= TreeInfo.Idempotent =>
             tree
           case _ =>
-            val vdef = SyntheticValDef(TempResultName.fresh(), tree)
+            val vdef = SyntheticValDef(TempResultName.fresh(), tree).withSpan(tree.span)
             lifted += vdef
-            Ident(vdef.namedType)
+            Ident(vdef.namedType).withSpan(tree.span)
         val pureTrees = trees.mapConserve(liftIfImpure)
         Block(lifted.toList, within(pureTrees))
       else within(trees)
