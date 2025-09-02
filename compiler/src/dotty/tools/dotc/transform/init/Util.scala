@@ -62,6 +62,10 @@ object Util:
       case ref: RefTree if ref.symbol.is(Flags.Method) =>
         Some((ref, Nil))
 
+      case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
+        // for polymorphic method with no `apply` symbol; see tests/init/pos/interleaving-overload.scala
+        Some((ref, Nil))
+
       case _ => None
 
   object NewExpr:
