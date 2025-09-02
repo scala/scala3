@@ -1,5 +1,6 @@
 //> using options -source future
 import scala.compiletime.asMatchable
+import scala.collection.immutable.ListMap
 
 type City = (name: String, zip: Int, pop: Int)
 type Raw = (String, Int, Int)
@@ -86,6 +87,6 @@ type Labels = (x: String, y: String)
   val _: Array[Object] = cityArr
   assert(cityArr.sameElements(Array("Lausanne", 1000, 140000)))
 
-  val cityMap = city.toMap
-  val _: Map[String, String | Int] = cityMap
-  assert(cityMap == Map("name" -> "Lausanne", "zip" -> 1000, "pop" -> 140000))
+  val cityMap = city.toListMap
+  val _: ListMap[String, String | Int] = cityMap
+  assert(cityMap == ListMap("name" -> "Lausanne", "zip" -> 1000, "pop" -> 140000))
