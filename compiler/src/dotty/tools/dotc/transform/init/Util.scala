@@ -59,7 +59,7 @@ object Util:
       case TypeApply(fn, targs) =>
         unapply(fn)
 
-      case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
+      case ref: RefTree if ref.symbol.is(Flags.Method) =>
         Some((ref, Nil))
 
       case _ => None
