@@ -1360,7 +1360,7 @@ class Objects(using Context @constructorOnly):
           case env: Env.EnvRef => Env.ofByName(sym, thisV, Env.EnvSet(Set(env)))
         }
         given Scope = byNameEnv
-        eval(code, thisV, klass)
+        eval(code, thisV, klass, cacheResult = true)
       case UnknownValue =>
         reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
       case Bottom => Bottom
