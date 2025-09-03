@@ -380,6 +380,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ =>
           tpt
 
+    /** If one of `trees` is a spread of an expression that is not idempotent, lift out all
+     *  non-idempotent expressions (not just the spreads) and apply `within` to the resulting
+     *  pure references. Otherwise apply `within` to the original trees.
+     */
     private def evalSpreadsOnce(trees: List[Tree])(within: List[Tree] => Tree)(using Context): Tree =
       if trees.exists:
         case spread(elem) => !(exprPurity(elem) >= TreeInfo.Idempotent)
