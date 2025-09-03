@@ -17,14 +17,12 @@ import scala.language.`2.13`
 import scala.collection.immutable
 import scala.math.ScalaNumericAnyConversions
 import immutable.NumericRange
-import Proxy.Typed
-import scala.annotation.nowarn
 
 /** Base classes for the Rich* wrappers of the primitive types.
  *  As with all classes in scala.runtime.*, this is not a supported API.
  */
-@nowarn("cat=deprecation")
-trait ScalaNumberProxy[T] extends Any with ScalaNumericAnyConversions with Typed[T] with OrderedProxy[T] {
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+trait ScalaNumberProxy[T] extends Any with ScalaNumericAnyConversions with Proxy.Typed[T] with OrderedProxy[T] {
   protected implicit def num: Numeric[T]
 
   def doubleValue = num.toDouble(self)
@@ -50,10 +48,14 @@ trait ScalaNumberProxy[T] extends Any with ScalaNumericAnyConversions with Typed
   /** Returns the signum of `'''this'''`. */
   @deprecated("use `sign` method instead", since = "2.13.0") def signum: Int = num.signum(self)
 }
+
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
 trait ScalaWholeNumberProxy[T] extends Any with ScalaNumberProxy[T] {
   @deprecated("isWhole on an integer type is always true", "2.12.15")
   def isWhole = true
 }
+
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
 trait IntegralProxy[T] extends Any with ScalaWholeNumberProxy[T] with RangedProxy[T] {
   protected implicit def num: Integral[T]
   type ResultWithoutStep = NumericRange[T]
@@ -63,21 +65,23 @@ trait IntegralProxy[T] extends Any with ScalaWholeNumberProxy[T] with RangedProx
   def to(end: T): NumericRange.Inclusive[T]             = NumericRange.inclusive(self, end, num.one)
   def to(end: T, step: T): NumericRange.Inclusive[T]    = NumericRange.inclusive(self, end, step)
 }
+
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
 trait FractionalProxy[T] extends Any with ScalaNumberProxy[T] {
   protected implicit def num: Fractional[T]
 
   def isWhole = false
 }
 
-@nowarn("cat=deprecation")
-trait OrderedProxy[T] extends Any with Ordered[T] with Typed[T] {
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+trait OrderedProxy[T] extends Any with Ordered[T] with Proxy.Typed[T] {
   protected def ord: Ordering[T]
 
   def compare(y: T) = ord.compare(self, y)
 }
 
-@nowarn("cat=deprecation")
-trait RangedProxy[T] extends Any with Typed[T] {
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+trait RangedProxy[T] extends Any with Proxy.Typed[T] {
   type ResultWithoutStep
 
   def until(end: T): ResultWithoutStep
@@ -85,4 +89,3 @@ trait RangedProxy[T] extends Any with Typed[T] {
   def to(end: T): ResultWithoutStep
   def to(end: T, step: T): immutable.IndexedSeq[T]
 }
-
