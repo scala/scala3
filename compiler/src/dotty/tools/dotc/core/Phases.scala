@@ -305,6 +305,8 @@ object Phases {
     }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterInlining(phase: Phase): Boolean =
+      inliningPhase != NoPhase && phase.id > inliningPhase.id
     final def isTyper(phase: Phase): Boolean = phase.id == typerPhase.id
   }
 

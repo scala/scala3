@@ -367,6 +367,7 @@ object Contexts {
 
     /** Is current phase after TyperPhase? */
     final def isAfterTyper = base.isAfterTyper(phase)
+    final def isAfterInlining = base.isAfterInlining(phase)
     final def isTyper = base.isTyper(phase)
 
     /** Is this a context for the members of a class definition? */
