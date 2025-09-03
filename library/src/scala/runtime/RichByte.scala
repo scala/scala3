@@ -15,6 +15,7 @@ package runtime
 
 import scala.language.`2.13`
 
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
 final class RichByte(val self: Byte) extends AnyVal with ScalaWholeNumberProxy[Byte] {
   protected def num: scala.math.Numeric.ByteIsIntegral.type = scala.math.Numeric.ByteIsIntegral
   protected def ord: scala.math.Ordering.Byte.type = scala.math.Ordering.Byte

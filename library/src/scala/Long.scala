@@ -18,6 +18,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Long`, a 64-bit signed integer (equivalent to Java's `long` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Long` are not
  *  represented by an object in the underlying runtime system.
@@ -481,5 +483,100 @@ object Long extends AnyValCompanion {
   implicit def long2float(x: Long): Float = x.toFloat
   @deprecated("Implicit conversion from Long to Double is dangerous because it loses precision. Write `.toDouble` instead.", "2.13.1")
   implicit def long2double(x: Long): Double = x.toDouble
-}
 
+  extension (self: Long) {
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `Long`.
+      */
+    @deprecated("isWhole on Long is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self.toChar.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toShort.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidInt: Boolean = self.toInt.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Long]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidLong on Long is always true", "3.8.0")
+    def isValidLong: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    def abs: Long = java.lang.Math.abs(self)
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Long): Long = java.lang.Math.max(self, that)
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Long): Long = java.lang.Math.min(self, that)
+
+    /** Returns the sign of `this`.
+      *
+      * `0` if `this == 0`, `-1` if `this < 0` and `1` if `this > 0`.
+      */
+    def sign: Long = java.lang.Long.signum(self)
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign.toInt
+
+    /** There is no reason to round an `Int`, but this method is provided to avoid accidental loss of precision from a detour through `Double`. */
+    @deprecated("this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?", "2.11.0")
+    def round: Long = self
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Long): Int = java.lang.Long.compare(self, that)
+
+    def toBinaryString: String = java.lang.Long.toBinaryString(self)
+    def toHexString: String    = java.lang.Long.toHexString(self)
+    def toOctalString: String  = java.lang.Long.toOctalString(self)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Long): NumericRange.Exclusive[Long] = NumericRange(self, end, 1L)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Long, step: Long): NumericRange.Exclusive[Long] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Long): NumericRange.Inclusive[Long] = NumericRange.inclusive(self, end, 1L)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Long, step: Long): NumericRange.Inclusive[Long] = NumericRange.inclusive(self, end, step)
+  }
+}
