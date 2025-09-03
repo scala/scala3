@@ -15,6 +15,7 @@ package runtime
 
 import scala.language.`2.13`
 
+@deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
 final class RichShort(val self: Short) extends AnyVal with ScalaWholeNumberProxy[Short] {
   protected def num: scala.math.Numeric.ShortIsIntegral.type = scala.math.Numeric.ShortIsIntegral
   protected def ord: scala.math.Ordering.Short.type = scala.math.Ordering.Short

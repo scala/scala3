@@ -286,12 +286,12 @@ object Predef extends LowPriorityImplicits {
      to be available at runtime.
      To achieve this, we keep the Scala 3 signature publicly available.
      We rely on the fact that it is `inline` and will not be visible in the bytecode.
-     To add the required Scala 2 ones, we define the `scala2Assert`, we use: 
-      - `@targetName` to swap the name in the generated code to `assert` 
+     To add the required Scala 2 ones, we define the `scala2Assert`, we use:
+      - `@targetName` to swap the name in the generated code to `assert`
       - `@publicInBinary` to make it available during runtime.
      As such, we would successfully hijack the definitions of `assert` such as:
       - At compile time, we would have the definitions of `assert`
-      - At runtime, the definitions of `scala2Assert` as `assert`  
+      - At runtime, the definitions of `scala2Assert` as `assert`
     NOTE: Tasty-Reader in Scala 2 will have to learn about this swapping if we are to
     allow loading the full Scala 3 library by it.
     */
@@ -426,7 +426,7 @@ object Predef extends LowPriorityImplicits {
     @inline def formatted(fmtstr: String): String = fmtstr format self
   }
 
-  /** Injects String concatenation operator `+` to any classes. 
+  /** Injects String concatenation operator `+` to any classes.
    * @group implicit-classes-any
    */
   @(deprecated @companionMethod)("Implicit injection of + is deprecated. Convert to String to call +", "2.13.0")
@@ -638,24 +638,23 @@ object Predef extends LowPriorityImplicits {
 private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2 {
   import mutable.ArraySeq
 
-  /** We prefer the java.lang.* boxed types to these wrappers in
-   *  any potential conflicts.  Conflicts do exist because the wrappers
-   *  need to implement ScalaNumber in order to have a symmetric equals
-   *  method, but that implies implementing java.lang.Number as well.
-   *
-   *  Note - these are inlined because they are value classes, but
-   *  the call to xxxWrapper is not eliminated even though it does nothing.
-   *  Even inlined, every call site does a no-op retrieval of Predef's MODULE$
-   *  because maybe loading Predef has side effects!
-   */
-  @inline implicit def byteWrapper(x: Byte): runtime.RichByte          = new runtime.RichByte(x)
-  @inline implicit def shortWrapper(x: Short): runtime.RichShort       = new runtime.RichShort(x)
-  @inline implicit def intWrapper(x: Int): runtime.RichInt             = new runtime.RichInt(x)
-  @inline implicit def charWrapper(c: Char): runtime.RichChar          = new runtime.RichChar(c)
-  @inline implicit def longWrapper(x: Long): runtime.RichLong          = new runtime.RichLong(x)
-  @inline implicit def floatWrapper(x: Float): runtime.RichFloat       = new runtime.RichFloat(x)
-  @inline implicit def doubleWrapper(x: Double): runtime.RichDouble    = new runtime.RichDouble(x)
-  @inline implicit def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
+  // Deprecated conversions to runtime.Rich* classes; these methods used to be `implicit`
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def byteWrapper(x: Byte): runtime.RichByte          = new runtime.RichByte(x)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def shortWrapper(x: Short): runtime.RichShort       = new runtime.RichShort(x)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def intWrapper(x: Int): runtime.RichInt             = new runtime.RichInt(x)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def charWrapper(c: Char): runtime.RichChar          = new runtime.RichChar(c)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def longWrapper(x: Long): runtime.RichLong          = new runtime.RichLong(x)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def floatWrapper(x: Float): runtime.RichFloat       = new runtime.RichFloat(x)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def doubleWrapper(x: Double): runtime.RichDouble    = new runtime.RichDouble(x)
+  @deprecated("use the extension methods available on primitive types instead", since = "3.8.0")
+  @inline def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
   /** @group conversions-array-to-wrapped-array */
   implicit def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
