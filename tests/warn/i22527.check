@@ -1,0 +1,22 @@
+-- Warning: tests/warn/i22527.scala:60:10 ------------------------------------------------------------------------------
+60 |          y, // warn
+   |          ^
+   |          Line is indented too far to the left, or a ')' is missing
+-- Warning: tests/warn/i22527.scala:61:10 ------------------------------------------------------------------------------
+61 |          z, // warn
+   |          ^
+   |          Line is indented too far to the left, or a ')' is missing
+-- Warning: tests/warn/i22527.scala:72:2 -------------------------------------------------------------------------------
+72 |  42 // warn
+   |  ^
+   |  Line is indented too far to the left, or a ')' is missing
+-- Warning: tests/warn/i22527.scala:79:0 -------------------------------------------------------------------------------
+79 |k: // warn
+   |^
+   |Line is indented too far to the left, or a ')' is missing
+-- [E190] Potential Issue Warning: tests/warn/i22527.scala:40:6 --------------------------------------------------------
+40 |      true, "fail") // warn value discard
+   |      ^^^^
+   |      Discarded non-Unit value of type Boolean. Add `: Unit` to discard silently.
+   |
+   | longer explanation available when compiling with `-explain`
