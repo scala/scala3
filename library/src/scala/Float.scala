@@ -256,5 +256,103 @@ object Float extends AnyValCompanion {
   /** Language mandated coercions from Float to "wider" types. */
   import scala.language.implicitConversions
   implicit def float2double(x: Float): Double = x.toDouble
-}
 
+  extension (self: Float) {
+    /** Returns `'''true'''` if this number is finite and has no decimal component. */
+    def isWhole: Boolean = {
+      val i = self.toInt
+      i.toFloat == self || i == Int.MaxValue && self < Float.PositiveInfinity || i == Int.MinValue && self > Float.NegativeInfinity
+    }
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self.toChar.toFloat == self
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toFloat == self
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toShort.toFloat == self
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidInt: Boolean = self.toInt.toDouble == self.toDouble
+
+    /** Returns `true` iff `this` is a `NaN` value. */
+    def isNaN: Boolean = java.lang.Float.isNaN(self)
+
+    /** Returns `true` iff `this` is `PositiveInfinity` or `NegativeInfinity`. */
+    def isInfinity: Boolean = java.lang.Float.isInfinite(self)
+
+    /** Returns `true` iff `this` is a finite value, i.e., not an infinity nor `NaN`. */
+    def isFinite: Boolean = java.lang.Float.isFinite(self)
+
+    /** Returns `true` iff `this` is `PositiveInfinity`. */
+    def isPosInfinity: Boolean = Float.PositiveInfinity == self
+
+    /** Returns `true` iff `this` is `NegativeInfinity`. */
+    def isNegInfinity: Boolean = Float.NegativeInfinity == self
+
+    /** Returns the absolute value of `this`. */
+    def abs: Float = java.lang.Math.abs(self)
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Float): Float = java.lang.Math.max(self, that)
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Float): Float = java.lang.Math.min(self, that)
+
+    /** Returns the sign of `this`.
+      *
+      * - `1.0f` if `this > 0.0f`;
+      * - `-1.0f` if `this < 0.0f`;
+      * - `this` otherwise (for zeros and `NaN`).
+      */
+    def sign: Float = java.lang.Math.signum(self)
+
+    /** Returns the signum of `this`. */
+    @deprecated("signum does not handle -0.0f or Double.NaN; use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign.toInt
+
+    /** Returns the closest `Int` to `this`. */
+    def round: Int = java.lang.Math.round(self)
+
+    /** Returns the smallest integer greater or equal to `this`. */
+    def ceil: Float = java.lang.Math.ceil(self.toDouble).toFloat
+
+    /** Returns the largest integer smaller or equal to `this`. */
+    def floor: Float = java.lang.Math.floor(self.toDouble).toFloat
+
+    /** Converts an angle measured in degrees to an approximately equivalent
+     *  angle measured in radians.
+     *
+     *  @return the measurement of the angle x in radians.
+     */
+    def toRadians: Float = java.lang.Math.toRadians(self.toDouble).toFloat
+
+    /** Converts an angle measured in radians to an approximately equivalent
+     *  angle measured in degrees.
+     *  @return the measurement of the angle x in degrees.
+     */
+    def toDegrees: Float = java.lang.Math.toDegrees(self.toDouble).toFloat
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      *
+      * Special cases for this method:
+      * - `0.0` is considered greater than `-0.0`
+      * - `NaN` is considered greater than all other values, but equal to itself
+      */
+    def compare(that: Float): Int = java.lang.Float.compare(self, that)
+  }
+}

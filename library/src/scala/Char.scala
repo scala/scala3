@@ -18,6 +18,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Char`, a 16-bit unsigned integer (equivalent to Java's `char` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Char` are not
  *  represented by an object in the underlying runtime system.
@@ -484,5 +486,154 @@ object Char extends AnyValCompanion {
   implicit def char2long(x: Char): Long = x.toLong
   implicit def char2float(x: Char): Float = x.toFloat
   implicit def char2double(x: Char): Double = x.toDouble
-}
 
+  extension (self: Char) {
+
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `RichInt`.
+      */
+    @deprecated("isWhole on Char is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidChar on Char is always true", "3.8.0")
+    def isValidChar: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toInt <= Byte.MaxValue.toInt
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toInt <= Short.MaxValue.toInt
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidInt on Char is always true", "3.8.0")
+    def isValidInt: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    @deprecated("Char's are never negative; abs is redundant and can be removed", since = "3.8.0")
+    def abs: Char = self
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Char): Char = java.lang.Math.max(self.toInt, that.toInt).toChar
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Char): Char = java.lang.Math.min(self.toInt, that.toInt).toChar
+
+    /** Returns the sign of `this`.
+      *
+      * zero if the argument is zero, -zero if the argument is -zero,
+      * one if the argument is greater than zero, -one if the argument is less than zero,
+      * and NaN if the argument is NaN where applicable.
+      */
+    @deprecated("since Char's are never negative, compare to '\\u0000' instead", since = "3.8.0")
+    def sign: Char = java.lang.Integer.signum(self.toInt).toChar
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Char): Int = java.lang.Character.compare(self, that)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Char): NumericRange.Exclusive[Char] = NumericRange(self, end, '\u0001')
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Char, step: Char): NumericRange.Exclusive[Char] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Char): NumericRange.Inclusive[Char] = NumericRange.inclusive(self, end, '\u0001')
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Char, step: Char): NumericRange.Inclusive[Char] = NumericRange.inclusive(self, end, step)
+
+    // ------------------------------------
+    // For source compatibility with the previous API, when the rhs is an Int, we want an int Range
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Int): Range = Range(self.toInt, end, 1)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Int, step: Int): Range = Range(self.toInt, end, step)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Int): Range.Inclusive = Range.inclusive(self.toInt, end, 1)
+
+    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self.toInt, end, step)
+
+    // ------------------------------------
+    // Unicode properties
+
+    def asDigit: Int                      = Character.digit(self, Character.MAX_RADIX)
+
+    def isControl: Boolean                = Character.isISOControl(self)
+    def isDigit: Boolean                  = Character.isDigit(self)
+    def isLetter: Boolean                 = Character.isLetter(self)
+    def isLetterOrDigit: Boolean          = Character.isLetterOrDigit(self)
+    def isWhitespace: Boolean             = Character.isWhitespace(self)
+    def isSpaceChar: Boolean              = Character.isSpaceChar(self)
+    def isHighSurrogate: Boolean          = Character.isHighSurrogate(self)
+    def isLowSurrogate: Boolean           = Character.isLowSurrogate(self)
+    def isSurrogate: Boolean              = isHighSurrogate || isLowSurrogate
+    def isUnicodeIdentifierStart: Boolean = Character.isUnicodeIdentifierStart(self)
+    def isUnicodeIdentifierPart: Boolean  = Character.isUnicodeIdentifierPart(self)
+    def isIdentifierIgnorable: Boolean    = Character.isIdentifierIgnorable(self)
+    def isMirrored: Boolean               = Character.isMirrored(self)
+
+    def isLower: Boolean                  = Character.isLowerCase(self)
+    def isUpper: Boolean                  = Character.isUpperCase(self)
+    def isTitleCase: Boolean              = Character.isTitleCase(self)
+
+    def toLower: Char                     = Character.toLowerCase(self)
+    def toUpper: Char                     = Character.toUpperCase(self)
+    def toTitleCase: Char                 = Character.toTitleCase(self)
+
+    def getType: Int                      = Character.getType(self)
+    def getNumericValue: Int              = Character.getNumericValue(self)
+    def getDirectionality: Byte           = Character.getDirectionality(self)
+    def reverseBytes: Char                = Character.reverseBytes(self)
+  }
+}
