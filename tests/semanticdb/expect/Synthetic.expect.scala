@@ -17,9 +17,9 @@ class Synthetic/*<-example::Synthetic#*/ {
 
   val lst/*<-example::Synthetic#lst.*/ = 1 #:: 2 #:: LazyList/*->scala::package.LazyList.*/.empty/*->scala::collection::immutable::LazyList.empty().*/
 
-  for (x/*<-local0*/ <- 1 to/*->scala::runtime::RichInt#to().*/ 10; y/*<-local1*/ <- 0 until/*->scala::runtime::RichInt#until().*/ 10) println/*->scala::Predef.println(+1).*/(x/*->local0*/ ->/*->scala::Predef.ArrowAssoc#`->`().*/ x/*->local0*/)
-  for (i/*<-local2*/ <- 1 to/*->scala::runtime::RichInt#to().*/ 10; j/*<-local3*/ <- 0 until/*->scala::runtime::RichInt#until().*/ 10) yield (i/*->local2*/, j/*->local3*/)
-  for (i/*<-local4*/ <- 1 to/*->scala::runtime::RichInt#to().*/ 10; j/*<-local5*/ <- 0 until/*->scala::runtime::RichInt#until().*/ 10 if i/*->local4*/ %/*->scala::Int#`%`(+3).*/ 2 ==/*->scala::Int#`==`(+3).*/ 0) yield (i/*->local4*/, j/*->local5*/)
+  for (x/*<-local0*/ <- 1 to/*->scala::Int.to().*/ 10; y/*<-local1*/ <- 0 until/*->scala::Int.until().*/ 10) println/*->scala::Predef.println(+1).*/(x/*->local0*/ ->/*->scala::Predef.ArrowAssoc#`->`().*/ x/*->local0*/)
+  for (i/*<-local2*/ <- 1 to/*->scala::Int.to().*/ 10; j/*<-local3*/ <- 0 until/*->scala::Int.until().*/ 10) yield (i/*->local2*/, j/*->local3*/)
+  for (i/*<-local4*/ <- 1 to/*->scala::Int.to().*/ 10; j/*<-local5*/ <- 0 until/*->scala::Int.until().*/ 10 if i/*->local4*/ %/*->scala::Int#`%`(+3).*/ 2 ==/*->scala::Int#`==`(+3).*/ 0) yield (i/*->local4*/, j/*->local5*/)
 
   object s/*<-example::Synthetic#s.*/ {
     def apply/*<-example::Synthetic#s.apply().*/() = 2
