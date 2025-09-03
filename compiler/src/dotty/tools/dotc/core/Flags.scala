@@ -404,8 +404,8 @@ object Flags {
    *  an existentially bound symbol (Scala 2.x only) */
   val (Scala2SpecialFlags @ _, Scala2SuperAccessor @ _, Scala2Existential @ _) = newFlags(55, "<existential>")
 
-  /** Children were queried on this class */
-  val (_, _, ChildrenQueried @ _) = newFlags(56, "<children-queried>")
+  /** A class parameter that is not a `val` / Children were queried on this class */
+  val (_, NotAField @ _, ChildrenQueried @ _) = newFlags(56, "<not-a-field>", "<children-queried>")
 
   /** A module variable (Scala 2.x only) / a capture-checked class
    *  (Scala2ModuleVar is re-used as a flag for private parameter accessors in Recheck)

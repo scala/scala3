@@ -3679,7 +3679,7 @@ object Parsers {
               if (!(mods.flags &~ (ParamAccessor | Inline | Erased | impliedMods.flags)).isEmpty)
                 syntaxError(em"`val` or `var` expected")
               if firstClause && paramOwner == ParamOwner.CaseClass then mods
-              else mods | PrivateLocal
+              else mods | PrivateLocal | NotAField
         else {
           if (isIdent(nme.inline) && in.isSoftModifierInParamModifierPosition)
             mods = addModifier(mods)

@@ -626,7 +626,7 @@ classes/C6#`<init>`().(x) => param x: Int
 classes/C6#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 classes/C6#copy(). => method copy (param x: Int): C6
 classes/C6#copy().(x) => param x: Int
-classes/C6#x. => private val method x Int
+classes/C6#x. => private[this] val method x Int
 classes/C6. => final object C6 extends Object { self: C6.type => +4 decls }
 classes/C6.apply(). => method apply (param x: Int): C6
 classes/C6.apply().(x) => param x: Int
@@ -1957,7 +1957,7 @@ example/ImplicitConversion.newAny2stringadd#`+`(). => method + (param other: Str
 example/ImplicitConversion.newAny2stringadd#`+`().(other) => param other: String
 example/ImplicitConversion.newAny2stringadd#`<init>`(). => primary ctor <init> [typeparam A ](param self: A): newAny2stringadd[A]
 example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self: A
-example/ImplicitConversion.newAny2stringadd#self. => private val method self A
+example/ImplicitConversion.newAny2stringadd#self. => private[this] val method self A
 example/ImplicitConversion.newAny2stringadd(). => final implicit method newAny2stringadd [typeparam A ](param self: A): newAny2stringadd[A]
 example/ImplicitConversion.newAny2stringadd().(self) => param self: A
 example/ImplicitConversion.newAny2stringadd().[A] => typeparam A 

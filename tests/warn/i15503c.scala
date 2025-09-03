@@ -36,7 +36,7 @@ package foo.test.constructors:
   case class A private (x: Int) // OK
   class B private (val x: Int) // OK
   object B { def default = B(42) }
-  class C private (private val xy: Int) // warn
+  class C private (private val xy: Int)
   object C { def default = C(42) }
   class D private (private val x: Int): // OK
     def y = x
