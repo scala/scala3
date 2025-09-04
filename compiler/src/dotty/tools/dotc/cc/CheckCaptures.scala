@@ -1019,9 +1019,20 @@ class CheckCaptures extends Recheck, SymTransformer:
           // function is compiled since we do not propagate expected types into blocks.
           interpolateIfInferred(tree.tpt, sym)
 
+        def declaredCaptures = tree.tpt.nuType.captureSet
         if runInConstructor && savedEnv.owner.isClass then
           curEnv = savedEnv
-          markFree(tree.tpt.nuType.captureSet, tree, addUseInfo = false)
+          markFree(declaredCaptures, tree, addUseInfo = false)
+
+        if sym.owner.isStaticOwner && !declaredCaptures.elems.isEmpty then
+          def where =
+            if sym.effectiveOwner.is(Package) then "top-level definition"
+            else i"member of static ${sym.owner}"
+          report.warning(
+            em"""$sym has a non-empty capture set but will not be added as
+                |a capability to computed capture sets since it is globally accessible
+                |as a $where. Global values cannot be capabilities.""",
+            tree.namePos)
     end recheckValDef
 
     /** Recheck method definitions:

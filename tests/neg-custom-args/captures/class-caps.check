@@ -20,3 +20,9 @@
 30 |    a + b
    |
    | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg-custom-args/captures/class-caps.scala:35:6 -------------------------------------------------------
+35 |  val console: Console^ = Console() // provide capability locally
+   |      ^^^^^^^
+   |      value console has a non-empty capture set but will not be added as
+   |      a capability to computed capture sets since it is globally accessible
+   |      as a member of static object Test2. Global values cannot be capabilities.
