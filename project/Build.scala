@@ -2141,6 +2141,8 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Specify the default entry point of the compiler
+      Compile / mainClass := Some("dotty.tools.dotc.Main"),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -2264,6 +2266,8 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // Specify the default entry point of the compiler
+      Compile / mainClass := Some("dotty.tools.dotc.Main"),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
