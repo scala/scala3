@@ -464,7 +464,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  environments. At each stage, only include references from `cs` that are outside
      *  the environment's owner
      */
-    def markFree(cs: CaptureSet, tree: Tree)(using Context): Unit =
+    def markFree(cs: CaptureSet, tree: Tree, addUseInfo: Boolean = true)(using Context): Unit =
       // A captured reference with the symbol `sym` is visible from the environment
       // if `sym` is not defined inside the owner of the environment.
       inline def isVisibleFromEnv(sym: Symbol, env: Env) =
@@ -546,7 +546,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       if !cs.isAlwaysEmpty then
         recur(cs, curEnv, null)
-        useInfos += ((tree, cs, curEnv))
+        if addUseInfo then useInfos += ((tree, cs, curEnv))
     end markFree
 
     /** If capability `c` refers to a parameter that is not implicitly or explicitly
@@ -988,6 +988,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Interpolate contravariant capture set variables in result type.
      */
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
+      val savedEnv = curEnv
+      val runInConstructor = !sym.isOneOf(Param | ParamAccessor | Lazy | NonMember)
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
         else
@@ -1006,6 +1008,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                 ""
             disallowBadRootsIn(
               tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
+          if runInConstructor then
+            pushConstructorEnv()
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
@@ -1014,6 +1018,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           // expect to have all necessary info available at the point where the anonymous
           // function is compiled since we do not propagate expected types into blocks.
           interpolateIfInferred(tree.tpt, sym)
+
+        if runInConstructor && savedEnv.owner.isClass then
+          curEnv = savedEnv
+          markFree(tree.tpt.nuType.captureSet, tree, addUseInfo = false)
+    end recheckValDef
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,
@@ -1240,6 +1249,24 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally curEnv = curEnv.outer
       recheckFinish(result, arg, pt)
     */
+
+    /** If environment is owned by a class, run in a new environment owned by
+     *  its primary constructor instead.
+     */
+    def pushConstructorEnv()(using Context): Unit =
+      if curEnv.owner.isClass then
+        val constr = curEnv.owner.primaryConstructor
+        if constr.exists then
+          val constrSet = capturedVars(constr)
+          if capturedVars(constr) ne CaptureSet.empty then
+            curEnv = Env(constr, EnvKind.Regular, constrSet, curEnv)
+
+    override def recheckStat(stat: Tree)(using Context): Unit =
+      val saved = curEnv
+      if !stat.isInstanceOf[MemberDef] then
+        pushConstructorEnv()
+      try recheck(stat)
+      finally curEnv = saved
 
     /** The main recheck method does some box adapation for all nodes:
      *   - If expected type `pt` is boxed and the tree is a lambda or a reference,

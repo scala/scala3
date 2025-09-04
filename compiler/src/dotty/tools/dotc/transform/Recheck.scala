@@ -493,12 +493,15 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckStats(tree.stats)
       NoType
 
+    def recheckStat(stat: Tree)(using Context): Unit =
+      recheck(stat)
+
     def recheckStats(stats: List[Tree])(using Context): Unit =
       @tailrec def traverse(stats: List[Tree])(using Context): Unit = stats match
         case (imp: Import) :: rest =>
           traverse(rest)(using ctx.importContext(imp, imp.symbol))
         case stat :: rest =>
-          recheck(stat)
+          recheckStat(stat)
           traverse(rest)
         case _ =>
       traverse(stats)
