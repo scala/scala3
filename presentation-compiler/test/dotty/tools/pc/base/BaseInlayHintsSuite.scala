@@ -34,6 +34,7 @@ class BaseInlayHintsSuite extends BasePCSuite {
       inferredTypes = true,
       typeParameters = true,
       implicitParameters = true,
+      hintsXRayMode = true,
       byNameParameters = true,
       implicitConversions = true,
       namedParameters = true,
