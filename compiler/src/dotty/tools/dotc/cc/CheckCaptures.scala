@@ -1024,7 +1024,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           curEnv = savedEnv
           markFree(declaredCaptures, tree, addUseInfo = false)
 
-        if sym.owner.isStaticOwner && !declaredCaptures.elems.isEmpty then
+        if sym.owner.isStaticOwner && !declaredCaptures.elems.isEmpty && sym != defn.captureRoot then
           def where =
             if sym.effectiveOwner.is(Package) then "top-level definition"
             else i"member of static ${sym.owner}"
