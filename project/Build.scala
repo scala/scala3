@@ -2118,21 +2118,22 @@ object Build {
       moduleName    := "scala3-compiler",
       version       := dottyNonBootstrappedVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
-      // Add the source directories for the stdlib (non-boostrapped)
+      // Add the source directories for the compiler (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         "org.scala-lang.modules" % "scala-asm" % "9.8.0-scala-1",
         Dependencies.compilerInterface,
         "org.jline" % "jline-reader" % "3.29.0",
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0",
-        //("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
@@ -2178,21 +2179,31 @@ object Build {
       (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val lm = dependencyResolution.value
         val log = streams.value.log
-        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / scalaVersion.value
+        val retrieveDir = streams.value.cacheDirectory / "scala3-compiler" / referenceVersion
         val comp = lm.retrieve("org.scala-lang" % "scala3-compiler_3" %
-          scalaVersion.value, scalaModuleInfo = None, retrieveDir, log)
+          referenceVersion, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
         Defaults.makeScalaInstance(
-          scalaVersion.value,
+          referenceVersion,
           Array.empty,
           comp.toSeq,
           Seq.empty,
           state.value,
           scalaInstanceTopLoader.value,
         )},
+      scalaCompilerBridgeBinaryJar := {
+        val lm = dependencyResolution.value
+        val log = streams.value.log
+        val retrieveDir = streams.value.cacheDirectory / "scala3-sbt-bridge" / referenceVersion
+        val comp = lm.retrieve("org.scala-lang" % "scala3-sbt-bridge" %
+          referenceVersion, scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+        Some(comp(0))
+      },
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its
