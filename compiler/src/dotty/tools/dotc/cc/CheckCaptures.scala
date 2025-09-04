@@ -407,12 +407,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1$cs1description are not all",
           cs1, cs2, pos, provenance)
 
-    /** If `sym` is a class or method nested inside a term, a capture set variable representing
-     *  the captured variables of the environment associated with `sym`.
+    /** If `sym` is a method or a non-static inner class, a capture set variable
+     *  representing the captured variables of the environment associated with `sym`.
      */
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm)
+        if sym.isTerm || !sym.owner.isStaticOwner
         then CaptureSet.Var(sym.owner, level = ccState.symLevel(sym))
         else CaptureSet.empty)
 
