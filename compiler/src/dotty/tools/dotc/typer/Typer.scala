@@ -3826,6 +3826,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val ifun = desugar.makeContextualFunction(paramTypes, paramNamesOrNil, tree, erasedParams)
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typedFunctionValue(ifun, pt)
+      .tap:
+        case tree @ Block((m1: DefDef) :: _, _: Closure) if ctx.settings.Whas.wrongArrow =>
+          m1.rhs match
+          case Block((m2: DefDef) :: _, _: Closure) if m1.paramss.lengthCompare(m2.paramss) == 0 =>
+            val p1s = m1.symbol.info.asInstanceOf[MethodType].paramInfos
+            val p2s = m2.symbol.info.asInstanceOf[MethodType].paramInfos
+            if p1s.corresponds(p2s)(_ =:= _) then
+              report.warning(em"Context function adapts a lambda with the same parameter types, possibly ?=> was intended.", tree.srcPos)
+          case _ =>
+        case _ =>
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
