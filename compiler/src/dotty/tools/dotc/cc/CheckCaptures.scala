@@ -466,10 +466,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       // if `sym` is not defined inside the owner of the environment.
       inline def isVisibleFromEnv(sym: Symbol, env: Env) =
         sym.exists && {
+          val effectiveOwner =
+            if env.owner.isConstructor then env.owner.owner
+            else env.owner
           if env.kind == EnvKind.NestedInOwner then
-            !sym.isProperlyContainedIn(env.owner)
+            !sym.isProperlyContainedIn(effectiveOwner)
           else
-            !sym.isContainedIn(env.owner)
+            !sym.isContainedIn(effectiveOwner)
         }
 
       /** Avoid locally defined capability by charging the underlying type
