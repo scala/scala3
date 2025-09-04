@@ -420,12 +420,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
-     *  @param included Whether an environment is included in the range of
-     *                  environments to charge. Once `included` is false, no
-     *                  more environments need to be charged.
      */
-    def nextEnvToCharge(env: Env, included: Env => Boolean)(using Context): Env =
-      if env.owner.isConstructor && included(env.outer) then env.outer.outer
+    def nextEnvToCharge(env: Env)(using Context): Env | Null =
+      if env.owner.isConstructor then env.outer.outer0
       else env.outer
 
     /** A description where this environment comes from */
@@ -535,7 +532,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
-            recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner), env)
+            val nextEnv = nextEnvToCharge(env)
+            if nextEnv != null && !nextEnv.owner.isStaticOwner then
+              recur(included, nextEnv, env)
           	// Under deferredReaches, don't propagate out of methods inside terms.
           	// The use set of these methods will be charged when that method is called.
 
@@ -2021,7 +2020,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           if env.kind == EnvKind.Boxed then env.owner
           else if isOfNestedMethod(env) then env.owner.owner
           else if env.owner.isStaticOwner then NoSymbol
-          else boxedOwner(nextEnvToCharge(env, alwaysTrue))
+          else
+            val nextEnv = nextEnvToCharge(env)
+            if nextEnv == null then NoSymbol else boxedOwner(nextEnv)
 
         def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
