@@ -475,7 +475,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
-    SuperParamAliasOrScala2x, Inline, Macro, PhantomSymbol, Invisible)
+    SuperParamAliasOrScala2x, Inline, Macro, PhantomSymbol, Invisible, NotAField)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
