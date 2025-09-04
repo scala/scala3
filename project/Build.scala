@@ -2113,6 +2113,8 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
+      // Add entry's to the MANIFEST
+      packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -2237,6 +2239,8 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
+      // Add entry's to the MANIFEST
+      packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
