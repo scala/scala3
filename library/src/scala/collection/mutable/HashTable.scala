@@ -211,7 +211,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
 
   /** An iterator returning all entries.
    */
-  def entriesIterator: Iterator[Entry] = new AbstractIterator[Entry] {
+  def entriesIterator: Iterator[Entry]^{this} = new AbstractIterator[Entry] {
     val iterTable = table
     var idx       = lastPopulatedIndex
     var es        = iterTable(idx)
