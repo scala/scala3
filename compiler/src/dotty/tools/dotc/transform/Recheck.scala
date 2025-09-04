@@ -248,6 +248,12 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context): Type =
       recheckSelection(tree, qualType, name, sharpen = identity[Denotation])
 
+    def recheckThis(tree: This, pt: Type)(using Context): Type =
+      tree.tpe
+
+    def recheckSuper(tree: Super, pt: Type)(using Context): Type =
+      tree.tpe
+
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
         recheck(body, pt)
@@ -540,7 +546,9 @@ abstract class Recheck extends Phase, SymTransformer:
       def recheckUnnamed(tree: Tree, pt: Type): Type = tree match
         case tree: Apply => recheckApply(tree, pt)
         case tree: TypeApply => recheckTypeApply(tree, pt)
-        case _: New | _: This | _: Super | _: Literal => tree.tpe
+        case tree: This => recheckThis(tree, pt)
+        case tree: Super => recheckSuper(tree, pt)
+        case _: New | _: Literal => tree.tpe
         case tree: Typed => recheckTyped(tree)
         case tree: Assign => recheckAssign(tree)
         case tree: Block => recheckBlock(tree, pt)

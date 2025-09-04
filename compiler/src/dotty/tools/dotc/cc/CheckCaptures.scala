@@ -455,7 +455,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       markFree(sym, sym.termRef, tree)
 
     def markFree(sym: Symbol, ref: Capability, tree: Tree)(using Context): Unit =
-      if sym.exists && ref.isTracked then markFree(ref.singletonCaptureSet, tree)
+      if sym.exists then markFree(ref, tree)
+
+    def markFree(ref: Capability, tree: Tree)(using Context): Unit =
+      if ref.isTracked then markFree(ref.singletonCaptureSet, tree)
 
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
@@ -628,24 +631,32 @@ class CheckCaptures extends Recheck, SymTransformer:
         // If ident refers to a parameterless method, charge its cv to the environment
         includeCallCaptures(sym, sym.info, tree)
       else if !sym.isStatic then
-        // Otherwise charge its symbol, but add all selections and also any `.rd`
-        // modifier implied by the expected type `pt`.
-        // Example: If we have `x` and the expected type says we select that with `.a.b`
-        // where `b` is a read-only method, we charge `x.a.b.rd` instead of `x`.
-        def addSelects(ref: TermRef, pt: Type): Capability = pt match
-          case pt: PathSelectionProto if ref.isTracked =>
-            if pt.sym.isReadOnlyMethod then
-              ref.readOnly
-            else
-              // if `ref` is not tracked then the selection could not give anything new
-              // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
-              addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
-          case _ => ref
-        var pathRef: Capability = addSelects(sym.termRef, pt)
-        if pathRef.derivesFromMutable && pt.isValueType && !pt.isMutableType then
-          pathRef = pathRef.readOnly
-        markFree(sym, pathRef, tree)
+        markFree(sym, pathRef(sym.termRef, pt), tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
+
+    override def recheckThis(tree: This, pt: Type)(using Context): Type =
+      markFree(pathRef(tree.tpe.asInstanceOf[ThisType], pt), tree)
+      super.recheckThis(tree, pt)
+
+    /** Add all selections and also any `.rd modifier implied by the expected
+     *  type `pt` to `base`. Example:
+     *  If we have `x` and the expected type says we select that with `.a.b`
+     *  where `b` is a read-only method, we charge `x.a.b.rd` instead of `x`.
+     */
+    private def pathRef(base: TermRef | ThisType, pt: Type)(using Context): Capability =
+      def addSelects(ref: TermRef | ThisType, pt: Type): Capability = pt match
+        case pt: PathSelectionProto if ref.isTracked =>
+          if pt.sym.isReadOnlyMethod then
+            ref.readOnly
+          else
+            // if `ref` is not tracked then the selection could not give anything new
+            // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+        case _ => ref
+      val ref: Capability = addSelects(base, pt)
+      if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType
+      then ref.readOnly
+      else ref
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
