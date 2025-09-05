@@ -119,7 +119,7 @@ case class ScalaPresentationCompiler(
   ): PresentationCompiler =
     copy(completionItemPriority = priority)
 
-  override def withBuildTargetName(buildTargetName: String) =
+  override def withBuildTargetName(buildTargetName: String): PresentationCompiler =
     copy(buildTargetName = Some(buildTargetName))
 
   override def withReportsLoggerLevel(level: String): PresentationCompiler =

@@ -26,8 +26,8 @@ class InferExpectedType(
     driver: InteractiveDriver,
     params: OffsetParams
 )(implicit rc: ReportContext):
-  val uri = params.uri().nn
-  val code = params.text().nn
+  val uri: java.net.URI = params.uri()
+  val code: String = params.text()
 
   val sourceFile = SourceFile.virtual(uri, code)
   driver.run(uri, sourceFile)

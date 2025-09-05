@@ -39,11 +39,11 @@ class PcInlayHintsProvider(
     symbolSearch: SymbolSearch,
 )(using ReportContext):
 
-  val uri = params.uri().nn
-  val filePath = Paths.get(uri).nn
-  val sourceText = params.text().nn
-  val text = sourceText.toCharArray().nn
-  val source =
+  val uri: java.net.URI = params.uri()
+  val filePath: java.nio.file.Path = Paths.get(uri)
+  val sourceText: String = params.text()
+  val text: Array[Char] = sourceText.toCharArray()
+  val source: SourceFile =
     SourceFile.virtual(filePath.toString, sourceText)
   driver.run(uri, source)
   given InlayHintsParams = params
@@ -119,7 +119,7 @@ class PcInlayHintsProvider(
               InlayHintKind.Type,
             )
             .addDefinition(adjustedPos.start)
-      case Parameters(isInfixFun, args) =>        
+      case Parameters(isInfixFun, args) =>
         def isNamedParam(pos: SourcePosition): Boolean =
           val start = text.indexWhere(!_.isWhitespace, pos.start)
           val end = text.lastIndexWhere(!_.isWhitespace, pos.end - 1)
@@ -142,9 +142,9 @@ class PcInlayHintsProvider(
           case (ih, (name, pos0, isByName)) =>
             val pos = adjustPos(pos0)
             val isBlock = isBlockParam(pos)
-            val namedLabel = 
+            val namedLabel =
               if params.namedParameters() && !isInfixFun && !isBlock && !isNamedParam(pos) then s"${name} = " else ""
-            val byNameLabel = 
+            val byNameLabel =
               if params.byNameParameters() && isByName && (!isInfixFun || isBlock) then "=> " else ""
 
             val labelStr = s"${namedLabel}${byNameLabel}"
@@ -432,19 +432,19 @@ object InferredType:
 end InferredType
 
 object Parameters:
-  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[(Boolean, List[(Name, SourcePosition, Boolean)])] = 
-    def shouldSkipFun(fun: Tree)(using Context): Boolean = 
+  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[(Boolean, List[(Name, SourcePosition, Boolean)])] =
+    def shouldSkipFun(fun: Tree)(using Context): Boolean =
       fun match
         case sel: Select => isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply || sel.symbol.is(Flags.JavaDefined)
         case _ => false
 
-    def isInfixFun(fun: Tree, args: List[Tree])(using Context): Boolean = 
+    def isInfixFun(fun: Tree, args: List[Tree])(using Context): Boolean =
       val isInfixSelect = fun match
         case Select(sel, _) => sel.isInfix
         case _ => false
       val source = fun.source
       if args.isEmpty then isInfixSelect
-      else 
+      else
         (!(fun.span.end until args.head.span.start)
         .map(source.apply)
         .contains('.') && fun.symbol.is(Flags.ExtensionMethod)) || isInfixSelect
@@ -467,7 +467,7 @@ object Parameters:
 
     if (params.namedParameters() || params.byNameParameters()) then
       tree match
-        case Apply(fun, args) if isRealApply(fun) => 
+        case Apply(fun, args) if isRealApply(fun) =>
           val underlyingFun = getUnderlyingFun(fun)
           if shouldSkipFun(underlyingFun) then
             None
@@ -475,7 +475,7 @@ object Parameters:
             val funTp = fun.typeOpt.widenTermRefExpr
             val paramNames = funTp.paramNamess.flatten
             val paramInfos = funTp.paramInfoss.flatten
-            
+
             Some(
               isInfixFun(fun, args) || underlyingFun.isInfix,
               (
@@ -483,7 +483,7 @@ object Parameters:
                 .zip(paramNames)
                 .zip(paramInfos)
                 .collect {
-                  case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent && !isDefaultArg(arg) => 
+                  case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent && !isDefaultArg(arg) =>
                     (paramName.fieldName, arg.sourcePos, paramInfo.isByName)
                 }
               )

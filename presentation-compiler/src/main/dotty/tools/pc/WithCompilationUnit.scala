@@ -22,11 +22,11 @@ class WithCompilationUnit(
     val driver: InteractiveDriver,
     params: VirtualFileParams,
 ):
-  val uri = params.uri()
-  val filePath = Paths.get(uri)
-  val sourceText = params.text
-  val text = sourceText.toCharArray()
-  val source =
+  val uri: java.net.URI = params.uri()
+  val filePath: java.nio.file.Path = Paths.get(uri)
+  val sourceText: String = params.text
+  val text: Array[Char] = sourceText.toCharArray()
+  val source: SourceFile =
     SourceFile.virtual(filePath.toString, sourceText)
   driver.run(uri, source)
   given ctx: Context = driver.currentCtx

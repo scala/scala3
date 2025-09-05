@@ -96,7 +96,7 @@ case class Settings(
 
 object MainGenericRunner {
 
-  val classpathSeparator = File.pathSeparator
+  val classpathSeparator: String = File.pathSeparator
 
   def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
     val cpEntries = cp.split(classpathSeparator).toList
