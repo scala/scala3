@@ -8,7 +8,6 @@ trait MillRpcChannel {
 
 object MillRpcChannel {
   def createChannel: MillRpcChannel = {
-    // Note that the signature is wrong here
-    (msg: String) => ???
+    (msg: String) => ??? // error
   }
 }
