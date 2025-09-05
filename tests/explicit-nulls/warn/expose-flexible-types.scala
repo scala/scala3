@@ -1,9 +1,14 @@
+package foo
+
 class C(s: String):
   def f = s.trim // warn
   def g: String  =
     val s2 = s.trim
     s2
   def h = (s.trim, s.length) // warn
+  protected def i = s.trim // warn
+  private def j = s.trim
+  private[foo] def k = s.trim // warn
   val ss = s.replace("a", "A") // warn
   val ss2 = Seq(s.trim) // warn
   val ss3: Seq[String] =
