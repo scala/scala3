@@ -29,7 +29,7 @@ class AbstractFileClassLoaderTest:
   // cf ScalaClassLoader#classBytes
   extension (loader: ClassLoader)
     // An InputStream representing the given class name, or null if not found.
-    def classAsStream(className: String) = loader.getResourceAsStream {
+    def classAsStream(className: String): InputStream = loader.getResourceAsStream {
       if className.endsWith(".class") then className
       else s"${className.replace('.', '/')}.class"  // classNameToPath
     }
