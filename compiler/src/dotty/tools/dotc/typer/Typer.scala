@@ -1684,18 +1684,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
           (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>
-          if (formals.length != defaultArity)
-            (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
-          else {
-            val restpe = mt.resultType match
-              case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
-              case tp => tp
-            (formals,
-              if (mt.isResultDependent)
-                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef)))
+          val restpe = mt.resultType match
+            case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
+            case tp => tp
+          val tree =
+            if (mt.isResultDependent) {
+              if (formals.length != defaultArity)
+                untpd.TypeTree()
               else
-                typeTree(restpe))
-          }
+                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef)))
+            } else
+              typeTree(restpe)
+          (formals, tree)
         case _ =>
           (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
       }
