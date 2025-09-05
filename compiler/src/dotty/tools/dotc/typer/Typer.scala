@@ -3111,7 +3111,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             i"Consider annotating the type as ${hi} or ${hi} | Null explicitly"
           case _ => "Consider annotating the type explicitly"
         report.warning(
-          em"Public ${if sym.is(Method) then "method" else "field"} ${sym.show} exposes a flexible type ${resTp} in its inferred signature. $suggestion",
+          em"Public ${sym.show} exposes a flexible type ${resTp} in its inferred signature. $suggestion",
           sym.srcPos
         )
 
