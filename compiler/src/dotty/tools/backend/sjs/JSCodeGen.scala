@@ -3321,7 +3321,29 @@ class JSCodeGen()(using genCtx: Context) {
     val genReceiver = genExpr(receiver)
 
     if (sym == defn.Any_asInstanceOf) {
-      genAsInstanceOf(genReceiver, to)
+      receiver match {
+        /* This is an optimization for `linkTimeIf(cond)(thenp)(elsep).asInstanceOf[T]`.
+         * If both `thenp` and `elsep` are subtypes of `T`, the `asInstanceOf`
+         * is redundant and can be removed. The optimizer already routinely performs
+         * this optimization. However, that comes too late for the module instance
+         * field alias analysis performed by `IncOptimizer`. In that case, while the
+         * desugarer removes the `LinkTimeIf`, the extra `AsInstanceOf` prevents
+         * aliasing the field. Removing the cast ahead of time in the compiler allows
+         * field aliases to be recognized in the presence of `LinkTimeIf`s.
+         */
+        case Apply(innerFun, List(cond, thenp, elsep))
+            if innerFun.symbol == jsdefn.LinkingInfo_linkTimeIf &&
+            thenp.tpe <:< to && elsep.tpe <:< to =>
+          val genReceiver1 = genReceiver match {
+            case genReceiver: js.LinkTimeIf =>
+              genReceiver
+            case _ =>
+              throw FatalError(s"Unexpected tree $genReceiver is generated for $innerFun at: ${tree.sourcePos}")
+          }
+          js.LinkTimeIf(genReceiver1.cond, genReceiver1.thenp, genReceiver1.elsep)(toIRType(to))(using genReceiver1.pos)
+        case _ =>
+          genAsInstanceOf(genReceiver, to)
+      }
     } else if (sym == defn.Any_isInstanceOf) {
       genIsInstanceOf(genReceiver, to)
     } else {
