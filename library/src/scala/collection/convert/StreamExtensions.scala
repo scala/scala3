@@ -30,6 +30,7 @@ import scala.jdk._
   * [[scala.jdk.javaapi.StreamConverters]].
   */
 trait StreamExtensions {
+  this: StreamExtensions =>
   // collections
 
   implicit class IterableHasSeqStream[A](cc: IterableOnce[A]) {

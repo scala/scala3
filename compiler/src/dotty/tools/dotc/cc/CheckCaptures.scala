@@ -407,12 +407,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1$cs1description are not all",
           cs1, cs2, pos, provenance)
 
-    /** If `sym` is a class or method nested inside a term, a capture set variable representing
-     *  the captured variables of the environment associated with `sym`.
+    /** If `sym` is a method or a non-static inner class, a capture set variable
+     *  representing the captured variables of the environment associated with `sym`.
      */
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm)
+        if sym.isTerm || !sym.owner.isStaticOwner
         then CaptureSet.Var(sym.owner, level = ccState.symLevel(sym))
         else CaptureSet.empty)
 
@@ -420,12 +420,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
-     *  @param included Whether an environment is included in the range of
-     *                  environments to charge. Once `included` is false, no
-     *                  more environments need to be charged.
      */
-    def nextEnvToCharge(env: Env, included: Env => Boolean)(using Context): Env =
-      if env.owner.isConstructor && included(env.outer) then env.outer.outer
+    def nextEnvToCharge(env: Env)(using Context): Env | Null =
+      if env.owner.isConstructor then env.outer.outer0
       else env.outer
 
     /** A description where this environment comes from */
@@ -458,21 +455,27 @@ class CheckCaptures extends Recheck, SymTransformer:
       markFree(sym, sym.termRef, tree)
 
     def markFree(sym: Symbol, ref: Capability, tree: Tree)(using Context): Unit =
-      if sym.exists && ref.isTracked then markFree(ref.singletonCaptureSet, tree)
+      if sym.exists then markFree(ref, tree)
+
+    def markFree(ref: Capability, tree: Tree)(using Context): Unit =
+      if ref.isTracked then markFree(ref.singletonCaptureSet, tree)
 
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
      *  the environment's owner
      */
-    def markFree(cs: CaptureSet, tree: Tree)(using Context): Unit =
+    def markFree(cs: CaptureSet, tree: Tree, addUseInfo: Boolean = true)(using Context): Unit =
       // A captured reference with the symbol `sym` is visible from the environment
       // if `sym` is not defined inside the owner of the environment.
       inline def isVisibleFromEnv(sym: Symbol, env: Env) =
         sym.exists && {
+          val effectiveOwner =
+            if env.owner.isConstructor then env.owner.owner
+            else env.owner
           if env.kind == EnvKind.NestedInOwner then
-            !sym.isProperlyContainedIn(env.owner)
+            !sym.isProperlyContainedIn(effectiveOwner)
           else
-            !sym.isContainedIn(env.owner)
+            !sym.isContainedIn(effectiveOwner)
         }
 
       /** Avoid locally defined capability by charging the underlying type
@@ -535,13 +538,15 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
-            recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner), env)
+            val nextEnv = nextEnvToCharge(env)
+            if nextEnv != null && !nextEnv.owner.isStaticOwner then
+              recur(included, nextEnv, env)
           	// Under deferredReaches, don't propagate out of methods inside terms.
           	// The use set of these methods will be charged when that method is called.
 
       if !cs.isAlwaysEmpty then
         recur(cs, curEnv, null)
-        useInfos += ((tree, cs, curEnv))
+        if addUseInfo then useInfos += ((tree, cs, curEnv))
     end markFree
 
     /** If capability `c` refers to a parameter that is not implicitly or explicitly
@@ -626,24 +631,32 @@ class CheckCaptures extends Recheck, SymTransformer:
         // If ident refers to a parameterless method, charge its cv to the environment
         includeCallCaptures(sym, sym.info, tree)
       else if !sym.isStatic then
-        // Otherwise charge its symbol, but add all selections and also any `.rd`
-        // modifier implied by the expected type `pt`.
-        // Example: If we have `x` and the expected type says we select that with `.a.b`
-        // where `b` is a read-only method, we charge `x.a.b.rd` instead of `x`.
-        def addSelects(ref: TermRef, pt: Type): Capability = pt match
-          case pt: PathSelectionProto if ref.isTracked =>
-            if pt.sym.isReadOnlyMethod then
-              ref.readOnly
-            else
-              // if `ref` is not tracked then the selection could not give anything new
-              // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
-              addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
-          case _ => ref
-        var pathRef: Capability = addSelects(sym.termRef, pt)
-        if pathRef.derivesFromMutable && pt.isValueType && !pt.isMutableType then
-          pathRef = pathRef.readOnly
-        markFree(sym, pathRef, tree)
+        markFree(sym, pathRef(sym.termRef, pt), tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
+
+    override def recheckThis(tree: This, pt: Type)(using Context): Type =
+      markFree(pathRef(tree.tpe.asInstanceOf[ThisType], pt), tree)
+      super.recheckThis(tree, pt)
+
+    /** Add all selections and also any `.rd modifier implied by the expected
+     *  type `pt` to `base`. Example:
+     *  If we have `x` and the expected type says we select that with `.a.b`
+     *  where `b` is a read-only method, we charge `x.a.b.rd` instead of `x`.
+     */
+    private def pathRef(base: TermRef | ThisType, pt: Type)(using Context): Capability =
+      def addSelects(ref: TermRef | ThisType, pt: Type): Capability = pt match
+        case pt: PathSelectionProto if ref.isTracked =>
+          if pt.sym.isReadOnlyMethod then
+            ref.readOnly
+          else
+            // if `ref` is not tracked then the selection could not give anything new
+            // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+        case _ => ref
+      val ref: Capability = addSelects(base, pt)
+      if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType
+      then ref.readOnly
+      else ref
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
@@ -866,7 +879,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
 
-      augmentConstructorType(resType, capturedVars(cls) ++ capturedVars(constr))
+      augmentConstructorType(resType, capturedVars(cls))
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
 
@@ -975,6 +988,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Interpolate contravariant capture set variables in result type.
      */
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
+      val savedEnv = curEnv
+      val runInConstructor = !sym.isOneOf(Param | ParamAccessor | Lazy | NonMember)
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
         else
@@ -993,6 +1008,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                 ""
             disallowBadRootsIn(
               tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
+          if runInConstructor then
+            pushConstructorEnv()
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
@@ -1001,6 +1018,22 @@ class CheckCaptures extends Recheck, SymTransformer:
           // expect to have all necessary info available at the point where the anonymous
           // function is compiled since we do not propagate expected types into blocks.
           interpolateIfInferred(tree.tpt, sym)
+
+        def declaredCaptures = tree.tpt.nuType.captureSet
+        if runInConstructor && savedEnv.owner.isClass then
+          curEnv = savedEnv
+          markFree(declaredCaptures, tree, addUseInfo = false)
+
+        if sym.owner.isStaticOwner && !declaredCaptures.elems.isEmpty && sym != defn.captureRoot then
+          def where =
+            if sym.effectiveOwner.is(Package) then "top-level definition"
+            else i"member of static ${sym.owner}"
+          report.warning(
+            em"""$sym has a non-empty capture set but will not be added as
+                |a capability to computed capture sets since it is globally accessible
+                |as a $where. Global values cannot be capabilities.""",
+            tree.namePos)
+    end recheckValDef
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,
@@ -1227,6 +1260,24 @@ class CheckCaptures extends Recheck, SymTransformer:
         finally curEnv = curEnv.outer
       recheckFinish(result, arg, pt)
     */
+
+    /** If environment is owned by a class, run in a new environment owned by
+     *  its primary constructor instead.
+     */
+    def pushConstructorEnv()(using Context): Unit =
+      if curEnv.owner.isClass then
+        val constr = curEnv.owner.primaryConstructor
+        if constr.exists then
+          val constrSet = capturedVars(constr)
+          if capturedVars(constr) ne CaptureSet.empty then
+            curEnv = Env(constr, EnvKind.Regular, constrSet, curEnv)
+
+    override def recheckStat(stat: Tree)(using Context): Unit =
+      val saved = curEnv
+      if !stat.isInstanceOf[MemberDef] then
+        pushConstructorEnv()
+      try recheck(stat)
+      finally curEnv = saved
 
     /** The main recheck method does some box adapation for all nodes:
      *   - If expected type `pt` is boxed and the tree is a lambda or a reference,
@@ -2021,7 +2072,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           if env.kind == EnvKind.Boxed then env.owner
           else if isOfNestedMethod(env) then env.owner.owner
           else if env.owner.isStaticOwner then NoSymbol
-          else boxedOwner(nextEnvToCharge(env, alwaysTrue))
+          else
+            val nextEnv = nextEnvToCharge(env)
+            if nextEnv == null then NoSymbol else boxedOwner(nextEnv)
 
         def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
