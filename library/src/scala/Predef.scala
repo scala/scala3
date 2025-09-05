@@ -122,7 +122,7 @@ object Predef extends LowPriorityImplicits {
    * @return The runtime [[Class]] representation of type `T`.
    * @group utilities
    */
-  def classOf[T]: Class[T] = null // This is a stub method. The actual implementation is filled in by the compiler.
+  def classOf[T]: Class[T] = null.asInstanceOf[Class[T]] // This is a stub method. The actual implementation is filled in by the compiler.
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.
@@ -286,12 +286,12 @@ object Predef extends LowPriorityImplicits {
      to be available at runtime.
      To achieve this, we keep the Scala 3 signature publicly available.
      We rely on the fact that it is `inline` and will not be visible in the bytecode.
-     To add the required Scala 2 ones, we define the `scala2Assert`, we use: 
-      - `@targetName` to swap the name in the generated code to `assert` 
+     To add the required Scala 2 ones, we define the `scala2Assert`, we use:
+      - `@targetName` to swap the name in the generated code to `assert`
       - `@publicInBinary` to make it available during runtime.
      As such, we would successfully hijack the definitions of `assert` such as:
       - At compile time, we would have the definitions of `assert`
-      - At runtime, the definitions of `scala2Assert` as `assert`  
+      - At runtime, the definitions of `scala2Assert` as `assert`
     NOTE: Tasty-Reader in Scala 2 will have to learn about this swapping if we are to
     allow loading the full Scala 3 library by it.
     */
@@ -426,7 +426,7 @@ object Predef extends LowPriorityImplicits {
     @inline def formatted(fmtstr: String): String = fmtstr format self
   }
 
-  /** Injects String concatenation operator `+` to any classes. 
+  /** Injects String concatenation operator `+` to any classes.
    * @group implicit-classes-any
    */
   @(deprecated @companionMethod)("Implicit injection of + is deprecated. Convert to String to call +", "2.13.0")
@@ -657,47 +657,49 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   @inline implicit def doubleWrapper(x: Double): runtime.RichDouble    = new runtime.RichDouble(x)
   @inline implicit def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
+  // For backwards compatibility with code compiled without -Yexplicit-nulls
+  private inline def mapNull[A, B](a: A, inline f: B): B =
+    if((a: A | Null) == null) null.asInstanceOf[B] else f
+
   /** @group conversions-array-to-wrapped-array */
   implicit def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
-    if (xs eq null) null
-    else ArraySeq.make(xs)
+    mapNull(xs, ArraySeq.make(xs))
 
   // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
   // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
   // unique ones by way of this implicit, let's share one.
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq.ofRef[T] = {
-    if (xs eq null) null
-    else if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
-    else new ArraySeq.ofRef[T](xs)
-  }
+  implicit def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq.ofRef[T] =
+    mapNull(xs,
+      if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
+      else new ArraySeq.ofRef[T](xs))
 
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapIntArray(xs: Array[Int]): ArraySeq.ofInt = if (xs ne null) new ArraySeq.ofInt(xs) else null
+  implicit def wrapIntArray(xs: Array[Int]): ArraySeq.ofInt = mapNull(xs, new ArraySeq.ofInt(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapDoubleArray(xs: Array[Double]): ArraySeq.ofDouble = if (xs ne null) new ArraySeq.ofDouble(xs) else null
+  implicit def wrapDoubleArray(xs: Array[Double]): ArraySeq.ofDouble = mapNull(xs, new ArraySeq.ofDouble(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapLongArray(xs: Array[Long]): ArraySeq.ofLong = if (xs ne null) new ArraySeq.ofLong(xs) else null
+  implicit def wrapLongArray(xs: Array[Long]): ArraySeq.ofLong = mapNull(xs, new ArraySeq.ofLong(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapFloatArray(xs: Array[Float]): ArraySeq.ofFloat = if (xs ne null) new ArraySeq.ofFloat(xs) else null
+  implicit def wrapFloatArray(xs: Array[Float]): ArraySeq.ofFloat = mapNull(xs, new ArraySeq.ofFloat(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapCharArray(xs: Array[Char]): ArraySeq.ofChar = if (xs ne null) new ArraySeq.ofChar(xs) else null
+  implicit def wrapCharArray(xs: Array[Char]): ArraySeq.ofChar = mapNull(xs, new ArraySeq.ofChar(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapByteArray(xs: Array[Byte]): ArraySeq.ofByte = if (xs ne null) new ArraySeq.ofByte(xs) else null
+  implicit def wrapByteArray(xs: Array[Byte]): ArraySeq.ofByte = mapNull(xs, new ArraySeq.ofByte(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapShortArray(xs: Array[Short]): ArraySeq.ofShort = if (xs ne null) new ArraySeq.ofShort(xs) else null
+  implicit def wrapShortArray(xs: Array[Short]): ArraySeq.ofShort = mapNull(xs, new ArraySeq.ofShort(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapBooleanArray(xs: Array[Boolean]): ArraySeq.ofBoolean = if (xs ne null) new ArraySeq.ofBoolean(xs) else null
+  implicit def wrapBooleanArray(xs: Array[Boolean]): ArraySeq.ofBoolean = mapNull(xs, new ArraySeq.ofBoolean(xs))
   /** @group conversions-array-to-wrapped-array */
-  implicit def wrapUnitArray(xs: Array[Unit]): ArraySeq.ofUnit = if (xs ne null) new ArraySeq.ofUnit(xs) else null
+  implicit def wrapUnitArray(xs: Array[Unit]): ArraySeq.ofUnit = mapNull(xs, new ArraySeq.ofUnit(xs))
 
   /** @group conversions-string */
-  implicit def wrapString(s: String): WrappedString = if (s ne null) new WrappedString(s) else null
+  implicit def wrapString(s: String): WrappedString = mapNull(s, new WrappedString(s))
 }
 
 private[scala] abstract class LowPriorityImplicits2 {
   @deprecated("implicit conversions from Array to immutable.IndexedSeq are implemented by copying; use `toIndexedSeq` explicitly if you want to copy, or use the more efficient non-copying ArraySeq.unsafeWrapArray", since="2.13.0")
   implicit def copyArrayToImmutableIndexedSeq[T](xs: Array[T]): IndexedSeq[T] =
-    if (xs eq null) null
+    if (xs eq null) null.asInstanceOf[IndexedSeq[T]]
     else new ArrayOps(xs).toIndexedSeq
 }

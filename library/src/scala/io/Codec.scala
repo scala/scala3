@@ -39,10 +39,10 @@ class Codec(val charSet: Charset) {
 
   // these variables allow configuring the Codec object, and then
   // all decoders and encoders retrieved from it will use these settings.
-  private[this] var _onMalformedInput: Action         = null
-  private[this] var _onUnmappableCharacter: Action    = null
-  private[this] var _encodingReplacement: Array[Byte] = null
-  private[this] var _decodingReplacement: String      = null
+  private[this] var _onMalformedInput: Action | Null         = null
+  private[this] var _onUnmappableCharacter: Action | Null    = null
+  private[this] var _encodingReplacement: Array[Byte] | Null = null
+  private[this] var _decodingReplacement: String | Null      = null
   private[this] var _onCodingException: Handler       = e => throw e
 
   /** The name of the Codec. */
