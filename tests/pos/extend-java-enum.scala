@@ -2,8 +2,8 @@
 
 import java.{lang as jl}
 
-final class ConfigSyntax private (name: String, ordinal: Int)
-  extends jl.Enum[ConfigSyntax](name, ordinal)
+final class ConfigSyntax private (_name: String, ordinal: Int)
+  extends jl.Enum[ConfigSyntax](_name, ordinal)
 
 object ConfigSyntax {
 
