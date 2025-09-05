@@ -3089,32 +3089,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
-  /** (1) Check that the signature of the class member does not return a repeated parameter type.
-   *  (2) Check that the signature of the public class member does not expose a flexible type.
-   *  (3) Make sure the definition's symbol is `sym`.
-   *  (4) Set the `defTree` of `sym` to be `mdef`.
+  /** (1) Check that the signature of the class member does not return a repeated parameter type
+   *  (2) Make sure the definition's symbol is `sym`.
+   *  (3) Set the `defTree` of `sym` to be `mdef`.
    */
   private def postProcessInfo(mdef: MemberDef, sym: Symbol)(using Context): MemberDef =
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
-
-    // Warn if a public method/field exposes FlexibleType in its result type under explicit nulls
-    // and encourage explicit annotation.
-    if ctx.phase.isTyper && ctx.explicitNulls && !ctx.isJava
-        && sym.exists && sym.isPublic && sym.owner.isClass
-        && !sym.isOneOf(Synthetic | InlineProxy | Param) then
-      val resTp = sym.info.finalResultType
-      if resTp.existsPart(_.isInstanceOf[FlexibleType], StopAt.Static) then
-        val suggestion = resTp match
-          case ft: FlexibleType =>
-            val hi = ft.hi
-            i"Consider annotating the type as ${hi} or ${hi} | Null explicitly"
-          case _ => "Consider annotating the type explicitly"
-        report.warning(
-          em"Public ${sym.show} exposes a flexible type ${resTp} in its inferred signature. $suggestion",
-          sym.srcPos
-        )
-
     mdef.ensureHasSym(sym)
     mdef.setDefTree
 
