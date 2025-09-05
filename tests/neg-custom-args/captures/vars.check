@@ -27,9 +27,9 @@
    |        Note that capability cap3 is not included in capture set {cap1, cap2}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:36:8 ------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:36:10 -----------------------------------------
 36 |  local { cap3 => // error
-   |        ^
+   |          ^
    |Found:    (cap3: CC^) ->'s1 String => String
    |Required: CC^ -> String =>² String
    |
@@ -42,6 +42,5 @@
    |          cap² is a fresh root capability created in method test of parameter parameter cap3² of method $anonfun
 37 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 38 |    g
-39 |  }
    |
    | longer explanation available when compiling with `-explain`

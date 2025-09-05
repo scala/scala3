@@ -1,6 +1,6 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:27 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:29 ---------------------------------
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^
    |Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
    |Required: java.io.FileOutputStream^ => () ->'s3 Unit
    |
@@ -10,9 +10,9 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:36 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:38 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (f: java.io.FileOutputStream^'s4) ->'s5 Test2.Cell[() ->{f} Unit]^'s6
    |Required: java.io.FileOutputStream^ => Test2.Cell[() ->'s7 Unit]^'s8
    |

@@ -376,25 +376,21 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
-    private def recheckBlock(stats: List[Tree], expr: Tree)(using Context): Type =
+    private def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =
       recheckStats(stats)
-      val exprType = recheck(expr)
+      val exprType = recheck(expr, pt)
       TypeOps.avoid(exprType, localSyms(stats).filterConserve(_.isTerm))
 
     def recheckBlock(tree: Block, pt: Type)(using Context): Type = tree match
-      case Block(Nil, expr: Block) => recheckBlock(expr, pt)
       case Block((mdef : DefDef) :: Nil, closure: Closure) =>
         recheckClosureBlock(mdef, closure.withSpan(tree.span), pt)
-      case Block(stats, expr) => recheckBlock(stats, expr)
-        // The expected type `pt` is not propagated. Doing so would allow variables in the
-        // expected type to contain references to local symbols of the block, so the
-        // local symbols could escape that way.
+      case Block(stats, expr) => recheckBlock(stats, expr, pt)
 
     def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
-      recheckBlock(mdef :: Nil, expr)
+      recheckBlock(mdef :: Nil, expr, pt)
 
     def recheckInlined(tree: Inlined, pt: Type)(using Context): Type =
-      recheckBlock(tree.bindings, tree.expansion)(using inlineContext(tree))
+      recheckBlock(tree.bindings, tree.expansion, pt)(using inlineContext(tree))
 
     def recheckIf(tree: If, pt: Type)(using Context): Type =
       recheck(tree.cond, defn.BooleanType)
