@@ -4103,6 +4103,16 @@ class JSCodeGen()(using genCtx: Context) {
         js.UnaryOp(js.UnaryOp.UnwrapFromThrowable,
             js.UnaryOp(js.UnaryOp.CheckNotNull, genArgs1))
 
+      case LINKTIME_IF =>
+        // LinkingInfo.linkTimeIf(cond, thenp, elsep)
+        val cond = genLinkTimeExpr(args(0))
+        val thenp = genExpr(args(1))
+        val elsep = genExpr(args(2))
+        val tpe =
+          if (isStat) jstpe.VoidType
+          else toIRType(tree.tpe)
+        js.LinkTimeIf(cond, thenp, elsep)(tpe)
+
       case UNION_FROM | UNION_FROM_TYPE_CONSTRUCTOR =>
         /* js.|.from and js.|.fromTypeConstructor
          * We should not have to deal with those. They have a perfectly valid
@@ -4125,6 +4135,91 @@ class JSCodeGen()(using genCtx: Context) {
       case REFLECT_SELECTABLE_APPLYDYN =>
         // scala.reflect.Selectable.applyDynamic
         genReflectiveCall(tree, isSelectDynamic = false)
+    }
+  }
+
+  private def genLinkTimeExpr(tree: Tree): js.Tree = {
+    import dotty.tools.backend.ScalaPrimitivesOps.*
+
+    import primitives.*
+
+    implicit val pos = tree.span
+
+    def invalid(): js.Tree = {
+      report.error(
+          "Illegal expression in the condition of a linkTimeIf. " +
+          "Valid expressions are: boolean and int primitives; " +
+          "references to link-time properties; " +
+          "primitive operations on booleans; " +
+          "and comparisons on ints.",
+          tree.sourcePos)
+      js.BooleanLiteral(false)
+    }
+
+    tree match {
+      case Literal(c) =>
+        import Constants.*
+        c.tag match {
+          case BooleanTag => js.BooleanLiteral(c.booleanValue)
+          case IntTag     => js.IntLiteral(c.intValue)
+          case _          => invalid()
+        }
+
+      case Apply(fun, args) =>
+        fun.symbol.getAnnotation(jsdefn.LinkTimePropertyAnnot) match {
+          case Some(annotation) =>
+            val propName = annotation.argumentConstantString(0).get
+            js.LinkTimeProperty(propName)(toIRType(tree.tpe))
+
+          case None if isPrimitive(fun.symbol) =>
+            val code = getPrimitive(fun.symbol)
+            val receiver = (fun: @unchecked) match {
+              case fun: Select => fun.qualifier
+              case fun: Ident  => desugarIdent(fun).get.qualifier
+            }
+
+            def genLhs: js.Tree = genLinkTimeExpr(receiver)
+            def genRhs: js.Tree = genLinkTimeExpr(args.head)
+
+            def unaryOp(op: js.UnaryOp.Code): js.Tree =
+              js.UnaryOp(op, genLhs)
+            def binaryOp(op: js.BinaryOp.Code): js.Tree =
+              js.BinaryOp(op, genLhs, genRhs)
+
+            toIRType(receiver.tpe) match {
+              case jstpe.BooleanType =>
+                (code: @switch) match {
+                  case ZNOT     => unaryOp(js.UnaryOp.Boolean_!)
+                  case EQ       => binaryOp(js.BinaryOp.Boolean_==)
+                  case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
+                  case OR       => binaryOp(js.BinaryOp.Boolean_|)
+                  case AND      => binaryOp(js.BinaryOp.Boolean_&)
+                  case ZOR      => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
+                  case ZAND     => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+                  case _        => invalid()
+                }
+
+              case jstpe.IntType =>
+                (code: @switch) match {
+                  case EQ => binaryOp(js.BinaryOp.Int_==)
+                  case NE => binaryOp(js.BinaryOp.Int_!=)
+                  case LT => binaryOp(js.BinaryOp.Int_<)
+                  case LE => binaryOp(js.BinaryOp.Int_<=)
+                  case GT => binaryOp(js.BinaryOp.Int_>)
+                  case GE => binaryOp(js.BinaryOp.Int_>=)
+                  case _  => invalid()
+                }
+
+              case _ =>
+                invalid()
+            }
+
+          case None => // if !isPrimitive
+            invalid()
+        }
+
+      case _ =>
+        invalid()
     }
   }
 

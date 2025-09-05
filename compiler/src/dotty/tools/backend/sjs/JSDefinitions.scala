@@ -215,6 +215,14 @@ final class JSDefinitions()(using Context) {
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass
 
+  @threadUnsafe lazy val LinkingInfoModuleRef = requiredModuleRef("scala.scalajs.LinkingInfo")
+  def LinkingInfoModule(using Context) = LinkingInfoModuleRef.symbol
+    @threadUnsafe lazy val LinkingInfo_linkTimeIfR = LinkingInfoModule.requiredMethodRef("linkTimeIf")
+    def LinkingInfo_linkTimeIf(using Context) = LinkingInfo_linkTimeIfR.symbol
+
+  @threadUnsafe lazy val LinkTimePropertyAnnotType: TypeRef = requiredClassRef("scala.scalajs.annotation.linkTimeProperty")
+  def LinkTimePropertyAnnot(using Context) = LinkTimePropertyAnnotType.symbol.asClass
+
   @threadUnsafe lazy val ScalaRunTime_isArrayR = defn.ScalaRuntimeModule.requiredMethodRef("isArray", List(???, ???))
   def ScalaRunTime_isArray(using Context): Symbol = ScalaRunTime_isArrayR.symbol
 
