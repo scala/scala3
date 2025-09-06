@@ -1,3 +1,4 @@
+//> using options -explain
 
 @main def test = println:
   for x <- 1 to 2
@@ -11,3 +12,8 @@
 //  given_Option_List is already defined as given instance given_Option_List
 // Previously the naming clash was noticed when extracting values in the map or do function:
 //  duplicate pattern variable: given_Option_List
+
+def also =
+  given [A] => List[A] = ???
+  given [A] => List[A] = ??? // error
+  ()
