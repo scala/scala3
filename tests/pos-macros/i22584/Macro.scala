@@ -22,7 +22,7 @@ object Macros {
         }
       }
 
-    val expected = "List(DefDef(boolean,List(List()),TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Boolean)],Select(This(Ident(MyClass1)),boolean)), DefDef(finalVal,List(List()),TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class String)],Select(This(Ident(MyClass1)),finalVal)), DefDef(int,List(List()),TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int)],Select(This(Ident(MyClass1)),int)), DefDef(string,List(List()),TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class String)],Select(This(Ident(MyClass1)),string)))"
+    val expected = "List(ValDef(boolean,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),class Boolean)],EmptyTree), ValDef(finalVal,Ident(String),Literal(Constant(result))), ValDef(int,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),class Int)],EmptyTree), ValDef(string,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scala)),object Predef),type String)],EmptyTree))"
     assert(caseFieldValOrDefDefs.toString == expected)
 
     '{ () }
