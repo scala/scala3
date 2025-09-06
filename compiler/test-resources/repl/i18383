@@ -11,4 +11,4 @@ scala> class Foo { import scala.util.*; println("foo") }
 // defined class Foo
 
 scala> { import scala.util.*; "foo" }
-val res0: String = foo
+val res0: String = "foo"

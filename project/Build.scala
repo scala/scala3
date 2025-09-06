@@ -675,6 +675,95 @@ object Build {
     recur(lines)
   }
 
+  val shadedSourceGenerator = (Compile / sourceGenerators) += Def.task {
+    val downloads = Seq(
+      "https://repo1.maven.org/maven2/com/lihaoyi/pprint_3/0.9.3/pprint_3-0.9.3-sources.jar",
+      "https://repo1.maven.org/maven2/com/lihaoyi/fansi_3/0.5.1/fansi_3-0.5.1-sources.jar",
+      "https://repo1.maven.org/maven2/com/lihaoyi/sourcecode_3/0.4.4/sourcecode_3-0.4.4-sources.jar",
+    )
+    val dest = ((Compile / sourceManaged).value / "downloaded").toPath
+    if (Files.exists(dest)) {
+      Files.walk(dest)
+        .sorted(java.util.Comparator.reverseOrder()) // delete children before parents
+        .forEach(p => Files.delete(p));
+    }
+    Files.createDirectories(dest)
+
+    for(url <- downloads) {
+      import java.io._
+      import java.net.{HttpURLConnection, URL}
+      import java.nio.file._
+      import java.nio.file.attribute.FileTime
+      import java.util.zip.{ZipEntry, ZipInputStream}
+
+      val conn = new URL(url).openConnection().asInstanceOf[HttpURLConnection]
+      conn.setInstanceFollowRedirects(true)
+      conn.setConnectTimeout(15000)
+      conn.setReadTimeout(60000)
+      conn.setRequestMethod("GET")
+
+      var in: InputStream = null
+      var zis: ZipInputStream = null
+      try {
+        in = new BufferedInputStream(conn.getInputStream)
+        zis = new ZipInputStream(in)
+
+        var entry: ZipEntry = zis.getNextEntry
+        val buffer = new Array[Byte](8192)
+
+        while (entry != null) {
+          val target = dest.resolve(entry.getName).normalize()
+          if (entry.isDirectory) Files.createDirectories(target)
+          else {
+            Files.createDirectories(target.getParent)
+            var out: OutputStream = null
+            try {
+              out = new BufferedOutputStream(Files.newOutputStream(target, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+              var n = zis.read(buffer)
+              while (n != -1) {
+                out.write(buffer, 0, n)
+                n = zis.read(buffer)
+              }
+            } finally if (out != null) out.close()
+          }
+
+          zis.closeEntry()
+          entry = zis.getNextEntry
+        }
+      } finally {
+        if (zis != null) zis.close()
+        if (in != null) in.close()
+        conn.disconnect()
+      }
+    }
+
+    import collection.JavaConverters._
+    Files.walk(dest)
+        .filter(p => p.toString().endsWith(".scala"))
+        .map[java.io.File] { (file: java.nio.file.Path) =>
+          val text = new String(Files.readAllBytes(file.path), java.nio.charset.StandardCharsets.UTF_8)
+          if (!file.getFileName().toString().equals("CollectionName.scala")) Files.write(
+            file,
+            ("package dotty.shaded\n" +
+              text
+                .replace("import scala", "import _root_.scala")
+                .replace(" scala.collection.", " _root_.scala.collection.")
+                .replace("_root_.pprint", "_root_.dotty.shaded.pprint")
+                .replace("_root_.fansi", "_root_.dotty.shaded.fansi")
+                .replace("def apply(c: Char): Trie[T]", "def apply(c: Char): Trie[T] | Null")
+                .replace("var head: Iterator[T] = null", "var head: Iterator[T] | Null = null")
+                .replace("if (head != null && head.hasNext) true", "if (head != null && head.nn.hasNext) true")
+                .replace("head.next()", "head.nn.next()")
+                .replace("abstract class Walker", "@scala.annotation.nowarn abstract class Walker")
+                .replace("object TPrintLowPri", "@scala.annotation.nowarn object TPrintLowPri")
+                .replace("x.toString match{", "scala.runtime.ScalaRunTime.stringOf(x) match{")).getBytes
+          )
+          file.toFile
+
+        }
+        .collect(java.util.stream.Collectors.toList()).asScala.toSeq
+
+  }.taskValue
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Note: bench/profiles/projects.yml should be updated accordingly.
@@ -720,6 +809,8 @@ object Build {
         "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
+
+      shadedSourceGenerator,
 
       // For convenience, change the baseDirectory when running the compiler
       Compile / forkOptions := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
@@ -2141,6 +2232,7 @@ object Build {
 
         Seq(file)
       }.taskValue,
+      shadedSourceGenerator,
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       scalaInstance := {
@@ -2330,6 +2422,7 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+      shadedSourceGenerator
     )
 
   // ==============================================================================================
