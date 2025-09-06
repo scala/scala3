@@ -2694,7 +2694,7 @@ object SymDenotations {
    *     determined by whether they have a `val` or `var` or not.
    */
   def canBeLocal(name: Name, flags: FlagSet)(using Context) =
-    !name.isConstructorName && !flags.is(Param) && !flags.is(ParamAccessor)
+    !name.isConstructorName && !flags.is(NotAField)
 
   /** Factory method for SymDenotion creation. All creations
    *  should be done via this method.
