@@ -307,7 +307,7 @@ object Scanners {
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       var noProgress = 0
         // Defensive measure to ensure we always get out of the following while loop
-        // even if source file is weirly formatted (i.e. we never reach EOF)
+        // even if source file is weirdly formatted (i.e. we never reach EOF)
       var prevOffset = offset
       while !atStop && noProgress < 3 do
         nextToken()
