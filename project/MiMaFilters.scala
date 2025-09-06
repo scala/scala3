@@ -17,7 +17,7 @@ object MiMaFilters {
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Conversion.underlying"),
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.RuntimeChecked"),        
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.RuntimeChecked"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
@@ -32,6 +32,9 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Classifier"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.SharedCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.caps.Control"),
+
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$qualifiedTypes$"),
       ),
 
       // Additions since last LTS
