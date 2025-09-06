@@ -43,6 +43,11 @@ object ccConfig:
    */
   inline val postCheckCapturesets = false
 
+  /** If true take as the underlying capture set of a capability of function type
+   *  the capture set along the span, including capture sets of function results.
+   */
+  inline val useSpanCapset = false
+
   /** If true, do level checking for FreshCap instances */
   def useFreshLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)

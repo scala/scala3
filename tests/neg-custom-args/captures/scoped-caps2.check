@@ -7,7 +7,7 @@
   |                   Note that the existential capture root in C^
   |                   cannot subsume the capability cap..
   |
-  |                   Note that capability cap is not included in capture set {cap²}.
+  |                   Note that capability cap² is not included in capture set {cap³}.
   |
   |                   where:    =>   refers to a fresh root capability in the type of value b
   |                             =>²  refers to a fresh root capability in the type of value _$1
@@ -15,6 +15,7 @@
   |                             ^²   refers to a root capability associated with the result type of (x: C^): C^²
   |                             cap  is a fresh root capability classified as SharedCapability in the type of value b
   |                             cap² is a fresh root capability in the type of value b
+  |                             cap³ is a fresh root capability in the type of value _$1
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:6:18 ----------------------------------
@@ -63,19 +64,6 @@
    |                  ^²   refers to a fresh root capability classified as SharedCapability in the type of value _$6
    |                  cap  is a root capability associated with the result type of (x: C^): C^³
    |                  cap² is a fresh root capability classified as SharedCapability in the type of value _$6
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:15:23 ---------------------------------
-15 |  val _: (x: C) -> C = (x: C) => b(x) // error
-   |                       ^^^^^^^^^^^^^^
-   |                       Found:    (x: C^) ->{b} C^²
-   |                       Required: (x: C^) -> C^³
-   |
-   |                       Note that capability b is not included in capture set {}.
-   |
-   |                       where:    ^  refers to the universal root capability
-   |                                 ^² refers to a root capability associated with the result type of (x: C^): C^²
-   |                                 ^³ refers to a root capability associated with the result type of (x: C^): C^³
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:16:29 ---------------------------------

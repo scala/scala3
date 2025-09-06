@@ -4,4 +4,4 @@
          g  // error
        val stowaway: () -> Proc^{f} =
          bar( () => f )  // was error now OK
-       () => { stowaway.apply().apply() }  // error (was ok)
+       () => { stowaway.apply().apply() }

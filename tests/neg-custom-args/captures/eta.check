@@ -7,12 +7,3 @@
   |         Note that capability f is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/eta.scala:7:7 --------------------------------------------
-7 |       () => { stowaway.apply().apply() }  // error (was ok)
-  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |       Found:    () ->{stowaway} Unit
-  |       Required: () -> Unit
-  |
-  |       Note that capability stowaway is not included in capture set {}.
-  |
-  | longer explanation available when compiling with `-explain`

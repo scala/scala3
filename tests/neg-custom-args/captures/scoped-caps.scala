@@ -14,12 +14,11 @@ def test(io: Object^): Unit =
 
   val h: S -> B^ = ???
   val _: (x: S) -> B^ = h          // error: direct conversion fails
-  val _: (x: S) -> B^ = (x: S) => h(x)  // error: eta expansion fails
+  val _: (x: S) -> B^ = (x: S) => h(x)  // eta expansion is ok
 
   val h2: S -> S = ???
   val _: (x: S) -> S = h2               // direct conversion OK for shared S
-  val _: (x: S) -> S = (x: S) => h2(x)  // error: eta conversion fails since `h2` is now impure (result type S is a capability)
-  val _: (x: S) ->{h2} S = (x: S) => h2(x) // eta expansion OK
+  val _: (x: S) -> S = (x: S) => h2(x)  // eta conversion is also OK
 
   val j: (x: S) -> B^ = ???
   val _: (x: S) -> B^ = j
