@@ -2125,8 +2125,27 @@ extends NamingMsg(AlreadyDefinedID):
         i" in ${conflicting.associatedFile}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
+    def print(tpe: Type): String =
+      def addParams(tpe: Type): List[String] = tpe match
+        case tpe: MethodType =>
+          val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
+          s :: addParams(tpe.resType)
+        case tpe: PolyType =>
+          i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+        case tpe =>
+          i"$tpe" :: Nil
+      addParams(tpe).mkString(" ")
     def note =
-      if owner.is(Method) || conflicting.is(Method) then
+      if conflicting.is(Given) && name.startsWith("given_") then
+        i"""|
+            |
+            |Provide an explicit, unique name to given definitions,
+            |since the names assigned to anonymous givens may clash. For example:
+            |
+            |      given myGiven: ${print(atPhase(typerPhase)(conflicting.info))}  // define an instance
+            |      given myGiven @ ${print(atPhase(typerPhase)(conflicting.info))} // as a pattern variable
+            |"""
+      else if owner.is(Method) || conflicting.is(Method) then
         "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
       else ""
     if conflicting.isTerm != name.isTermName then
