@@ -1565,7 +1565,7 @@ object CaptureSet:
       // `ref` will not seem subsumed by other capabilities in a `++`.
       universal
     case c: CoreCapability =>
-      ofType(c.underlying, followResult = true)
+      ofType(c.underlying, followResult = ccConfig.useSpanCapset)
 
   /** Capture set of a type
    *  @param followResult  If true, also include capture sets of function results.

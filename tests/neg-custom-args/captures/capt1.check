@@ -16,35 +16,31 @@
   |  Note that capability x is not included in capture set {}.
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:15:2 -----------------------------------------
-15 |  def f(y: Int) = if x == null then y else y  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:16:2 -----------------------------------------
+16 |  f  // error
    |  ^
    |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
    |
    |  Note that capability x is not included in capture set {}.
-16 |  f
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:22:2 -----------------------------------------
-22 |  class F(y: Int) extends A:   // error
-   |  ^
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:24:2 -----------------------------------------
+24 |  F(22)  // error
+   |  ^^^^^
    |  Found:    A^{x}
    |  Required: A
    |
    |  Note that capability x is not included in capture set {}.
-23 |    def m() = if x == null then y else y
-24 |  F(22)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:27:2 -----------------------------------------
-27 |  new A: // error
-   |  ^
-   |  Found:    A^{x}
-   |  Required: A
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:28:40 ----------------------------------------
+28 |    def m() = if x == null then y else y  // error
+   |                                        ^
+   |                                        Found:    A^{x}
+   |                                        Required: A
    |
-   |  Note that capability x is not included in capture set {}.
-28 |    def m() = if x == null then y else y
+   |                                        Note that capability x is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/capt1.scala:36:16 -------------------------------------------------------------
