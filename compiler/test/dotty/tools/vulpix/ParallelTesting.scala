@@ -353,8 +353,8 @@ trait ParallelTesting extends RunnerOrchestration:
 
     import summaryReport._
 
-    protected final val realStdout = System.out
-    protected final val realStderr = System.err
+    protected final val realStdout: PrintStream = System.out
+    protected final val realStderr: PrintStream = System.err
 
     /** A runnable that logs its contents in a buffer */
     trait LoggedRunnable extends Runnable {

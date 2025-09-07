@@ -232,13 +232,13 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
 
   private object Constants {
     val emptyStringArray = Array[String]()
-    val local            = api.ThisQualifier.create()
-    val public           = api.Public.create()
-    val privateLocal     = api.Private.create(local)
-    val protectedLocal   = api.Protected.create(local)
-    val unqualified      = api.Unqualified.create()
-    val thisPath         = api.This.create()
-    val emptyType        = api.EmptyType.create()
+    val local: api.ThisQualifier = api.ThisQualifier.create()
+    val public: api.Public = api.Public.create()
+    val privateLocal: api.Private = api.Private.create(local)
+    val protectedLocal: api.Protected = api.Protected.create(local)
+    val unqualified: api.Unqualified = api.Unqualified.create()
+    val thisPath: api.This = api.This.create()
+    val emptyType: api.EmptyType = api.EmptyType.create()
     val emptyModifiers   =
       new api.Modifiers(false, false, false, false, false,false, false, false)
   }
