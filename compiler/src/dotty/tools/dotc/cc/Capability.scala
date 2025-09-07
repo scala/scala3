@@ -898,6 +898,8 @@ object Capabilities:
         case t @ AnnotatedType(parent, ann) =>
           val parent1 = this(parent)
           if ann.symbol.isRetains && ann.tree.toCaptureSet.containsCap then
+            // TODO: this can cause infinite recursion in some cases during printing
+            // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
             this(CapturingType(parent1, ann.tree.toCaptureSet))
           else
             t.derivedAnnotatedType(parent1, ann)
