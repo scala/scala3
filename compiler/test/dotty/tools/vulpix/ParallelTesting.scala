@@ -71,7 +71,13 @@ trait ParallelTesting extends RunnerOrchestration:
     def outDir: JFile
     def flags: TestFlags
     def sourceFiles: Array[JFile]
-    def checkFile: Option[JFile]
+    def checkFileBasePathCandidates: Array[String]
+
+    final def checkFile: Option[JFile] =
+      checkFileBasePathCandidates
+        .iterator
+        .flatMap(base => Iterator(new JFile(s"$base.$testPlatform.check"), new JFile(s"$base.check")))
+        .find(_.exists())
 
     def runClassPath: String = outDir.getPath + JFile.pathSeparator + flags.runClassPath
 
@@ -186,9 +192,8 @@ trait ParallelTesting extends RunnerOrchestration:
   ) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
 
-    def checkFile: Option[JFile] =
-      sourceFiles.map(f => new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check")))
-        .find(_.exists())
+    def checkFileBasePathCandidates: Array[String] =
+      sourceFiles.map(f => f.getPath.replaceFirst("\\.(scala|java)$", ""))
   }
 
   /** A test source whose files will be compiled separately according to their
@@ -221,11 +226,8 @@ trait ParallelTesting extends RunnerOrchestration:
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
 
-    def checkFile: Option[JFile] =
-      val platform =
-        if allToolArgs.getOrElse(ToolName.Target, Nil).nonEmpty then s".$testPlatform"
-        else ""
-      Some(new JFile(dir.getPath + platform + ".check")).filter(_.exists)
+    def checkFileBasePathCandidates: Array[String] =
+      Array(dir.getPath)
   }
 
   protected def shouldSkipTestSource(testSource: TestSource): Boolean = false

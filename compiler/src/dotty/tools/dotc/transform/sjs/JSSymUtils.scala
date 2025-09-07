@@ -188,6 +188,7 @@ object JSSymUtils {
         sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
       val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase) {
+        // See also JSCodeGen.genActualArgs
         val list =
           for ((name, info) <- paramNamesAndTypes) yield {
             val v =
