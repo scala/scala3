@@ -189,7 +189,7 @@ class ListBuffer[A]
       last0 = null
   }
 
-  private def locate(i: Int): Predecessor[A] | Null =
+  private def locate(i: Int): Predecessor[A] =
     if (i == 0) null
     else if (i == len) last0
     else {
@@ -202,7 +202,7 @@ class ListBuffer[A]
       p.asInstanceOf[Predecessor[A]]
     }
 
-  private def getNext(p: Predecessor[A] | Null): List[A] =
+  private def getNext(p: Predecessor[A]): List[A] =
     if (p == null) first else p.next
 
   def update(idx: Int, elem: A): Unit = {
@@ -243,7 +243,7 @@ class ListBuffer[A]
   }
 
   // `fresh` must be a `ListBuffer` that only we have access to
-  private def insertAfter(prev: Predecessor[A] | Null, fresh: ListBuffer[A]): Unit = {
+  private def insertAfter(prev: Predecessor[A], fresh: ListBuffer[A]): Unit = {
     if (!fresh.isEmpty) {
       val follow = getNext(prev)
       if (prev eq null) first = fresh.first else prev.next = fresh.first
@@ -291,7 +291,7 @@ class ListBuffer[A]
       throw new IllegalArgumentException("removing negative number of elements: " + count)
     }
 
-  private def removeAfter(prev: Predecessor[A] | Null, n: Int) = {
+  private def removeAfter(prev: Predecessor[A], n: Int) = {
     @tailrec def ahead(p: List[A], n: Int): List[A] =
       if (n == 0) p else ahead(p.tail, n - 1)
     val nx = ahead(getNext(prev), n)
@@ -348,7 +348,7 @@ class ListBuffer[A]
    */
   def filterInPlace(p: A => Boolean): this.type = {
     ensureUnaliased()
-    var prev: Predecessor[A] | Null = null
+    var prev: Predecessor[A] = null
     var cur: List[A] = first
     while (!cur.isEmpty) {
       val follow = cur.tail
