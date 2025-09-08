@@ -9,7 +9,6 @@
  * See the NOTICE file distributed with this work for
  * additional information regarding copyright ownership.
  */
-
 package scala.collection
 
 import scala.language.`2.13`
