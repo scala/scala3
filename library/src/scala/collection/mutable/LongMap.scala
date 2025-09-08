@@ -230,7 +230,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
     }
     else {
       val i = seekEntry(key)
-      if (i < 0) null else _values(i).asInstanceOf[V]
+      if (i < 0) null else _values(i).asInstanceOf[V | Null]
     }
   }
 

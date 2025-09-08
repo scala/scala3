@@ -202,7 +202,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    */
   def getOrNull(key: K): V | Null = {
     val i = seekEntry(hashOf(key), key)
-    if (i < 0) null else _values(i).asInstanceOf[V]
+    if (i < 0) null else _values(i).asInstanceOf[V | Null]
   }
 
   /** Retrieves the value associated with a key.
