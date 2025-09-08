@@ -177,8 +177,7 @@ object Using {
     import Manager._
 
     private var closed = false
-    @annotation.stableNull
-    private[this] var resources: List[Resource[_]] | Null = Nil
+    private[this] var resources: List[Resource[_]] = Nil
 
     /** Registers the specified resource with this manager, so that
       * the resource is released when the manager is closed, and then
@@ -195,7 +194,7 @@ object Using {
     def acquire[R: Releasable](resource: R): Unit = {
       if (resource == null) throw new NullPointerException("null resource")
       if (closed) throw new IllegalStateException("Manager has already been closed")
-      resources = new Resource(resource) :: resources.nn
+      resources = new Resource(resource) :: resources
     }
 
     private def manage[A](op: Manager => A): A = {
@@ -209,7 +208,7 @@ object Using {
       } finally {
         closed = true
         var rs = resources
-        resources = null // allow GC, in case something is holding a reference to `this`
+        resources = null.asInstanceOf[List[Resource[_]]] // allow GC, in case something is holding a reference to `this`
         while (rs != null && rs.nonEmpty) {
           val resource = rs.head
           rs = rs.tail

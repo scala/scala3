@@ -424,7 +424,7 @@ private[collection] object RedBlackTree {
   }
 
   private[this] def upd[A, B, B1 >: B](tree: Tree[A, B] | Null, k: A, v: B1, overwrite: Boolean)(implicit ordering: Ordering[A]): Tree[A, B1] = if (tree eq null) {
-    RedTree(k, v, null: Tree[A, B1] | Null, null: Tree[A, B1] | Null)
+    RedTree[A, B1](k, v, null, null)
   } else if (k.asInstanceOf[AnyRef] eq tree.key.asInstanceOf[AnyRef]) {
     if (overwrite)
       tree.withV(v)
