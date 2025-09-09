@@ -266,19 +266,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           tp.typeSymbol match
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-              cls.paramGetters.foldLeft(tp) { (core, getter) =>
-                if atPhase(thisPhase.next)(getter.hasTrackedParts)
-                    && getter.isRefiningParamAccessor
-                    && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
-                then
-                  val getterType =
-                    mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType(core, getter.name,
-                      CapturingType(getterType, new CaptureSet.RefiningVar(ctx.owner)))
-                    .showing(i"add capture refinement $tp --> $result", capt)
-                else
-                  core
-              }
+              RecType: _ =>
+                cls.paramGetters.foldLeft(tp): (core, getter) =>
+                  if atPhase(thisPhase.next)(getter.hasTrackedParts)
+                      && getter.isRefiningParamAccessor
+                      && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
+                  then
+                    val getterType =
+                      mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
+                    RefinedType(core, getter.name,
+                        CapturingType(getterType, new CaptureSet.RefiningVar(ctx.owner)))
+                      .showing(i"add capture refinement $tp --> $result", capt)
+                  else
+                    core
             case _ => tp
         case _ => tp
 
