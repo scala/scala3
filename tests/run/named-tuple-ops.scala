@@ -84,7 +84,6 @@ type Labels = (x: String, y: String)
   assert(cityFields == List("Lausanne", 1000, 140000))
 
   val cityArr = city.toArray
-  val _: Array[Object] = cityArr
   assert(cityArr.sameElements(Array("Lausanne", 1000, 140000)))
 
   val cityMap = city.toListMap
