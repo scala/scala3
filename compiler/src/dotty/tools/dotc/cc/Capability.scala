@@ -1033,7 +1033,13 @@ object Capabilities:
       override def mapCapability(c: Capability, deep: Boolean) = c match
         case c @ ResultCap(binder) =>
           if localBinders.contains(binder) then c // keep bound references
-          else seen.getOrElseUpdate(c, FreshCap(origin)) // map free references to FreshCap
+          else
+            // Create a fresh skolem that does not subsume anything
+            def freshSkolem =
+              val c = FreshCap(origin)
+              c.hiddenSet.markSolved(provisional = false)
+              c
+            seen.getOrElseUpdate(c, freshSkolem) // map free references to FreshCap
         case _ => super.mapCapability(c, deep)
     end subst
 

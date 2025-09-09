@@ -1206,6 +1206,7 @@ object CaptureSet:
       if alias ne this then alias.add(elem)
       else
         def addToElems() =
+          assert(!isConst)
           includeElem(elem)
           deps.foreach: dep =>
             assert(dep != this)
@@ -1378,8 +1379,10 @@ object CaptureSet:
      *  but the special state VarState.Separate overrides this.
      */
     def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean =
-      hidden.add(elem)(using ctx, this)
-      true
+      if hidden.isConst then false
+      else
+        hidden.add(elem)(using ctx, this)
+        true
 
     /** If root1 and root2 belong to the same binder but have different originalBinders
      *  it means that one of the roots was mapped to the binder of the other by a
