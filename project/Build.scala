@@ -679,16 +679,17 @@ object Build {
     val s = streams.value
     val cacheDir = s.cacheDirectory
     val dest = (Compile / sourceManaged).value / "downloaded"
+    val lm = dependencyResolution.value
     
-    val downloads = Seq(
-      "https://repo1.maven.org/maven2/com/lihaoyi/pprint_3/0.9.3/pprint_3-0.9.3-sources.jar",
-      "https://repo1.maven.org/maven2/com/lihaoyi/fansi_3/0.5.1/fansi_3-0.5.1-sources.jar",
-      "https://repo1.maven.org/maven2/com/lihaoyi/sourcecode_3/0.4.4/sourcecode_3-0.4.4-sources.jar",
+    val dependencies = Seq(
+      ("com.lihaoyi", "pprint_3", "0.9.3"),
+      ("com.lihaoyi", "fansi_3", "0.5.1"),
+      ("com.lihaoyi", "sourcecode_3", "0.4.4"),
     )
 
-    // Create a marker file that tracks the download URLs for cache invalidation
+    // Create a marker file that tracks the dependencies for cache invalidation
     val markerFile = cacheDir / "shaded-sources-marker"
-    val markerContent = downloads.mkString("\n")
+    val markerContent = dependencies.map { case (org, name, version) => s"$org:$name:$version:sources" }.mkString("\n")
     if (!markerFile.exists || IO.read(markerFile) != markerContent) {
       IO.write(markerFile, markerContent)
     }
@@ -702,19 +703,25 @@ object Build {
       }
       IO.createDirectory(dest)
 
-      for(url <- downloads) {
-        import java.net.URL
+      for((org, name, version) <- dependencies) {
+        import sbt.librarymanagement._
 
-        // Download jar to a temporary file
-        val jarName = url.substring(url.lastIndexOf('/') + 1)
-        val tempJar = cacheDir / jarName
+        // Retrieve sources jar using dependencyResolution
+        val moduleId = ModuleID(org, name, version).sources()
+        val retrieveDir = cacheDir / "retrieved" / s"$org-$name-$version-sources"
+        
+        s.log.info(s"Retrieving $org:$name:$version:sources...")
+        val retrieved = lm.retrieve(moduleId, scalaModuleInfo = None, retrieveDir, s.log)
+        val jarFiles = retrieved.fold(
+          w => throw w.resolveException,
+          files => files.filter(_.getName.contains("-sources.jar"))
+        )
 
-        s.log.info(s"Downloading $jarName...")
-        IO.transfer(new URL(url).openStream(), tempJar)
-
-        // Extract the jar using SBT's IO.unzip
-        s.log.info(s"Extracting $jarName...")
-        IO.unzip(tempJar, dest)
+        // Extract each retrieved jar
+        jarFiles.foreach { jarFile =>
+          s.log.info(s"Extracting ${jarFile.getName}...")
+          IO.unzip(jarFile, dest)
+        }
       }
 
       val scalaFiles = (dest ** "*.scala").get
