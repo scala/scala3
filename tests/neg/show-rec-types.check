@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/show-rec-types.scala:13:13 ----------------------------------------------------
+13 |val _: Int = c // error
+   |             ^
+   |             Found:    (c : {z1 => C{val x: {z2 => C{val x: z2.T}}; val y: z1.T}})
+   |             Required: Int
+   |
+   | longer explanation available when compiling with `-explain`

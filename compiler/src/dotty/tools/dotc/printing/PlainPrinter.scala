@@ -39,6 +39,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private var elideCapabilityCaps = false
 
   private var openRecs: List[RecType] = Nil
+  private var referredRecs: Set[RecType] = Set.empty
 
   protected def maxToTextRecursions: Int = 100
 
@@ -260,11 +261,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
           refinementChain(tp).reverse: @unchecked
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
       case tp: RecType =>
-        try {
+        try
           openRecs = tp :: openRecs
-          "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
-        }
-        finally openRecs = openRecs.tail
+          val parentTxt = toTextGlobal(tp.parent)
+          if referredRecs.contains(tp) || printDebug
+          then "{" ~ selfRecName(openRecs.length) ~ " => " ~ parentTxt ~ "}"
+          else parentTxt
+        finally
+          referredRecs -= openRecs.head
+          openRecs = openRecs.tail
       case AndType(tp1, tp2) =>
         changePrec(AndTypePrec) { toText(tp1) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(tp2) } }
       case OrType(tp1, tp2) =>
@@ -457,7 +462,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(pref) ~ hashStr(pref.binder)
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
-        if (idx >= 0) selfRecName(idx + 1)
+        if idx >= 0 then
+          referredRecs += tp.binder
+          selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
         def reprStr = toText(tp.repr) ~ hashStr(tp)
