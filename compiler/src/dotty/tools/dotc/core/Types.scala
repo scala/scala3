@@ -6312,6 +6312,8 @@ object Types extends TypeUtils {
         null
 
     def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+      case c @ FreshCap(prefix) =>
+        c.derivedFreshCap(apply(prefix))
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)

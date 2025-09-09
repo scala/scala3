@@ -694,7 +694,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   if cls.derivesFrom(defn.Caps_Capability) then
                     // If cls is a capability class, we need to add a fresh readonly capability to
                     // ensure we cannot treat the class as pure.
-                    CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                    CaptureSet.fresh(cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
                   CapturingType(cinfo.selfType, cs)
 
               // Compute new parent types

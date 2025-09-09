@@ -559,8 +559,10 @@ object CaptureSet:
   def universal(using Context): Const =
     Const(SimpleIdentitySet(GlobalCap))
 
+  def fresh(prefix: Type, origin: Origin)(using Context): Const =
+    FreshCap(prefix, origin).singletonCaptureSet
   def fresh(origin: Origin)(using Context): Const =
-    FreshCap(origin).singletonCaptureSet
+    fresh(ctx.owner.thisType, origin)
 
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): Const =

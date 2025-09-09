@@ -148,9 +148,20 @@ object Capabilities:
    *  @param origin  an indication where and why the FreshCap was created, used
    *                 for diagnostics
    */
-  case class FreshCap private (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
-    val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
+  case class FreshCap(val prefix: Type)
+      (val owner: Symbol, val origin: Origin, origHidden: CaptureSet.HiddenSet | Null)
+      (using @constructorOnly ctx: Context)
+  extends RootCapability:
+    val hiddenSet =
+      if origHidden == null then CaptureSet.HiddenSet(owner, this: @unchecked)
+      else origHidden
       // fails initialization check without the @unchecked
+
+    def derivedFreshCap(newPrefix: Type)(using Context): FreshCap =
+      if newPrefix eq prefix then this
+      else FreshCap(newPrefix)(owner, origin, hiddenSet)
+
+    //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
 
     /** Is this fresh cap (definitely) classified? If that's the case, the
      *  classifier cannot be changed anymore.
@@ -198,8 +209,10 @@ object Capabilities:
       i"a fresh root capability$classifierStr$originStr"
 
   object FreshCap:
+    def apply(prefix: Type, origin: Origin)(using Context): FreshCap =
+      new FreshCap(prefix)(ctx.owner, origin, null)
     def apply(origin: Origin)(using Context): FreshCap =
-      FreshCap(ctx.owner, origin)
+      apply(ctx.owner.skipWeakOwner.thisType, origin)
 
   /** A root capability associated with a function type. These are conceptually
    *  existentially quantified over the function's result type.
@@ -703,12 +716,24 @@ object Capabilities:
       (this eq y)
       || this.match
         case x: FreshCap =>
+          def classifierOK =
+            if y.tryClassifyAs(x.hiddenSet.classifier) then true
+            else
+              capt.println(i"$y cannot be classified as $x")
+              false
+
+          def prefixAllowsAddHidden: Boolean = x.prefix match
+            case NoPrefix | _: ThisType => true
+            case _ if CCState.collapseFresh => true
+            case pre =>
+              capt.println(i"fresh not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipWeakOwner.thisType}")
+              false
+
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
           || x.acceptsLevelOf(y)
-              && ( y.tryClassifyAs(x.hiddenSet.classifier)
-                   || { capt.println(i"$y cannot be classified as $x"); false }
-              )
+              && classifierOK
               && canAddHidden
+              && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
           val result = y match
