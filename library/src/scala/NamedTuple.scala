@@ -216,7 +216,10 @@ object NamedTupleDecomposition:
      */
     inline def toListMap: ListMap[String, Tuple.Union[V]] =
       inline compiletime.constValueTuple[N].toList match
-        case names: List[String] => ListMap.from(names.zip(x.toList))
+        case names: List[String] =>
+          ListMap.from(names.iterator.zip(
+            x.toTuple.productIterator.asInstanceOf[Iterator[Tuple.Union[V]]]
+          ))
   end extension
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
