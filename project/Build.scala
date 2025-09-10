@@ -1428,7 +1428,7 @@ object Build {
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
-        ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
+        ("org.scala-sbt" %% "zinc-apiinfo" % "1.10.8" % Test).cross(CrossVersion.for3Use2_13),
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ),
       // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
