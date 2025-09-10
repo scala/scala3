@@ -159,7 +159,11 @@ object Capabilities:
 
     def derivedFreshCap(newPrefix: Type)(using Context): FreshCap =
       if newPrefix eq prefix then this
-      else FreshCap(newPrefix)(owner, origin, hiddenSet)
+      else if newPrefix eq hiddenSet.owningCap.prefix then
+        hiddenSet.owningCap
+      else
+        hiddenSet.derivedCaps
+          .getOrElseUpdate(newPrefix, FreshCap(newPrefix)(owner, origin, hiddenSet))
 
     //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
 
