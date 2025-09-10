@@ -1718,7 +1718,10 @@ trait Implicits:
           def candSucceedsGiven(sym: Symbol): Boolean =
             val owner = sym.owner
             if owner == candSym.owner then
-              sym.is(GivenVal) && sym.span.exists && sym.span.start <= candSym.span.start
+              sym.is(GivenVal)
+              && sym.span.exists && sym.span.start <= candSym.span.start
+              && (sym.span.isSourceDerived || !sym.name.startsWith("derived$", 0))
+                // logically a synthetic injected at the end of the body
             else if owner.isClass then false
             else candSucceedsGiven(owner)
 
