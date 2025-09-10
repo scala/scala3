@@ -2959,7 +2959,7 @@ object SymDenotations {
       dependent = null
     }
 
-    protected def addDependent(dep: InheritedCache) = {
+    protected def addDependent(dep: InheritedCache): Unit = {
       if (dependent == null) dependent = new WeakHashMap
       dependent.nn.put(dep, ())
     }

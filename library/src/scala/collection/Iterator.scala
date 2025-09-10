@@ -9,7 +9,6 @@
  * See the NOTICE file distributed with this work for
  * additional information regarding copyright ownership.
  */
-
 package scala.collection
 
 import scala.language.`2.13`
@@ -418,7 +417,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
   @deprecated("Call scanRight on an Iterable instead.", "2.13.0")
   def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this, op} = ArrayBuffer.from(this).scanRight(z)(op).iterator
- 
+
   /** Finds index of the first element satisfying some predicate after or at some start index.
     *
     *  $mayNotTerminateInf
@@ -494,9 +493,9 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       while (p(hd) == isFlipped) {
         if (!self.hasNext) return false
         hd = self.next()
-      } 
+      }
       hdDefined = true
-      true 
+      true
     }
 
     def next() =
@@ -874,7 +873,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def duplicate: (Iterator[A]^{this}, Iterator[A]^{this}) = {
     val gap = new scala.collection.mutable.Queue[A]
-    var ahead: Iterator[A] = null
+    var ahead: Iterator[A]^ = null
     class Partner extends AbstractIterator[A] {
       override def knownSize: Int = self.synchronized {
         val thisSize = self.knownSize
@@ -890,7 +889,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         if (gap.isEmpty) ahead = this
         if (this eq ahead) {
           val e = self.next()
-          gap enqueue e
+          gap.enqueue(e)
           e
         } else gap.dequeue()
       }
@@ -918,7 +917,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def patch[B >: A](from: Int, patchElems: Iterator[B]^, replaced: Int): Iterator[B]^{this, patchElems} =
     new AbstractIterator[B] {
-      private[this] var origElems = self
+      private[this] var origElems: Iterator[B]^ = self
       // > 0  => that many more elems from `origElems` before switching to `patchElems`
       //   0  => need to drop elems from `origElems` and start using `patchElems`
       //  -1  => have dropped elems from `origElems`, will be using `patchElems` until it's empty
