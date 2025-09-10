@@ -367,6 +367,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: LazyRef =>
         isBottom(tp1)
         || !tp2.evaluating && recur(tp1, tp2.ref)
+      case tp2: RecType =>
+        def compareRec = tp1.safeDealias match
+          case tp1: RecType =>
+            val rthis1 = tp1.recThis
+            recur(tp1.parent, tp2.parent.substRecThis(tp2, rthis1))
+          case _ =>
+            secondTry
+        compareRec
       case CapturingType(_, _) =>
         secondTry
       case tp2: AnnotatedType if !tp2.isRefining =>
@@ -719,7 +727,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareRefined
       case tp2: RecType =>
         def compareRec = tp1.safeDealias match {
-          case tp1: RecType =>
+          case tp1: RecType =>    // TODO this is now also in firstTry, needed here?
             val rthis1 = tp1.recThis
             recur(tp1.parent, tp2.parent.substRecThis(tp2, rthis1))
           case NoType => false
