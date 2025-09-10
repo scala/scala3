@@ -795,7 +795,7 @@ object Build {
       libraryDependencies ++= Seq(
         ("org.scala-sbt" %% "zinc-apiinfo" % "1.12.0" % Test).cross(CrossVersion.for3Use2_13),
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        ),
+      ),
       // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
       excludeDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect",

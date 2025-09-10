@@ -125,6 +125,12 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
   override def traverse(tree: Tree)(using Context): Unit =
     try
       recordTree(tree)
+
+      tree match
+        case TypeApply(fun, args) if fun.symbol.is(Inline) =>
+          addMacroDependency(args)
+        case _ =>
+        
       tree match
         case tree: Inlined if !tree.inlinedFromOuterScope =>
           // The inlined call is normally ignored by TreeTraverser but we need to
@@ -181,6 +187,30 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
       for parent <- tree.parents do
         rec.addClassDependency(parent.tpe.classSymbol, depContext)
     }
+
+  // Only reference DependencyByMacroExpansion if it an be found on the classpath,
+  // as it was added later to the zinc.apiinfo DependencyContext enum
+  // e.g. pre 1.10.x sbt would throw java.lang.NoSuchFieldError errors here
+  lazy val allowsDependencyByMacroExpansion =
+    classOf[DependencyContext].getFields().exists(_.getName() == "DependencyByMacroExpansion")
+
+  private def addMacroDependency(sym: Symbol)(using Context): Unit =
+    if (allowsDependencyByMacroExpansion) {
+      if (!ignoreDependency(sym)) {
+        if (!sym.is(Package)) {
+          val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
+          assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $sym")
+
+          rec.addClassDependency(enclOrModuleClass, DependencyByMacroExpansion)
+        }
+      }
+    }
+
+  private def addMacroDependency(trees: List[Tree])(using Context): Unit =
+    val traverser = new TypeDependencyTraverser {
+      def addDependency(symbol: Symbol) = addMacroDependency(symbol)
+    }
+    trees.foreach(tree => traverser.traverse(tree.tpe))
 
   private def depContextOf(cls: Symbol)(using Context): DependencyContext =
     if cls.isLocal then LocalDependencyByInheritance
