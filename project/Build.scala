@@ -675,80 +675,6 @@ object Build {
     recur(lines)
   }
 
-  val shadedSourceGenerator = (Compile / sourceGenerators) += Def.task {
-    val s = streams.value
-    val cacheDir = s.cacheDirectory
-    val dest = (Compile / sourceManaged).value / "downloaded"
-    val lm = dependencyResolution.value
-    
-    val dependencies = Seq(
-      ("com.lihaoyi", "pprint_3", "0.9.3"),
-      ("com.lihaoyi", "fansi_3", "0.5.1"),
-      ("com.lihaoyi", "sourcecode_3", "0.4.4"),
-    )
-
-    // Create a marker file that tracks the dependencies for cache invalidation
-    val markerFile = cacheDir / "shaded-sources-marker"
-    val markerContent = dependencies.map { case (org, name, version) => s"$org:$name:$version:sources" }.mkString("\n")
-    if (!markerFile.exists || IO.read(markerFile) != markerContent) {
-      IO.write(markerFile, markerContent)
-    }
-
-    FileFunction.cached(cacheDir / "fetchShadedSources",
-        FilesInfo.lastModified, FilesInfo.exists) { _ =>
-      s.log.info(s"Downloading and processing shaded sources to $dest...")
-      
-      if (dest.exists) {
-        IO.delete(dest)
-      }
-      IO.createDirectory(dest)
-
-      for((org, name, version) <- dependencies) {
-        import sbt.librarymanagement._
-
-        // Retrieve sources jar using dependencyResolution
-        val moduleId = ModuleID(org, name, version).sources()
-        val retrieveDir = cacheDir / "retrieved" / s"$org-$name-$version-sources"
-        
-        s.log.info(s"Retrieving $org:$name:$version:sources...")
-        val retrieved = lm.retrieve(moduleId, scalaModuleInfo = None, retrieveDir, s.log)
-        val jarFiles = retrieved.fold(
-          w => throw w.resolveException,
-          files => files.filter(_.getName.contains("-sources.jar"))
-        )
-
-        // Extract each retrieved jar
-        jarFiles.foreach { jarFile =>
-          s.log.info(s"Extracting ${jarFile.getName}...")
-          IO.unzip(jarFile, dest)
-        }
-      }
-
-      val scalaFiles = (dest ** "*.scala").get
-      scalaFiles.foreach { file =>
-        val text = IO.read(file)
-        if (!file.getName.equals("CollectionName.scala")) {
-          val processedText = "package dotty.shaded\n" +
-            text
-              .replace("import scala", "import _root_.scala")
-              .replace(" scala.collection.", " _root_.scala.collection.")
-              .replace("_root_.pprint", "_root_.dotty.shaded.pprint")
-              .replace("_root_.fansi", "_root_.dotty.shaded.fansi")
-              .replace("def apply(c: Char): Trie[T]", "def apply(c: Char): Trie[T] | Null")
-              .replace("var head: Iterator[T] = null", "var head: Iterator[T] | Null = null")
-              .replace("if (head != null && head.hasNext) true", "if (head != null && head.nn.hasNext) true")
-              .replace("head.next()", "head.nn.next()")
-              .replace("abstract class Walker", "@scala.annotation.nowarn abstract class Walker")
-              .replace("object TPrintLowPri", "@scala.annotation.nowarn object TPrintLowPri")
-              .replace("x.toString match{", "scala.runtime.ScalaRunTime.stringOf(x) match{")
-
-          IO.write(file, processedText)
-        }
-      }
-      scalaFiles.toSet
-    } (Set(markerFile)).toSeq
-
-  }.taskValue
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Note: bench/profiles/projects.yml should be updated accordingly.
@@ -795,7 +721,7 @@ object Build {
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
-      shadedSourceGenerator,
+      (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
 
       // For convenience, change the baseDirectory when running the compiler
       Compile / forkOptions := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
@@ -2217,7 +2143,7 @@ object Build {
 
         Seq(file)
       }.taskValue,
-      shadedSourceGenerator,
+      (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       scalaInstance := {
@@ -2407,7 +2333,7 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
-      shadedSourceGenerator
+      (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue
     )
 
   // ==============================================================================================
