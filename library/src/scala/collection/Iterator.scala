@@ -278,7 +278,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
           else if (buffer.nn.length == size) Array.copy(src = buffer.nn, srcPos = step, dest = prev.nn, destPos = 0, length = size - step)
           else prev = null
         }
-        val res = immutable.ArraySeq.unsafeWrapArray(buffer).asInstanceOf[immutable.ArraySeq[B]]
+        val res = immutable.ArraySeq.unsafeWrapArray(buffer.nn).asInstanceOf[immutable.ArraySeq[B]]
         buffer = null
         first = false
         res

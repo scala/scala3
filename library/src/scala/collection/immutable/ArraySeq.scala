@@ -283,11 +283,11 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
 
   def from[A](it: scala.collection.IterableOnce[A]^)(implicit tag: ClassTag[A]): ArraySeq[A] = it match {
     case as: ArraySeq[A] => as
-    case _ => unsafeWrapArray(Array.from[A](it)).nn
+    case _ => unsafeWrapArray(Array.from[A](it))
   }
 
   def newBuilder[A : ClassTag]: Builder[A, ArraySeq[A]] =
-    ArrayBuffer.newBuilder[A].mapResult(b => unsafeWrapArray[A](b.toArray).nn)
+    ArrayBuffer.newBuilder[A].mapResult(b => unsafeWrapArray[A](b.toArray))
 
   override def fill[A : ClassTag](n: Int)(elem: => A): ArraySeq[A] = tabulate(n)(_ => elem)
 
@@ -298,7 +298,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       ScalaRunTime.array_update(elements, i, f(i))
       i = i + 1
     }
-    ArraySeq.unsafeWrapArray(elements).nn
+    ArraySeq.unsafeWrapArray(elements)
   }
 
   /**
@@ -313,7 +313,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    * `ArraySeq.unsafeWrapArray(a.asInstanceOf[Array[Int]])` does not work, it throws a
    * `ClassCastException` at runtime.
    */
-  def unsafeWrapArray[T](x: Array[T] | Null): ArraySeq[T] | Null = ((x: @unchecked) match {
+  def unsafeWrapArray[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null
     case x: Array[AnyRef]  => new ofRef[AnyRef](x)
     case x: Array[Int]     => new ofInt(x)
