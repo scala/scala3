@@ -122,9 +122,11 @@ class ReplDriver(settings: Array[String],
   final def initialState: State =
     val emptyState = State(0, 0, Map.empty, Set.empty, false, rootCtx)
     val initScript = rootCtx.settings.replInitScript.value(using rootCtx)
-    initScript.trim() match
-      case "" => emptyState
-      case script => run(script)(using emptyState)
+    val pprintImport = "import dotty.shaded.pprint.pprintln"
+    val combinedScript = initScript.trim() match
+      case "" => pprintImport
+      case script => s"$pprintImport\n$script"
+    run(combinedScript)(using emptyState)
 
   /** Reset state of repl to the initial state
    *
