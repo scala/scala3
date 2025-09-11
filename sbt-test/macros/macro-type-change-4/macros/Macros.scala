@@ -8,7 +8,7 @@ object Macros {
   def hasAnyFieldImpl[T: Type](placeholder: Expr[Boolean])(using Quotes): Expr[Boolean] = {
     import quotes.reflect.*
 
-    val hasField = TypeRepr.of[T].typeSymbol.declaredFields.nonEmpty
+    val hasField = TypeRepr.of[T].typeSymbol.fieldMembers.nonEmpty
 
     Expr(hasField)
   }
