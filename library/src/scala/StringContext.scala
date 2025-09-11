@@ -95,7 +95,7 @@ case class StringContext(parts: String*) {
   object s {
     /** The simple string matcher.
      *
-     *  Attempts to match the input string to the given interpolated patterns via 
+     *  Attempts to match the input string to the given interpolated patterns via
      *  a naive globbing, that is the reverse of the simple interpolator.
      *
      *  Here is an example usage:
@@ -206,7 +206,7 @@ object StringContext {
     *                      separated by wildcards
     * @param input The input you wish to match against
     * @return None if there is no match, Some containing the sequence of matched
-    *         wildcard strings if there is a match 
+    *         wildcard strings if there is a match
     */
   def glob(patternChunks: Seq[String], input: String): Option[Seq[String]] = {
     var patternIndex = 0
@@ -293,7 +293,7 @@ object StringContext {
     // Matched all of pattern to all of name. Success.
     Some(collection.immutable.ArraySeq.unsafeWrapArray(
       Array.tabulate(patternChunks.length - 1)(n => input.slice(matchStarts(n), matchEnds(n)))
-    ).nn)
+    ))
   }
 
   /** An exception that is thrown if a string contains a backslash (`\`) character
@@ -317,7 +317,7 @@ object StringContext {
     val len = src.length()
     def loop(uindex: Int): (Char, Int) = {
       def loopCP(dindex: Int, codepoint: Int): (Char, Int) = {
-        //supports BMP + surrogate escapes 
+        //supports BMP + surrogate escapes
         //but only in four hex-digit code units (uxxxx)
         if(dindex >= 4) {
           val usRead = uindex - startindex
