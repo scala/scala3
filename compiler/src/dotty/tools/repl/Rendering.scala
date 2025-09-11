@@ -53,8 +53,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String =
-    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value, height = 50, width = 100).plainText
+  private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String = {
+    // pretty-print things with 100 cols 50 rows by default,
+    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value, width = 100, height = 50).plainText
+  }
 
   /** Load the value of the symbol using reflection.
    *
