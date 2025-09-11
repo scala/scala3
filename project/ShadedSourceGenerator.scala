@@ -68,8 +68,6 @@ object ShadedSourceGenerator {
       val patches = Map(
         "import scala" -> "import _root_.scala",
         " scala.collection." -> " _root_.scala.collection.",
-        "_root_.pprint" -> "_root_.dotty.shaded.pprint",
-        "_root_.fansi" -> "_root_.dotty.shaded.fansi",
         "def apply(c: Char): Trie[T]" -> "def apply(c: Char): Trie[T] | Null",
         "var head: Iterator[T] = null" -> "var head: Iterator[T] | Null = null",
         "if (head != null && head.hasNext) true" -> "if (head != null && head.nn.hasNext) true",
