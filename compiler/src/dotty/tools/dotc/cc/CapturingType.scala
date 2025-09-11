@@ -37,7 +37,7 @@ object CapturingType:
     if refs.isAlwaysEmpty && !refs.keepAlways then parent
     else parent match
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
-        apply(parent1, refs ++ refs1, boxed)
+        apply(parent1, refs ++ refs1, boxed).withOrigin(parent)
       case _ =>
         if parent.derivesFromMutable then refs.setMutable()
         refs.adoptClassifier(parent.classifier)

@@ -179,14 +179,23 @@ extension (tp: Type)
         && !cs.keepAlways
     then tp
     else tp match
-      case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
+      case tp @ CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs).withOrigin(tp)
       case _ => CapturingType(tp, cs)
+
+  def withOrigins(origins: Set[AnnotatedType])(using Context) = tp match
+    case tp @ AnnotatedType(p, ann: CaptureAnnotation) =>
+      tp.derivedAnnotatedType(p, ann.withOrigins(origins))
+    case _ =>
+      tp
+
+  def withOrigin(origin: AnnotatedType)(using Context) =
+    withOrigins(Set(origin))
 
   /** @pre `tp` is a CapturingType */
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
     case tp @ CapturingType(p, r) =>
       if (parent eq p) && (refs eq r) then tp
-      else CapturingType(parent, refs, tp.isBoxed)
+      else CapturingType(parent, refs, tp.isBoxed).withOrigin(tp)
 
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
    *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
@@ -196,7 +205,7 @@ extension (tp: Type)
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
         case ann: CaptureAnnotation if !parent.derivesFrom(defn.Caps_CapSet) =>
-          AnnotatedType(parent, ann.boxedAnnot)
+          AnnotatedType(parent, ann.boxedAnnot).withOrigin(tp)
         case ann => tp
     case tp: RealTypeBounds =>
       tp.derivedTypeBounds(tp.lo.boxed, tp.hi.boxed)
@@ -209,7 +218,7 @@ extension (tp: Type)
    */
   def unboxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed && !refs.isAlwaysEmpty =>
-      CapturingType(parent, refs)
+      CapturingType(parent, refs).withOrigin(tp)
     case tp: RealTypeBounds =>
       tp.derivedTypeBounds(tp.lo.unboxed, tp.hi.unboxed)
     case _ =>
@@ -303,7 +312,7 @@ extension (tp: Type)
         case ref: Capability if ref.isTracked || ref.isInstanceOf[DerivedCapability] =>
           ref.singletonCaptureSet
         case _ => refs
-      CapturingType(parent, refs1, boxed)
+      CapturingType(parent, refs1, boxed).withOrigin(tp)
     case _ =>
       tp
 
