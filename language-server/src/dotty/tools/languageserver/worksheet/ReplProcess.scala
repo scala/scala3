@@ -4,7 +4,7 @@ import dotty.tools.repl.ReplDriver
 
 object ReplProcess {
   def main(args: Array[String]): Unit = {
-    val driver = new ReplDriver(args, extraPredef = ReplDriver.pprintImport)
+    val driver = new ReplDriver(args)
     val in = new InputStreamConsumer(System.in)
     var state = driver.initialState
 
