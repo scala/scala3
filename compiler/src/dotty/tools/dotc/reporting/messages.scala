@@ -13,8 +13,10 @@ import parsing.Tokens
 import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
-import ast.Trees
+import ast.Trees.*
 import ast.desugar
+import ast.tpd
+import ast.untpd
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
@@ -25,9 +27,6 @@ import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
 import Formatting.{hl, delay}
-import ast.Trees.*
-import ast.untpd
-import ast.tpd
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
@@ -3097,7 +3096,7 @@ class MissingImplicitArgument(
   def msg(using Context): String =
 
     def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
-      case arg: Trees.SearchFailureIdent[?] =>
+      case arg: SearchFailureIdent[?] =>
         arg.tpe match
           case _: NoMatchingImplicits => headline
           case tpe: SearchFailureType =>
@@ -3741,3 +3740,8 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+class AmbiguousTemplateName(tree: NamedDefTree[?])(using Context) extends SyntaxMsg(AmbiguousTemplateNameID):
+  override protected def msg(using Context) = i"name `${tree.name}` should be enclosed in backticks"
+  override protected def explain(using Context): String =
+    "Names with trailing operator characters may fuse with a subsequent colon if not set off by backquotes or spaces."

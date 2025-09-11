@@ -3862,6 +3862,18 @@ object Parsers {
 /* -------- DEFS ------------------------------------------- */
 
     def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
+      def checkName(): Unit =
+        def checkName(name: Name): Unit =
+          if !name.isEmpty
+          && !Chars.isOperatorPart(name.firstCodePoint) // warn a_: not ::
+          && name.endsWith(":")
+          then
+            report.warning(AmbiguousTemplateName(md), md.namePos)
+        md match
+        case md @ TypeDef(name, impl: Template) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
+        case md @ ModuleDef(name, impl) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
+        case _ =>
+      checkName()
       md.withMods(mods).setComment(in.getDocComment(start))
 
     type ImportConstr = (Tree, List[ImportSelector]) => Tree
@@ -4311,14 +4323,15 @@ object Parsers {
 
     /** ClassDef ::= id ClassConstr TemplateOpt
      */
-    def classDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      classDefRest(start, mods, ident().toTypeName)
-    }
+    def classDef(start: Offset, mods: Modifiers): TypeDef =
+      val td = atSpan(start, nameStart):
+        classDefRest(mods, ident().toTypeName)
+      finalizeDef(td, mods, start)
 
-    def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
+    def classDefRest(mods: Modifiers, name: TypeName): TypeDef =
       val constr = classConstr(if mods.is(Case) then ParamOwner.CaseClass else ParamOwner.Class)
       val templ = templateOpt(constr)
-      finalizeDef(TypeDef(name, templ), mods, start)
+      TypeDef(name, templ)
 
     /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsTermParamClauses
      */
@@ -4336,11 +4349,15 @@ object Parsers {
 
     /** ObjectDef       ::= id TemplateOpt
      */
-    def objectDef(start: Offset, mods: Modifiers): ModuleDef = atSpan(start, nameStart) {
-      val name = ident()
-      val templ = templateOpt(emptyConstructor)
-      finalizeDef(ModuleDef(name, templ), mods, start)
-    }
+    def objectDef(start: Offset, mods: Modifiers): ModuleDef =
+      val md = atSpan(start, nameStart):
+        val nameIdent = termIdent()
+        val templ = templateOpt(emptyConstructor)
+        ModuleDef(nameIdent.name.asTermName, templ)
+          .tap: md =>
+            if nameIdent.isBackquoted then
+              md.pushAttachment(Backquoted, ())
+      finalizeDef(md, mods, start)
 
     private def checkAccessOnly(mods: Modifiers, caseStr: String): Modifiers =
       // We allow `infix` and `into` on `enum` definitions.
@@ -4572,7 +4589,7 @@ object Parsers {
               Template(constr, parents, Nil, EmptyValDef, Nil)
             else if !newSyntaxAllowed
                 || in.token == WITH && tparams.isEmpty && vparamss.isEmpty
-                // if new syntax is still allowed and there are parameters, they mist be new style conditions,
+                // if new syntax is still allowed and there are parameters, they must be new style conditions,
                 // so old with-style syntax would not be allowed.
             then
               withTemplate(constr, parents)
