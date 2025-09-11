@@ -1523,7 +1523,7 @@ object Parsers {
           if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(in.offset), "  ")
 
-    def possibleTemplateStart(isNew: Boolean = false): Unit =
+    def possibleTemplateStart(): Unit =
       in.observeColonEOL(inTemplate = true)
       if in.token == COLONeol then
         if in.lookahead.token == END then in.token = NEWLINE
@@ -2866,7 +2866,7 @@ object Parsers {
       val parents =
         if in.isNestedStart then Nil
         else constrApps(exclude = COMMA)
-      possibleTemplateStart(isNew = true)
+      possibleTemplateStart()
       parents match {
         case parent :: Nil if !in.isNestedStart =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
