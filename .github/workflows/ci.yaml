@@ -499,66 +499,6 @@ jobs:
       - name: Test sbt
         run: ./project/scripts/sbt "sbt-test/scripted; sbt-community-build/scripted"
 
-  test_java8:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || (
-           github.event_name == 'push'
-           && startsWith(github.event.ref, 'refs/tags/')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_java8]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-
-    steps:
-      ####################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. THIS TEST IS SPECIFIC FOR JAVA 8 ##
-      ####################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        run: |
-          ./project/scripts/buildScalaBinary
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*"
-          ./project/scripts/cmdTests
-          ./project/scripts/bootstrappedOnlyCmdTests
-
-      - name: Scala.js Test
-        run: |
-          ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
-
   publish_release:
     permissions:
       contents: write  # for GH CLI to create a release
@@ -570,7 +510,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8, build-sdk-package, build-msi-package]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, build-sdk-package, build-msi-package]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
