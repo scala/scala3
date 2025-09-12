@@ -1,0 +1,20 @@
+-- [E222] Pattern Match Warning: tests/warn/i23243.scala:8:9 -----------------------------------------------------------
+8 |    case Extractor() => println("foo matched") // warn: String | Null is nullable
+  |         ^^^^^^^^^^^
+  |         String | Null is nullable, but will not be matched by null.
+-- [E222] Pattern Match Warning: tests/warn/i23243.scala:13:17 ---------------------------------------------------------
+13 |    case Some(s: (String | Null)) => // warn: String | Null is nullable
+   |                 ^^^^^^^^^^^^^^^
+   |                 String | Null is nullable, but will not be matched by null.
+-- [E222] Pattern Match Warning: tests/warn/i23243.scala:14:22 ---------------------------------------------------------
+14 |    case Some(Some(s: (String | Null))) => // warn: String | Null is nullable
+   |                      ^^^^^^^^^^^^^^^
+   |                      String | Null is nullable, but will not be matched by null.
+-- [E222] Pattern Match Warning: tests/warn/i23243.scala:17:22 ---------------------------------------------------------
+17 |    case (null | Some(_: (Int | Null)))| Some(_: (String | Null)) => // warn: Int | Null is nullable // warn: String | Null is nullable
+   |                      ^^^^^^^^^^^^^^^
+   |                      Int | Null is nullable, but will not be matched by null.
+-- [E222] Pattern Match Warning: tests/warn/i23243.scala:17:46 ---------------------------------------------------------
+17 |    case (null | Some(_: (Int | Null)))| Some(_: (String | Null)) => // warn: Int | Null is nullable // warn: String | Null is nullable
+   |                                              ^^^^^^^^^^^^^^^^^^
+   |                                              String | Null is nullable, but will not be matched by null.
