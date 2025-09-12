@@ -4086,7 +4086,14 @@ object Parsers {
       val tpt = typedOpt()
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
-          accept(EQUALS)
+          if tpt.isEmpty && in.token != EQUALS then
+            lhs match
+            case Ident(name) :: Nil if name.endsWith(":") =>
+              val help = i"; identifier ends in colon, did you mean `${name.toSimpleName.dropRight(1)}`: in backticks?"
+              syntaxErrorOrIncomplete(ExpectedTokenButFound(EQUALS, in.token, suffix = help))
+            case _ => accept(EQUALS)
+          else
+            accept(EQUALS)
           val rhsOffset = in.offset
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
