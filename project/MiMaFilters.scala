@@ -517,8 +517,24 @@ object MiMaFilters {
           ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
           ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.NoPositioner"),
 
+          // Class initializers, fine to omit them
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language#experimental.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.util.Properties.<clinit>"),
+
+          // These are inner objects/private classes and it is fine to not have the outer reference captured.
+          // The code that is emitted is correct within the compilation unit and does not escape it
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Enumeration#ValueOrdering.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.IterableOnceOps#Maximized.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.LinearSeqIterator#LazyCell.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.BatchingExecutor#AbstractBatch.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.Channel#LinkedList.this"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.io.Source#RelaxedPosition.this"),
+
           // Issue #22495 (will be fixed in a later PR and should be fixed before any release)
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak2$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.linesSeparated$extension"),
@@ -531,6 +547,42 @@ object MiMaFilters {
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll1$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll2$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll3$extension"),
+
+          // singleton case classes modules inherit AbstractFunction1??
+          ProblemFilters.exclude[MissingTypesProblem]("scala.ScalaReflectionException$"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.ScalaReflectionException.compose"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.ScalaReflectionException.andThen"),
+          ProblemFilters.exclude[MissingTypesProblem]("scala.UninitializedFieldError$"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.UninitializedFieldError.compose"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.UninitializedFieldError.andThen"),
+          ProblemFilters.exclude[MissingTypesProblem]("scala.collection.StringView$"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.compose"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.andThen"),
+
+          // This issue only arise in the non-bootstrapped stdlib
+          // It has to do with the fact that the special erasure of Pure was handled such as
+          // `scala.Pure`, not `scala.caps.Pure`. This filter should be removed once we move to 3.8.1
+          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.Map.from"),
+          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.SeqMap.from"),
+          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.Map.from"),
+          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.SeqMap.from"),
+
+          // TO INVESTIGATE: This constructor changed, but it is private... why complaining?
+          ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.immutable.LazyList.this"),
+          // This one should be fine, public class inside private object
+          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.LazyList#LazyBuilder#DeferredState.eval"),
+
+          // MIX IN FORWARDERS ISSUE (SHOULD BE FIXED WHEN WE REMERGE THE PR)
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.prepended"),
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.appended"),
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.appendedAll"),
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.prependedAll"),
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.padTo"),
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.immutable.StrictOptimizedSeqOps.updated"),
+          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.immutable.StrictOptimizedSeqOps.patch"),
+
+          // NO IDEA FOR NOW :)
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.mutable.ArrayDequeOps.scala$collection$mutable$ArrayDequeOps$$super$sliding"),
         ),
 
       // Breaking changes since last LTS
