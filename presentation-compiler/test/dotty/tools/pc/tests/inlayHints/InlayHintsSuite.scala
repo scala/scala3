@@ -1300,4 +1300,338 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |""".stripMargin
     )
 
+  @Test def `xray-single-chain-same-line` =
+    check(
+      """|object Main{
+         |  trait Bar {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Foo {
+         |    def foo(): Foo
+         |  }
+         |
+         |val bar: Bar = ???
+         |val foo: Foo = ???
+         |
+         |val thing1: Bar = bar.bar
+         |val thing2: Foo = foo.foo()
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Bar {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Foo {
+         |    def foo(): Foo
+         |  }
+         |
+         |val bar: Bar = ???
+         |val foo: Foo = ???
+         |
+         |val thing1: Bar = bar.bar
+         |val thing2: Foo = foo.foo()
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-multi-chain-same-line` =
+    check(
+      """|object Main{
+         |  trait Bar {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Foo {
+         |    def foo(): Foo
+         |  }
+         |
+         |val bar: Bar = ???
+         |val foo: Foo = ???
+         |
+         |val thing1: Bar = bar.bar.bar
+         |val thing2: Foo = foo.foo().foo()
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Bar {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Foo {
+         |    def foo(): Foo
+         |  }
+         |
+         |val bar: Bar = ???
+         |val foo: Foo = ???
+         |
+         |val thing1: Bar = bar.bar.bar
+         |val thing2: Foo = foo.foo().foo()
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-single-chain-new-line` =
+    check(
+      """|object Main{
+         |  trait Bar {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Foo {
+         |    def foo(): Foo
+         |  }
+         |
+         |val bar: Bar = ???
+         |val foo: Foo = ???
+         |
+         |val thing1: Bar = bar
+         |  .bar
+         |val thing2: Foo = foo
+         |  .foo()
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Bar {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Foo {
+         |    def foo(): Foo
+         |  }
+         |
+         |val bar: Bar = ???
+         |val foo: Foo = ???
+         |
+         |val thing1: Bar = bar
+         |  .bar
+         |val thing2: Foo = foo
+         |  .foo()
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-simple-chain` =
+    check(
+      """|object Main{
+         |  trait Foo {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Bar {
+         |    def foo(): Foo
+         |  }
+         |
+         |val foo: Foo = ???
+         |
+         |val thingy: Bar = foo
+         |  .bar
+         |  .foo()
+         |  .bar
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Foo {
+         |   def bar: Bar
+         |  }
+         |
+         |  trait Bar {
+         |    def foo(): Foo
+         |  }
+         |
+         |val foo: Foo = ???
+         |
+         |val thingy: Bar = foo
+         |  .bar/*  : Bar<<(6:8)>>*/
+         |  .foo()/*: Foo<<(2:8)>>*/
+         |  .bar/*  : Bar<<(6:8)>>*/
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-long-chain` =
+    check(
+      """|object Main{
+         |  trait Foo[F] {
+         |   def intify: Foo[Int]
+         |   def stringListify(s: String*): Foo[String]
+         |  }
+         |
+         |val foo: Foo[String] = ???
+         |
+         |val thingy: Foo[Int] = foo
+         |  .intify
+         |  .stringListify(
+         |    "Hello",
+         |    "World"
+         |  )
+         |  .stringListify(
+         |    "Hello",
+         |    "World"
+         |  )
+         |  .intify
+         |  .intify
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Foo[F] {
+         |   def intify: Foo[Int]
+         |   def stringListify(s: String*): Foo[String]
+         |  }
+         |
+         |val foo: Foo[String] = ???
+         |
+         |val thingy: Foo[Int] = foo
+         |  .intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |  .stringListify(
+         |    /*s = */"Hello",
+         |    "World"
+         |  )/*      : Foo<<(2:8)>>[String<<java/lang/String#>>]*/
+         |  .stringListify(
+         |    /*s = */"Hello",
+         |    "World"
+         |  )/*      : Foo<<(2:8)>>[String<<java/lang/String#>>]*/
+         |  .intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |  .intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-long-chain-same-line` =
+    check(
+      """|object Main{
+         |  trait Foo[F] {
+         |   def intify: Foo[Int]
+         |   def stringListify(s: String*): Foo[String]
+         |  }
+         |
+         |val foo: Foo[String] = ???
+         |
+         |val thingy: Foo[Int] = foo
+         |  .intify
+         |  .stringListify(
+         |    "Hello",
+         |    "World"
+         |  )
+         |  .stringListify(
+         |    "Hello",
+         |    "World"
+         |  )
+         |  .intify.intify
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Foo[F] {
+         |   def intify: Foo[Int]
+         |   def stringListify(s: String*): Foo[String]
+         |  }
+         |
+         |val foo: Foo[String] = ???
+         |
+         |val thingy: Foo[Int] = foo
+         |  .intify/*       : Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |  .stringListify(
+         |    /*s = */"Hello",
+         |    "World"
+         |  )/*             : Foo<<(2:8)>>[String<<java/lang/String#>>]*/
+         |  .stringListify(
+         |    /*s = */"Hello",
+         |    "World"
+         |  )/*             : Foo<<(2:8)>>[String<<java/lang/String#>>]*/
+         |  .intify.intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-tikka-masala-curried` =
+    check(
+      """|object Main{
+         |  trait Foo[F] {
+         |   def intify: Foo[Int]
+         |   def stringListify(s: String)(s2: String): Foo[String]
+         |  }
+         |
+         |val foo: Foo[String] = ???
+         |
+         |val thingy: Foo[Int] = foo
+         |  .intify
+         |  .stringListify(
+         |    "Hello"
+         |  )(
+         |    "World"
+         |  )
+         |  .stringListify(
+         |    "Hello"
+         |  )(
+         |    "World"
+         |  )
+         |  .intify
+         |  .intify
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |  trait Foo[F] {
+         |   def intify: Foo[Int]
+         |   def stringListify(s: String)(s2: String): Foo[String]
+         |  }
+         |
+         |val foo: Foo[String] = ???
+         |
+         |val thingy: Foo[Int] = foo
+         |  .intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |  .stringListify(
+         |    /*s = */"Hello"
+         |  )(
+         |    /*s2 = */"World"
+         |  )/*      : Foo<<(2:8)>>[String<<java/lang/String#>>]*/
+         |  .stringListify(
+         |    /*s = */"Hello"
+         |  )(
+         |    /*s2 = */"World"
+         |  )/*      : Foo<<(2:8)>>[String<<java/lang/String#>>]*/
+         |  .intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |  .intify/*: Foo<<(2:8)>>[Int<<scala/Int#>>]*/
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `xray-for-comprehension` =
+    check(
+      """|object Main{
+         |trait Foo[A]{
+         |  def flatMap[B](f: A => Foo[B]): Foo[B]
+         |  def map[B](f: A => B): Foo[B]
+         |  def bar(s: String): Foo[A]
+         |}
+         |val foo1: Foo[String] = ???
+         |val foo2: Foo[Int] = ???
+         |val result = for {
+         | foo <- foo1
+         | bar <- foo2
+         |   .bar(s = foo)
+         |   .bar(s = foo)
+         |   .bar(s = foo)
+         |} yield bar
+         |}
+         |""".stripMargin,
+      """|object Main{
+         |trait Foo[A]{
+         |  def flatMap[B](f: A => Foo[B]): Foo[B]
+         |  def map[B](f: A => B): Foo[B]
+         |  def bar(s: String): Foo[A]
+         |}
+         |val foo1: Foo[String] = ???
+         |val foo2: Foo[Int] = ???
+         |val result/*: Foo<<(2:6)>>[Int<<scala/Int#>>]*/ = for {
+         | foo <- foo1
+         | bar <- foo2
+         |   .bar(s = foo)/*: Foo<<(2:6)>>[Int<<scala/Int#>>]*/
+         |   .bar(s = foo)/*: Foo<<(2:6)>>[Int<<scala/Int#>>]*/
+         |   .bar(s = foo)/*: Foo<<(2:6)>>[Int<<scala/Int#>>]*/
+         |} yield bar
+         |}
+         |""".stripMargin
+    )
+
 }
