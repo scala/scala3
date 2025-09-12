@@ -1,3 +1,4 @@
+//> using options -source:3.8
 
 trait L[+A]{val a:A}
 trait R[+B]{val b: B}

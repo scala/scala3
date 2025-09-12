@@ -1,3 +1,4 @@
+//> using options -source:3.8
 
 type Or[+A, +B] = A | B
 

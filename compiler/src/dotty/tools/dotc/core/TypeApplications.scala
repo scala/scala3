@@ -8,6 +8,7 @@ import Symbols.*
 import SymDenotations.LazyType
 import Decorators.*
 import util.Stats.*
+import config.Feature.sourceVersion
 import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
@@ -482,9 +483,10 @@ class TypeApplications(val self: Type) extends AnyVal {
             if tp.tp1.isBottomType then elemType(tp.tp2)
             else if tp.tp2.isBottomType then elemType(tp.tp1)
             else tp.derivedOrType(elemType(tp.tp1), elemType(tp.tp2))
-          case AndType(tp1, tp2) =>
-            // see #23435 for why this is not `tp.derivedAndType(elemType(tp1), ...)`
-            OrType(elemType(tp1), elemType(tp2), soft = false)
+          case tp @ AndType(tp1, tp2) =>
+            if sourceVersion.enablesDistributeAnd
+            then tp.derivedAndType(elemType(tp1), elemType(tp2))
+            else OrType(elemType(tp1), elemType(tp2), soft = false)
           case _ =>
             tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
         end elemType

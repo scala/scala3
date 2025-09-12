@@ -1,3 +1,4 @@
+//> using options -source:3.8
 
 /** Why the singletonInterval logic cannot be applied for lubArgs and glbArgs in TypeComparer. */
 
