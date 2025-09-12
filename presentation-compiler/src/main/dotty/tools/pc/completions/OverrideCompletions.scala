@@ -511,10 +511,10 @@ object OverrideCompletions:
       Context
   ): Option[Int] =
     defn match
-      case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
+      case td: TypeDef if (td.rhs.span.end < text.length) && text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
       case TypeDef(_, temp : Template) =>
-        temp.parentsOrDerived.lastOption.map(_.span.end).filter(text.charAt(_) == ':')
+        temp.parentsOrDerived.lastOption.map(_.span.end).filter(idx => text.length > idx && text.charAt(idx) == ':')
       case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =

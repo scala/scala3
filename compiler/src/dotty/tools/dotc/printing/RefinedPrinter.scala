@@ -762,12 +762,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val opPrec = parsing.precedence(op.name)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }
       case PostfixOp(l, op) =>
-        if op.name == nme.CC_REACH then
-          changePrec(DotPrec) { toText(l) ~ "*" }
-        else if op.name == nme.CC_READONLY then
-          changePrec(DotPrec) { toText(l) ~ ".rd" }
-        else
-          changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
+        changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
       case PrefixOp(op, r) =>
         changePrec(DotPrec) { toText(op) ~ " " ~ toText(r) }
       case Parens(t) =>
@@ -994,8 +989,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def valDefToText[T <: Untyped](tree: ValDef[T]): Text = {
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
-        valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
-        withEnclosingDef(tree) { rhsValDef(tree) }
+        valDefText(nameIdText(tree))
+        ~ optAscription(tree.tpt)
+        ~ withEnclosingDef(tree) { rhsValDef(tree) }
     }
   }
 
@@ -1170,6 +1166,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (rawFlags.is(Param)) flagMask = flagMask &~ Given
     val flags = rawFlags & flagMask
     var flagsText = toTextFlags(sym, flags)
+    if sym.isUpdateMethod then flagsText ~~= keywordStr("update")
     val annotTexts =
       if sym.exists then
         sym.annotationsUNSAFE.filterNot(ann => dropAnnotForModText(ann.symbol)).map(toText)

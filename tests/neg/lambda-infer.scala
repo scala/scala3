@@ -2,7 +2,7 @@
 
 type F = (x: Int, erased y: Int) => Int
 
-erased class A
+class A extends compiletime.Erased
 
 @main def Test() =
   val a: F = (x, y) => x + 1 // error: Expected F got (Int, Int) => Int

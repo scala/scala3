@@ -58,5 +58,5 @@ case class B(c: C)
 case class A(a: A, b: B)
 
 object TestApp {
-   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+   implicit def typeSchema: Schema[A] = Schema.gen // error
 }

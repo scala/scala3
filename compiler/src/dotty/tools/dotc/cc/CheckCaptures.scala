@@ -18,14 +18,14 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, ExistentialSubsumesFailure, MutAdaptFailure}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
 import Annotations.Annotation
 import Capabilities.*
-import dotty.tools.dotc.cc.CaptureSet.MutAdaptFailure
+import dotty.tools.dotc.util.common.alwaysTrue
 
 /** The capture checker */
 object CheckCaptures:
@@ -98,24 +98,30 @@ object CheckCaptures:
    *  This check is performed at Typer.
    */
   def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
-    def check(elem: Type, pos: SrcPos): Unit = elem match
-      case ref: Capability =>
+    def check(elem: Type): Unit = elem match
+      case ref: TypeRef =>
+        val refSym = ref.symbol
+        if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
+          report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
+      case ref: CoreCapability =>
         if !ref.isTrackableRef && !ref.isCapRef then
-          report.error(em"$elem cannot be tracked since it is not a parameter or local value", pos)
+          report.error(em"$elem cannot be tracked since it is not a parameter or local value", ann.srcPos)
+      case ReachCapability(ref) =>
+        check(ref)
+        if ref.isCapRef then
+          report.error(em"Cannot form a reach capability from `cap`", ann.srcPos)
+      case ReadOnlyCapability(ref) =>
+        check(ref)
+      case OnlyCapability(ref, cls) =>
+        if !cls.isClassifiedCapabilityClass then
+          report.error(
+            em"""${ref.showRef}.only[${cls.name}] is not well-formed since $cls is not a classifier class.
+                |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
+            ann.srcPos)
+        check(ref)
       case tpe =>
-        report.error(em"$elem: $tpe is not a legal element of a capture set", pos)
-    for elem <- ann.retainedSet.retainedElementsRaw do
-      elem match
-        case ref: TypeRef =>
-          val refSym = ref.symbol
-          if refSym.isType && !refSym.info.derivesFrom(defn.Caps_CapSet) then
-            report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
-        case ReachCapability(ref) =>
-          check(ref, ann.srcPos)
-        case ReadOnlyCapability(ref) =>
-          check(ref, ann.srcPos)
-        case _ =>
-          check(elem, ann.srcPos)
+        report.error(em"$elem: $tpe is not a legal element of a capture set", ann.srcPos)
+    ann.retainedSet.retainedElementsRaw.foreach(check)
 
   /** Under the sealed policy, report an error if some part of `tp` contains the
    *  root capability in its capture set or if it refers to a type parameter that
@@ -254,13 +260,20 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private val sepCheckFormals = util.EqHashMap[Tree, Type]()
 
-    /** The references used at identifier or application trees */
-    private val usedSet = util.EqHashMap[Tree, CaptureSet]()
+    /** The references used at identifier or application trees, including the
+     *  environment at the reference point.
+     */
+    private val useInfos = mutable.ArrayBuffer[(Tree, CaptureSet, Env)]()
+
+    private var usedSet = util.EqHashMap[Tree, CaptureSet]()
 
     /** The set of symbols that were rechecked via a completer */
     private val completed = new mutable.HashSet[Symbol]
 
-    var needAnotherRun = false
+    /** Set on recheckClassDef since there we see all language imports */
+    private var sepChecksEnabled = false
+
+    private var needAnotherRun = false
 
     def resetIteration()(using Context): Unit =
       needAnotherRun = false
@@ -271,7 +284,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     extension [T <: Tree](tree: T)
       def needsSepCheck: Boolean = sepCheckFormals.contains(tree)
       def formalType: Type = sepCheckFormals.getOrElse(tree, NoType)
-      def markedFree = usedSet.getOrElse(tree, CaptureSet.empty)
+      def markedFree: CaptureSet = usedSet.getOrElse(tree, CaptureSet.empty)
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -425,11 +438,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         i"\nof the enclosing ${owner.showLocated}"
 
-    /** Does the given environment belong to a method that is (a) nested in a term
+    /** Under deferredReaches:
+     *  Does the given environment belong to a method that is (a) nested in a term
      *  and (b) not the method of an anonymous function?
      */
     def isOfNestedMethod(env: Env | Null)(using Context) =
-      env != null
+      ccConfig.deferredReaches
+      && env != null
       && env.owner.is(Method)
       && env.owner.owner.isTerm
       && !env.owner.isAnonymousFunction
@@ -458,20 +473,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             !sym.isContainedIn(env.owner)
         }
 
-      /** If capability `c` refers to a parameter that is not @use declared, report an error.
-       *  Exception under deferredReaches: If use comes from a nested closure, accept it.
-       */
-      def checkUseDeclared(c: Capability, env: Env, lastEnv: Env | Null) =
-        if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
-          assert(ccConfig.deferredReaches) // access is from a nested closure under deferredReaches, so it's OK
-        else c.paramPathRoot match
-          case ref: NamedType if !ref.symbol.isUseParam =>
-            val what = if ref.isType then "Capture set parameter" else "Local reach capability"
-            report.error(
-              em"""$what $c leaks into capture scope of ${env.ownerString}.
-                  |To allow this, the ${ref.symbol} should be declared with a @use annotation""", tree.srcPos)
-          case _ =>
-
       /** Avoid locally defined capability by charging the underlying type
        *  (which may not be cap). This scheme applies only under the deferredReaches setting.
        */
@@ -479,7 +480,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         if c.isParamPath then
           c match
             case Reach(_) | _: TypeRef =>
-              checkUseDeclared(c, env, lastEnv)
+              val accessFromNestedClosure =
+                lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner
+              if !accessFromNestedClosure then
+                checkUseDeclared(c, tree.srcPos)
             case _ =>
         else
           val underlying = c match
@@ -497,32 +501,22 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  parameter. This is the default.
        */
       def avoidLocalReachCapability(c: Capability, env: Env): Unit = c match
-        case Reach(c1) =>
-          if c1.isParamPath then
-            checkUseDeclared(c, env, null)
-          else
-            // When a reach capabilty x* where `x` is not a parameter goes out
-            // of scope, we need to continue with `x`'s underlying deep capture set.
-            // It is an error if that set contains cap.
-            // The same is not an issue for normal capabilities since in a local
-            // definition `val x = e`, the capabilities of `e` have already been charged.
-            // Note: It's not true that the underlying capture set of a reach capability
-            // is always cap. Reach capabilities over paths depend on the prefix, which
-            // might turn a cap into something else.
-            // The path-use.scala neg test contains an example.
-            val underlying = CaptureSet.ofTypeDeeply(c1.widen)
-            capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-            if ccConfig.useSepChecks then
-              recur(underlying.filter(!_.isTerminalCapability), env, null)
-                // we don't want to disallow underlying Fresh instances, since these are typically locally created
-                // fresh capabilities. We don't need to also follow the hidden set since separation
-                // checking makes ure that locally hidden references need to go to @consume parameters.
-            else
-              underlying.disallowRootCapability(ctx.owner): () =>
-                report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", tree.srcPos)
-              recur(underlying, env, null)
-        case c: TypeRef if c.isParamPath =>
-          checkUseDeclared(c, env, null)
+        case Reach(c1) if !c1.isParamPath =>
+          // Parameter reaches are rejected in checkEscapingUses.
+          // When a reach capabilty x* where `x` is not a parameter goes out
+          // of scope, we need to continue with `x`'s underlying deep capture set.
+          // It is an error if that set contains cap.
+          // The same is not an issue for normal capabilities since in a local
+          // definition `val x = e`, the capabilities of `e` have already been charged.
+          // Note: It's not true that the underlying capture set of a reach capability
+          // is always cap. Reach capabilities over paths depend on the prefix, which
+          // might turn a cap into something else.
+          // The path-use.scala neg test contains an example.
+          val underlying = CaptureSet.ofTypeDeeply(c1.widen)
+          capt.println(i"Widen reach $c to $underlying in ${env.owner}")
+          recur(underlying.filter(!_.isTerminalCapability), env, null)
+            // we don't want to disallow underlying Fresh instances, since these are typically locally created
+            // fresh capabilities. We do check that they hide no parameter reach caps in checkEscapingUses
         case _ =>
 
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
@@ -540,12 +534,25 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
             recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner), env)
-          // Don't propagate out of methods inside terms. The use set of these methods
-          // will be charged when that method is called.
+          	// Under deferredReaches, don't propagate out of methods inside terms.
+          	// The use set of these methods will be charged when that method is called.
 
       recur(cs, curEnv, null)
-      usedSet(tree) = tree.markedFree ++ cs
+      useInfos += ((tree, cs, curEnv))
     end markFree
+
+    /** If capability `c` refers to a parameter that is not @use declared, report an error.
+     */
+    def checkUseDeclared(c: Capability, pos: SrcPos)(using Context): Unit =
+      c.paramPathRoot match
+        case ref: NamedType if !ref.symbol.isUseParam =>
+          val what = if ref.isType then "Capture set parameter" else "Local reach capability"
+          val owner = ref.symbol.owner
+          val ownerStr = if owner.isAnonymousFunction then "enclosing function" else owner.show
+          report.error(
+            em"""$what $c leaks into capture scope of $ownerStr.
+                |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
+        case _ =>
 
     /** Include references captured by the called method in the current environment stack */
     def includeCallCaptures(sym: Symbol, resType: Type, tree: Tree)(using Context): Unit = resType match
@@ -577,7 +584,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  @param  args the type arguments
      */
     def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
-      def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
+      def isExempt = sym.isTypeTestOrCast || defn.capsErasedValueMethods.contains(sym)
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
           fn.tpe.widenDealias match
@@ -685,6 +692,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       //   - the selection is either a trackable capture reference or a pure type
       if noWiden(selType, pt)
           || qualType.isBoxedCapturing
+          || selType.isBoxedCapturing
           || selWiden.isBoxedCapturing
           || selType.isTrackableRef
           || selWiden.captureSet.isAlwaysEmpty
@@ -883,7 +891,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val cs = csArg.nuType.captureSet
         val ref = refArg.nuType
         capt.println(i"check contains $cs , $ref")
-        ref match
+        ref.stripCapturing match
           case ref: Capability if ref.isTracked =>
             checkElem(ref, cs, tree.srcPos)
           case _ =>
@@ -1144,6 +1152,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  is already done in the TypeApply.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
+      if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
       val localSet = capturedVars(cls)
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
@@ -1290,7 +1299,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case ExistentialSubsumesFailure(ex, other) =>
               def since =
                 if other.isTerminalCapability then ""
-                else " since that capability is not a SharedCapability"
+                else " since that capability is not a `Sharable` capability"
               i"""the existential capture root in ${ex.originalBinder.resType}
                  |cannot subsume the capability $other$since"""
             case MutAdaptFailure(cs, lo, hi) =>
@@ -1678,7 +1687,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       actual.isSingleton
       && expected.match
           case expected: PathSelectionProto => !expected.sym.isOneOf(UnstableValueFlags)
-          case _ => expected.isSingleton || expected == LhsProto
+          case _ => expected.stripCapturing.isSingleton || expected == LhsProto
 
     /** Adapt `actual` type to `expected` type. This involves:
      *   - narrow toplevel captures of `x`'s underlying type to `{x}` according to CC's VAR rule
@@ -1687,7 +1696,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def adapt(actual: Type, expected: Type, tree: Tree)(using Context): Type =
       if noWiden(actual, expected) then
-        actual
+        expected match
+          case expected @ CapturingType(_, _) if expected.isBoxed =>
+            // actual is a singleton type and expected is of the form box x.type^cs.
+            // Convert actual to the same form.
+            actual.boxDeeply
+              .showing(i"adapt single $actual / $result vs $expected", capt)
+          case _ =>
+            actual
       else
         // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
         // since they obscures the capturing type.
@@ -1979,6 +1995,48 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(t)
       check.traverse(tp)
 
+    /** Check that no uses refer to reach capabilities of parameters of enclosing
+     *  methods or classes.
+     */
+    def checkEscapingUses()(using Context) =
+      for (tree, uses, env) <- useInfos do
+        val seen = util.EqHashSet[Capability]()
+
+        // The owner of the innermost environment of kind Boxed
+        def boxedOwner(env: Env): Symbol =
+          if env.kind == EnvKind.Boxed then env.owner
+          else if isOfNestedMethod(env) then env.owner.owner
+          else if env.owner.isStaticOwner then NoSymbol
+          else boxedOwner(nextEnvToCharge(env, alwaysTrue))
+
+        def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
+          if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
+            checkUseDeclared(c, tree.srcPos)
+
+        def check(cs: CaptureSet): Unit = cs.elems.foreach(checkElem)
+
+        def checkElem(c: Capability): Unit =
+          if !seen.contains(c) then
+            seen += c
+            c match
+              case Reach(c1) =>
+                c1.paramPathRoot match
+                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
+                  case _ => check(CaptureSet.ofTypeDeeply(c1.widen))
+              case c: TypeRef =>
+                c.paramPathRoot match
+                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
+                  case _ =>
+              case c: DerivedCapability =>
+                checkElem(c.underlying)
+              case c: FreshCap =>
+                check(c.hiddenSet)
+              case _ =>
+
+        check(uses)
+      end for
+    end checkEscapingUses
+
     /** Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
@@ -2007,7 +2065,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      if ccConfig.useSepChecks then SepCheck(this).traverse(unit)
+      checkEscapingUses()
+      if sepChecksEnabled then
+        for (tree, cs, env) <- useInfos do
+          usedSet(tree) = tree.markedFree ++ cs
+        ccState.inSepCheck:
+          SepCheck(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

@@ -52,13 +52,15 @@
 -- [E120] Naming Error: tests/neg/type-params.scala:44:6 ---------------------------------------------------------------
 44 |  def a = (p: A) => () // error
    |      ^
-   |      Double definition:
+   |      Conflicting definitions:
    |      def a: () => Unit in trait t278 at line 43 and
    |      def a: t278.this.A => Unit in trait t278 at line 44
-   |      have the same type after erasure.
+   |      have the same type (): Function1 after erasure.
    |
    |      Consider adding a @targetName annotation to one of the conflicting definitions
    |      for disambiguation.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/type-params.scala:4:7 ------------------------------------------------------------------------------
 4 |  "".==[Int] // error
   |  ^^^^^^^^^^

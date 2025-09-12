@@ -2,13 +2,12 @@ package dotty.tools
 package dotc
 package transform
 
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.inlines.Inlines
+import core.*
+import Contexts.*, Decorators.*, Symbols.*, Flags.*, Types.*
+import MegaPhase.MiniPhase
+import inlines.Inlines
+import ast.tpd
+
 
 /** Check that `tree.rhs` can be right hand-side of an `inline` value definition. */
 class InlineVals extends MiniPhase:
@@ -38,7 +37,10 @@ class InlineVals extends MiniPhase:
       tpt.tpe.widenTermRefExpr.dealiasKeepOpaques.normalized match
         case tp: ConstantType =>
           if !isPureExpr(rhs) then
-            def details = if enclosingInlineds.isEmpty then "" else i"but was: $rhs"
+            def details =
+              if enclosingInlineds.nonEmpty || rhs.isInstanceOf[tpd.Inlined]
+              then i" but was: $rhs"
+              else ""
             report.error(em"inline value must be pure$details", rhs.srcPos)
         case tp =>
           if tp.typeSymbol.is(Opaque) then

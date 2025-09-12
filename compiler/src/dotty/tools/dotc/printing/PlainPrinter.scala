@@ -382,7 +382,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
     Str(s"@${sym.name} ").provided(tp.hasAnnotation(sym))
 
-  protected def paramsText(lam: LambdaType): Text = {
+  def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
       keywordText("erased ").provided(erased)
@@ -459,14 +459,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info)
-        else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
-        else toText(tp.repr)
+        def reprStr = toText(tp.repr) ~ hashStr(tp)
+        if homogenizedView then
+          toText(tp.info)
+        else if ctx.settings.XprintTypes.value then
+          "<" ~ reprStr ~ ":" ~ toText(tp.info) ~ ">"
+        else
+          reprStr
     }
   }
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
+    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalCap => "cap"
@@ -480,7 +485,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
     case c: FreshCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
-      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ ">"
+      def classified =
+        if c.hiddenSet.classifier == defn.AnyClass then ""
+        else s" classified as ${c.hiddenSet.classifier.name.show}"
+      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
       else "cap"
     case tp: TypeProxy =>
       homogenize(tp) match

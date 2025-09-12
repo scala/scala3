@@ -1607,6 +1607,28 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test
+  def simpleTupleExtraction(): Unit = {
+    val code =
+      """class C {
+        |  def f1(t: (Int, String)) =
+        |    val (i, s) = t
+        |    i + s.length
+        |}
+      """.stripMargin
+    checkBCode(code) { dir =>
+      val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
+      val f1 = getMethod(c, "f1")
+      assertNoInvoke(f1, "scala/Tuple2$", "apply") // no Tuple2.apply call
+      // no `new` instruction
+      val hasNew = instructionsFromMethod(f1).exists {
+        case Op(Opcodes.NEW) => true
+        case _ => false
+      }
+      assertFalse("f1 should not have NEW instruction", hasNew)
+    }
+  }
+
+  @Test
   def deprecation(): Unit = {
     val code =
       """@deprecated

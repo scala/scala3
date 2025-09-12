@@ -1,0 +1,15 @@
+original source file not found: something_nonexist.scala
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-d_wrapper.scala:3:20 --------------------------------------
+3 |def test1: String = 0 // error
+  |                    ^
+  |                    Found:    (0 : Int)
+  |                    Required: String
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-d_wrapper.scala:5:17 --------------------------------------
+5 |def test2: Int = "0" // error
+  |                 ^^^
+  |                 Found:    ("0" : String)
+  |                 Required: Int
+  |
+  | longer explanation available when compiling with `-explain`

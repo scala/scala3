@@ -4,7 +4,7 @@ package printing
 
 import core.*
 import Texts.*, ast.Trees.*
-import Types.{Type, SingletonType, LambdaParam, NamedType, RefinedType},
+import Types.{Type, SingletonType, LambdaParam, LambdaType, NamedType, RefinedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
 import typer.Implicits.*
@@ -146,6 +146,9 @@ abstract class Printer {
 
   /** Textual representation of lambda param */
   def toText(tree: LambdaParam): Text
+
+  /** textual representation of parameters of function type */
+  def paramsText(lam: LambdaType): Text
 
   /** Textual representation of all symbols in given list,
    *  using `dclText` for displaying each.

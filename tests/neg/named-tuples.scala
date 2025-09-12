@@ -26,7 +26,7 @@ object Test:
   val (name = x, agee = y) = person // error
 
   ("Ives", 2) match
-    case (name = n, age = a) => () // error // error
+    case (name = n, age = a) => () // error
 
   val pp = person ++ (1, 2)  // error
   val qq = ("a", true) ++ (1, 2)
