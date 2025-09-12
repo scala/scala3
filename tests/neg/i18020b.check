@@ -9,7 +9,7 @@
 -- [E040] Syntax Error: tests/neg/i18020b.scala:4:10 -------------------------------------------------------------------
 4 |  def g_: Int = 27 // error
   |          ^^^
-  |          '=' expected, but identifier found
+  |          '=' expected, but identifier found; identifier ends in colon, did you mean `g_`: in backticks?
 -- [E040] Syntax Error: tests/neg/i18020b.scala:6:12 -------------------------------------------------------------------
 6 |    val x_: Int = 1 // error
   |            ^^^

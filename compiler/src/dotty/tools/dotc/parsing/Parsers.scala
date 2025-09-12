@@ -4191,6 +4191,10 @@ object Parsers {
             tpt = scalaUnit
             if (in.token == LBRACE) expr()
             else EmptyTree
+          else if in.token == IDENTIFIER && paramss.isEmpty && name.endsWith(":") then
+            val help = i"; identifier ends in colon, did you mean `${name.toSimpleName.dropRight(1)}`: in backticks?"
+            syntaxErrorOrIncomplete(ExpectedTokenButFound(EQUALS, in.token, suffix = help))
+            EmptyTree
           else
             if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
