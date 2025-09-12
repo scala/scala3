@@ -48,6 +48,23 @@ jobs:
       - name: Compile `scala3-library-nonbootstrapped`
         run: ./project/scripts/sbt scala3-library-nonbootstrapped/compile
 
+  scala3-interfaces:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-interfaces`
+        run: ./project/scripts/sbt scala3-interfaces/compile
+
   tasty-core-nonbootstrapped:
     runs-on: ubuntu-latest
     needs: [scala3-library-nonbootstrapped]
@@ -67,7 +84,7 @@ jobs:
 
   scala3-compiler-nonbootstrapped:
     runs-on: ubuntu-latest
-    needs: [tasty-core-nonbootstrapped, scala3-library-nonbootstrapped]
+    needs: [tasty-core-nonbootstrapped, scala3-library-nonbootstrapped, scala3-interfaces]
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
@@ -155,7 +172,7 @@ jobs:
 
   scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
-    needs: [tasty-core-bootstrapped, scala3-library-bootstrapped]
+    needs: [tasty-core-bootstrapped, scala3-library-bootstrapped, scala3-interfaces]
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
@@ -301,6 +318,24 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Report MiMa issues in `scala-library-nonbootstrapped`
         run: ./project/scripts/sbt scala-library-nonbootstrapped/mimaReportBinaryIssues
+
+  mima-scala3-interfaces:
+    runs-on: ubuntu-latest
+    needs: scala3-interfaces
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Report MiMa issues in `scala3-interfaces`
+        run: ./project/scripts/sbt scala3-interfaces/mimaReportBinaryIssues
 
   mima-scala-library-bootstrapped:
     runs-on: ubuntu-latest
