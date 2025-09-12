@@ -1,3 +1,4 @@
+
 import _root_.scala.StringContext // ok
 
 class Test :

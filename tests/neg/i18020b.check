@@ -1,0 +1,26 @@
+-- [E040] Syntax Error: tests/neg/i18020b.scala:2:17 -------------------------------------------------------------------
+2 |class i18020(a_: Int): // error
+  |                 ^^^
+  |                 ':' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18020b.scala:3:12 -------------------------------------------------------------------
+3 |  def f(b_: Int) = 42 // error
+  |            ^^^
+  |            ':' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18020b.scala:4:10 -------------------------------------------------------------------
+4 |  def g_: Int = 27 // error
+  |          ^^^
+  |          '=' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18020b.scala:6:12 -------------------------------------------------------------------
+6 |    val x_: Int = 1 // error
+  |            ^^^
+  |            '=' expected, but identifier found; identifier ends in colon, did you mean `x_`: in backticks?
+-- [E040] Syntax Error: tests/neg/i18020b.scala:7:12 -------------------------------------------------------------------
+7 |    val y_: Int = 2 // error
+  |            ^^^
+  |            '=' expected, but identifier found; identifier ends in colon, did you mean `y_`: in backticks?
+-- [E006] Not Found Error: tests/neg/i18020b.scala:8:4 -----------------------------------------------------------------
+8 |    x_ + y_ // error
+  |    ^^
+  |    Not found: x_ - did you mean x_:?
+  |
+  | longer explanation available when compiling with `-explain`
