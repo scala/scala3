@@ -107,10 +107,13 @@ object ImplicitNullInterop {
         case tp: TypeRef if !tp.hasSimpleKind
           // We don't modify value types because they're non-nullable even in Java.
           || tp.symbol.isValueClass
+          || tp.isRef(defn.NullClass)
+          || tp.isRef(defn.NothingClass)
           // We don't modify unit types.
           || tp.isRef(defn.UnitClass)
           // We don't modify `Any` because it's already nullable.
           || tp.isRef(defn.AnyClass) => false
+        case tp: TypeParamRef if !tp.hasSimpleKind => false
         case _ => true
 
     // We don't nullify Java varargs at the top level.
