@@ -1345,6 +1345,8 @@ private final class BitmapIndexedMapNode[K, +V](
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
+  override def toString = s"${getClass.getName}@${Integer.toHexString(System.identityHashCode(this))}"
+
   override def concat[V1 >: V](that: MapNode[K, V1], shift: Int): BitmapIndexedMapNode[K, V1] = that match {
     case bm: BitmapIndexedMapNode[K, V] @unchecked =>
       if (size == 0) return bm
@@ -2089,6 +2091,8 @@ private final class HashCollisionMapNode[K, +V ](
 
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
+
+  override def toString = s"${getClass.getName}@${Integer.toHexString(System.identityHashCode(this))}"
 
   override def cachedJavaKeySetHashCode: Int = size * hash
 
