@@ -3133,9 +3133,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        * unique value derives from the class.
        */
       case (tp1: SingletonType, tp2) =>
-        !tp1.derivesFrom(tp2.classSymbol)
+        !tp1.derivesFrom(tp2.classSymbol, defaultIfUnknown = true)
       case (tp1, tp2: SingletonType) =>
-        !tp2.derivesFrom(tp1.classSymbol)
+        !tp2.derivesFrom(tp1.classSymbol, defaultIfUnknown = true)
 
       /* Now both sides are possibly-parameterized class types `p.C[Ts]` and `q.D[Us]`.
        *
@@ -3191,7 +3191,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
             val commonBaseClasses = cls1.classDenot.baseClasses.filter(cls2BaseClassSet.contains(_))
             def isAncestorOfOtherBaseClass(cls: ClassSymbol): Boolean =
-              commonBaseClasses.exists(other => (other ne cls) && other.derivesFrom(cls))
+              commonBaseClasses.exists(other => (other ne cls) && other.mayDeriveFrom(cls))
             val result = commonBaseClasses.exists { baseClass =>
               !isAncestorOfOtherBaseClass(baseClass) && isBaseTypeWithDisjointArguments(baseClass, innerPending)
             }
@@ -3232,7 +3232,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       .filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
-      cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)
+      cls1.mayDeriveFrom(cls2) || cls2.mayDeriveFrom(cls1)
 
     def smallestNonTraitBase(cls: Symbol): Symbol =
       val classes = if cls.isClass then cls.asClass.baseClasses else cls.info.classSymbols
@@ -3362,6 +3362,9 @@ object TypeComparer {
      *  as an already existing error note.
      */
     def kind: Class[?] = getClass
+
+    def description(using Context): String
+  end ErrorNote
 
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
@@ -3539,16 +3542,16 @@ object TypeComparer {
     comparing(_.subCaptures(refs1, refs2, vs))
 
   def logUndoAction(action: () => Unit)(using Context): Unit =
-    comparer.logUndoAction(action)
+    currentComparer.logUndoAction(action)
 
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
-    comparer.inNestedLevel(op)
+    currentComparer.inNestedLevel(op)
 
   def addErrorNote(note: ErrorNote)(using Context): Unit =
-    comparer.addErrorNote(note)
+    currentComparer.addErrorNote(note)
 
   def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
-    comparer.errorNotes = comparer.errorNotes.mapConserve: p =>
+    currentComparer.errorNotes = currentComparer.errorNotes.mapConserve: p =>
       val (level, note) = p
       if f.isDefinedAt(note) then (level, f(note)) else p
 
@@ -3556,7 +3559,7 @@ object TypeComparer {
     comparing(_.compareResult(op))
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
-    comparer.isolated(op, x => x)
+    currentComparer.isolated(op, x => x)
 }
 
 object MatchReducer:

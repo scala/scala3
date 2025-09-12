@@ -17,6 +17,7 @@ enum SourceVersion:
   case `3.6-migration`, `3.6`
   case `3.7-migration`, `3.7`
   case `3.8-migration`, `3.8`
+  case `3.9-migration`, `3.9`
   // Add 3.x-migration and 3.x here
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
   case `2.13`
@@ -42,7 +43,7 @@ enum SourceVersion:
   def enablesClauseInterleaving = isAtLeast(`3.6`)
   def enablesNewGivens = isAtLeast(`3.6`)
   def enablesNamedTuples = isAtLeast(`3.7`)
-  def enablesBetterFors(using Context) = isAtLeast(`3.7`) && isPreviewEnabled
+  def enablesBetterFors(using Context) = isAtLeast(`3.8`) || (isAtLeast(`3.7`) && isPreviewEnabled)
   /** See PR #23441 and tests/neg/i23435-min */
   def enablesDistributeAnd = !isAtLeast(`3.8`)
 
@@ -51,7 +52,7 @@ enum SourceVersion:
 object SourceVersion extends Property.Key[SourceVersion]:
 
   /* The default source version used by the built compiler */
-  val defaultSourceVersion = `3.7`
+  val defaultSourceVersion = `3.8`
 
   /* Illegal source versions that may not appear in the settings `-source:<...>` */
   val illegalInSettings = List(`2.13`, `3.1-migration`, `never`)

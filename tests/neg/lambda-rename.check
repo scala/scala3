@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg/lambda-rename.scala:4:33 ------------------------------------------------------
 4 |val a: (x: Int) => Bar[x.type] = ??? : ((x: Int) => Foo[x.type]) // error
   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                                 Found:    (x: Int) => Foo[x.type]
-  |                                 Required: (x: Int) => Bar[x.type]
+  |                                 Found:    (x: Int) => Foo[(x : Int)]
+  |                                 Required: (x: Int) => Bar[(x : Int)]
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/lambda-rename.scala:7:33 ------------------------------------------------------

@@ -7,7 +7,7 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
-import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.NameKinds.{
   BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import dotty.tools.dotc.core.StdNames.nme
@@ -498,14 +498,22 @@ object CheckUnused:
     val warnings = ArrayBuilder.make[MessageInfo]
     def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
     val infos = refInfos
-    //println(infos.defs.mkString("DEFS\n", "\n", "\n---"))
-    //println(infos.refs.mkString("REFS\n", "\n", "\n---"))
+
+    // non-local sym was target of assignment or has a sibling setter that was referenced
+    def isMutated(sym: Symbol): Boolean =
+         infos.asss(sym)
+      || infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
 
     def checkUnassigned(sym: Symbol, pos: SrcPos) =
       if sym.isLocalToBlock then
         if ctx.settings.WunusedHas.locals && sym.is(Mutable) && !infos.asss(sym) then
           warnAt(pos)(UnusedSymbol.unsetLocals)
-      else if ctx.settings.WunusedHas.privates && sym.isAllOf(Private | Mutable) && !infos.asss(sym) then
+      else if ctx.settings.WunusedHas.privates
+        && sym.is(Mutable)
+        && (sym.is(Private) || sym.isEffectivelyPrivate)
+        && !sym.isSetter // tracks sym.underlyingSymbol sibling getter, check setter below
+        && !isMutated(sym)
+      then
         warnAt(pos)(UnusedSymbol.unsetPrivates)
 
     def checkPrivate(sym: Symbol, pos: SrcPos) =
@@ -514,10 +522,16 @@ object CheckUnused:
         && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
         && !sym.name.is(BodyRetainerName)
         && !sym.isSerializationSupport
-        && !(sym.is(Mutable) && sym.isSetter && sym.owner.is(Trait)) // tracks sym.underlyingSymbol sibling getter
+        && !( sym.is(Mutable)
+           && sym.isSetter // tracks sym.underlyingSymbol sibling getter
+           && (sym.owner.is(Trait) || sym.owner.isAnonymousClass)
+        )
         && !infos.nowarn(sym)
       then
-        warnAt(pos)(UnusedSymbol.privateMembers)
+        if sym.is(Mutable) && isMutated(sym) then
+          warnAt(pos)(UnusedSymbol.privateVars)
+        else
+          warnAt(pos)(UnusedSymbol.privateMembers)
 
     def checkParam(sym: Symbol, pos: SrcPos) =
       val m = sym.owner
@@ -620,7 +634,10 @@ object CheckUnused:
         && !sym.is(InlineProxy)
         && !sym.isCanEqual
       then
-        warnAt(pos)(UnusedSymbol.localDefs)
+        if sym.is(Mutable) && infos.asss(sym) then
+          warnAt(pos)(UnusedSymbol.localVars)
+        else
+          warnAt(pos)(UnusedSymbol.localDefs)
 
     def checkPatvars() =
       // convert the one non-synthetic span so all are comparable; filter NoSpan below

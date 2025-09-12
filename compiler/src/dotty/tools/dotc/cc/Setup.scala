@@ -375,13 +375,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fntpe
 
       /** 1. Check that parents of capturing types are not pure.
-       *  2. Check that types extending SharedCapability don't have a `cap` in their capture set.
-       *     TODO This is not enough.
-       *     We need to also track that we cannot get exclusive capabilities in paths
-       *     where some prefix derives from SharedCapability. Also, can we just
-       *     exclude `cap`, or do we have to extend this to all exclusive capabilties?
-       *     The problem is that we know what is exclusive in general only after capture
-       *     checking, not before.
        */
       def checkRetainsOK(tp: Type): tp.type =
         tp match
@@ -392,8 +385,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // an explicit result type in the override, the inherited capture set
               // will be ignored anyway.
               fail(em"$parent is a pure type, it makes no sense to add a capture set to it")
-            else if refs.isUniversal && parent.derivesFromSharedCapability then
-              fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
           case _ =>
         tp
 
@@ -409,7 +400,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         then
           normalizeCaptures(mapOver(t)) match
             case t1 @ CapturingType(_, _) => t1
-            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(), boxed = false)
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(t1), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
@@ -468,7 +459,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
     if freshen then
-      capToFresh(tp3, Origin.InDecl(sym)).tap(addOwnerAsHidden(_, sym))
+      capToFresh(tp3, Origin.InDecl(sym))
     else tp3
   end transformExplicitType
 
@@ -481,25 +472,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** The info of `sym` at the CheckCaptures phase */
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
-
-  private def addOwnerAsHidden(tp: Type, owner: Symbol)(using Context): Unit =
-    val ref = owner.termRef
-    def add = new TypeTraverser:
-      var reach = false
-      def traverse(t: Type): Unit = t match
-        case t @ CapturingType(parent, refs) =>
-          val saved = reach
-          reach |= t.isBoxed
-          try
-            traverse(parent)
-            for case fresh: FreshCap <- refs.elems.iterator do // TODO: what about fresh.rd elems?
-              if reach then fresh.hiddenSet.elems += ref.reach
-              else if ref.isTracked then fresh.hiddenSet.elems += ref
-          finally reach = saved
-        case _ =>
-          traverseChildren(t)
-    if ref.isTrackableRef then add.traverse(tp)
-  end addOwnerAsHidden
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
@@ -645,17 +617,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def ownerChanges =
           ctx.owner.name.is(TryOwnerName)
 
-        def paramsToCap(mt: Type)(using Context): Type = mt match
+        def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
-                paramInfos = mt.paramInfos.map(freshToCap),
-                resType = paramsToCap(mt.resType))
+                paramInfos =
+                  psymss.head.lazyZip(mt.paramInfos).map(freshToCap),
+                resType = paramsToCap(psymss.tail, mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")
               throw ex
           case mt: PolyType =>
-            mt.derivedLambdaType(resType = paramsToCap(mt.resType))
+            mt.derivedLambdaType(resType = paramsToCap(psymss.tail, mt.resType))
           case _ => mt
 
         // If there's a change in the signature or owner, update the info of `sym`
@@ -667,7 +640,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 toResultInResults(sym, report.error(_, tree.srcPos)):
                   if sym.is(Method) then
                     inContext(ctx.withOwner(sym)):
-                      paramsToCap(methodType(paramSymss, localReturnType))
+                      paramsToCap(paramSymss, methodType(paramSymss, localReturnType))
                   else tree.tpt.nuType
               if tree.tpt.isInstanceOf[InferredTypeTree]
                   && !sym.is(Param) && !sym.is(ParamAccessor)
@@ -696,6 +669,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
+            checkClassifiedInheritance(cls)
             ccState.inNestedLevelUnless(cls.is(Module)):
               val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
@@ -750,7 +724,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     end postProcess
 
     /** Check that @use and @consume annotations only appear on parameters and not on
-     *  anonymous function parameters
+     *  anonymous function parameters. Check that @use annotations don't appear
+     *  at all from 3.8 on.
      */
     def checkProperUseOrConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
@@ -764,11 +739,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               && !(sym.is(Method) && sym.owner.isClass)
             then
               report.error(
-                em"""@consume cannot be used here. Only memeber methods and their term parameters
-                    |can have @consume annotations.""",
+                em"""consume cannot be used here. Only member methods and their term parameters
+                    |can have a consume modifier.""",
                 tree.srcPos)
           else if annotCls == defn.UseAnnot then
-            if !isMethodParam then
+            if !ccConfig.allowUse then
+              if sym.is(TypeParam) then
+                report.error(
+                  em"""@use is redundant here and should no longer be written explicitly.
+                      |Capset variables are always implicitly used, unless they are annotated with @caps.preserve.""",
+                  tree.srcPos)
+              else
+                report.error(
+                  em"""@use is no longer supported. Instead of @use you can introduce capset
+                      |variables for the polymorphic parts of parameter types.""",
+                  tree.srcPos)
+            else if !isMethodParam then
               report.error(
                 em"@use cannot be used here. Only method parameters can have @use annotations.",
                 tree.srcPos)
@@ -911,6 +897,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+
+  // ------ Checks to run at Setup ----------------------------------------
+
+  private def checkClassifiedInheritance(cls: ClassSymbol)(using Context): Unit =
+    def recur(cs: List[ClassSymbol]): Unit = cs match
+      case c :: cs1 =>
+        for c1 <- cs1 do
+          if !c.derivesFrom(c1) && !c1.derivesFrom(c) then
+            report.error(i"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
+        recur(cs1)
+      case Nil =>
+    recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
 
   // ------ Checks to run after main capture checking --------------------------
 

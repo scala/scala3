@@ -111,7 +111,7 @@ class ScalaSettingsTests:
       // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
       // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WcheckInit),
+      createTestCase(settings.YcheckInit            , settings.WsafeInit),
       // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
@@ -140,7 +140,7 @@ class ScalaSettingsTests:
       // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
       // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput),
       // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WcheckInit),
+      createTestCase(settings.YcheckInit            , settings.WsafeInit),
       createTestCase(settings.Xlint                 , settings.Wshadow),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
@@ -181,7 +181,7 @@ class ScalaSettingsTests:
       // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
       // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WcheckInit),
+      createTestCase(settings.YcheckInit            , settings.WsafeInit),
       // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
     ).flatten.map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)

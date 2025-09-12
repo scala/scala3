@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
@@ -118,7 +120,7 @@ sealed class ListSet[A]
 @SerialVersionUID(3L)
 object ListSet extends IterableFactory[ListSet] {
 
-  def from[E](it: scala.collection.IterableOnce[E]): ListSet[E] =
+  def from[E](it: scala.collection.IterableOnce[E]^): ListSet[E] =
     it match {
       case ls: ListSet[E] => ls
       case _ if it.knownSize == 0 => empty[E]

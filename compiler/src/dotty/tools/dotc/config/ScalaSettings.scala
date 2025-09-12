@@ -159,7 +159,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
-  val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
@@ -167,6 +167,8 @@ private sealed trait WarningSettings:
   private val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
   private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   private val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
+  private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
+  private val WwrongArrow = BooleanSetting(WarningSetting, "Wwrong-arrow", "Warn if function arrow was used instead of context literal ?=>.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -298,7 +300,7 @@ private sealed trait WarningSettings:
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
 
-  val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+  val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
 
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
@@ -309,7 +311,9 @@ private sealed trait WarningSettings:
     def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
     def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
     def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
-    def checkInit(using Context): Boolean = allOr(WcheckInit)
+    def recurseWithDefault(using Context): Boolean = allOr(WrecurseWithDefault)
+    def wrongArrow(using Context): Boolean = allOr(WwrongArrow)
+    def safeInit(using Context): Boolean = allOr(WsafeInit)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
@@ -444,12 +448,14 @@ private sealed trait YSettings:
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
 
+  val YmagicOffsetHeader: Setting[String] = StringSetting(ForkSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START. Then, in the source, the magic comment `///SOURCE_CODE_START:<ORIGINAL_FILE_PATH>` marks the start of user code. The comment should be suffixed by `:<ORIGINAL_FILE_PATH>` to indicate the original file.", "")
+
   // Experimental language features
   @deprecated(message = "This flag has no effect and will be removed in a future version.", since = "3.7.0")
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism. (This flag has no effect)", deprecation = Deprecation.removed())
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
-  val YcheckInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
+  val YsafeInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")

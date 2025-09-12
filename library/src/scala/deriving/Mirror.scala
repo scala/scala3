@@ -1,5 +1,7 @@
 package scala.deriving
 
+// import language.experimental.captureChecking
+
 /** Mirrors allows typelevel access to enums, case classes and objects, and their sealed parents.
  */
 sealed trait Mirror {
@@ -23,7 +25,7 @@ object Mirror {
   }
 
   /** The Mirror for a product type */
-  trait Product extends Mirror {
+  trait Product extends Mirror { self =>
 
     /** Create a new instance of type `T` with elements taken from product `p`. */
     def fromProduct(p: scala.Product): MirroredMonoType

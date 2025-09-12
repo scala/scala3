@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 
 /** This class implements immutable maps using a vector/map-based data structure, which preserves insertion order.
@@ -58,7 +60,7 @@ final class VectorMap[K, +V] private (
     }
   }
 
-  override def withDefault[V1 >: V](d: K => V1): Map[K, V1] =
+  override def withDefault[V1 >: V](d: K -> V1): Map[K, V1] =
     new Map.WithDefault(this, d)
 
   override def withDefaultValue[V1 >: V](d: V1): Map[K, V1] =
@@ -233,7 +235,7 @@ object VectorMap extends MapFactory[VectorMap] {
 
   def empty[K, V]: VectorMap[K, V] = EmptyMap.asInstanceOf[VectorMap[K, V]]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): VectorMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): VectorMap[K, V] =
     it match {
       case vm: VectorMap[K, V] => vm
       case _                   => (newBuilder[K, V] ++= it).result()

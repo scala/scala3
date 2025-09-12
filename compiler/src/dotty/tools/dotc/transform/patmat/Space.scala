@@ -171,6 +171,14 @@ object SpaceEngine {
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
   def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(i"isSubspace($a, $b)") {
+    /** Is decomposition allowed on the right-hand side of a pattern? */
+    /** We only allow decomposition on the right-hand side of a pattern if the type is not a type parameter, a type parameter reference, or a deferred type reference */
+    /** This is because decomposition on the right-hand side of a pattern can lead to false positive warnings */
+    inline def rhsDecompositionAllowed(tp: Type): Boolean = tp.dealias match
+      case _: TypeParamRef => false
+      case tr: TypeRef if tr.symbol.is(TypeParam) || (tr.symbol.is(Deferred) && !tr.symbol.isClass) => false
+      case _ => true
+
     val a2 = simplify(a)
     val b2 = simplify(b)
     if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
@@ -185,7 +193,7 @@ object SpaceEngine {
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         isSubType(tp1, tp2)
         || canDecompose(a) && isSubspace(Or(decompose(a)), b)
-        || canDecompose(b) && isSubspace(a, Or(decompose(b)))
+        || (canDecompose(b) && rhsDecompositionAllowed(tp2)) && isSubspace(a, Or(decompose(b)))
       case (Prod(tp1, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
@@ -455,8 +463,8 @@ object SpaceEngine {
         val inArray = tycon.isRef(defn.ArrayClass) || tp.translucentSuperType.isRef(defn.ArrayClass)
         val args2 =
           if isTyped && !inArray then args.map(_ => WildcardType)
-          else args.map(arg => erase(arg, inArray = inArray, isValue = false))
-        tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
+          else args.map(arg => erase(arg, inArray = inArray, isValue = false, isTyped = false))
+        tp.derivedAppliedType(erase(tycon, inArray = inArray, isValue = false, isTyped = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
         OrType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped), tp.isSoft)
@@ -685,7 +693,7 @@ object SpaceEngine {
           val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
           def containsUninhabitedField(tp: Type): Boolean =
-            tp.fields.exists { field =>
+            !tp.typeSymbol.is(ModuleClass) && tp.fields.exists { field =>
               !field.symbol.flags.is(Lazy) && field.info.dealias.isBottomType
             }
 
@@ -883,7 +891,7 @@ object SpaceEngine {
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
-      val space = if x.guard.isEmpty then trace(i"project(${x.pat})")(project(x.pat)) else Empty
+      val space = if x.maybePartial then Empty else trace(i"project(${x.pat})")(project(x.pat))
       space :: acc
     })
 
@@ -925,7 +933,7 @@ object SpaceEngine {
     @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
       cases match
         case Nil =>
-        case CaseDef(pat, guard, _) :: rest =>
+        case (c @ CaseDef(pat, _, _)) :: rest =>
           val curr = trace(i"project($pat)")(projectPat(pat))
           val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
           val prev = trace("prev")(simplify(Or(prevs)))
@@ -951,8 +959,8 @@ object SpaceEngine {
                 hadNullOnly = true
                 report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
-            // in redundancy check, take guard as false in order to soundly approximate
-            val newPrev = if guard.isEmpty then covered :: prevs else prevs
+            // in redundancy check, take guard as false (or potential sub cases as partial) for a sound approximation
+            val newPrev = if c.maybePartial then prevs else covered :: prevs
             recur(rest, newPrev, Nil)
 
     recur(m.cases, Nil, Nil)

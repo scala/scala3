@@ -423,7 +423,7 @@ object CollectionStrawMan5 {
     def start: Int
     def end: Int
     def apply(i: Int): A
-    def iterator: Iterator[A] = new Iterator[A] {
+    def iterator: Iterator[A]^{this} = new Iterator[A] {
       private var current = start
       def hasNext = current < end
       def next(): A = {
@@ -457,13 +457,12 @@ object CollectionStrawMan5 {
       def apply[A](underlying: Iterable[A]^, pp: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, pp} =
         underlying match
           case filter: Filter[A] =>
-            new Filter(filter.underlying, a => filter.p(a) && pp(a))
-              .asInstanceOf[Filter[A]^{underlying, pp}]
-            //unsafeAssumeSeparate:
+            unsafeAssumeSeparate:
+              new Filter(filter.underlying, a => filter.p(a) && pp(a))
+                .asInstanceOf[Filter[A]^{underlying, pp}]
               // See filter-iterable.scala for a test where a variant of Filter
               // works without the unsafeAssumeSeparate. But it requires significant
               // changes compared to the version here.
-              //new Filter(filter.underlying, a => filter.p(a) && pp(a))
           case _ => new Filter(underlying, pp)
 
     case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {

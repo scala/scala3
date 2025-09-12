@@ -141,7 +141,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  mut  opaque  open  throws tracked transparent  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  inline  opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -235,7 +235,8 @@ TypeBound         ::=  Type
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
 CaptureSet        ::=  ‘{’ CaptureRef {‘,’ CaptureRef} ‘}’                      -- under captureChecking
-CaptureRef        ::=  { SimpleRef ‘.’ } SimpleRef [‘*’] [‘.’ ‘rd’]             -- under captureChecking
+CaptureRef        ::=  { SimpleRef ‘.’ } SimpleRef [‘*’] [CapFilter] [‘.’ ‘rd’] -- under captureChecking
+CapFilter         ::=  ‘.’ ‘as’ ‘[’ QualId ’]’                                  -- under captureChecking
 ```
 
 ### Expressions
@@ -260,6 +261,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  PrefixOperator SimpleExpr ‘=’ Expr                       Assign(expr, expr)
+                    |  InfixExpr id [nl] `=' Expr                               Assign(expr, expr) -- only if language.postfixOps is enabled
                     |  SimpleExpr ArgumentExprs ‘=’ Expr                        Assign(expr, expr)
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause
@@ -405,7 +407,8 @@ UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) �
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
 
 DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
-DefTermParam      ::= {Annotation} [`erased`] [‘inline’] Param                    ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefTermParam      ::= {Annotation} TermParamMods Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
@@ -429,7 +432,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘infix’
                     |  ‘erased’
                     |  ‘tracked’
-                    |  ‘mut’                                                      -- under captureChecking
+                    |  ‘update’                                                      -- under captureChecking
+                    |  ‘consume’
 
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’

@@ -1,3 +1,5 @@
+class Cap extends caps.ExclusiveCapability
 
+def test(consume x: Cap) = ???
 
-def foo[T: Singleton](x: T) = x
+def impl(using consume x: Cap) = ???

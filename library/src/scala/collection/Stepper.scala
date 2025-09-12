@@ -13,6 +13,8 @@
 package scala.collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.util.function.{Consumer, DoubleConsumer, IntConsumer, LongConsumer}
 import java.util.{PrimitiveIterator, Spliterator, Iterator => JIterator}
 import java.{lang => jl}
@@ -52,7 +54,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     *
     * See method `trySplit` in [[java.util.Spliterator]].
     */
-  def trySplit(): Stepper[A]
+  def trySplit(): Stepper[A]^{this}
 
   /** Returns an estimate of the number of elements of this Stepper, or [[Long.MaxValue]]. See
     * method `estimateSize` in [[java.util.Spliterator]].
@@ -70,7 +72,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     * a [[java.util.Spliterator.OfInt]] (which is a `Spliterator[Integer]`) in the subclass [[IntStepper]]
     * (which is a `Stepper[Int]`).
     */
-  def spliterator[B >: A]: Spliterator[_]
+  def spliterator[B >: A]: Spliterator[_]^{this}
 
   /** Returns a Java [[java.util.Iterator]] corresponding to this Stepper.
     *
@@ -78,12 +80,12 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     * a [[java.util.PrimitiveIterator.OfInt]] (which is a `Iterator[Integer]`) in the subclass
     * [[IntStepper]] (which is a `Stepper[Int]`).
     */
-  def javaIterator[B >: A]: JIterator[_]
+  def javaIterator[B >: A]: JIterator[_]^{this}
 
   /** Returns an [[Iterator]] corresponding to this Stepper. Note that Iterators corresponding to
     * primitive Steppers box the elements.
     */
-  def iterator: Iterator[A] = new AbstractIterator[A] {
+  def iterator: Iterator[A]^{this} = new AbstractIterator[A] {
     def hasNext: Boolean = hasStep
     def next(): A = nextStep()
   }
@@ -104,78 +106,78 @@ object Stepper {
    * of the data is boxed. In other cases native implementations of the primitive stepper types should be provided
    * (see for example IntArrayStepper and WidenedByteArrayStepper). */
 
-  private[collection] class UnboxingDoubleStepper(st: AnyStepper[Double]) extends DoubleStepper {
+  private[collection] class UnboxingDoubleStepper(st: AnyStepper[Double]^) extends DoubleStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Double = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): DoubleStepper = {
+    def trySplit(): DoubleStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingDoubleStepper(s)
     }
   }
 
-  private[collection] class UnboxingIntStepper(st: AnyStepper[Int]) extends IntStepper {
+  private[collection] class UnboxingIntStepper(st: AnyStepper[Int]^) extends IntStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingIntStepper(s)
     }
   }
 
-  private[collection] class UnboxingLongStepper(st: AnyStepper[Long]) extends LongStepper {
+  private[collection] class UnboxingLongStepper(st: AnyStepper[Long]^) extends LongStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Long = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): LongStepper = {
+    def trySplit(): LongStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingLongStepper(s)
     }
   }
 
-  private[collection] class UnboxingByteStepper(st: AnyStepper[Byte]) extends IntStepper {
+  private[collection] class UnboxingByteStepper(st: AnyStepper[Byte]^) extends IntStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingByteStepper(s)
     }
   }
 
-  private[collection] class UnboxingCharStepper(st: AnyStepper[Char]) extends IntStepper {
+  private[collection] class UnboxingCharStepper(st: AnyStepper[Char]^) extends IntStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingCharStepper(s)
     }
   }
 
-  private[collection] class UnboxingShortStepper(st: AnyStepper[Short]) extends IntStepper {
+  private[collection] class UnboxingShortStepper(st: AnyStepper[Short]^) extends IntStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Int = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): IntStepper = {
+    def trySplit(): IntStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingShortStepper(s)
     }
   }
 
-  private[collection] class UnboxingFloatStepper(st: AnyStepper[Float]) extends DoubleStepper {
+  private[collection] class UnboxingFloatStepper(st: AnyStepper[Float]^) extends DoubleStepper {
     def hasStep: Boolean = st.hasStep
     def nextStep(): Double = st.nextStep()
     def estimateSize: Long = st.estimateSize
     def characteristics: Int = st.characteristics
-    def trySplit(): DoubleStepper = {
+    def trySplit(): DoubleStepper^{this} = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingFloatStepper(s)
     }
@@ -184,21 +186,21 @@ object Stepper {
 
 /** A Stepper for arbitrary element types. See [[Stepper]]. */
 trait AnyStepper[+A] extends Stepper[A] {
-  def trySplit(): AnyStepper[A]
+  def trySplit(): AnyStepper[A]^{this}
 
-  def spliterator[B >: A]: Spliterator[B] = new AnyStepper.AnyStepperSpliterator(this)
+  def spliterator[B >: A]: Spliterator[B]^{this} = new AnyStepper.AnyStepperSpliterator(this)
 
-  def javaIterator[B >: A]: JIterator[B] = new JIterator[B] {
+  def javaIterator[B >: A]: JIterator[B]^{this} = new JIterator[B] {
     def hasNext: Boolean = hasStep
     def next(): B = nextStep()
   }
 }
 
 object AnyStepper {
-  class AnyStepperSpliterator[A](s: AnyStepper[A]) extends Spliterator[A] {
+  class AnyStepperSpliterator[A](s: AnyStepper[A]^) extends Spliterator[A] {
     def tryAdvance(c: Consumer[_ >: A]): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
-    def trySplit(): Spliterator[A] = {
+    def trySplit(): Spliterator[A]^{this} = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }
@@ -254,17 +256,17 @@ object AnyStepper {
 
 /** A Stepper for Ints. See [[Stepper]]. */
 trait IntStepper extends Stepper[Int] {
-  def trySplit(): IntStepper
+  def trySplit(): IntStepper^{this}
 
-  def spliterator[B >: Int]: Spliterator.OfInt = new IntStepper.IntStepperSpliterator(this)
+  def spliterator[B >: Int]: Spliterator.OfInt^{this} = new IntStepper.IntStepperSpliterator(this)
 
-  def javaIterator[B >: Int]: PrimitiveIterator.OfInt = new PrimitiveIterator.OfInt {
+  def javaIterator[B >: Int]: PrimitiveIterator.OfInt^{this} = new PrimitiveIterator.OfInt {
     def hasNext: Boolean = hasStep
     def nextInt(): Int = nextStep()
   }
 }
 object IntStepper {
-  class IntStepperSpliterator(s: IntStepper) extends Spliterator.OfInt {
+  class IntStepperSpliterator(s: IntStepper^) extends Spliterator.OfInt {
     def tryAdvance(c: IntConsumer): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     // Override for efficiency: don't wrap the function and call the `tryAdvance` overload
@@ -273,7 +275,7 @@ object IntStepper {
       case _ => if (s.hasStep) { c.accept(jl.Integer.valueOf(s.nextStep())); true } else false
     }
     // override required for dotty#6152
-    override def trySplit(): Spliterator.OfInt = {
+    override def trySplit(): Spliterator.OfInt^{this} = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }
@@ -292,18 +294,18 @@ object IntStepper {
 
 /** A Stepper for Doubles. See [[Stepper]]. */
 trait DoubleStepper extends Stepper[Double] {
-  def trySplit(): DoubleStepper
+  def trySplit(): DoubleStepper^{this}
 
-  def spliterator[B >: Double]: Spliterator.OfDouble = new DoubleStepper.DoubleStepperSpliterator(this)
+  def spliterator[B >: Double]: Spliterator.OfDouble^{this} = new DoubleStepper.DoubleStepperSpliterator(this)
 
-  def javaIterator[B >: Double]: PrimitiveIterator.OfDouble = new PrimitiveIterator.OfDouble {
+  def javaIterator[B >: Double]: PrimitiveIterator.OfDouble^{this} = new PrimitiveIterator.OfDouble {
     def hasNext: Boolean = hasStep
     def nextDouble(): Double = nextStep()
   }
 }
 
 object DoubleStepper {
-  class DoubleStepperSpliterator(s: DoubleStepper) extends Spliterator.OfDouble {
+  class DoubleStepperSpliterator(s: DoubleStepper^) extends Spliterator.OfDouble {
     def tryAdvance(c: DoubleConsumer): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     // Override for efficiency: don't wrap the function and call the `tryAdvance` overload
@@ -312,7 +314,7 @@ object DoubleStepper {
       case _ => if (s.hasStep) { c.accept(java.lang.Double.valueOf(s.nextStep())); true } else false
     }
     // override required for dotty#6152
-    override def trySplit(): Spliterator.OfDouble = {
+    override def trySplit(): Spliterator.OfDouble^{this} = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }
@@ -331,18 +333,18 @@ object DoubleStepper {
 
 /** A Stepper for Longs. See [[Stepper]]. */
 trait LongStepper extends Stepper[Long] {
-  def trySplit(): LongStepper
+  def trySplit(): LongStepper^{this}
 
-  def spliterator[B >: Long]: Spliterator.OfLong = new LongStepper.LongStepperSpliterator(this)
+  def spliterator[B >: Long]: Spliterator.OfLong^{this} = new LongStepper.LongStepperSpliterator(this)
 
-  def javaIterator[B >: Long]: PrimitiveIterator.OfLong = new PrimitiveIterator.OfLong {
+  def javaIterator[B >: Long]: PrimitiveIterator.OfLong^{this} = new PrimitiveIterator.OfLong {
     def hasNext: Boolean = hasStep
     def nextLong(): Long = nextStep()
   }
 }
 
 object LongStepper {
-  class LongStepperSpliterator(s: LongStepper) extends Spliterator.OfLong {
+  class LongStepperSpliterator(s: LongStepper^) extends Spliterator.OfLong {
     def tryAdvance(c: LongConsumer): Boolean =
       if (s.hasStep) { c.accept(s.nextStep()); true } else false
     // Override for efficiency: don't wrap the function and call the `tryAdvance` overload
@@ -351,7 +353,7 @@ object LongStepper {
       case _ => if (s.hasStep) { c.accept(java.lang.Long.valueOf(s.nextStep())); true } else false
     }
     // override required for dotty#6152
-    override def trySplit(): Spliterator.OfLong = {
+    override def trySplit(): Spliterator.OfLong^{this} = {
       val sp = s.trySplit()
       if (sp == null) null else sp.spliterator
     }

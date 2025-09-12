@@ -24,6 +24,57 @@ covtest
 Planet
 Class
 covtest.Planet
+<init>
+322
+333
+14
+<none>
+Literal
+false
+0
+false
+6.67300E-11
+
+1
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceGravity
+359
+386
+15
+/
+Apply
+false
+0
+false
+G * mass / (radius * radius
+
+2
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceGravity
+371
+386
+15
+*
+Apply
+false
+0
+false
+radius * radius
+
+3
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
 surfaceGravity
 338
 356
@@ -35,7 +86,24 @@ false
 false
 def surfaceGravity
 
-1
+4
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceWeight
+432
+458
+16
+*
+Apply
+false
+0
+false
+otherMass * surfaceGravity
+
+5
 Enum.scala
 covtest
 Planet
@@ -52,7 +120,7 @@ false
 false
 surfaceGravity
 
-2
+6
 Enum.scala
 covtest
 Planet
@@ -69,7 +137,381 @@ false
 false
 def surfaceWeight
 
+7
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+492
+501
+18
+<none>
+Literal
+false
+0
+false
+3.303e+23
+
+8
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+503
+511
+18
+<none>
+Literal
+false
+0
+false
+2.4397e6
+
+9
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+545
+554
+19
+<none>
+Literal
+false
+0
+false
+4.869e+24
+
+10
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+556
+564
+19
+<none>
+Literal
+false
+0
+false
+6.0518e6
+
+11
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+598
+607
+20
+<none>
+Literal
+false
+0
+false
+5.976e+24
+
+12
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+609
+618
+20
+<none>
+Literal
+false
+0
+false
+6.37814e6
+
+13
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+652
+661
+21
+<none>
+Literal
+false
+0
+false
+6.421e+23
+
+14
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+663
+671
+21
+<none>
+Literal
+false
+0
+false
+3.3972e6
+
+15
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+705
+712
+22
+<none>
+Literal
+false
+0
+false
+1.9e+27
+
+16
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+716
+724
+22
+<none>
+Literal
+false
+0
+false
+7.1492e7
+
+17
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+758
+767
+23
+<none>
+Literal
+false
+0
+false
+5.688e+26
+
+18
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+769
+777
+23
+<none>
+Literal
+false
+0
+false
+6.0268e7
+
+19
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+811
+820
+24
+<none>
+Literal
+false
+0
+false
+8.686e+25
+
+20
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+822
+830
+24
+<none>
+Literal
+false
+0
+false
+2.5559e7
+
+21
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+864
+873
+25
+<none>
+Literal
+false
+0
+false
+1.024e+26
+
+22
+Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+875
+883
+25
+<none>
+Literal
+false
+0
+false
+2.4746e7
+
+23
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+970
+1038
+30
+apply
+Apply
+false
+0
+false
+ListEnum.Cons(1, ListEnum.Cons(2, ListEnum.Cons(3, ListEnum.Empty)))
+
+24
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+984
+985
+30
+<none>
+Literal
+false
+0
+false
+1
+
+25
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+987
+1037
+30
+apply
+Apply
+false
+0
+false
+ListEnum.Cons(2, ListEnum.Cons(3, ListEnum.Empty))
+
+26
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+1001
+1002
+30
+<none>
+Literal
+false
+0
+false
+2
+
+27
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+1004
+1036
+30
+apply
+Apply
+false
+0
+false
+ListEnum.Cons(3, ListEnum.Empty)
+
+28
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+1018
+1019
+30
+<none>
+Literal
+false
+0
+false
 3
+
+29
 Enum.scala
 covtest
 EnumTypes
@@ -86,7 +528,7 @@ false
 false
 println("Example 1: \\n"+emptyList)
 
-4
+30
 Enum.scala
 covtest
 EnumTypes
@@ -103,7 +545,24 @@ false
 false
 "Example 1: \\n"+emptyList
 
-5
+31
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+test
+1051
+1066
+31
+<none>
+Literal
+false
+0
+false
+"Example 1: \\n"
+
+32
 Enum.scala
 covtest
 EnumTypes
@@ -120,7 +579,7 @@ false
 false
 println(s"${list}\\n")
 
-6
+33
 Enum.scala
 covtest
 EnumTypes
@@ -137,7 +596,24 @@ false
 false
 s"${list}\\n"
 
-7
+34
+Enum.scala
+covtest
+EnumTypes
+Object
+covtest.EnumTypes
+calculateEarthWeightOnPlanets
+1183
+1222
+35
+/
+Apply
+false
+0
+false
+earthWeight/Planet.Earth.surfaceGravity
+
+35
 Enum.scala
 covtest
 EnumTypes
@@ -154,7 +630,7 @@ false
 false
 Planet.Earth.surfaceGravity
 
-8
+36
 Enum.scala
 covtest
 EnumTypes
@@ -171,7 +647,7 @@ false
 false
 for p <- Planet.values do\n        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-9
+37
 Enum.scala
 covtest
 EnumTypes
@@ -181,14 +657,14 @@ calculateEarthWeightOnPlanets
 1238
 1251
 36
-refArrayOps
-Apply
+values
+Select
 false
 0
 false
 Planet.values
 
-10
+38
 Enum.scala
 covtest
 EnumTypes
@@ -205,7 +681,7 @@ false
 false
 println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-11
+39
 Enum.scala
 covtest
 EnumTypes
@@ -222,7 +698,7 @@ false
 false
 s"Your weight on $p is ${p.surfaceWeight(mass)}"
 
-12
+40
 Enum.scala
 covtest
 EnumTypes
@@ -239,7 +715,7 @@ false
 false
 p.surfaceWeight(mass)
 
-13
+41
 Enum.scala
 covtest
 EnumTypes
@@ -256,7 +732,7 @@ false
 false
 def calculateEarthWeightOnPlanets
 
-14
+42
 Enum.scala
 covtest
 EnumTypes
@@ -273,7 +749,7 @@ false
 false
 println("Example 2:")
 
-15
+43
 Enum.scala
 covtest
 EnumTypes
@@ -290,7 +766,7 @@ false
 false
 calculateEarthWeightOnPlanets(80)
 
-16
+44
 Enum.scala
 covtest
 EnumTypes

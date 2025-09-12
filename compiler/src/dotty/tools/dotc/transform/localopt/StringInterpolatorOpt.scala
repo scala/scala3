@@ -10,6 +10,8 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.printing.Formatting.*
+import dotty.tools.dotc.reporting.BadFormatInterpolation
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.ConstFold
 
@@ -22,8 +24,9 @@ import dotty.tools.dotc.typer.ConstFold
  */
 class StringInterpolatorOpt extends MiniPhase:
   import tpd.*
+  import StringInterpolatorOpt.*
 
-  override def phaseName: String = StringInterpolatorOpt.name
+  override def phaseName: String = name
 
   override def description: String = StringInterpolatorOpt.description
 
@@ -31,7 +34,7 @@ class StringInterpolatorOpt extends MiniPhase:
     tree match
       case tree: RefTree =>
         val sym = tree.symbol
-        assert(!StringInterpolatorOpt.isCompilerIntrinsic(sym),
+        assert(!isCompilerIntrinsic(sym),
           i"$tree in ${ctx.owner.showLocated} should have been rewritten by phase $phaseName")
       case _ =>
 
@@ -105,13 +108,25 @@ class StringInterpolatorOpt extends MiniPhase:
         lintToString(elem)
         concat(elem)
         val str = stri.next()
-        if !str.const.stringValue.isEmpty then concat(str)
+        if !str.const.stringValue.isEmpty then
+          concat(str)
       result
     end mkConcat
     def lintToString(t: Tree): Unit =
-      val arg: Type = t.tpe
-      if ctx.settings.Whas.toStringInterpolated && !(arg.widen =:= defn.StringType) && !arg.isPrimitiveValueType
-      then report.warning("interpolation uses toString", t.srcPos)
+      def checkIsStringify(tp: Type): Boolean = tp.widen match
+        case OrType(tp1, tp2) =>
+          checkIsStringify(tp1) || checkIsStringify(tp2)
+        case tp =>
+          !(tp =:= defn.StringType)
+          && {
+              tp =:= defn.UnitType
+              && { report.warning(bfi"interpolated Unit value", t.srcPos); true }
+            ||
+              !tp.isPrimitiveValueType
+              && { report.warning(bfi"interpolation uses toString", t.srcPos); true }
+          }
+      if ctx.settings.Whas.toStringInterpolated then
+        checkIsStringify(t.tpe): Unit
     val sym = tree.symbol
     // Test names first to avoid loading scala.StringContext if not used, and common names first
     val isInterpolatedMethod =
@@ -122,10 +137,38 @@ class StringInterpolatorOpt extends MiniPhase:
         case _        => false
     // Perform format checking and normalization, then make it StringOps(fmt).format(args1) with tweaked args
     def transformF(fun: Tree, args: Tree): Tree =
-      val (fmt, args1) = FormatInterpolatorTransform.checked(fun, args)
+      // For f"${arg}%xpart", check format conversions and return (format, args) for String.format(format, args).
+      def checked(args0: Tree)(using Context): (Tree, Tree) =
+        val (partsExpr, parts) = fun match
+          case TypeApply(Select(Apply(_, (parts: SeqLiteral) :: Nil), _), _) =>
+            (parts.elems, parts.elems.map { case Literal(Constant(s: String)) => s })
+          case _ =>
+            report.error("Expected statically known StringContext", fun.srcPos)
+            (Nil, Nil)
+        val (args, elemtpt) = args0 match
+          case seqlit: SeqLiteral => (seqlit.elems, seqlit.elemtpt)
+          case _ =>
+            report.error("Expected statically known argument list", args0.srcPos)
+            (Nil, EmptyTree)
+
+        def literally(s: String) = Literal(Constant(s))
+        if parts.lengthIs != args.length + 1 then
+          val badParts =
+            if parts.isEmpty then "there are no parts"
+            else s"too ${if parts.lengthIs > args.length + 1 then "few" else "many"} arguments for interpolated string"
+          report.error(badParts, fun.srcPos)
+          (literally(""), args0)
+        else
+          val checker = TypedFormatChecker(partsExpr, parts, args)
+          val (format, formatArgs) = checker.checked
+          if format.isEmpty then (literally(parts.mkString), args0) // on error just use unchecked inputs
+          else (literally(format.mkString), SeqLiteral(formatArgs.toList, elemtpt))
+      end checked
+      val (fmt, args1) = checked(args)
       resolveConstructor(defn.StringOps.typeRef, List(fmt))
         .select(nme.format)
         .appliedTo(args1)
+    end transformF
     // Starting with Scala 2.13, s and raw are macros in the standard
     // library, so we need to expand them manually.
     // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
@@ -174,3 +217,7 @@ object StringInterpolatorOpt:
     sym == defn.StringContext_s ||
     sym == defn.StringContext_f ||
     sym == defn.StringContext_raw
+
+  extension (sc: StringContext)
+    def bfi(args: Shown*)(using Context): BadFormatInterpolation =
+      BadFormatInterpolation(i(sc)(args*))

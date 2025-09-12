@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
@@ -149,7 +151,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V])(implicit va
   def updated[V1 >: V](key: K, value: V1): TreeMap[K, V1] =
     newMapOrSelf(RB.update(tree, key, value, overwrite = true))
 
-  override def concat[V1 >: V](that: collection.IterableOnce[(K, V1)]): TreeMap[K, V1] =
+  override def concat[V1 >: V](that: collection.IterableOnce[(K, V1)]^): TreeMap[K, V1] =
     newMapOrSelf(that match {
       case tm: TreeMap[K, V] @unchecked if ordering == tm.ordering =>
         RB.union(tree, tm.tree)
@@ -169,7 +171,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V])(implicit va
         adder.finalTree
     })
 
-  override def removedAll(keys: IterableOnce[K]): TreeMap[K, V] = keys match {
+  override def removedAll(keys: IterableOnce[K]^): TreeMap[K, V] = keys match {
     case ts: TreeSet[K] if ordering == ts.ordering =>
       newMapOrSelf(RB.difference(tree, ts.tree))
     case _ => super.removedAll(keys)
@@ -310,7 +312,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
 
   def empty[K : Ordering, V]: TreeMap[K, V] = new TreeMap()
 
-  def from[K, V](it: IterableOnce[(K, V)])(implicit ordering: Ordering[K]): TreeMap[K, V] =
+  def from[K, V](it: IterableOnce[(K, V)]^)(implicit ordering: Ordering[K]): TreeMap[K, V] =
     it match {
       case tm: TreeMap[K, V] if ordering == tm.ordering => tm
       case sm: scala.collection.SortedMap[K, V] if ordering == sm.ordering =>
@@ -354,7 +356,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
       }
     }
 
-    override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+    override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
       xs match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
         // for the moment we have to force immutability before the union

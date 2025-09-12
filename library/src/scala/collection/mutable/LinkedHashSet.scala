@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.generic.DefaultSerializable
 import scala.util.hashing.MurmurHash3
@@ -317,7 +318,7 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
 
   override def empty[A]: LinkedHashSet[A] = new LinkedHashSet[A]
 
-  def from[E](it: collection.IterableOnce[E]) = {
+  def from[E](it: collection.IterableOnce[E]^) = {
     val newlhs = empty[E]
     newlhs.sizeHint(it, delta = 0)
     newlhs.addAll(it)

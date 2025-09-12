@@ -1228,7 +1228,8 @@ object Scanners {
       && (softModifierNames.contains(name)
         || name == nme.erased && erasedEnabled
         || name == nme.tracked && trackedEnabled
-        || name == nme.update && Feature.ccEnabled)
+        || name == nme.update && Feature.ccEnabled
+        || name == nme.consume && Feature.ccEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()

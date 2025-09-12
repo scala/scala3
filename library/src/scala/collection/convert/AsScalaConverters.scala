@@ -15,6 +15,9 @@ package collection
 package convert
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+import caps.unsafe.unsafeAssumePure
+
 import java.util.{concurrent => juc}
 import java.{lang => jl, util => ju}
 
@@ -40,7 +43,7 @@ trait AsScalaConverters {
    */
   def asScala[A](i: ju.Iterator[A]): Iterator[A] = i match {
     case null                            => null
-    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying
+    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JIteratorWrapper(i)
   }
 
@@ -58,7 +61,7 @@ trait AsScalaConverters {
    */
   def asScala[A](e: ju.Enumeration[A]): Iterator[A] = e match {
     case null                            => null
-    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying
+    case wrapper: IteratorWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JEnumerationWrapper(e)
   }
 
@@ -76,7 +79,7 @@ trait AsScalaConverters {
    */
   def asScala[A](i: jl.Iterable[A]): Iterable[A] = i match {
     case null                            => null
-    case wrapper: IterableWrapper[A @uc] => wrapper.underlying
+    case wrapper: IterableWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JIterableWrapper(i)
   }
 
@@ -91,7 +94,7 @@ trait AsScalaConverters {
    */
   def asScala[A](c: ju.Collection[A]): Iterable[A] = c match {
     case null                            => null
-    case wrapper: IterableWrapper[A @uc] => wrapper.underlying
+    case wrapper: IterableWrapper[A @uc] => wrapper.underlying.unsafeAssumePure // TODO: Remove when pattern matching recognizes this is safe
     case _                               => new JCollectionWrapper(c)
   }
 

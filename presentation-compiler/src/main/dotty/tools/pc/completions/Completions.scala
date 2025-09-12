@@ -15,6 +15,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -74,7 +75,15 @@ class Completions(
       case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
       case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
         if appl.fun == funSel && sel == fun => false
-      case _ => true)
+      case _ => true) &&
+      (adjustedPath match
+        /* In case of `class X derives TC@@` we shouldn't add `[]`
+         */
+        case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
+          val pos = completionPos.toSourcePosition
+          !templ.derived.exists(_.sourcePos.contains(pos))
+        case _ => true
+      )
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -193,12 +202,23 @@ class Completions(
     )
   end isAbstractType
 
-  private def findSuffix(symbol: Symbol): CompletionAffix =
+  private def findSuffix(symbol: Symbol, adjustedPath: List[untpd.Tree]): CompletionAffix =
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
         if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
+      }
+      .chain{ suffix =>
+        adjustedPath match
+            case (ident: Ident) :: (app@Apply(_, List(arg))) :: _  =>
+              app.symbol.info match
+                case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) &&
+                  !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
+                  suffix.withNewPrefix(Affix(PrefixKind.Using))
+                case _ => suffix
+            case _ => suffix
+
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then
@@ -271,7 +291,7 @@ class Completions(
       val existsApply = extraMethodDenots.exists(_.symbol.name == nme.apply)
 
       extraMethodDenots.map { methodDenot =>
-        val suffix = findSuffix(methodDenot.symbol)
+        val suffix = findSuffix(methodDenot.symbol, adjustedPath)
         val affix = if methodDenot.symbol.isConstructor && existsApply then
           adjustedPath match
             case (select @ Select(qual, _)) :: _ =>
@@ -293,7 +313,7 @@ class Completions(
 
     if skipOriginalDenot then extraCompletionValues
     else
-      val suffix = findSuffix(denot.symbol)
+      val suffix = findSuffix(denot.symbol, adjustedPath)
       val name = undoBacktick(label)
       val denotCompletionValue = toCompletionValue(name, denot, suffix)
       denotCompletionValue :: extraCompletionValues
@@ -734,15 +754,25 @@ class Completions(
     defn.Object_notifyAll,
     defn.Object_notify,
     defn.Predef_undefined,
-    defn.ObjectClass.info.member(nme.wait_).symbol,
     // NOTE(olafur) IntelliJ does not complete the root package and without this filter
     // then `_root_` would appear as a completion result in the code `foobar(_<COMPLETE>)`
     defn.RootPackage,
     // NOTE(gabro) valueOf was added as a Predef member in 2.13. We filter it out since is a niche
     // use case and it would appear upon typing 'val'
-    defn.ValueOfClass.info.member(nme.valueOf).symbol,
-    defn.ScalaPredefModule.requiredMethod(nme.valueOf)
-  ).flatMap(_.alternatives.map(_.symbol)).toSet
+    defn.ValueOfClass
+  ) ++ (
+    Set(
+      defn.ObjectClass.info.member(nme.wait_),
+      defn.ScalaPredefModule.info.member(nme.valueOf)
+    ).flatMap(_.alternatives.map(_.symbol)).toSet
+  )
+
+  private lazy val EqualsClass: ClassSymbol = requiredClass("scala.Equals")
+  private lazy val ArrowAssocClass: ClassSymbol = requiredClass("scala.Predef.ArrowAssoc")
+  private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
+  private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
+  private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
@@ -762,6 +792,17 @@ class Completions(
       (sym.isField && !isJavaClass && !isModuleOrClass) || sym.getter != NoSymbol
     catch case _ => false
 
+    def isInheritedFromScalaLibrary(sym: Symbol) =
+      sym.owner == defn.AnyClass || 
+        sym.owner == defn.ObjectClass ||
+        sym.owner == defn.ProductClass ||
+        sym.owner == EqualsClass ||
+        sym.owner == ArrowAssocClass ||
+        sym.owner == EnsuringClass ||
+        sym.owner == StringFormatClass ||
+        sym == nnMethod ||
+        sym == runtimeCheckedMethod
+
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
       // symbols defined in this file are more relevant
@@ -779,7 +820,7 @@ class Completions(
         case _ =>
 
       // symbols whose owner is a base class are less relevant
-      if sym.owner == defn.AnyClass || sym.owner == defn.ObjectClass
+      if isInheritedFromScalaLibrary(sym)
       then relevance |= IsInheritedBaseMethod
       // symbols not provided via an implicit are more relevant
       if sym.is(Implicit) ||
@@ -791,7 +832,7 @@ class Completions(
       // accessors of case class members are more relevant
       if !sym.is(CaseAccessor) then relevance |= IsNotCaseAccessor
       // public symbols are more relevant
-      if !sym.isPublic then relevance |= IsNotCaseAccessor
+      if !sym.isPublic then relevance |= IsNotPublic
       // synthetic symbols are less relevant (e.g. `copy` on case classes)
       if sym.is(Synthetic) && !sym.isAllOf(EnumCase) then
         relevance |= IsSynthetic
@@ -885,7 +926,7 @@ class Completions(
       application: CompletionApplication
   ): Ordering[CompletionValue] =
     new Ordering[CompletionValue]:
-      val queryLower = completionPos.query.toLowerCase()
+      val queryLower: String = completionPos.query.toLowerCase()
       val fuzzyCache = mutable.Map.empty[CompletionValue, Int]
 
       def compareLocalSymbols(s1: Symbol, s2: Symbol): Int =

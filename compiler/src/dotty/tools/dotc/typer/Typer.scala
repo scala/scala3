@@ -602,7 +602,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
     record("typedIdent")
     val name = tree.name
-    def kind = if (name.isTermName) "" else "type "
+    def kind =
+      if name.isTermName then
+        if ctx.mode.is(Mode.InCaptureSet) then "capability "
+        else ""
+      else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if ctx.mode.is(Mode.Pattern) then
       if name == nme.WILDCARD then
@@ -1235,6 +1239,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         var tpt1 = typedType(tree.tpt)
         val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
+        if ctx.mode.isQuotedPattern && tpt1.tpe.typeSymbol.isAllOf(Synthetic | Case) then
+          val errorTp = errorType(CannotInstantiateQuotedTypeVar(tpt1.tpe.typeSymbol), tpt1.srcPos)
+          return cpy.New(tree)(tpt1).withType(errorTp)
         if tsym.is(Package) then
           report error(em"$tsym cannot be instantiated", tpt1.srcPos)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
@@ -2207,7 +2214,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var alreadyStripped = false
     val cases1 = tree.cases.zip(pt.cases)
       .map { case (cas, tpe) =>
-        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
+        given Context = caseCtx
+        val case1 = typedCase(cas, sel, wideSelType, tpe)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
         if !alreadyStripped && Nullables.matchesNull(case1) then
           wideSelType = wideSelType.stripNull()
@@ -2239,7 +2247,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var wideSelType = wideSelType0
     var alreadyStripped = false
     cases.mapconserve { cas =>
-      val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
+      given Context = caseCtx
+      val case1 = typedCase(cas, sel, wideSelType, pt)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       if !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull()
@@ -3740,12 +3749,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val ifpt = defn.asContextFunctionType(pt)
           val result =
             if ifpt.exists
-              && defn.functionArity(ifpt) > 0 // ContextFunction0 is only used after ElimByName
+              && !ctx.isAfterTyper
+              && {
+                // ContextFunction0 is only used after ElimByName
+                val arity = defn.functionArity(ifpt)
+                if arity == 0 then
+                  report.error(em"context function types require at least one parameter", xtree.srcPos)
+                arity > 0
+              }
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
               && !xtree.isInstanceOf[SplicePattern]
-              && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
               makeContextualFunction(xtree, ifpt)
@@ -3815,6 +3830,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val ifun = desugar.makeContextualFunction(paramTypes, paramNamesOrNil, tree, erasedParams)
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typedFunctionValue(ifun, pt)
+      .tap:
+        case tree @ Block((m1: DefDef) :: _, _: Closure) if ctx.settings.Whas.wrongArrow =>
+          m1.rhs match
+          case Block((m2: DefDef) :: _, _: Closure) if m1.paramss.lengthCompare(m2.paramss) == 0 =>
+            val p1s = m1.symbol.info.asInstanceOf[MethodType].paramInfos
+            val p2s = m2.symbol.info.asInstanceOf[MethodType].paramInfos
+            if p1s.corresponds(p2s)(_ =:= _) then
+              report.warning(em"Context function adapts a lambda with the same parameter types, possibly ?=> was intended.", tree.srcPos)
+          case _ =>
+        case _ =>
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
@@ -4356,22 +4381,40 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               implicitArgs(formals2, argIndex + 1, pt)
 
             val arg = inferImplicitArg(formal, tree.span.endPos)
+
+            lazy val defaultArg = findDefaultArgument(argIndex)
+              .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
+            def argHasDefault = hasDefaultParams && !defaultArg.isEmpty
+
+            def canProfitFromMoreConstraints =
+              arg.tpe.isInstanceOf[AmbiguousImplicits]
+                    // Ambiguity could be decided by more constraints
+              || !isFullyDefined(formal, ForceDegree.none) && !argHasDefault
+                    // More context might constrain type variables which could make implicit scope larger.
+                    // But in this case we should search with additional arguments typed only if there
+                    // is no default argument.
+
+            // Try to constrain the result using `pt1`, but back out if a BadTyperStateAssertion
+            // is thrown. TODO Find out why the bad typer state arises and prevent it. The try-catch
+            // is a temporary hack to keep projects compiling that would fail otherwise due to
+            // searching more arguments to instantiate implicits (PR #23532). A failing project
+            // is described in issue #23609.
+            def tryConstrainResult(pt: Type): Boolean =
+              try constrainResult(tree.symbol, wtp, pt)
+              catch case ex: TyperState.BadTyperStateAssertion => false
+
+            arg.tpe match
+              case failed: SearchFailureType if canProfitFromMoreConstraints =>
+                val pt1 = pt.deepenProtoTrans
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
+                  return implicitArgs(formals, argIndex, pt1)
+              case _ =>
+
             arg.tpe match
               case failed: AmbiguousImplicits =>
-                val pt1 = pt.deepenProtoTrans
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
-                then implicitArgs(formals, argIndex, pt1)
-                else arg :: implicitArgs(formals1, argIndex + 1, pt1)
+                arg :: implicitArgs(formals1, argIndex + 1, pt)
               case failed: SearchFailureType =>
-                lazy val defaultArg = findDefaultArgument(argIndex)
-                  .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
-                if !hasDefaultParams || defaultArg.isEmpty then
-                  // no need to search further, the adapt fails in any case
-                  // the reason why we continue inferring arguments in case of an AmbiguousImplicits
-                  // is that we need to know whether there are further errors.
-                  // If there are none, we have to propagate the ambiguity to the caller.
-                  arg :: formals1.map(dummyArg)
-                else
+                if argHasDefault then
                   // This is tricky. On the one hand, we need the defaultArg to
                   // correctly type subsequent formal parameters in the same using
                   // clause in case there are parameter dependencies. On the other hand,
@@ -4382,6 +4425,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   // `if propFail.exists` where we re-type the whole using clause with named
                   // arguments for all implicits that were found.
                   arg :: inferArgsAfter(defaultArg)
+                else
+                  // no need to search further, the adapt fails in any case
+                  // the reason why we continue inferring arguments in case of an AmbiguousImplicits
+                  // is that we need to know whether there are further errors.
+                  // If there are none, we have to propagate the ambiguity to the caller.
+                  arg :: formals1.map(dummyArg)
               case _ =>
                 arg :: inferArgsAfter(arg)
         end implicitArgs

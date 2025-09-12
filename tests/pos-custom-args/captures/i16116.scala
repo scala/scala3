@@ -15,7 +15,7 @@ object CpsMonad {
 @experimental
 object Test {
 
-  class CpsTransform[F[_]] extends caps.Capability {
+  class CpsTransform[F[_]] extends caps.SharedCapability {
      def await[T](ft: F[T]): T^{ this } = ???
   }
 

@@ -120,8 +120,6 @@ object StdNames {
     val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
-    val CC_REACH: N                   = "$reach"
-    val CC_READONLY: N                = "$readOnly"
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -396,6 +394,7 @@ object StdNames {
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
     val Tuple2: N               = "Tuple2"
+    val Tuple: N                = "Tuple"
     val TYPE_ : N               = "TYPE"
     val TypeApply: N            = "TypeApply"
     val TypeRef: N              = "TypeRef"
@@ -455,6 +454,7 @@ object StdNames {
     val compiletime : N         = "compiletime"
     val compose: N              = "compose"
     val conforms_ : N           = "$conforms"
+    val consume: N              = "consume"
     val contents: N             = "contents"
     val copy: N                 = "copy"
     val create: N               = "create"
@@ -531,6 +531,7 @@ object StdNames {
     val isEmpty: N              = "isEmpty"
     val isInstanceOf_ : N       = "isInstanceOf"
     val isInstanceOfPM: N       = "$isInstanceOf$"
+    val isSameLabelAs : N       = "isSameLabelAs"
     val java: N                 = "java"
     val key: N                  = "key"
     val label: N                = "label"
@@ -570,6 +571,7 @@ object StdNames {
     val null_ : N               = "null"
     val ofDim: N                = "ofDim"
     val on: N                   = "on"
+    val only: N                 = "only"
     val opaque: N               = "opaque"
     val open: N                 = "open"
     val ordinal: N              = "ordinal"

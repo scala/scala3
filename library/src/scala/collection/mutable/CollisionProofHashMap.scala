@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.{unchecked => uc}
 import scala.annotation.{implicitNotFound, tailrec, unused}
 import scala.annotation.unchecked.uncheckedVariance
@@ -64,7 +65,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   @`inline` private[this] final def index(hash: Int) = hash & (table.length - 1)
 
-  override protected def fromSpecific(coll: IterableOnce[(K, V)] @uncheckedVariance): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
+  override protected def fromSpecific(coll: (IterableOnce[(K, V)] @uncheckedVariance)^): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
   override protected def newSpecificBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] @uncheckedVariance = CollisionProofHashMap.newBuilder[K, V]
 
   override def empty: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
@@ -174,7 +175,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs, delta = contentSize)
     super.addAll(xs)
   }
@@ -426,7 +427,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     *  @return       a new $coll resulting from applying the given collection-valued function
     *                `f` to each element of this $coll and concatenating the results.
     */
-  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)])
+  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.FlatMap(this, f))
 
@@ -442,13 +443,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
-  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
+  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
     case it: Iterable[(K, V2)] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
 
   /** Alias for `concat` */
-  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]): CollisionProofHashMap[K, V2] = concat(xs)
+  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): CollisionProofHashMap[K, V1] =
@@ -743,7 +744,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private[collection] final val ordMsg = "No implicit Ordering[${K2}] found to build a CollisionProofHashMap[${K2}, ${V2}]. You may want to upcast to a Map[${K}, ${V}] first by calling `unsorted`."
 
-  def from[K : Ordering, V](it: scala.collection.IterableOnce[(K, V)]): CollisionProofHashMap[K, V] = {
+  def from[K : Ordering, V](it: scala.collection.IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new CollisionProofHashMap[K, V](cap, defaultLoadFactor) ++= it
@@ -766,7 +767,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   @SerialVersionUID(3L)
   private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double, val ordering: Ordering[K]) extends Factory[(K, V), CollisionProofHashMap[K, V]] with Serializable {
-    def fromSpecific(it: IterableOnce[(K, V)]): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(ordering) ++= it
+    def fromSpecific(it: IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(ordering) ++= it
     def newBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] = CollisionProofHashMap.newBuilder(tableLength, loadFactor)(using ordering)
   }
 

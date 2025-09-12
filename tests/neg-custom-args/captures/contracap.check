@@ -4,6 +4,9 @@
    |                                                Found:    (f : (Ref[Int]^, Ref[Int]^) -> Unit)
    |                                                Required: (Ref[Int]^{a}, Ref[Int]^{a}) -> Unit
    |
-   |                                                where:    ^ refers to the universal root capability
+   |                                                Note that capability a is not included in capture set {cap}.
+   |
+   |                                                where:    ^   refers to the universal root capability
+   |                                                          cap is the universal root capability
    |
    | longer explanation available when compiling with `-explain`

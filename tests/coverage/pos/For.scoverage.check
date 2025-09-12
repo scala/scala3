@@ -41,40 +41,6 @@ covtest
 For$package
 Object
 covtest.For$package
-testForLoop
-52
-59
-4
-to
-Apply
-false
-0
-false
-1 to 10
-
-2
-For.scala
-covtest
-For$package
-Object
-covtest.For$package
-testForLoop
-52
-53
-4
-intWrapper
-Apply
-false
-0
-false
-1
-
-3
-For.scala
-covtest
-For$package
-Object
-covtest.For$package
 $anonfun
 67
 77
@@ -86,7 +52,7 @@ false
 false
 println(i)
 
-4
+2
 For.scala
 covtest
 For$package
@@ -103,7 +69,24 @@ false
 false
 def testForLoop
 
-5
+3
+For.scala
+covtest
+For$package
+Object
+covtest.For$package
+f
+134
+138
+8
+<none>
+Literal
+false
+0
+false
+true
+
+4
 For.scala
 covtest
 For$package
@@ -120,7 +103,7 @@ false
 false
 def f
 
-6
+5
 For.scala
 covtest
 For$package
@@ -137,58 +120,7 @@ false
 false
 for j <- 1 to 10 if f(j) do\n    println(j)
 
-7
-For.scala
-covtest
-For$package
-Object
-covtest.For$package
-testForAdvanced
-145
-165
-9
-withFilter
-Apply
-false
-0
-false
-j <- 1 to 10 if f(j)
-
-8
-For.scala
-covtest
-For$package
-Object
-covtest.For$package
-testForAdvanced
-150
-157
-9
-to
-Apply
-false
-0
-false
-1 to 10
-
-9
-For.scala
-covtest
-For$package
-Object
-covtest.For$package
-testForAdvanced
-150
-151
-9
-intWrapper
-Apply
-false
-0
-false
-1
-
-10
+6
 For.scala
 covtest
 For$package
@@ -205,7 +137,7 @@ false
 false
 f(j)
 
-11
+7
 For.scala
 covtest
 For$package
@@ -222,7 +154,7 @@ false
 false
 println(j)
 
-12
+8
 For.scala
 covtest
 For$package
@@ -239,7 +171,7 @@ false
 false
 def testForAdvanced
 
-13
+9
 For.scala
 covtest
 For$package
@@ -256,7 +188,7 @@ false
 false
 Nil.foreach(_ => println("user code here"))
 
-14
+10
 For.scala
 covtest
 For$package
@@ -273,7 +205,7 @@ false
 false
 println("user code here")
 
-15
+11
 For.scala
 covtest
 For$package

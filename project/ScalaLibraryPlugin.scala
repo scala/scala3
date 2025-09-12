@@ -4,13 +4,18 @@ import sbt.*
 import sbt.Keys.*
 import scala.jdk.CollectionConverters.*
 import java.nio.file.Files
+import xsbti.VirtualFileRef
+import sbt.internal.inc.Stamper
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
+  private val scala2Version = "2.13.16"
+
   val fetchScala2ClassFiles = taskKey[(Set[File], File)]("Fetch the files to use that were compiled with Scala 2")
-  //val scala2LibraryVersion  = settingKey[String]("Version of the Scala 2 Standard Library")
+  val fetchScala2SJSIR = taskKey[(Set[File], File)]("Fetch the .sjsir to use from Scala 2")
 
   override def projectSettings = Seq (
     fetchScala2ClassFiles := {
@@ -37,17 +42,54 @@ object ScalaLibraryPlugin extends AutoPlugin {
       } (Set(scalaLibraryBinaryJar)), target)
 
     },
-    (Compile / compile) := {
+    fetchScala2SJSIR := {
+      val stream = streams.value
+      val lm = dependencyResolution.value
+      val log = stream.log
+      val cache  = stream.cacheDirectory
+      val retrieveDir = cache / "scalajs-scalalib" / scalaVersion.value
+      val comp = lm.retrieve("org.scala-js" % "scalajs-scalalib_2.13" % s"$scala2Version+$scalaJSVersion", scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, identity)
+
+      println(comp(0))
+
+      val target = cache / "scala-library-sjsir"
+
+
+      if (!target.exists()) {
+        IO.createDirectory(target)
+      }
+
+      (FileFunction.cached(cache / "fetch-scala-library-sjsir", FilesInfo.lastModified, FilesInfo.exists) { _ =>
+        stream.log.info(s"Unpacking scalajs-scalalib binaries to persistent directory: ${target.getAbsolutePath}")
+        IO.unzip(comp(0), target)
+        (target ** "*.sjsir").get.toSet
+      } (Set(comp(0))), target)
+
+    },
+    (Compile / manipulateBytecode) := {
       val stream = streams.value
       val target = (Compile / classDirectory).value
       val (files, reference) = fetchScala2ClassFiles.value;
-      val analysis = (Compile / compile).value
-      stream.log.info(s"Copying files from Scala 2 Standard Library to $target")
-      for (file <- files; id <- file.relativeTo(reference).map(_.toString())) {
-        if (filesToCopy(id)) {
-          stream.log.debug(s"Copying file '${id}' to ${target / id}")
-          IO.copyFile(file, target / id)
-        }
+      val previous = (Compile / manipulateBytecode).value
+      val analysis = previous.analysis match {
+        case analysis: sbt.internal.inc.Analysis => analysis
+        case _ => sys.error("Unexpected analysis type")
+      }
+
+      var stamps = analysis.stamps
+      for (file <- files; 
+           id <- file.relativeTo(reference); 
+           if filesToCopy(id.toString()); // Only Override Some Very Specific Files
+           dest = target / (id.toString); 
+           ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
+          ) { 
+        // Copy the files to the classDirectory
+        IO.copyFile(file, dest)
+        // Update the timestamp in the analysis
+        stamps = stamps.markProduct(
+          VirtualFileRef.of(s"$${BASE}/$ref"), 
+          Stamper.forFarmHashP(dest.toPath()))
       }
 
       val overwrittenBinaries = Files.walk((Compile / classDirectory).value.toPath())
@@ -56,13 +98,18 @@ object ScalaLibraryPlugin extends AutoPlugin {
         .map(_.toFile)
         .map(_.relativeTo((Compile / classDirectory).value).get)
         .toSet
+
       val diff = files.filterNot(_.relativeTo(reference).exists(overwrittenBinaries))
 
-      IO.copy(diff.map { file =>
-        file -> (Compile / classDirectory).value / file.relativeTo(reference).get.getPath
-      })
+      // Copy all the specialized classes in the stdlib
+      // no need to update any stamps as these classes exist nowhere in the analysis
+      for (orig <- diff; dest <- orig.relativeTo(reference)) {
+        IO.copyFile(orig, ((Compile / classDirectory).value / dest.toString()))
+      }
 
-      analysis
+      previous
+        .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
+        .withHasModified(true)  // mark it as updated for sbt to update its caches
     }
   )
 

@@ -85,6 +85,8 @@ final class JSDefinitions()(using Context) {
   def JSGlobalScopeAnnot(using Context) = JSGlobalScopeAnnotType.symbol.asClass
   @threadUnsafe lazy val JSNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSName")
   def JSNameAnnot(using Context) = JSNameAnnotType.symbol.asClass
+  @threadUnsafe lazy val JSOperatorAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSOperator")
+  def JSOperatorAnnot(using Context) = JSOperatorAnnotType.symbol.asClass
   @threadUnsafe lazy val JSFullNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSFullName")
   def JSFullNameAnnot(using Context) = JSFullNameAnnotType.symbol.asClass
   @threadUnsafe lazy val JSBracketAccessAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSBracketAccess")
@@ -212,6 +214,14 @@ final class JSDefinitions()(using Context) {
 
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass
+
+  @threadUnsafe lazy val LinkingInfoModuleRef = requiredModuleRef("scala.scalajs.LinkingInfo")
+  def LinkingInfoModule(using Context) = LinkingInfoModuleRef.symbol
+    @threadUnsafe lazy val LinkingInfo_linkTimeIfR = LinkingInfoModule.requiredMethodRef("linkTimeIf")
+    def LinkingInfo_linkTimeIf(using Context) = LinkingInfo_linkTimeIfR.symbol
+
+  @threadUnsafe lazy val LinkTimePropertyAnnotType: TypeRef = requiredClassRef("scala.scalajs.annotation.linkTimeProperty")
+  def LinkTimePropertyAnnot(using Context) = LinkTimePropertyAnnotType.symbol.asClass
 
   @threadUnsafe lazy val ScalaRunTime_isArrayR = defn.ScalaRuntimeModule.requiredMethodRef("isArray", List(???, ???))
   def ScalaRunTime_isArray(using Context): Symbol = ScalaRunTime_isArrayR.symbol

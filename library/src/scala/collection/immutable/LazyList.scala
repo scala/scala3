@@ -262,6 +262,9 @@ import scala.runtime.Statics
   *  @define initiallyLazy This method does not evaluate anything until an operation is performed
   *                        on the result (e.g. calling `head` or `tail`, or checking if it is empty).
   *  @define evaluatesAllElements This method evaluates all elements of the collection.
+  *  @note Under Capture Checking, LazyList is unsound with regards to lazy/strict separation of collections.
+  *        LazyList as-is will not be capture checked and might be deprecated in the future.
+  *        Use LazyListIterable instead.
   */
 @SerialVersionUID(4L)
 final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => LazyList[A] */)

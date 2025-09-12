@@ -995,6 +995,10 @@ class Namer { typer: Typer =>
       end if
     }
 
+    private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
+      if denot.is(Method) && denot.hasAnnotation(defn.ConsumeAnnot) then
+        denot.setFlag(Mutable)
+
     /** Intentionally left without `using Context` parameter. We need
      *  to pick up the context at the point where the completer was created.
      */
@@ -1004,6 +1008,7 @@ class Namer { typer: Typer =>
       addInlineInfo(sym)
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
+      normalizeFlags(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
@@ -1916,7 +1921,7 @@ class Namer { typer: Typer =>
         sym.resetFlag(Lazy)
       case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
-      JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
+      ImplicitNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
   }
 

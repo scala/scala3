@@ -14,6 +14,7 @@ package scala
 package collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import collection.{AbstractIterator, Iterator}
 
 import java.lang.Integer.{numberOfLeadingZeros, rotateRight}
@@ -210,7 +211,7 @@ private[collection] trait HashTable[A, B, Entry >: Null <: HashEntry[A, Entry]] 
 
   /** An iterator returning all entries.
    */
-  def entriesIterator: Iterator[Entry] = new AbstractIterator[Entry] {
+  def entriesIterator: Iterator[Entry]^{this} = new AbstractIterator[Entry] {
     val iterTable = table
     var idx       = lastPopulatedIndex
     var es        = iterTable(idx)

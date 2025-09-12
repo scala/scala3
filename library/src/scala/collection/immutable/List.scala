@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.tailrec
 import mutable.{Builder, ListBuffer}
@@ -144,7 +146,7 @@ sealed abstract class List[+A]
 
   override def prepended[B >: A](elem: B): List[B] = elem :: this
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): List[B] = prefix match {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = prefix match {
     case xs: List[B] => xs ::: this
     case _ if prefix.knownSize == 0 => this
     case b: ListBuffer[B] if this.isEmpty => b.toList
@@ -166,7 +168,7 @@ sealed abstract class List[+A]
   }
 
   // When calling appendAll with another list `suffix`, avoid copying `suffix`
-  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]): List[B] = suffix match {
+  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): List[B] = suffix match {
     case xs: List[B] => this ::: xs
     case _ => super.appendedAll(suffix)
   }
@@ -259,7 +261,7 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def collect[B](pf: PartialFunction[A, B]): List[B] = {
+  final override def collect[B](pf: PartialFunction[A, B]^): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
       var h: ::[B] = null
@@ -287,7 +289,7 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def flatMap[B](f: A => IterableOnce[B]): List[B] = {
+  final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
     var rest = this
     var h: ::[B] = null
     var t: ::[B] = null
@@ -658,6 +660,9 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   releaseFence()
   override def headOption: Some[A] = Some(head)
   override def tail: List[A] = next
+
+  def next$access$1 = next
+
 }
 
 case object Nil extends List[Nothing] {
@@ -668,7 +673,7 @@ case object Nil extends List[Nothing] {
   override def init: Nothing = throw new UnsupportedOperationException("init of empty list")
   override def knownSize: Int = 0
   override def iterator: Iterator[Nothing] = Iterator.empty
-  override def unzip[A1, A2](implicit asPair: Nothing => (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
+  override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
   private[this] val EmptyUnzip = (Nil, Nil)
@@ -683,7 +688,7 @@ case object Nil extends List[Nothing] {
 object List extends StrictOptimizedSeqFactory[List] {
   private val TupleOfNil = (Nil, Nil)
 
-  def from[B](coll: collection.IterableOnce[B]): List[B] = Nil.prependedAll(coll)
+  def from[B](coll: collection.IterableOnce[B]^): List[B] = Nil.prependedAll(coll)
 
   def newBuilder[A]: Builder[A, List[A]] = new ListBuffer()
 

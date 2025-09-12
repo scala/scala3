@@ -774,6 +774,11 @@ trait Applications extends Compatibility {
               methodType.isImplicitMethod && (applyKind == ApplyKind.Using || failEmptyArgs)
 
             if !defaultArg.isEmpty then
+              if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled)
+              && !inferImplicitArg(formal, appPos.span).tpe.isError
+              then
+                report.warning(DefaultShadowsGiven(methodType.paramNames(n)), appPos)
+
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
@@ -1422,14 +1427,11 @@ trait Applications extends Compatibility {
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.srcPos)
-
-      def newGenericArrayCall =
+      if TypeErasure.isGenericArrayArg(targ.tpe) then
         ref(defn.DottyArraysModule)
-          .select(defn.newGenericArrayMethod).withSpan(tree.span)
-          .appliedToTypeTrees(targs).appliedToTermArgs(args)
-
-      if (TypeErasure.isGeneric(targ.tpe))
-        newGenericArrayCall
+            .select(defn.newGenericArrayMethod).withSpan(tree.span)
+            .appliedToTypeTrees(targs)
+            .appliedToTermArgs(args)
       else tree
     case _ =>
       tree

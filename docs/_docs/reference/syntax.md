@@ -246,6 +246,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr
                     |  PrefixOperator SimpleExpr ‘=’ Expr
+                    |  InfixExpr id [nl] `=' Expr                              -- only if language.postfixOps is enabled
                     |  SimpleExpr ArgumentExprs ‘=’ Expr
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause

@@ -1609,10 +1609,10 @@ class JSCodeGen()(using genCtx: Context) {
                 optimizerHints, Unversioned)
           } else {
             val namespace = if (isMethodStaticInIR(sym)) {
-              if (sym.isPrivate) js.MemberNamespace.PrivateStatic
+              if (sym.is(Private)) js.MemberNamespace.PrivateStatic
               else js.MemberNamespace.PublicStatic
             } else {
-              if (sym.isPrivate) js.MemberNamespace.Private
+              if (sym.is(Private)) js.MemberNamespace.Private
               else js.MemberNamespace.Public
             }
             val resultIRType = toIRType(patchedResultType(sym))
@@ -3321,7 +3321,29 @@ class JSCodeGen()(using genCtx: Context) {
     val genReceiver = genExpr(receiver)
 
     if (sym == defn.Any_asInstanceOf) {
-      genAsInstanceOf(genReceiver, to)
+      receiver match {
+        /* This is an optimization for `linkTimeIf(cond)(thenp)(elsep).asInstanceOf[T]`.
+         * If both `thenp` and `elsep` are subtypes of `T`, the `asInstanceOf`
+         * is redundant and can be removed. The optimizer already routinely performs
+         * this optimization. However, that comes too late for the module instance
+         * field alias analysis performed by `IncOptimizer`. In that case, while the
+         * desugarer removes the `LinkTimeIf`, the extra `AsInstanceOf` prevents
+         * aliasing the field. Removing the cast ahead of time in the compiler allows
+         * field aliases to be recognized in the presence of `LinkTimeIf`s.
+         */
+        case Apply(innerFun, List(cond, thenp, elsep))
+            if innerFun.symbol == jsdefn.LinkingInfo_linkTimeIf &&
+            thenp.tpe <:< to && elsep.tpe <:< to =>
+          val genReceiver1 = genReceiver match {
+            case genReceiver: js.LinkTimeIf =>
+              genReceiver
+            case _ =>
+              throw FatalError(s"Unexpected tree $genReceiver is generated for $innerFun at: ${tree.sourcePos}")
+          }
+          js.LinkTimeIf(genReceiver1.cond, genReceiver1.thenp, genReceiver1.elsep)(toIRType(to))(using genReceiver1.pos)
+        case _ =>
+          genAsInstanceOf(genReceiver, to)
+      }
     } else if (sym == defn.Any_isInstanceOf) {
       genIsInstanceOf(genReceiver, to)
     } else {
@@ -3748,7 +3770,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen a statically linked call to an instance method. */
   def genApplyMethodMaybeStatically(receiver: js.Tree, method: Symbol,
       arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
-    if (method.isPrivate || method.isClassConstructor)
+    if (method.is(Private) || method.isClassConstructor)
       genApplyMethodStatically(receiver, method, arguments)
     else
       genApplyMethod(receiver, method, arguments)
@@ -3757,7 +3779,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen a dynamically linked call to a Scala method. */
   def genApplyMethod(receiver: js.Tree, method: Symbol, arguments: List[js.Tree])(
       implicit pos: Position): js.Tree = {
-    assert(!method.isPrivate,
+    assert(!method.is(Private),
         s"Cannot generate a dynamic call to private method $method at $pos")
     js.Apply(js.ApplyFlags.empty, receiver, encodeMethodSym(method), arguments)(
         toIRType(patchedResultType(method)))
@@ -3767,7 +3789,7 @@ class JSCodeGen()(using genCtx: Context) {
   def genApplyMethodStatically(receiver: js.Tree, method: Symbol, arguments: List[js.Tree])(
       implicit pos: Position): js.Tree = {
     val flags = js.ApplyFlags.empty
-      .withPrivate(method.isPrivate && !method.isClassConstructor)
+      .withPrivate(method.is(Private) && !method.isClassConstructor)
       .withConstructor(method.isClassConstructor)
     js.ApplyStatically(flags, receiver, encodeClassName(method.owner),
         encodeMethodSym(method), arguments)(
@@ -3777,7 +3799,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen a call to a static method. */
   private def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
       implicit pos: Position): js.Tree = {
-    js.ApplyStatic(js.ApplyFlags.empty.withPrivate(method.isPrivate),
+    js.ApplyStatic(js.ApplyFlags.empty.withPrivate(method.is(Private)),
         encodeClassName(method.owner), encodeMethodSym(method), arguments)(
         toIRType(patchedResultType(method)))
   }
@@ -4103,6 +4125,16 @@ class JSCodeGen()(using genCtx: Context) {
         js.UnaryOp(js.UnaryOp.UnwrapFromThrowable,
             js.UnaryOp(js.UnaryOp.CheckNotNull, genArgs1))
 
+      case LINKTIME_IF =>
+        // LinkingInfo.linkTimeIf(cond, thenp, elsep)
+        val cond = genLinkTimeExpr(args(0))
+        val thenp = genExpr(args(1))
+        val elsep = genExpr(args(2))
+        val tpe =
+          if (isStat) jstpe.VoidType
+          else toIRType(tree.tpe)
+        js.LinkTimeIf(cond, thenp, elsep)(tpe)
+
       case UNION_FROM | UNION_FROM_TYPE_CONSTRUCTOR =>
         /* js.|.from and js.|.fromTypeConstructor
          * We should not have to deal with those. They have a perfectly valid
@@ -4125,6 +4157,91 @@ class JSCodeGen()(using genCtx: Context) {
       case REFLECT_SELECTABLE_APPLYDYN =>
         // scala.reflect.Selectable.applyDynamic
         genReflectiveCall(tree, isSelectDynamic = false)
+    }
+  }
+
+  private def genLinkTimeExpr(tree: Tree): js.Tree = {
+    import dotty.tools.backend.ScalaPrimitivesOps.*
+
+    import primitives.*
+
+    implicit val pos = tree.span
+
+    def invalid(): js.Tree = {
+      report.error(
+          "Illegal expression in the condition of a linkTimeIf. " +
+          "Valid expressions are: boolean and int primitives; " +
+          "references to link-time properties; " +
+          "primitive operations on booleans; " +
+          "and comparisons on ints.",
+          tree.sourcePos)
+      js.BooleanLiteral(false)
+    }
+
+    tree match {
+      case Literal(c) =>
+        import Constants.*
+        c.tag match {
+          case BooleanTag => js.BooleanLiteral(c.booleanValue)
+          case IntTag     => js.IntLiteral(c.intValue)
+          case _          => invalid()
+        }
+
+      case Apply(fun, args) =>
+        fun.symbol.getAnnotation(jsdefn.LinkTimePropertyAnnot) match {
+          case Some(annotation) =>
+            val propName = annotation.argumentConstantString(0).get
+            js.LinkTimeProperty(propName)(toIRType(tree.tpe))
+
+          case None if isPrimitive(fun.symbol) =>
+            val code = getPrimitive(fun.symbol)
+            val receiver = (fun: @unchecked) match {
+              case fun: Select => fun.qualifier
+              case fun: Ident  => desugarIdent(fun).get.qualifier
+            }
+
+            def genLhs: js.Tree = genLinkTimeExpr(receiver)
+            def genRhs: js.Tree = genLinkTimeExpr(args.head)
+
+            def unaryOp(op: js.UnaryOp.Code): js.Tree =
+              js.UnaryOp(op, genLhs)
+            def binaryOp(op: js.BinaryOp.Code): js.Tree =
+              js.BinaryOp(op, genLhs, genRhs)
+
+            toIRType(receiver.tpe) match {
+              case jstpe.BooleanType =>
+                (code: @switch) match {
+                  case ZNOT     => unaryOp(js.UnaryOp.Boolean_!)
+                  case EQ       => binaryOp(js.BinaryOp.Boolean_==)
+                  case NE | XOR => binaryOp(js.BinaryOp.Boolean_!=)
+                  case OR       => binaryOp(js.BinaryOp.Boolean_|)
+                  case AND      => binaryOp(js.BinaryOp.Boolean_&)
+                  case ZOR      => js.LinkTimeIf(genLhs, js.BooleanLiteral(true), genRhs)(jstpe.BooleanType)
+                  case ZAND     => js.LinkTimeIf(genLhs, genRhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+                  case _        => invalid()
+                }
+
+              case jstpe.IntType =>
+                (code: @switch) match {
+                  case EQ => binaryOp(js.BinaryOp.Int_==)
+                  case NE => binaryOp(js.BinaryOp.Int_!=)
+                  case LT => binaryOp(js.BinaryOp.Int_<)
+                  case LE => binaryOp(js.BinaryOp.Int_<=)
+                  case GT => binaryOp(js.BinaryOp.Int_>)
+                  case GE => binaryOp(js.BinaryOp.Int_>=)
+                  case _  => invalid()
+                }
+
+              case _ =>
+                invalid()
+            }
+
+          case None => // if !isPrimitive
+            invalid()
+        }
+
+      case _ =>
+        invalid()
     }
   }
 
@@ -4283,34 +4400,53 @@ class JSCodeGen()(using genCtx: Context) {
    *  This tries to optimize repeated arguments (varargs) by turning them
    *  into js.WrappedArray instead of Scala wrapped arrays.
    */
-  private def genActualArgs(sym: Symbol, args: List[Tree])(
-      implicit pos: Position): List[js.Tree] = {
-    args.map(genExpr)
-    /*val wereRepeated = exitingPhase(currentRun.typerPhase) {
-      sym.tpe.params.map(p => isScalaRepeatedParamType(p.tpe))
+  private def genActualArgs(sym: Symbol, args: List[Tree]): List[js.Tree] = {
+    // Fast path for methods that do not have any repeated parameter
+    val isAnyParamRepeated: Boolean = atPhase(elimRepeatedPhase) {
+      sym.info.paramInfoss.flatten.exists(_.isRepeatedParam)
     }
 
-    if (wereRepeated.size > args.size) {
-      // Should not happen, but let's not crash
+    if (!isAnyParamRepeated) {
       args.map(genExpr)
     } else {
-      /* Arguments that are in excess compared to the type signature after
-       * erasure are lambda-lifted arguments. They cannot be repeated, hence
-       * the extension to `false`.
+      /* Erasure and lambdalift both insert capture params in dotc, at
+       * unpredictable positions. Therefore, we use the *names* of parameters
+       * as the only reliable link to whether they were initially repeated.
+       * We also do this in JSSymUtils.jsParamInfos for JS methods.
        */
-      for ((arg, wasRepeated) <- args.zipAll(wereRepeated, EmptyTree, false)) yield {
-        if (wasRepeated) {
-          tryGenRepeatedParamAsJSArray(arg, handleNil = false).fold {
-            genExpr(arg)
-          } { genArgs =>
-            genNew(WrappedArrayClass, WrappedArray_ctor,
-                List(js.JSArrayConstr(genArgs)))
+      val namesOfRepeatedParams: Set[TermName] = atPhase(elimRepeatedPhase) {
+        sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten).collect {
+          case (paramName, paramInfo) if paramInfo.isRepeatedParam => paramName
+        }.toSet
+      }
+
+      for ((arg, paramName) <- args.zip(sym.info.paramNamess.flatten)) yield {
+        if (namesOfRepeatedParams.contains(paramName)) {
+          /* If the argument is a call to the compiler's chosen `wrapArray`
+           * method with an array literal as argument, we know it actually
+           * came from expanded varargs. In that case, rewrite to calling our
+           * custom `scala.scalajs.runtime.to*VarArgs` method. These methods
+           * choose the best implementation of varargs depending on the
+           * target platform.
+           */
+          arg match {
+            case MaybeAsInstanceOf(wrapArray @ WrapArray(MaybeAsInstanceOf(arrayValue: JavaSeqLiteral))) =>
+              implicit val pos: SourcePosition = wrapArray.sourcePos
+              js.Apply(
+                js.ApplyFlags.empty,
+                js.LoadModule(ScalaJSRuntimeModClassName),
+                js.MethodIdent(WrapArray.wrapArraySymToToVarArgsName(wrapArray.symbol)),
+                List(genExpr(arrayValue))
+              )(jstpe.ClassType(encodeClassName(defn.SeqClass), nullable = true))
+
+            case _ =>
+              genExpr(arg)
           }
         } else {
           genExpr(arg)
         }
       }
-    }*/
+    }
   }
 
   /** Gen actual actual arguments to a JS method call.
@@ -4379,29 +4515,7 @@ class JSCodeGen()(using genCtx: Context) {
    *  `js.Array`.
    */
   private def genJSRepeatedParam(arg: Tree): List[js.TreeOrJSSpread] = {
-    tryGenRepeatedParamAsJSArray(arg, handleNil = true).getOrElse {
-      /* Fall back to calling runtime.genTraversableOnce2jsArray
-       * to perform the conversion to js.Array, then wrap in a Spread
-       * operator.
-       */
-      implicit val pos: SourcePosition = arg.sourcePos
-      val jsArrayArg = genModuleApplyMethod(
-          jsdefn.Runtime_toJSVarArgs,
-          List(genExpr(arg)))
-      List(js.JSSpread(jsArrayArg))
-    }
-  }
-
-  /** Try and expand an actual argument to a repeated param `(xs: T*)`.
-   *
-   *  This method recognizes the shapes of tree generated by the desugaring
-   *  of repeated params in Scala, and expands them.
-   *  If `arg` does not have the shape of a generated repeated param, this
-   *  method returns `None`.
-   */
-  private def tryGenRepeatedParamAsJSArray(arg: Tree,
-      handleNil: Boolean): Option[List[js.Tree]] = {
-    implicit val pos = arg.span
+    implicit val pos: SourcePosition = arg.sourcePos
 
     // Given a method `def foo(args: T*)`
     arg match {
@@ -4409,17 +4523,20 @@ class JSCodeGen()(using genCtx: Context) {
       case MaybeAsInstanceOf(WrapArray(MaybeAsInstanceOf(array: JavaSeqLiteral))) =>
         /* Value classes in arrays are already boxed, so no need to use
          * the type before erasure.
-         * TODO Is this true in dotty?
          */
-        Some(array.elems.map(e => box(genExpr(e), e.tpe)))
+        array.elems.map(e => box(genExpr(e), e.tpe))
 
       // foo()
-      case Ident(_) if handleNil && arg.symbol == defn.NilModule =>
-        Some(Nil)
+      case Ident(_) if arg.symbol == defn.NilModule =>
+        Nil
 
       // foo(argSeq: _*) - cannot be optimized
       case _ =>
-        None
+        /* Fall back to calling runtime.toJSVarArgs to perform the conversion
+         * to js.Array, then wrap in a Spread operator.
+         */
+        val jsArrayArg = genModuleApplyMethod(jsdefn.Runtime_toJSVarArgs, List(genExpr(arg)))
+        List(js.JSSpread(jsArrayArg))
     }
   }
 
@@ -4434,16 +4551,32 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private object WrapArray {
-    lazy val isWrapArray: Set[Symbol] = {
-      val names0 = defn.ScalaValueClasses().map(sym => nme.wrapXArray(sym.name))
-      val names1 = names0 ++ Set(nme.wrapRefArray, nme.genericWrapArray)
-      val symsInPredef = names1.map(defn.ScalaPredefModule.requiredMethod(_))
-      val symsInScalaRunTime = names1.map(defn.ScalaRuntimeModule.requiredMethod(_))
-      (symsInPredef ++ symsInScalaRunTime).toSet
+    lazy val wrapArraySymToToVarArgsName: Map[Symbol, MethodName] = {
+      val SeqClassRef = jstpe.ClassRef(encodeClassName(defn.SeqClass))
+
+      val items: Seq[(Name, String, jstpe.TypeRef)] = Seq(
+        (nme.genericWrapArray, "toGenericVarArgs", jswkn.ObjectRef),
+        (nme.wrapRefArray, "toRefVarArgs", jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)),
+        (tpd.wrapArrayMethodName(defn.UnitType), "toUnitVarArgs", jstpe.ArrayTypeRef(jstpe.ClassRef(jswkn.BoxedUnitClass), 1)),
+        (tpd.wrapArrayMethodName(defn.BooleanType), "toBooleanVarArgs", jstpe.ArrayTypeRef(jstpe.BooleanRef, 1)),
+        (tpd.wrapArrayMethodName(defn.CharType), "toCharVarArgs", jstpe.ArrayTypeRef(jstpe.CharRef, 1)),
+        (tpd.wrapArrayMethodName(defn.ByteType), "toByteVarArgs", jstpe.ArrayTypeRef(jstpe.ByteRef, 1)),
+        (tpd.wrapArrayMethodName(defn.ShortType), "toShortVarArgs", jstpe.ArrayTypeRef(jstpe.ShortRef, 1)),
+        (tpd.wrapArrayMethodName(defn.IntType), "toIntVarArgs", jstpe.ArrayTypeRef(jstpe.IntRef, 1)),
+        (tpd.wrapArrayMethodName(defn.LongType), "toLongVarArgs", jstpe.ArrayTypeRef(jstpe.LongRef, 1)),
+        (tpd.wrapArrayMethodName(defn.FloatType), "toFloatVarArgs", jstpe.ArrayTypeRef(jstpe.FloatRef, 1)),
+        (tpd.wrapArrayMethodName(defn.DoubleType), "toDoubleVarArgs", jstpe.ArrayTypeRef(jstpe.DoubleRef, 1))
+      )
+
+      items.map { case (wrapArrayName, simpleName, argTypeRef) =>
+        val wrapArraySym = defn.getWrapVarargsArrayModule.requiredMethod(wrapArrayName)
+        val toVarArgsName = MethodName(simpleName, argTypeRef :: Nil, SeqClassRef)
+        wrapArraySym -> toVarArgsName
+      }.toMap
     }
 
     def unapply(tree: Apply): Option[Tree] = tree match {
-      case Apply(wrapArray_?, List(wrapped)) if isWrapArray(wrapArray_?.symbol) =>
+      case Apply(wrapArray_?, List(wrapped)) if wrapArraySymToToVarArgsName.contains(wrapArray_?.symbol) =>
         Some(wrapped)
       case _ =>
         None
@@ -4885,6 +5018,7 @@ object JSCodeGen {
   private val JLRArrayClassName = ClassName("java.lang.reflect.Array")
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
   private val JavaScriptExceptionClassName = ClassName("scala.scalajs.js.JavaScriptException")
+  private val ScalaJSRuntimeModClassName = ClassName("scala.scalajs.runtime.package$")
 
   private val ObjectArrayTypeRef = jstpe.ArrayTypeRef(jswkn.ObjectRef, 1)
 

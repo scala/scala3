@@ -67,6 +67,8 @@ object desugar {
    */
   val TrailingForMap: Property.Key[Unit] = Property.StickyKey()
 
+  val WasTypedInfix: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1345,7 +1347,7 @@ object desugar {
       )).withSpan(tree.span)
   end makePolyFunctionType
 
-  /** Invent a name for an anonympus given of type or template `impl`. */
+  /** Invent a name for an anonymous given of type or template `impl`. */
   def inventGivenName(impl: Tree)(using Context): SimpleName =
     val str = impl match
       case impl: Template =>
@@ -1720,10 +1722,12 @@ object desugar {
         case _ =>
           Apply(sel, arg :: Nil)
 
-    if op.name.isRightAssocOperatorName then
+    val apply = if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
     else
       makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
+    apply.pushAttachment(WasTypedInfix, ())
+    return apply
   }
 
   /** Translate throws type `A throws E1 | ... | En` to
@@ -2102,7 +2106,19 @@ object desugar {
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
             else MatchCheck.None
-          makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
+          val pat = gen.pat.match
+            case Tuple(pats) if pats.length > Definitions.MaxImplementedFunctionArity =>
+              /* The pattern case is a tupleXXL, because we have bound > 21 variables in the comprehension.
+               * In this case, we need to mark all the typed patterns as @unchecked, or get loads of warnings.
+               * Cf. warn test i23164.scala */
+              Tuple:
+                pats.map:
+                  case t @ Bind(name, tp @ Typed(id, tpt)) =>
+                    val annotated = Annotated(tpt, New(ref(defn.UncheckedAnnot.typeRef)))
+                    cpy.Bind(t)(name, cpy.Typed(tp)(id, annotated)).withMods(t.mods)
+                  case t => t
+            case _ => gen.pat
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
 
       def hasGivenBind(pat: Tree): Boolean = pat.existsSubTree {
@@ -2120,18 +2136,19 @@ object desugar {
        *  that refers to the bound variable for the pattern. Wildcard Binds are
        *  also replaced by Binds with fresh names.
        */
-      def makeIdPat(pat: Tree): (Tree, Ident) = pat match {
-        case bind @ Bind(name, pat1) =>
-          if name == nme.WILDCARD then
-            val name = UniqueName.fresh()
-            (cpy.Bind(pat)(name, pat1).withMods(bind.mods), Ident(name))
-          else (pat, Ident(name))
+      def makeIdPat(pat: Tree): (Tree, Ident) = pat match
+        case pat @ Bind(nme.WILDCARD, body) =>
+          val name =
+            body match
+            case Typed(Ident(nme.WILDCARD), tpt) if pat.mods.is(Given) => inventGivenName(tpt)
+            case _ => UniqueName.fresh()
+          (cpy.Bind(pat)(name, body).withMods(pat.mods), Ident(name))
+        case Bind(name, _) => (pat, Ident(name))
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
         case _ =>
           val name = UniqueName.fresh()
           (Bind(name, pat), Ident(name))
-      }
 
       /** Make a pattern filter:
        *    rhs.withFilter { case pat => true case _ => false }
@@ -2321,10 +2338,6 @@ object desugar {
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        else if op.name == nme.CC_REACH then
-          Annotated(t, New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil))
-        else if op.name == nme.CC_READONLY then
-          Annotated(t, New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil))
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

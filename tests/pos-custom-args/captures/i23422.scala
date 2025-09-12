@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import caps.*
 trait Cap
-class Inv[T] extends Capability
+class Inv[T] extends SharedCapability
 class Inv2[T]
 class Inv3[T] extends Mutable
 def test(c: Cap^): Unit =

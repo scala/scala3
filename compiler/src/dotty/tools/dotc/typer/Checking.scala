@@ -144,25 +144,30 @@ object Checking {
   def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
-        tp match
-          case AppliedType(tycon, argTypes)
-          if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
-            // Don't check bounds in Java units that refer to Java type constructors.
-            // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
-            // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
-            // Do check all bounds in Scala units and those bounds in Java units that
-            // occur in applications of Scala type constructors.
-            && !isCaptureChecking || tycon.typeSymbol.is(CaptureChecked)
-            // Don't check bounds when capture checking type constructors that were not
-            // themselves capture checked. Since the type constructor could not foresee
-            // possible capture sets, it's better to be lenient for backwards compatibility.
-          =>
-            checkAppliedType(
-              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
-                .withType(tp).withSpan(tpt.span.toSynthetic),
-              tpt)
+        tp.normalized match
+          case tp @ AppliedType(tycon, argTypes) =>
+            if !(isCaptureChecking && defn.MatchCase.isInstance(tp)) then
+              // Don't check match type cases under cc. For soundness it's enough
+              // to check bounds in reduced match types.
+              // See tuple-ops.scala and tuple-ops-2.scala for examples that would fail otherwise.
+              if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
+                  // Don't check bounds in Java units that refer to Java type constructors.
+                  // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
+                  // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
+                  // Do check all bounds in Scala units and those bounds in Java units that
+                  // occur in applications of Scala type constructors.
+                  && (!isCaptureChecking || tycon.typeSymbol.is(CaptureChecked))
+                  // When capture checking, types that are not themselves capture-checked
+                  // are exempted. Since the type constructor could not foresee possible
+                  // capture sets, it's better to be lenient for backwards compatibility.
+              then
+                checkAppliedType(
+                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
+                    .withType(tp).withSpan(tpt.span.toSynthetic),
+                  tpt)
+              traverseChildren(tp)
           case _ =>
-        traverseChildren(tp)
+            traverseChildren(tp)
     checker.traverse(tpt.tpe)
 
   def checkNoWildcard(tree: Tree)(using Context): Tree = tree.tpe match {
@@ -766,8 +771,9 @@ object Checking {
           !(symBoundary.isContainedIn(otherBoundary) ||
             otherLinkedBoundary.exists && symBoundary.isContainedIn(otherLinkedBoundary))
         }
-        && !(inCaptureSet && other.isAllOf(LocalParamAccessor))
-            // class parameters in capture sets are not treated as leaked since in
+        && !(inCaptureSet && (!Feature.ccEnabled || other.isAllOf(LocalParamAccessor)))
+            // All references are skipped in capture sets when CC is not enabled.
+            // Class parameters in capture sets are not treated as leaked since in
             // phase CheckCaptures these are treated as normal vals.
 
       def apply(tp: Type): Type = tp match {
@@ -926,6 +932,7 @@ object Checking {
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
         || name == Feature.captureChecking
+        || name == Feature.separationChecking
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match
