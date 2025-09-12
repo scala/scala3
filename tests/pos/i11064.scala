@@ -1,3 +1,5 @@
+//> using options -source:3.8
+
 trait TypedArray[T, Repr]
 
 trait Ops[T <: TypedArray[_, T]] {

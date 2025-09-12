@@ -1,3 +1,5 @@
+//> using options -source:3.8
+
 object Test extends App {
   trait A[+X](val x: X)
   class B extends A(5) with A("hello") // error: A is extended twice // error: class B cannot be instantiated since it has conflicting base types Test.A[Int] and Test.A[String]

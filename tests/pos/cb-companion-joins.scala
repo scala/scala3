@@ -1,3 +1,4 @@
+//> using options -source:3.8
 import language.experimental.modularity
 
 trait M[Self]:
