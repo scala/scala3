@@ -516,6 +516,21 @@ object MiMaFilters {
           ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPosition"),
           ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
           ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.NoPositioner"),
+
+          // Issue #22495 (will be fixed in a later PR and should be fixed before any release)
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak2$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.linesSeparated$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.escape$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.toBooleanImpl$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.unwrapArg$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.iterateUntilEmpty$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple2Zipped.coll1$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple2Zipped.coll2$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll1$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll2$extension"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll3$extension"),
         ),
 
       // Breaking changes since last LTS
