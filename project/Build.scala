@@ -3467,18 +3467,6 @@ object Build {
             val doWork = (Compile/doc).result.value
             (Compile/doc/target).value
           },
-          commonMiMaSettings,
-          mimaPreviousArtifacts += {
-            val thisProjectID = projectID.value
-            val crossedName = thisProjectID.crossVersion match {
-              case cv: Disabled => thisProjectID.name
-              case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
-            }
-            (thisProjectID.organization % crossedName % mimaPreviousLTSDottyVersion)
-          },
-          mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-          mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-          customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
         )
       } else base
     }
@@ -3493,14 +3481,6 @@ object Build {
         Test / envVars ++= Map(
           "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
         ),
-        if (mode == Bootstrapped) Def.settings(
-          commonMiMaSettings,
-          mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
-          mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
-          customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
-        ) else {
-          Nil
-        }
       )
 
     def asTastyCoreScala2: Project = project
