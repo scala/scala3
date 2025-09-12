@@ -101,6 +101,7 @@ import scala.language.`2.13`
  *    log("Debug log", LogLevel. Debug)
  * }}}
  */
+@deprecated(message = "@elidable is not supported by Scala 3", since = "3.8.0")
 final class elidable(final val level: Int) extends scala.annotation.ConstantAnnotation
 
 /** This useless appearing code was necessary to allow people to use
