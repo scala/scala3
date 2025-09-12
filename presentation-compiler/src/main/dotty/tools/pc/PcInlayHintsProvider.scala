@@ -54,7 +54,7 @@ class PcInlayHintsProvider(
   val pos = driver.sourcePosition(params)
 
   def provide(): List[InlayHint] =
-    val deepFolder = DeepFolder[InlayHints](collectDecorations)
+    val deepFolder = PcCollector.DeepFolderWithParent[InlayHints](collectDecorations)
     Interactive
       .pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
       .headOption
@@ -68,11 +68,23 @@ class PcInlayHintsProvider(
   def collectDecorations(
       inlayHints: InlayHints,
       tree: Tree,
+      parent: Option[Tree]
   ): InlayHints =
+    // XRay hints are not mutually exclusive with other hints, so they must be matched separately
+    val firstPassHints = (tree, parent) match {
+      case XRayModeHint(tpe, pos) =>
+        inlayHints.addToBlock(
+          adjustPos(pos).toLsp,
+          LabelPart(": ") :: toLabelParts(tpe, pos),
+          InlayHintKind.Type
+        )
+      case _ => inlayHints
+    }
+    
     tree match
       case ImplicitConversion(symbol, range) =>
         val adjusted = adjustPos(range)
-        inlayHints
+        firstPassHints
           .add(
             adjusted.startPos.toLsp,
             labelPart(symbol, symbol.decodedName) :: LabelPart("(") :: Nil,
@@ -84,17 +96,17 @@ class PcInlayHintsProvider(
             InlayHintKind.Parameter,
           )
       case ImplicitParameters(trees, pos) =>
-        inlayHints.add(
+        firstPassHints.add(
           adjustPos(pos).toLsp,
           ImplicitParameters.partsFromImplicitArgs(trees).map((label, maybeSymbol) =>
              maybeSymbol match
                case Some(symbol) => labelPart(symbol, label)
                case None => LabelPart(label)
            ),
-           InlayHintKind.Parameter
+          InlayHintKind.Parameter,
         )
       case ValueOf(label, pos) =>
-        inlayHints.add(
+        firstPassHints.add(
           adjustPos(pos).toLsp,
           LabelPart("(") :: LabelPart(label) :: List(LabelPart(")")),
           InlayHintKind.Parameter,
@@ -102,7 +114,7 @@ class PcInlayHintsProvider(
       case TypeParameters(tpes, pos, sel)
           if !syntheticTupleApply(sel) =>
         val label = tpes.map(toLabelParts(_, pos)).separated("[", ", ", "]")
-        inlayHints.add(
+        firstPassHints.add(
           adjustPos(pos).endPos.toLsp,
           label,
           InlayHintKind.Type,
@@ -110,9 +122,9 @@ class PcInlayHintsProvider(
       case InferredType(tpe, pos, defTree)
           if !isErrorTpe(tpe) =>
         val adjustedPos = adjustPos(pos).endPos
-        if inlayHints.containsDef(adjustedPos.start) then inlayHints
+        if firstPassHints.containsDef(adjustedPos.start) then firstPassHints
         else
-          inlayHints
+          firstPassHints
             .add(
               adjustedPos.toLsp,
               LabelPart(": ") :: toLabelParts(tpe, pos),
@@ -138,7 +150,7 @@ class PcInlayHintsProvider(
             pos.withStart(pos.start + 1)
 
 
-        args.foldLeft(inlayHints) {
+        args.foldLeft(firstPassHints) {
           case (ih, (name, pos0, isByName)) =>
             val pos = adjustPos(pos0)
             val isBlock = isBlockParam(pos)
@@ -158,7 +170,7 @@ class PcInlayHintsProvider(
                 )
             else ih
         }
-      case _ => inlayHints
+      case _ => firstPassHints
 
   private def toLabelParts(
       tpe: Type,
@@ -491,3 +503,55 @@ object Parameters:
         case _ => None
     else None
 end Parameters
+
+object XRayModeHint:
+  def unapply(trees: (Tree, Option[Tree]))(using params: InlayHintsParams, ctx: Context): Option[(Type, SourcePosition)] =
+    if params.hintsXRayMode() then
+      val (tree, parent) = trees
+      val isParentApply = parent match
+        case Some(_: Apply) => true
+        case _ => false
+      val isParentOnSameLine = parent match
+        case Some(sel: Select) if sel.isForComprehensionMethod => false
+        case Some(par) if par.sourcePos.exists && par.sourcePos.line == tree.sourcePos.line => true
+        case _ => false
+      
+      tree match
+        /*
+        anotherTree
+         .innerSelect()
+         */
+        case a @ Apply(inner, _)
+            if inner.sourcePos.exists && !isParentOnSameLine && !isParentApply &&
+              endsInSimpleSelect(a) && isEndOfLine(tree.sourcePos) =>
+          Some((a.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+        /*
+        innerTree
+         .select
+         */
+        case select @ Select(innerTree, _)
+            if innerTree.sourcePos.exists && !isParentOnSameLine && !isParentApply && 
+              isEndOfLine(tree.sourcePos) =>
+          Some((select.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+        case _ => None
+    else None
+
+  @tailrec
+  private def endsInSimpleSelect(ap: Tree)(using ctx: Context): Boolean =
+    ap match
+      case Apply(sel: Select, _) =>
+        sel.name != nme.apply && !isInfix(sel)
+      case Apply(TypeApply(sel: Select, _), _) =>
+        sel.name != nme.apply && !isInfix(sel)
+      case Apply(innerTree @ Apply(_, _), _) =>
+        endsInSimpleSelect(innerTree)
+      case _ => false
+
+  private def isEndOfLine(pos: SourcePosition): Boolean =
+    if pos.exists then
+      val source = pos.source
+      val end = pos.end
+      end >= source.length || source(end) == '\n' || source(end) == '\r'
+    else false
+
+end XRayModeHint
