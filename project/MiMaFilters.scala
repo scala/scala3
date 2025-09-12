@@ -509,6 +509,13 @@ object MiMaFilters {
           ProblemFilters.exclude[FinalClassProblem]("scala.util.control.TailCalls$Done$"),
           ProblemFilters.exclude[FinalClassProblem]("scala.util.matching.Regex$Groups$"),
           ProblemFilters.exclude[FinalClassProblem]("scala.util.matching.Regex$Match$"),
+          // ====== objects inside classes will get a method too, `module def` :) ======
+          ProblemFilters.exclude[FinalMethodProblem]("scala.Enumeration.ValueOrdering"),
+          ProblemFilters.exclude[FinalMethodProblem]("scala.Enumeration.ValueSet"),
+          ProblemFilters.exclude[FinalMethodProblem]("scala.StringContext.s"),
+          ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPosition"),
+          ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
+          ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.NoPositioner"),
         ),
 
       // Breaking changes since last LTS
