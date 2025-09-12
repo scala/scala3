@@ -617,6 +617,13 @@ object MiMaFilters {
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      Build.mimaPreviousDottyVersion -> Seq(
+        // These are legitimate issues that needs to be investigated
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyVersion.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyVersion.copy$default$1"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyVersion.copy$default$2"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyVersion.copy$default$3"),
+      ),
       // Breaking changes since last LTS
       Build.mimaPreviousLTSDottyVersion -> Seq.empty // We should never break backwards compatibility
     )

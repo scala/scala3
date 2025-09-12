@@ -1973,6 +1973,7 @@ object Build {
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-nonbootstrapped project */
   lazy val `tasty-core-nonbootstrapped` = project.in(file("tasty"))
     .dependsOn(`scala3-library-nonbootstrapped`)
+    .settings(commonMiMaSettings)
     .settings(
       name          := "tasty-core-nonbootstrapped",
       moduleName    := "tasty-core",
@@ -2026,13 +2027,16 @@ object Build {
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
       ),
-
+      mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
     )
 
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-bootstrapped project */
   lazy val `tasty-core-bootstrapped-new` = project.in(file("tasty"))
     .dependsOn(`scala3-library-bootstrapped-new`)
     .settings(publishSettings)
+    .settings(commonMiMaSettings)
     .settings(
       name          := "tasty-core-bootstrapped",
       moduleName    := "tasty-core",
@@ -2095,6 +2099,9 @@ object Build {
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
       ),
+      mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
     )
 
   // ==============================================================================================
