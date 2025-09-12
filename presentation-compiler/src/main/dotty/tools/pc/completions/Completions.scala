@@ -15,6 +15,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -770,8 +771,8 @@ class Completions(
   private lazy val ArrowAssocClass: ClassSymbol = requiredClass("scala.Predef.ArrowAssoc")
   private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
   private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
-  private lazy val nnMethod: Symbol = defn.ScalaPredefModule.requiredMethod("nn")
-  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.requiredMethod("runtimeChecked")
+  private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
