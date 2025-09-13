@@ -394,7 +394,13 @@ sealed abstract class CaptureSet extends Showable:
           if mappedElems == elems then this
           else Const(mappedElems)
         else if ccState.mapFutureElems then
-          def unfused = BiMapped(asVar, tm, mappedElems)
+          def unfused =
+            if debugVars then
+              try BiMapped(asVar, tm, mappedElems)
+              catch case ex: AssertionError =>
+                println(i"error while mapping $this")
+                throw ex
+            else BiMapped(asVar, tm, mappedElems)
           this match
             case self: BiMapped => self.bimap.fuse(tm) match
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
@@ -652,8 +658,12 @@ object CaptureSet:
     override def toString = "<fluid>"
   end Fluid
 
+  /** If true emit info when var with id debugTarget is created or gets a new element */
+  inline val debugVars = false
+  inline val debugTarget = 22
+
   /** The subclass of captureset variables with given initial elements */
-  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
+  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
 
     override def owner = initialOwner
 
@@ -678,8 +688,14 @@ object CaptureSet:
     /** The elements currently known to be in the set */
     protected var myElems: Refs = initialElems
 
+    if debugVars && id == debugTarget then
+      println(i"###INIT ELEMS of $id to $initialElems")
+
     def elems: Refs = myElems
-    def elems_=(refs: Refs): Unit = myElems = refs
+    def elems_=(refs: Refs): Unit =
+      if debugVars && id == debugTarget then
+        println(i"###SET ELEMS of $id to $refs")
+      myElems = refs
 
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
@@ -762,6 +778,8 @@ object CaptureSet:
 
     protected def includeElem(elem: Capability)(using Context): Unit =
       if !elems.contains(elem) then
+        if debugVars && id == debugTarget then
+          println(i"###INCLUDE $elem in $this")
         elems += elem
         TypeComparer.logUndoAction: () =>
           elems -= elem

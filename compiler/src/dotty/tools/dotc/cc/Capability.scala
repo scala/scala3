@@ -168,6 +168,7 @@ object Capabilities:
       case _ => false
 
     /** Is this fresh cap at the right level to be able to subsume `ref`?
+     *  Only outer freshes can be subsumed.
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
