@@ -1968,7 +1968,6 @@ object desugar {
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
-            .withFlags(Synthetic)
       }
     Function(param :: Nil, Block(vdefs, body))
   }

@@ -6,6 +6,18 @@ import org.junit.Test
 
 class HoverTermSuite extends BaseHoverSuite:
 
+  @Test def `n-ary lamba` =
+    check(
+      """|object testRepor {
+         |  val listOfTuples = List(1 -> 1, 2 -> 2, 3 -> 3)
+         |
+         |  listOfTuples.map((k@@ey, value) => key + value)
+         |}
+         |""".stripMargin,
+      """|val key: Int
+         |""".stripMargin.hover
+    )
+
   @Test def `map` =
     check(
       """object a {
