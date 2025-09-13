@@ -41,7 +41,7 @@ trait AsJavaConverters {
    * @return  A Java `Iterator` view of the argument.
    */
   def asJava[A](i: Iterator[A]): ju.Iterator[A] = i match {
-    case null                             => null
+    case null                             => null.asInstanceOf[ju.Iterator[A]]
     case wrapper: JIteratorWrapper[A @uc] => wrapper.underlying
     case _                                => new IteratorWrapper(i)
   }
@@ -59,7 +59,7 @@ trait AsJavaConverters {
    * @return  A Java `Enumeration` view of the argument.
    */
   def asJavaEnumeration[A](i: Iterator[A]): ju.Enumeration[A] = i match {
-    case null                                => null
+    case null                                => null.asInstanceOf[ju.Enumeration[A]]
     case wrapper: JEnumerationWrapper[A @uc] => wrapper.underlying
     case _                                   => new IteratorWrapper(i)
   }
@@ -77,7 +77,7 @@ trait AsJavaConverters {
    * @return  A Java `Iterable` view of the argument.
    */
   def asJava[A](i: Iterable[A]): jl.Iterable[A] = i match {
-    case null                             => null
+    case null                             => null.asInstanceOf[jl.Iterable[A]]
     case wrapper: JIterableWrapper[A @uc] => wrapper.underlying
     case _                                => new IterableWrapper(i)
   }
@@ -92,7 +92,7 @@ trait AsJavaConverters {
    * @return  A Java `Collection` view of the argument.
    */
   def asJavaCollection[A](i: Iterable[A]): ju.Collection[A] = i match {
-    case null                               => null
+    case null                               => null.asInstanceOf[ju.Collection[A]]
     case wrapper: JCollectionWrapper[A @uc] => wrapper.underlying
     case _                                  => new IterableWrapper(i)
   }
@@ -110,7 +110,7 @@ trait AsJavaConverters {
    * @return A Java `List` view of the argument.
    */
   def asJava[A](b: mutable.Buffer[A]): ju.List[A] = b match {
-    case null                         => null
+    case null                         => null.asInstanceOf[ju.List[A]]
     case wrapper: JListWrapper[A @uc] => wrapper.underlying
     case _                            => new MutableBufferWrapper(b)
   }
@@ -128,7 +128,7 @@ trait AsJavaConverters {
    * @return  A Java `List` view of the argument.
    */
   def asJava[A](s: mutable.Seq[A]): ju.List[A] = s match {
-    case null                         => null
+    case null                         => null.asInstanceOf[ju.List[A]]
     case wrapper: JListWrapper[A @uc] => wrapper.underlying
     case _                            => new MutableSeqWrapper(s)
   }
@@ -146,7 +146,7 @@ trait AsJavaConverters {
    * @return  A Java `List` view of the argument.
    */
   def asJava[A](s: Seq[A]): ju.List[A] = s match {
-    case null                         => null
+    case null                         => null.asInstanceOf[ju.List[A]]
     case wrapper: JListWrapper[A @uc] => wrapper.underlying
     case _                            => new SeqWrapper(s)
   }
@@ -164,7 +164,7 @@ trait AsJavaConverters {
    * @return  A Java `Set` view of the argument.
    */
   def asJava[A](s: mutable.Set[A]): ju.Set[A] = s match {
-    case null                        => null
+    case null                        => null.asInstanceOf[ju.Set[A]]
     case wrapper: JSetWrapper[A @uc] => wrapper.underlying
     case _                           => new MutableSetWrapper(s)
   }
@@ -182,7 +182,7 @@ trait AsJavaConverters {
    * @return  A Java `Set` view of the argument.
    */
   def asJava[A](s: Set[A]): ju.Set[A] = s match {
-    case null                        => null
+    case null                        => null.asInstanceOf[ju.Set[A]]
     case wrapper: JSetWrapper[A @uc] => wrapper.underlying
     case _                           => new SetWrapper(s)
   }
@@ -200,7 +200,7 @@ trait AsJavaConverters {
    * @return  A Java `Map` view of the argument.
    */
   def asJava[K, V](m: mutable.Map[K, V]): ju.Map[K, V] = m match {
-    case null                               => null
+    case null                               => null.asInstanceOf[ju.Map[K, V]]
     case wrapper: JMapWrapper[K @uc, V @uc] => wrapper.underlying
     case _                                  => new MutableMapWrapper(m)
   }
@@ -219,7 +219,7 @@ trait AsJavaConverters {
    * @return  A Java `Dictionary` view of the argument.
    */
   def asJavaDictionary[K, V](m: mutable.Map[K, V]): ju.Dictionary[K, V] = m match {
-    case null                                      => null
+    case null                                      => null.asInstanceOf[ju.Dictionary[K, V]]
     case wrapper: JDictionaryWrapper[K @uc, V @uc] => wrapper.underlying
     case _                                         => new DictionaryWrapper(m)
   }
@@ -237,7 +237,7 @@ trait AsJavaConverters {
    * @return  A Java `Map` view of the argument.
    */
   def asJava[K, V](m: Map[K, V]): ju.Map[K, V] = m match {
-    case null                               => null
+    case null                               => null.asInstanceOf[ju.Map[K, V]]
     case wrapper: JMapWrapper[K @uc, V @uc] => wrapper.underlying
     case _                                  => new MapWrapper(m)
   }
@@ -256,7 +256,7 @@ trait AsJavaConverters {
    * @return  A Java `ConcurrentMap` view of the argument.
    */
   def asJava[K, V](m: concurrent.Map[K, V]): juc.ConcurrentMap[K, V] = m match {
-    case null                                         => null
+    case null                                         => null.asInstanceOf[juc.ConcurrentMap[K, V]]
     case wrapper: JConcurrentMapWrapper[K @uc, V @uc] => wrapper.underlying
     case _                                            => new ConcurrentMapWrapper(m)
   }

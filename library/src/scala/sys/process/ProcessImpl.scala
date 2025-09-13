@@ -261,7 +261,7 @@ private[process] trait ProcessImpl {
    *  The implementation of `exitValue` interrupts `inputThread`
    *  and then waits until all I/O threads die before returning.
    */
-  private[process] class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process {
+  private[process] class SimpleProcess(p: JProcess, inputThread: Thread | Null, outputThreads: List[Thread]) extends Process {
     override def isAlive() = p.isAlive()
     override def exitValue() = {
       try p.waitFor()                   // wait for the process to terminate
