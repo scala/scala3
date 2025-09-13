@@ -138,6 +138,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case Ident(rename: TermName) => rename
       case _ => name
 
+    /** It's a masking import if `!isWildcard`. */
     def isUnimport = rename == nme.WILDCARD
   }
 

@@ -186,12 +186,6 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
-      ChoiceWithHelp(
-        name = "strict-no-implicit-warn",
-        description = """Same as -Wunused:imports, only for imports of explicit named members.
-                        |NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all""".stripMargin
-      ),
-      ChoiceWithHelp("unsafe-warn-patvars", "Deprecated alias for `patvars`"),
     ),
     default = Nil
   )
