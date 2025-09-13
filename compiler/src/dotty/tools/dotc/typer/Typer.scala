@@ -2974,7 +2974,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedExpr(_, tpt1.tpe.widenExpr)
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(vdef1, sym)
-    vdef1.setDefTree
+    if (!ctx.isAfterInlining) vdef1.setDefTree
 
     migrate(ImplicitToGiven.valDef(vdef1))
 
@@ -3097,7 +3097,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     mdef.ensureHasSym(sym)
-    mdef.setDefTree
+    if (!ctx.isAfterInlining) mdef.setDefTree
+    else mdef
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = ctx.profiler.onTypedDef(sym) {
     val TypeDef(name, rhs) = tdef
