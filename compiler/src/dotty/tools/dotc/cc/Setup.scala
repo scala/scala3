@@ -204,11 +204,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Pull out an embedded capture set from a part of `tp` */
     def normalizeCaptures(tp: Type)(using Context): Type = tp match
       case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
-        CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
+        CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed).withOrigin(parent)
       case tp: RecType =>
         tp.parent match
           case parent @ CapturingType(parent1, refs) =>
-            CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
+            CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed).withOrigin(parent)
           case _ =>
             tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
                 // by `mapInferred`. Hence if the underlying type admits capture variables
@@ -216,13 +216,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
         assert(tp1.isBoxed == tp2.isBoxed)
         CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
+          .withOrigins(Set(tp1, tp2))
       case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
         assert(tp1.isBoxed == tp2.isBoxed)
         CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
+          .withOrigins(Set(tp1, tp2))
       case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
-        CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
+        CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed).withOrigin(tp1)
       case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
-        CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
+        CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed).withOrigin(tp2)
       case tp @ AppliedType(tycon, args)
       if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
         tp.derivedAppliedType(tycon, args.mapConserve(_.boxDeeply))
@@ -266,19 +268,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           tp.typeSymbol match
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-              cls.paramGetters.foldLeft(tp) { (core, getter) =>
-                if atPhase(thisPhase.next)(getter.hasTrackedParts)
-                    && getter.isRefiningParamAccessor
-                    && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
-                then
-                  val getterType =
-                    mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType(core, getter.name,
-                      CapturingType(getterType, new CaptureSet.RefiningVar(ctx.owner)))
-                    .showing(i"add capture refinement $tp --> $result", capt)
-                else
-                  core
-              }
+                cls.paramGetters.foldLeft(tp): (core, getter) =>
+                  if atPhase(thisPhase.next)(getter.hasTrackedParts)
+                      && getter.isRefiningParamAccessor
+                      && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
+                  then
+                    val getterType =
+                      mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
+                    RefinedType(core, getter.name,
+                        CapturingType(getterType, new CaptureSet.RefiningVar(ctx.owner)))
+                      .showing(i"add capture refinement $tp --> $result", capt)
+                  else
+                    core
             case _ => tp
         case _ => tp
 
@@ -694,7 +695,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   if cls.derivesFrom(defn.Caps_Capability) then
                     // If cls is a capability class, we need to add a fresh readonly capability to
                     // ensure we cannot treat the class as pure.
-                    CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                    CaptureSet.fresh(cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
                   CapturingType(cinfo.selfType, cs)
 
               // Compute new parent types

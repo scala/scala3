@@ -25,6 +25,30 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   import CaptureAnnotation.*
   import tpd.*
 
+  private var myOrigins: Set[AnnotatedType] | Null = null
+
+  def origins: Set[AnnotatedType] =
+    if myOrigins == null then myOrigins = Set()
+    myOrigins.nn
+
+  def withOrigins(origins: Set[AnnotatedType]): CaptureAnnotation =
+    if myOrigins == null then
+      myOrigins = origins
+      this
+    else if origins.subsetOf(myOrigins.nn) then
+      this
+    else
+      CaptureAnnotation(refs, boxed)(cls).withOrigins(myOrigins.nn ++ origins)
+
+  private var myProvenance: Set[AnnotatedType] | Null = null
+
+  def provenance: Set[AnnotatedType] =
+    if myProvenance == null then
+      myProvenance = origins ++ origins.flatMap:
+        case AnnotatedType(_, ann: CaptureAnnotation) => ann.provenance
+        case _ => Set()
+    myProvenance.nn
+
   /** A cache for the version of this annotation which differs in its boxed status. */
   var boxDual: CaptureAnnotation | Null = null
 
