@@ -138,5 +138,15 @@ object Boolean extends AnyValCompanion {
   /** The String representation of the scala.Boolean companion object. */
   override def toString = "object scala.Boolean"
 
-}
+  extension (self: Boolean) {
 
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this` is `true` and `that` is `false`
+      * - a negative value if `this` is `false` and `that` is `true`
+      * - `0` if `this == that`
+      */
+    def compare(that: Boolean): Int = java.lang.Boolean.compare(self, that)
+  }
+}
