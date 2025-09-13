@@ -466,6 +466,14 @@ object Types extends TypeUtils {
       case AppliedType(tycon: TypeRef, arg :: Nil) => defn.isInto(tycon.symbol)
       case _ => false
 
+    /** Is this type of the form `<context-bound-companion>[Ref1] & ... & <context-bound-companion>[RefN]`?
+     *  Where the intersection may be introduced by `NamerOps.addContextBoundCompanionFor`
+     *  or by inheriting multiple context bound companions for the same name.
+     */
+    def isContextBoundCompanion(using Context): Boolean = this.widen match
+      case AndType(tp1, tp2) => tp1.isContextBoundCompanion.ensuring(_ == tp2.isContextBoundCompanion)
+      case tp => tp.typeSymbol == defn.CBCompanion
+
     /** Is this type a legal target type for an implicit conversion, so that
      *  no `implicitConversions` language import is necessary?
      */
