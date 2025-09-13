@@ -170,9 +170,9 @@ object JSSymUtils {
       sym.getAnnotation(jsdefn.JSNameAnnot).fold[JSName] {
         JSName.Literal(defaultJSName)
       } { annotation =>
-        annotation.arguments.head match {
-          case Literal(Constant(name: String)) => JSName.Literal(name)
-          case tree                            => JSName.Computed(tree.symbol)
+        annotation.argumentConstantString(0) match {
+          case Some(name) => JSName.Literal(name)
+          case None       => JSName.Computed(annotation.arguments.head.symbol)
         }
       }
     }
