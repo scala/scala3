@@ -1,0 +1,25 @@
+-- Error: tests/neg/i23474.scala:5:11 ----------------------------------------------------------------------------------
+5 |case class Y(val comment: String) extends Comment // error
+  |           ^
+  |           class Y needs to be abstract, since var comment_=(x$1: String): Unit in trait Comment is not defined 
+  |           (Note that an abstract var requires a setter in addition to the getter)
+-- Error: tests/neg/i23474.scala:7:6 -----------------------------------------------------------------------------------
+7 |class Z extends Comment: // error
+  |      ^
+  |      class Z needs to be abstract, since var comment_=(x$1: String): Unit in trait Comment is not defined 
+  |      (Note that an abstract var requires a setter in addition to the getter)
+-- [E164] Declaration Error: tests/neg/i23474.scala:11:15 --------------------------------------------------------------
+11 |  override def comment: String = "" // error
+   |               ^
+   |               error overriding variable comment in trait Comment of type String;
+   |                 method comment of type => String cannot override a mutable variable
+-- Error: tests/neg/i23474.scala:10:6 ----------------------------------------------------------------------------------
+10 |class X extends Comment: // error
+   |      ^
+   |      class X needs to be abstract, since var comment_=(x$1: String): Unit in trait Comment is not defined 
+   |      (Note that an abstract var requires a setter in addition to the getter)
+-- Error: tests/neg/i23474.scala:13:6 ----------------------------------------------------------------------------------
+13 |class W extends Comment // error
+   |      ^
+   |      class W needs to be abstract, since var comment: String in trait Comment is not defined 
+   |      (Note that variables need to be initialized to be defined)

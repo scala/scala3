@@ -40,6 +40,8 @@ object CapturingType:
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
         if parent.derivesFromMutable then refs.setMutable()
+        val classifier = parent.classifier
+        refs.adoptClassifier(parent.classifier)
         AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 
   /** An extractor for CapturingTypes. Capturing types are recognized if

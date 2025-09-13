@@ -7,7 +7,7 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
-import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.NameKinds.{
   BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import dotty.tools.dotc.core.StdNames.nme
@@ -305,8 +305,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     def matchingSelector(info: ImportInfo): ImportSelector | Null =
       val qtpe = info.site
       def hasAltMember(nm: Name) = qtpe.member(nm).hasAltWith: alt =>
-           alt.symbol == sym
-        || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
+        val sameSym =
+             alt.symbol == sym
+          || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
+        sameSym && alt.symbol.isAccessibleFrom(qtpe)
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -503,7 +505,13 @@ object CheckUnused:
       if sym.isLocalToBlock then
         if ctx.settings.WunusedHas.locals && sym.is(Mutable) && !infos.asss(sym) then
           warnAt(pos)(UnusedSymbol.unsetLocals)
-      else if ctx.settings.WunusedHas.privates && sym.isAllOf(Private | Mutable) && !infos.asss(sym) then
+      else if ctx.settings.WunusedHas.privates
+        && sym.is(Mutable)
+        && (sym.is(Private) || sym.isEffectivelyPrivate)
+        && !sym.isSetter // tracks sym.underlyingSymbol sibling getter, check setter below
+        && !infos.asss(sym)
+        && !infos.refs(sym.owner.info.member(sym.name.asTermName.setterName).symbol)
+      then
         warnAt(pos)(UnusedSymbol.unsetPrivates)
 
     def checkPrivate(sym: Symbol, pos: SrcPos) =
@@ -512,7 +520,10 @@ object CheckUnused:
         && !sym.isOneOf(SelfName | Synthetic | CaseAccessor)
         && !sym.name.is(BodyRetainerName)
         && !sym.isSerializationSupport
-        && !(sym.is(Mutable) && sym.isSetter && sym.owner.is(Trait)) // tracks sym.underlyingSymbol sibling getter
+        && !( sym.is(Mutable)
+           && sym.isSetter // tracks sym.underlyingSymbol sibling getter
+           && (sym.owner.is(Trait) || sym.owner.isAnonymousClass)
+        )
         && !infos.nowarn(sym)
       then
         warnAt(pos)(UnusedSymbol.privateMembers)

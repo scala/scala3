@@ -16,18 +16,19 @@ object PhantomEq {
 
 object EqUtil {
 
-  type PhantomEq[-L, -R]
+  class PhantomEq[-L, -R]
   type PhantomEqEq[T] = PhantomEq[T, T]
+  erased val phantomEq = PhantomEq[Any, Any]()
 
   extension [T](x: T)
     def ===[U](y: U)(using erased PhantomEq[T, U]) = x.equals(y)
 
-  erased given eqString: PhantomEqEq[String] = compiletime.erasedValue
-  erased given eqInt: PhantomEqEq[Int]       = compiletime.erasedValue
-  erased given eqDouble: PhantomEqEq[Double] = compiletime.erasedValue
+  inline given eqString: PhantomEqEq[String] = phantomEq
+  inline given eqInt: PhantomEqEq[Int]       = phantomEq
+  inline given eqDouble: PhantomEqEq[Double] = phantomEq
 
-  erased given eqByteNum: PhantomEq[Byte, Number] = compiletime.erasedValue
-  erased given eqNumByte: PhantomEq[Number, Byte] = compiletime.erasedValue
+  inline given eqByteNum: PhantomEq[Byte, Number] = phantomEq
+  inline given eqNumByte: PhantomEq[Number, Byte] = phantomEq
 
-  erased given eqSeq: [T, U] => (erased PhantomEq[T, U]) => PhantomEq[Seq[T], Seq[U]] = compiletime.erasedValue
+  inline given eqSeq: [T, U] => (erased PhantomEq[T, U]) => PhantomEq[Seq[T], Seq[U]] = phantomEq
 }

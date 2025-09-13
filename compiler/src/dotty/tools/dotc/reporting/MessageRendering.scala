@@ -11,7 +11,7 @@ import core.Decorators.*
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
-import util.{ SourcePosition, NoSourcePosition }
+import util.{SourcePosition, NoSourcePosition}
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 

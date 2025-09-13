@@ -129,9 +129,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |isInstanceOf[X0]: Boolean
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |wait(): Unit
-         |wait(x$0: Long): Unit
-         |wait(x$0: Long, x$1: Int): Unit
          |""".stripMargin
     )
 
@@ -2274,4 +2271,17 @@ class CompletionSuite extends BaseCompletionSuite:
         |  magic.@@
         |""".stripMargin,
       "test: Int"
+    )
+
+  @Test def `macros` =
+    check(
+      """
+        |object Macro:
+        |  import scala.quoted.*
+        |  def dbgImpl[A](a: Expr[A])(using Quotes): Expr[A] =
+        |    import quotes.reflect.*
+        |    a.asTer@@
+        |
+        |""".stripMargin,
+      "asTerm: Term"
     )

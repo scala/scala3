@@ -214,9 +214,8 @@ object Parsers {
     def isIdent(name: Name) = in.isIdent(name)
     def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
-    def isErased = isIdent(nme.erased) && in.erasedEnabled
-    // Are we seeing an `erased` soft keyword that will not be an identifier?
-    def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
+    def isErased =
+      isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -393,10 +392,9 @@ object Parsers {
       syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(`3.0-migration`, option)}""", span)
 
     def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
-      if (in.newSyntax) {
-        if (in.rewrite) return true
-        syntaxVersionError("-new-syntax", span)
-      }
+      if in.newSyntax then
+        if in.rewrite then return true
+        syntaxVersionError("-new-syntax or -language:future", span)
       false
     }
 
@@ -1589,24 +1587,35 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` `rd`] -- under captureChecking
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
+     *  CapFilter   ::=  `.` `as` `[` QualId `]`
      */
     def captureRef(): Tree =
 
-      def derived(ref: Tree, name: TermName) =
-        in.nextToken()
-        atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
+      def derived(ref: Tree): Tree =
+        atSpan(startOffset(ref)):
+          if in.isIdent(nme.raw.STAR) then
+            in.nextToken()
+            Annotated(ref, makeReachAnnot())
+          else if in.isIdent(nme.rd) then
+            in.nextToken()
+            Annotated(ref, makeReadOnlyAnnot())
+          else if in.isIdent(nme.only) then
+            in.nextToken()
+            Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
+          else assert(false)
 
       def recur(ref: Tree): Tree =
         if in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) then derived(ref, nme.CC_READONLY)
+          if in.isIdent(nme.rd) || in.isIdent(nme.only) then derived(ref)
           else recur(selector(ref))
         else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref, nme.CC_REACH)
-          if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+          val reachRef = derived(ref)
+          val next = in.lookahead
+          if in.token == DOT && (next.isIdent(nme.rd) || next.isIdent(nme.only)) then
             in.nextToken()
-            derived(reachRef, nme.CC_READONLY)
+            derived(reachRef)
           else reachRef
         else ref
 
@@ -1725,8 +1734,8 @@ object Parsers {
         else
           val paramStart = in.offset
           def addErased() =
-            erasedArgs.addOne(isErasedKw)
-            if isErasedKw then in.skipToken()
+            erasedArgs.addOne(isErased)
+            if isErased then in.skipToken()
           addErased()
           val args =
             in.currentRegion.withCommasExpected:
@@ -2007,15 +2016,19 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if !inMatchPattern then
-            report.errorOrMigrationWarning(
-              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
-              in.sourcePos(),
-              MigrationVersion.WildcardType)
-            if MigrationVersion.WildcardType.needsPatch then
-              patch(source, Span(in.offset, in.offset + 1), "?")
-          end if
+            val msg =
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}"
+            report.errorOrMigrationWarning(msg, in.sourcePos(), MigrationVersion.WildcardType)
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
+            .tap: tbt =>
+              if !inMatchPattern && MigrationVersion.WildcardType.needsPatch then
+                val offset_? = tbt.span.start
+                if Chars.isOperatorPart(source(offset_? + 1)) then
+                  patch(source, tbt.span, "?" + ctx.printer.toText(tbt).mkString())
+                else
+                  patch(source, Span(offset_?, offset_? + 1), "?")
+
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
       else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.XkindProjector.value == "underscores" then
@@ -2377,6 +2390,9 @@ object Parsers {
       val start = in.offset
       in.token match
         case IMPLICIT =>
+          report.errorOrMigrationWarning(
+            em"`implicit` lambdas are no longer supported, use a lambda with `?=>` instead",
+            in.sourcePos(), MigrationVersion.Scala2Implicits)
           closure(start, location, modifiers(BitSet(IMPLICIT)))
         case LBRACKET =>
           val start = in.offset
@@ -2556,7 +2572,7 @@ object Parsers {
       }
     }
 
-    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]  -- Scala 2 compat
      *     `if' Expr `then' Expr [[semi] else Expr]
      */
     def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
@@ -2622,7 +2638,7 @@ object Parsers {
      */
     def binding(mods: Modifiers): Tree =
       atSpan(in.offset) {
-        val mods1 = if isErasedKw then addModifier(mods) else mods
+        val mods1 = if isErased then addModifier(mods) else mods
         makeParameter(bindingName(), typedOpt(), mods1)
       }
 
@@ -2825,7 +2841,7 @@ object Parsers {
       else in.currentRegion.withCommasExpected {
         var isFormalParams = false
         def exprOrBinding() =
-          if isErasedKw then isFormalParams = true
+          if isErased then isFormalParams = true
           if isFormalParams then binding(Modifiers())
           else
             val t = maybeNamed(exprInParens)()
@@ -3557,11 +3573,17 @@ object Parsers {
 
       def paramMods() =
         if in.token == IMPLICIT then
+          report.errorOrMigrationWarning(
+            em"`implicit` parameters are no longer supported, use a `using` clause instead${rewriteNotice(`future-migration`)}",
+            in.sourcePos(), MigrationVersion.Scala2Implicits)
+          val startImplicit = in.offset
           addParamMod(() =>
             if ctx.settings.YimplicitToGiven.value then
               patch(Span(in.lastOffset - 8, in.lastOffset), "using")
             Mod.Implicit()
           )
+          if MigrationVersion.Scala2Implicits.needsPatch then
+            patch(source, Span(startImplicit, in.lastOffset), "using")
         else if isIdent(nme.using) then
           if initialMods.is(Given) then
             syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
@@ -3570,7 +3592,7 @@ object Parsers {
       def param(): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
-        if isErasedKw then
+        if isErased then
           mods = addModifier(mods)
         if paramOwner.isClass then
           mods = addFlag(modifiers(start = mods), ParamAccessor)
@@ -4366,7 +4388,7 @@ object Parsers {
           accept(EQUALS)
           mods1 |= Final
           if !hasParams && !mods.is(Inline) then
-            mods1 |= Lazy
+            if !mods.is(Erased) then mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, subExpr())
@@ -4769,6 +4791,9 @@ object Parsers {
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
+          report.errorOrMigrationWarning(
+            em"`implicit` lambdas are no longer supported, use a lambda with `?=>` instead",
+            in.sourcePos(), MigrationVersion.Scala2Implicits)
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()

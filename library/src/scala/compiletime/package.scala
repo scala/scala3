@@ -23,7 +23,6 @@ import annotation.{compileTimeOnly, experimental}
  *  the branches.
  *  @syntax markdown
  */
-// TODO add `erased` once it is not an experimental feature anymore
 def erasedValue[T]: T = erasedValue[T]
 
 /** Used as the initializer of a mutable class or object field, like this:

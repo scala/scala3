@@ -1,0 +1,292 @@
+name: Compile Full Standard Library
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scala-library-nonbootstrapped:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala-library-nonbootstrapped`
+        run: ./project/scripts/sbt scala-library-nonbootstrapped/compile
+
+  scala3-library-nonbootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala-library-nonbootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-library-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-library-nonbootstrapped/compile
+
+  scala-library-bootstrapped:
+    runs-on: ubuntu-latest
+    needs  : [scala3-compiler-nonbootstrapped, scala3-sbt-bridge-nonbootstrapped, scala-library-nonbootstrapped, scala3-library-nonbootstrapped]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala-library-bootstrapped`
+        run: ./project/scripts/sbt scala-library-bootstrapped/compile
+
+  scala3-library-bootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala-library-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-library-bootstrapped`
+        run: ./project/scripts/sbt scala3-library-bootstrapped-new/compile
+
+  tasty-core-nonbootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-library-nonbootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `tasty-core-nonbootstrapped`
+        run: ./project/scripts/sbt tasty-core-nonbootstrapped/compile
+
+  scala3-compiler-nonbootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [tasty-core-nonbootstrapped, scala3-library-nonbootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-compiler-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/compile
+
+  scala3-sbt-bridge-nonbootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-compiler-nonbootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-sbt-bridge-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/compile
+
+  tasty-core-bootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-library-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `tasty-core-bootstrapped`
+        run: ./project/scripts/sbt tasty-core-bootstrapped-new/compile
+
+  scala3-compiler-bootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [tasty-core-bootstrapped, scala3-library-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-compiler-bootstrapped`
+        run: ./project/scripts/sbt scala3-compiler-bootstrapped-new/compile
+
+  scala3-sbt-bridge-bootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-compiler-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-sbt-bridge-bootstrapped`
+        run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/compile
+
+  scala3-staging:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-compiler-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-staging`
+        run: ./project/scripts/sbt scala3-staging-new/compile
+
+  scala3-tasty-inspector:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-compiler-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile `scala3-staging`
+        run: ./project/scripts/sbt scala3-staging-new/compile
+      - name: Compile `scala3-tasty-inspector`
+        run: ./project/scripts/sbt scala3-tasty-inspector-new/compile
+
+  #################################################################################################
+  ########################################### TEST JOBS ###########################################
+  #################################################################################################
+
+  test-scala3-sbt-bridge-nonbootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-sbt-bridge-nonbootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-sbt-bridge-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
+
+  test-scala3-sbt-bridge-bootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [scala3-sbt-bridge-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-sbt-bridge-bootstrapped`
+        run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
+
+  test-tasty-core-nonbootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [tasty-core-nonbootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `tasty-core-nonbootstrapped`
+        run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
+
+  test-tasty-core-bootstrapped:
+    runs-on: ubuntu-latest
+    ##needs: [tasty-core-bootstrapped] Add when we add support for caching here
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `tasty-core-bootstrapped`
+        run: ./project/scripts/sbt tasty-core-bootstrapped-new/test

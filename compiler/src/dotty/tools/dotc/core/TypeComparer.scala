@@ -410,7 +410,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareErasedValueType
       case ConstantType(v2) =>
         tp1 match {
-          case ConstantType(v1) => v1.value == v2.value && recur(v1.tpe, v2.tpe)
+          case ConstantType(v1) => v1 == v2 && recur(v1.tpe, v2.tpe)
           case _ => secondTry
         }
       case tp2: AnyConstantType =>
@@ -547,6 +547,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if tp2.isAny then true
           else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
+            || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
             val tp2a =
               if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
@@ -2387,7 +2388,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         formals2.isEmpty
     }
     // If methods have erased parameters, then the erased parameters must match
-    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.erasedParams == tp2.erasedParams)
+    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.paramErasureStatuses == tp2.paramErasureStatuses)
 
     erasedValid && loop(tp1.paramInfos, tp2.paramInfos)
   }
@@ -3536,16 +3537,16 @@ object TypeComparer {
     comparing(_.subCaptures(refs1, refs2, vs))
 
   def logUndoAction(action: () => Unit)(using Context): Unit =
-    comparer.logUndoAction(action)
+    currentComparer.logUndoAction(action)
 
   def inNestedLevel(op: => Boolean)(using Context): Boolean =
-    comparer.inNestedLevel(op)
+    currentComparer.inNestedLevel(op)
 
   def addErrorNote(note: ErrorNote)(using Context): Unit =
-    comparer.addErrorNote(note)
+    currentComparer.addErrorNote(note)
 
   def updateErrorNotes(f: PartialFunction[ErrorNote, ErrorNote])(using Context): Unit =
-    comparer.errorNotes = comparer.errorNotes.mapConserve: p =>
+    currentComparer.errorNotes = currentComparer.errorNotes.mapConserve: p =>
       val (level, note) = p
       if f.isDefinedAt(note) then (level, f(note)) else p
 
@@ -3553,7 +3554,7 @@ object TypeComparer {
     comparing(_.compareResult(op))
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
-    comparer.isolated(op, x => x)
+    currentComparer.isolated(op, x => x)
 }
 
 object MatchReducer:

@@ -18,7 +18,6 @@ import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
 import CCState.*
-import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
 import NamerOps.methodType
 import NameKinds.{CanThrowEvidenceName, TryOwnerName}
@@ -162,37 +161,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     else symd
   end transformSym
 
-  /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
-   *  convert it to be boxed.
-   */
-  private def box(tp: Type)(using Context): Type =
-    def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
-      case tp @ CapturingType(parent, refs) =>
-        if tp.isBoxed || parent.derivesFrom(defn.Caps_CapSet) then tp
-        else tp.boxed
-      case tp @ AnnotatedType(parent, ann) =>
-        if ann.symbol.isRetains && !parent.derivesFrom(defn.Caps_CapSet)
-        then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
-        else tp.derivedAnnotatedType(box(parent), ann)
-      case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
-        val res = args.last
-        val boxedRes = recur(res)
-        if boxedRes eq res then tp
-        else tp1.derivedAppliedType(tycon, args.init :+ boxedRes)
-      case tp1 @ defn.RefinedFunctionOf(rinfo: MethodType) =>
-        val boxedRinfo = recur(rinfo)
-        if boxedRinfo eq rinfo then tp
-        else boxedRinfo.toFunctionType(alwaysDependent = true)
-      case tp1: MethodOrPoly =>
-        val res = tp1.resType
-        val boxedRes = recur(res)
-        if boxedRes eq res then tp
-        else tp1.derivedLambdaType(resType = boxedRes)
-      case _ => tp
-    tp match
-      case tp: MethodOrPoly => tp // don't box results of methods outside refinements
-      case _ => recur(tp)
-
   private trait SetupTypeMap extends FollowAliasesMap:
     private var isTopLevel = true
 
@@ -257,9 +225,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
       case tp @ AppliedType(tycon, args)
       if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
-        tp.derivedAppliedType(tycon, args.mapConserve(box))
+        tp.derivedAppliedType(tycon, args.mapConserve(_.boxDeeply))
       case tp: RealTypeBounds =>
-        tp.derivedTypeBounds(tp.lo, box(tp.hi))
+        tp.derivedTypeBounds(tp.lo, tp.hi.boxDeeply)
       case tp: LazyRef =>
         normalizeCaptures(tp.ref)
       case _ =>
@@ -407,13 +375,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fntpe
 
       /** 1. Check that parents of capturing types are not pure.
-       *  2. Check that types extending SharedCapability don't have a `cap` in their capture set.
-       *     TODO This is not enough.
+       *  2. Check that types extending caps.Sharable don't have a `cap` in their capture set.
+       *     TODO: Is this enough?
        *     We need to also track that we cannot get exclusive capabilities in paths
-       *     where some prefix derives from SharedCapability. Also, can we just
+       *     where some prefix derives from Sharable. Also, can we just
        *     exclude `cap`, or do we have to extend this to all exclusive capabilties?
        *     The problem is that we know what is exclusive in general only after capture
        *     checking, not before.
+       *     But maybe the rules for classification already cover these cases.
        */
       def checkRetainsOK(tp: Type): tp.type =
         tp match
@@ -425,7 +394,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // will be ignored anyway.
               fail(em"$parent is a pure type, it makes no sense to add a capture set to it")
             else if refs.isUniversal && parent.derivesFromSharedCapability then
-              fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
+              fail(em"$tp extends Sharable, so it cannot capture `cap`")
           case _ =>
         tp
 
@@ -434,10 +403,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
        */
       def defaultApply(t: Type) =
         if t.derivesFromCapability
+          && t.typeParams.isEmpty
           && !t.isSingleton
           && (!sym.isConstructor || (t ne tp.finalResultType))
             // Don't add ^ to result types of class constructors deriving from Capability
-        then CapturingType(t, CaptureSet.CSImpliedByCapability(), boxed = false)
+        then
+          normalizeCaptures(mapOver(t)) match
+            case t1 @ CapturingType(_, _) => t1
+            case t1 => CapturingType(t1, CaptureSet.CSImpliedByCapability(), boxed = false)
         else normalizeCaptures(mapFollowingAliases(t))
 
       def innerApply(t: Type) =
@@ -542,7 +515,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if tree.isInferred
           then transformInferredType(tree.tpe)
           else transformExplicitType(tree.tpe, sym, freshen = !boxed, tptToCheck = tree)
-        if boxed then transformed = box(transformed)
+        if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
@@ -612,7 +585,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
           traverse(elems)
-          tpt.setNuType(box(transformInferredType(tpt.tpe)))
+          tpt.setNuType(transformInferredType(tpt.tpe).boxDeeply)
 
         case tree @ Try(body, catches, finalizer) =>
           val tryOwner = firstCanThrowEvidence(body) match
@@ -694,7 +667,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               def newInfo(using Context) = // will be run in this or next phase
                 toResultInResults(sym, report.error(_, tree.srcPos)):
                   if sym.is(Method) then
-                    paramsToCap(methodType(paramSymss, localReturnType))
+                    inContext(ctx.withOwner(sym)):
+                      paramsToCap(methodType(paramSymss, localReturnType))
                   else tree.tpt.nuType
               if tree.tpt.isInstanceOf[InferredTypeTree]
                   && !sym.is(Param) && !sym.is(ParamAccessor)
@@ -723,6 +697,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
+            checkClassifiedInheritance(cls)
             ccState.inNestedLevelUnless(cls.is(Module)):
               val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
@@ -938,6 +913,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+
+  // ------ Checks to run at Setup ----------------------------------------
+
+  private def checkClassifiedInheritance(cls: ClassSymbol)(using Context): Unit =
+    def recur(cs: List[ClassSymbol]): Unit = cs match
+      case c :: cs1 =>
+        for c1 <- cs1 do
+          if !c.derivesFrom(c1) && !c1.derivesFrom(c) then
+            report.error(i"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
+        recur(cs1)
+      case Nil =>
+    recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
 
   // ------ Checks to run after main capture checking --------------------------
 
