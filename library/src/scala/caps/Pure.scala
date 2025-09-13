@@ -16,5 +16,5 @@ import language.experimental.captureChecking
  *  would give an error only under capture checking. Pure is also dropped in
  *  upper bounds if it forms part of an &-type, or is under a type lambda.
  */
-trait Pure extends Any:
+transparent trait Pure extends Any:
   this: Pure =>
