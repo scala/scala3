@@ -11,7 +11,7 @@
   |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:210)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:286)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:285)
-  |	at Macros$.makeSerializer(Macro.scala:27)
+  |	at Macros$.makeSerializer(Macro.scala:25)
   |
   |---------------------------------------------------------------------------------------------------------------------
   |Inline stack trace
