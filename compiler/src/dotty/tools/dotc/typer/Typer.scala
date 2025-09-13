@@ -1216,6 +1216,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else tree1
   }
 
+  def typedPatternLiteral(tree: untpd.Literal, pt: Type)(using Context): Tree = {
+    val tree1 = typedLiteral(tree)
+
+    if (!(tree1.tpe <:< pt))
+      report.error(TypeMismatch(tree1.tpe, pt, Some(tree1)), tree.srcPos)
+
+    tree1
+  }
+
   def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
     tree.tpt match {
       case templ: untpd.Template =>
@@ -3675,7 +3684,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Number => typedNumber(tree, pt)
-          case tree: untpd.Literal => typedLiteral(tree)
+          case tree: untpd.Literal => 
+            if (ctx.mode is Mode.Pattern) typedPatternLiteral(tree, pt) else typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
