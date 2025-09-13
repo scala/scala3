@@ -18,7 +18,8 @@ object intersection {
 
 
   class C[-T]
-  def g: C[A | B] = ???
+  def f: C[A] & C[B] = ???
+  def g: C[A | B] = f
   def h: C[A] & C[B] = g
 }
 object Test {
@@ -40,3 +41,14 @@ object Test {
   def fooBA = (??? : B with A).f
   def fooBA1: Int = fooBA
 }
+
+object Test2:
+  class Row[+X]
+  class A
+  class B
+  class C extends Row[A]
+  class D extends Row[B]
+  val x: C & D = ???
+  val y: Row[A & B] = x
+
+

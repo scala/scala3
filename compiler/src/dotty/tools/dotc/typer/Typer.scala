@@ -932,7 +932,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, if the qualifier is a context bound companion, handle
     // by selecting a witness in typedCBSelect
     def tryCBCompanion() =
-      if qual.tpe.isContextBoundCompanion then
+      if qual.tpe.typeSymbol == defn.CBCompanion then
         typedCBSelect(tree0, pt, qual)
       else EmptyTree
 
@@ -1001,13 +1001,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *  alternatives referred to by `witnesses`.
      *  @param prevs      a list of (ref tree, typer state, term ref) tripls that
      *                    represents previously identified alternatives
-     *  @param witnesses  a type of the form `isContextBoundCompanion` containing references
+     *  @param witnesses  a type of the form ref_1 | ... | ref_n containing references
      *                    still to be considered.
      */
-    def tryAlts(prevs: Alts, witnesses: Type): Alts = witnesses.widen match
-      case AndType(wit1, wit2) =>
+    def tryAlts(prevs: Alts, witnesses: Type): Alts = witnesses match
+      case OrType(wit1, wit2) =>
         tryAlts(tryAlts(prevs, wit1), wit2)
-      case AppliedType(_, List(witness: TermRef)) =>
+      case witness: TermRef =>
         val altQual = tpd.ref(witness).withSpan(qual.span)
         val altCtx = ctx.fresh.setNewTyperState()
         val alt = typedSelectWithAdapt(tree, pt, altQual)(using altCtx)
@@ -1019,17 +1019,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if comparisons.exists(_ == 1) then prevs
           else current :: prevs.zip(comparisons).collect{ case (prev, cmp) if cmp != -1 => prev }
 
-    tryAlts(Nil, qual.tpe) match
-      case Nil => EmptyTree
-      case (best @ (bestTree, bestState, _)) :: Nil =>
-        bestState.commit()
-        bestTree
-      case multiAlts =>
-        report.error(
-          em"""Ambiguous witness reference. None of the following alternatives is more specific than the other:
-              |${multiAlts.map((alt, _, witness) => i"\n  $witness.${tree.name}: ${alt.tpe.widen}")}""",
-          tree.srcPos)
-        EmptyTree
+    qual.tpe.widen match
+      case AppliedType(_, arg :: Nil) =>
+        tryAlts(Nil, arg) match
+          case Nil => EmptyTree
+          case (best @ (bestTree, bestState, _)) :: Nil =>
+            bestState.commit()
+            bestTree
+          case multiAlts =>
+            report.error(
+              em"""Ambiguous witness reference. None of the following alternatives is more specific than the other:
+                  |${multiAlts.map((alt, _, witness) => i"\n  $witness.${tree.name}: ${alt.tpe.widen}")}""",
+              tree.srcPos)
+            EmptyTree
   end typedCBSelect
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {

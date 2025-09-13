@@ -14,8 +14,8 @@ object templateParents1 {
   trait D extends C[String]
   trait E extends C[Int]
 
-  trait P[T]
+  val x = new D with E
 
-  val x = new D with P[Int]
+  val y: C[Int & String] = x
 }
 
