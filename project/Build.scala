@@ -287,8 +287,8 @@ object Build {
         })
         .withBuildCache(
           buildCache
-            .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
-            .withRemote(buildCache.remote.withEnabled(true).withStoreEnabled(isInsideCI))
+            .withLocal(buildCache.local.withEnabled(false).withStoreEnabled(false))
+            .withRemote(buildCache.remote.withEnabled(false).withStoreEnabled(false))
             .withRequireClean(!isInsideCI)
         )
         .withTestRetry(
