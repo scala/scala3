@@ -134,7 +134,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.7.0"
+  val mimaPreviousDottyVersion = "3.7.3" // for 3.8.0, we compare against 3.7.3
 
   /** LTS version against which we check binary compatibility.
    *
@@ -304,6 +304,7 @@ object Build {
     Test / develocityBuildCacheClient := None,
     extraDevelocityCacheInputFiles := Seq.empty,
     extraDevelocityCacheInputFiles / outputFileStamper := FileStamper.Hash,
+    resolvers += ("Artifactory" at "https://repo.scala-lang.org/artifactory/fat-jar/"),
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -1636,6 +1637,16 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
+      // Add configuration for MiMa
+      mimaCheckDirection := (compatMode match {
+        case CompatMode.BinaryCompatible          => "backward"
+        case CompatMode.SourceAndBinaryCompatible => "both"
+      }),
+      mimaExcludeAnnotations += "scala.annotation.experimental",
+      mimaPreviousArtifacts += ("org.scala-lang" % "fat-stdlib" % "3.7.3"),
+      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1748,6 +1759,16 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Add configuration for MiMa
+      mimaCheckDirection := (compatMode match {
+        case CompatMode.BinaryCompatible          => "backward"
+        case CompatMode.SourceAndBinaryCompatible => "both"
+      }),
+      mimaExcludeAnnotations += "scala.annotation.experimental",
+      mimaPreviousArtifacts += ("org.scala-lang" % "fat-stdlib" % "3.7.3"),
+      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1952,6 +1973,7 @@ object Build {
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-nonbootstrapped project */
   lazy val `tasty-core-nonbootstrapped` = project.in(file("tasty"))
     .dependsOn(`scala3-library-nonbootstrapped`)
+    .settings(commonMiMaSettings)
     .settings(
       name          := "tasty-core-nonbootstrapped",
       moduleName    := "tasty-core",
@@ -2005,13 +2027,16 @@ object Build {
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
       ),
-
+      mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
     )
 
   /* Configuration of the org.scala-lang:tasty-core_3:*.**.**-bootstrapped project */
   lazy val `tasty-core-bootstrapped-new` = project.in(file("tasty"))
     .dependsOn(`scala3-library-bootstrapped-new`)
     .settings(publishSettings)
+    .settings(commonMiMaSettings)
     .settings(
       name          := "tasty-core-bootstrapped",
       moduleName    := "tasty-core",
@@ -2074,6 +2099,9 @@ object Build {
       Test / envVars ++= Map(
         "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
       ),
+      mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
     )
 
   // ==============================================================================================
@@ -3467,18 +3495,6 @@ object Build {
             val doWork = (Compile/doc).result.value
             (Compile/doc/target).value
           },
-          commonMiMaSettings,
-          mimaPreviousArtifacts += {
-            val thisProjectID = projectID.value
-            val crossedName = thisProjectID.crossVersion match {
-              case cv: Disabled => thisProjectID.name
-              case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
-            }
-            (thisProjectID.organization % crossedName % mimaPreviousLTSDottyVersion)
-          },
-          mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-          mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-          customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
         )
       } else base
     }
@@ -3493,14 +3509,6 @@ object Build {
         Test / envVars ++= Map(
           "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
         ),
-        if (mode == Bootstrapped) Def.settings(
-          commonMiMaSettings,
-          mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
-          mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
-          customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
-        ) else {
-          Nil
-        }
       )
 
     def asTastyCoreScala2: Project = project

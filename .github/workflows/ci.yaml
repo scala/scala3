@@ -236,53 +236,6 @@ jobs:
         run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
-  mima:
-    name: MiMa
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || github.event_name == 'merge_group'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip mima]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: MiMa
-        run: |
-          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues;"
-
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
@@ -510,7 +463,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, build-sdk-package, build-msi-package]
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, build-sdk-package, build-msi-package]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
