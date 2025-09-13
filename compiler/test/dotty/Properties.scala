@@ -57,9 +57,6 @@ object Properties {
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
 
-  /** dotty-library jar */
-  def dottyLibrary: String = sys.props("dotty.tests.classes.dottyLibrary")
-
   /** dotty-library-js jar */
   def dottyLibraryJS: String = sys.props("dotty.tests.classes.dottyLibraryJS")
 
@@ -82,10 +79,10 @@ object Properties {
   def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
 
   // TODO: Remove this once we migrate the test suite
-  def usingScalaLibraryCCTasty: Boolean = false
+  def usingScalaLibraryCCTasty: Boolean = true
 
   // TODO: Remove this once we migrate the test suite
-  def usingScalaLibraryTasty: Boolean = false
+  def usingScalaLibraryTasty: Boolean = true
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")

@@ -25,10 +25,7 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
-  val basicClasspath = mkClasspath(List(
-    Properties.scalaLibrary,
-    Properties.dottyLibrary
-  ))
+  val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
   val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
@@ -37,7 +34,6 @@ object TestConfiguration {
     Properties.jlineReader,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
-    Properties.dottyLibrary,
     Properties.tastyCore,
     Properties.dottyCompiler
   ))
@@ -66,7 +62,7 @@ object TestConfiguration {
 
   val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
-  val defaultOptions = TestFlags(basicClasspath, commonOptions)
+  val defaultOptions = TestFlags(basicClasspath, commonOptions) and "-Yno-stdlib-patches"
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)

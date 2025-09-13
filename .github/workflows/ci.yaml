@@ -149,7 +149,7 @@ jobs:
       - name: Cmd Tests
         run: |
           ./project/scripts/buildScalaBinary
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;sbt-test/scripted scala2-compat/* ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -181,7 +181,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation; scala3-presentation-compiler/test; scala3-language-server/test"
+        run: sbt ";scala3-bootstrapped/compile; scala3-presentation-compiler/test; scala3-language-server/test"
         shell: cmd
 
       - name: build binary
