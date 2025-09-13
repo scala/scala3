@@ -88,7 +88,7 @@ class SymUtils:
     }
 
     def isContextBoundCompanion(using Context): Boolean =
-      self.is(Synthetic) && self.infoOrCompleter.isContextBoundCompanion
+      self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
 
     def isDummyCaptureParam(using Context): Boolean =
       self.is(PhantomSymbol) && self.infoOrCompleter.typeSymbol != defn.CBCompanion
