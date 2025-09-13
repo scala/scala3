@@ -1096,10 +1096,15 @@ trait Applications extends Compatibility {
           if tpt.isType && typedAheadType(tpt).tpe.typeSymbol.typeParams.isEmpty then
             IgnoredProto(pt)
           else
-            pt // Don't ignore expected value types of `new` expressions with parameterized type.
-                // If we have a `new C()` with expected type `C[T]` we want to use the type to
-                // instantiate `C` immediately. This is necessary since `C` might _also_ have using
-                // clauses that we want to instantiate with the best available type. See i15664.scala.
+            // Don't ignore expected value types of `new` expressions with parameterized type.
+            // If we have a `new C()` with expected type `C[T]` we want to use the type to
+            // instantiate `C` immediately. This is necessary since `C` might _also_ have using
+            // clauses that we want to instantiate with the best available type. See i15664.scala.
+            pt
+        // When typing the selector of an `Apply` node, and if the selector is `unqualifed` (e.g. `.some(10)`)
+        // We preserve the prototype `pt` and keep it in the prototype passed to type the selector.
+        // Unqualified selectors relies on the expected type to resolve the qualifier of the selection.
+        case Select(EmptyTree, name) => pt
         case _ => IgnoredProto(pt)
           // Do ignore other expected result types, since there might be an implicit conversion
           // on the result. We could drop this if we disallow unrestricted implicit conversions.
