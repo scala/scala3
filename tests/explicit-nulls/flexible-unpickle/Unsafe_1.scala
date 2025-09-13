@@ -73,6 +73,11 @@ object M {
   def test(input: => String): String = "foo " + input
 }
 
+
+class N[F[_]] {
+  def accept[A](arg: F[A]): Nothing = ???
+}
+
 class S[X]
 object S {  def show[X] = "dummyStr" }
 class T
