@@ -2460,7 +2460,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** If the range `tp1..tp2` consist of a single type, that type, otherwise NoType`.
    *  This is the case if `tp1 =:= tp2`, but also if `tp1 <:< tp2`, `tp1` is a singleton type,
-   *  and `tp2` derives from `scala.Singleton` (or vice-versa). Examples of the latter case:
+   *  and `tp2` derives from `scala.Singleton` and `sourceVersion.enablesDistributeAnd` (or vice-versa).
+   *  Examples of the latter case:
    *
    *     "name".type .. Singleton
    *     "name".type .. String & Singleton
@@ -2473,8 +2474,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def isSingletonBounds(lo: Type, hi: Type) =
       lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && isSubTypeWhenFrozen(lo, hi)
     if (isSameTypeWhenFrozen(tp1, tp2)) tp1
-    else if (isSingletonBounds(tp1, tp2)) tp1
-    else if (isSingletonBounds(tp2, tp1)) tp2
+    else if sourceVersion.enablesDistributeAnd then
+      if (isSingletonBounds(tp1, tp2)) tp1
+      else if (isSingletonBounds(tp2, tp1)) tp2
+      else NoType
     else NoType
   }
 
@@ -2771,7 +2774,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @pre !(tp1 <: tp2) && !(tp2 <:< tp1) -- these cases were handled before
    */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
-    case tp1 @ AppliedType(tycon1, args1) =>
+    case tp1 @ AppliedType(tycon1, args1) if sourceVersion.enablesDistributeAnd =>
       tp2 match {
         case AppliedType(tycon2, args2)
         if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
@@ -2819,8 +2822,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** Try to distribute `|` inside type, detect and handle conflicts
-   *  Note that, unlike for `&`, a disjunction cannot be pushed into
-   *  a refined or applied type. Example:
+   *  Note that a disjunction cannot be pushed into a refined or applied type. Example:
    *
    *     List[T] | List[U] is not the same as List[T | U].
    *
