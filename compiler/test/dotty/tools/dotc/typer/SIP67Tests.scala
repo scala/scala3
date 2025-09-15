@@ -42,4 +42,3 @@ class SIP67Tests extends DottyTest:
         (??? : Foo) match
           case Foo.Bar =>
       """
-  
