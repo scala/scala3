@@ -55,7 +55,6 @@ val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
-val `sbt-test` = Build.`sbt-test`
 val `sbt-test-new` = Build.`sbt-test-new`
 
 inThisBuild(Build.thisBuildSettings)

@@ -3189,47 +3189,6 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Test),
     )
 
-  // various scripted sbt tests
-  lazy val `sbt-test` = project.in(file("sbt-test")).
-    enablePlugins(ScriptedPlugin).
-    settings(commonSettings).
-    settings(
-      sbtTestDirectory := baseDirectory.value,
-      target := baseDirectory.value / ".." / "out" / name.value,
-
-      // The batch mode accidentally became the default with no way to disable
-      // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
-      // We enable it explicitly here to make it clear that we're using it.
-      scriptedBatchExecution := true,
-
-      scriptedLaunchOpts ++= Seq(
-        "-Dplugin.version=" + version.value,
-        "-Dplugin.scalaVersion=" + dottyVersion,
-        "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
-        "-Dplugin.scalaJSVersion=" + scalaJSVersion,
-        "-Dsbt.boot.directory=" + ((ThisBuild / baseDirectory).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
-      ),
-      // Pass along ivy home and repositories settings to sbt instances run from the tests
-      scriptedLaunchOpts ++= {
-        val repositoryPath = (io.Path.userHome / ".sbt" / "repositories").absolutePath
-        s"-Dsbt.repository.config=$repositoryPath" ::
-        ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList
-      },
-      scriptedBufferLog := true,
-      scripted := scripted.dependsOn(
-        (`scala3-sbt-bridge` / publishLocalBin),
-        (`scala3-interfaces` / publishLocalBin),
-        (`scala3-compiler-bootstrapped` / publishLocalBin),
-        (`scala3-library-bootstrapped` / publishLocalBin),
-        (`scala3-library-bootstrappedJS` / publishLocalBin),
-        (`tasty-core-bootstrapped` / publishLocalBin),
-        (`scala3-staging` / publishLocalBin),
-        (`scala3-tasty-inspector` / publishLocalBin),
-        (`scaladoc` / publishLocalBin),
-        (`scala3-bootstrapped` / publishLocalBin) // Needed because sbt currently hardcodes the dotty artifact
-      ).evaluated
-    )
-
   lazy val `sbt-community-build` = project.in(file("sbt-community-build")).
     enablePlugins(SbtPlugin).
     settings(commonSettings).
