@@ -262,7 +262,7 @@ class ReplCompilerTests extends ReplTest:
 
   @Test def testSingletonPrint = initially {
     run("""val a = "hello"; val x: a.type = a""")
-    assertMultiLineEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
+    assertMultiLineEquals("val a: String = \"hello\"\nval x: a.type = \"hello\"", storedOutput().trim)
   }
 
   @Test def i6574 = initially {
@@ -445,7 +445,6 @@ class ReplCompilerTests extends ReplTest:
     .andThen:
       val last = lines().last
       assertTrue(last, last.startsWith("val tpolecat: Object = null"))
-      assertTrue(last, last.endsWith("""// result of "tpolecat.toString" is null"""))
 
   @Test def `i17333 print toplevel object with null toString`: Unit =
     initially:
@@ -454,7 +453,6 @@ class ReplCompilerTests extends ReplTest:
       run("tpolecat")
       val last = lines().last
       assertTrue(last, last.startsWith("val res0: tpolecat.type = null"))
-      assertTrue(last, last.endsWith("""// result of "res0.toString" is null"""))
 
   @Test def `i21431 filter out best effort options`: Unit =
     initially:

@@ -722,6 +722,8 @@ object Build {
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
+      (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
+
       // For convenience, change the baseDirectory when running the compiler
       Compile / forkOptions := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
       Compile / run / forkOptions := (Compile / run / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
@@ -2169,6 +2171,7 @@ object Build {
 
         Seq(file)
       }.taskValue,
+      (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
       // sbt adds all the projects to scala-tool config which breaks building the scalaInstance
       // as a workaround, I build it manually by only adding the compiler
       scalaInstance := {
@@ -2358,6 +2361,7 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+      (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue
     )
 
   // ==============================================================================================

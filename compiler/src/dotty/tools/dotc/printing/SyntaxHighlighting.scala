@@ -27,7 +27,7 @@ object SyntaxHighlighting {
   val CommentColor: String    = Console.BLUE
   val KeywordColor: String    = Console.YELLOW
   val ValDefColor: String     = Console.CYAN
-  val LiteralColor: String    = Console.RED
+  val LiteralColor: String    = Console.GREEN
   val StringColor: String     = Console.GREEN
   val TypeColor: String       = Console.MAGENTA
   val AnnotationColor: String = Console.MAGENTA
@@ -79,6 +79,9 @@ object SyntaxHighlighting {
 
           case IDENTIFIER if name == nme.??? =>
             highlightRange(start, end, Console.RED_B)
+
+          case IDENTIFIER if name.head.isUpper && name.exists(!_.isUpper) =>
+            highlightRange(start, end, KeywordColor)
 
           case _ =>
         }
