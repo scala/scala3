@@ -1177,11 +1177,11 @@ private[collection] object RedBlackTree {
     val bhtl = h(tl, 0)
     val bhtr = h(tr, 0)
     if(bhtl > bhtr) {
-      val tt = joinRight(tl.nn, k, v, tr.nn, bhtl, rank(tr, bhtr)) // todo: nullable
+      val tt = joinRight(tl, k, v, tr, bhtl, rank(tr, bhtr))
       if(isRedTree(tt) && isRedTree(tt.right)) tt.black
       else tt
     } else if(bhtr > bhtl) {
-      val tt = joinLeft(tl.nn, k, v, tr.nn, rank(tl, bhtl), bhtr)
+      val tt = joinLeft(tl, k, v, tr, rank(tl, bhtl), bhtr)
       if(isRedTree(tt) && isRedTree(tt.left)) tt.black
       else tt
     } else mkTree(isRedTree(tl) || isRedTree(tr), k, v, tl, tr)
