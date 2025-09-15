@@ -60,7 +60,9 @@ object Trace:
       val hasSource = fileExists(pos.source)
       val line =
         if pos.exists then
-          val loc = pos.source.file.name + ":" + (pos.line + 1)
+          // Show more information for external code without source
+          val file = if hasSource then pos.source.file.name else pos.source.file.path
+          val loc = file + ":" + (pos.line + 1)
           val code =
             if hasSource then
               SyntaxHighlighting.highlight(pos.lineContent.trim)
