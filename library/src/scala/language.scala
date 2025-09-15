@@ -243,6 +243,13 @@ object language {
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    /** Experimental support for relaxed CanEqual checks for ADT pattern matching
+     *
+     * @see [[https://github.com/scala/improvement-proposals/pull/97]]
+     */
+    @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    object strictEqualityPatternMatching
+
     /** Experimental support for using indentation for arguments
      */
     @compileTimeOnly("`fewerBraces` can only be used at compile time in import statements")
