@@ -130,9 +130,9 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
     if (v eq null) Option.empty else Some(v.key)
   }
 
-  def iterator: Iterator[A] = RB.keysIterator(tree.nn)
+  def iterator: Iterator[A] = RB.keysIterator(tree)
 
-  def iteratorFrom(start: A): Iterator[A] = RB.keysIterator(tree.nn, Some(start))
+  def iteratorFrom(start: A): Iterator[A] = RB.keysIterator(tree, Some(start))
 
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
     import scala.collection.convert.impl._
