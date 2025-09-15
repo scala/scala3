@@ -30,7 +30,7 @@ sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
   protected[this] var capacity: Int = 0
-  protected[this] def elems: Array[T]
+  protected[this] def elems: Array[T] | Null // may not be allocated at size = capacity = 0
   protected var size: Int = 0
 
   def length: Int = size
@@ -58,7 +58,7 @@ sealed abstract class ArrayBuilder[T]
   /** Add a slice of an array */
   def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
     ensureSize(this.size + length)
-    Array.copy(xs, offset, elems, this.size, length)
+    Array.copy(xs, offset, elems.nn, this.size, length)
     size += length
     this
   }
@@ -68,8 +68,8 @@ sealed abstract class ArrayBuilder[T]
     if(k > 0) {
       ensureSize(this.size + k)
       xs match {
-        case xs: Iterable[T] => xs.copyToArray(elems, this.size)
-        case _ => xs.iterator.copyToArray(elems, this.size)
+        case xs: Iterable[T] => xs.copyToArray(elems.nn, this.size)
+        case _ => xs.iterator.copyToArray(elems.nn, this.size)
       }
       size += k
     } else if(k < 0) super.addAll(xs)
@@ -225,7 +225,7 @@ object ArrayBuilder {
    *  @tparam T     type of elements for the array builder, subtype of `AnyRef` with a `ClassTag` context bound.
    */
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
+  final class ofRef[T <: AnyRef | Null](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
 
     protected var elems: Array[T] = _
 
@@ -251,7 +251,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[T]]
         res
       }
       else mkArray(size)
@@ -298,7 +298,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Byte]]
         res
       }
       else mkArray(size)
@@ -340,7 +340,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Short]]
         res
       }
       else mkArray(size)
@@ -382,7 +382,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Char]]
         res
       }
       else mkArray(size)
@@ -424,7 +424,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Int]]
         res
       }
       else mkArray(size)
@@ -466,7 +466,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Long]]
         res
       }
       else mkArray(size)
@@ -508,7 +508,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Float]]
         res
       }
       else mkArray(size)
@@ -550,7 +550,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Double]]
         res
       }
       else mkArray(size)
@@ -592,7 +592,7 @@ object ArrayBuilder {
       if (capacity != 0 && capacity == size) {
         capacity = 0
         val res = elems
-        elems = null
+        elems = null.asInstanceOf[Array[Boolean]]
         res
       }
       else mkArray(size)
