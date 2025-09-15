@@ -928,15 +928,15 @@ private[collection] object RedBlackTree {
     }
   }
   private[this] class EntriesIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, (A, B)](tree, focus) {
-    override def nextResult(tree: Tree[A, B]) = (tree.nn.key, tree.nn.value)
+    override def nextResult(tree: Tree[A, B]) = (tree.key, tree.value)
   }
 
   private[this] class KeysIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, A](tree, focus) {
-    override def nextResult(tree: Tree[A, B]) = tree.nn.key
+    override def nextResult(tree: Tree[A, B]) = tree.key
   }
 
   private[this] class ValuesIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, B](tree, focus) {
-    override def nextResult(tree: Tree[A, B]) = tree.nn.value
+    override def nextResult(tree: Tree[A, B]) = tree.value
   }
 
   /** Build a Tree suitable for a TreeSet from an ordered sequence of keys */
