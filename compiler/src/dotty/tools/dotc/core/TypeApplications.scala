@@ -8,6 +8,7 @@ import Symbols.*
 import SymDenotations.LazyType
 import Decorators.*
 import util.Stats.*
+import config.Feature.sourceVersion
 import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
@@ -475,13 +476,20 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from)) {
+        // NOTE: we assume the `To` class is covariant s.t.
+        // `To[T] X To[U] <:< To[T | U]` where X ::= `&` | `|`
         def elemType(tp: Type): Type = tp.widenDealias match
           case tp: OrType =>
             if tp.tp1.isBottomType then elemType(tp.tp2)
             else if tp.tp2.isBottomType then elemType(tp.tp1)
             else tp.derivedOrType(elemType(tp.tp1), elemType(tp.tp2))
-          case tp: AndType => tp.derivedAndType(elemType(tp.tp1), elemType(tp.tp2))
-          case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
+          case tp @ AndType(tp1, tp2) =>
+            if sourceVersion.enablesDistributeAnd
+            then tp.derivedAndType(elemType(tp1), elemType(tp2))
+            else OrType(elemType(tp1), elemType(tp2), soft = false)
+          case _ =>
+            tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
+        end elemType
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
         to.typeRef.appliedTo(arg1)
