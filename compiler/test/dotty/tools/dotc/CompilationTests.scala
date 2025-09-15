@@ -257,7 +257,7 @@ class CompilationTests {
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
   }.checkRuns()
 
-  // initialization tests
+  // initialization tests for global objects
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
@@ -266,6 +266,20 @@ class CompilationTests {
       compileFilesInDir("tests/init-global/warn-tasty", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyExcludelisted)).checkWarnings()
       compileFilesInDir("tests/init-global/pos-tasty", defaultOptions.and("-Ysafe-init-global", "-Werror"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyExcludelisted)).checkCompile()
     end if
+
+    locally {
+      val group = TestGroup("checkInitGlobal/tastySource")
+      val tastSourceOptions = defaultOptions.and("-Ysafe-init-global")
+      val outDirLib = defaultOutputDir + group + "/A/tastySource/A"
+
+      // Set -sourceroot such that the source code cannot be found by the compiler
+      val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special/tastySource")
+      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(group).keepOutput.checkCompile()
+
+      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(group).checkWarnings()
+
+      lib.delete()
+    }
   }
 
   // initialization tests
