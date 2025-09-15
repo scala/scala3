@@ -107,7 +107,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   private val vmap: mutable.Map[Int, Value] = new mutable.HashMap
 
   /** The cache listing all values of this enumeration. */
-  @transient @annotation.stableNull private var vset: ValueSet | Null = null
+  @transient private var vset: ValueSet | Null = null
   @transient @volatile private var vsetDefined = false
 
   /** The mapping from the integer used to identify values to their
@@ -190,7 +190,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   protected final def Value(i: Int, name: String | Null): Value = new Val(i, name)
 
   private def populateNameMap(): Unit = {
-    @tailrec def getFields(clazz: Class[_], acc: Array[JField]): Array[JField] = {
+    @tailrec def getFields(clazz: Class[_] | Null, acc: Array[JField]): Array[JField] = {
       if (clazz == null)
         acc
       else
@@ -250,7 +250,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   @SerialVersionUID(0 - 3501153230598116017L)
   protected class Val(i: Int, name: String | Null) extends Value with Serializable {
     def this(i: Int)       = this(i, nextNameOrNull)
-    def this(name: String) = this(nextId, name)
+    def this(name: String | Null) = this(nextId, name)
     def this()             = this(nextId)
 
     assert(!vmap.isDefinedAt(i), "Duplicate id: " + i)

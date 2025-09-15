@@ -2028,6 +2028,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions += "-scalajs",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
