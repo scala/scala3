@@ -273,7 +273,7 @@ class CompilationTests {
       val outDirLib = defaultOutputDir + group + "/A/tastySource/A"
 
       // Set -sourceroot such that the source code cannot be found by the compiler
-      val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special/tastySource")
+      val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
       val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(group).keepOutput.checkCompile()
 
       compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(group).checkWarnings()
