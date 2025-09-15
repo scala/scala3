@@ -216,7 +216,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     */
   protected trait GenKeySet { this: Set[K] =>
     // CC note: this is unavoidable to make the KeySet pure.
-    private[MapOps] val allKeys = MapOps.this.keysIterator.toSet
+    private[MapOps] val allKeys = MapOps.this.keysIterator.toList
     // We restore the lazy behavior in LazyKeySet
     def iterator: Iterator[K] =
       allKeys.iterator
