@@ -61,12 +61,13 @@ object Trace:
       val line =
         if pos.exists then
           val loc = pos.source.file.name + ":" + (pos.line + 1)
-          if hasSource then
-            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
-            i"$code\t[ $loc ]"
-          else
-            loc
+          val code =
+            if hasSource then
+              SyntaxHighlighting.highlight(pos.lineContent.trim)
+            else
+              "(no source)"
 
+          i"$code\t[ $loc ]"
         else
           tree match
             case defDef: DefTree =>
