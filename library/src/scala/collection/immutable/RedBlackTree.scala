@@ -311,9 +311,9 @@ private[collection] object RedBlackTree {
     if (tree.right ne null) _foreachEntry(tree.right.nn, f)
   }
 
-  def iterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None): Iterator[(A, B)] = new EntriesIterator(tree, start)
-  def keysIterator[A: Ordering](tree: Tree[A, _], start: Option[A] = None): Iterator[A] = new KeysIterator(tree, start)
-  def valuesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None): Iterator[B] = new ValuesIterator(tree, start)
+  def iterator[A: Ordering, B](tree: Tree[A, B] | Null, start: Option[A] = None): Iterator[(A, B)] = new EntriesIterator(tree, start)
+  def keysIterator[A: Ordering](tree: Tree[A, _] | Null, start: Option[A] = None): Iterator[A] = new KeysIterator(tree, start)
+  def valuesIterator[A: Ordering, B](tree: Tree[A, B] | Null, start: Option[A] = None): Iterator[B] = new ValuesIterator(tree, start)
 
   @tailrec
   def nth[A, B](tree: Tree[A, B], n: Int): Tree[A, B] = {
@@ -927,16 +927,16 @@ private[collection] object RedBlackTree {
       equal && (this.lookahead eq null) && (that.lookahead eq null)
     }
   }
-  private[this] class EntriesIterator[A: Ordering, B](tree: Tree[A, B], focus: Option[A]) extends TreeIterator[A, B, (A, B)](tree, focus) {
-    override def nextResult(tree: Tree[A, B]) = (tree.key, tree.value)
+  private[this] class EntriesIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, (A, B)](tree, focus) {
+    override def nextResult(tree: Tree[A, B]) = (tree.nn.key, tree.nn.value)
   }
 
-  private[this] class KeysIterator[A: Ordering, B](tree: Tree[A, B], focus: Option[A]) extends TreeIterator[A, B, A](tree, focus) {
-    override def nextResult(tree: Tree[A, B]) = tree.key
+  private[this] class KeysIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, A](tree, focus) {
+    override def nextResult(tree: Tree[A, B]) = tree.nn.key
   }
 
-  private[this] class ValuesIterator[A: Ordering, B](tree: Tree[A, B], focus: Option[A]) extends TreeIterator[A, B, B](tree, focus) {
-    override def nextResult(tree: Tree[A, B]) = tree.value
+  private[this] class ValuesIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, B](tree, focus) {
+    override def nextResult(tree: Tree[A, B]) = tree.nn.value
   }
 
   /** Build a Tree suitable for a TreeSet from an ordered sequence of keys */
@@ -1139,33 +1139,35 @@ private[collection] object RedBlackTree {
     else 2*bh-1
   }
 
-  private[this] def joinRight[A, B](tl: Tree[A, B], k: A, v: B, tr: Tree[A, B], bhtl: Int, rtr: Int): Tree[A, B] = {
+  private[this] def joinRight[A, B](tl: Tree[A, B] | Null, k: A, v: B, tr: Tree[A, B] | Null, bhtl: Int, rtr: Int): Tree[A, B] = {
     val rtl = rank(tl, bhtl)
     if(rtl == (rtr/2)*2) RedTree(k, v, tl, tr)
     else {
+      val tlnn = tl.nn
       val tlBlack = isBlackTree(tl)
       val bhtlr = if(tlBlack) bhtl-1 else bhtl
-      val ttr = joinRight(tl.right.nn, k, v, tr, bhtlr, rtr)
+      val ttr = joinRight(tlnn.right, k, v, tr, bhtlr, rtr)
       if(tlBlack && isRedTree(ttr) && isRedTree(ttr.right))
         RedTree(ttr.key, ttr.value,
-          BlackTree(tl.key, tl.value, tl.left, ttr.left),
+          BlackTree(tlnn.key, tlnn.value, tlnn.left, ttr.left),
           ttr.right.nn.black)
-      else mkTree(tlBlack, tl.key, tl.value, tl.left, ttr)
+      else mkTree(tlBlack, tlnn.key, tlnn.value, tlnn.left, ttr)
     }
   }
 
-  private[this] def joinLeft[A, B](tl: Tree[A, B], k: A, v: B, tr: Tree[A, B], rtl: Int, bhtr: Int): Tree[A, B] = {
+  private[this] def joinLeft[A, B](tl: Tree[A, B] | Null, k: A, v: B, tr: Tree[A, B] | Null, rtl: Int, bhtr: Int): Tree[A, B] = {
     val rtr = rank(tr, bhtr)
     if(rtr == (rtl/2)*2) RedTree(k, v, tl, tr)
     else {
+      val trnn = tr.nn
       val trBlack = isBlackTree(tr)
       val bhtrl = if(trBlack) bhtr-1 else bhtr
-      val ttl = joinLeft(tl, k, v, tr.left.nn, rtl, bhtrl)
+      val ttl = joinLeft(tl, k, v, trnn.left, rtl, bhtrl)
       if(trBlack && isRedTree(ttl) && isRedTree(ttl.left))
         RedTree(ttl.key, ttl.value,
           ttl.left.nn.black,
-          BlackTree(tr.key, tr.value, ttl.right, tr.right))
-      else mkTree(trBlack, tr.key, tr.value, ttl, tr.right)
+          BlackTree(trnn.key, trnn.value, ttl.right, trnn.right))
+      else mkTree(trBlack, trnn.key, trnn.value, ttl, trnn.right)
     }
   }
 
@@ -1175,7 +1177,7 @@ private[collection] object RedBlackTree {
     val bhtl = h(tl, 0)
     val bhtr = h(tr, 0)
     if(bhtl > bhtr) {
-      val tt = joinRight(tl.nn, k, v, tr.nn, bhtl, rank(tr, bhtr))
+      val tt = joinRight(tl.nn, k, v, tr.nn, bhtl, rank(tr, bhtr)) // todo: nullable
       if(isRedTree(tt) && isRedTree(tt.right)) tt.black
       else tt
     } else if(bhtr > bhtl) {

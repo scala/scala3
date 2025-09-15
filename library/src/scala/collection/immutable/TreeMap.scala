@@ -87,15 +87,15 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
 
   override def sortedMapFactory: SortedMapFactory[TreeMap] = TreeMap
 
-  def iterator: Iterator[(K, V)] = RB.iterator(tree.nn)
+  def iterator: Iterator[(K, V)] = RB.iterator(tree)
 
-  def keysIteratorFrom(start: K): Iterator[K] = RB.keysIterator(tree.nn, Some(start))
+  def keysIteratorFrom(start: K): Iterator[K] = RB.keysIterator(tree, Some(start))
 
   override def keySet: TreeSet[K] = new TreeSet(tree)(ordering)
 
-  def iteratorFrom(start: K): Iterator[(K, V)] = RB.iterator(tree.nn, Some(start))
+  def iteratorFrom(start: K): Iterator[(K, V)] = RB.iterator(tree, Some(start))
 
-  override def valuesIteratorFrom(start: K): Iterator[V] = RB.valuesIterator(tree.nn, Some(start))
+  override def valuesIteratorFrom(start: K): Iterator[V] = RB.valuesIterator(tree, Some(start))
 
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S with EfficientSplit =
     shape.parUnbox(
