@@ -579,10 +579,14 @@ object Inlines:
           part => part.typeSymbol.is(Opaque) && owners.contains(part.typeSymbol.owner)
         )
 
-      /* Remap ThisType nodes that are incorrect in the inlined context.
-       * Incorrect ThisType nodes can cause unwanted opaque type dealiasing later
-       * See test i113461-d
-       * */
+      /** Remap ThisType nodes that are incorrect in the inlined context.
+       * Incorrect ThisType nodes can cause unwanted opaque type dealiasing later.
+       * E.g. if inlined in a `<root>.Foo` package (but outside of <root>.Foo.Bar object) we will map
+       *   `TermRef(ThisType(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),Bar$)),MyOpaque$)),one)`
+       * into
+       *   `TermRef(TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object Foo),object Bar),object MyOpaque),val one)`
+       * See test i13461-d
+       */
       def fixThisTypeModuleClassReferences(tpe: Type): Type =
         val owners = ctx.owner.ownersIterator.toSet
         TreeTypeMap(
