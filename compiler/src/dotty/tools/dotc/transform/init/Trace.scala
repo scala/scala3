@@ -6,6 +6,7 @@ import core.*
 import Contexts.*
 import ast.tpd.*
 import util.SourcePosition
+import util.SourceFile
 
 import Decorators.*, printing.SyntaxHighlighting
 
@@ -42,17 +43,30 @@ object Trace:
 
   inline def extendTrace[T](node: Tree)(using t: Trace)(op: Trace ?=> T): T = op(using t.add(node))
 
+  /**
+   * Returns whether the source file exists
+   *
+   * The method SourceFile#exists always return true thus cannot be used.
+   */
+  def fileExists(source: SourceFile): Boolean =
+    source.content().nonEmpty
+
   def buildStacktrace(trace: Trace, preamble: String)(using Context): String = if trace.isEmpty then "" else preamble + {
     var lastLineNum = -1
     var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
     trace.foreach { tree =>
       val isLastTraceItem = tree `eq` trace.last
       val pos = tree.sourcePos
+      val hasSource = fileExists(pos.source)
       val line =
-        if pos.source.exists then
-          val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-          val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
-          i"$code\t$loc"
+        if pos.exists then
+          val loc = pos.source.file.name + ":" + (pos.line + 1)
+          if hasSource then
+            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
+            i"$code\t[ $loc ]"
+          else
+            loc
+
         else
           tree match
             case defDef: DefTree =>
@@ -62,7 +76,7 @@ object Trace:
               tree.show.split(System.lineSeparator(), 2).head
 
       val positionMarkerLine =
-        if pos.exists && pos.source.exists then
+        if pos.exists && hasSource then
           (if isLastTraceItem then EMPTY_PADDING else CONNECTING_INDENT)+ positionMarker(pos)
         else
           ""
