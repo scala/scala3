@@ -92,8 +92,8 @@ object ImplicitNullInterop:
    *  @param skipCurrentLevel   do not nullify at the current level (used for implicit/Given parameters, varargs, etc.)
    */
   private class ImplicitNullMap(
-      var skipResultType: Boolean = false ,
-      var skipParamTypes: Boolean = false ,
+      var skipResultType: Boolean = false,
+      var skipParamTypes: Boolean = false,
       var skipCurrentLevel: Boolean = false
     )(using Context) extends TypeMap:
 
@@ -111,7 +111,6 @@ object ImplicitNullInterop:
         case tp: TypeRef =>
           val isValueOrSpecialClass =
             tp.symbol.isValueClass
-            || tp.isRef(defn.NullClass)
             || tp.isRef(defn.NullClass)
             || tp.isRef(defn.NothingClass)
             || tp.isRef(defn.UnitClass)
