@@ -102,18 +102,19 @@ object ImplicitNullInterop {
 
     /** Should we nullify `tp` at the outermost level? */
     def needsNull(tp: Type): Boolean =
-      if outermostLevelAlreadyNullable then false
+      if outermostLevelAlreadyNullable || !tp.hasSimpleKind then false
       else tp match
-        case tp: TypeRef if !tp.hasSimpleKind
+        case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
-          || tp.symbol.isValueClass
+          !(tp.symbol.isValueClass
+          // We don't modify some special types.
           || tp.isRef(defn.NullClass)
           || tp.isRef(defn.NothingClass)
-          // We don't modify unit types.
           || tp.isRef(defn.UnitClass)
-          // We don't modify `Any` because it's already nullable.
-          || tp.isRef(defn.AnyClass) => false
-        case tp: TypeParamRef if !tp.hasSimpleKind => false
+          || tp.isRef(defn.SingletonClass)
+          || tp.isRef(defn.AnyValClass)
+          || tp.isRef(defn.AnyKindClass)
+          || tp.isRef(defn.AnyClass))
         case _ => true
 
     // We don't nullify Java varargs at the top level.
@@ -156,17 +157,19 @@ object ImplicitNullInterop {
         outermostLevelAlreadyNullable = true
         nullify(derivedAndType(tp, this(tp.tp1), this(tp.tp2)))
       case tp: TypeParamRef if needsNull(tp) => nullify(tp)
-      // In all other cases, return the type unchanged.
-      // In particular, if the type is a ConstantType, then we don't nullify it because it is the
-      // type of a final non-nullable field.
       case tp: ExprType => mapOver(tp)
-      case tp: AnnotatedType => mapOver(tp)
+      case tp: AnnotatedType =>
+        // We don't nullify the annotation part.
+        derivedAnnotatedType(tp, this(tp.underlying), tp.annot)
       case tp: OrType =>
         outermostLevelAlreadyNullable = true
         nullify(derivedOrType(tp, this(tp.tp1), this(tp.tp2)))
       case tp: RefinedType =>
         outermostLevelAlreadyNullable = true
         nullify(mapOver(tp))
+      // In all other cases, return the type unchanged.
+      // In particular, if the type is a ConstantType, then we don't nullify it because it is the
+      // type of a final non-nullable field.
       case _ => tp
     }
   }
