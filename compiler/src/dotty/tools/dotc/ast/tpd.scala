@@ -279,7 +279,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val previousParamRefs: ListBuffer[TermRef] =
           // It is ok to assign `null` here.
           // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
-          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
+          if isParamDependent then mutable.ListBuffer[TermRef]() else null.asInstanceOf[ListBuffer[TermRef]]
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
