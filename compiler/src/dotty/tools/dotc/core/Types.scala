@@ -7024,7 +7024,6 @@ object Types extends TypeUtils {
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
-      seen += tp
       tp match {
         case tp: AppliedType =>
           val tpNorm = tp.tryNormalize
@@ -7036,8 +7035,11 @@ object Types extends TypeUtils {
           apply(n, tp.superType)
         case tp: TypeParamRef =>
           apply(n, TypeComparer.bounds(tp))
-        case tp: LazyRef if seen.contains(tp) =>
-          n
+        case tp: LazyRef =>
+          if seen.contains(tp) then n
+          else
+            seen += tp
+            foldOver(n, tp)
         case _ =>
           foldOver(n, tp)
       }
