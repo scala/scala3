@@ -423,7 +423,7 @@ object CollectionStrawMan5 {
     def start: Int
     def end: Int
     def apply(i: Int): A
-    def iterator: Iterator[A] = new Iterator[A] {
+    def iterator: Iterator[A]^{this} = new Iterator[A] {
       private var current = start
       def hasNext = current < end
       def next(): A = {

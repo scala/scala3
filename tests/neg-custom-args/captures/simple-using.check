@@ -1,6 +1,6 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/simple-using.scala:8:15 ----------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/simple-using.scala:8:17 ----------------------------------
 8 |  usingLogFile { f => () => f.write(2) } // error
-  |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                 ^^^^^^^^^^^^^^^^^^^^^
   |Found:    (f: java.io.FileOutputStream^'s1) ->'s2 () ->{f} Unit
   |Required: java.io.FileOutputStream^ => () ->'s3 Unit
   |

@@ -279,12 +279,12 @@ class Definitions {
    * To achieve this, we synthesize all Any and Object methods; Object methods no longer get
    * loaded from a classfile.
    */
-  @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
+  @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract | TransparentType, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
+  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait | TransparentType, AnyType :: Nil), ensureCtor = false)
   def MatchableType: TypeRef = MatchableClass.typeRef
   @tu lazy val AnyValClass: ClassSymbol =
-    val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyType, MatchableType)))
+    val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract | TransparentType, List(AnyType, MatchableType)))
     // Mark companion as absent, so that class does not get re-completed
     val companion = ScalaPackageVal.info.decl(nme.AnyVal).symbol
     companion.moduleClass.markAbsent()
@@ -460,7 +460,7 @@ class Definitions {
   @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
     enterPermanentSymbol(tpnme.CBCompanion,
       TypeBounds(NothingType,
-        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil, Contravariant :: Nil)(
+        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil)(
           tl => TypeBounds.empty :: Nil,
           tl => AnyType))).asType
 
@@ -1996,6 +1996,8 @@ class Definitions {
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
+      case tp1: FlexibleType =>
+        asContextFunctionType(tp1.underlying)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
@@ -2060,42 +2062,12 @@ class Definitions {
     HasProblematicGetClass.contains(className)
 
   @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
-    // add these for now, until we had a chance to retrofit 2.13 stdlib
     // we should do a more through sweep through it then.
     val strs = Map(
-      "Any" -> Set("scala"),
-      "AnyVal" -> Set("scala"),
-      "Matchable" -> Set("scala"),
-      "Product" -> Set("scala"),
       "Object" -> Set("java.lang"),
       "Comparable" -> Set("java.lang"),
       "Serializable" -> Set("java.io"),
-      "BitSetOps" -> Set("scala.collection"),
-      "IndexedSeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "IterableOnceOps" -> Set("scala.collection"),
-      "IterableOps" -> Set("scala.collection"),
-      "LinearSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "MapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SortedMapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SortedOps" -> Set("scala.collection"),
-      "SortedSetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "StrictOptimizedIterableOps" -> Set("scala.collection"),
-      "StrictOptimizedLinearSeqOps" -> Set("scala.collection"),
-      "StrictOptimizedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSortedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSortedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "ArrayDequeOps" -> Set("scala.collection.mutable"),
-      "DefaultSerializable" -> Set("scala.collection.generic"),
-      "IsIterable" -> Set("scala.collection.generic"),
-      "IsIterableLowPriority" -> Set("scala.collection.generic"),
-      "IsIterableOnce" -> Set("scala.collection.generic"),
-      "IsIterableOnceLowPriority" -> Set("scala.collection.generic"),
-      "IsMap" -> Set("scala.collection.generic"),
-      "IsSeq" -> Set("scala.collection.generic"))
+    )
     strs.map { case (simple, pkgs) => (
         simple.toTypeName,
         pkgs.map(pkg => staticRef(pkg.toTermName, isPackage = true).symbol.moduleClass)

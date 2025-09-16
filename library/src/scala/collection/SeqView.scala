@@ -202,10 +202,10 @@ object SeqView {
     override def knownSize: Int = len
     override def isEmpty: Boolean = len == 0
     override def to[C1](factory: Factory[A, C1]): C1 = _sorted.to(factory)
-    override def reverse: SeqView[A] = new ReverseSorted
+    override def reverse: SeqView[A]^{this} = new ReverseSorted
     // we know `_sorted` is either tiny or has efficient random access,
     //  so this is acceptable for `reversed`
-    override protected def reversed: Iterable[A] = new ReverseSorted
+    override protected def reversed: Iterable[A]^{this} = new ReverseSorted
 
     override def sorted[B1 >: A](implicit ord1: Ordering[B1]): SeqView[A]^{this} =
       if (ord1 == this.ord) this

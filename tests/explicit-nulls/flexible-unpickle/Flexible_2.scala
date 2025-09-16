@@ -1,7 +1,8 @@
 import unsafeNulls.Foo.*
 import unsafeNulls.Unsafe_1
-import unsafeNulls.{A, B, C, F, G, H, I, J, L, M}
+import unsafeNulls.{A, B, C, F, G, H, I, J, L, M, S, T, U, expects}
 import scala.reflect.Selectable.reflectiveSelectable
+import scala.quoted.*
 
 class Inherit_1 extends Unsafe_1 {
   override def foo(s: String): String = s
@@ -33,6 +34,8 @@ case class cc()
 
 class K(val b: String) extends J(b) {
 }
+
+def typeNameMacro[A: Type](using Quotes) = Expr(Type.show[A])
 
 @main
 def Flexible_2() =
@@ -97,3 +100,12 @@ def Flexible_2() =
 
   val m: String = M.test(null)
 
+  // i23845
+  transparent inline def typeName[A]: String = ${typeNameMacro[A]}
+
+  implicit val givenT: T = ???
+  def alphaTypeNameMacro[A: S](using T) = U(S.show[A])
+  def res[A] = {
+    implicit val givenS: S[A] = ???
+    expects(alphaTypeNameMacro[A])
+  }

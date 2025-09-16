@@ -15,6 +15,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -76,7 +77,7 @@ class Completions(
         if appl.fun == funSel && sel == fun => false
       case _ => true) &&
       (adjustedPath match
-        /* In case of `class X derives TC@@` we shouldn't add `[]` 
+        /* In case of `class X derives TC@@` we shouldn't add `[]`
          */
         case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
           val pos = completionPos.toSourcePosition
@@ -215,9 +216,9 @@ class Completions(
                 case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) &&
                   !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
                   suffix.withNewPrefix(Affix(PrefixKind.Using))
-                case _ => suffix    
+                case _ => suffix
             case _ => suffix
-        
+
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then
@@ -766,6 +767,13 @@ class Completions(
     ).flatMap(_.alternatives.map(_.symbol)).toSet
   )
 
+  private lazy val EqualsClass: ClassSymbol = requiredClass("scala.Equals")
+  private lazy val ArrowAssocClass: ClassSymbol = requiredClass("scala.Predef.ArrowAssoc")
+  private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
+  private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
+  private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
+
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
       !sym.srcPos.isAfter(completionPos.originalCursorPosition) ||
@@ -784,6 +792,17 @@ class Completions(
       (sym.isField && !isJavaClass && !isModuleOrClass) || sym.getter != NoSymbol
     catch case _ => false
 
+    def isInheritedFromScalaLibrary(sym: Symbol) =
+      sym.owner == defn.AnyClass || 
+        sym.owner == defn.ObjectClass ||
+        sym.owner == defn.ProductClass ||
+        sym.owner == EqualsClass ||
+        sym.owner == ArrowAssocClass ||
+        sym.owner == EnsuringClass ||
+        sym.owner == StringFormatClass ||
+        sym == nnMethod ||
+        sym == runtimeCheckedMethod
+
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
       // symbols defined in this file are more relevant
@@ -801,7 +820,7 @@ class Completions(
         case _ =>
 
       // symbols whose owner is a base class are less relevant
-      if sym.owner == defn.AnyClass || sym.owner == defn.ObjectClass
+      if isInheritedFromScalaLibrary(sym)
       then relevance |= IsInheritedBaseMethod
       // symbols not provided via an implicit are more relevant
       if sym.is(Implicit) ||
@@ -813,7 +832,7 @@ class Completions(
       // accessors of case class members are more relevant
       if !sym.is(CaseAccessor) then relevance |= IsNotCaseAccessor
       // public symbols are more relevant
-      if !sym.isPublic then relevance |= IsNotCaseAccessor
+      if !sym.isPublic then relevance |= IsNotPublic
       // synthetic symbols are less relevant (e.g. `copy` on case classes)
       if sym.is(Synthetic) && !sym.isAllOf(EnumCase) then
         relevance |= IsSynthetic
@@ -907,7 +926,7 @@ class Completions(
       application: CompletionApplication
   ): Ordering[CompletionValue] =
     new Ordering[CompletionValue]:
-      val queryLower = completionPos.query.toLowerCase()
+      val queryLower: String = completionPos.query.toLowerCase()
       val fuzzyCache = mutable.Map.empty[CompletionValue, Int]
 
       def compareLocalSymbols(s1: Symbol, s2: Symbol): Int =

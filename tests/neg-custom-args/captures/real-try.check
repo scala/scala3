@@ -43,7 +43,7 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:32:10 ----------------------------------------------------------
 32 |  val b = try // error
    |          ^
-   |   The result of `try` cannot have type Cell[() => Unit]^'s2 since
+   |   The result of `try` cannot have type Cell[() => Unit] since
    |   the part () => Unit of that type captures the root capability `cap`.
    |   This is often caused by a locally generated exception capability leaking as part of its result.
    |

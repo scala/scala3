@@ -1427,14 +1427,11 @@ trait Applications extends Compatibility {
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.srcPos)
-
-      def newGenericArrayCall =
+      if TypeErasure.isGenericArrayArg(targ.tpe) then
         ref(defn.DottyArraysModule)
-          .select(defn.newGenericArrayMethod).withSpan(tree.span)
-          .appliedToTypeTrees(targs).appliedToTermArgs(args)
-
-      if (TypeErasure.isGeneric(targ.tpe))
-        newGenericArrayCall
+            .select(defn.newGenericArrayMethod).withSpan(tree.span)
+            .appliedToTypeTrees(targs)
+            .appliedToTermArgs(args)
       else tree
     case _ =>
       tree

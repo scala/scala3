@@ -4,5 +4,5 @@ package dotty.tools.repl
 // To test, run bin/scala
 object Main {
   def main(args: Array[String]): Unit =
-    new ReplDriver(args).tryRunning
+    new ReplDriver(args, extraPredef = ReplDriver.pprintImport).tryRunning
 }

@@ -106,7 +106,7 @@ class JLineTerminal extends java.io.Closeable {
     ) extends reader.ParsedLine {
       // Using dummy values, not sure what they are used for
       def wordIndex = -1
-      def words = java.util.Collections.emptyList[String]
+      def words: java.util.List[String] = java.util.Collections.emptyList[String]
     }
 
     def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine = {

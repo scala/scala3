@@ -19,6 +19,7 @@ import language.experimental.captureChecking
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.tailrec
+import scala.annotation.publicInBinary
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.Statics.releaseFence
@@ -661,7 +662,8 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   override def headOption: Some[A] = Some(head)
   override def tail: List[A] = next
 
-  def next$access$1 = next
+  @publicInBinary
+  private[::] def next$access$1 = next
 
 }
 

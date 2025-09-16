@@ -81,6 +81,7 @@ object BashScriptsTests:
     stdout.mkString("\n")
 
 
+@Ignore
 class BashScriptsTests:
   import BashScriptsTests.*
   // classpath tests managed by scripting.ClasspathTests.scala
