@@ -22,8 +22,14 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
+      - name: Import Scala PGP Key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
+          passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          fingerprint    : ${{ vars.SCALA_PGP_FINGERPRINT }}
       - name: Publish Artifacts to the Maven Repository
-        run : sbt scala3-bootstrapped-new/publish
+        run : sbt scala3-bootstrapped-new/publishSigned
         env:
           MAVEN_REPOSITORY_USER : ${{ secrets.MAVEN_REPOSITORY_USER }}
           MAVEN_REPOSITORY_TOKEN: ${{ secrets.MAVEN_REPOSITORY_TOKEN }}

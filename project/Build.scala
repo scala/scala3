@@ -3,7 +3,6 @@ import java.nio.file._
 import Process._
 import Modes._
 import ScaladocGeneration._
-import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys.*
 import sbt.*
 import sbt.nio.FileStamper
@@ -335,8 +334,6 @@ object Build {
         password <- sys.env.get("SONATYPE_PW")
       } yield Credentials("Sonatype Nexus Repository Manager", "central.sonatype.com", username, password)
     ).toList,
-    PgpKeys.pgpPassphrase := sys.env.get("PGP_PW").map(_.toCharArray()),
-    PgpKeys.useGpgPinentry := true,
 
     // Do not cut off the bottom of large stack traces (default is 1024)
     javaOptions ++= "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions,
