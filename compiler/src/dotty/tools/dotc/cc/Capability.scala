@@ -484,6 +484,12 @@ object Capabilities:
       case self: FreshCap => self.hiddenSet.owner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
+    final def visibility(using Context): Symbol = this match
+      case self: FreshCap => ccOwner.enclosingMethodOrClass
+      case _ =>
+        val vis = ccOwner
+        if vis.is(Param) then vis.owner else vis
+
     /** The symbol that represents the level closest-enclosing ccOwner.
      *  Symbols representing levels are
      *   - class symbols, but not inner (non-static) module classes

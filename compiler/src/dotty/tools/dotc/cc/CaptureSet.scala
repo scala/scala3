@@ -660,7 +660,7 @@ object CaptureSet:
 
   /** If true emit info when var with id debugTarget is created or gets a new element */
   inline val debugVars = false
-  inline val debugTarget = 22
+  inline val debugTarget = 1745
 
   /** The subclass of captureset variables with given initial elements */
   class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
@@ -690,6 +690,7 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"###INIT ELEMS of $id to $initialElems")
+      assert(false)
 
     def elems: Refs = myElems
     def elems_=(refs: Refs): Unit =
@@ -832,7 +833,7 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    def levelOK(elem: Capability)(using Context): Boolean = elem match
+    def levelOKold(elem: Capability)(using Context): Boolean = elem match
       case _: FreshCap =>
         !level.isDefined
         || ccState.symLevel(elem.ccOwner) <= level
@@ -864,6 +865,29 @@ object CaptureSet:
         levelOK(elem.underlying)
       case _ =>
         true
+
+    def levelOKnew(elem: Capability)(using Context): Boolean = elem match
+      case elem @ ResultCap(binder) =>
+        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
+      case GlobalCap =>
+        rootLimit == null
+      case elem: ParamRef =>
+        this.isInstanceOf[BiMapped] || isPartOf(elem.binder.resType)
+      case _ =>
+        if owner.exists then
+          val elemVis = elem.visibility
+          !elemVis.isProperlyContainedIn(owner)
+        else true
+
+    inline val debugLevelChecking = false
+
+    def levelOK(elem: Capability)(using Context): Boolean =
+      val now = levelOKnew(elem)
+      if debugLevelChecking then
+        val was = levelOKold(elem)
+        if was != now then
+          println(i"LEVEL DIFF for $this / $getClass in ${owner.ownersIterator.toList} and elem $elem in ${elem.ccOwner}, was $was")
+      now
 
     def addDependent(cs: CaptureSet)(using Context, VarState): Boolean =
       (cs eq this)

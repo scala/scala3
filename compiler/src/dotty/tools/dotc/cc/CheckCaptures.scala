@@ -28,6 +28,7 @@ import reporting.{trace, Message, OverrideError}
 import Annotations.Annotation
 import Capabilities.*
 import util.common.alwaysTrue
+import scala.annotation.constructorOnly
 
 /** The capture checker */
 object CheckCaptures:
@@ -56,7 +57,13 @@ object CheckCaptures:
       kind: EnvKind,
       captured: CaptureSet,
       outer0: Env | Null,
-      nestedClosure: Symbol = NoSymbol):
+      nestedClosure: Symbol = NoSymbol)(using @constructorOnly ictx: Context):
+
+    assert(definesEnv(owner))
+    captured match
+      case captured: CaptureSet.Var => assert(captured.owner == owner,
+        i"owner discrepancy env owner = $owner but its captureset $captured has owner ${captured.owner}")
+      case _ =>
 
     def outer = outer0.nn
 
@@ -70,6 +77,9 @@ object CheckCaptures:
         cur = cur.outer
         res
   end Env
+
+  def definesEnv(sym: Symbol)(using Context): Boolean =
+    sym.is(Method) || sym.isClass
 
   /** Similar normal substParams, but this is an approximating type map that
    *  maps parameters in contravariant capture sets to the empty set.
@@ -364,21 +374,28 @@ class CheckCaptures extends Recheck, SymTransformer:
       assert(cs1.subCaptures(cs2), i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: TypeComparer.CompareResult, prefix: => String, added: Capability | CaptureSet, target: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: TypeComparer.CompareResult,
+        prefix: => String,
+        added: Capability | CaptureSet,
+        target: CaptureSet,
+        pos: SrcPos,
+        provenance: => String = "")(using Context): Unit =
       res match
         case TypeComparer.CompareResult.Fail(notes) =>
-          val ((res: IncludeFailure) :: Nil, otherNotes) =
-            notes.partition(_.isInstanceOf[IncludeFailure]): @unchecked
+          val (includeFailures, otherNotes) = notes.partition(_.isInstanceOf[IncludeFailure])
+          val realTarget = includeFailures match
+            case (fail: IncludeFailure) :: _ => fail.cs
+            case _ => target
           def msg(provisional: Boolean) =
             def toAdd: String = errorNotes(otherNotes).toAdd.mkString
             def descr: String =
-              val d = res.cs.description
+              val d = realTarget.description
               if d.isEmpty then provenance else ""
             def kind = if provisional then "previously estimated\n" else "allowed "
-            em"$prefix included in the ${kind}capture set ${res.cs}$descr$toAdd"
+            em"$prefix included in the ${kind}capture set $realTarget$descr$toAdd"
           target match
             case target: CaptureSet.Var
-            if res.cs.isProvisionallySolved =>
+            if realTarget.isProvisionallySolved =>
               report.warning(
                 msg(provisional = true)
                   .prepend(i"Another capture checking run needs to be scheduled because\n"),
@@ -413,7 +430,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
         if sym.isTerm || !sym.owner.isStaticOwner
-        then CaptureSet.Var(sym.owner, level = ccState.symLevel(sym))
+        then CaptureSet.Var(sym, level = ccState.symLevel(sym))
         else CaptureSet.empty)
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
@@ -535,6 +552,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               then avoidLocalCapability(c, env, lastEnv)
               else avoidLocalReachCapability(c, env)
             isVisible
+          //println(i"Include call or box capture $included from $cs in ${env.owner}/${env.captured}/${env.captured.owner}/${env.kind}")
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
@@ -1151,11 +1169,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           .map(e => (e.owner, e))
           .toMap
         def restoreEnvFor(sym: Symbol): Env =
-          val localSet = capturedVars(sym)
-          if localSet eq CaptureSet.empty then rootEnv
-          else envForOwner.get(sym) match
-            case Some(e) => e
-            case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
+          if definesEnv(sym) then
+            val localSet = capturedVars(sym)
+            if localSet eq CaptureSet.empty then rootEnv
+            else envForOwner.get(sym) match
+              case Some(e) => e
+              case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
+          else restoreEnvFor(sym.owner)
         curEnv = restoreEnvFor(sym.owner)
         capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
         try recheckDef(tree, sym)
