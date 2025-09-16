@@ -68,14 +68,15 @@ object ImplicitNullInterop:
     if isEnumValueDef || sym.name == nme.TYPE_ || sym.is(Flags.ModuleVal) then
       return tp
 
-    // Skip result type for `toString`, constructors, and @NotNull methods
+    // Don't nullify result type for `toString`, constructors, and @NotNull methods
     val skipResultType = sym.name == nme.toString_ || sym.isConstructor || hasNotNullAnnot(sym)
-    // Don't nullify parameter types for Scala-defined methods since those are already nullified
-    val skipParamTypes = sym.is(Method) && !sym.is(Flags.JavaDefined)
-    // Skip Given/implicit parameters
+    // Don't nullify Given/implicit parameters
     val skipCurrentLevel = sym.isOneOf(GivenOrImplicitVal)
 
-    val map = new ImplicitNullMap(skipResultType = skipResultType, skipParamTypes = skipParamTypes, skipCurrentLevel = skipCurrentLevel)
+    val map = new ImplicitNullMap(
+      javaDefined = sym.is(JavaDefined),
+      skipResultType = skipResultType,
+      skipCurrentLevel = skipCurrentLevel)
     map(tp)
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
@@ -85,15 +86,14 @@ object ImplicitNullInterop:
    *  coming from Scala code compiled without explicit nulls, this adds `| Null` or `FlexibleType` in the
    *  right places to make nullability explicit in a conservative way (without forcing incomplete symbols).
    *
+   *  @param javaDefined        whether the type is from Java source, we always nullify type param refs from Java
    *  @param skipResultType     do not nullify the method result type at the outermost level (e.g. for `toString`,
    *                            constructors, or methods annotated as not-null)
-   *  @param skipParamTypes     do not nullify parameter types for the current method (used for Scala-defined methods
-   *                            or specific parameter sections)
    *  @param skipCurrentLevel   do not nullify at the current level (used for implicit/Given parameters, varargs, etc.)
    */
   private class ImplicitNullMap(
+      val javaDefined: Boolean,
       var skipResultType: Boolean = false,
-      var skipParamTypes: Boolean = false,
       var skipCurrentLevel: Boolean = false
     )(using Context) extends TypeMap:
 
@@ -109,6 +109,7 @@ object ImplicitNullInterop:
       if skipCurrentLevel || !tp.hasSimpleKind then false
       else tp.dealias match
         case tp: TypeRef =>
+          // We don't modify value types because they're non-nullable even in Java.
           val isValueOrSpecialClass =
             tp.symbol.isValueClass
             || tp.isRef(defn.NullClass)
@@ -117,8 +118,9 @@ object ImplicitNullInterop:
             || tp.isRef(defn.SingletonClass)
             || tp.isRef(defn.AnyKindClass)
             || tp.isRef(defn.AnyClass)
-          // We don't modify value types because they're non-nullable even in Java.
-          tp.symbol.isNullableClassAfterErasure && !isValueOrSpecialClass
+          !isValueOrSpecialClass && (javaDefined || tp.symbol.isNullableClassAfterErasure)
+        case tp: TypeParamRef =>
+          javaDefined
         case _ => false
 
     // We don't nullify varargs (repeated parameters) at the top level.
@@ -136,6 +138,8 @@ object ImplicitNullInterop:
     override def apply(tp: Type): Type = tp match
       case tp: TypeRef if needsNull(tp) =>
         nullify(tp)
+      case tp: TypeParamRef if needsNull(tp) =>
+        nullify(tp)
       case appTp @ AppliedType(tycon, targs) =>
         val savedSkipCurrentLevel = skipCurrentLevel
 
@@ -151,9 +155,8 @@ object ImplicitNullInterop:
       case mtp: MethodType =>
         val savedSkipCurrentLevel = skipCurrentLevel
 
-        // Skip param types for implicit/using sections
-        val skipThisParamList = skipParamTypes || mtp.isImplicitMethod
-        skipCurrentLevel = skipThisParamList
+        // Don't nullify param types for implicit/using sections
+        skipCurrentLevel = mtp.isImplicitMethod
         val paramInfos2 = mtp.paramInfos.map(this)
 
         skipCurrentLevel = skipResultType
