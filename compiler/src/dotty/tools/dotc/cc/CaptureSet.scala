@@ -76,11 +76,6 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this set provisionally solved, so that another cc run might unfreeze it? */
   def isProvisionallySolved(using Context): Boolean
 
-  /** An optional level limit, or undefinedLevel if none exists. All elements of the set
-   *  must be at levels equal or smaller than the level of the set, if it is defined.
-   */
-  def level: Level
-
   /** An optional owner, or NoSymbol if none exists. Used for diagnstics
    */
   def owner: Symbol
@@ -607,8 +602,6 @@ object CaptureSet:
 
     def withDescription(description: String): Const = Const(elems, description)
 
-    def level = undefinedLevel
-
     def owner = NoSymbol
 
     def dropEmpties()(using Context) = this
@@ -663,7 +656,7 @@ object CaptureSet:
   inline val debugTarget = 1745
 
   /** The subclass of captureset variables with given initial elements */
-  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
+  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, underBox: Boolean = false)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
 
     override def owner = initialOwner
 
@@ -833,40 +826,7 @@ object CaptureSet:
             case _ => foldOver(b, t)
       find(false, binder)
 
-    def levelOKold(elem: Capability)(using Context): Boolean = elem match
-      case _: FreshCap =>
-        !level.isDefined
-        || ccState.symLevel(elem.ccOwner) <= level
-        || {
-          capt.println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
-          false
-        }
-      case elem @ ResultCap(binder) =>
-        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
-      case GlobalCap =>
-        rootLimit == null
-      case elem: TermRef if level.isDefined =>
-        elem.prefix match
-          case prefix: Capability =>
-            levelOK(prefix)
-          case _ =>
-            ccState.symLevel(elem.symbol) <= level
-      case elem: ThisType if level.isDefined =>
-        ccState.symLevel(elem.cls).nextInner <= level
-      case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
-        isPartOf(elem.binder.resType)
-        || {
-          capt.println(
-            i"""LEVEL ERROR $elem for $this
-                |elem binder = ${elem.binder}""")
-          false
-        }
-      case elem: DerivedCapability =>
-        levelOK(elem.underlying)
-      case _ =>
-        true
-
-    def levelOKnew(elem: Capability)(using Context): Boolean = elem match
+    def levelOK(elem: Capability)(using Context): Boolean = elem match
       case elem @ ResultCap(binder) =>
         rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
       case GlobalCap =>
@@ -878,16 +838,6 @@ object CaptureSet:
           val elemVis = elem.visibility
           !elemVis.isProperlyContainedIn(owner)
         else true
-
-    inline val debugLevelChecking = false
-
-    def levelOK(elem: Capability)(using Context): Boolean =
-      val now = levelOKnew(elem)
-      if debugLevelChecking then
-        val was = levelOKold(elem)
-        if was != now then
-          println(i"LEVEL DIFF for $this / $getClass in ${owner.ownersIterator.toList} and elem $elem in ${elem.ccOwner}, was $was")
-      now
 
     def addDependent(cs: CaptureSet)(using Context, VarState): Boolean =
       (cs eq this)
@@ -968,15 +918,9 @@ object CaptureSet:
      */
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
-      val debugInfo =
-        if !ctx.settings.YccDebug.value then ""
-        else if isConst then ids ++ "(solved)"
-        else ids
-      val limitInfo =
-        if ctx.settings.YprintLevel.value && level.isDefined
-        then i"<at level ${level.toString}>"
-        else ""
-      debugInfo ++ limitInfo
+      if !ctx.settings.YccDebug.value then ""
+      else if isConst then ids ++ "(solved)"
+      else ids
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -1378,7 +1322,7 @@ object CaptureSet:
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
         if levelError then
-          i"($elem at wrong level for $cs at level ${cs.level.toString})"
+          i"($elem at wrong level for $cs in ${cs.owner.showLocated})"
         else
           if ctx.settings.YccDebug.value
           then i"$elem cannot be included in $trace"

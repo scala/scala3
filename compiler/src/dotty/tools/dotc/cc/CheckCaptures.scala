@@ -430,7 +430,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
         if sym.isTerm || !sym.owner.isStaticOwner
-        then CaptureSet.Var(sym, level = ccState.symLevel(sym))
+        then CaptureSet.Var(sym)
         else CaptureSet.empty)
 
 // ---- Record Uses with MarkFree ----------------------------------------------------
@@ -1091,14 +1091,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
-        ccState.inNestedLevel: // TODO: nestedLevel needed here?
-          try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
-          finally
-            if !sym.isAnonymousFunction then
-              // Anonymous functions propagate their type to the enclosing environment
-              // so it is not in general sound to interpolate their types.
-              interpolateIfInferred(tree.tpt, sym)
-            curEnv = saved
+        try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
+        finally
+          if !sym.isAnonymousFunction then
+            // Anonymous functions propagate their type to the enclosing environment
+            // so it is not in general sound to interpolate their types.
+            interpolateIfInferred(tree.tpt, sym)
+          curEnv = saved
     end recheckDefDef
 
     /** If val or def definition with inferred (result) type is visible
@@ -1228,8 +1227,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
-        ccState.inNestedLevelUnless(cls.is(Module)):
-          super.recheckClassDef(tree, impl, cls)
+        super.recheckClassDef(tree, impl, cls)
       finally
         completed += cls
         curEnv = saved
@@ -1311,7 +1309,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
           curEnv = Env(curEnv.owner, EnvKind.Boxed,
-            CaptureSet.Var(curEnv.owner, level = ccState.currentLevel), curEnv)
+            CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>
       val res =
         try
@@ -1577,7 +1575,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             curEnv = Env(
               curEnv.owner,
               if boxed then EnvKind.Boxed else EnvKind.NestedInOwner,
-              CaptureSet.Var(curEnv.owner, level = ccState.currentLevel),
+              CaptureSet.Var(curEnv.owner),
               if boxed then null else curEnv)
             try
               val (eargs, eres) = expected.dealias.stripCapturing match

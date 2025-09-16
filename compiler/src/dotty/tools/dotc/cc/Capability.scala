@@ -16,7 +16,6 @@ import CaptureSet.VarState
 import Annotations.Annotation
 import Flags.*
 import config.Printers.capt
-import CCState.{Level, undefinedLevel}
 import annotation.constructorOnly
 import ast.tpd
 import printing.{Printer, Showable}
