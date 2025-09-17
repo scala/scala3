@@ -3426,9 +3426,10 @@ object Parsers {
         }
         if mods1.is(Local) then
           val span = Span(startOffset, in.lastOffset)
+          val p = if mods1.is(Private) then "private" else "protected"
           report.errorOrMigrationWarning(
               em"""Ignoring [this] qualifier.
-                  |This syntax will be deprecated in the future; it should be dropped.
+                  |The syntax `$p[this]` will be deprecated in the future; just write `$p` instead.
                   |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
               in.sourcePos().withSpan(span),
               MigrationVersion.RemoveThisQualifier)
