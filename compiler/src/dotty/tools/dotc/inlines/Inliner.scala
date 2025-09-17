@@ -394,6 +394,11 @@ class Inliner(val call: tpd.Tree)(using Context):
       case (from, to) if from.symbol == ref.symbol && from =:= ref => to
     }
 
+  private def mapRefBack(ref: TermRef): Option[TermRef] =
+    opaqueProxies.collectFirst {
+      case (from, to) if to.symbol == ref.symbol && to =:= ref => from
+    }
+
   /** If `tp` contains TermRefs that refer to objects with opaque
    *  type aliases, add proxy definitions to `opaqueProxies` that expose these aliases.
    */
@@ -437,6 +442,22 @@ class Inliner(val call: tpd.Tree)(using Context):
               case _ => t
           }
     )
+
+  /** Map back all TermRefs that match the right element in `opaqueProxies` to the
+   *  corresponding left element.
+   *  E.g. for a previously created
+   *   `val proxy$1 = Time {type OpaqueInt = Int}` as part of the ongoing inlining
+   *  a `List[proxy$1.OpaqueInt]` will be mapped back into a `List[Time.OpaqueInt]`.
+   */
+  protected val mapBackToOpaques = TreeTypeMap(
+    typeMap = new TypeMap:
+      override def stopAt = StopAt.Package
+      def apply(t: Type) = mapOver {
+        t match
+          case ref: TermRef => mapRefBack(ref).getOrElse(ref)
+          case _ => t
+      }
+  )
 
   /** If `binding` contains TermRefs that refer to objects with opaque
    *  type aliases, add proxy definitions that expose these aliases
@@ -486,6 +507,48 @@ class Inliner(val call: tpd.Tree)(using Context):
     || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && inlinedMethod.isContainedIn(tpe.cls))
 
   private def adaptToPrefix(tp: Type) = tp.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
+
+  def thisTypeProxyExists = !thisProxy.isEmpty
+
+  /** Maps a type that includes a thisProxy (e.g. `TermRef(NoPrefix,val Foo$_this)`)
+   *  by reading the defTree belonging to that thisProxy (`val Foo$_this: Foo.type = AnotherProxy`)
+   *  back into its original reference (`AnotherProxy`, which is directly or indirectly a refinement on `Foo`)
+   *
+   *  Usually when we end up with another proxy like this, we will be able to further unwrap it back
+   *  into `Foo` with mapBackToOpaques, but, for nested transparent inline calls, `AnotherProxy` will be
+   *  a proxy created by inlining the outer calls, that we might not be able to further unwrap this way
+   *  (as those proxies will not be a part of opaqueProxies created during this inlining).
+   *  We leave that as it is and treat this behavior as intended (see documentation with an example in
+   *  `Opaque Types in Transparent Inline Methods` section in `opaques-details.md`),
+   *  as we might need those opaques to have visible right hand sides for successful
+   *  typechecking of the outer inline call.
+   */
+  val thisTypeUnpacker =
+    TreeTypeMap(
+      typeMap = new TypeMap:
+        override def stopAt = StopAt.Package
+        def apply(t: Type) = mapOver {
+          t match
+            case a: TermRef if thisProxy.values.exists(_ == a) =>
+              a.termSymbol.defTree match
+                case untpd.ValDef(a, tpt, _) => tpt.tpe
+            case _ => t
+        }
+  )
+
+  /** Returns the result type of the Inlined code block after removing thisProxy and opaqueProxy TermRefs.
+   *  E.g. for an Inlined tree returning Block of type `Option[Foo$_this.OpaqueInt]`,
+   *  and for proxies:
+   *  ```
+   *  val $proxy1: Foo.type{type OpaqueInt = Int} = = ...
+   *  val Foo$_this: ($proxy1 : Foo.type{type OpaqueInt = Int}) = ...
+   *  ```
+   *  the method will return: `Foo.OpaqueInt`
+   */
+  def unpackProxiesFromResultType(inlined: Inlined): Type =
+    if thisTypeProxyExists then mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+    else inlined.tpe
+
 
   /** Populate `thisProxy` and `paramProxy` as follows:
    *
