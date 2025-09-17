@@ -559,14 +559,6 @@ object MiMaFilters {
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.compose"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.andThen"),
 
-          // This issue only arise in the non-bootstrapped stdlib
-          // It has to do with the fact that the special erasure of Pure was handled such as
-          // `scala.Pure`, not `scala.caps.Pure`. This filter should be removed once we move to 3.8.1
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.Map.from"),
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.SeqMap.from"),
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.Map.from"),
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.SeqMap.from"),
-
           // TO INVESTIGATE: This constructor changed, but it is private... why complaining?
           ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.immutable.LazyList.this"),
           // This one should be fine, public class inside private object
