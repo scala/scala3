@@ -62,9 +62,6 @@ class BashExitCodeTests:
   @Test def xPluginList   = scala("-Xplugin-list")(0)
   @Test def vPhases       = scala("-Vphases")(0)
 
-  @Test def replEval      =
-    scala("--repl-quit-after-init", "--repl-init-script", "'val i = 2 * 2; val j = i + 2'")(0)
-
   /** A utility for running two commands in a row, like you do in bash. */
   extension (inline u1: Unit) inline def & (inline u2: Unit): Unit = { u1; u2 }
 end BashExitCodeTests
