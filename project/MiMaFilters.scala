@@ -572,15 +572,6 @@ object MiMaFilters {
           // This one should be fine, public class inside private object
           ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.LazyList#LazyBuilder#DeferredState.eval"),
 
-          // MIX IN FORWARDERS ISSUE (SHOULD BE FIXED WHEN WE REMERGE THE PR)
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.prepended"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.appended"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.appendedAll"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.prependedAll"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.padTo"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.immutable.StrictOptimizedSeqOps.updated"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.immutable.StrictOptimizedSeqOps.patch"),
-
           // NO IDEA FOR NOW :)
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.mutable.ArrayDequeOps.scala$collection$mutable$ArrayDequeOps$$super$sliding"),
         ),
