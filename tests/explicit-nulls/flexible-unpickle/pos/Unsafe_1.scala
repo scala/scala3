@@ -84,3 +84,13 @@ class T
 class U[Y](a: Y)
 def expects(take: (T) ?=> U[String]) = ???
 
+// i23935
+object ZIO:
+  def attempt[A](code: => A): ZIO[Any, Throwable, A] = ???
+
+trait ZIO[-R, +E, +A]:
+  final def flatten[R1 <: R, E1 >: E, B](using A IsSubtypeOfOutput ZIO[R1, E1, B]): ZIO[R1, E1, B] = ???
+
+infix sealed abstract class IsSubtypeOfOutput[-A, +B]
+object IsSubtypeOfOutput:
+  given [A, B](using A <:< B): IsSubtypeOfOutput[A, B] = ???

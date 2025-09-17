@@ -115,3 +115,8 @@ def Flexible_2() =
     expects(alphaTypeNameMacro[A])
   }
 
+// i23935
+opaque type ZArrow[-I, -R, +E, +O] = I => ZIO[R, E, O]
+object ZArrow:
+  def fromZIOAttempt[I, R, E, O](f: I => ZIO[R, E, O]): ZArrow[I, R, Throwable | E, O] =
+    (in: I) => ZIO.attempt(f(in)).flatten
