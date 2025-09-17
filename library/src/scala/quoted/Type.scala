@@ -1,5 +1,7 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.annotation.{compileTimeOnly, experimental}
 
 /** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */

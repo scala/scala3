@@ -329,6 +329,15 @@ object RefChecks {
 
     val mixinOverrideErrors = new mutable.ListBuffer[MixinOverrideError]()
 
+    /** Returns a `SourcePosition` containing the full span (with the correct
+     *  end) of the class name. */
+    def clazzNamePos =
+      if clazz.name == tpnme.ANON_CLASS then
+        clazz.srcPos
+      else
+        val clazzNameEnd = clazz.srcPos.span.start + clazz.name.stripModuleClassSuffix.lastPart.length
+        clazz.srcPos.sourcePos.copy(span = clazz.srcPos.span.withEnd(clazzNameEnd))
+
     def printMixinOverrideErrors(): Unit =
       mixinOverrideErrors.toList match {
         case Nil =>
@@ -703,10 +712,16 @@ object RefChecks {
         // to consolidate getters and setters.
         val grouped = missing.groupBy(_.underlyingSymbol.name)
 
+        def isDuplicateSetter(sym: Symbol): Boolean =
+          sym.isSetter && {
+            val field = sym.accessedFieldOrGetter
+            grouped.getOrElse(field.name, Nil).contains(field)
+          }
+
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
             lastOverrides(syms)
-              .filterConserve(!_.isSetter)
+              .filterConserve(!isDuplicateSetter(_)) // Avoid reporting override error for both `x` and setter `x_=`
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
@@ -908,7 +923,7 @@ object RefChecks {
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazz.srcPos)
+        report.error(abstractErrorMessage, clazzNamePos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -1179,6 +1194,18 @@ object RefChecks {
           report.warning(ExtensionNullifiedByMember(sym, target), sym.srcPos)
   end checkExtensionMethods
 
+  /** Check that public (and protected) methods/fields do not expose flexible types. */
+  def checkPublicFlexibleTypes(sym: Symbol)(using Context): Unit =
+    if ctx.explicitNulls && !ctx.isJava
+        && sym.exists && !sym.is(Private) && sym.owner.isClass
+        && !sym.isOneOf(Synthetic | InlineProxy | Param | Exported) then
+      val resTp = sym.info.finalResultType
+      if resTp.existsPart(_.isInstanceOf[FlexibleType], StopAt.Static) then
+        report.warning(
+          em"${sym.show} exposes a flexible type in its inferred result type ${resTp}. Consider annotating the type explicitly",
+          sym.srcPos
+        )
+
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
    */
@@ -1315,6 +1342,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       val sym = tree.symbol
       checkNoPrivateOverrides(sym)
       checkVolatile(sym)
+      checkPublicFlexibleTypes(sym)
       if (sym.exists && sym.owner.isTerm) {
         tree.rhs match {
           case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.srcPos)
@@ -1330,6 +1358,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkImplicitNotFoundAnnotation.defDef(sym.denot)
     checkUnaryMethods(sym)
     checkExtensionMethods(sym)
+    checkPublicFlexibleTypes(sym)
     tree
   }
 

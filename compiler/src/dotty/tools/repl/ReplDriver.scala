@@ -77,7 +77,8 @@ case class State(objectIndex: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
-                 classLoader: Option[ClassLoader] = None) extends Driver:
+                 classLoader: Option[ClassLoader] = None,
+                 extraPredef: String = "") extends Driver:
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -122,9 +123,10 @@ class ReplDriver(settings: Array[String],
   final def initialState: State =
     val emptyState = State(0, 0, Map.empty, Set.empty, false, rootCtx)
     val initScript = rootCtx.settings.replInitScript.value(using rootCtx)
-    initScript.trim() match
-      case "" => emptyState
-      case script => run(script)(using emptyState)
+    val combinedScript = initScript.trim() match
+      case "" => extraPredef
+      case script => s"$extraPredef\n$script"
+    run(combinedScript)(using emptyState)
 
   /** Reset state of repl to the initial state
    *
@@ -638,3 +640,5 @@ class ReplDriver(settings: Array[String],
     case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
 
 end ReplDriver
+object ReplDriver:
+  def pprintImport = "import dotty.shaded.pprint.pprintln\n"

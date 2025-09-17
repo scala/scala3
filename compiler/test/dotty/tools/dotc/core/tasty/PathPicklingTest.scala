@@ -30,7 +30,7 @@ class PathPicklingTest {
     val out = JFile("out/testPathPickling")
     val cwd = JFile("").getAbsolutePath()
     delete(out)
-    out.mkdir()
+    out.mkdirs()
 
     locally {
       val ignorantProcessLogger = ProcessLogger(_ => ())

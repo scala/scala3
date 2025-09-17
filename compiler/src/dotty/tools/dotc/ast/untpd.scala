@@ -411,6 +411,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit src: SourceFile): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new Match(selector, cases)
   def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new InlineMatch(selector, cases)
+  def SubMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): SubMatch = new SubMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit src: SourceFile): CaseDef = new CaseDef(pat, guard, body)
   def Labeled(bind: Bind, expr: Tree)(implicit src: SourceFile): Labeled = new Labeled(bind, expr)
   def Return(expr: Tree, from: Tree)(implicit src: SourceFile): Return = new Return(expr, from)
@@ -549,6 +550,18 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
       annot.putAttachment(RetainsAnnot, ())
     Annotated(parent, annot)
+
+  def makeReachAnnot()(using Context): Tree =
+    New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil)
+
+  def makeReadOnlyAnnot()(using Context): Tree =
+    New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil)
+
+  def makeOnlyAnnot(qid: Tree)(using Context) =
+    New(AppliedTypeTree(ref(defn.OnlyCapabilityAnnot.typeRef), qid :: Nil), Nil :: Nil)
+
+  def makeConsumeAnnot()(using Context): Tree =
+    New(ref(defn.ConsumeAnnot.typeRef), Nil :: Nil)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)

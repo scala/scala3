@@ -4,6 +4,8 @@
    |               Found:    (C.this : C^{C.this.x})
    |               Required: C
    |
+   |               Note that capability C.this.x is not included in capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/cc-this.scala:12:15 -----------------------------------------------------------
 12 |  class C2(val x: () => Int): // error

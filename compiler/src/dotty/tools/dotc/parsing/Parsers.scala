@@ -35,6 +35,7 @@ import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
 import dotty.tools.dotc.util.chaining.*
+import dotty.tools.dotc.config.Feature.ccEnabled
 
 object Parsers {
 
@@ -214,9 +215,10 @@ object Parsers {
     def isIdent(name: Name) = in.isIdent(name)
     def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
-    def isErased = isIdent(nme.erased) && in.erasedEnabled
-    // Are we seeing an `erased` soft keyword that will not be an identifier?
-    def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
+    def isErased =
+      isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
+    def isConsume =
+      isIdent(nme.consume) && ccEnabled //\&& in.isSoftModifierInParamModifierPosition
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -393,10 +395,9 @@ object Parsers {
       syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(`3.0-migration`, option)}""", span)
 
     def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
-      if (in.newSyntax) {
-        if (in.rewrite) return true
-        syntaxVersionError("-new-syntax", span)
-      }
+      if in.newSyntax then
+        if in.rewrite then return true
+        syntaxVersionError("-new-syntax or -language:future", span)
       false
     }
 
@@ -1589,24 +1590,35 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` `rd`] -- under captureChecking
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
+     *  CapFilter   ::=  `.` `as` `[` QualId `]`
      */
     def captureRef(): Tree =
 
-      def derived(ref: Tree, name: TermName) =
-        in.nextToken()
-        atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
+      def derived(ref: Tree): Tree =
+        atSpan(startOffset(ref)):
+          if in.isIdent(nme.raw.STAR) then
+            in.nextToken()
+            Annotated(ref, makeReachAnnot())
+          else if in.isIdent(nme.rd) then
+            in.nextToken()
+            Annotated(ref, makeReadOnlyAnnot())
+          else if in.isIdent(nme.only) then
+            in.nextToken()
+            Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
+          else assert(false)
 
       def recur(ref: Tree): Tree =
         if in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) then derived(ref, nme.CC_READONLY)
+          if in.isIdent(nme.rd) || in.isIdent(nme.only) then derived(ref)
           else recur(selector(ref))
         else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref, nme.CC_REACH)
-          if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+          val reachRef = derived(ref)
+          val next = in.lookahead
+          if in.token == DOT && (next.isIdent(nme.rd) || next.isIdent(nme.only)) then
             in.nextToken()
-            derived(reachRef, nme.CC_READONLY)
+            derived(reachRef)
           else reachRef
         else ref
 
@@ -1725,8 +1737,8 @@ object Parsers {
         else
           val paramStart = in.offset
           def addErased() =
-            erasedArgs.addOne(isErasedKw)
-            if isErasedKw then in.skipToken()
+            erasedArgs.addOne(isErased)
+            if isErased then in.skipToken()
           addErased()
           val args =
             in.currentRegion.withCommasExpected:
@@ -2007,15 +2019,19 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if !inMatchPattern then
-            report.errorOrMigrationWarning(
-              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
-              in.sourcePos(),
-              MigrationVersion.WildcardType)
-            if MigrationVersion.WildcardType.needsPatch then
-              patch(source, Span(in.offset, in.offset + 1), "?")
-          end if
+            val msg =
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}"
+            report.errorOrMigrationWarning(msg, in.sourcePos(), MigrationVersion.WildcardType)
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
+            .tap: tbt =>
+              if !inMatchPattern && MigrationVersion.WildcardType.needsPatch then
+                val offset_? = tbt.span.start
+                if Chars.isOperatorPart(source(offset_? + 1)) then
+                  patch(source, tbt.span, "?" + ctx.printer.toText(tbt).mkString())
+                else
+                  patch(source, Span(offset_?, offset_? + 1), "?")
+
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
       else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.XkindProjector.value == "underscores" then
@@ -2357,6 +2373,7 @@ object Parsers {
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  PrefixOperator SimpleExpr `=' Expr
+     *                      |  InfixExpr id [nl] `=' Expr                  -- only if language.postfixOps is enabled
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  ‘inline’ InfixExpr MatchClause
@@ -2377,6 +2394,9 @@ object Parsers {
       val start = in.offset
       in.token match
         case IMPLICIT =>
+          report.errorOrMigrationWarning(
+            em"`implicit` lambdas are no longer supported, use a lambda with `?=>` instead",
+            in.sourcePos(), MigrationVersion.Scala2Implicits)
           closure(start, location, modifiers(BitSet(IMPLICIT)))
         case LBRACKET =>
           val start = in.offset
@@ -2509,7 +2529,7 @@ object Parsers {
     def expr1Rest(t: Tree, location: Location): Tree =
       if in.token == EQUALS then
         t match
-          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) =>
+          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) | PostfixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
               val loc = if location.inArgs then location else Location.ElseWhere
               Assign(t, subPart(() => expr(loc)))
@@ -2556,7 +2576,7 @@ object Parsers {
       }
     }
 
-    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]  -- Scala 2 compat
      *     `if' Expr `then' Expr [[semi] else Expr]
      */
     def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
@@ -2569,11 +2589,52 @@ object Parsers {
         mkIf(cond, thenp, elsep)
       }
 
+    /* When parsing (what will become) a sub sub match, that is,
+     * when in a guard of case of a match, in a guard of case of a match;
+     * we will eventually reach Scanners.handleNewLine at the end of the sub sub match
+     * with an in.currretRegion of the shape `InCase +: Indented :+ InCase :+ Indented :+ ...`
+     * if we did not do dropInnerCaseRegion.
+     * In effect, a single outdent would be inserted by handleNewLine after the sub sub match.
+     * This causes the remaining cases of the outer match to be included in the intermediate sub match.
+     * For example:
+     *    match
+     *      case x1 if x1 match
+     *        case y if y match
+     *          case z => "a"
+     *      case x2 => "b"
+     * would become
+     *    match
+     *      case x1 if x1 match {
+     *        case y if y match {
+     *          case z => "a"
+     *        }
+     *        case x2 => "b"
+     *     }
+     * This issue is avoided by dropping the `InCase` region when parsing match clause,
+     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * Note that this _could_ break previous code which relied on matches within guards
+     * being considered as a separate region without explicit indentation.
+     */
+    private def dropInnerCaseRegion(): Unit =
+      in.currentRegion match
+        case Indented(width, prefix, Scanners.InCase(r)) => in.currentRegion = Indented(width, prefix, r)
+        case Scanners.InCase(r) => in.currentRegion = r
+        case _ =>
+
     /**    MatchClause ::= `match' `{' CaseClauses `}'
+     *                   | `match' ExprCaseClause
      */
     def matchClause(t: Tree): Match =
       atSpan(startOffset(t), in.skipToken()) {
-        Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
+        val cases =
+          if in.featureEnabled(Feature.subCases) then
+            dropInnerCaseRegion()
+            if in.token == CASE
+            then caseClause(exprOnly = true) :: Nil // single case without new line
+            else inBracesOrIndented(caseClauses(() => caseClause()))
+          else
+            inBracesOrIndented(caseClauses(() => caseClause()))
+        Match(t, cases)
       }
 
     /**    `match' <<< TypeCaseClauses >>>
@@ -2622,7 +2683,7 @@ object Parsers {
      */
     def binding(mods: Modifiers): Tree =
       atSpan(in.offset) {
-        val mods1 = if isErasedKw then addModifier(mods) else mods
+        val mods1 = if isErased then addModifier(mods) else mods
         makeParameter(bindingName(), typedOpt(), mods1)
       }
 
@@ -2825,7 +2886,7 @@ object Parsers {
       else in.currentRegion.withCommasExpected {
         var isFormalParams = false
         def exprOrBinding() =
-          if isErasedKw then isFormalParams = true
+          if isErased then isFormalParams = true
           if isFormalParams then binding(Modifiers())
           else
             val t = maybeNamed(exprInParens)()
@@ -3076,24 +3137,46 @@ object Parsers {
       buf.toList
     }
 
-    /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
-     *  ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
+    /** CaseClause        ::= ‘case’ Pattern [Guard] (‘if’ InfixExpr MatchClause | `=>' Block)
+     *  ExprCaseClause    ::= ‘case’ Pattern [Guard] (‘if’ InfixExpr MatchClause | `=>' Expr)
      */
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {
         accept(CASE)
         (withinMatchPattern(pattern()), guard())
       }
-      CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then
-          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
-            warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
-                        |If this is intended, it should be indented for clarity.
-                        |Otherwise, if the handler is intended to be empty, use a multi-line catch with
-                        |an indented case.""")
-          expr()
-        else block()
-      })
+      var grd1 = grd // may be reset to EmptyTree (and used as sub match body instead) if there is no leading ARROW
+      val tok = in.token
+
+      extension (self: Tree) def asSubMatch: Tree = self match
+        case Match(sel, cases) if in.featureEnabled(Feature.subCases) =>
+          if in.isStatSep then in.nextToken() // else may have been consumed by sub sub match
+          SubMatch(sel, cases)
+        case _ =>
+          syntaxErrorOrIncomplete(ExpectedTokenButFound(ARROW, tok))
+          atSpan(self.span)(Block(Nil, EmptyTree))
+
+      val body = tok match
+        case ARROW => atSpan(in.skipToken()):
+          if exprOnly then
+            if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+              warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
+                          |If this is intended, it should be indented for clarity.
+                          |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                          |an indented case.""")
+            expr()
+          else block()
+        case IF => atSpan(in.skipToken()):
+          // a sub match after a guard is parsed the same as one without
+          val t = inSepRegion(InCase)(postfixExpr(Location.InGuard))
+          t.asSubMatch
+        case other =>
+          // the guard is reinterpreted as a sub-match when there is no leading IF or ARROW token
+          val t = grd1.asSubMatch
+          grd1 = EmptyTree
+          t
+
+      CaseDef(pat, grd1, body)
     }
 
     /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
@@ -3309,11 +3392,15 @@ object Parsers {
     private def addModifier(mods: Modifiers): Modifiers = {
       val tok = in.token
       val name = in.name
-      val mod = atSpan(in.skipToken()) { modOfToken(tok, name) }
-
-      if mods.isOneOf(mod.flags) then
-        syntaxError(RepeatedModifier(mod.flags.flagsString, source, mod.span), mod.span)
-      addMod(mods, mod)
+      if isConsume then
+        val consumeAnnot = atSpan(in.skipToken())(makeConsumeAnnot())
+        mods.withAddedAnnotation(consumeAnnot)
+      else
+        val mod = atSpan(in.skipToken()):
+          modOfToken(tok, name)
+        if mods.isOneOf(mod.flags) then
+          syntaxError(RepeatedModifier(mod.flags.flagsString, source, mod.span), mod.span)
+        addMod(mods, mod)
     }
 
     def addFlag(mods: Modifiers, flag: FlagSet): Modifiers =
@@ -3539,7 +3626,8 @@ object Parsers {
      *  UsingParamClause  ::=  ‘(’ ‘using’ (DefTermParams | ContextTypes) ‘)’
      *  DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
      *  DefTermParams     ::=  DefTermParam {‘,’ DefTermParam}
-     *  DefTermParam      ::=  {Annotation} [‘erased’] [‘inline’] Param
+     *  DefTermParam      ::=  {Annotation} TermParamMods Param
+     *  TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
      *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
@@ -3557,11 +3645,17 @@ object Parsers {
 
       def paramMods() =
         if in.token == IMPLICIT then
+          report.errorOrMigrationWarning(
+            em"`implicit` parameters are no longer supported, use a `using` clause instead${rewriteNotice(`future-migration`)}",
+            in.sourcePos(), MigrationVersion.Scala2Implicits)
+          val startImplicit = in.offset
           addParamMod(() =>
             if ctx.settings.YimplicitToGiven.value then
               patch(Span(in.lastOffset - 8, in.lastOffset), "using")
             Mod.Implicit()
           )
+          if MigrationVersion.Scala2Implicits.needsPatch then
+            patch(source, Span(startImplicit, in.lastOffset), "using")
         else if isIdent(nme.using) then
           if initialMods.is(Given) then
             syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
@@ -3570,7 +3664,7 @@ object Parsers {
       def param(): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
-        if isErasedKw then
+        if isConsume || isErased then
           mods = addModifier(mods)
         if paramOwner.isClass then
           mods = addFlag(modifiers(start = mods), ParamAccessor)
@@ -3642,6 +3736,7 @@ object Parsers {
                 var mods = EmptyModifiers
                 if in.lookahead.isColon then
                   (mods, true)
+                else if isConsume then (mods, true)
                 else
                   if isErased then mods = addModifier(mods)
                   val paramsAreNamed =
@@ -4169,18 +4264,21 @@ object Parsers {
       finalizeDef(ModuleDef(name, templ), mods, start)
     }
 
-    private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
-      // We allow `infix to mark the `enum`s type as infix.
-      // Syntax rules disallow the soft infix modifier on `case`s.
-      val mods1 = mods & (AccessFlags | Enum | Infix)
-      if mods1 ne mods then
-        syntaxError(em"Only access modifiers are allowed on enum $where")
-      mods1
+    private def checkAccessOnly(mods: Modifiers, caseStr: String): Modifiers =
+      // We allow `infix` and `into` on `enum` definitions.
+      // Syntax rules disallow these soft infix modifiers on `case`s.
+      val flags = mods.flags
+      var flags1 = flags
+      for mod <- mods.mods do
+        if !mod.flags.isOneOf(AccessFlags | Enum | Infix | Into) then
+          syntaxError(em"This modifier is not allowed on an enum$caseStr", mod.span)
+          flags1 = flags1 &~ mod.flags
+      if flags1 != flags then mods.withFlags(flags1) else mods
 
     /**  EnumDef ::=  id ClassConstr InheritClauses EnumBody
      */
     def enumDef(start: Offset, mods: Modifiers): TypeDef = atSpan(start, nameStart) {
-      val mods1 = checkAccessOnly(mods, "definitions")
+      val mods1 = checkAccessOnly(mods, "")
       val modulName = ident()
       val clsName = modulName.toTypeName
       val constr = classConstr(ParamOwner.Class)
@@ -4191,7 +4289,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = checkAccessOnly(mods, "cases") | EnumCase
+      val mods1 = checkAccessOnly(mods, " case") | EnumCase
       accept(CASE)
 
       atSpan(start, nameStart) {
@@ -4366,7 +4464,7 @@ object Parsers {
           accept(EQUALS)
           mods1 |= Final
           if !hasParams && !mods.is(Inline) then
-            mods1 |= Lazy
+            if !mods.is(Erased) then mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, subExpr())
@@ -4595,6 +4693,10 @@ object Parsers {
     def packaging(start: Int): Tree =
       val pkg = qualId()
       possibleTemplateStart()
+      if in.token != INDENT && in.token != LBRACE then
+        val prefix = "':' or "
+        val suffix = "\nNested package statements that are not at the beginning of the file require braces or ':' with an indented body."
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token, prefix = prefix, suffix = suffix), in.lastOffset)
       val stats = inDefScopeBraces(topStatSeq(), rewriteWithColon = true)
       makePackaging(start, pkg, stats)
 
@@ -4769,6 +4871,9 @@ object Parsers {
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
+          report.errorOrMigrationWarning(
+            em"`implicit` lambdas are no longer supported, use a lambda with `?=>` instead",
+            in.sourcePos(), MigrationVersion.Scala2Implicits)
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()

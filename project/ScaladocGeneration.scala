@@ -141,6 +141,10 @@ object ScaladocGeneration {
     def key: String = "-dynamic-side-menu"
   }
 
+  case class SuppressCC(value: Boolean) extends Arg[Boolean] {
+    def key: String = "-suppressCC"
+  }
+
   import _root_.scala.reflect._
 
   trait GenerationConfig {

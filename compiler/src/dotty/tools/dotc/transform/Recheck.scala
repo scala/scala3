@@ -165,11 +165,12 @@ abstract class Recheck extends Phase, SymTransformer:
        *  from the current type.
        */
       def setNuType(tpe: Type): Unit =
-        if nuTypes.lookup(tree) == null then updNuType(tpe)
+        if nuTypes.lookup(tree) == null && (tpe ne tree.tpe) then
+          updNuType(tpe)
 
       /** Set new type of the tree unconditionally. */
       def updNuType(tpe: Type): Unit =
-        if tpe ne tree.tpe then nuTypes(tree) = tpe
+        nuTypes(tree) = tpe
 
       /** The new type of the tree, or if none was installed, the original type */
       def nuType(using Context): Type =
@@ -183,10 +184,10 @@ abstract class Recheck extends Phase, SymTransformer:
 
     /** If true, remember the new types of nodes in this compilation unit
      *  as an attachment in the unit's tpdTree node. By default, this is
-     *  enabled when -Xprint:cc is set. Can be overridden.
+     *  enabled when -Vprint:cc is set. Can be overridden.
      */
     def keepNuTypes(using Context): Boolean =
-      ctx.settings.Xprint.value.containsPhase(thisPhase)
+      ctx.settings.Vprint.value.containsPhase(thisPhase)
 
     def resetNuTypes()(using Context): Unit =
       nuTypes.clear(resetToInitial = false)
@@ -247,6 +248,12 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context): Type =
       recheckSelection(tree, qualType, name, sharpen = identity[Denotation])
 
+    def recheckThis(tree: This, pt: Type)(using Context): Type =
+      tree.tpe
+
+    def recheckSuper(tree: Super, pt: Type)(using Context): Type =
+      tree.tpe
+
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
         recheck(body, pt)
@@ -269,7 +276,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       inContext(linkConstructorParams(sym).withOwner(sym)):
         val resType = recheck(tree.tpt)
-        if tree.rhs.isEmpty || sym.isInlineMethod || sym.isEffectivelyErased
+        if tree.rhs.isEmpty || sym.isInlineMethod
         then resType
         else recheck(tree.rhs, resType)
 
@@ -369,25 +376,21 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
-    private def recheckBlock(stats: List[Tree], expr: Tree)(using Context): Type =
+    private def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =
       recheckStats(stats)
-      val exprType = recheck(expr)
+      val exprType = recheck(expr, pt)
       TypeOps.avoid(exprType, localSyms(stats).filterConserve(_.isTerm))
 
     def recheckBlock(tree: Block, pt: Type)(using Context): Type = tree match
-      case Block(Nil, expr: Block) => recheckBlock(expr, pt)
       case Block((mdef : DefDef) :: Nil, closure: Closure) =>
         recheckClosureBlock(mdef, closure.withSpan(tree.span), pt)
-      case Block(stats, expr) => recheckBlock(stats, expr)
-        // The expected type `pt` is not propagated. Doing so would allow variables in the
-        // expected type to contain references to local symbols of the block, so the
-        // local symbols could escape that way.
+      case Block(stats, expr) => recheckBlock(stats, expr, pt)
 
     def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
-      recheckBlock(mdef :: Nil, expr)
+      recheckBlock(mdef :: Nil, expr, pt)
 
     def recheckInlined(tree: Inlined, pt: Type)(using Context): Type =
-      recheckBlock(tree.bindings, tree.expansion)(using inlineContext(tree))
+      recheckBlock(tree.bindings, tree.expansion, pt)(using inlineContext(tree))
 
     def recheckIf(tree: If, pt: Type)(using Context): Type =
       recheck(tree.cond, defn.BooleanType)
@@ -486,12 +489,15 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckStats(tree.stats)
       NoType
 
+    def recheckStat(stat: Tree)(using Context): Unit =
+      recheck(stat)
+
     def recheckStats(stats: List[Tree])(using Context): Unit =
       @tailrec def traverse(stats: List[Tree])(using Context): Unit = stats match
         case (imp: Import) :: rest =>
           traverse(rest)(using ctx.importContext(imp, imp.symbol))
         case stat :: rest =>
-          recheck(stat)
+          recheckStat(stat)
           traverse(rest)
         case _ =>
       traverse(stats)
@@ -539,7 +545,9 @@ abstract class Recheck extends Phase, SymTransformer:
       def recheckUnnamed(tree: Tree, pt: Type): Type = tree match
         case tree: Apply => recheckApply(tree, pt)
         case tree: TypeApply => recheckTypeApply(tree, pt)
-        case _: New | _: This | _: Super | _: Literal => tree.tpe
+        case tree: This => recheckThis(tree, pt)
+        case tree: Super => recheckSuper(tree, pt)
+        case _: New | _: Literal => tree.tpe
         case tree: Typed => recheckTyped(tree)
         case tree: Assign => recheckAssign(tree)
         case tree: Block => recheckBlock(tree, pt)

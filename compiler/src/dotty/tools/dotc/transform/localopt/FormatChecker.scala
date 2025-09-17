@@ -116,7 +116,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       case Nil =>
 
     loop(parts, n = 0)
-    if reported then (Nil, Nil)
+    if reported then (Nil, Nil) // on error, Transform.checked will revert to unamended inputs
     else
       assert(argc == actuals.size, s"Expected ${argc} args but got ${actuals.size} for [${parts.mkString(", ")}]")
       (amended.toList, actuals.toList)
@@ -228,8 +228,20 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       case _ => true
 
     def lintToString(arg: Type): Unit =
-      if ctx.settings.Whas.toStringInterpolated && kind == StringXn && !(arg.widen =:= defn.StringType) && !arg.isPrimitiveValueType
-      then warningAt(CC)("interpolation uses toString")
+      def checkIsStringify(tp: Type): Boolean = tp.widen match
+        case OrType(tp1, tp2) =>
+          checkIsStringify(tp1) || checkIsStringify(tp2)
+        case tp =>
+          !(tp =:= defn.StringType)
+          && {
+              tp =:= defn.UnitType
+              && { warningAt(CC)("interpolated Unit value"); true }
+            ||
+              !tp.isPrimitiveValueType
+              && { warningAt(CC)("interpolation uses toString"); true }
+          }
+      if ctx.settings.Whas.toStringInterpolated && kind == StringXn then
+        checkIsStringify(arg): Unit
 
     // what arg type if any does the conversion accept
     def acceptableVariants: List[Type] =
@@ -308,5 +320,4 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
         .tap(_ => reported = true)
     def partWarning(message: String, index: Int, offset: Int, end: Int): Unit =
       r.warning(BadFormatInterpolation(message), partPosAt(index, offset, end))
-        .tap(_ => reported = true)
 end TypedFormatChecker

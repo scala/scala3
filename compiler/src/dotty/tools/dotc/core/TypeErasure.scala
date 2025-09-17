@@ -109,9 +109,9 @@ object TypeErasure {
         case _ => -1
 
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
+    if (defn.specialErasure.contains(cls))
+      return defn.specialErasure(cls).uncheckedNN
     if (cls.owner == defn.ScalaPackageClass) {
-      if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls).uncheckedNN
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }
@@ -385,6 +385,12 @@ object TypeErasure {
     case tp: OrType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
     case _ => false
   }
+
+  /** Is `tp` of the form `Array^N[T]` where T is generic? */
+  def isGenericArrayArg(tp: Type)(using Context): Boolean = tp.dealias match
+    case defn.ArrayOf(elem) => isGenericArrayArg(elem)
+    case _ => isGeneric(tp)
+  end isGenericArrayArg
 
   /** The erased least upper bound of two erased types is computed as follows
    *  - if both argument are arrays of objects, an array of the erased lub of the element types
@@ -697,7 +703,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         val (names, formals0) = if tp.hasErasedParams then
           tp.paramNames
             .zip(tp.paramInfos)
-            .zip(tp.erasedParams)
+            .zip(tp.paramErasureStatuses)
             .collect{ case (param, isErased) if !isErased => param }
             .unzip
         else (tp.paramNames, tp.paramInfos)

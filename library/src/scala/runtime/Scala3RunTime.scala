@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 object Scala3RunTime:
 
   // Called by inline def assert's. Extracted to minimize the bytecode size at call site.

@@ -20,15 +20,9 @@ def blacklistsOnlyContainsClassesThatExist() =
     loadBlacklisted.diff(scalaLibTastyPathsSet).mkString(
       "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
 
-def dottyVersion =
-  System.getProperty("java.class.path").nn.split(pathSeparator).collectFirst {
-    case path if path.endsWith(".jar") && path.contains("scala3-library_3-") =>
-      path.split("scala3-library_3-").last.stripSuffix(".jar")
-  }.get
-
 def scalaLibClassesPath =
   java.nio.file.Paths.get(
-    s"out/bootstrap/scala2-library-bootstrapped/scala-$dottyVersion-nonbootstrapped/classes".replace("/", separator))
+    s"library/target/scala-library-bootstrapped/classes".replace("/", separator))
 
 lazy val scalaLibTastyPaths =
   new Directory(scalaLibClassesPath).deepFiles

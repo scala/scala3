@@ -270,15 +270,15 @@ object Types extends TypeUtils {
     /** True if this type is an instance of the given `cls` or an instance of
      *  a non-bottom subclass of `cls`.
      */
-    final def derivesFrom(cls: Symbol)(using Context): Boolean = {
+    final def derivesFrom(cls: Symbol, defaultIfUnknown: Boolean = false)(using Context): Boolean = {
       def isLowerBottomType(tp: Type) =
         tp.isBottomType
         && (tp.hasClassSymbol(defn.NothingClass)
             || cls != defn.NothingClass && !cls.isValueClass)
-      def loop(tp: Type): Boolean = tp match {
+      def loop(tp: Type): Boolean = try tp match
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType)
+          if (sym.isClass) sym.derivesFrom(cls, defaultIfUnknown) else loop(tp.superType)
         case tp: AppliedType =>
           tp.superType.derivesFrom(cls)
         case tp: MatchType =>
@@ -301,7 +301,7 @@ object Types extends TypeUtils {
           cls == defn.ObjectClass
         case _ =>
           false
-      }
+      catch case ex: Throwable => handleRecursive(i"derivesFrom $cls:", show, ex)
       loop(this)
     }
 
@@ -345,6 +345,8 @@ object Types extends TypeUtils {
      */
     def isSingletonBounded(frozen: Boolean)(using Context): Boolean = this.dealias.normalized match
       case tp: SingletonType => tp.isStable
+      case tp: TypeParamRef =>
+        ctx.typerState.constraint.bounds(tp).hi.isSingletonBounded(frozen)
       case tp: TypeRef =>
         tp.name == tpnme.Singleton && tp.symbol == defn.SingletonClass
         || tp.superType.isSingletonBounded(frozen)
@@ -352,7 +354,7 @@ object Types extends TypeUtils {
         if frozen then tp frozen_<:< defn.SingletonType else tp <:< defn.SingletonType
       case tp: HKTypeLambda => false
       case tp: TypeProxy => tp.superType.isSingletonBounded(frozen)
-      case AndType(tpL, tpR) => tpL.isSingletonBounded(frozen) || tpR.isSingletonBounded(frozen)
+      case tp: AndType => tp.tp1.isSingletonBounded(frozen) || tp.tp2.isSingletonBounded(frozen)
       case _ => false
 
     /** Is this type of kind `AnyKind`? */
@@ -464,6 +466,14 @@ object Types extends TypeUtils {
       case AppliedType(tycon: TypeRef, arg :: Nil) => defn.isInto(tycon.symbol)
       case _ => false
 
+    /** Is this type of the form `<context-bound-companion>[Ref1] & ... & <context-bound-companion>[RefN]`?
+     *  Where the intersection may be introduced by `NamerOps.addContextBoundCompanionFor`
+     *  or by inheriting multiple context bound companions for the same name.
+     */
+    def isContextBoundCompanion(using Context): Boolean = this.widen match
+      case AndType(tp1, tp2) => tp1.isContextBoundCompanion.ensuring(_ == tp2.isContextBoundCompanion)
+      case tp => tp.typeSymbol == defn.CBCompanion
+
     /** Is this type a legal target type for an implicit conversion, so that
      *  no `implicitConversions` language import is necessary?
      */
@@ -472,7 +482,7 @@ object Types extends TypeUtils {
         case tp: TypeRef =>
           (tp.symbol.isClass || tp.symbol.isOpaqueAlias) && tp.symbol.is(Into)
         case tp @ AppliedType(tycon, _) =>
-          isInto || tycon.isConversionTargetType
+          tp.isInto || tycon.isConversionTargetType
         case tp: AndOrType =>
           tp.tp1.isConversionTargetType && tp.tp2.isConversionTargetType
         case tp: TypeVar =>
@@ -847,6 +857,8 @@ object Types extends TypeUtils {
           goOr(tp)
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
+        case tp: WildcardType =>
+          go(tp.bounds)
         case err: ErrorType =>
           newErrorSymbol(pre.classSymbol.orElse(defn.RootClass), name, err.msg)
         case _ =>
@@ -1046,6 +1058,23 @@ object Types extends TypeUtils {
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf.toList
     }
+
+    /** For use in quotes reflect.
+     *  A bit slower than the usual approach due to the use of LinkedHashSet.
+     **/
+    def sortedParents(using Context): mutable.LinkedHashSet[Type] = this match
+      case tp: ClassInfo =>
+        mutable.LinkedHashSet(tp) | mutable.LinkedHashSet(tp.declaredParents.flatMap(_.sortedParents.toList)*)
+      case tp: RefinedType =>
+        tp.parent.sortedParents
+      case tp: TypeProxy =>
+        tp.superType.sortedParents
+      case tp: AndType =>
+        tp.tp1.sortedParents | tp.tp2.sortedParents
+      case tp: OrType =>
+        tp.tp1.sortedParents & tp.tp2.sortedParents
+      case _ =>
+        mutable.LinkedHashSet()
 
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(using Context): Seq[SingleDenotation] = {
@@ -1867,6 +1896,8 @@ object Types extends TypeUtils {
         t
       case t @ SAMType(_, _) =>
         t
+      case ft: FlexibleType =>
+        ft.underlying.findFunctionType
       case _ =>
         NoType
 
@@ -2302,7 +2333,7 @@ object Types extends TypeUtils {
     def _1: Type
     def _2: Designator
 
-    assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
+    if !NamedType.validPrefix(prefix) then throw InvalidPrefix()
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
@@ -3067,6 +3098,8 @@ object Types extends TypeUtils {
       apply(prefix, designatorFor(prefix, name, denot)).withDenot(denot)
   }
 
+  class InvalidPrefix extends Exception
+
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
   /** The type cls.this
@@ -3405,7 +3438,7 @@ object Types extends TypeUtils {
     override def underlying(using Context): Type = hi
 
     def derivedFlexibleType(hi: Type)(using Context): Type =
-      if hi eq this.hi then this else FlexibleType(hi)
+      if hi eq this.hi then this else FlexibleType.make(hi)
 
     override def computeHash(bs: Binders): Int = doHash(bs, hi)
 
@@ -3413,7 +3446,9 @@ object Types extends TypeUtils {
   }
 
   object FlexibleType {
-    def apply(tp: Type)(using Context): FlexibleType = tp match {
+    def apply(tp: Type)(using Context): FlexibleType =
+      assert(tp.isValueType, s"Should not flexify ${tp}")
+      tp match {
       case ft: FlexibleType => ft
       case _ =>
         // val tp1 = tp.stripNull()
@@ -3433,6 +3468,15 @@ object Types extends TypeUtils {
         // rule.
         FlexibleType(OrNull(tp), tp)
     }
+
+    def make(tp: Type)(using Context): Type =
+      tp match
+        case _: FlexibleType => tp
+        case TypeBounds(lo, hi) => TypeBounds(FlexibleType.make(lo), FlexibleType.make(hi))
+        case wt: WildcardType => wt.optBounds match
+          case tb: TypeBounds => WildcardType(FlexibleType.make(tb).asInstanceOf[TypeBounds])
+          case _ => wt
+        case other => FlexibleType(tp)
   }
 
   // --- AndType/OrType ---------------------------------------------------------------
@@ -3720,6 +3764,7 @@ object Types extends TypeUtils {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
+  /** Common base trait of MethodType, PolyType and ExprType */
   trait MethodicType extends TermType:
     def resType: Type
 
@@ -3931,7 +3976,7 @@ object Types extends TypeUtils {
           case tp: MethodType =>
             val params = if (hasErasedParams)
               tp.paramInfos
-                .zip(tp.erasedParams)
+                .zip(tp.paramErasureStatuses)
                 .collect { case (param, isErased) if !isErased => param }
             else tp.paramInfos
             resultSignature.prependTermParams(params, sourceLanguage)
@@ -4163,7 +4208,7 @@ object Types extends TypeUtils {
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
 
-    def erasedParams(using Context): List[Boolean] =
+    def paramErasureStatuses(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
     def nonErasedParamCount(using Context): Int =
@@ -6278,6 +6323,10 @@ object Types extends TypeUtils {
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
+      case Restricted(c1, cls) =>
+        mapCapability(c1) match
+          case c2: Capability => c2.restrict(cls)
+          case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
       case ReadOnly(c1) =>
         assert(!deep)
         mapCapability(c1) match
@@ -6478,9 +6527,30 @@ object Types extends TypeUtils {
   abstract class ApproximatingTypeMap(using Context) extends TypeMap { thisMap =>
 
     protected def range(lo: Type, hi: Type): Type =
-      if (variance > 0) hi
-      else if (variance < 0) lo
-      else if (lo `eq` hi) lo
+      if variance > 0 then hi
+      else if variance < 0 then
+        if (lo eq defn.NothingType) then
+          // Approximate by Nothing & hi instead of just Nothing, in case the
+          // approximated type is used as the prefix of another type (this would
+          // lead to a type with a `NoDenotation` denot and a possible
+          // MissingType in `TypeErasure#sigName`).
+          //
+          // Note that we cannot simply check for a `Nothing` prefix in
+          // `derivedSelect`, because the substitution might be done lazily (for
+          // example if Nothing is the type of a parameter being depended on in
+          // a MethodType)
+          //
+          // Test case in tests/pos/i23530.scala (and tests/pos/i23627.scala for
+          // the higher-kinded case which requires eta-expansion)
+          hi.etaExpand match
+            case expandedHi: HKTypeLambda =>
+              expandedHi.derivedLambdaType(resType = AndType(lo, expandedHi.resType))
+            case _ =>
+              // simple-kinded case
+              AndType(lo, hi)
+        else
+          lo
+      else if lo `eq` hi then lo
       else Range(lower(lo), upper(hi))
 
     protected def emptyRange = range(defn.NothingType, defn.AnyType)

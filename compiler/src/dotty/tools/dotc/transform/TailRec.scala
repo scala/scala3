@@ -4,9 +4,9 @@ package transform
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.em
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import Constants.Constant
-import NameKinds.{TailLabelName, TailLocalName, TailTempName}
+import NameKinds.{DefaultGetterName, TailLabelName, TailLocalName, TailTempName}
 import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
@@ -325,7 +325,14 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
-        if (isRecursiveCall)
+        if isRecursiveCall then
+          if ctx.settings.Whas.recurseWithDefault then
+            tree.args.find(_.symbol.name.is(DefaultGetterName)) match
+            case Some(arg) =>
+              val DefaultGetterName(_, index) = arg.symbol.name: @unchecked
+              report.warning(RecurseWithDefault(calledMethod.info.firstParamNames(index)), tree.srcPos)
+            case _ =>
+
           if (inTailPosition) {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
@@ -346,7 +353,10 @@ class TailRec extends MiniPhase {
               case prefix: This if prefix.symbol == enclosingClass =>
                 // Avoid assigning `this = this`
                 assignParamPairs
-              case prefix if prefix.symbol.is(Module) && prefix.symbol.moduleClass == enclosingClass =>
+              case prefix
+              if prefix.symbol.is(Module)
+              && prefix.symbol.moduleClass == enclosingClass
+              && isPurePath(prefix) =>
                 // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>

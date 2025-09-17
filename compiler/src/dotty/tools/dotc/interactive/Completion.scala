@@ -324,15 +324,15 @@ object Completion:
    *   8. symbol is not a constructor proxy module when in type completion mode
    *   9. have same term/type kind as name prefix given so far
    */
-  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean =
-
+  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean = try
     lazy val isEnum = sym.is(Enum) ||
       (sym.companionClass.exists && sym.companionClass.is(Enum))
 
     sym.exists &&
     !sym.isAbsent(canForce = false) &&
     !sym.isPrimaryConstructor &&
-    sym.sourceSymbol.exists &&
+      // running sourceSymbol on ExportedTerm will force a lot of computation from collectSubTrees
+    (sym.is(ExportedTerm) || sym.sourceSymbol.exists) &&
     (!sym.is(Package) || sym.is(ModuleClass)) &&
     !sym.isAllOf(Mutable | Accessor) &&
     !sym.isPackageObject &&
@@ -343,6 +343,9 @@ object Completion:
          (completionMode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
       || (completionMode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
     )
+  catch
+    case NonFatal(ex) =>
+      false
   end isValidCompletionSymbol
 
   given ScopeOrdering(using Context): Ordering[Seq[SingleDenotation]] with
@@ -612,8 +615,9 @@ object Completion:
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val extMethodsInScope = scopeCompletions.names.toList.flatMap:
-        case (name, denots) => denots.collect:
-          case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
+        case (name, denots) =>
+          denots.collect:
+            case d if d.isTerm && d.symbol.is(Extension) => (d.symbol.termRef, name.asTermName)
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
       val givensInScope = ctx.implicits.eligible(defn.AnyType).map(_.implicitRef.underlyingRef)

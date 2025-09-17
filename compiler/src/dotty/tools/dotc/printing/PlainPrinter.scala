@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import ast.tpd
+import ast.{tpd, untpd}
 import cc.*
 import CaptureSet.Mutability
 import Capabilities.*
@@ -137,6 +137,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     keywordText("erased ").provided(isErased)
     ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
+    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -172,10 +173,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
       val core: Text =
-        if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
+        if !cs.isConst && cs.elems.isEmpty then cs.asVar.repr.show
+        else
+          Str("'").provided(ccVerbose && !cs.isConst)
+           ~ "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
-           ~ Str("?").provided(ccVerbose && !cs.isConst)
            ~ Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
       core ~ cs.optionalInfo
 
@@ -242,8 +244,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           selectionString(tp)
         else
           toTextPrefixOf(tp) ~ selectionString(tp)
-      case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
         val suffix =
           if showNestingLevel then
@@ -284,9 +284,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed && ccVerbose
         if elideCapabilityCaps
-            && parent.derivesFrom(defn.Caps_Capability)
+            && parent.derivesFromCapability
             && refs.containsTerminalCapability
-            && refs.isReadOnly
+            && (!parent.derivesFromExclusive || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
       case tp @ RetainingType(parent, refSet) =>
@@ -378,11 +378,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     finally elideCapabilityCaps = saved
 
   /** Print the annotation that are meant to be on the parameter symbol but was moved
-   * to parameter types. Examples are `@use` and `@consume`. */
+   * to parameter types. Examples are `@use` and `@consume`.
+   */
   protected def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
     Str(s"@${sym.name} ").provided(tp.hasAnnotation(sym))
 
-  protected def paramsText(lam: LambdaType): Text = {
+  def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
       keywordText("erased ").provided(erased)
@@ -459,14 +460,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (idx >= 0) selfRecName(idx + 1)
         else "{...}.this" // TODO move underlying type to an addendum, e.g. ... z3 ... where z3: ...
       case tp: SkolemType =>
-        if (homogenizedView) toText(tp.info)
-        else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
-        else toText(tp.repr)
+        def reprStr = toText(tp.repr) ~ hashStr(tp)
+        if homogenizedView then
+          toText(tp.info)
+        else if ctx.settings.XprintTypes.value then
+          "<" ~ reprStr ~ ":" ~ toText(tp.info) ~ ">"
+        else
+          reprStr
     }
   }
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
+    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalCap => "cap"
@@ -480,7 +486,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
     case c: FreshCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
-      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ ">"
+      def classified =
+        if c.hiddenSet.classifier == defn.AnyClass then ""
+        else s" classified as ${c.hiddenSet.classifier.name.show}"
+      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
       else "cap"
     case tp: TypeProxy =>
       homogenize(tp) match
@@ -707,8 +716,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ => literalText(String.valueOf(const.value))
   }
 
-  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
-  def annotText(annot: Annotation): Text = s"@${annot.symbol.name}"
+  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter, which also
+   *  looks at trees.
+   */
+  override def annotText(annot: Annotation): Text = annotText(annot.symbol)
+
+  protected def annotText(sym: Symbol): Text = s"@${sym.name}"
 
   def toText(annot: Annotation): Text = annot.toText(this)
 

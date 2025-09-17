@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 final class TupleXXL private (es: IArray[Object]) extends Product {
   assert(es.length > 22)
 

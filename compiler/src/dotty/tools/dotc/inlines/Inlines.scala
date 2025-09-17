@@ -100,7 +100,7 @@ object Inlines:
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree)(using Context): Tree =
+  def inlineCall(tree: Tree)(using Context): Tree = ctx.profiler.onInlineCall(tree.symbol):
     if tree.symbol.denot != SymDenotations.NoDenotation
       && tree.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then

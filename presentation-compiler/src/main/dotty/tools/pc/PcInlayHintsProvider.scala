@@ -17,6 +17,9 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.NameOps.fieldName
+import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -36,11 +39,11 @@ class PcInlayHintsProvider(
     symbolSearch: SymbolSearch,
 )(using ReportContext):
 
-  val uri = params.uri().nn
-  val filePath = Paths.get(uri).nn
-  val sourceText = params.text().nn
-  val text = sourceText.toCharArray().nn
-  val source =
+  val uri: java.net.URI = params.uri()
+  val filePath: java.nio.file.Path = Paths.get(uri)
+  val sourceText: String = params.text()
+  val text: Array[Char] = sourceText.toCharArray()
+  val source: SourceFile =
     SourceFile.virtual(filePath.toString, sourceText)
   driver.run(uri, source)
   given InlayHintsParams = params
@@ -51,7 +54,7 @@ class PcInlayHintsProvider(
   val pos = driver.sourcePosition(params)
 
   def provide(): List[InlayHint] =
-    val deepFolder = DeepFolder[InlayHints](collectDecorations)
+    val deepFolder = PcCollector.DeepFolderWithParent[InlayHints](collectDecorations)
     Interactive
       .pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
       .headOption
@@ -65,11 +68,23 @@ class PcInlayHintsProvider(
   def collectDecorations(
       inlayHints: InlayHints,
       tree: Tree,
+      parent: Option[Tree]
   ): InlayHints =
+    // XRay hints are not mutually exclusive with other hints, so they must be matched separately
+    val firstPassHints = (tree, parent) match {
+      case XRayModeHint(tpe, pos) =>
+        inlayHints.addToBlock(
+          adjustPos(pos).toLsp,
+          LabelPart(": ") :: toLabelParts(tpe, pos),
+          InlayHintKind.Type
+        )
+      case _ => inlayHints
+    }
+    
     tree match
       case ImplicitConversion(symbol, range) =>
         val adjusted = adjustPos(range)
-        inlayHints
+        firstPassHints
           .add(
             adjusted.startPos.toLsp,
             labelPart(symbol, symbol.decodedName) :: LabelPart("(") :: Nil,
@@ -81,17 +96,17 @@ class PcInlayHintsProvider(
             InlayHintKind.Parameter,
           )
       case ImplicitParameters(trees, pos) =>
-        inlayHints.add(
+        firstPassHints.add(
           adjustPos(pos).toLsp,
           ImplicitParameters.partsFromImplicitArgs(trees).map((label, maybeSymbol) =>
              maybeSymbol match
                case Some(symbol) => labelPart(symbol, label)
                case None => LabelPart(label)
            ),
-           InlayHintKind.Parameter
+          InlayHintKind.Parameter,
         )
       case ValueOf(label, pos) =>
-        inlayHints.add(
+        firstPassHints.add(
           adjustPos(pos).toLsp,
           LabelPart("(") :: LabelPart(label) :: List(LabelPart(")")),
           InlayHintKind.Parameter,
@@ -99,7 +114,7 @@ class PcInlayHintsProvider(
       case TypeParameters(tpes, pos, sel)
           if !syntheticTupleApply(sel) =>
         val label = tpes.map(toLabelParts(_, pos)).separated("[", ", ", "]")
-        inlayHints.add(
+        firstPassHints.add(
           adjustPos(pos).endPos.toLsp,
           label,
           InlayHintKind.Type,
@@ -107,39 +122,55 @@ class PcInlayHintsProvider(
       case InferredType(tpe, pos, defTree)
           if !isErrorTpe(tpe) =>
         val adjustedPos = adjustPos(pos).endPos
-        if inlayHints.containsDef(adjustedPos.start) then inlayHints
+        if firstPassHints.containsDef(adjustedPos.start) then firstPassHints
         else
-          inlayHints
+          firstPassHints
             .add(
               adjustedPos.toLsp,
               LabelPart(": ") :: toLabelParts(tpe, pos),
               InlayHintKind.Type,
             )
             .addDefinition(adjustedPos.start)
-      case ByNameParameters(byNameParams) =>
-        def adjustByNameParameterPos(pos: SourcePosition): SourcePosition =
-          val adjusted = adjustPos(pos)
-          val start = text.indexWhere(!_.isWhitespace, adjusted.start)
-          val end = text.lastIndexWhere(!_.isWhitespace, adjusted.end - 1)
+      case Parameters(isInfixFun, args) =>
+        def isNamedParam(pos: SourcePosition): Boolean =
+          val start = text.indexWhere(!_.isWhitespace, pos.start)
+          val end = text.lastIndexWhere(!_.isWhitespace, pos.end - 1)
 
+          text.slice(start, end).contains('=')
+
+        def isBlockParam(pos: SourcePosition): Boolean =
+          val start = text.indexWhere(!_.isWhitespace, pos.start)
+          val end = text.lastIndexWhere(!_.isWhitespace, pos.end - 1)
           val startsWithBrace = text.lift(start).contains('{')
           val endsWithBrace = text.lift(end).contains('}')
 
-          if startsWithBrace && endsWithBrace then
-            adjusted.withStart(start + 1)
-          else
-            adjusted
+          startsWithBrace && endsWithBrace
 
-        byNameParams.foldLeft(inlayHints) {
-          case (ih, pos) => 
-            val adjusted = adjustByNameParameterPos(pos)
-            ih.add(
-              adjusted.startPos.toLsp,
-              List(LabelPart("=> ")),
-              InlayHintKind.Parameter
-            )
+        def adjustBlockParamPos(pos: SourcePosition): SourcePosition =
+            pos.withStart(pos.start + 1)
+
+
+        args.foldLeft(firstPassHints) {
+          case (ih, (name, pos0, isByName)) =>
+            val pos = adjustPos(pos0)
+            val isBlock = isBlockParam(pos)
+            val namedLabel =
+              if params.namedParameters() && !isInfixFun && !isBlock && !isNamedParam(pos) then s"${name} = " else ""
+            val byNameLabel =
+              if params.byNameParameters() && isByName && (!isInfixFun || isBlock) then "=> " else ""
+
+            val labelStr = s"${namedLabel}${byNameLabel}"
+            val hintPos = if isBlock then adjustBlockParamPos(pos) else pos
+
+            if labelStr.nonEmpty then
+                ih.add(
+                  hintPos.startPos.toLsp,
+                  List(LabelPart(labelStr)),
+                  InlayHintKind.Parameter,
+                )
+            else ih
         }
-      case _ => inlayHints
+      case _ => firstPassHints
 
   private def toLabelParts(
       tpe: Type,
@@ -412,27 +443,115 @@ object InferredType:
 
 end InferredType
 
-object ByNameParameters:
-  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[List[SourcePosition]] =
-    def shouldSkipSelect(sel: Select) = 
-      isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply
+object Parameters:
+  def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context): Option[(Boolean, List[(Name, SourcePosition, Boolean)])] =
+    def shouldSkipFun(fun: Tree)(using Context): Boolean =
+      fun match
+        case sel: Select => isForComprehensionMethod(sel) || sel.symbol.name == nme.unapply || sel.symbol.is(Flags.JavaDefined)
+        case _ => false
 
-    if (params.byNameParameters()){
+    def isInfixFun(fun: Tree, args: List[Tree])(using Context): Boolean =
+      val isInfixSelect = fun match
+        case Select(sel, _) => sel.isInfix
+        case _ => false
+      val source = fun.source
+      if args.isEmpty then isInfixSelect
+      else
+        (!(fun.span.end until args.head.span.start)
+        .map(source.apply)
+        .contains('.') && fun.symbol.is(Flags.ExtensionMethod)) || isInfixSelect
+
+    def isRealApply(tree: Tree) =
+      !tree.symbol.isOneOf(Flags.GivenOrImplicit) && !tree.span.isZeroExtent
+
+    def getUnderlyingFun(tree: Tree): Tree =
       tree match
-        case Apply(TypeApply(sel: Select, _), _) if shouldSkipSelect(sel) => 
-          None 
-        case Apply(sel: Select, _) if shouldSkipSelect(sel) => 
-          None
-        case Apply(fun, args) =>
-          val funTp = fun.typeOpt.widenTermRefExpr
-          val params = funTp.paramInfoss.flatten
-          Some(
-            args
-            .zip(params)
-            .collect {
-              case (tree, param) if param.isByName => tree.sourcePos
-            }
-          )
+        case Apply(fun, _) => getUnderlyingFun(fun)
+        case TypeApply(fun, _) => getUnderlyingFun(fun)
+        case t => t
+
+    @tailrec
+    def isDefaultArg(arg: Tree): Boolean = arg match
+      case Ident(name) => name.is(DefaultGetterName)
+      case Select(_, name) => name.is(DefaultGetterName)
+      case Apply(fun, _) => isDefaultArg(fun)
+      case _ => false
+
+    if (params.namedParameters() || params.byNameParameters()) then
+      tree match
+        case Apply(fun, args) if isRealApply(fun) =>
+          val underlyingFun = getUnderlyingFun(fun)
+          if shouldSkipFun(underlyingFun) then
+            None
+          else
+            val funTp = fun.typeOpt.widenTermRefExpr
+            val paramNames = funTp.paramNamess.flatten
+            val paramInfos = funTp.paramInfoss.flatten
+
+            Some(
+              isInfixFun(fun, args) || underlyingFun.isInfix,
+              (
+                args
+                .zip(paramNames)
+                .zip(paramInfos)
+                .collect {
+                  case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent && !isDefaultArg(arg) =>
+                    (paramName.fieldName, arg.sourcePos, paramInfo.isByName)
+                }
+              )
+            )
         case _ => None
-    } else None
-end ByNameParameters
+    else None
+end Parameters
+
+object XRayModeHint:
+  def unapply(trees: (Tree, Option[Tree]))(using params: InlayHintsParams, ctx: Context): Option[(Type, SourcePosition)] =
+    if params.hintsXRayMode() then
+      val (tree, parent) = trees
+      val isParentApply = parent match
+        case Some(_: Apply) => true
+        case _ => false
+      val isParentOnSameLine = parent match
+        case Some(sel: Select) if sel.isForComprehensionMethod => false
+        case Some(par) if par.sourcePos.exists && par.sourcePos.line == tree.sourcePos.line => true
+        case _ => false
+      
+      tree match
+        /*
+        anotherTree
+         .innerSelect()
+         */
+        case a @ Apply(inner, _)
+            if inner.sourcePos.exists && !isParentOnSameLine && !isParentApply &&
+              endsInSimpleSelect(a) && isEndOfLine(tree.sourcePos) =>
+          Some((a.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+        /*
+        innerTree
+         .select
+         */
+        case select @ Select(innerTree, _)
+            if innerTree.sourcePos.exists && !isParentOnSameLine && !isParentApply && 
+              isEndOfLine(tree.sourcePos) =>
+          Some((select.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
+        case _ => None
+    else None
+
+  @tailrec
+  private def endsInSimpleSelect(ap: Tree)(using ctx: Context): Boolean =
+    ap match
+      case Apply(sel: Select, _) =>
+        sel.name != nme.apply && !isInfix(sel)
+      case Apply(TypeApply(sel: Select, _), _) =>
+        sel.name != nme.apply && !isInfix(sel)
+      case Apply(innerTree @ Apply(_, _), _) =>
+        endsInSimpleSelect(innerTree)
+      case _ => false
+
+  private def isEndOfLine(pos: SourcePosition): Boolean =
+    if pos.exists then
+      val source = pos.source
+      val end = pos.end
+      end >= source.length || source(end) == '\n' || source(end) == '\r'
+    else false
+
+end XRayModeHint

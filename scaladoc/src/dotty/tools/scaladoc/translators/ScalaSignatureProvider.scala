@@ -6,12 +6,12 @@ import scala.util.chaining._
 class ScalaSignatureProvider:
   val builder = SignatureBuilder()
   given Conversion[SignatureBuilder, Signature] = bdr => bdr.content
-  def rawSignature(documentable: Member)(kind: Kind = documentable.kind): MemberSignature =
+  def rawSignature(documentable: Member)(allowCC: Boolean /*capture checking enabled?*/)(kind: Kind = documentable.kind): MemberSignature =
     kind match
       case Kind.Extension(_, m) =>
         extensionSignature(documentable, m)
       case Kind.Exported(d) =>
-        rawSignature(documentable)(d)
+        rawSignature(documentable)(allowCC)(d)
       case d: Kind.Def =>
         methodSignature(documentable, d)
       case Kind.Constructor(d) =>
@@ -39,7 +39,7 @@ class ScalaSignatureProvider:
       case Kind.Val | Kind.Var | Kind.Implicit(Kind.Val, _) =>
         fieldSignature(documentable, kind)
       case tpe: Kind.Type =>
-        typeSignature(tpe, documentable)
+        typeSignature(tpe, documentable)(allowCC)
       case Kind.Package =>
         MemberSignature(
           Nil,
@@ -145,11 +145,11 @@ class ScalaSignatureProvider:
     case _ =>
       fieldLikeSignature(field, field.kind, None)
 
-  private def typeSignature(tpe: Kind.Type, typeDef: Member): MemberSignature =
+  private def typeSignature(tpe: Kind.Type, typeDef: Member)(allowCC: Boolean = false): MemberSignature =
     MemberSignature(
       builder.modifiersAndVisibility(typeDef),
       builder.kind(tpe),
-      builder.name(typeDef.name, typeDef.dri),
+      builder.name(typeDef.name, typeDef.dri, isCaptureVar = allowCC && tpe.isCaptureVar),
       builder.typeParamList(tpe.typeParams).pipe { bdr =>
         if (!tpe.opaque) {
           (if tpe.concreate then bdr.plain(" = ") else bdr)

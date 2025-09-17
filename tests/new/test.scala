@@ -1,15 +1,5 @@
+class Cap extends caps.ExclusiveCapability
 
-package foo
+def test(consume x: Cap) = ???
 
-package object bar:
-  opaque type O[X] >: X = X
-
-class Test:
-  import bar.O
-
-  val x = "abc"
-  val y: O[String] = x
-  //val z: String = y
-
-
-
+def impl(using consume x: Cap) = ???

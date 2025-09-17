@@ -1,14 +1,13 @@
-class Outer {
-  val f = 5
-  class Inner extends Outer {
-    val g = Outer.this.f
+class Outer(val f: Int) {
+  class Inner extends Outer(5) {
+    def g(): Int = this.f
   }
 }
 
 object O {
   def foo(i: Outer): Unit =
     val i2 = new i.Inner // i2.outer should always be OfClass(Outer)
-    foo(i2)
+    println("i2.g = " + i2.g())
 
-  foo(new Outer)
+  foo(new Outer(6))
 }

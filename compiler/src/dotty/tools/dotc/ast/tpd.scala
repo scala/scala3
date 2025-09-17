@@ -143,6 +143,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def InlineMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
     ta.assignType(untpd.InlineMatch(selector, cases), selector, cases)
 
+  def SubMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
+    ta.assignType(untpd.SubMatch(selector, cases), selector, cases)
+
   def Labeled(bind: Bind, expr: Tree)(using Context): Labeled =
     ta.assignType(untpd.Labeled(bind, expr))
 
@@ -301,7 +304,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.erasedParams).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>

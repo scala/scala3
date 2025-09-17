@@ -234,7 +234,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit =
     try
       Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
-        override def visitFile(path: Path, attrs: BasicFileAttributes) = {
+        override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
           if (!attrs.isDirectory) {
             val name = path.getFileName.toString
             if name.endsWith(tastySuffix) then

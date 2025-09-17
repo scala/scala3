@@ -1,5 +1,7 @@
 package scala.quoted.runtime
 
+import language.experimental.captureChecking
+
 import scala.quoted.{Quotes, Expr, Type}
 
 /** Part of the Quotes interface that needs to be implemented by the compiler but is not visible to users */

@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.language.experimental.captureChecking
+
 import scala.annotation.experimental
 import scala.annotation.internal.RuntimeChecked
 
@@ -93,7 +95,6 @@ object Predef:
      * val y :: ys = xs.runtimeChecked // `_ :: _` can be checked at runtime, so no warning
      * }}}
      */
-    @experimental
     inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
 
 end Predef

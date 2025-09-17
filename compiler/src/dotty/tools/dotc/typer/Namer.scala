@@ -995,6 +995,10 @@ class Namer { typer: Typer =>
       end if
     }
 
+    private def normalizeFlags(denot: SymDenotation)(using Context): Unit =
+      if denot.is(Method) && denot.hasAnnotation(defn.ConsumeAnnot) then
+        denot.setFlag(Mutable)
+
     /** Intentionally left without `using Context` parameter. We need
      *  to pick up the context at the point where the completer was created.
      */
@@ -1004,6 +1008,7 @@ class Namer { typer: Typer =>
       addInlineInfo(sym)
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
+      normalizeFlags(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
@@ -1141,7 +1146,8 @@ class Namer { typer: Typer =>
     end typeSig
   }
 
-  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context)
+  extends Completer(original)(ictx), CompleterWithCleanup {
     withDecls(newScope(using ictx))
 
     protected given completerCtx: Context = localContext(cls)
@@ -1325,6 +1331,7 @@ class Namer { typer: Typer =>
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
               var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if sym.is(Erased) then mbrFlags |= Inline
               if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
@@ -1764,6 +1771,7 @@ class Namer { typer: Typer =>
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
+      cleanup()
     }
   }
 
@@ -1906,8 +1914,14 @@ class Namer { typer: Typer =>
         case _ =>
 
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    // Add an erased to the using clause generated from a `: Singleton` context bound
+    mdef.tpt match
+      case tpt: untpd.ContextBoundTypeTree if mbrTpe.typeSymbol == defn.SingletonClass =>
+        sym.setFlag(Erased)
+        sym.resetFlag(Lazy)
+      case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
-      JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
+      ImplicitNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
   }
 
@@ -2245,8 +2259,9 @@ class Namer { typer: Typer =>
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-    def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
+    def cookedRhsType = dealiasIfUnit(rhsType)
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
+      .deskolemized
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal || isTracked then lhsType else inherited

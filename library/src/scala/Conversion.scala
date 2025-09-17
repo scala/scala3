@@ -1,5 +1,7 @@
 package scala
 
+import language.experimental.captureChecking
+
 /** A class for implicit values that can serve as implicit conversions.
 *  The implicit resolution algorithm will act as if there existed
 *  the additional implicit definition:
@@ -23,12 +25,13 @@ package scala
 */
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
-  /** Convert value `x` of type `T` to type `U` */
-  def apply(x: T): U
+  self =>
+    /** Convert value `x` of type `T` to type `U` */
+    def apply(x: T): U
 
-  extension (x: T)
-    /** `x.convert` converts a value `x` of type `T` to type `U` */
-    def convert = this(x)
+    extension (x: T)
+      /** `x.convert` converts a value `x` of type `T` to type `U` */
+      def convert = this(x)
 
 object Conversion:
   import annotation.experimental
@@ -44,5 +47,4 @@ object Conversion:
   /** Unwrap an `into` */
   extension [T](x: into[T])
     @experimental def underlying: T = x
-
 end Conversion

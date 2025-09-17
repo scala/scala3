@@ -105,12 +105,6 @@ class Erasure extends Phase with DenotTransformer {
         if oldSymbol.isRetainedInlineMethod then
           newFlags = newFlags &~ Flags.Inline
           newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
-        oldSymbol match
-          case cls: ClassSymbol if cls.is(Flags.Erased) =>
-            newFlags = newFlags | Flags.Trait | Flags.JavaInterface
-            newAnnotations = Nil
-            newInfo = erasedClassInfo(cls)
-          case _ =>
         // TODO: define derivedSymDenotation?
         if ref.is(Flags.PackageClass)
            || !ref.isClass  // non-package classes are always copied since their base types change
@@ -197,7 +191,7 @@ class Erasure extends Phase with DenotTransformer {
       || isAllowed(defn.TupleClass, "Tuple.scala")
       || isAllowed(defn.NonEmptyTupleClass, "Tuple.scala")
       || isAllowed(defn.PairClass, "Tuple.scala")
-      || isAllowed(defn.PureClass, "Pure.scala"),
+      || isAllowed(defn.PureClass, /* caps/ */ "Pure.scala"),
       i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }
 }
@@ -550,8 +544,11 @@ object Erasure {
       case _ => tree.symbol.isEffectivelyErased
     }
 
-    /** Check that Java statics and packages can only be used in selections.
-      */
+    /** Check that
+     *    - erased values are not referred to from normal code
+     *    - inline method applications were inlined
+     *    - Java statics and packages can only be used in selections.
+     */
     private def checkNotErased(tree: Tree)(using Context): tree.type =
       if !ctx.mode.is(Mode.Type) then
         if isErased(tree) then
@@ -579,24 +576,17 @@ object Erasure {
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             report.error(message, tree.srcPos)
           case _ => // OK
-
-      checkNotErasedClass(tree)
+      tree
     end checkNotErased
 
-    private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
-      case JavaArrayType(et) =>
-        checkNotErasedClass(et, tree)
-      case _ =>
-        if tp.isErasedClass then
-          val (kind, tree1) = tree match
-            case tree: untpd.ValOrDefDef => ("definition", tree.tpt)
-            case tree: untpd.DefTree => ("definition", tree)
-            case _ => ("expression", tree)
-          report.error(em"illegal reference to erased ${tp.typeSymbol} in $kind that is not itself erased", tree1.srcPos)
-
-    private def checkNotErasedClass(tree: Tree)(using Context): tree.type =
-      checkNotErasedClass(tree.tpe.widen.finalResultType, tree)
-      tree
+    /** Check that initializers of erased vals and arguments to erased parameters
+     *  are pure expressions.
+     */
+    def checkPureErased(tree: untpd.Tree, isArgument: Boolean, isImplicit: Boolean = false)(using Context): Unit =
+      val tree1 = tree.asInstanceOf[tpd.Tree]
+      inContext(preErasureCtx):
+        if !tpd.isPureExpr(tree1) then
+          report.error(ErasedNotPure(tree1, isArgument, isImplicit), tree1.srcPos)
 
     def erasedDef(sym: Symbol)(using Context): Tree =
       if sym.isClass then
@@ -625,7 +615,7 @@ object Erasure {
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
-      checkNotErasedClass(tree.withType(erasure(tree.typeOpt)))
+      tree.withType(erasure(tree.typeOpt))
 
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
@@ -644,7 +634,7 @@ object Erasure {
       if (tree.typeOpt.isRef(defn.UnitClass))
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
-        checkNotErasedClass(clsOf(tree.const.typeValue))
+        clsOf(tree.const.typeValue)
       else
         super.typedLiteral(tree)
 
@@ -848,7 +838,13 @@ object Erasure {
       val origFunType = origFun.tpe.widen(using preErasureCtx)
       val ownArgs = origFunType match
         case mt: MethodType if mt.hasErasedParams =>
-          args.zip(mt.erasedParams).collect { case (arg, false) => arg }
+          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
+            if isErased then
+              checkPureErased(arg, isArgument = true,
+                isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
+              Nil
+            else
+              arg :: Nil
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
@@ -916,9 +912,10 @@ object Erasure {
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
-      if (sym.isEffectivelyErased) erasedDef(sym)
-      else
-        checkNotErasedClass(sym.info, vdef)
+      if sym.isEffectivelyErased then
+        checkPureErased(vdef.rhs, isArgument = false)
+        erasedDef(sym)
+      else trace(i"erasing $vdef"):
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
 
@@ -930,7 +927,6 @@ object Erasure {
       if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
         erasedDef(sym)
       else
-        checkNotErasedClass(sym.info.finalResultType, ddef)
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
             ::: ddef.paramss.collect {
@@ -1049,29 +1045,24 @@ object Erasure {
       adaptClosure(implClosure)
     }
 
-    override def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
-      checkNotErasedClass(super.typedNew(tree, pt))
-
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree =
       EmptyTree
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      if cls.is(Flags.Erased) then erasedDef(cls)
-      else
-        val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
-        // In the case where a trait extends a class, we need to strip any non trait class from the signature
-        // and accept the first one (see tests/run/mixins.scala)
-        val newTraits = impl.parents.tail.filterConserve: tree =>
-          def isTraitConstructor = tree match
-            case Trees.Block(_, expr) => // Specific management for trait constructors (see tests/pos/i9213.scala)
-              expr.symbol.isConstructor && expr.symbol.owner.is(Flags.Trait)
-            case _ => tree.symbol.isConstructor && tree.symbol.owner.is(Flags.Trait)
-          tree.symbol.is(Flags.Trait) || isTraitConstructor
+      val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
+      // In the case where a trait extends a class, we need to strip any non trait class from the signature
+      // and accept the first one (see tests/run/mixins.scala)
+      val newTraits = impl.parents.tail.filterConserve: tree =>
+        def isTraitConstructor = tree match
+          case Trees.Block(_, expr) => // Specific management for trait constructors (see tests/pos/i9213.scala)
+            expr.symbol.isConstructor && expr.symbol.owner.is(Flags.Trait)
+          case _ => tree.symbol.isConstructor && tree.symbol.owner.is(Flags.Trait)
+        tree.symbol.is(Flags.Trait) || isTraitConstructor
 
-        val newParents =
-          if impl.parents.tail eq newTraits then impl.parents
-          else impl.parents.head :: newTraits
-        cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
+      val newParents =
+        if impl.parents.tail eq newTraits then impl.parents
+        else impl.parents.head :: newTraits
+      cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
