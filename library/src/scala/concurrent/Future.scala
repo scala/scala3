@@ -574,6 +574,12 @@ object Future {
   private[this] final val _addToBuilderFun: (Builder[Any, Nothing], Any) => Builder[Any, Nothing] = (b: Builder[Any, Nothing], e: Any) => b += e
   private[concurrent] final def addToBuilderFun[A, M] =  _addToBuilderFun.asInstanceOf[Function2[Builder[A, M], A, Builder[A, M]]]
 
+  private[concurrent] def waitUndefinedError(): Nothing =
+    throw new IllegalArgumentException("Cannot wait for Undefined duration of time")
+
+  private[concurrent] def timeoutError(delay: Duration): Nothing =
+    throw new TimeoutException(s"Future timed out after [$delay]")
+
   /** A Future which is never completed.
    */
   object never extends Future[Nothing] {
@@ -583,7 +589,7 @@ object Future {
     override final def ready(atMost: Duration)(implicit permit: CanAwait): this.type = {
       import Duration.{Undefined, Inf, MinusInf}
       atMost match {
-        case u if u eq Undefined => throw new IllegalArgumentException("cannot wait for Undefined period")
+        case u if u eq Undefined => waitUndefinedError()
         case `Inf`               =>
           while(!Thread.interrupted()) {
             LockSupport.park(this)
@@ -603,14 +609,14 @@ object Future {
         case _: FiniteDuration    => // Drop out if 0 or less
         case x: Duration.Infinite => throw new MatchError(x)
       }
-      throw new TimeoutException(s"Future timed out after [$atMost]")
+      timeoutError(atMost)
     }
 
     @throws[TimeoutException]
     @throws[InterruptedException]
     override final def result(atMost: Duration)(implicit permit: CanAwait): Nothing = {
       ready(atMost)
-      throw new TimeoutException(s"Future timed out after [$atMost]")
+      timeoutError(atMost)
     }
 
     override final def onComplete[U](f: Try[Nothing] => U)(implicit executor: ExecutionContext): Unit = ()
