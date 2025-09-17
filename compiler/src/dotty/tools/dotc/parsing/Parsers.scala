@@ -3425,14 +3425,15 @@ object Parsers {
           else mods.withPrivateWithin(ident().toTypeName)
         }
         if mods1.is(Local) then
+          val span = Span(startOffset, in.lastOffset)
           report.errorOrMigrationWarning(
               em"""Ignoring [this] qualifier.
                   |This syntax will be deprecated in the future; it should be dropped.
                   |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
-              in.sourcePos(),
+              in.sourcePos().withSpan(span),
               MigrationVersion.RemoveThisQualifier)
           if MigrationVersion.RemoveThisQualifier.needsPatch then
-            patch(source, Span(startOffset, in.lastOffset), "")
+            patch(source, span, "")
         mods1
       }
       else mods
