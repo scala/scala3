@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 import scala.meta.pc.CompletionItemPriority
 
 object TestResources:
-  val classpath = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
+  val classpath: Seq[Path] = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
   val classpathSearch =
     ClasspathSearch.fromClasspath(classpath, ExcludedPackagesHandler.default)
 
@@ -34,7 +34,7 @@ abstract class BasePCSuite extends PcAssertions:
   val completionItemPriority: CompletionItemPriority = (_: String) => 0
   private val isDebug = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("-agentlib:jdwp")
 
-  val tmp = Files.createTempDirectory("stable-pc-tests")
+  val tmp: Path = Files.createTempDirectory("stable-pc-tests")
   val executorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor()
   val testingWorkspaceSearch = TestingWorkspaceSearch(

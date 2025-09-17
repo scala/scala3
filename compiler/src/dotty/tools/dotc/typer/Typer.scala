@@ -932,7 +932,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, if the qualifier is a context bound companion, handle
     // by selecting a witness in typedCBSelect
     def tryCBCompanion() =
-      if qual.tpe.typeSymbol == defn.CBCompanion then
+      if qual.tpe.isContextBoundCompanion then
         typedCBSelect(tree0, pt, qual)
       else EmptyTree
 
@@ -1001,13 +1001,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *  alternatives referred to by `witnesses`.
      *  @param prevs      a list of (ref tree, typer state, term ref) tripls that
      *                    represents previously identified alternatives
-     *  @param witnesses  a type of the form ref_1 | ... | ref_n containing references
+     *  @param witnesses  a type of the form `isContextBoundCompanion` containing references
      *                    still to be considered.
      */
-    def tryAlts(prevs: Alts, witnesses: Type): Alts = witnesses match
-      case OrType(wit1, wit2) =>
+    def tryAlts(prevs: Alts, witnesses: Type): Alts = witnesses.widen match
+      case AndType(wit1, wit2) =>
         tryAlts(tryAlts(prevs, wit1), wit2)
-      case witness: TermRef =>
+      case AppliedType(_, List(witness: TermRef)) =>
         val altQual = tpd.ref(witness).withSpan(qual.span)
         val altCtx = ctx.fresh.setNewTyperState()
         val alt = typedSelectWithAdapt(tree, pt, altQual)(using altCtx)
@@ -1019,19 +1019,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if comparisons.exists(_ == 1) then prevs
           else current :: prevs.zip(comparisons).collect{ case (prev, cmp) if cmp != -1 => prev }
 
-    qual.tpe.widen match
-      case AppliedType(_, arg :: Nil) =>
-        tryAlts(Nil, arg) match
-          case Nil => EmptyTree
-          case (best @ (bestTree, bestState, _)) :: Nil =>
-            bestState.commit()
-            bestTree
-          case multiAlts =>
-            report.error(
-              em"""Ambiguous witness reference. None of the following alternatives is more specific than the other:
-                  |${multiAlts.map((alt, _, witness) => i"\n  $witness.${tree.name}: ${alt.tpe.widen}")}""",
-              tree.srcPos)
-            EmptyTree
+    tryAlts(Nil, qual.tpe) match
+      case Nil => EmptyTree
+      case (best @ (bestTree, bestState, _)) :: Nil =>
+        bestState.commit()
+        bestTree
+      case multiAlts =>
+        report.error(
+          em"""Ambiguous witness reference. None of the following alternatives is more specific than the other:
+              |${multiAlts.map((alt, _, witness) => i"\n  $witness.${tree.name}: ${alt.tpe.widen}")}""",
+          tree.srcPos)
+        EmptyTree
   end typedCBSelect
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
@@ -2216,7 +2214,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var alreadyStripped = false
     val cases1 = tree.cases.zip(pt.cases)
       .map { case (cas, tpe) =>
-        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
+        given Context = caseCtx
+        val case1 = typedCase(cas, sel, wideSelType, tpe)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
         if !alreadyStripped && Nullables.matchesNull(case1) then
           wideSelType = wideSelType.stripNull()
@@ -2248,7 +2247,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var wideSelType = wideSelType0
     var alreadyStripped = false
     cases.mapconserve { cas =>
-      val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
+      given Context = caseCtx
+      val case1 = typedCase(cas, sel, wideSelType, pt)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       if !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull()
@@ -3749,12 +3749,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val ifpt = defn.asContextFunctionType(pt)
           val result =
             if ifpt.exists
-              && defn.functionArity(ifpt) > 0 // ContextFunction0 is only used after ElimByName
+              && !ctx.isAfterTyper
+              && {
+                // ContextFunction0 is only used after ElimByName
+                val arity = defn.functionArity(ifpt)
+                if arity == 0 then
+                  report.error(em"context function types require at least one parameter", xtree.srcPos)
+                arity > 0
+              }
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
               && !xtree.isInstanceOf[SplicePattern]
-              && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
               makeContextualFunction(xtree, ifpt)
@@ -3824,6 +3830,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val ifun = desugar.makeContextualFunction(paramTypes, paramNamesOrNil, tree, erasedParams)
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typedFunctionValue(ifun, pt)
+      .tap:
+        case tree @ Block((m1: DefDef) :: _, _: Closure) if ctx.settings.Whas.wrongArrow =>
+          m1.rhs match
+          case Block((m2: DefDef) :: _, _: Closure) if m1.paramss.lengthCompare(m2.paramss) == 0 =>
+            val p1s = m1.symbol.info.asInstanceOf[MethodType].paramInfos
+            val p2s = m2.symbol.info.asInstanceOf[MethodType].paramInfos
+            if p1s.corresponds(p2s)(_ =:= _) then
+              report.warning(em"Context function adapts a lambda with the same parameter types, possibly ?=> was intended.", tree.srcPos)
+          case _ =>
+        case _ =>
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */

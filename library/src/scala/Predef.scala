@@ -286,12 +286,12 @@ object Predef extends LowPriorityImplicits {
      to be available at runtime.
      To achieve this, we keep the Scala 3 signature publicly available.
      We rely on the fact that it is `inline` and will not be visible in the bytecode.
-     To add the required Scala 2 ones, we define the `scala2Assert`, we use: 
-      - `@targetName` to swap the name in the generated code to `assert` 
+     To add the required Scala 2 ones, we define the `scala2Assert`, we use:
+      - `@targetName` to swap the name in the generated code to `assert`
       - `@publicInBinary` to make it available during runtime.
      As such, we would successfully hijack the definitions of `assert` such as:
       - At compile time, we would have the definitions of `assert`
-      - At runtime, the definitions of `scala2Assert` as `assert`  
+      - At runtime, the definitions of `scala2Assert` as `assert`
     NOTE: Tasty-Reader in Scala 2 will have to learn about this swapping if we are to
     allow loading the full Scala 3 library by it.
     */
@@ -426,7 +426,7 @@ object Predef extends LowPriorityImplicits {
     @inline def formatted(fmtstr: String): String = fmtstr format self
   }
 
-  /** Injects String concatenation operator `+` to any classes. 
+  /** Injects String concatenation operator `+` to any classes.
    * @group implicit-classes-any
    */
   @(deprecated @companionMethod)("Implicit injection of + is deprecated. Convert to String to call +", "2.13.0")
@@ -622,7 +622,6 @@ object Predef extends LowPriorityImplicits {
      * val y :: ys = xs.runtimeChecked // `_ :: _` can be checked at runtime, so no warning
      * }}}
      */
-    @experimental
     inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
 
 }

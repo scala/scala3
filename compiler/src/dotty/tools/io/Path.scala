@@ -245,12 +245,12 @@ class Path private[io] (val jpath: JPath) {
     if (!exists) false
     else {
       Files.walkFileTree(jpath, new SimpleFileVisitor[JPath]() {
-        override def visitFile(file: JPath, attrs: BasicFileAttributes) = {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes): FileVisitResult = {
           Files.delete(file)
           FileVisitResult.CONTINUE
         }
 
-        override def postVisitDirectory(dir: JPath, exc: IOException) = {
+        override def postVisitDirectory(dir: JPath, exc: IOException): FileVisitResult = {
           Files.delete(dir)
           FileVisitResult.CONTINUE
         }

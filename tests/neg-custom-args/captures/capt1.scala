@@ -12,20 +12,20 @@ def h1(x: C @retains[caps.cap.type], y: C): Any =
   () => f()  // ok
 
 def h2(x: C @retains[caps.cap.type]): Matchable =
-  def f(y: Int) = if x == null then y else y  // error
-  f
+  def f(y: Int) = if x == null then y else y
+  f  // error
 
 class A
 type Cap = C @retains[caps.cap.type]
 
 def h3(x: Cap): A =
-  class F(y: Int) extends A:   // error
+  class F(y: Int) extends A:
     def m() = if x == null then y else y
-  F(22)
+  F(22)  // error
 
 def h4(x: Cap, y: Int): A =
-  new A: // error
-    def m() = if x == null then y else y
+  new A:
+    def m() = if x == null then y else y  // error
 
 def f1(c: Cap): () ->{c} c.type = () => c // ok
 

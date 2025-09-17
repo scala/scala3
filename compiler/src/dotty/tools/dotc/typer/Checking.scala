@@ -771,8 +771,9 @@ object Checking {
           !(symBoundary.isContainedIn(otherBoundary) ||
             otherLinkedBoundary.exists && symBoundary.isContainedIn(otherLinkedBoundary))
         }
-        && !(inCaptureSet && other.isAllOf(LocalParamAccessor))
-            // class parameters in capture sets are not treated as leaked since in
+        && !(inCaptureSet && (!Feature.ccEnabled || other.isAllOf(LocalParamAccessor)))
+            // All references are skipped in capture sets when CC is not enabled.
+            // Class parameters in capture sets are not treated as leaked since in
             // phase CheckCaptures these are treated as normal vals.
 
       def apply(tp: Type): Type = tp match {

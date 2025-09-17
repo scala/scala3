@@ -178,7 +178,20 @@ class VarianceChecker(using Context) {
               i"\n${hl("enum case")} ${towner.name} requires explicit declaration of $tvar to resolve this issue.\n$example"
             else
               ""
-          em"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"
+          val privateParamAddendum =
+            if sym.flags.is(ParamAccessor) && sym.flags.is(Private) then
+              val varOrVal = if sym.is(Mutable) then "var" else "val"
+              val varFieldInstead = if sym.is(Mutable) then " and add\na field inside the class instead" else ""
+              s"""
+                 |
+                 |Implementation limitation: ${hl(f"private $varOrVal")} parameters cannot be inferred to be local
+                 |and therefore are always variance-checked.
+                 |
+                 |Potential fix: remove the ${hl(f"private $varOrVal")} modifiers on the parameter ${sym.name}$varFieldInstead.
+               """.stripMargin
+            else
+              ""
+          em"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum$privateParamAddendum"
         if (migrateTo3 &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           report.migrationWarning(

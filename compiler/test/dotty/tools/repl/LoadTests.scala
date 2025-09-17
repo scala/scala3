@@ -20,7 +20,7 @@ class LoadTests extends ReplTest {
                  |def helloWorld: String
                  |""".stripMargin,
     runCode = "helloWorld",
-    output  = """|val res0: String = Hello, World!
+    output  = """|val res0: String = "Hello, World!"
                  |""".stripMargin
   )
 

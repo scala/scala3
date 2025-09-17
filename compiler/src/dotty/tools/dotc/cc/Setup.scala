@@ -459,7 +459,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if sym.isType then stripImpliedCaptureSet(tp2)
       else tp2
     if freshen then
-      capToFresh(tp3, Origin.InDecl(sym)).tap(addOwnerAsHidden(_, sym))
+      capToFresh(tp3, Origin.InDecl(sym))
     else tp3
   end transformExplicitType
 
@@ -472,25 +472,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** The info of `sym` at the CheckCaptures phase */
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
-
-  private def addOwnerAsHidden(tp: Type, owner: Symbol)(using Context): Unit =
-    val ref = owner.termRef
-    def add = new TypeTraverser:
-      var reach = false
-      def traverse(t: Type): Unit = t match
-        case t @ CapturingType(parent, refs) =>
-          val saved = reach
-          reach |= t.isBoxed
-          try
-            traverse(parent)
-            for case fresh: FreshCap <- refs.elems.iterator do // TODO: what about fresh.rd elems?
-              if reach then fresh.hiddenSet.elems += ref.reach
-              else if ref.isTracked then fresh.hiddenSet.elems += ref
-          finally reach = saved
-        case _ =>
-          traverseChildren(t)
-    if ref.isTrackableRef then add.traverse(tp)
-  end addOwnerAsHidden
 
   /** A traverser that adds knownTypes and updates symbol infos */
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:

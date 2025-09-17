@@ -85,7 +85,7 @@ case class CompileSettings(
 
 object MainGenericCompiler {
 
-  val classpathSeparator = File.pathSeparator
+  val classpathSeparator: String = File.pathSeparator
 
   @sharable val javaOption = raw"""-J(.*)""".r
   @sharable val javaPropOption = raw"""-D(.+?)=(.?)""".r

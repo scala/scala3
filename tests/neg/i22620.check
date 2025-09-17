@@ -1,0 +1,21 @@
+-- Error: tests/neg/i22620.scala:4:34 ----------------------------------------------------------------------------------
+4 |class PrivateTest[-M](private val v: ArrayBuffer[M]) // error
+  |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |      contravariant type M occurs in invariant position in type scala.collection.mutable.ArrayBuffer[M] of value v
+  |
+  |      Implementation limitation: private val parameters cannot be inferred to be local
+  |      and therefore are always variance-checked.
+  |
+  |      Potential fix: remove the private val modifiers on the parameter v.
+  |                     
+-- Error: tests/neg/i22620.scala:6:37 ----------------------------------------------------------------------------------
+6 |class PrivateTestMut[-M](private var v: ArrayBuffer[M]) // error
+  |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   contravariant type M occurs in invariant position in type scala.collection.mutable.ArrayBuffer[M] of variable v
+  |
+  |   Implementation limitation: private var parameters cannot be inferred to be local
+  |   and therefore are always variance-checked.
+  |
+  |   Potential fix: remove the private var modifiers on the parameter v and add
+  |   a field inside the class instead.
+  |                  

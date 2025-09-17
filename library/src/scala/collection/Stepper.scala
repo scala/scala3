@@ -260,7 +260,7 @@ trait IntStepper extends Stepper[Int] {
 
   def spliterator[B >: Int]: Spliterator.OfInt^{this} = new IntStepper.IntStepperSpliterator(this)
 
-  def javaIterator[B >: Int]: PrimitiveIterator.OfInt = new PrimitiveIterator.OfInt {
+  def javaIterator[B >: Int]: PrimitiveIterator.OfInt^{this} = new PrimitiveIterator.OfInt {
     def hasNext: Boolean = hasStep
     def nextInt(): Int = nextStep()
   }
@@ -298,7 +298,7 @@ trait DoubleStepper extends Stepper[Double] {
 
   def spliterator[B >: Double]: Spliterator.OfDouble^{this} = new DoubleStepper.DoubleStepperSpliterator(this)
 
-  def javaIterator[B >: Double]: PrimitiveIterator.OfDouble = new PrimitiveIterator.OfDouble {
+  def javaIterator[B >: Double]: PrimitiveIterator.OfDouble^{this} = new PrimitiveIterator.OfDouble {
     def hasNext: Boolean = hasStep
     def nextDouble(): Double = nextStep()
   }
@@ -337,7 +337,7 @@ trait LongStepper extends Stepper[Long] {
 
   def spliterator[B >: Long]: Spliterator.OfLong^{this} = new LongStepper.LongStepperSpliterator(this)
 
-  def javaIterator[B >: Long]: PrimitiveIterator.OfLong = new PrimitiveIterator.OfLong {
+  def javaIterator[B >: Long]: PrimitiveIterator.OfLong^{this} = new PrimitiveIterator.OfLong {
     def hasNext: Boolean = hasStep
     def nextLong(): Long = nextStep()
   }

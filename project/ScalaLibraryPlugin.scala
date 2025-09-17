@@ -6,13 +6,13 @@ import scala.jdk.CollectionConverters.*
 import java.nio.file.Files
 import xsbti.VirtualFileRef
 import sbt.internal.inc.Stamper
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
 
-  private val scala2Version  = "2.13.16"
-  private val scalaJSVersion = "1.19.0"
+  private val scala2Version = "2.13.16"
 
   val fetchScala2ClassFiles = taskKey[(Set[File], File)]("Fetch the files to use that were compiled with Scala 2")
   val fetchScala2SJSIR = taskKey[(Set[File], File)]("Fetch the .sjsir to use from Scala 2")

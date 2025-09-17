@@ -14,6 +14,7 @@ import Annotations.Annotation
 import CaptureSet.VarState
 import Capabilities.*
 import StdNames.nme
+import config.Feature
 
 /** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
@@ -634,13 +635,18 @@ extension (tp: AnnotatedType)
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
 
-/** Drop retains annotations in the type. */
+/** Drop retains annotations in the inferred type if CC is not enabled
+ *  or transform them into RetainingTypes if CC is enabled.
+ */
 class CleanupRetains(using Context) extends TypeMap:
-  def apply(tp: Type): Type =
-    tp match
-      case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
-        RetainingType(tp, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
-      case _ => mapOver(tp)
+  def apply(tp: Type): Type = tp match
+    case AnnotatedType(parent, annot) if annot.symbol.isRetainsLike =>
+      if Feature.ccEnabled then
+        if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot then
+          RetainingType(parent, defn.NothingType, byName = annot.symbol == defn.RetainsByNameAnnot)
+        else mapOver(tp)
+      else apply(parent)
+    case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific
  *  Capability annotation.

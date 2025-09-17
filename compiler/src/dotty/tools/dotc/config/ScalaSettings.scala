@@ -159,7 +159,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
-  val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
@@ -168,6 +168,7 @@ private sealed trait WarningSettings:
   private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   private val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
   private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
+  private val WwrongArrow = BooleanSetting(WarningSetting, "Wwrong-arrow", "Warn if function arrow was used instead of context literal ?=>.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -299,7 +300,7 @@ private sealed trait WarningSettings:
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
 
-  val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+  val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
 
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
@@ -311,7 +312,8 @@ private sealed trait WarningSettings:
     def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
     def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
     def recurseWithDefault(using Context): Boolean = allOr(WrecurseWithDefault)
-    def checkInit(using Context): Boolean = allOr(WcheckInit)
+    def wrongArrow(using Context): Boolean = allOr(WwrongArrow)
+    def safeInit(using Context): Boolean = allOr(WsafeInit)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
@@ -453,7 +455,7 @@ private sealed trait YSettings:
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism. (This flag has no effect)", deprecation = Deprecation.removed())
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
-  val YcheckInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
+  val YsafeInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")

@@ -74,10 +74,12 @@ class Objects(using Context @constructorOnly):
   val MapNode_EmptyMapNode: Symbol = immutableMapNode.requiredValue("EmptyMapNode")
   val immutableHashMap: Symbol = requiredModule("scala.collection.immutable.HashMap")
   val HashMap_EmptyMap: Symbol = immutableHashMap.requiredValue("EmptyMap")
-  val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
-  val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
+  val ManifestFactory_ObjectTYPE = defn.ManifestFactoryModule.requiredValue("ObjectTYPE")
+  val ManifestFactory_NothingTYPE = defn.ManifestFactoryModule.requiredValue("NothingTYPE")
+  val ManifestFactory_NullTYPE = defn.ManifestFactoryModule.requiredValue("NullTYPE")
 
-  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
+  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap,
+    ManifestFactory_ObjectTYPE, ManifestFactory_NothingTYPE, ManifestFactory_NullTYPE)
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -905,7 +907,7 @@ class Objects(using Context @constructorOnly):
             // the typer might mistakenly set the receiver to be a package instead of package object.
             // See pos/packageObjectStringInterpolator.scala
             if packageModuleClass == klass || (klass.denot.isPackageObject && klass.owner == packageModuleClass) then a else Bottom
-          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) then a else Bottom
+          case v: SafeValue => if v.typeSymbol.asClass.isSubClass(klass) && v.typeSymbol.asClass != defn.NullClass then a else Bottom
           case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
           case ValueSet(values) => values.map(v => v.filterClass(klass)).join
           case fun: Fun =>
@@ -1360,13 +1362,13 @@ class Objects(using Context @constructorOnly):
           case env: Env.EnvRef => Env.ofByName(sym, thisV, Env.EnvSet(Set(env)))
         }
         given Scope = byNameEnv
-        eval(code, thisV, klass)
+        eval(code, thisV, klass, cacheResult = true)
       case UnknownValue =>
         reportWarningForUnknownValue("Calling on unknown value. " + Trace.show, Trace.position)
       case Bottom => Bottom
-      case ValueSet(values) if values.size == 1 =>
-        evalByNameParam(values.head)
-      case _: ValueSet | _: Ref | _: ArrayRef | _: Package | SafeValue(_) =>
+      case ValueSet(values) =>
+        values.map(evalByNameParam(_)).join
+      case _: Ref | _: ArrayRef | _: Package | SafeValue(_) =>
         report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
         Bottom
     end evalByNameParam

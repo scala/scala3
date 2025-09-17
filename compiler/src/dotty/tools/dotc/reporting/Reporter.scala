@@ -224,7 +224,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     incompleteHandler(dia, ctx)
 
   def finalizeReporting()(using Context) =
-    if (hasWarnings && ctx.settings.XfatalWarnings.value)
+    if (hasWarnings && ctx.settings.Werror.value)
       report(new Error("No warnings can be incurred under -Werror (or -Xfatal-warnings)", NoSourcePosition))
 
   /** Summary of warnings and errors */

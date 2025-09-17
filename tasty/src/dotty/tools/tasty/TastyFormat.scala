@@ -104,7 +104,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   INLINED        Length expr_Term call_Term? ValOrDefDef*          -- Inlined code from call, with given body `expr` and given bindings
                   LAMBDA         Length meth_Term target_Type?                     -- Closure over method `f` of type `target` (omitted id `target` is a function type)
                   IF             Length [INLINE] cond_Term then_Term else_Term     -- inline? if cond then thenPart else elsePart
-                  MATCH          Length (IMPLICIT | [INLINE] sel_Term) CaseDef*    -- (inline? sel | implicit) match caseDefs
+                  MATCH          Length (IMPLICIT | [INLINE | SUBMATCH] sel_Term) CaseDef* -- ((inline | if)? sel | implicit) match caseDefs
                   TRY            Length expr_Term CaseDef* finalizer_Term?         -- try expr catch {casdeDef} (finally finalizer)?
                   RETURN         Length meth_ASTRef expr_Term?                     -- return expr?,  `methASTRef` is method from which is returned
                   WHILE          Length cond_Term body_Term                        -- while cond do body
@@ -511,6 +511,7 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
   final val TRACKED = 47
+  final val SUBMATCH = 48 // experimental.subCases
 
   // Tree Cat. 2:    tag Nat
   final val firstNatTreeTag = SHAREDterm

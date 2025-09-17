@@ -3,9 +3,9 @@
    |                    ^
    |                    reference (c : Cap) is not included in the allowed capture set {}
    |                    of the enclosing class A
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:27 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:29 ---------------------------------
 44 |  val later = usingLogFile { file => () => file.write(0) } // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |Found:    (file: java.io.FileOutputStream^'s1) ->'s2 () ->{file} Unit
    |Required: java.io.FileOutputStream^ => () ->'s3 Unit
    |
@@ -31,15 +31,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:58:8 ----------------------------------
 58 |    try () => xs.map(f).sum  // error TODO improve error message
    |        ^^^^^^^^^^^^^^^^^^^
-   |Found:    () => Double
-   |Required: () =>² Double
+   |Found:    () ->{canThrow$1} Double
+   |Required: () => Double
    |
-   |Note that capability cap is not included in capture set {cap²}
-   |because cap in method try$1 is not visible from cap² in enclosing function.
+   |Note that capability canThrow$1 is not included in capture set {cap}
+   |because (canThrow$1 : CanThrow[LimitExceeded]) in method try$1 is not visible from cap in enclosing function.
    |
-   |where:    =>   refers to a fresh root capability classified as Control in the type of given instance canThrow$1
-   |          =>²  refers to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap³} Double of function literal
-   |          cap  is a fresh root capability classified as Control in the type of given instance canThrow$1
-   |          cap² is a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap³} Double of function literal
+   |where:    =>  refers to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
+   |          cap is a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
    |
    | longer explanation available when compiling with `-explain`

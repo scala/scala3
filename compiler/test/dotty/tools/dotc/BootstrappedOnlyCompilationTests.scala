@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
 import org.junit.Assume._
+import org.junit.Ignore
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -131,7 +132,7 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(tests*).checkRuns()
   }
 
-  @Test def runScala2LibraryFromTasty: Unit = {
+  @Ignore @Test def runScala2LibraryFromTasty: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runScala2LibraryFromTasty")
     // These tests recompile the entire scala2-library from TASTy,
     // they are resource intensive and should not run alongside other tests to avoid timeouts

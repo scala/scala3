@@ -386,6 +386,12 @@ object TypeErasure {
     case _ => false
   }
 
+  /** Is `tp` of the form `Array^N[T]` where T is generic? */
+  def isGenericArrayArg(tp: Type)(using Context): Boolean = tp.dealias match
+    case defn.ArrayOf(elem) => isGenericArrayArg(elem)
+    case _ => isGeneric(tp)
+  end isGenericArrayArg
+
   /** The erased least upper bound of two erased types is computed as follows
    *  - if both argument are arrays of objects, an array of the erased lub of the element types
    *  - if both arguments are arrays of same primitives, an array of this primitive

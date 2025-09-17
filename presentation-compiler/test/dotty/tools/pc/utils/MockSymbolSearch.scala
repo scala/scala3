@@ -66,7 +66,7 @@ class MockSymbolSearch(
   override def documentation(
       symbol: String,
       parents: ParentSymbols
-  ) = documentation(symbol, parents, ContentType.MARKDOWN)
+  ): Optional[SymbolDocumentation] = documentation(symbol, parents, ContentType.MARKDOWN)
 
   override def documentation(
       symbol: String,

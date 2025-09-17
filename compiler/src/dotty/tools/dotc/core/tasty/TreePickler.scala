@@ -590,7 +590,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             if (tree.isInline)
               if (selector.isEmpty) writeByte(IMPLICIT)
               else { writeByte(INLINE); pickleTree(selector) }
-            else if tree.isSubMatch then { writeByte(LAZY); pickleTree(selector) }
+            else if tree.isSubMatch then { writeByte(SUBMATCH); pickleTree(selector) }
             else pickleTree(selector)
             tree.cases.foreach(pickleTree)
           }

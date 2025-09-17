@@ -389,7 +389,7 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
   }
 
   private def toIterable: View[(El1, El2, El3, El4)]^{this} = new AbstractView[(El1, El2, El3, El4)] {
-    def iterator: AbstractIterator[(El1, El2, El3, El4)] = new AbstractIterator[(El1, El2, El3, El4)] {
+    def iterator: AbstractIterator[(El1, El2, El3, El4)]^{this} = new AbstractIterator[(El1, El2, El3, El4)] {
       private[this] val elems1 = coll1.iterator
       private[this] val elems2 = coll2.iterator
       private[this] val elems3 = coll3.iterator

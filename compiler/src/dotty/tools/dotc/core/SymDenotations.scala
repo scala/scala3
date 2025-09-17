@@ -865,8 +865,22 @@ object SymDenotations {
      *  and is the denoting symbol also different from `Null` or `Nothing`?
      *  @note  erroneous classes are assumed to derive from all other classes
      *         and all classes derive from them.
+     *  @note may return a false negative when `this.info.isInstanceOf[TempClassInfo]`.
      */
     def derivesFrom(base: Symbol)(using Context): Boolean = false
+
+    /** Could `this` derive from `base` now or in the future.
+     *  For concistency with derivesFrom, the info is only forced when this is a ClassDenotation.
+     *  If the info is a TempClassInfo then the baseClassSet may be temporarily approximated as empty.
+     *  This is problematic when stability of `!derivesFrom(base)` is assumed for soundness,
+     *  e.g., in `TypeComparer#provablyDisjointClasses`.
+     *  @note may return a false positive when `this.info.isInstanceOf[TempClassInfo]`.
+     */
+    final def mayDeriveFrom(base: Symbol)(using Context): Boolean =
+      this.isInstanceOf[ClassDenotation] && (info.isInstanceOf[TempClassInfo] || derivesFrom(base))
+
+    final def derivesFrom(base: Symbol, defaultIfUnknown: Boolean)(using Context): Boolean =
+      if defaultIfUnknown/*== true*/ then mayDeriveFrom(base) else derivesFrom(base)
 
     /** Is this a Scala or Java annotation ? */
     def isAnnotation(using Context): Boolean =
@@ -2945,7 +2959,7 @@ object SymDenotations {
       dependent = null
     }
 
-    protected def addDependent(dep: InheritedCache) = {
+    protected def addDependent(dep: InheritedCache): Unit = {
       if (dependent == null) dependent = new WeakHashMap
       dependent.nn.put(dep, ())
     }

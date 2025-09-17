@@ -64,20 +64,21 @@ class ScriptEngine extends AbstractScriptEngine {
 
 object ScriptEngine {
   import java.util.Arrays
+  import java.util.List
   import scala.util.Properties
 
   class Factory extends ScriptEngineFactory {
     def getEngineName = "Scala REPL"
     def getEngineVersion = "3.0"
-    def getExtensions = Arrays.asList("scala")
+    def getExtensions: List[String] = Arrays.asList("scala")
     def getLanguageName = "Scala"
     def getLanguageVersion = Properties.versionString
-    def getMimeTypes = Arrays.asList("application/x-scala")
-    def getNames = Arrays.asList("scala")
+    def getMimeTypes: List[String] = Arrays.asList("application/x-scala")
+    def getNames: List[String] = Arrays.asList("scala")
 
-    def getMethodCallSyntax(obj: String, m: String, args: String*) = s"$obj.$m(${args.mkString(", ")})"
+    def getMethodCallSyntax(obj: String, m: String, args: String*): String = s"$obj.$m(${args.mkString(", ")})"
 
-    def getOutputStatement(toDisplay: String) = s"""print("$toDisplay")"""
+    def getOutputStatement(toDisplay: String): String = s"""print("$toDisplay")"""
 
     def getParameter(key: String): Object = key match {
       case JScriptEngine.ENGINE           => getEngineName
@@ -88,7 +89,7 @@ object ScriptEngine {
       case _ => null
     }
 
-    def getProgram(statements: String*) = statements.mkString("; ")
+    def getProgram(statements: String*): String = statements.mkString("; ")
 
     def getScriptEngine: JScriptEngine = new ScriptEngine
   }

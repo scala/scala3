@@ -1,3 +1,7 @@
+-- Error: tests/neg-custom-args/captures/i15772.scala:44:18 ------------------------------------------------------------
+44 |  val filesList : List[File]^{io} = ??? // error
+   |                  ^^^^^^^^^^^^^^^
+   |                  List[File] is a pure type, it makes no sense to add a capture set to it
 -- Error: tests/neg-custom-args/captures/i15772.scala:22:46 ------------------------------------------------------------
 22 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^

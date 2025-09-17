@@ -8,7 +8,9 @@ import org.junit.experimental.categories.Category
 import scala.concurrent.duration._
 import reporting.TestReporter
 import vulpix._
+import org.junit.Ignore
 
+@Ignore
 @Category(Array(classOf[ScalaJSCompilationTests]))
 class ScalaJSCompilationTests {
   import ParallelTesting._

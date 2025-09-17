@@ -23,9 +23,9 @@ class ConsoleReporter(
     super.doReport(dia)
     if ctx.settings.Xprompt.value then
       dia match
-        case _: Error                                        => Reporter.displayPrompt(reader, writer)
-        case _: Warning if ctx.settings.XfatalWarnings.value => Reporter.displayPrompt(reader, writer)
-        case _                                               =>
+        case _: Error   => Reporter.displayPrompt(reader, writer)
+        case _: Warning => if ctx.settings.Werror.value then Reporter.displayPrompt(reader, writer)
+        case _          =>
   }
 }
 

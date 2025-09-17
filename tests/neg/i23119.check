@@ -1,0 +1,20 @@
+-- [E161] Naming Error: tests/neg/i23119.scala:8:4 ---------------------------------------------------------------------
+8 |    given Option[List[Int]] = Some(List(x)) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    given_Option_List is already defined as given instance given_Option_List
+  |
+  |    Provide an explicit, unique name to given definitions,
+  |    since the names assigned to anonymous givens may clash. For example:
+  |
+  |          given myGiven: Option[List[String]]  // define an instance
+  |          given myGiven @ Option[List[String]] // as a pattern variable
+-- [E161] Naming Error: tests/neg/i23119.scala:18:8 --------------------------------------------------------------------
+18 |  given [A] => List[A] = ??? // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  given_List_A is already defined as given instance given_List_A
+   |
+   |  Provide an explicit, unique name to given definitions,
+   |  since the names assigned to anonymous givens may clash. For example:
+   |
+   |        given myGiven: [A] => List[A]  // define an instance
+   |        given myGiven @ [A] => List[A] // as a pattern variable
