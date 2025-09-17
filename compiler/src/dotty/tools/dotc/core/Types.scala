@@ -6253,6 +6253,8 @@ object Types extends TypeUtils {
       tp.derivedAndType(tp1, tp2)
     protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
       tp.derivedOrType(tp1, tp2)
+    protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
+      tp.derivedAndOrType(tp1, tp2)
     protected def derivedMatchType(tp: MatchType, bound: Type, scrutinee: Type, cases: List[Type]): Type =
       tp.derivedMatchType(bound, scrutinee, cases)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =

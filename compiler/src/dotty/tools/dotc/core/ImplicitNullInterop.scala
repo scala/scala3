@@ -65,11 +65,15 @@ object ImplicitNullInterop:
     assert(ctx.explicitNulls)
 
     // Skip `TYPE`, enum values, and modules
-    if isEnumValueDef || sym.name == nme.TYPE_ || sym.is(Flags.ModuleVal) then
+    if isEnumValueDef
+      || sym.name == nme.TYPE_
+      || sym.name == nme.getClass_
+      || sym.name == nme.toString_
+      || sym.is(Flags.ModuleVal) then
       return tp
 
     // Don't nullify result type for `toString`, constructors, and @NotNull methods
-    val skipResultType = sym.name == nme.toString_ || sym.isConstructor || hasNotNullAnnot(sym)
+    val skipResultType = sym.isConstructor || hasNotNullAnnot(sym)
     // Don't nullify Given/implicit parameters
     val skipCurrentLevel = sym.isOneOf(GivenOrImplicitVal)
 
@@ -103,7 +107,7 @@ object ImplicitNullInterop:
      *  The symbols are still under construction, so we don't have precise information.
      *  We purposely do not rely on precise subtyping checks here (e.g., asking whether `tp <:< AnyRef`),
      *  because doing so could force incomplete symbols or trigger cycles. Instead, we conservatively
-     *  nullify only when we can recognize a concrete reference type shape.
+     *  nullify only when we can recognize a concrete reference type or type parameters from Java.
      */
     def needsNull(tp: Type): Boolean =
       if skipCurrentLevel || !tp.hasSimpleKind then false
@@ -149,7 +153,7 @@ object ImplicitNullInterop:
 
         skipCurrentLevel = savedSkipCurrentLevel
         val appTp2 = derivedAppliedType(appTp, tycon, targs2)
-        if tyconNeedsNull(tycon) then nullify(appTp2) else appTp2
+        if tyconNeedsNull(tycon) && tp.hasSimpleKind then nullify(appTp2) else appTp2
       case ptp: PolyType =>
         derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
       case mtp: MethodType =>
@@ -169,10 +173,17 @@ object ImplicitNullInterop:
       case tp: TypeBounds =>
         mapOver(tp)
       case tp: AndOrType =>
-        // For unions/intersections we recurse into constituents but do not force an outer `| Null` here;
-        // outer nullability is handled by the surrounding context. This keeps the result minimal and avoids
-        // duplicating `| Null` on both sides and at the outer level.
-        mapOver(tp)
+        // For unions/intersections we recurse into both sides.
+        // If both sides are nullalble, we only add `| Null` once.
+        // This keeps the result minimal and avoids duplicating `| Null`
+        // on both sides and at the outer level.
+        (this(tp.tp1), this(tp.tp2)) match
+          case (FlexibleType(_, t1), FlexibleType(_, t2)) if ctx.flexibleTypes =>
+            FlexibleType(derivedAndOrType(tp, t1, t2))
+          case (OrNull(t1), OrNull(t2)) =>
+            OrNull(derivedAndOrType(tp, t1, t2))
+          case (t1, t2) =>
+            derivedAndOrType(tp, t1, t2)
       case tp: ExprType =>
         mapOver(tp)
       case tp: AnnotatedType =>
@@ -180,16 +191,25 @@ object ImplicitNullInterop:
         derivedAnnotatedType(tp, this(tp.underlying), tp.annot)
       case tp: RefinedType =>
         val savedSkipCurrentLevel = skipCurrentLevel
+        val savedSkipResultType = skipResultType
 
-        // Nullify parent at outer level; not refined members
         skipCurrentLevel = true
         val parent2 = this(tp.parent)
 
         skipCurrentLevel = false
+        skipResultType = false
         val refinedInfo2 = this(tp.refinedInfo)
 
         skipCurrentLevel = savedSkipCurrentLevel
-        derivedRefinedType(tp, parent2, refinedInfo2)
+        skipResultType = savedSkipResultType
+
+        parent2 match
+          case FlexibleType(_, parent2a) if ctx.flexibleTypes =>
+            FlexibleType(derivedRefinedType(tp, parent2a, refinedInfo2))
+          case OrNull(parent2a) =>
+            OrNull(derivedRefinedType(tp, parent2a, refinedInfo2))
+          case _ =>
+            derivedRefinedType(tp, parent2, refinedInfo2)
       case _ =>
         // In all other cases, return the type unchanged.
         // In particular, if the type is a ConstantType, then we don't nullify it because it is the
