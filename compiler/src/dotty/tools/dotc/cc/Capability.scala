@@ -168,6 +168,11 @@ object Capabilities:
 
     /** Is this fresh cap at the right level to be able to subsume `ref`?
      *  Only outer freshes can be subsumed.
+     *  TODO Can we merge this with levelOK? Right now we use two different schemes:
+     *   - For level checking capsets with levelOK: Check that the visibility of the element
+     *     os not properly contained in the captset owner.
+     *  - For level checking elements subsumed by FreshCaps: Check that the widened scope
+     *    (using levelOwner) of the elements contains the owner of the FreshCap.
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
