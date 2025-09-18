@@ -3352,7 +3352,9 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns] ‘)’
+     *
+     *  -- It is checked in Typer that there are no repeated PatVar arguments.
      */
     def argumentPatterns(): List[Tree] =
       inParensWithCommas(patternsOpt(Location.InPatternArgs))

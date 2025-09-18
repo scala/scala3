@@ -365,7 +365,7 @@ Patterns          ::=  Pattern {‘,’ Pattern}
 NamedPattern      ::=  id '=' Pattern
 
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
-                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns]‘)’
 ```
 
 ### Type and Value Parameters

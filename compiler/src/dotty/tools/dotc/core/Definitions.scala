@@ -570,10 +570,11 @@ class Definitions {
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
     @tu lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
+    @tu lazy val Seq_dropRight    : Symbol = SeqClass.requiredMethod(nme.dropRight)
+    @tu lazy val Seq_takeRight    : Symbol = SeqClass.requiredMethod(nme.takeRight)
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
-
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
