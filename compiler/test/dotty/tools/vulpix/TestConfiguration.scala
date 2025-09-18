@@ -101,9 +101,5 @@ object TestConfiguration {
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
 
   /** Default target of the generated class files */
-  private def defaultTarget: String = {
-    import scala.util.Properties.isJavaAtLeast
-
-    if isJavaAtLeast("9") then "9" else "8"
-  }
+  private def defaultTarget: String = "17"
 }
