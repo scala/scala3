@@ -299,30 +299,57 @@ object PatternMatcher {
       }
 
       /** Plan for matching the sequence in `getResult` against sequence elements
-       *  and a possible last varargs argument `args`.
+       *  `args`. Sequence elements may contain a varargs argument.
+       *  Example:
+       *
+       *    lst match case Seq(1, xs*, 2, 3) => ...
+       *
+       *  generates code which is equivalent to:
+       *
+       *    if lst != null then
+       *      if lst.lengthCompare >= 1 then
+       *        if lst(0) == 1 then
+       *          val x1 = lst.drop(1)
+       *          val xs = x1.dropRight(2)
+       *          val x2 = lst.takeRight(2)
+       *          if x2.lengthCompare >= 2 then
+       *            if x2(0) == 2 then
+       *              if x2(1) == 3 then
+       *                return[matchResult] ...
        */
-      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
-        case Some(VarArgPattern(arg)) =>
-          val matchRemaining =
-            if (args.length == 1) {
-              val toSeq = ref(getResult)
-                .select(defn.Seq_toSeq.matchingMember(getResult.info))
-              letAbstract(toSeq) { toSeqResult =>
-                patternPlan(toSeqResult, arg, onSuccess)
-              }
-            }
-            else {
-              val dropped = ref(getResult)
-                .select(defn.Seq_drop.matchingMember(getResult.info))
-                .appliedTo(Literal(Constant(args.length - 1)))
-              letAbstract(dropped) { droppedResult =>
-                patternPlan(droppedResult, arg, onSuccess)
-              }
-            }
-          matchElemsPlan(getResult, args.init, exact = false, matchRemaining)
-        case _ =>
-          matchElemsPlan(getResult, args, exact = true, onSuccess)
-      }
+      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan =
+        val (leading, varargAndRest) = args.span:
+          case VarArgPattern(_) => false
+          case _ => true
+        varargAndRest match
+          case VarArgPattern(arg) :: trailing =>
+            val remaining =
+              if leading.isEmpty then
+                ref(getResult)
+                  .select(defn.Seq_toSeq.matchingMember(getResult.info))
+              else
+                ref(getResult)
+                  .select(defn.Seq_drop.matchingMember(getResult.info))
+                  .appliedTo(Literal(Constant(leading.length)))
+            val matchRemaining =
+              letAbstract(remaining): remainingResult =>
+                if trailing.isEmpty then
+                  patternPlan(remainingResult, arg, onSuccess)
+                else
+                  val seq = ref(remainingResult)
+                    .select(defn.Seq_dropRight.matchingMember(remainingResult.info))
+                    .appliedTo(Literal(Constant(trailing.length)))
+                  letAbstract(seq): seqResult =>
+                    val rest = ref(remainingResult)
+                      .select(defn.Seq_takeRight.matchingMember(remainingResult.info))
+                      .appliedTo(Literal(Constant(trailing.length)))
+                    val matchTrailing =
+                      letAbstract(rest): trailingResult =>
+                        matchElemsPlan(trailingResult, trailing, exact = true, onSuccess)
+                    patternPlan(seqResult, arg, matchTrailing)
+            matchElemsPlan(getResult, leading, exact = false, matchRemaining)
+          case _ =>
+            matchElemsPlan(getResult, args, exact = true, onSuccess)
 
       /** Plan for matching the sequence in `getResult`
        *

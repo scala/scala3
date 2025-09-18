@@ -303,6 +303,11 @@ object Applications {
           report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
           argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
+
+      val varArgs = alignedArgs.filter(untpd.isWildcardStarArg)
+      if varArgs.length >= 2 then
+        report.error(em"Ony one spread pattern allowed in sequence", varArgs(1).srcPos)
+
       alignedArgs.lazyZip(alignedArgTypes).map(typer.typed(_, _))
         .showing(i"unapply patterns = $result", unapp)
 
