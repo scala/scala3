@@ -137,6 +137,7 @@ object ImplicitNullInterop:
       else tp match
         case tp: TypeRef
           if !ctx.flexibleTypes && tp.isRef(defn.RepeatedParamClass) => false
+        case tp: TypeRef if defn.isTupleClass(tp.symbol) => false
         case _ => true
 
     override def apply(tp: Type): Type = tp match
@@ -193,7 +194,6 @@ object ImplicitNullInterop:
         val savedSkipCurrentLevel = skipCurrentLevel
         val savedSkipResultType = skipResultType
 
-        skipCurrentLevel = true
         val parent2 = this(tp.parent)
 
         skipCurrentLevel = false
