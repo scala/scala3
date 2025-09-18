@@ -179,22 +179,11 @@ public class CompilerBridgeDriver extends Driver {
     }
 
     try {
-      return new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id()) {
-        {
-          // fill in the content
-          try (OutputStream output = output()) {
-            try (InputStream input = virtualFile.input()) {
-              Streamable.Bytes bytes = new Streamable.Bytes() {
-                @Override
-                public InputStream inputStream() {
-                  return input;
-                }
-              };
-              output.write(bytes.toByteArray());
-            }
-          }
-        }
-      };
+      final var file = new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id());
+      try (final var output = file.output(); final var input = virtualFile.input()) {
+        input.transferTo(output);
+      }
+      return file;
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }
