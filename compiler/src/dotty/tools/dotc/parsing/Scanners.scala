@@ -20,7 +20,7 @@ import config.Feature
 import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
-import reporting.{NoProfile, Profile, Message}
+import reporting.*
 
 import java.util.Objects
 import dotty.tools.dotc.reporting.Message.rewriteNotice
@@ -652,7 +652,7 @@ object Scanners {
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
                     insert(OUTDENT, offset)
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
-                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
+                  report.warning(IndentationWarning(isLeft = true, missing = RBRACE), sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then

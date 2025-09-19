@@ -712,9 +712,7 @@ object Parsers {
           if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
-                em"""Line is indented too far to the right, or a `{` is missing before:
-                  |
-                  |${t.tryToShow}"""
+                IndentationWarning(missing = LBRACE, before = t.tryToShow)
               else
                 in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
               in.next.offset
@@ -729,7 +727,7 @@ object Parsers {
       if in.isNewLine then
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if in.currentRegion.indentWidth < nextIndentWidth && in.currentRegion.closedBy == OUTDENT then
-          warning(em"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
+          warning(IndentationWarning(missing = Seq(LBRACE, COLONop)*), in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
 
