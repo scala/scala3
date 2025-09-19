@@ -489,7 +489,7 @@ object Capabilities:
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
     final def visibility(using Context): Symbol = this match
-      case self: FreshCap => ccOwner.enclosingMethodOrClass
+      case self: FreshCap => adjustOwner(ccOwner)
       case _ =>
         val vis = ccOwner
         if vis.is(Param) then vis.owner else vis
@@ -500,13 +500,14 @@ object Capabilities:
      *   - method symbols, but not accessors or constructors
      */
     final def levelOwner(using Context): Symbol =
-      def adjust(owner: Symbol): Symbol =
-        if !owner.exists
-          || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
-          || owner.is(Flags.Method, butNot = Flags.Accessor) && !owner.isConstructor
-        then owner
-        else adjust(owner.owner)
-      adjust(ccOwner)
+      adjustOwner(ccOwner)
+
+    private def adjustOwner(owner: Symbol)(using Context): Symbol =
+      if !owner.exists
+        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
+        || owner.is(Flags.Method, butNot = Flags.Accessor)
+      then owner
+      else adjustOwner(owner.owner)
 
     /** Tests whether the capability derives from capability class `cls`. */
     def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = this match
