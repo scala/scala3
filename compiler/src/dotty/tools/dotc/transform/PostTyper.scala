@@ -437,30 +437,17 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             acc.select(defn.Int_+).appliedTo(len)
 
         def makeBuilder(name: String) =
-          ref(defn.ArraySeqBuilderModule).select(name.toTermName)
-        def genericBuilder = makeBuilder("generic")
-          .appliedToType(elemType)
-          .appliedTo(totalLength)
+          ref(defn.VarArgsBuilderModule).select(name.toTermName)
 
         val builder =
           if defn.ScalaValueClasses().contains(elemCls) then
-            makeBuilder(s"of${elemCls.name}").appliedTo(totalLength)
+            makeBuilder(s"of${elemCls.name}")
           else if elemCls.derivesFrom(defn.ObjectClass) then
-            val classTagType = defn.ClassTagClass.typeRef.appliedTo(elemType)
-            val classTag = atPhase(Phases.typerPhase):
-              ctx.typer.inferImplicitArg(classTagType, tree.span.startPos)
-            classTag.tpe match
-              case _: SearchFailureType =>
-                genericBuilder
-              case _ =>
-                makeBuilder("ofRef")
-                  .appliedToType(elemType)
-                  .appliedTo(totalLength)
-                  .appliedTo(classTag)
+            makeBuilder("ofRef").appliedToType(elemType)
           else
-            genericBuilder
+            makeBuilder("generic").appliedToType(elemType)
 
-        elems.foldLeft(builder): (bldr, elem) =>
+        elems.foldLeft(builder.appliedTo(totalLength)): (bldr, elem) =>
           elem match
             case spread(arg) =>
               val selector =
@@ -469,6 +456,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               bldr.select(selector.toTermName).appliedTo(arg)
             case _ => bldr.select("add".toTermName).appliedTo(elem)
         .select("result".toTermName)
+        .appliedToNone
     end flattenSpreads
 
     override def transform(tree: Tree)(using Context): Tree =

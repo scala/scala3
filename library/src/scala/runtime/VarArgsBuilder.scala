@@ -3,17 +3,17 @@ package scala.runtime
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 
-sealed abstract class ArraySeqBuilder[T]:
+sealed abstract class VarArgsBuilder[T]:
   def add(elem: T): this.type
   def addSeq(elems: Seq[T]): this.type
   def addArray(elems: Array[T]): this.type
-  def result: ArraySeq[T]
+  def result(): Seq[T]
 
-object ArraySeqBuilder:
+object VarArgsBuilder:
 
-  def generic[T](n: Int) = new ArraySeqBuilder[T]:
+  def generic[T](n: Int): VarArgsBuilder[T] = new VarArgsBuilder[T]:
     private val xs = new Array[AnyRef](n)
-    def result = ArraySeq.ofRef(xs).asInstanceOf[ArraySeq[T]]
+    def result() = ArraySeq.ofRef(xs).asInstanceOf[ArraySeq[T]]
     private var i = 0
     def add(elem: T): this.type =
       xs(i) = elem.asInstanceOf[AnyRef]
@@ -30,9 +30,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofRef[T <: AnyRef](n: Int)(using ClassTag[T]) = new ArraySeqBuilder[T]:
-    private val xs = new Array[T](n)
-    def result = ArraySeq.ofRef(xs)
+  def ofRef[T <: AnyRef](n: Int): VarArgsBuilder[T] = new VarArgsBuilder[T]:
+    private val xs = new Array[AnyRef](n)
+    def result() = ArraySeq.ofRef(xs).asInstanceOf[ArraySeq[T]]
     private var i = 0
     def add(elem: T): this.type =
       xs(i) = elem
@@ -49,9 +49,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofByte(n: Int) = new ArraySeqBuilder[Byte]:
+  def ofByte(n: Int): VarArgsBuilder[Byte] = new VarArgsBuilder[Byte]:
     private val xs = new Array[Byte](n)
-    def result = ArraySeq.ofByte(xs)
+    def result() = ArraySeq.ofByte(xs)
     private var i = 0
     def add(elem: Byte): this.type =
       xs(i) = elem
@@ -68,9 +68,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofShort(n: Int) = new ArraySeqBuilder[Short]:
+  def ofShort(n: Int): VarArgsBuilder[Short] = new VarArgsBuilder[Short]:
     private val xs = new Array[Short](n)
-    def result = ArraySeq.ofShort(xs)
+    def result() = ArraySeq.ofShort(xs)
     private var i = 0
     def add(elem: Short): this.type =
       xs(i) = elem
@@ -87,9 +87,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofChar(n: Int) = new ArraySeqBuilder[Char]:
+  def ofChar(n: Int): VarArgsBuilder[Char] = new VarArgsBuilder[Char]:
     private val xs = new Array[Char](n)
-    def result = ArraySeq.ofChar(xs)
+    def result() = ArraySeq.ofChar(xs)
     private var i = 0
     def add(elem: Char): this.type =
       xs(i) = elem
@@ -106,9 +106,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofInt(n: Int) = new ArraySeqBuilder[Int]:
+  def ofInt(n: Int): VarArgsBuilder[Int] = new VarArgsBuilder[Int]:
     private val xs = new Array[Int](n)
-    def result = ArraySeq.ofInt(xs)
+    def result() = ArraySeq.ofInt(xs)
     private var i = 0
     def add(elem: Int): this.type =
       xs(i) = elem
@@ -125,9 +125,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofLong(n: Int) = new ArraySeqBuilder[Long]:
+  def ofLong(n: Int): VarArgsBuilder[Long] = new VarArgsBuilder[Long]:
     private val xs = new Array[Long](n)
-    def result = ArraySeq.ofLong(xs)
+    def result() = ArraySeq.ofLong(xs)
     private var i = 0
     def add(elem: Long): this.type =
       xs(i) = elem
@@ -144,9 +144,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofFloat(n: Int) = new ArraySeqBuilder[Float]:
+  def ofFloat(n: Int): VarArgsBuilder[Float] = new VarArgsBuilder[Float]:
     private val xs = new Array[Float](n)
-    def result = ArraySeq.ofFloat(xs)
+    def result() = ArraySeq.ofFloat(xs)
     private var i = 0
     def add(elem: Float): this.type =
       xs(i) = elem
@@ -163,9 +163,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofDouble(n: Int) = new ArraySeqBuilder[Double]:
+  def ofDouble(n: Int): VarArgsBuilder[Double] = new VarArgsBuilder[Double]:
     private val xs = new Array[Double](n)
-    def result = ArraySeq.ofDouble(xs)
+    def result() = ArraySeq.ofDouble(xs)
     private var i = 0
     def add(elem: Double): this.type =
       xs(i) = elem
@@ -182,9 +182,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofBoolean(n: Int) = new ArraySeqBuilder[Boolean]:
+  def ofBoolean(n: Int): VarArgsBuilder[Boolean] = new VarArgsBuilder[Boolean]:
     private val xs = new Array[Boolean](n)
-    def result = ArraySeq.ofBoolean(xs)
+    def result() = ArraySeq.ofBoolean(xs)
     private var i = 0
     def add(elem: Boolean): this.type =
       xs(i) = elem
@@ -201,9 +201,9 @@ object ArraySeqBuilder:
         i += 1
       this
 
-  def ofUnit(n: Int) = new ArraySeqBuilder[Unit]:
+  def ofUnit(n: Int): VarArgsBuilder[Unit] = new VarArgsBuilder[Unit]:
     private val xs = new Array[Unit](n)
-    def result = ArraySeq.ofUnit(xs)
+    def result() = ArraySeq.ofUnit(xs)
     private var i = 0
     def add(elem: Unit): this.type =
       xs(i) = elem
@@ -220,4 +220,4 @@ object ArraySeqBuilder:
         i += 1
       this
 
-end ArraySeqBuilder
+end VarArgsBuilder
