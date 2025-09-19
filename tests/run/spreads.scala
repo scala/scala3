@@ -35,5 +35,13 @@ def useInt(xs: Int*) = ???
 
   assert(sum(0, numbers1*, numbers2*, 4) == 25)
 
+  // Tests for harmonization with varargs
 
+  val darr: Array[Double] = Array(1.0, 2)
+  val zs1 = Array(1, darr*, 2, darr*, 3)
+  val _: Array[Double] = zs1
+  val d: Double = 4
+  val zs2 = Array(1, darr*, 2, d, 3)
+  val _: Array[Double] = zs2
+  println(zs2.sum)
 

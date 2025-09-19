@@ -25,6 +25,7 @@ import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.{Feature, MigrationVersion, SourceVersion}
 import util.Property
+import util.chaining.tap
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -814,19 +815,17 @@ trait Applications extends Compatibility {
                 addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
-                if Feature.enabled(Feature.multiSpreads)
-                    && !ctx.isAfterTyper && args.exists(isVarArg)
-                then
-                  args.foreach: arg =>
-                    if isVarArg(arg)
-                    then addArg(typedArg(arg, formal), formal)
-                    else addArg(typedArg(arg, elemFormal), elemFormal)
-                else
-                  val typedArgs = harmonic(harmonizeArgs, elemFormal):
-                    args.map: arg =>
-                      checkNoVarArg(arg)
+                val typedVarArgs = util.HashSet[TypedArg]()
+                val typedArgs = harmonic(harmonizeArgs, elemFormal):
+                  args.map: arg =>
+                    if isVarArg(arg) then
+                      if !Feature.enabled(Feature.multiSpreads) || ctx.isAfterTyper then
+                        checkNoVarArg(arg)
+                      typedArg(arg, formal).tap(typedVarArgs += _)
+                    else
                       typedArg(arg, elemFormal)
-                  typedArgs.foreach(addArg(_, elemFormal))
+                typedArgs.foreach: targ =>
+                  addArg(targ, if typedVarArgs.contains(targ) then formal else elemFormal)
                 makeVarArg(args.length, elemFormal)
             }
           else args match {
@@ -2704,7 +2703,8 @@ trait Applications extends Compatibility {
           case ConstantType(c: Constant) if c.tag == IntTag =>
             targetClass(ts1, cls, true)
           case t =>
-            val sym = t.classSymbol
+            val sym =
+              if t.isRepeatedParam then t.argTypesLo.head.classSymbol else t.classSymbol
             if (!sym.isNumericValueClass || cls.exists && cls != sym) NoSymbol
             else targetClass(ts1, sym, intLitSeen)
         }
