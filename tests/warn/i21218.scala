@@ -6,6 +6,5 @@ def Test[U, A](thisElem: A, thatElem: U) = {
       case (`passedEnd`, r: U @unchecked) => (thisElem, r)
       case (l: A @unchecked, `passedEnd`) => (l, thatElem)
       case t: (A, U) @unchecked           => t // false-positive warning
-      case (t1, t2) => (t1, t2)
     }
 }

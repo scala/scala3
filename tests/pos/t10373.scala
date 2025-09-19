@@ -1,4 +1,4 @@
-//> using options -deprecation -feature
+//> using options -Xfatal-warnings -deprecation -feature
 
 abstract class Foo {
   def bar(): Unit = this match {
@@ -7,7 +7,7 @@ abstract class Foo {
                     // Works fine
   }
 
-  def baz(that: Foo): Unit = (this, that) match { // warn: match may not be exhaustive.
+  def baz(that: Foo): Unit = (this, that) match {
     case (Foo_1(), _) => //do something
     case (Foo_2(), _) => //do something
                          // match may not be exhaustive
