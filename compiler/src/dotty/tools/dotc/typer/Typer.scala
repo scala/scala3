@@ -1692,11 +1692,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val restpe = mt.resultType match
             case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
             case tp => tp
-          (formals,
-           if (mt.isResultDependent)
-             untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef)))
-           else
-             typeTree(restpe))
+          val tree =
+            if (mt.isResultDependent) {
+              if (formals.length != defaultArity)
+                typeTree(WildcardType)
+              else
+                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef)))
+            } else
+              typeTree(restpe)
+          (formals, tree)
         case _ =>
           (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
       }
