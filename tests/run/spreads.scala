@@ -28,5 +28,12 @@ def useInt(xs: Int*) = ???
   use(one, oneTwoThree*, two)
   //use(1.0, ao*, 2.0)
 
+  val numbers1 = Array(1, 2, 3)
+  val numbers2 = List(4, 5, 6)
+
+  def sum(xs: Int*) = xs.sum
+
+  assert(sum(0, numbers1*, numbers2*, 4) == 25)
+
 
 
