@@ -328,6 +328,13 @@ object Parsers {
       if in.token == token then in.nextToken()
       offset
 
+    def accept(token: Int, help: String): Int =
+      val offset = in.offset
+      if in.token != token then
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token, suffix = help))
+      if in.token == token then in.nextToken()
+      offset
+
     def accept(name: Name): Int = {
       val offset = in.offset
       if !isIdent(name) then
@@ -4090,7 +4097,7 @@ object Parsers {
             lhs match
             case Ident(name) :: Nil if name.endsWith(":") =>
               val help = i"; identifier ends in colon, did you mean `${name.toSimpleName.dropRight(1)}`: in backticks?"
-              syntaxErrorOrIncomplete(ExpectedTokenButFound(EQUALS, in.token, suffix = help))
+              accept(EQUALS, help)
             case _ => accept(EQUALS)
           else
             accept(EQUALS)
@@ -4193,7 +4200,7 @@ object Parsers {
             else EmptyTree
           else if in.token == IDENTIFIER && paramss.isEmpty && name.endsWith(":") then
             val help = i"; identifier ends in colon, did you mean `${name.toSimpleName.dropRight(1)}`: in backticks?"
-            syntaxErrorOrIncomplete(ExpectedTokenButFound(EQUALS, in.token, suffix = help))
+            accept(EQUALS, help)
             EmptyTree
           else
             if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
