@@ -524,7 +524,7 @@ class Definitions {
     @tu lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     @tu lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
-  @tu lazy val ArraySeqBuilderModule: Symbol = requiredModule("scala.runtime.ArraySeqBuilder")
+  @tu lazy val VarArgsBuilderModule: Symbol = requiredModule("scala.runtime.VarArgsBuilder")
 
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
