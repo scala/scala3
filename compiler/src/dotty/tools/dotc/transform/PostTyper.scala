@@ -414,7 +414,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *
      *  This then translates to
      *
-     *    scala.runtime.ArraySeqBuilcder.ofInt(2 + xs.length + ys.length)
+     *    scala.runtime.VarArgsBuilder.ofInt(2 + xs.length + ys.length)
      *      .add(1)
      *      .addSeq(xs)
      *      .add(2)
@@ -450,10 +450,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         elems.foldLeft(builder.appliedTo(totalLength)): (bldr, elem) =>
           elem match
             case spread(arg) =>
-              val selector =
-                if arg.tpe.derivesFrom(defn.SeqClass) then "addSeq"
-                else "addArray"
-              bldr.select(selector.toTermName).appliedTo(arg)
+              if arg.tpe.derivesFrom(defn.SeqClass) then
+                bldr.select("addSeq".toTermName).appliedTo(arg)
+              else
+                bldr.select("addArray".toTermName).appliedTo(
+                  arg.ensureConforms(defn.ArrayOf(elemType)))
             case _ => bldr.select("add".toTermName).appliedTo(elem)
         .select("result".toTermName)
         .appliedToNone
