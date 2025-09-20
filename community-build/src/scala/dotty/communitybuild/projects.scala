@@ -138,6 +138,7 @@ object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
     "-Wsafe-init",
+    "-Yexplicit-nulls",
   )
 
 object projects:
@@ -306,7 +307,8 @@ object projects:
     project       = "scala-xml",
     sbtTestCommand = "xml/test",
     sbtPublishCommand = "xml/publishLocal",
-    sbtDocCommand = "xml/doc"
+    sbtDocCommand = "xml/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Yexplicit-nulls")
   )
 
   lazy val scalap = SbtCommunityProject(
