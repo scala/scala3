@@ -1991,13 +1991,11 @@ class Definitions {
    *   - the upper bound of a TypeParamRef in the current constraint
    */
   def asContextFunctionType(tp: Type)(using Context): Type =
-    tp.stripTypeVar.dealias match
+    tp.stripNull().stripTypeVar.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
-      case tp1: FlexibleType =>
-        asContextFunctionType(tp1.underlying)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
