@@ -317,8 +317,9 @@ object projects:
 
   lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
-    sbtTestCommand   = "dotty-community-build/compile",
-    sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
+    sbtTestCommand   = "test",
+    sbtDocCommand   = "doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xfatal-warnings"), // allow warnings for now
   )
 
   lazy val scalaPB = SbtCommunityProject(
