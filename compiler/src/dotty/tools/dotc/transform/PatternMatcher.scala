@@ -14,9 +14,11 @@ import Flags.*, Constants.*
 import Decorators.*
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
+import config.Feature
 import reporting.*
 import ast.*
 import util.Property.*
+import cc.{CapturingType, Capabilities}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -427,8 +429,11 @@ object PatternMatcher {
               && !hasExplicitTypeArgs(extractor)
             case _ => false
           }
+          val castTp = if Feature.ccEnabled
+            then CapturingType(tpt.tpe, scrutinee.termRef.singletonCaptureSet)
+            else tpt.tpe
           TestPlan(TypeTest(tpt, isTrusted), scrutinee, tree.span,
-            letAbstract(ref(scrutinee).cast(tpt.tpe)) { casted =>
+            letAbstract(ref(scrutinee).cast(castTp)) { casted =>
               nonNull += casted
               patternPlan(casted, pat, onSuccess)
             })
