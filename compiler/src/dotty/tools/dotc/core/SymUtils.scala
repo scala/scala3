@@ -91,7 +91,7 @@ class SymUtils:
       self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
 
     def isDummyCaptureParam(using Context): Boolean =
-      self.isAllOf(CaptureParam) && !(self.isClass || self.is(Method))
+      self.is(PhantomSymbol) && self.infoOrCompleter.typeSymbol != defn.CBCompanion
 
     /** Is this a case class for which a product mirror is generated?
     *  Excluded are value classes, abstract classes and case classes with more than one
