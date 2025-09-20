@@ -110,7 +110,6 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
   @deprecated("Use `asJava` instead", "2.13.0")
   def mapAsJavaConcurrentMap[K, V](m: concurrent.Map[K, V]): juc.ConcurrentMap[K, V] = asJava(m)
 
-
   @deprecated("Use `asScala` instead", "2.13.0")
   def asScalaIterator[A](i: ju.Iterator[A]): Iterator[A] = asScala(i)
 
@@ -124,7 +123,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
   def collectionAsScalaIterable[A](i: ju.Collection[A]): Iterable[A] = asScala(i)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def asScalaBuffer[A](l: ju.List[A]): mutable.Buffer[A] = asScala(l)
+  def asScalaBuffer[A](s: ju.List[A]): mutable.Buffer[A] = asScala(s)
 
   @deprecated("Use `asScala` instead", "2.13.0")
   def asScalaSet[A](s: ju.Set[A]): mutable.Set[A] = asScala(s)

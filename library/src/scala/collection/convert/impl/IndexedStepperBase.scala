@@ -19,7 +19,7 @@ import java.util.Spliterator
 import scala.collection.Stepper.EfficientSplit
 
 /** Abstracts all the generic operations of stepping over an indexable collection */
-private[convert] abstract class IndexedStepperBase[Sub >: Null, Semi <: Sub](protected var i0: Int, protected var iN: Int)
+private[convert] abstract class IndexedStepperBase[Sub, Semi <: Sub](protected var i0: Int, protected var iN: Int)
   extends EfficientSplit {
   protected def semiclone(half: Int): Semi
 
@@ -29,7 +29,7 @@ private[convert] abstract class IndexedStepperBase[Sub >: Null, Semi <: Sub](pro
 
   def estimateSize: Long = iN - i0
 
-  def trySplit(): Sub = {
+  def trySplit(): Sub | Null = {
     if (iN-1 > i0) {
       val half = (i0+iN) >>> 1
       val ans = semiclone(half)

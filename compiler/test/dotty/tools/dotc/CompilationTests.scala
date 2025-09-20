@@ -205,7 +205,6 @@ class CompilationTests {
     ).checkCompile()
 
   // Explicit nulls tests
-  @Ignore
   @Test def explicitNullsNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
@@ -215,7 +214,6 @@ class CompilationTests {
     )
   }.checkExpectedErrors()
 
-  @Ignore
   @Test def explicitNullsPos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     aggregateTests(
@@ -235,13 +233,11 @@ class CompilationTests {
     }
   }
 
-  @Ignore
   @Test def explicitNullsWarn: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
     compileFilesInDir("tests/explicit-nulls/warn", explicitNullsOptions)
   }.checkWarnings()
 
-  @Ignore
   @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)

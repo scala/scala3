@@ -102,7 +102,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractIterable[A]
       with StrictOptimizedIterableOps[A, Iterable, Iterable[A]]
       with Serializable {
-    def iterator = underlying.iterator.asScala
+    def iterator: Iterator[A] = underlying.iterator.asScala
     override def size = underlying.size
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
