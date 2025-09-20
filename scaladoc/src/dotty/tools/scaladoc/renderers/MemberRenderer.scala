@@ -177,7 +177,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       cls := s"documentableName $depStyle",
     )
 
-    val signature: MemberSignature = signatureProvider.rawSignature(member)()
+    val ctx = summon[DocContext]
+    val signature: MemberSignature = signatureProvider.rawSignature(member)(!ctx.args.suppressCC)()
     val isSubtype = signature.suffix.exists {
       case Keyword(keyword) => keyword.contains("extends")
       case _ => false

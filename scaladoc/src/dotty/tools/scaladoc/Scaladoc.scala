@@ -47,6 +47,7 @@ object Scaladoc:
     defaultTemplate: Option[String] = None,
     quickLinks: List[QuickLink] = List.empty,
     dynamicSideMenu: Boolean = false,
+    suppressCC: Boolean = false, // suppress rendering anything related to experimental capture checking
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -231,6 +232,7 @@ object Scaladoc:
         defaultTemplate.nonDefault,
         quickLinksParsed,
         dynamicSideMenu.get,
+        suppressCC.get,
       )
       (Some(docArgs), newContext)
     }

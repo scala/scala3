@@ -213,7 +213,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       val (res, pageName) =  page.content match
         case m: Member if m.kind != Kind.RootPackage =>
           def processMember(member: Member, fqName: List[String]): Seq[(JSON, Seq[String])] =
-            val signature: MemberSignature = signatureProvider.rawSignature(member)()
+            val signature: MemberSignature = signatureProvider.rawSignature(member)(!ctx.args.suppressCC)()
             val sig = Signature(Plain(member.name)) ++ signature.suffix
             val descr = if member.kind == Kind.Package then "" else fqName.mkString(".")
             val extraDescr = member.docs.map(d => docPartRenderPlain(d.body)).getOrElse("")
