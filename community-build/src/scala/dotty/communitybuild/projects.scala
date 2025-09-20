@@ -671,9 +671,9 @@ object projects:
 
   lazy val playJson = SbtCommunityProject(
     project = "play-json",
-    sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest, scalatestplusScalacheck),
+    sbtTestCommand = "play-jsonJVM/test; play-jsonJS/test; play-functionalJVM/test; play-functionalJS/test; play-json-joda/test",
+    sbtPublishCommand = "play-jsonJVM/publishLocal; play-jsonJS/publishLocal; play-functionalJVM/publishLocal; play-functionalJS/publishLocal; play-json-joda/publishLocal",
+    //dependencies = List(scalatest, scalatestplusScalacheck),
   )
 
   lazy val munitCatsEffect = SbtCommunityProject(
