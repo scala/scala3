@@ -68,7 +68,7 @@ trait CommunityBuildRunner:
         |
         |""".stripMargin)
 
-    val testsCompletedSuccessfully = execTimes(projectDef.build, 3)
+    val testsCompletedSuccessfully = execTimes(projectDef.build, 1)
 
     if !testsCompletedSuccessfully then
       failWith(s"""
