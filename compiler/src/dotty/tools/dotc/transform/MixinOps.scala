@@ -3,6 +3,7 @@ package transform
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import NameKinds.*
 import util.Spans.*
 
 import StdNames.*, NameOps.*
@@ -71,7 +72,8 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
     (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
      generateJUnitForwarder || generateSerializationForwarder) &&
-    isInImplementingClass(meth)
+    isInImplementingClass(meth) &&
+    !meth.name.is(InlineAccessorName)
   }
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor

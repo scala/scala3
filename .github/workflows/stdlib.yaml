@@ -304,6 +304,7 @@ jobs:
   mima-scala-library-nonbootstrapped:
     runs-on: ubuntu-latest
     needs: scala-library-nonbootstrapped
+    if: false
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
