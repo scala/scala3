@@ -144,29 +144,30 @@ object Checking {
   def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
-        tp match
+        tp.normalized match
           case tp @ AppliedType(tycon, argTypes) =>
-            // Should the type be re-checked in the CC phase?
-            // Exempted are types that are not themselves capture-checked.
-            // Since the type constructor could not foresee possible capture sets,
-            // it's better to be lenient for backwards compatibility.
-            // Also exempted are match aliases. See tuple-ops.scala for an example that
-            // would fail otherwise.
-            def checkableUnderCC =
-              tycon.typeSymbol.is(CaptureChecked) && !tp.isMatchAlias
-            if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
-                // Don't check bounds in Java units that refer to Java type constructors.
-                // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
-                // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
-                // Do check all bounds in Scala units and those bounds in Java units that
-                // occur in applications of Scala type constructors.
-                && (!isCaptureChecking || checkableUnderCC) then
-              checkAppliedType(
-                untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
-                  .withType(tp).withSpan(tpt.span.toSynthetic),
-                tpt)
+            if !(isCaptureChecking && defn.MatchCase.isInstance(tp)) then
+              // Don't check match type cases under cc. For soundness it's enough
+              // to check bounds in reduced match types.
+              // See tuple-ops.scala and tuple-ops-2.scala for examples that would fail otherwise.
+              if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
+                  // Don't check bounds in Java units that refer to Java type constructors.
+                  // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
+                  // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
+                  // Do check all bounds in Scala units and those bounds in Java units that
+                  // occur in applications of Scala type constructors.
+                  && (!isCaptureChecking || tycon.typeSymbol.is(CaptureChecked))
+                  // When capture checking, types that are not themselves capture-checked
+                  // are exempted. Since the type constructor could not foresee possible
+                  // capture sets, it's better to be lenient for backwards compatibility.
+              then
+                checkAppliedType(
+                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
+                    .withType(tp).withSpan(tpt.span.toSynthetic),
+                  tpt)
+              traverseChildren(tp)
           case _ =>
-        traverseChildren(tp)
+            traverseChildren(tp)
     checker.traverse(tpt.tpe)
 
   def checkNoWildcard(tree: Tree)(using Context): Tree = tree.tpe match {
