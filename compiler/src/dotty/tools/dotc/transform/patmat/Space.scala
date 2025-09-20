@@ -702,6 +702,7 @@ object SpaceEngine {
             case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
             case tp: RefinedType => inhabited(tp.parent)
             case tp: TypeRef => !containsUninhabitedField(tp) && inhabited(tp.prefix)
+            case tp: AppliedType => !containsUninhabitedField(tp) && inhabited(tp.tycon)
             case _ => !containsUninhabitedField(tp)
 
           if inhabited(refined) then refined
