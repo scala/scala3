@@ -47,6 +47,7 @@ import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.{CheckCaptures, isRetainsLike}
+import qualified_types.QualifiedTypes
 import config.Config
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
@@ -2300,9 +2301,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** Type a case. */
-  def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
+  def typedCase(tree0: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
     val originalCtx = ctx
     val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
+    val tree = desugar.caseDef(tree0)
 
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
@@ -2536,7 +2538,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // untyped tree is no longer accessed after all
             // accesses with typedTypeTree are done.
           case None =>
-            errorTree(tree, em"Something's wrong: missing original symbol for type tree")
+            errorTree(tree, em"Something's wrong: missing original symbol for type tree ${tree}")
         }
       case _ =>
         completeTypeTree(InferredTypeTree(), pt, tree)
@@ -4812,7 +4814,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return readapt(tree.cast(captured))
 
       // drop type if prototype is Unit
-      if (pt isRef defn.UnitClass) {
+      if (pt.isRef(defn.UnitClass, false)) {
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
@@ -4863,6 +4865,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case OrNull(wtp1) => return readapt(tree.cast(wtp1))
               case _ =>
           case _ =>
+
+      // Try to adapt to a qualified type
+      val adapted = QualifiedTypes.adapt(tree, pt)
+      if !adapted.isEmpty then
+        return readapt(adapted)
 
       def recover(failure: SearchFailureType) =
         if canDefineFurther(wtp) || canDefineFurther(pt) then readapt(tree)

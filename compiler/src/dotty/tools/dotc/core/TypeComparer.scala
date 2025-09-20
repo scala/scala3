@@ -27,6 +27,7 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import scala.util.boundary, boundary.break
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 /** Provides methods to compare types.
  */
@@ -887,6 +888,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
         compareCapturing || fourthTry
+      case QualifiedType(parent2, qualifier2) =>
+        val parentSub = recur(tp1, parent2)
+        val qualifierSub = QualifiedTypes.typeImplies(tp1, qualifier2)
+        //println(i"compare qualified $tp1 <:< $tp2, parentSub = $parentSub, qualifierSub = $qualifierSub")
+        parentSub && qualifierSub
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
