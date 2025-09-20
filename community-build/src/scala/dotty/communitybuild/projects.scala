@@ -292,7 +292,7 @@ object projects:
     project           = "scalatestplus-junit",
     sbtTestCommand    = "scalatestplus-junit/test",
     sbtPublishCommand = "scalatestplus-junit/publishLocal",
-    dependencies      = List(scalatest)
+    //dependencies      = List(scalatest) DO NOT DEPEND ON SCALATEST, THEY ARE BREAKING THINGS IN MAIN...
   )
 
   lazy val scalatestplusTestNG = SbtCommunityProject(
