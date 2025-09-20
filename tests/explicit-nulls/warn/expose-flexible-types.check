@@ -1,0 +1,48 @@
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:2:6 --------------------------------------------------
+2 |  def f = s.trim // warn
+  |      ^
+  |Public method method f exposes a flexible type (String)? in its inferred signature. Consider annotating the type as String or String | Null explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:6:6 --------------------------------------------------
+6 |  def h = (s.trim, s.length) // warn
+  |      ^
+  |Public method method h exposes a flexible type ((String)?, Int) in its inferred signature. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:7:6 --------------------------------------------------
+7 |  val ss = s.replace("a", "A") // warn
+  |      ^
+  |Public field value ss exposes a flexible type (String)? in its inferred signature. Consider annotating the type as String or String | Null explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:8:6 --------------------------------------------------
+8 |  val ss2 = Seq(s.trim) // warn
+  |      ^
+  |Public field value ss2 exposes a flexible type Seq[(String)?] in its inferred signature. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:16:6 -------------------------------------------------
+16 |  def f = s2.trim // warn
+   |      ^
+   |Public method method f exposes a flexible type (String)? in its inferred signature. Consider annotating the type as String or String | Null explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:20:6 -------------------------------------------------
+20 |  def h = (s2.trim, s2.length) // warn
+   |      ^
+   |Public method method h exposes a flexible type ((String)?, Int) in its inferred signature. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:21:6 -------------------------------------------------
+21 |  val ss = s2.replace("a", "A") // warn
+   |      ^
+   |Public field value ss exposes a flexible type (String)? in its inferred signature. Consider annotating the type as String or String | Null explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:22:6 -------------------------------------------------
+22 |  val ss2 = Seq(s2.trim) // warn
+   |      ^
+   |Public field value ss2 exposes a flexible type Seq[(String)?] in its inferred signature. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:27:4 -------------------------------------------------
+27 |def f = s2.trim // warn
+   |    ^
+   |Public method method f exposes a flexible type (String)? in its inferred signature. Consider annotating the type as String or String | Null explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:31:4 -------------------------------------------------
+31 |def h = (s2.trim, s2.length) // warn
+   |    ^
+   |Public method method h exposes a flexible type ((String)?, Int) in its inferred signature. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:32:4 -------------------------------------------------
+32 |val ss = s2.replace("a", "A") // warn
+   |    ^
+   |Public field value ss exposes a flexible type (String)? in its inferred signature. Consider annotating the type as String or String | Null explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:33:4 -------------------------------------------------
+33 |val ss2 = Seq(s2.trim) // warn
+   |    ^
+   |Public field value ss2 exposes a flexible type Seq[(String)?] in its inferred signature. Consider annotating the type explicitly

@@ -152,7 +152,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
     new interfaces.AbstractFile {
       override def name = absfile.name
       override def path = absfile.path
-      override def jfile = Optional.ofNullable(absfile.file)
+      override def jfile: Optional[java.io.File] = Optional.ofNullable(absfile.file)
     }
 
   private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode = {
