@@ -21,34 +21,6 @@ class CCState:
    */
   val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
 
-  // ------ Level handling ---------------------------
-
-  private var curLevel: Level = outermostLevel
-
-  /** The level of the current environment. Levels start at 0 and increase for
-   *  each nested function or class. -1 means the level is undefined.
-   */
-  def currentLevel(using Context): Level = curLevel
-
-  /** Perform `op` in the next inner level */
-  inline def inNestedLevel[T](inline op: T)(using Context): T =
-    val saved = curLevel
-    curLevel = curLevel.nextInner
-    try op finally curLevel = saved
-
-  /** Perform `op` in the next inner level unless `p` holds. */
-  inline def inNestedLevelUnless[T](inline p: Boolean)(inline op: T)(using Context): T =
-    val saved = curLevel
-    if !p then curLevel = curLevel.nextInner
-    try op finally curLevel = saved
-
-  /** A map recording the level of a symbol */
-  private val mySymLevel: mutable.Map[Symbol, Level] = mutable.Map()
-
-  def symLevel(sym: Symbol): Level = mySymLevel.getOrElse(sym, undefinedLevel)
-
-  def recordLevel(sym: Symbol)(using Context): Unit = mySymLevel(sym) = curLevel
-
   // ------ BiTypeMap adjustment -----------------------
 
   private var myMapFutureElems = true
@@ -116,17 +88,6 @@ class CCState:
   private var collapseFresh: Boolean = false
 
 object CCState:
-
-  opaque type Level = Int
-
-  val undefinedLevel: Level = -1
-
-  val outermostLevel: Level = 0
-
-  extension (x: Level)
-    def isDefined: Boolean = x >= 0
-    def <= (y: Level) = (x: Int) <= y
-    def nextInner: Level = if isDefined then x + 1 else x
 
   /** If we are currently in capture checking or setup, and `mt` is a method
    *  type that is not a prefix of a curried method, perform `op` assuming

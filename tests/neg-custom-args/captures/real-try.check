@@ -16,39 +16,35 @@
 16 |  catch
 17 |    case _: Ex1 => ???
 18 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:20:10 ----------------------------------------------------------
-20 |  val x = try // error
-   |          ^
-   |   The result of `try` cannot have type () => Unit since
-   |   that type captures the root capability `cap`.
-   |   This is often caused by a locally generated exception capability leaking as part of its result.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:21:4 --------------------------------------
+21 |    () => foo(1) // error
+   |    ^^^^^^^^^^^^
+   |    Found:    () ->{canThrow$2} Unit
+   |    Required: () ->'s1 Unit
    |
-   |   where:    => refers to a fresh root capability classified as Control in the type of given instance canThrow$2
-21 |    () => foo(1)
-22 |  catch
-23 |    case _: Ex1 => ???
-24 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:26:10 ----------------------------------------------------------
-26 |  val y = try  // error
-   |          ^
-   |   The result of `try` cannot have type () => Cell[Unit]^'s1 since
-   |   that type captures the root capability `cap`.
-   |   This is often caused by a locally generated exception capability leaking as part of its result.
+   |    Note that capability canThrow$2, defined in method try$2
+   |    cannot be included in outer capture set 's1 of value x.
    |
-   |   where:    => refers to a fresh root capability classified as Control in the type of given instance canThrow$3
-27 |    () => Cell(foo(1))
-28 |  catch
-29 |    case _: Ex1 => ???
-30 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:32:10 ----------------------------------------------------------
-32 |  val b = try // error
-   |          ^
-   |   The result of `try` cannot have type Cell[() => Unit] since
-   |   the part () => Unit of that type captures the root capability `cap`.
-   |   This is often caused by a locally generated exception capability leaking as part of its result.
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:27:4 --------------------------------------
+27 |    () => Cell(foo(1)) // error
+   |    ^^^^^^^^^^^^^^^^^^
+   |    Found:    () ->{canThrow$3} Cell[Unit]^'s2
+   |    Required: () ->'s3 Cell[Unit]^'s4
    |
-   |   where:    => refers to a fresh root capability classified as Control in the type of given instance canThrow$4
-33 |    Cell(() => foo(1))
-34 |  catch
-35 |    case _: Ex1 => ???
-36 |    case _: Ex2 => ???
+   |    Note that capability canThrow$3, defined in method try$3
+   |    cannot be included in outer capture set 's3 of value y.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/real-try.scala:33:8 --------------------------------------
+33 |    Cell(() => foo(1)) // error
+   |    ^^^^^^^^^^^^^^^^^^
+   |  Found:    Cell[() => Unit]
+   |  Required: Cell[() ->'s5 Unit]^'s6
+   |
+   |  Note that capability cap cannot be included in outer capture set 's5 of value b.
+   |
+   |  where:    =>  refers to a fresh root capability classified as Control in the type of given instance canThrow$4
+   |            cap is a fresh root capability classified as Control in the type of given instance canThrow$4
+   |
+   | longer explanation available when compiling with `-explain`

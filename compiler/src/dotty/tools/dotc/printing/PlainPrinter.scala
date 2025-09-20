@@ -172,13 +172,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
     then cs.toString
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
+      val idTxt = Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
       val core: Text =
-        if !cs.isConst && cs.elems.isEmpty then cs.asVar.repr.show
+        if !cs.isConst && cs.elems.isEmpty
+        then cs.asVar.repr.show ~ idTxt
         else
           Str("'").provided(ccVerbose && !cs.isConst)
            ~ "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
-           ~ Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
+           ~ idTxt
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem(ref: Type): Text = ref match
