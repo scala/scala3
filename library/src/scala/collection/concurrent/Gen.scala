@@ -10,6 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.collection.concurrent;
+package scala.collection.concurrent
 
-final class Gen {}
+import scala.language.`2.13`
+import language.experimental.captureChecking
+
+private[concurrent] final class Gen {}

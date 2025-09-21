@@ -10,10 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.collection.concurrent;
+package scala.collection.concurrent
 
-public abstract class BasicNode {
+import scala.language.`2.13`
+import language.experimental.captureChecking
 
-    public abstract String string(int lev);
+abstract class BasicNode {
+
+  def string(lev: Int): String
 
 }

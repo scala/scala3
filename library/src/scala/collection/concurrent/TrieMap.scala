@@ -1049,7 +1049,7 @@ object TrieMap extends MapFactory[TrieMap] {
   def newBuilder[K, V]: mutable.GrowableBuilder[(K, V), TrieMap[K, V]] = new GrowableBuilder(empty[K, V])
 
   @transient
-  val inodeupdater: AtomicReferenceFieldUpdater[INodeBase[_, _], MainNode[_, _]] = AtomicReferenceFieldUpdater.newUpdater(classOf[INodeBase[_, _]], classOf[MainNode[_, _]], "mainnode")
+  val inodeupdater: AtomicReferenceFieldUpdater[INodeBase[_, _], MainNode[_, _]] = INodeBase.updater
 
   class MangledHashing[K] extends Hashing[K] {
     def hash(k: K): Int = scala.util.hashing.byteswap32(k.##)
