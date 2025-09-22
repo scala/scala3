@@ -280,6 +280,53 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   override def sliding(size: Int, step: Int): Iterator[ArrayBuffer[A]] =
     new MutationTracker.CheckedIterator(super.sliding(size = size, step = step), mutationCount)
+
+  override def foreach[U](f: A => U): Unit = {
+    var idx = 0
+    val len = length
+    while (idx < len) {
+      f(array(idx).asInstanceOf[A])
+      idx += 1
+    }
+  }
+
+  override def indexWhere(p: A => Boolean, from: Int): Int = {
+    var i = from max 0
+    val len = length
+    while (i < len) {
+      if (p(array(i).asInstanceOf[A])) return i
+      i += 1
+    }
+    -1
+  }
+
+  override def find(p: A => Boolean): Option[A] = {
+    val idx = indexWhere(p)
+    if (idx == -1) None else Some(array(idx).asInstanceOf[A])
+  }
+
+  override def exists(p: A => Boolean): Boolean = indexWhere(p) >= 0
+
+  override def forall(p: A => Boolean): Boolean = {
+    var i = 0
+    val len = length
+    while (i < len) {
+      if (!p(array(i).asInstanceOf[A])) return false
+      i += 1
+    }
+    true
+  }
+
+  override def count(p: A => Boolean): Int = {
+    var i = 0
+    val len = length
+    var cnt = 0
+    while (i < len) {
+      if (p(array(i).asInstanceOf[A])) cnt += 1
+      i += 1
+    }
+    cnt
+  }
 }
 
 /**
