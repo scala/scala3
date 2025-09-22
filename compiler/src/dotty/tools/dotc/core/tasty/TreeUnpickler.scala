@@ -921,10 +921,10 @@ class TreeUnpickler(reader: TastyReader,
 
       def ta = ctx.typeAssigner
 
-      // If explicit nulls is enabled, and the source file did not have explicit
+      // If explicit nulls and `Yflexify-tasty` is enabled, and the source file did not have explicit
       // nulls enabled, nullify the member to allow for compatibility.
       def nullify(sym: Symbol) =
-        if (ctx.explicitNulls && ctx.flexibleTypes && !explicitNulls) then
+        if (ctx.flexifyTasty && !explicitNulls) then
           sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
 
       val name = readName()

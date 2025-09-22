@@ -1,6 +1,6 @@
 import unsafeNulls.Foo.*
 import unsafeNulls.Unsafe_1
-import unsafeNulls.{A, B, C, F, G, H, I, J, L, M, S, T, U, expects}
+import unsafeNulls.{A, B, C, F, G, H, I, J, L, M, N, S, T, U, expects}
 import scala.reflect.Selectable.reflectiveSelectable
 import scala.quoted.*
 
@@ -100,6 +100,11 @@ def Flexible_2() =
 
   val m: String = M.test(null)
 
+  // i23911
+  val n1: List[Map[String, Int]] = ???
+  val n2 = new N[List]()
+  val n3 = n2.accept[Any](n1)
+
   // i23845
   transparent inline def typeName[A]: String = ${typeNameMacro[A]}
 
@@ -109,3 +114,9 @@ def Flexible_2() =
     implicit val givenS: S[A] = ???
     expects(alphaTypeNameMacro[A])
   }
+
+// i23935
+opaque type ZArrow[-I, -R, +E, +O] = I => ZIO[R, E, O]
+object ZArrow:
+  def fromZIOAttempt[I, R, E, O](f: I => ZIO[R, E, O]): ZArrow[I, R, Throwable | E, O] =
+    (in: I) => ZIO.attempt(f(in)).flatten
