@@ -1,4 +1,4 @@
-
+import language.experimental.relaxedLambdaSyntax
 def fn2(arg: String, arg2: String)(f: String => Unit): Unit = f(arg)
 
 def fn3(arg: String, arg2: String)(f: => Unit): Unit = f
