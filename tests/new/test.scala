@@ -1,5 +1,9 @@
-class Cap extends caps.ExclusiveCapability
+object e:
+  def foldRL(f: Int => Int)(g: String => Int) = ???
 
-def test(consume x: Cap) = ???
 
-def impl(using consume x: Cap) = ???
+val xs = e.foldRL
+  : i => i + 1
+  : s => s.length
+
+

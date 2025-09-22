@@ -1912,6 +1912,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
           case AnnotatedType(parent, _) => parent.typeArgs
+          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
