@@ -131,14 +131,17 @@ trait Dynamic {
   def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree = {
     def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree =
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selSpan, targs), tree.rhs), pt)
+    def reassignmentToVal(sym: Symbol, name: Name) =
+      errorTree(tree, ReassignmentToVal(sym, name, untpd.EmptyTree))
     tree.lhs match {
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, Nil)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
+      case lhs: NameTree =>
+        reassignmentToVal(lhs.symbol, lhs.name)
       case lhs =>
-        val name = lhs match { case nt: NameTree => nt.name case _ => nme.NO_NAME }
-        errorTree(tree, ReassignmentToVal(lhs.symbol, name, untpd.EmptyTree))
+        reassignmentToVal(lhs.symbol, nme.NO_NAME)
     }
   }
 

@@ -36,13 +36,13 @@
 -- [E052] Type Error: tests/neg/i22671.scala:20:4 ----------------------------------------------------------------------
 20 |  y = 27 // error
    |  ^^^^^^
-   |  Assignment to method x
+   |  Assignment to method x imported as y
    |
    | longer explanation available when compiling with `-explain`
 -- [E052] Type Error: tests/neg/i22671.scala:24:4 ----------------------------------------------------------------------
 24 |  y = 27 // error
    |  ^^^^^^
-   |  Assignment to value z
+   |  Assignment to value z imported as y
    |
    | longer explanation available when compiling with `-explain`
 -- [E052] Type Error: tests/neg/i22671.scala:28:4 ----------------------------------------------------------------------

@@ -1555,7 +1555,11 @@ class ReassignmentToVal(sym: Symbol, usage: Name, rhs: untpd.Tree)(using Context
   val isSetter = usage.isSetterName && sym.info.firstParamTypes.nonEmpty
   def msg(using Context) =
     if isSetter then i"Bad assignment to setter should use $usage($rhs)"
-    else if sym.exists then i"Assignment to $sym"
+    else if sym.exists then
+      if sym.name != usage && usage != nme.NO_NAME then
+        i"Assignment to $sym imported as $usage"
+      else
+        i"Assignment to $sym"
     else i"Bad assignment to $usage"
   def explain(using Context) =
     val name =
@@ -1577,7 +1581,7 @@ class ReassignmentToVal(sym: Symbol, usage: Name, rhs: untpd.Tree)(using Context
           |  ${hl("var")} $name ${hl("=")} ???
           |However, it's more common to initialize a variable just once
           |with a complex expression or even a block with many statements:
-          |  ${hl("val")} $name ${hl("= if (condition) 1 else -1")}$addendum
+          |  ${hl("val")} $name ${hl("= if condition then /* code */ else /* other code */")}$addendum
           |"""
 
 class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)

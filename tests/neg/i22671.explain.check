@@ -10,7 +10,7 @@
    |   var w = ???
    | However, it's more common to initialize a variable just once
    | with a complex expression or even a block with many statements:
-   |   val w = if (condition) 1 else -1
+   |   val w = if condition then /* code */ else /* other code */
    | Assignment syntax can be used if there is a corresponding setter of the form:
    |   def w_=(x: Int): Unit = ???
     --------------------------------------------------------------------------------------------------------------------
@@ -26,14 +26,14 @@
    |   var x = ???
    | However, it's more common to initialize a variable just once
    | with a complex expression or even a block with many statements:
-   |   val x = if (condition) 1 else -1
+   |   val x = if condition then /* code */ else /* other code */
    | Assignment syntax can be used if there is a corresponding setter of the form:
    |   def x_=(x: Int): Unit = ???
     --------------------------------------------------------------------------------------------------------------------
 -- [E052] Type Error: tests/neg/i22671.explain.scala:21:4 --------------------------------------------------------------
 21 |  y = 27 // error overload renamed
    |  ^^^^^^
-   |  Assignment to method x
+   |  Assignment to method x imported as y
    |--------------------------------------------------------------------------------------------------------------------
    | Explanation (enabled by `-explain`)
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -42,14 +42,14 @@
    |   var x = ???
    | However, it's more common to initialize a variable just once
    | with a complex expression or even a block with many statements:
-   |   val x = if (condition) 1 else -1
+   |   val x = if condition then /* code */ else /* other code */
    | Assignment syntax can be used if there is a corresponding setter of the form:
    |   def x_=(x: Int): Unit = ???
     --------------------------------------------------------------------------------------------------------------------
 -- [E052] Type Error: tests/neg/i22671.explain.scala:25:4 --------------------------------------------------------------
 25 |  y = 27 // error val renamed
    |  ^^^^^^
-   |  Assignment to value z
+   |  Assignment to value z imported as y
    |--------------------------------------------------------------------------------------------------------------------
    | Explanation (enabled by `-explain`)
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -58,7 +58,7 @@
    |   var z = ???
    | However, it's more common to initialize a variable just once
    | with a complex expression or even a block with many statements:
-   |   val z = if (condition) 1 else -1
+   |   val z = if condition then /* code */ else /* other code */
    | Assignment syntax can be used if there is a corresponding setter of the form:
    |   def z_=(x: Int): Unit = ???
     --------------------------------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@
    |   var x = ???
    | However, it's more common to initialize a variable just once
    | with a complex expression or even a block with many statements:
-   |   val x = if (condition) 1 else -1
+   |   val x = if condition then /* code */ else /* other code */
     --------------------------------------------------------------------------------------------------------------------
 -- [E052] Type Error: tests/neg/i22671.explain.scala:32:6 --------------------------------------------------------------
 32 |  t.t = t // error
@@ -88,7 +88,7 @@
    |   var t = ???
    | However, it's more common to initialize a variable just once
    | with a complex expression or even a block with many statements:
-   |   val t = if (condition) 1 else -1
+   |   val t = if condition then /* code */ else /* other code */
    | Assignment syntax can be used if there is a corresponding setter of the form:
    |   def t_=(x: Int): Unit = ???
     --------------------------------------------------------------------------------------------------------------------
