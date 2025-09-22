@@ -85,8 +85,8 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
         case ex: InterruptedException => throw ex
         case ex: CompilationUnit.SuspendException => throw ex
         case ex: Throwable =>
-          ex.printStackTrace()
-          report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", NoSourcePosition)
+          if !ex.isInstanceOf[TypeError] then ex.printStackTrace()
+          report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
 
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
