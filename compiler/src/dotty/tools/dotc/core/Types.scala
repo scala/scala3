@@ -244,6 +244,10 @@ object Types extends TypeUtils {
     def isExactlyNothing(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
+      case AndType(tp1, tp2) =>
+        tp1.isExactlyNothing || tp2.isExactlyNothing
+      case OrType(tp1, tp2) =>
+        tp1.isExactlyNothing && tp2.isExactlyNothing
       case _ => false
     }
 
@@ -251,6 +255,10 @@ object Types extends TypeUtils {
     def isExactlyAny(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
+      case AndType(tp1, tp2) =>
+        tp1.isExactlyAny && tp2.isExactlyAny
+      case OrType(tp1, tp2) =>
+        tp1.isExactlyAny || tp2.isExactlyAny
       case _ => false
     }
 
