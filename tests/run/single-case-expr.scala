@@ -1,3 +1,5 @@
+import language.experimental.relaxedLambdaSyntax
+
 case class Foo(x: Int, y: Int)
 @main def Test =
   val f: List[Int] => Int = case y :: ys => y
@@ -25,6 +27,13 @@ case class Foo(x: Int, y: Int)
   val a3 = Seq((1, 2), (3, 4)).collect: case (a, b) if b > 2 => a
   assert(a3 == Seq(3))
 
+  val a4 = Seq((1, 2), (3, 4)).collect: case (a, b) if b > 2 =>
+    a
+
   val partial: PartialFunction[(Int, Int), Int] = case (a, b) if b > 2 => a
+
+  val mtup = (1, true).map: [T] => (x: T) => List(x)
+  val _: (List[Int], List[Boolean]) = mtup
+
 
 
