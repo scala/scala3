@@ -74,7 +74,15 @@ class Completions(
       case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
       case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
         if appl.fun == funSel && sel == fun => false
-      case _ => true)
+      case _ => true) &&
+      (adjustedPath match
+        /* In case of `class X derives TC@@` we shouldn't add `[]`
+         */
+        case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
+          val pos = completionPos.toSourcePosition
+          !templ.derived.exists(_.sourcePos.contains(pos))
+        case _ => true
+      )
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -199,6 +207,17 @@ class Completions(
         if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
+      }
+      .chain{ suffix =>
+        adjustedPath match
+            case (ident: Ident) :: (app@Apply(_, List(arg))) :: _  =>
+              app.symbol.info match
+                case mt@MethodType(termNames) if app.symbol.paramSymss.last.exists(_.is(Given)) &&
+                  !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
+                  suffix.withNewPrefix(Affix(PrefixKind.Using))
+                case _ => suffix
+            case _ => suffix
+
       }
       .chain { suffix => // for () suffix
         if shouldAddSuffix && symbol.is(Flags.Method) then
@@ -888,7 +907,7 @@ class Completions(
       application: CompletionApplication
   ): Ordering[CompletionValue] =
     new Ordering[CompletionValue]:
-      val queryLower = completionPos.query.toLowerCase()
+      val queryLower: String = completionPos.query.toLowerCase()
       val fuzzyCache = mutable.Map.empty[CompletionValue, Int]
 
       def compareLocalSymbols(s1: Symbol, s2: Symbol): Int =
