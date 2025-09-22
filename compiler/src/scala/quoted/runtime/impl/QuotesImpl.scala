@@ -1909,8 +1909,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
           self.subst(from, to)
 
-        def typeArgs: List[TypeRepr] = self match
+        def typeArgs: List[TypeRepr] = self.stripped match
           case AppliedType(_, args) => args
+          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
