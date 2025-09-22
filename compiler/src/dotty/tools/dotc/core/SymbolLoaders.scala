@@ -304,9 +304,9 @@ object SymbolLoaders {
     }
 
     def doComplete(root: SymDenotation)(using Context): Unit = {
-      assert(root is PackageClass, root)
+      assert(root.is(PackageClass), root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre.select(sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 

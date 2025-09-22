@@ -44,7 +44,7 @@ object Inliner:
          | DefDef(_, _, _, _) =>
         true
       case vdef @ ValDef(_, _, _) =>
-        if (vdef.symbol.flags is Mutable) false else apply(vdef.rhs)
+        if vdef.symbol.flags.is(Mutable) then false else apply(vdef.rhs)
       case _ =>
         false
     }

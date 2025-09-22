@@ -3500,7 +3500,7 @@ object Parsers {
     }
 
     def annotsAsMods(skipNewLines: Boolean = false): Modifiers =
-      Modifiers() withAnnotations annotations(skipNewLines)
+      Modifiers().withAnnotations(annotations(skipNewLines))
 
     def defAnnotsMods(allowed: BitSet): Modifiers =
       modifiers(allowed, annotsAsMods(skipNewLines = true))

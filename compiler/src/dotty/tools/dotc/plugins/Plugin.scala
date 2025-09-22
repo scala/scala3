@@ -105,7 +105,7 @@ object Plugin {
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
     import scala.util.control.NonFatal
     try
-      Success[AnyClass](loader loadClass classname)
+      Success[AnyClass](loader.loadClass(classname))
     catch {
       case NonFatal(e) =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
@@ -154,7 +154,10 @@ object Plugin {
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
-      d.files.toList sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
+      d.files.toList
+        .sortBy(_.name)
+        .filter(Jar.isJarOrZip(_))
+        .map(j => (j, loadDescriptionFromJar(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]
 

@@ -922,7 +922,7 @@ class JSCodeGen()(using genCtx: Context) {
         else irTpe0
 
       if (isJSClass && f.isJSExposed)
-        fieldDefs += js.JSFieldDef(flags, genExpr(f.jsName)(f.sourcePos), irTpe)
+        fieldDefs += js.JSFieldDef(flags, genExpr(f.jsName)(using f.sourcePos), irTpe)
       else
         val fieldIdent = encodeFieldSym(f)
         val originalName = originalNameOfField(f)
@@ -1082,7 +1082,7 @@ class JSCodeGen()(using genCtx: Context) {
     } yield {
       val sym = vparam.symbol
       val tpe = toIRType(sym.info)
-      js.VarDef(encodeLocalSym(sym), originalNameOfLocal(sym), tpe, mutable = true, jstpe.zeroOf(tpe))(vparam.span)
+      js.VarDef(encodeLocalSym(sym), originalNameOfLocal(sym), tpe, mutable = true, jstpe.zeroOf(tpe))(using vparam.span)
     }
 
     /* organize constructors in a called-by tree
@@ -1222,10 +1222,10 @@ class JSCodeGen()(using genCtx: Context) {
      * +=: prepends to the ListBuffer in O(1) -- yes, it's a cryptic name.
      */
     if (isStaticModule(currentClassSym))
-      js.StoreModule()(jsSuperCall.get.pos) +=: postSuperStats
+      js.StoreModule()(using jsSuperCall.get.pos) +=: postSuperStats
 
     new PrimaryJSCtor(sym, genParamsAndInfo(sym, dd.paramss),
-        js.JSConstructorBody(preSuperStats.result(), jsSuperCall.get, postSuperStats.result())(dd.span))
+        js.JSConstructorBody(preSuperStats.result(), jsSuperCall.get, postSuperStats.result())(using dd.span))
   }
 
   private def genSecondaryJSClassCtor(dd: DefDef): SplitSecondaryJSCtor = {
@@ -1433,7 +1433,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def wrapJSCtorBody(before: List[js.Tree], body: js.JSConstructorBody,
       after: List[js.Tree]): js.JSConstructorBody = {
     js.JSConstructorBody(before ::: body.beforeSuper, body.superCall,
-        body.afterSuper ::: after)(body.pos)
+        body.afterSuper ::: after)(using body.pos)
   }
 
   private sealed trait JSCtor {
@@ -2337,7 +2337,7 @@ class JSCodeGen()(using genCtx: Context) {
       } { jsClassVal =>
         // Nested JS class
         if (cls.isAnonymousClass)
-          genNewAnonJSClass(cls, jsClassVal, genArgsAsClassCaptures)(fun.span)
+          genNewAnonJSClass(cls, jsClassVal, genArgsAsClassCaptures)(using fun.span)
         else if (atPhase(erasurePhase)(cls.is(ModuleClass))) // LambdaLift removes the ModuleClass flag of lifted classes
           js.JSNew(js.CreateJSClass(encodeClassName(cls), jsClassVal :: genArgsAsClassCaptures), Nil)
         else
@@ -2422,7 +2422,7 @@ class JSCodeGen()(using genCtx: Context) {
      * class capture. It seems Scala 2 has the same vulnerability. How do we
      * avoid this?
      */
-    val selfIdent = freshLocalIdent("this")(pos)
+    val selfIdent = freshLocalIdent("this")(using pos)
     def selfRef(implicit pos: ir.Position) =
       js.VarRef(selfIdent.name)(jstpe.AnyType)
 
@@ -2530,7 +2530,7 @@ class JSCodeGen()(using genCtx: Context) {
       val afterSuper = new ir.Transformers.LocalScopeTransformer {
         override def transform(tree: js.Tree): js.Tree = tree match {
           case js.This() =>
-            selfRef(tree.pos)
+            selfRef(using tree.pos)
           case tree =>
             super.transform(tree)
         }
@@ -3088,7 +3088,7 @@ class JSCodeGen()(using genCtx: Context) {
       genApplyStatic(sym, genActualArgs(sym, args))
     } else if (sym.owner.isJSType) {
       if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
-        genApplyJSMethodGeneric(sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)(tree.sourcePos)
+        genApplyJSMethodGeneric(sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)(using tree.sourcePos)
       else
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
     } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
@@ -3290,7 +3290,7 @@ class JSCodeGen()(using genCtx: Context) {
           Some(genLoadJSConstructor(currentClassSym.get.asClass.superClass))
         }
         genApplyJSMethodGeneric(sym, MaybeGlobalScope.NotGlobalScope(genReceiver),
-            genJSArgs, isStat, jsSuperClassValue)(tree.sourcePos)
+            genJSArgs, isStat, jsSuperClassValue)(using tree.sourcePos)
       }
     }
   }
@@ -3554,7 +3554,7 @@ class JSCodeGen()(using genCtx: Context) {
         val formalParam = js.ParamDef(freshLocalIdent(name),
             OriginalName(name.toString), formalTpe, mutable = false)
         val actualParam =
-          if (repeated) genJSArrayToVarArgs(formalParam.ref)(tree.sourcePos)
+          if (repeated) genJSArrayToVarArgs(formalParam.ref)(using tree.sourcePos)
           else unbox(formalParam.ref, tpe)
         (formalParam, actualParam)
     }
@@ -3595,7 +3595,7 @@ class JSCodeGen()(using genCtx: Context) {
           js.Block(
               js.VarDef(thisParam.name, thisParam.originalName,
                   thisParam.ptpe, mutable = false,
-                  js.This()(thisParam.ptpe)(thisParam.pos))(thisParam.pos),
+                  js.This()(thisParam.ptpe)(using thisParam.pos))(using thisParam.pos),
               genBody),
           actualCaptures)
     } else {
@@ -4375,7 +4375,7 @@ class JSCodeGen()(using genCtx: Context) {
           val actualArgs = actualArgsAnyArray.elems.zip(formalParamTypesAndTypeRefs).map {
             (actualArgAny, formalParamTypeAndTypeRef) =>
               val genActualArgAny = genExpr(actualArgAny)
-              genAsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(genActualArgAny.pos)
+              genAsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(using genActualArgAny.pos)
           }
 
           (formalParamTypesAndTypeRefs.map(pair => toParamOrResultTypeRef(pair._2)), actualArgs)
@@ -4749,7 +4749,7 @@ class JSCodeGen()(using genCtx: Context) {
       case MaybeGlobalScope.NotGlobalScope(t) =>
         t
       case MaybeGlobalScope.GlobalScope(pos) =>
-        reportErrorLoadGlobalScope()(pos)
+        reportErrorLoadGlobalScope()(using pos)
     }
   }
 

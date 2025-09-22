@@ -301,12 +301,12 @@ object Inlines:
 
         inContext(ctx.withSource(curSource)) {
           tree match
-            case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
-            case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
-            case tree: This => finalize(untpd.This(tree.qual)(curSource))
-            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
-            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
+            case tree: Ident => finalize(untpd.Ident(tree.name)(using curSource))
+            case tree: Literal => finalize(untpd.Literal(tree.const)(using curSource))
+            case tree: This => finalize(untpd.This(tree.qual)(using curSource))
+            case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(using curSource))
+            case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(using curSource))
             case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
             case tree: DefTree => super.transform(tree).setDefTree
             case EmptyTree => tree

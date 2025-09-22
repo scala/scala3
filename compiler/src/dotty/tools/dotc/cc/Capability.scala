@@ -769,7 +769,7 @@ object Capabilities:
               case Maybe(x1) => x1.covers(y1)
               case _ => false
           case y: FreshCap =>
-            y.hiddenSet.superCaps.exists(this covers _)
+            y.hiddenSet.superCaps.exists(this.covers(_))
           case _ =>
             false
 

@@ -579,7 +579,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule, infoRef), privateWithin)
         else {
           def completer(cls: Symbol) = {
-            val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
+            val unpickler = new ClassUnpickler(infoRef).withDecls(symScope(cls))
             if (flags.is(ModuleClass))
               unpickler.withSourceModule(
                 cls.owner.info.decls.lookup(cls.name.sourceModuleName)
@@ -592,7 +592,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         newSymbol(owner, name.asTermName, flags, localMemberUnpickler, privateWithin, coord = start)
       case MODULEsym =>
         if (isModuleRoot) {
-          moduleRoot setFlag flags
+          moduleRoot.setFlag(flags)
           moduleRoot.symbol
         } else newSymbol(owner, name.asTermName, flags,
           new LocalUnpickler().withModuleClass(
@@ -664,7 +664,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               assert(denot.is(ParamAccessor) || denot.symbol.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = // !!! DEBUG
                 trace.onDebug(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
-                  denot.info matches denot.owner.thisType.memberInfo(alt)
+                  denot.info.matches(denot.owner.thisType.memberInfo(alt))
                 }
               val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
               if alias.name == denot.name then denot.setFlag(SuperParamAlias)
@@ -748,7 +748,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         case _ => super.foldOver(x, tp)
 
     def removeSingleton(tp: Type): Type =
-      if (tp isRef defn.SingletonClass) defn.AnyType else tp
+      if tp.isRef(defn.SingletonClass) then defn.AnyType else tp
     def mapArg(arg: Type) = arg match {
       case arg: TypeRef if isBound(arg) => arg.symbol.info
       case _ => arg
@@ -1238,7 +1238,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val vparams = until(end, () => readValDefRef())
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
         val applyMeth = newSymbol(symbol.owner, nme.apply, Method, applyType)
-        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
+        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)))
 
       case ASSIGNtree =>
         val lhs = readTreeRef()

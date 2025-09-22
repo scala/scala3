@@ -42,7 +42,7 @@ object PathResolver {
       // mutation of the System property map. stringPropertyNames internally uses the Enumeration interface,
       // rather than Iterator, and this disables the fail-fast ConcurrentModificationException.
       val propNames = props.stringPropertyNames()
-      propNames.asScala collectFirst { case k if k endsWith ".boot.class.path" => props.getProperty(k) } getOrElse ""
+      propNames.asScala collectFirst { case k if k.endsWith(".boot.class.path") => props.getProperty(k) } getOrElse ""
     }
 
     /** Environment variables which java pays attention to so it

@@ -295,7 +295,7 @@ object SymDenotations {
 
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
-      annotations = myAnnotations.filterNot(_ matches cls)
+      annotations = myAnnotations.filterNot(_.matches(cls))
 
     /** Remove any annotations with same class as `annot`, and add `annot` */
     final def updateAnnotation(annot: Annotation)(using Context): Unit = {
@@ -309,7 +309,7 @@ object SymDenotations {
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(using Context): List[Annotation] = anns match {
-      case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
+      case ann :: rest => if ann.matches(cls) then anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
 
@@ -2061,11 +2061,9 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(using Context): Boolean =
-      !isAbsent() &&
-      base.isClass &&
-      (  (symbol eq base)
-      || (baseClassSet contains base)
-      )
+      !isAbsent()
+      && base.isClass
+      && ((symbol eq base) || baseClassSet.contains(base))
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
       derivesFrom(base)
@@ -3006,7 +3004,7 @@ object SymDenotations {
         else {
           locked = true
           val computed =
-            try clsd.computeMemberNames(keepOnly)(this, ctx)
+            try clsd.computeMemberNames(keepOnly)(using this, ctx)
             finally locked = false
           cache = cache.nn.updated(keepOnly, computed)
           computed
@@ -3049,7 +3047,7 @@ object SymDenotations {
           locked = true
           provisional = false
           val computed =
-            try clsd.computeBaseData(this, ctx)
+            try clsd.computeBaseData(using this, ctx)
             finally locked = false
           if (!provisional) cache = computed
           else onBehalf.signalProvisional()

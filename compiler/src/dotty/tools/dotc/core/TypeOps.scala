@@ -76,7 +76,7 @@ object TypeOps:
        *  @param  thiscls The prefix `C` of the `C.this` type.
        */
       def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
+        if ((pre eq NoType) || (pre eq NoPrefix) || cls.is(PackageClass))
           tp
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
@@ -242,7 +242,7 @@ object TypeOps:
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
       case c :: rest =>
-        val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
+        val accu1 = if accu.exists(_.derivesFrom(c)) then accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
         assert(ctx.erasedTypes || ctx.reporter.errorsReported)
