@@ -217,7 +217,7 @@ class CompilationTests {
     locally {
       val unsafeFile = compileFile("tests/explicit-nulls/flexible-unpickle/neg/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls")
       val flexibleFile = compileFile("tests/explicit-nulls/flexible-unpickle/neg/Flexible_2.scala",
-          explicitNullsOptions.and("-Ynullify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/neg/Unsafe_1"))
+          explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/neg/Unsafe_1"))
 
       flexibleFile.keepOutput.checkExpectedErrors()
 
@@ -238,7 +238,7 @@ class CompilationTests {
       val tests = List(
         compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
         compileFile("tests/explicit-nulls/flexible-unpickle/pos/Flexible_2.scala",
-        explicitNullsOptions.and("-Ynullify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/pos/Unsafe_1")),
+        explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/pos/Unsafe_1")),
       ).map(_.keepOutput.checkCompile())
 
       tests.foreach(_.delete())
