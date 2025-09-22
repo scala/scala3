@@ -926,3 +926,15 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "val aa: Int".hover
     )
+
+  @Test def i7763 =
+    check(
+      """|case class MyItem(name: String)
+         |
+         |def handle(item: MyItem) =
+         |  item match {
+         |    case MyItem(na@@me = n2) => println(n2)
+         |  }
+         |""".stripMargin,
+      "val name: String".hover
+    )
