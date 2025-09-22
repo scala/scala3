@@ -171,6 +171,14 @@ object SpaceEngine {
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
   def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(i"isSubspace($a, $b)") {
+    /** Is decomposition allowed on the right-hand side of a pattern? */
+    /** We only allow decomposition on the right-hand side of a pattern if the type is not a type parameter, a type parameter reference, or a deferred type reference */
+    /** This is because decomposition on the right-hand side of a pattern can lead to false positive warnings */
+    inline def rhsDecompositionAllowed(tp: Type): Boolean = tp.dealias match
+      case _: TypeParamRef => false
+      case tr: TypeRef if tr.symbol.is(TypeParam) || (tr.symbol.is(Deferred) && !tr.symbol.isClass) => false
+      case _ => true
+
     val a2 = simplify(a)
     val b2 = simplify(b)
     if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
@@ -185,7 +193,7 @@ object SpaceEngine {
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         isSubType(tp1, tp2)
         || canDecompose(a) && isSubspace(Or(decompose(a)), b)
-        || canDecompose(b) && isSubspace(a, Or(decompose(b)))
+        || (canDecompose(b) && rhsDecompositionAllowed(tp2)) && isSubspace(a, Or(decompose(b)))
       case (Prod(tp1, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
