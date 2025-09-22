@@ -1161,7 +1161,7 @@ object SymDenotations {
       val d = owner.info.decl(fieldName)
       val field = d.suchThat(!_.is(Method)).symbol
       def getter = d.suchThat(_.info.isParameterless).symbol
-      field orElse getter
+      field `orElse` getter
     }
 
     /** The field accessed by a getter or setter, or
@@ -1169,7 +1169,7 @@ object SymDenotations {
      *  if that does not exist the symbol itself.
      */
     def underlyingSymbol(using Context): Symbol =
-      if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
+      if (is(Accessor)) accessedFieldOrGetter `orElse` symbol else symbol
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
@@ -2588,7 +2588,7 @@ object SymDenotations {
         else
           val assocFiles = multi
             .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
-            .aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
+            .aggregate(d => Set(d.symbol.associatedFile.nn), _ `union` _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
           else

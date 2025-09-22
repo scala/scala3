@@ -171,8 +171,8 @@ object Plugin {
       def loop(qs: List[Path]): Try[String] = qs match {
         case Nil       => Failure(new MissingPluginException(ps))
         case p :: rest =>
-          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) orElse loop(rest)
-          else if (p.isFile) loadDescriptionFromJar(p.toFile) orElse loop(rest)
+          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) `orElse` loop(rest)
+          else if (p.isFile) loadDescriptionFromJar(p.toFile) `orElse` loop(rest)
           else loop(rest)
       }
       loop(ps)

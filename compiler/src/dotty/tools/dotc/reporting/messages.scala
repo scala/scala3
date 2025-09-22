@@ -1199,7 +1199,7 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
   withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
-      (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
+      other.owner.isSubClass(member.owner) && other.is(Deferred) && !member.is(Deferred)
     def addendum =
       if isConcreteOverAbstract then
         i"""|
@@ -1614,7 +1614,7 @@ class MissingTypeParameterInTypeApp(tpe: Type)(using Context)
 class MissingArgument(pname: Name, methString: String)(using Context)
   extends TypeMsg(MissingArgumentID):
   def msg(using Context) =
-    if pname.firstPart contains '$' then s"not enough arguments for $methString"
+    if pname.firstPart.contains('$') then s"not enough arguments for $methString"
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
 
@@ -2376,7 +2376,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
 class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
-      if symbol is Package then i"$symbol"
+      if symbol.is(Package) then i"$symbol"
       else i"Java defined ${hl("class " + symbol.name)}"
     s"$kind is not a value"
   def explain(using Context) = ""

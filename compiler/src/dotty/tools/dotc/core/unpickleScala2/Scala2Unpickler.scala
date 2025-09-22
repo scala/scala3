@@ -407,15 +407,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       // println(s"read ext symbol $name from ${owner.denot.debugString} in ${classRoot.debugString}")  // !!! DEBUG
 
       // (1) Try name.
-      fromName(name) orElse {
+      fromName(name) `orElse` {
         // (2) Try with expanded name.  Can happen if references to private
         // symbols are read from outside: for instance when checking the children
         // of a class.  See #1722.
-        fromName(name.toTermName.expandedName(owner)) orElse {
+        fromName(name.toTermName.expandedName(owner)) `orElse` {
           // (3) Try as a nested object symbol.
-          nestedObjectSymbol orElse {
+          nestedObjectSymbol `orElse` {
             // (4) Call the mirror's "missing" hook.
-            adjust(missingHook(owner, name)) orElse {
+            adjust(missingHook(owner, name)) `orElse` {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.

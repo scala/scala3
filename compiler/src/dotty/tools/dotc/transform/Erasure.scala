@@ -296,19 +296,17 @@ object Erasure {
           // "Unboxing" null to underlying is equivalent to doing null.asInstanceOf[underlying]
           // See tests/pos/valueclasses/nullAsInstanceOfVC.scala for cases where this might happen.
           val tree1 =
-            if (tree.tpe isRef defn.NullClass)
+            if tree.tpe.isRef(defn.NullClass) then
               adaptToType(tree, underlying)
-            else if (!(tree.tpe <:< tycon)) {
+            else if !(tree.tpe <:< tycon) then
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = nullLiteral
               val unboxedNull = adaptToType(nullTree, underlying)
 
-              evalOnce(tree) { t =>
+              evalOnce(tree): t =>
                 If(t.select(defn.Object_eq).appliedTo(nullTree),
                   unboxedNull,
                   unboxedTree(t))
-              }
-            }
             else unboxedTree(tree)
 
           cast(tree1, pt)
@@ -334,7 +332,7 @@ object Erasure {
         ref(evt2u(tycon.typeSymbol.asClass)).appliedTo(tree)
 
       assert(!pt.isInstanceOf[SingletonType], pt)
-      if (pt isRef defn.UnitClass) unbox(tree, pt)
+      if pt.isRef(defn.UnitClass) then unbox(tree, pt)
       else (tree.tpe.widen, pt) match {
         // Convert primitive arrays into reference arrays, this path is only
         // needed to handle repeated arguments, see

@@ -92,7 +92,7 @@ object ContextOps:
           }.find(_.exists).getOrElse(NoDenotation)
 
         if preSym.isClass then
-          directSearch orElse searchCompanionClass orElse searchSuperCompanionObjects
+          directSearch `orElse` searchCompanionClass `orElse` searchSuperCompanionObjects
         else
           directSearch
       }

@@ -288,7 +288,7 @@ object Denotations {
      */
     inline def disambiguate(inline p: Symbol => Boolean)(using Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
-      case mdenot => suchThat(p) orElse NoQualifyingRef(alternatives)
+      case mdenot => suchThat(p) `orElse` NoQualifyingRef(alternatives)
     }
 
     /** Return symbol in this denotation that satisfies the given predicate.
@@ -1237,7 +1237,7 @@ object Denotations {
       g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
-      else denot1 union denot2
+      else denot1 `union` denot2
   }
 
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {

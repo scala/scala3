@@ -1138,7 +1138,7 @@ object Parsers {
             opStack = opStack.tail
             recur {
               migrateInfixOp(opInfo, isType):
-                atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                atSpan(opInfo.operator.span `union` opInfo.operand.span `union` top.span):
                   InfixOp(opInfo.operand, opInfo.operator, top)
             }
           }
@@ -2257,7 +2257,7 @@ object Parsers {
       val t = typeBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
-      else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
+      else atSpan((t.span `union` cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
     /** ContextBound      ::=  Type [`as` id] */

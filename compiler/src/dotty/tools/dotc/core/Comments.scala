@@ -429,7 +429,7 @@ object Comments {
 
         searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
           case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
-          case res                             => res orElse lookupVariable(vble, site.owner)
+          case res                             => res `orElse` lookupVariable(vble, site.owner)
         }
     }
 
