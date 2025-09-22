@@ -149,7 +149,7 @@ final class ProgressCallbackTest extends DottyTest:
       assertEquals(s"Phase $recordedCurr was not expected", expectedCurr, recordedCurr)
 
     val (seenCurrPhases, seenNextPhases) =
-      val (currs0, nexts0) = progressCallback.progressPhasesFinal.unzip(Tuple.fromProductTyped)
+      val (currs0, nexts0) = progressCallback.progressPhasesFinal.unzip(using Tuple.fromProductTyped)
       (currs0.toSet, nexts0.toSet)
 
     val missingCurrPhases = expectedCurrPhases.diff(seenCurrPhases)

@@ -684,7 +684,7 @@ trait ParallelTesting extends RunnerOrchestration:
 
     protected def compileFromBestEffortTasty(flags0: TestFlags, targetDir: JFile): TestReporter = {
       val classes = flattenFiles(targetDir).filter(isBestEffortTastyFile).map(_.toString)
-      val flags = flags0 and "-from-tasty" and "-Ywith-best-effort-tasty"
+      val flags = flags0 `and` "-from-tasty" `and` "-Ywith-best-effort-tasty"
       val reporter = mkReporter
       val driver = new Driver
 
@@ -710,7 +710,7 @@ trait ParallelTesting extends RunnerOrchestration:
     protected def compileFromTasty(flags0: TestFlags, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
       tastyOutput.mkdir()
-      val flags = flags0 and ("-d", tastyOutput.getPath) and "-from-tasty"
+      val flags = flags0 `and` ("-d", tastyOutput.getPath) `and` "-from-tasty"
 
       val classes = flattenFiles(targetDir).filter(isTastyFile).map(_.toString)
 
@@ -1566,7 +1566,7 @@ trait ParallelTesting extends RunnerOrchestration:
   def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(
       implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
-    val flags = flags0 and "-Yretain-trees"
+    val flags = flags0 `and` "-Yretain-trees"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
