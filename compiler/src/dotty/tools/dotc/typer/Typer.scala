@@ -1307,7 +1307,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             | pt.translateFromRepeated(toArray = true, translateWildcard = true)
 
       def typedWildcardStarArgExpr = {
-        // A sequence argument `xs: _*` can be either a `Seq[T]` or an `Array[_ <: T]`,
+        // A sequence argument `xs*` can be either a `Seq[T]` or an `Array[_ <: T]`,
         // irrespective of whether the method we're calling is a Java or Scala method,
         // so the expected type is the union `Seq[T] | Array[_ <: T]`.
         val ptArg = fromRepeated(pt)

@@ -33,7 +33,7 @@ import compiletime.uninitialized
 object FileUtils {
   def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
     val encoder: CharsetEncoder = charset.newEncoder
-    val writer = new OutputStreamWriter(Files.newOutputStream(path, options: _*), encoder)
+    val writer = new OutputStreamWriter(Files.newOutputStream(path, options*), encoder)
     newAsyncBufferedWriter(new BufferedWriter(writer), threadsafe)
   }
   def newAsyncBufferedWriter(underlying: Writer, threadsafe: Boolean): LineWriter = {

@@ -616,7 +616,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case _ => Ident(tree.name)
   }
 
-  /** A repeated argument such as `arg: _*` */
+  /** A repeated argument such as `arg*` */
   def repeated(arg: Tree)(using Context): Typed = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
 

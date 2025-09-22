@@ -501,7 +501,7 @@ trait Applications extends Compatibility {
      */
     protected def addArg(arg: TypedArg, formal: Type): Unit
 
-    /** Is this an argument of the form `expr: _*` or a RepeatedParamType
+    /** Is this an argument of the form `expr*` or a RepeatedParamType
      *  derived from such an argument?
      */
     protected def isVarArg(arg: Arg): Boolean

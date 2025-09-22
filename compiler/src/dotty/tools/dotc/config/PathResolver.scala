@@ -110,7 +110,7 @@ object PathResolver {
     // scalaLibDirFound match {
     //   case Some(dir) if scalaHomeExists =>
     //     val paths = ClassPath expandDir dir.path
-    //     join(paths: _*)
+    //     join(paths*)
     //   case _                            => ""
     // }
 

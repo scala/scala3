@@ -245,7 +245,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
     ddef.paramss.flatten.map(_.symbol)
 
-  /** Does this argument list end with an argument of the form <expr> : _* ? */
+  /** Does this argument list end with an argument of the form <expr> * ? */
   def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =
     trees.nonEmpty && isWildcardStarArg(trees.last)
 
