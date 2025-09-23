@@ -857,7 +857,10 @@ object SpaceEngine {
       classSym.is(Case) ||
         (tpw.isInstanceOf[TypeRef] && {
           val tref = tpw.asInstanceOf[TypeRef]
-          tref.symbol.isOpaqueAlias && !tref.info.hiBound.isNothingType
+          if (tref.symbol.isOpaqueAlias && !tref.info.hiBound.isNothingType)
+            isCheckable(tref.info.hiBound)
+          else
+            false
         })
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
