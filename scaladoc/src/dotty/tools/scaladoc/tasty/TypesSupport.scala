@@ -274,7 +274,12 @@ trait TypesSupport:
         ++ inParens(inner(rhs, skipThisTypePrefix), shouldWrapInParens(rhs, t, false))
 
       case t @ AppliedType(tpe, args) if t.isFunctionType =>
-        functionType(tpe, args, skipThisTypePrefix)
+        val dealiased = t.dealiasKeepOpaques
+        if t == dealiased then
+          functionType(tpe, args, skipThisTypePrefix)
+        else
+          val AppliedType(tpe, args) = dealiased.asInstanceOf[AppliedType]
+          functionType(tpe, args, skipThisTypePrefix)
 
       case t @ AppliedType(tpe, typeList) =>
         inner(tpe, skipThisTypePrefix) ++ plain("[").l ++ commas(typeList.map { t => t match
