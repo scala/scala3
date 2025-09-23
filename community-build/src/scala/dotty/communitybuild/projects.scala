@@ -278,6 +278,7 @@ object projects:
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
     // dotty.tools.dotc.core.MissingType:
     dependencies = List(scalaXml),
+    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
     testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
   )
 
@@ -300,6 +301,7 @@ object projects:
     project = "scalatestplus-testng",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
     dependencies = List(scalatest)
   )
 
