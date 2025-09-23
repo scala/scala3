@@ -566,8 +566,6 @@ object MiMaFilters {
 
           // NO IDEA FOR NOW :)
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.mutable.ArrayDequeOps.scala$collection$mutable$ArrayDequeOps$$super$sliding"),
-          ProblemFilters.exclude[DirectAbstractMethodProblem]("java.util.Dictionary.get"),
-          ProblemFilters.exclude[DirectAbstractMethodProblem]("java.util.Dictionary.remove"),
         ),
 
       // Breaking changes since last LTS
