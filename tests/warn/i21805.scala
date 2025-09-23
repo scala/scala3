@@ -2,7 +2,7 @@
 
 def i23967: Boolean = {
   //import scala.compiletime.testing.typeCheckErrors
-  import scala.compiletime.testing.* // warn
+  import scala.compiletime.testing.* // nowarn
   typeChecks("2 + 2")
 }
 
@@ -21,10 +21,10 @@ package q:
 
 package i23967b:
   package ok:
-    import scala.compiletime.testing.* // warn
+    import scala.compiletime.testing.* // nowarn
     def test() = typeChecks("42 + 27")
   package nok:
-    import scala.compiletime.testing.typeChecks // warn
+    import scala.compiletime.testing.typeChecks // nowarn
     def test() = typeChecks("42 + 27")
 
 @main def Test = println:
