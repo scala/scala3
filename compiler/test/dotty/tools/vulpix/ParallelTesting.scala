@@ -730,7 +730,7 @@ trait ParallelTesting extends RunnerOrchestration:
       testSource.checkFile.foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
     private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
-      reporters.flatMap(_.consoleOutput.split("\n")).toList
+      reporters.flatMap(_.consoleOutput.linesIterator).toList
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
@@ -1043,7 +1043,7 @@ trait ParallelTesting extends RunnerOrchestration:
             testReporter
         }
       if !failedBestEffortCompilation.isEmpty then
-        Some(failedBestEffortCompilation.flatMap(_.consoleOutput.split("\n")).mkString("\n"))
+        Some(failedBestEffortCompilation.flatMap(_.consoleOutput.linesIterator).mkString("\n"))
       else
         None
   }
