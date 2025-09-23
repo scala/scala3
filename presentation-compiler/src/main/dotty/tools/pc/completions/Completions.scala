@@ -15,6 +15,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -765,6 +766,13 @@ class Completions(
     ).flatMap(_.alternatives.map(_.symbol)).toSet
   )
 
+  private lazy val EqualsClass: ClassSymbol = requiredClass("scala.Equals")
+  private lazy val ArrowAssocClass: ClassSymbol = requiredClass("scala.Predef.ArrowAssoc")
+  private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
+  private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
+  private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
+
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
       !sym.srcPos.isAfter(completionPos.originalCursorPosition) ||
@@ -783,6 +791,17 @@ class Completions(
       (sym.isField && !isJavaClass && !isModuleOrClass) || sym.getter != NoSymbol
     catch case _ => false
 
+    def isInheritedFromScalaLibrary(sym: Symbol) =
+      sym.owner == defn.AnyClass || 
+        sym.owner == defn.ObjectClass ||
+        sym.owner == defn.ProductClass ||
+        sym.owner == EqualsClass ||
+        sym.owner == ArrowAssocClass ||
+        sym.owner == EnsuringClass ||
+        sym.owner == StringFormatClass ||
+        sym == nnMethod ||
+        sym == runtimeCheckedMethod
+
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
       // symbols defined in this file are more relevant
@@ -800,7 +819,7 @@ class Completions(
         case _ =>
 
       // symbols whose owner is a base class are less relevant
-      if sym.owner == defn.AnyClass || sym.owner == defn.ObjectClass
+      if isInheritedFromScalaLibrary(sym)
       then relevance |= IsInheritedBaseMethod
       // symbols not provided via an implicit are more relevant
       if sym.is(Implicit) ||
@@ -812,7 +831,7 @@ class Completions(
       // accessors of case class members are more relevant
       if !sym.is(CaseAccessor) then relevance |= IsNotCaseAccessor
       // public symbols are more relevant
-      if !sym.isPublic then relevance |= IsNotCaseAccessor
+      if !sym.isPublic then relevance |= IsNotPublic
       // synthetic symbols are less relevant (e.g. `copy` on case classes)
       if sym.is(Synthetic) && !sym.isAllOf(EnumCase) then
         relevance |= IsSynthetic
