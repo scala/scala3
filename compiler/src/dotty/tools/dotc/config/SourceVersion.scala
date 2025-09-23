@@ -8,6 +8,7 @@ import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
+
   case `3.0-migration`, `3.0`
   case `3.1-migration`, `3.1`
   case `3.2-migration`, `3.2`

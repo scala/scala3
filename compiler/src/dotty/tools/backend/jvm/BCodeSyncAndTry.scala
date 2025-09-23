@@ -40,7 +40,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
-      bc dup ObjectRef
+      bc.dup(ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
 
@@ -68,7 +68,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       emit(asm.Opcodes.MONITOREXIT)
       if (hasResult) { locals.load(monitorResult) }
       val postHandler = new asm.Label
-      bc goTo postHandler
+      bc.goTo(postHandler)
 
       /* ------ (4) exception-handler version of monitor-exit code.
        *            Reached upon abrupt termination of (2).
@@ -99,7 +99,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        *            Protected by whatever protects the whole synchronized expression.
        * ------
        */
-      mnode visitLabel postHandler
+      mnode.visitLabel(postHandler)
 
       lineNumber(tree)
 
@@ -258,7 +258,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       unregisterCleanup(finCleanup)
       nopIfNeeded(startTryBody)
       val endTryBody = currProgramPoint()
-      bc goTo postHandlers
+      bc.goTo(postHandlers)
 
       /**
        * A return within a `try` or `catch` block where a `finally` is present ("early return")
@@ -305,7 +305,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         registerCleanup(finCleanup)
         ch match {
           case NamelessEH(typeToDrop, caseBody) =>
-            bc drop typeToDrop
+            bc.drop(typeToDrop)
             genLoad(caseBody, kind) // adapts caseBody to `kind`, thus it can be stored, if `guardResult`, in `tmp`.
             nopIfNeeded(startHandler)
             endHandler = currProgramPoint()
@@ -326,7 +326,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         // (2.b)  mark the try-body as protected by this case clause.
         protect(startTryBody, endTryBody, startHandler, excType)
         // (2.c) emit jump to the program point where the finally-clause-for-normal-exit starts, or in effect `after` if no finally-clause was given.
-        bc goTo postHandlers
+        bc.goTo(postHandlers)
 
       }
 
@@ -434,12 +434,12 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
             locals.load(earlyReturnVar)
             bc.emitRETURN(locals(earlyReturnVar).tk)
           } else {
-            bc emitRETURN UNIT
+            bc.emitRETURN(UNIT)
           }
           shouldEmitCleanup = false
 
         case nextCleanup :: _ =>
-          bc goTo nextCleanup
+          bc.goTo(nextCleanup)
       }
     }
 

@@ -73,20 +73,20 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
   /** Creates a new file and writes all the Strings to it. */
   def writeAll(strings: String*): Unit = {
     val out = bufferedWriter()
-    try strings foreach (out write _)
+    try strings.foreach(out.write(_))
     finally out.close()
   }
 
   def appendAll(strings: String*): Unit = {
     val out = bufferedWriter(append = true)
-    try strings foreach (out write _)
+    try strings.foreach(out.write(_))
     finally out.close()
   }
 
   /** Calls println on each string (so it adds a newline in the PrintWriter fashion.) */
   def printlnAll(strings: String*): Unit = {
     val out = printWriter()
-    try strings foreach (out println _)
+    try strings.foreach(out.println(_))
     finally out.close()
   }
 

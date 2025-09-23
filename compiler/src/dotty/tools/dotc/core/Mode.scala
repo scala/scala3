@@ -14,7 +14,7 @@ case class Mode(val bits: Int) extends AnyVal {
   def | (that: Mode): Mode = Mode(bits | that.bits)
   def & (that: Mode): Mode = Mode(bits & that.bits)
   def &~ (that: Mode): Mode = Mode(bits & ~that.bits)
-  def is (that: Mode): Boolean = (bits & that.bits) == that.bits
+  infix def is (that: Mode): Boolean = (bits & that.bits) == that.bits
 
   def isExpr: Boolean = (this & PatternOrTypeBits) == None
 

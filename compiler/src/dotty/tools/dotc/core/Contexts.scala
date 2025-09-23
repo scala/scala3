@@ -234,7 +234,7 @@ object Contexts {
             else Nil
           val outerImplicits =
             if (isImportContext && importInfo.nn.unimported.exists)
-              outer.implicits exclude importInfo.nn.unimported
+              outer.implicits.exclude(importInfo.nn.unimported)
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -377,7 +377,7 @@ object Contexts {
     def isImportContext: Boolean =
       (this ne NoContext)
       && (outer ne NoContext)
-      && (this.importInfo nen outer.importInfo)
+      && (this.importInfo ne outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =

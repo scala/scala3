@@ -399,7 +399,7 @@ class Definitions {
    *       meth8(1) // OK (creates a primitive array and copies it into a reference array at Erasure)
    *       val ai = Array[Int](1)
    *       meth7(ai: _*) // OK (will copy the array at Erasure)
-   *       meth8(ai: _*) // OK (will copy the array at Erasure)
+   *       meth8(ai*) // OK (will copy the array at Erasure)
    *
    *     Java repeated arguments are erased to arrays, so it would be safe to treat
    *     them in the same way: add an `& Object` to the parameter type to disallow

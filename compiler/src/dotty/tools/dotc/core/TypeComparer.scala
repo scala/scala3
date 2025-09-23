@@ -814,21 +814,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: MethodType =>
         def compareMethod = tp1 match {
           case tp1: MethodType =>
-            (tp1.signature consistentParams tp2.signature) &&
-            matchingMethodParams(tp1, tp2) &&
-            (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            tp1.signature.consistentParams(tp2.signature)
+            && matchingMethodParams(tp1, tp2)
+            && (!tp2.isImplicitMethod || tp1.isImplicitMethod)
+            && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
       case tp2: PolyType =>
         def comparePoly = tp1 match {
           case tp1: PolyType =>
-            comparingTypeLambdas(tp1, tp2) {
-              (tp1.signature consistentParams tp2.signature)
+            comparingTypeLambdas(tp1, tp2):
+              tp1.signature.consistentParams(tp2.signature)
               && matchingPolyParams(tp1, tp2)
               && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-            }
           case _ => false
         }
         comparePoly
@@ -853,7 +852,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
              || (hi2 eq AnyKindType)
              || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
-            tp2 contains tp1
+            tp2.contains(tp1)
           case _ =>
             false
         }
@@ -2308,7 +2307,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type): Boolean = tp.stripTypeVar match {
-    case tp: TypeParamRef if constraint contains tp => true
+    case tp: TypeParamRef if constraint.contains(tp) => true
     case _ => proto.isMatchedBy(tp, keepConstraint = true)
   }
 
@@ -2854,7 +2853,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: ClassInfo =>
       tp2 match {
         case tp2: ClassInfo =>
-          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
+          isSubTypeWhenFrozen(tp1.prefix, tp2.prefix) || tp1.cls.owner.derivesFrom(tp2.cls.owner)
         case _ =>
           false
       }

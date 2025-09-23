@@ -107,9 +107,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
     val versionPickle = {
       val vp = new PickleBuffer(new Array[Byte](16), -1, 0)
       assert(vp.writeIndex == 0, vp)
-      vp writeNat PickleFormat.MajorVersion
-      vp writeNat PickleFormat.MinorVersion
-      vp writeNat 0
+      vp.writeNat(PickleFormat.MajorVersion)
+      vp.writeNat(PickleFormat.MinorVersion)
+      vp.writeNat(0)
       vp
     }
 
@@ -531,7 +531,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       val buffer = mutable.ListBuffer[Symbol]()
       names.foreach { name =>
         buffer ++= tp.memberBasedOnFlags(name, required, excluded)
-          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
+          .alternatives.sortBy(_.signature)(using Signature.lexicographicOrdering).map(_.symbol)
       }
       buffer.toList
     }

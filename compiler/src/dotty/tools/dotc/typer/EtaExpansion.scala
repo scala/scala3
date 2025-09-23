@@ -87,12 +87,11 @@ abstract class Lifter {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
+        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
             val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-            lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
-        }
+            lifter.liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }

@@ -23,21 +23,21 @@ object CommentParsing {
    *  sequence of whitespace characters characters (but no newlines)
    */
   def skipWhitespace(str: String, start: Int): Int =
-    if (start < str.length && isWhitespace(str charAt start)) skipWhitespace(str, start + 1)
+    if (start < str.length && isWhitespace(str.charAt(start))) skipWhitespace(str, start + 1)
     else start
 
   /** Returns index of string `str` following `start` skipping
    *  sequence of identifier characters.
    */
   def skipIdent(str: String, start: Int): Int =
-    if (start < str.length && isIdentifierPart(str charAt start)) skipIdent(str, start + 1)
+    if (start < str.length && isIdentifierPart(str.charAt(start))) skipIdent(str, start + 1)
     else start
 
   /** Returns index of string `str` following `start` skipping
    *  sequence of identifier characters.
    */
   def skipTag(str: String, start: Int): Int =
-    if (start < str.length && (str charAt start) == '@') skipIdent(str, start + 1)
+    if (start < str.length && (str.charAt(start)) == '@') skipIdent(str, start + 1)
     else start
 
 
@@ -50,8 +50,8 @@ object CommentParsing {
     if (start == str.length) start
     else {
       val idx = skipWhitespace(str, start + 1)
-      if (idx < str.length && (str charAt idx) == '*') skipWhitespace(str, idx + 1)
-      else if (idx + 2 < str.length && (str charAt idx) == '/' && (str charAt (idx + 1)) == '*' && (str charAt (idx + 2)) == '*')
+      if (idx < str.length && (str.charAt(idx)) == '*') skipWhitespace(str, idx + 1)
+      else if (idx + 2 < str.length && (str.charAt(idx)) == '/' && (str.charAt(idx + 1)) == '*' && (str.charAt(idx + 2)) == '*')
         skipWhitespace(str, idx + 3)
       else idx
     }
@@ -59,8 +59,8 @@ object CommentParsing {
   /** Skips to next occurrence of `\n` or to the position after the `/``**` sequence following index `start`.
    */
   def skipToEol(str: String, start: Int): Int =
-    if (start + 2 < str.length && (str charAt start) == '/' && (str charAt (start + 1)) == '*' && (str charAt (start + 2)) == '*') start + 3
-    else if (start < str.length && (str charAt start) != '\n') skipToEol(str, start + 1)
+    if (start + 2 < str.length && (str.charAt(start)) == '/' && (str.charAt(start + 1)) == '*' && (str.charAt(start + 2)) == '*') start + 3
+    else if (start < str.length && (str.charAt(start)) != '\n') skipToEol(str, start + 1)
     else start
 
   /** Returns first index following `start` and starting a line (i.e. after skipLineLead) or starting the comment
@@ -128,7 +128,7 @@ object CommentParsing {
     startsWithTag(str, section._1, tag)
 
   def startsWithTag(str: String, start: Int, tag: String): Boolean =
-    str.startsWith(tag, start) && !isIdentifierPart(str charAt (start + tag.length))
+    str.startsWith(tag, start) && !isIdentifierPart(str.charAt(start + tag.length))
 
   /** The first start tag of a list of tag intervals,
    *  or the end of the whole comment string - 2 if list is empty
@@ -163,7 +163,7 @@ object CommentParsing {
 
   /** Extracts variable name from a string, stripping any pair of surrounding braces */
   def variableName(str: String): String =
-    if (str.length >= 2 && (str charAt 0) == '{' && (str charAt (str.length - 1)) == '}')
+    if (str.length >= 2 && (str.charAt(0)) == '{' && (str.charAt(str.length - 1)) == '}')
       str.substring(1, str.length - 1)
     else
       str
@@ -172,16 +172,16 @@ object CommentParsing {
    */
   def skipVariable(str: String, start: Int): Int = {
     var idx = start
-    if (idx < str.length && (str charAt idx) == '{') {
+    if (idx < str.length && (str.charAt(idx)) == '{') {
       while ({
         idx += 1
-        idx < str.length && (str charAt idx) != '}'
+        idx < str.length && (str.charAt(idx)) != '}'
       })
       ()
       if (idx < str.length) idx + 1 else start
     }
     else {
-      while (idx < str.length && isVarPart(str charAt idx))
+      while (idx < str.length && isVarPart(str.charAt(idx)))
         idx += 1
       idx
     }

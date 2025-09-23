@@ -30,17 +30,17 @@ object ScalaSettings extends ScalaSettings
 
 // Kept as seperate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[SettingCategory, List[Setting[_]]] =
+  val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
     allSettings.groupBy(_.category)
       .view.mapValues(_.toList).toMap
       .withDefaultValue(Nil)
   def categories: List[SettingCategory] = settingsByCategory.keys.toList.sortBy(_.prefixLetter)
-  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting).sortBy(_.name)
-  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting).sortBy(_.name)
-  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting).sortBy(_.name)
-  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
-  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting).sortBy(_.name)
-  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+  val rootSettings: List[Setting[?]] = settingsByCategory(RootSetting).sortBy(_.name)
+  val warningSettings: List[Setting[?]] = settingsByCategory(WarningSetting).sortBy(_.name)
+  val forkSettings: List[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
+  val advancedSettings: List[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
+  val verboseSettings: List[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
+  val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
 
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
@@ -370,7 +370,7 @@ private sealed trait XSettings:
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
   @deprecated(message = "Superseded by -Wshadow, Scheduled for removal", since = "3.5.0")
-  val Xlint: Setting[_] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
+  val Xlint: Setting[?] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
 
 end XSettings
 

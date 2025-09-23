@@ -343,7 +343,7 @@ object TreeChecker {
       // case tree: untpd.TypeDef =>
       case Apply(fun, args) =>
         assertIdentNotJavaClass(fun)
-        args.foreach(assertIdentNotJavaClass _)
+        args.foreach(assertIdentNotJavaClass(_))
       // case tree: untpd.This =>
       // case tree: untpd.Literal =>
       // case tree: untpd.New =>
@@ -354,7 +354,7 @@ object TreeChecker {
       case Assign(_, rhs) =>
         assertIdentNotJavaClass(rhs)
       case Block(stats, expr) =>
-        stats.foreach(assertIdentNotJavaClass _)
+        stats.foreach(assertIdentNotJavaClass(_))
         assertIdentNotJavaClass(expr)
       case If(_, thenp, elsep) =>
         assertIdentNotJavaClass(thenp)

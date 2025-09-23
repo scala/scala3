@@ -1089,7 +1089,7 @@ trait Checking {
       val pos =
         if isPatDef then reason match
           case NonConforming => sel.srcPos
-          case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
+          case RefutableExtractor => pat.source.atSpan(pat.span `union` sel.span)
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
       report.errorOrMigrationWarning(
@@ -1335,39 +1335,35 @@ trait Checking {
     decl.matches(other) && !staticNonStaticPair
 
   /** Check that class does not declare same symbol twice */
-  def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
+  def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit =
     val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
-    def checkDecl(decl: Symbol): Unit = {
-      for (other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent()) {
+    def checkDecl(decl: Symbol): Unit =
+      for other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent() do
         typr.println(i"conflict? $decl $other")
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if (matchesSameStatic(decl, other) && !javaFieldMethodPair) {
+        if matchesSameStatic(decl, other) && !javaFieldMethodPair then
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
           if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
             () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
-          else if (decl is Synthetic) doubleDefError(other, decl)
+          else if decl.is(Synthetic) then doubleDefError(other, decl)
           else doubleDefError(decl, other)
-        }
         if decl.hasDefaultParams && other.hasDefaultParams then
           report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
           decl.resetFlag(HasDefaultParams)
-      }
-      if (!excludeFromDoubleDeclCheck(decl))
+      if !excludeFromDoubleDeclCheck(decl) then
         seen(decl.name) = decl :: seen(decl.name)
-    }
 
     cls.info.decls.foreach(checkDecl)
-    cls.info match {
+    cls.info match
       case ClassInfo(_, _, _, _, selfSym: Symbol) => checkDecl(selfSym)
       case _ =>
-    }
-  }
+  end checkNoDoubleDeclaration
 
   def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit =
     if (!ctx.isAfterTyper) {

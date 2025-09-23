@@ -43,7 +43,7 @@ trait CliCommand:
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
-      case x if x startsWith "@"  => CommandLineParser.expandArg(x)
+      case x if x.startsWith("@") => CommandLineParser.expandArg(x)
       case x                      => List(x)
     }
 

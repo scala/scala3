@@ -100,11 +100,10 @@ object Comments {
     private def decomposeUseCase(body: String, span: Span, start: Int, end: Int)(using Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (span == NoSpan) NoSpan
-        else {
+        else
           val start1 = span.start + start
           val end1 = span.end + end
-          span withStart start1 withPoint start1 withEnd end1
-        }
+          span.withStart(start1).withPoint(start1).withEnd(end1)
 
       val codeStart = skipWhitespace(body, start + "@usecase".length)
       val codeEnd   = skipToEol(body, codeStart)
@@ -360,7 +359,7 @@ object Comments {
         // necessary to document things like Symbol#decode
         def isEscaped = idx > 0 && str.charAt(idx - 1) == '\\'
         while (idx < str.length)
-          if ((str charAt idx) != '$' || isEscaped)
+          if str.charAt(idx) != '$' || isEscaped then
             idx += 1
           else {
             val vstart = idx
@@ -428,8 +427,8 @@ object Comments {
           else site.info.baseClasses
 
         searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
-          case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
-          case res                             => res orElse lookupVariable(vble, site.owner)
+          case Some(str) if str.startsWith("$") => lookupVariable(str.tail, site)
+          case res                              => res `orElse` lookupVariable(vble, site.owner)
         }
     }
 

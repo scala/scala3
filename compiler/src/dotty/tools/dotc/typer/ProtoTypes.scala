@@ -696,7 +696,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(using Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source)) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
+    untpd.TypedSplice(dummyTreeOfType(argType)(using ctx.source)) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -1054,7 +1054,7 @@ object ProtoTypes {
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
     def apply(tp: Type)(implicit src: SourceFile): Tree =
-      untpd.Literal(Constant(null)) withTypeUnchecked tp
+      untpd.Literal(Constant(null)).withTypeUnchecked(tp)
     def unapply(tree: untpd.Tree): Option[Type] = untpd.unsplice(tree) match {
       case tree @ Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None

@@ -496,7 +496,7 @@ class ClassfileParser(
         *  and make constructor type polymorphic in the type parameters of the class
         */
       def normalizeConstructorInfo() = {
-        val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.typeRef))
+        val rt = classRoot.typeRef.appliedTo(classRoot.typeParams.map(_.typeRef))
 
         def resultType(tpe: Type): Type = tpe match {
           case mt @ MethodType(paramNames) => mt.derivedLambdaType(paramNames, mt.paramInfos, rt)
@@ -1122,7 +1122,7 @@ class ClassfileParser(
       def parseScalaSigBytes: Array[Byte] = {
         val tag = in.nextByte.toChar
         assert(tag == STRING_TAG, tag)
-        pool getBytes in.nextChar
+        pool.getBytes(in.nextChar)
       }
 
       def parseScalaLongSigBytes: Array[Byte] = {
