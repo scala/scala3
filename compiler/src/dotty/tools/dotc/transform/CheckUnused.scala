@@ -11,7 +11,7 @@ import Scopes.newScope
 import StdNames.nme
 import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import Types.*
-import reporting.{CodeAction, UnusedSymbol}
+import reporting.{Action, CodeAction, Diagnostic, UnusedSymbol, WConf}
 import rewrites.Rewrites
 
 import MegaPhase.MiniPhase
@@ -557,7 +557,20 @@ object CheckUnused:
     for (msg, pos, origin) <- warnings do
       if origin.isEmpty then report.warning(msg, pos)
       else report.warning(msg, pos, origin)
-      msg.actions.headOption.foreach(Rewrites.applyAction)
+      // avoid rewrite if warning will be suppressed (would be nice if reporter knew how to apply actions)
+      msg.actions.headOption match
+      case Some(action) if ctx.run != null =>
+        val dia =
+          if origin.isEmpty then Diagnostic.Warning(msg, pos.sourcePos)
+          else Diagnostic.LintWarning(msg, pos.sourcePos, origin)
+        ctx.run.nn.suppressions.nowarnAction(dia) match
+        case Action.Warning =>
+          WConf.parsed.action(dia) match
+          case Action.Error | Action.Warning =>
+            Rewrites.applyAction(action)
+          case _ =>
+        case _ =>
+      case _ =>
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
