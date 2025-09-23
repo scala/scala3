@@ -1713,26 +1713,23 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> if (l eq null) r eq null else l.equals(r)
-          val eqEqTempLocal = locals.makeLocal(ObjectRef, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
           val lNull    = new asm.Label
           val lNonNull = new asm.Label
 
-          genLoad(l, ObjectRef)
+          genLoad(r, ObjectRef) //  load rhs --> (r)
           stack.push(ObjectRef)
-          genLoad(r, ObjectRef)
+          genLoad(l, ObjectRef) // load lhs --> (l,r)
           stack.pop()
-          locals.store(eqEqTempLocal)
-          bc dup ObjectRef
-          genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectRef, targetIfNoJump = lNull)
+          bc dup ObjectRef // duplicate top stack variable --> (l,l,r)
+          genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectRef, targetIfNoJump = lNull) // compare lhs with NULL --> (l,r)
 
           markProgramPoint(lNull)
-          bc drop ObjectRef
-          locals.load(eqEqTempLocal)
-          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump = lNonNull)
+          bc drop ObjectRef // drop top stack variable --> (r)
+          genCZJUMP(success, failure, Primitives.EQ, ObjectRef, targetIfNoJump = lNonNull) // --> (-)
 
           markProgramPoint(lNonNull)
-          locals.load(eqEqTempLocal)
-          genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
+          emit(asm.Opcodes.SWAP) //swap l and r for correct .equals ordering --> (r,l)
+          genCallMethod(defn.Any_equals, InvokeStyle.Virtual) // --> (-)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         }
       }
