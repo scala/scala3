@@ -709,7 +709,7 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
-      case tref: TypeRef if tref.symbol.isOpaqueAlias && !tref.info.hiBound.isNothingType =>
+      case tref: TypeRef if tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType =>
         rec(tref.info.hiBound, mixins)
       case _ => ListOfNoType
     end rec
@@ -857,7 +857,7 @@ object SpaceEngine {
       classSym.is(Case) ||
         (tpw.isInstanceOf[TypeRef] && {
           val tref = tpw.asInstanceOf[TypeRef]
-          if (tref.symbol.isOpaqueAlias && !tref.info.hiBound.isNothingType)
+          if (tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType)
             isCheckable(tref.info.hiBound)
           else
             false
