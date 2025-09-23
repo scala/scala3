@@ -8,7 +8,6 @@ import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
-  case `2.13`
 
   case `3.0-migration`, `3.0`
   case `3.1-migration`, `3.1`
@@ -22,6 +21,7 @@ enum SourceVersion:
   case `3.9-migration`, `3.9`
   // Add 3.x-migration and 3.x here
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
+  case `2.13`
   case `future-migration`, `future`
 
   case `never`    // needed for MigrationVersion.errorFrom if we never want to issue an error
