@@ -390,7 +390,7 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test sbt
-        run: ./project/scripts/sbt "sbt-test/scripted; sbt-community-build/scripted"
+        run: ./project/scripts/sbt "sbt-test/scripted"
 
   publish_release:
     permissions:

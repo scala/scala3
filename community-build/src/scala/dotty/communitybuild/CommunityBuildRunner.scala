@@ -17,8 +17,6 @@ object CommunityBuildRunner:
    */
   extension (self: CommunityProject) 
     def run()(using suite: CommunityBuildRunner): Unit =
-      self.dependencies.foreach(_.publish())
-      self.testOnlyDependencies().foreach(_.publish())
       suite.runProject(self)
   end extension
 
