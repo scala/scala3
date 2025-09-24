@@ -11,8 +11,8 @@ import Scopes.newScope
 import StdNames.nme
 import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import Types.*
-import reporting.{Action, CodeAction, Diagnostic, UnusedSymbol, WConf}
-import rewrites.Rewrites
+import reporting.{CodeAction, Diagnostic, UnusedSymbol}
+import rewrites.Rewrites.ActionPatch
 
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer}
@@ -555,29 +555,15 @@ object CheckUnused:
 
   def reportUnused()(using Context): Unit = if !refInfos.isNullified then
     for (msg, pos, origin) <- warnings do
-      if origin.isEmpty then report.warning(msg, pos)
-      else report.warning(msg, pos, origin)
-      // avoid rewrite if warning will be suppressed (would be nice if reporter knew how to apply actions)
-      msg.actions.headOption match
-      case Some(action) if ctx.run != null =>
-        val dia =
-          if origin.isEmpty then Diagnostic.Warning(msg, pos.sourcePos)
-          else Diagnostic.LintWarning(msg, pos.sourcePos, origin)
-        ctx.run.nn.suppressions.nowarnAction(dia) match
-        case Action.Warning =>
-          WConf.parsed.action(dia) match
-          case Action.Error | Action.Warning =>
-            Rewrites.applyAction(action)
-          case _ =>
-        case _ =>
-      case _ =>
+      report.warning(msg, pos, origin)
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
   def warnings(using Context): Array[MessageInfo] =
     val actionable = ctx.settings.rewrite.value.nonEmpty
     val warnings = ArrayBuilder.make[MessageInfo]
-    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
+    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = Diagnostic.OriginWarning.NoOrigin): Unit =
+      warnings.addOne((msg, pos, origin))
     val infos = refInfos
 
     // non-local sym was target of assignment or has a sibling setter that was referenced
@@ -740,7 +726,6 @@ object CheckUnused:
 
     def checkImports() =
       import scala.jdk.CollectionConverters.given
-      import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
