@@ -391,7 +391,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkNotPackage(tree)
           else
             registerNeedsInlining(tree)
-            checkUsableAsValue(tree)
+            val tree1 = checkUsableAsValue(tree)
+            tree1.tpe match {
+              case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
+              case _ => tree1
+            }
         case tree @ Select(qual, name) =>
           registerNeedsInlining(tree)
           if name.isTypeName then
