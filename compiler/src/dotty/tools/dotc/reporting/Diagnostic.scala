@@ -40,10 +40,12 @@ object Diagnostic:
    */
   trait OriginWarning(val origin: String):
     self: Warning =>
+  object OriginWarning:
+    val NoOrigin = "..."
 
   /** Lints are likely to be filtered. Provide extra axes for filtering by `-Wconf`.
    */
-  class LintWarning(msg: Message, pos: SourcePosition, origin: String)
+  class LintWarning(msg: Message, pos: SourcePosition, origin: String = OriginWarning.NoOrigin)
   extends Warning(msg, pos), OriginWarning(origin)
 
   class Warning(
