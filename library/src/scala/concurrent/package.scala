@@ -13,8 +13,9 @@
 package scala
 
 import scala.language.`2.13`
-import scala.concurrent.duration.Duration
 import scala.annotation.implicitNotFound
+import scala.concurrent.duration.Duration
+import scala.util.Try
 
 /** This package object contains primitives for concurrent and parallel programming.
  *
@@ -171,8 +172,11 @@ package concurrent {
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
     final def ready[T](awaitable: Awaitable[T], atMost: Duration): awaitable.type = awaitable match {
-      case f: Future[T] if f.isCompleted => awaitable.ready(atMost)(AwaitPermission)
-      case _ => blocking(awaitable.ready(atMost)(AwaitPermission))
+      case f: Future[T] if f.isCompleted =>
+        if (atMost eq Duration.Undefined) Future.waitUndefinedError() // preserve semantics, see scala/scala#10972
+        else awaitable
+      case _ =>
+        blocking(awaitable.ready(atMost)(AwaitPermission))
     }
 
     /**
@@ -198,8 +202,18 @@ package concurrent {
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
     final def result[T](awaitable: Awaitable[T], atMost: Duration): T = awaitable match {
-      case f: Future[T] if f.isCompleted => f.result(atMost)(AwaitPermission)
-      case _ => blocking(awaitable.result(atMost)(AwaitPermission))
+      case FutureValue(v) =>
+        if (atMost eq Duration.Undefined) Future.waitUndefinedError() // preserve semantics, see scala/scala#10972
+        else v.get
+      case _ =>
+        blocking(awaitable.result(atMost)(AwaitPermission))
+    }
+
+    private object FutureValue {
+      def unapply[T](a: Awaitable[T]): Option[Try[T]] = a match {
+        case f: Future[T] => f.value
+        case _ => None
+      }
     }
   }
 }

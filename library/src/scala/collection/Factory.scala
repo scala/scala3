@@ -149,10 +149,10 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def newBuilder[A]: Builder[A, CC[A]]
 
   /** Produces a $coll containing the results of some element computation a number of times.
-    *  @param   n  the number of elements contained in the $coll.
-    *  @param   elem the element computation
-    *  @return  A $coll that contains the results of `n` evaluations of `elem`.
-    */
+   *  @param   n  the number of elements contained in the $coll.
+   *  @param   elem the element computation
+   *  @return  A $coll that contains the results of `n` evaluations of `elem`.
+   */
   def fill[A](n: Int)(elem: => A): CC[A]^{elem} = from(new View.Fill(n)(elem))
 
   /** Produces a two-dimensional $coll containing the results of some element computation a number of times.

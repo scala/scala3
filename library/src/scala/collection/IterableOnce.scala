@@ -24,6 +24,8 @@ import scala.math.{Numeric, Ordering}
 import scala.reflect.ClassTag
 import scala.runtime.{AbstractFunction1, AbstractFunction2}
 
+import IterableOnce.elemsToCopyToArray
+
 /**
   * A template trait for collections which can be traversed either once only
   * or one or more times.
@@ -267,16 +269,25 @@ object IterableOnce {
   @inline implicit def iterableOnceExtensionMethods[A](it: IterableOnce[A]): IterableOnceExtensionMethods[A] =
     new IterableOnceExtensionMethods[A](it)
 
-  /** Computes the number of elements to copy to an array from a source IterableOnce
-    *
-    * @param srcLen the length of the source collection
-    * @param destLen the length of the destination array
-    * @param start the index in the destination array at which to start copying elements to
-    * @param len the requested number of elements to copy (we may only be able to copy less than this)
-    * @return the number of elements that will be copied to the destination array
-    */
-  @inline private[collection] def elemsToCopyToArray(srcLen: Int, destLen: Int, start: Int, len: Int): Int =
-    math.max(math.min(math.min(len, srcLen), destLen - start), 0)
+  /** Computes the number of elements to copy to an array from a source IterableOnce.
+   *
+   *  If `start` is less than zero, it is taken as zero.
+   *  If any of the length inputs is less than zero, the computed result is zero.
+   *
+   *  The result is the smaller of the remaining capacity in the destination and the requested count.
+   *
+   *  @param srcLen the length of the source collection
+   *  @param destLen the length of the destination array
+   *  @param start the index in the destination array at which to start copying elements
+   *  @param len the requested number of elements to copy (we may only be able to copy less than this)
+   *  @return the number of elements that will be copied to the destination array
+   */
+  @inline private[collection] def elemsToCopyToArray(srcLen: Int, destLen: Int, start: Int, len: Int): Int = {
+    val limit = math.min(len, srcLen)
+    val capacity = if (start < 0) destLen else destLen - start
+    val total = math.min(capacity, limit)
+    math.max(0, total)
+  }
 
   /** Calls `copyToArray` on the given collection, regardless of whether or not it is an `Iterable`. */
   @inline private[collection] def copyElemsToArray[A, B >: A](elems: IterableOnce[A]^,
@@ -438,6 +449,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  @return  a $coll containing the elements greater than or equal to
    *           index `from` extending up to (but not including) index `until`
    *           of this $coll.
+   *  @example
+   *    `List('a', 'b', 'c', 'd', 'e').slice(1, 3) == List('b', 'c')`
    */
   def slice(from: Int, until: Int): C^{this}
 
@@ -987,28 +1000,29 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Copies elements to an array, returning the number of elements written.
    *
-   *  Fills the given array `xs` starting at index `start` with values of this $coll.
+   *  Fills the given array `dest` starting at index `start` with values of this $coll.
    *
    *  Copying will stop once either all the elements of this $coll have been copied,
    *  or the end of the array is reached.
    *
-   *  @param  xs     the array to fill.
+   *  @param  dest   the array to fill.
    *  @tparam B      the type of the elements of the array.
    *  @return        the number of elements written to the array
    *
    *  @note    Reuse: $consumesIterator
    */
   @deprecatedOverriding("This should always forward to the 3-arg version of this method", since = "2.13.4")
-  def copyToArray[B >: A](xs: Array[B]): Int = copyToArray(xs, 0, Int.MaxValue)
+  def copyToArray[B >: A](@deprecatedName("xs", since="2.13.17") dest: Array[B]): Int =
+    copyToArray(dest, start = 0, n = Int.MaxValue)
 
   /** Copies elements to an array, returning the number of elements written.
    *
-   *  Fills the given array `xs` starting at index `start` with values of this $coll.
+   *  Fills the given array `dest` starting at index `start` with values of this $coll.
    *
    *  Copying will stop once either all the elements of this $coll have been copied,
    *  or the end of the array is reached.
    *
-   *  @param  xs     the array to fill.
+   *  @param  dest   the array to fill.
    *  @param  start  the starting index of xs.
    *  @tparam B      the type of the elements of the array.
    *  @return        the number of elements written to the array
@@ -1016,29 +1030,40 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  @note    Reuse: $consumesIterator
    */
   @deprecatedOverriding("This should always forward to the 3-arg version of this method", since = "2.13.4")
-  def copyToArray[B >: A](xs: Array[B], start: Int): Int = copyToArray(xs, start, Int.MaxValue)
+  def copyToArray[B >: A](@deprecatedName("xs", since="2.13.17") dest: Array[B], start: Int): Int =
+    copyToArray(dest, start = start, n = Int.MaxValue)
 
-  /** Copy elements to an array, returning the number of elements written.
+  /** Copies elements to an array and returns the number of elements written.
    *
-   *  Fills the given array `xs` starting at index `start` with at most `len` elements of this $coll.
+   *  Fills the given array `dest` starting at index `start` with at most `n` elements of this $coll.
    *
    *  Copying will stop once either all the elements of this $coll have been copied,
-   *  or the end of the array is reached, or `len` elements have been copied.
+   *  or the end of the array is reached, or `n` elements have been copied.
    *
-   *  @param  xs     the array to fill.
+   *  If `start` is less than zero, it is taken as zero.
+   *
+   *  @param  dest   the array to fill.
    *  @param  start  the starting index of xs.
-   *  @param  len    the maximal number of elements to copy.
+   *  @param  n      the maximal number of elements to copy.
    *  @tparam B      the type of the elements of the array.
    *  @return        the number of elements written to the array
    *
    *  @note    Reuse: $consumesIterator
    */
-  def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  def copyToArray[B >: A](
+    @deprecatedName("xs", since="2.13.17") dest: Array[B],
+    start: Int,
+    @deprecatedName("len", since="2.13.17") n: Int
+  ): Int = {
     val it = iterator
     var i = start
-    val end = start + math.min(len, xs.length - start)
+    val srclen = knownSize match {
+      case -1 => dest.length
+      case  k => k
+    }
+    val end = start + elemsToCopyToArray(srclen, dest.length, start, n)
     while (i < end && it.hasNext) {
-      xs(i) = it.next()
+      dest(i) = it.next()
       i += 1
     }
     i - start
@@ -1244,7 +1269,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  @param pf   the partial function
    *  @return     an option value containing pf applied to the first
    *              value for which it is defined, or `None` if none exists.
-   *  @example    `Seq("a", 1, 5L).collectFirst({ case x: Int => x*10 }) = Some(10)`
+   *  @example    `Seq("a", 1, 5L).collectFirst { case x: Int => x*10 } = Some(10)`
    */
   def collectFirst[B](pf: PartialFunction[A, B]^): Option[B] = {
     // Presumably the fastest way to get in and out of a partial function is for a sentinel function to return itself
