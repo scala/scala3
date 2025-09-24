@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.reporting.Diagnostic.*
 import dotty.tools.dotc.reporting.Message.*
+import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
@@ -174,6 +175,8 @@ abstract class Reporter extends interfaces.ReporterResult {
           handleRecursive("error reporting", dia.message, ex)
         dia match {
           case w: Warning =>
+            if w.isInstanceOf[LintWarning] then
+              w.msg.actions.foreach(Rewrites.applyAction)
             warnings = w :: warnings
             _warningCount += 1
           case e: Error   =>
