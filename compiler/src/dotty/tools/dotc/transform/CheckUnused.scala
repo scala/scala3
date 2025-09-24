@@ -560,7 +560,7 @@ object CheckUnused:
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
   def warnings(using Context): Array[MessageInfo] =
-    val actionable = ctx.settings.rewrite.value.nonEmpty
+    val actionable: true = true //ctx.settings.rewrite.value.nonEmpty
     val warnings = ArrayBuilder.make[MessageInfo]
     def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = Diagnostic.OriginWarning.NoOrigin): Unit =
       warnings.addOne((msg, pos, origin))
