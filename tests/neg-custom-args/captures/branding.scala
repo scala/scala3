@@ -22,14 +22,14 @@ def main() =
   val untrustedLogger: Logger^ = ???
   val untrustedChannel: Channel[String]^ = ???
 
-  runSecure: () => // error (???, arose after changing level checking)
+  runSecure: () =>
     trustedLogger.log("Hello from trusted code") // ok
 
-  runSecure: () => // error (???, arose after changing level checking)
+  runSecure: () =>
     trustedChannel.send("I can send")
     trustedLogger.log(trustedChannel.recv()) // ok
 
-  runSecure: () => // error (???, arose after changing level checking)
+  runSecure: () =>
     "I am pure"                             // ok
 
   runSecure: () => // error

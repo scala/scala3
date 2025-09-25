@@ -11,8 +11,8 @@ def test =
     type C^ >: {z,x} <: {x,y,z}
 
   val foo: Foo = ???
-  onlyWithZ[{foo.C}] // error
-  onlyWithZ[{z}]     // error
-  onlyWithZ[{x,z}]   // error
-  onlyWithZ[{x,y,z}] // error
+  onlyWithZ[{foo.C}] // ok
+  onlyWithZ[{z}]     // ok
+  onlyWithZ[{x,z}]   // ok
+  onlyWithZ[{x,y,z}] // ok
   onlyWithZ[{x,y}]   // error
