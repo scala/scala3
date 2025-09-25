@@ -20,10 +20,10 @@
    |                    expression expected but [31mend of single-line lambda[0m found
    |
    | longer explanation available when compiling with `-explain`
--- [E040] Syntax Error: tests/neg/closure-args.scala:21:64 -------------------------------------------------------------
-21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error
-   |                                                                ^^^^
-   |                                                            end of single-line lambda expected, but 'case' found
+-- [E040] Syntax Error: tests/neg/closure-args.scala:21:41 -------------------------------------------------------------
+21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
+   |                                         ^
+   |                                         'case' expected, but identifier found
 -- [E008] Not Found Error: tests/neg/closure-args.scala:10:4 -----------------------------------------------------------
  8 |val b: Int = xs
  9 |  .map: x => x
@@ -55,5 +55,12 @@
 16 |val c = List(xs.map: y => y + y)  // error // error // error // error
    |                              ^
    |                              Not found: type y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/closure-args.scala:21:97 ------------------------------------------------------
+21 |val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error
+   |                                                                                                 ^
+   |                                                                                      Found:    Unit
+   |                                                                                      Required: List[Int] => Int
    |
    | longer explanation available when compiling with `-explain`

@@ -18,4 +18,4 @@ val c = List(xs.map: y => y + y)  // error // error // error // error
 val e = xs.map: y => // error
 y + 1
 
-val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error
+val fs: List[List[Int] => Int] = xs.map: x => case y :: ys => y case Nil => -1  // error // error

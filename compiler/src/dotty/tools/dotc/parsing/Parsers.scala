@@ -1114,27 +1114,32 @@ object Parsers {
           lookahead.observeArrowIndented()
           if lookahead.token == INDENT || lookahead.token == EOF then
             Some(() => expr(Location.InColonArg))
-          else if in.featureEnabled(Feature.relaxedLambdaSyntax)
-              && !in.currentRegion.isInstanceOf[InParens]
-          then
-            Some: () =>
-              val t = inSepRegion(SingleLineLambda(_)):
-                expr(Location.InColonArg)
-              accept(ENDlambda)
-              t
+          else if in.featureEnabled(Feature.relaxedLambdaSyntax) then
+            isParamsAndArrow() match
+              case success @ Some(_) => success
+              case _ if !in.currentRegion.isInstanceOf[InParens] =>
+                Some: () =>
+                  val t = inSepRegion(SingleLineLambda(_)):
+                    expr(Location.InColonArg)
+                  accept(ENDlambda)
+                  t
+              case _ => None
           else None
         else None
-      lookahead.nextToken()
-      if lookahead.isIdent || lookahead.token == USCORE then
+      def isParamsAndArrow(): Option[() => Tree] =
         lookahead.nextToken()
-        isArrowIndent()
-      else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
-        lookahead.skipParens()
-        isArrowIndent()
-      else if lookahead.token == CASE && in.featureEnabled(Feature.relaxedLambdaSyntax) then
-        Some(() => singleCaseMatch())
-      else
-        None
+        if lookahead.isIdent || lookahead.token == USCORE then
+          lookahead.nextToken()
+          isArrowIndent()
+        else if lookahead.token == LPAREN || lookahead.token == LBRACKET then
+          lookahead.skipParens()
+          isArrowIndent()
+        else if lookahead.token == CASE && in.featureEnabled(Feature.relaxedLambdaSyntax) then
+          Some(() => singleCaseMatch())
+        else
+          None
+      isParamsAndArrow()
+    end followingIsLambdaAfterColon
 
     /** Can the next lookahead token start an operand as defined by
      *  leadingOperandTokens, or is postfix ops enabled?
@@ -2804,7 +2809,7 @@ object Parsers {
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
      *                 |  SimpleExpr1 ColonArgument
-     *  ColonArgument ::= colon [LambdaStart]
+     *  ColonArgument ::= colon {LambdaStart}
      *                    indent (CaseClauses | Block) outdent
      *                 |  colon LambdaStart expr ENDlambda        -- under experimental.relaxedLambdaSyntax
      *                 |  colon ExprCaseClause                    -- under experimental.relaxedLambdaSyntax
