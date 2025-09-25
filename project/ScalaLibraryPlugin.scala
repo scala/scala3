@@ -78,17 +78,17 @@ object ScalaLibraryPlugin extends AutoPlugin {
       }
 
       var stamps = analysis.stamps
-      for (file <- files; 
-           id <- file.relativeTo(reference); 
-           if filesToCopy(id.toString()); // Only Override Some Very Specific Files
-           dest = target / (id.toString); 
+      for (file <- files;
+           id <- file.relativeTo(reference);
+           if filesToCopy(id.toString().replace("\\", "/")); // Only Override Some Very Specific Files
+           dest = target / (id.toString);
            ref <- dest.relativeTo((LocalRootProject / baseDirectory).value)
-          ) { 
+          ) {
         // Copy the files to the classDirectory
         IO.copyFile(file, dest)
         // Update the timestamp in the analysis
         stamps = stamps.markProduct(
-          VirtualFileRef.of(s"$${BASE}/$ref"), 
+          VirtualFileRef.of(s"$${BASE}/$ref"),
           Stamper.forFarmHashP(dest.toPath()))
       }
 
