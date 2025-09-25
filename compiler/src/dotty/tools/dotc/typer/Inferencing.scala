@@ -626,11 +626,13 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
+    case tp: FlexibleType => tp.derivedFlexibleType(captureWildcards(tp.hi))
     case _ => tp
   }
 
   def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
     case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
+    case tp: FlexibleType => hasCaptureConversionArg(tp.hi)
     case _ => false
 }
 
