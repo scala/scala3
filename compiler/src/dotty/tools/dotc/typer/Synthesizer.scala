@@ -183,7 +183,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       *  one of `tp1`, `tp2` has a reflexive `CanEqual` instance.
       */
     def validEqAnyArgs(tp1: Type, tp2: Type)(using Context) =
-      typer.assumedCanEqual(None, tp1, tp2)
+      typer.assumedCanEqual(tp1, tp2)
        || withMode(Mode.StrictEquality) {
             !hasEq(tp1) && !hasEq(tp2)
           }
