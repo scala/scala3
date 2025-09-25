@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/multiparamlist-overload-3.6.scala:41:21 ---------------------------------------
+41 |    val r = f(new B)(new A) // error: resolves to: R2 in 3.6, R1 in 3.7
+   |                     ^^^^^
+   |                     Found:    A
+   |                     Required: B
+   |
+   | longer explanation available when compiling with `-explain`
