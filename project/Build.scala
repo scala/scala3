@@ -670,6 +670,13 @@ object Build {
     recur(lines, false)
   }
 
+    /** Replaces JDK 9+ methods with their JDK 8 alterantive */
+  def replaceJDKIncompatibilities(lines: List[String]): List[String] = {
+    lines.map(
+      _.replaceAll("""(\").repeat\((\w+)\)""", """$1 * $2""")
+    )
+  }
+
   /** replace imports of `com.google.protobuf.*` with compiler implemented version */
   def replaceProtobuf(lines: List[String]): List[String] = {
     def recur(ls: List[String]): List[String] = ls match {
@@ -2623,7 +2630,7 @@ object Build {
           val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
           mtagsSharedSources.foreach(f => {
             val lines = IO.readLines(f)
-            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))
+            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))  andThen (replaceJDKIncompatibilities(_))
             IO.writeLines(f, substitutions(lines))
           })
           mtagsSharedSources
