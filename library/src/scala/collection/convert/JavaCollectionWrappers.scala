@@ -102,7 +102,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     extends AbstractIterable[A]
       with StrictOptimizedIterableOps[A, Iterable, Iterable[A]]
       with Serializable {
-    def iterator = underlying.iterator.asScala
+    def iterator: Iterator[A] = underlying.iterator.asScala
     override def size = underlying.size
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
@@ -526,7 +526,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def isEmpty: Boolean = underlying.isEmpty
     def keys: ju.Enumeration[K] = underlying.keysIterator.asJavaEnumeration
     def elements: ju.Enumeration[V] = underlying.valuesIterator.asJavaEnumeration
-    def get(key: AnyRef) = try {
+    def get(key: AnyRef): V = try {
       underlying get key.asInstanceOf[K] match {
         case None => null.asInstanceOf[V]
         case Some(v) => v
@@ -538,7 +538,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       case Some(v) => v
       case None => null.asInstanceOf[V]
     }
-    override def remove(key: AnyRef) = try {
+    override def remove(key: AnyRef): V = try {
       underlying remove key.asInstanceOf[K] match {
         case None => null.asInstanceOf[V]
         case Some(v) => v

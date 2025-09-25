@@ -1,6 +1,7 @@
 import unsafeNulls.Foo.*
 import unsafeNulls.Unsafe_1
 import unsafeNulls.{A, B, C, F, G, H, I, J, L, M, N, S, T, U, expects}
+import unsafeNulls.ZIO
 import scala.reflect.Selectable.reflectiveSelectable
 import scala.quoted.*
 
