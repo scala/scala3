@@ -294,9 +294,9 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr							-- to be dropped
-ColonArgument     ::=  colon [LambdaStart]
+ColonArgument     ::=  colon {LambdaStart}
                        indent (CaseClauses | Block) outdent
-                    |  colon LambdaStart expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
+                    |  colon LambdaStart {LambdaStart} expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
                                                                                 -- does not apply if enclosed in parens
                     |  colon ExprCaseClause
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
