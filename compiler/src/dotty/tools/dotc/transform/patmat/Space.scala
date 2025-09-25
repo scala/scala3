@@ -724,7 +724,6 @@ object SpaceEngine {
         && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
         && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
         && cls.children.nonEmpty        // can't decompose without children
-        && !sym.isOpaqueAlias           // can't instantiate subclasses to conform to an opaque type (i19275)
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
