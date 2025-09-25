@@ -433,10 +433,10 @@ object Nullables:
     def computeAssignNullable()(using Context): tree.type =
       var nnInfo = tree.rhs.notNullInfo
       tree.lhs match
-        case TrackedRef(ref) if ctx.explicitNulls && ref.isNullableUnion =>
+        case TrackedRef(ref) if ctx.explicitNulls && ref.isNullableUnion() =>
           nnInfo = nnInfo.seq:
             val rhstp = tree.rhs.typeOpt
-            if rhstp.isNullType || rhstp.isNullableUnion then
+            if rhstp.isNullType || rhstp.isNullableUnion() then
               // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
               // lhs variable is no longer trackable. We don't need to check whether the type `T`
               // is correct here, as typer will check it.

@@ -935,8 +935,38 @@ object SpaceEngine {
       cases match
         case Nil =>
         case (c @ CaseDef(pat, _, _)) :: rest =>
+          def checkForUnnecessaryNullable(p: Tree): Unit = p match {
+            case Bind(_, body) => checkForUnnecessaryNullable(body)
+            case Typed(expr, tpt) =>
+              if tpt.tpe.isNullableUnion(stripFlexibleTypes = false, forceStrip = true) then
+                report.warning(MatchCaseUnnecessaryNullable(tpt.tpe), p.srcPos)
+              else
+                checkForUnnecessaryNullable(expr)
+            case UnApply(_, _, patterns) =>
+              patterns.map(checkForUnnecessaryNullable)
+            case Alternative(patterns) => patterns.map(checkForUnnecessaryNullable)
+            case _ =>
+          }
+
+          def handlesNull(p: Tree): Boolean = p match {
+            case Literal(Constant(null)) => true
+            case Typed(expr, tpt) => tpt.tpe.isSingleton || handlesNull(expr) // assume all SingletonType's handle null (see redundant-null.scala)
+            case Bind(_, body) => handlesNull(body)
+            case Alternative(patterns) => patterns.exists(handlesNull)
+            case _ => false
+          }
           val curr = trace(i"project($pat)")(projectPat(pat))
-          val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
+          var covered = trace("covered")(simplify(intersect(curr, targetSpace)))
+
+          checkForUnnecessaryNullable(pat)
+
+          if !handlesNull(pat) && !isWildcardArg(pat) then
+            // Remove nullSpace from covered only if:
+            // 1. No pattern is the null constant (e.g., `case null =>` or `case ... | null | ... =>`) or
+            // has a SingletonType (e.g., `case _: n.type =>` where `val n = null`, see redundant-null.scala) in one of its pattern(s)
+            // 2. The pattern is a wildcard pattern.
+            covered = minus(covered, nullSpace)
+
           val prev = trace("prev")(simplify(Or(prevs)))
           if prev == Empty && covered == Empty then // defer until a case is reachable
             recur(rest, prevs, pat :: deferred)
