@@ -828,11 +828,11 @@ object CaptureSet:
 
     def levelOK(elem: Capability)(using Context): Boolean = elem match
       case elem @ ResultCap(binder) =>
-        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
+        rootLimit == null && isPartOf(binder.resType)
       case GlobalCap =>
         rootLimit == null
       case elem: ParamRef =>
-        this.isInstanceOf[BiMapped] || isPartOf(elem.binder.resType)
+        isPartOf(elem.binder.resType)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
@@ -949,6 +949,9 @@ object CaptureSet:
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
+
+    override def levelOK(elem: Capability)(using Context): Boolean =
+      true
 
     // For debugging: A trace where a set was created. Note that logically it would make more
     // sense to place this variable in Mapped, but that runs afoul of the initialization checker.
