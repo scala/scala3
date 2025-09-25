@@ -597,6 +597,17 @@ object Build {
     recur(lines, false)
   }
 
+  // Hotfix for JDK 8
+  def replaceJDK11APIs(lines: List[String], file: File): List[String] = {
+    if (file.getName == "InlayHints.scala") {
+      lines.map{
+        _.replace(".repeat(naiveIndent)", " * naiveIndent")
+      }
+    } else {
+      lines
+    }
+  }
+
   /** replace imports of `com.google.protobuf.*` with compiler implemented version */
   def replaceProtobuf(lines: List[String]): List[String] = {
     def recur(ls: List[String]): List[String] = ls match {
@@ -1271,7 +1282,7 @@ object Build {
           val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
           mtagsSharedSources.foreach(f => {
             val lines = IO.readLines(f)
-            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))
+            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_)) andThen (replaceJDK11APIs(_, f))
             IO.writeLines(f, substitutions(lines))
           })
           mtagsSharedSources
