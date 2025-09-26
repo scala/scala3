@@ -1041,6 +1041,7 @@ trait Implicits:
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
+   *   - if strictEqualityPatternMatching is set and the necessary conditions are met
    */
   def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
@@ -1067,12 +1068,16 @@ trait Implicits:
     || rtp.isError
     || locally:
       if strictEquality then
-        strictEqualityPatternMatching && (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) && ltp <:< lift(rtp)
+        strictEqualityPatternMatching &&
+          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
+          ltp <:< lift(rtp)
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
 
-  /** Check that equality tests between types `ltp` and `left.tpe` make sense */
+  /** Check that equality tests between types `ltp` and `left.tpe` make sense.
+   * `left` is required to check for the condition for language.strictEqualityPatternMatching.
+   */
   def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
     val ltp = left.tpe.widen
     if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left) then
