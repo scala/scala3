@@ -430,7 +430,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
         if sym.isTerm || !sym.owner.isStaticOwner
-        then CaptureSet.Var(sym)
+        then CaptureSet.Var(sym, nestedOK = false)
         else CaptureSet.empty)
 
 // ---- Record Uses with MarkFree ----------------------------------------------------

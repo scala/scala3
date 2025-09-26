@@ -655,8 +655,15 @@ object CaptureSet:
   inline val debugVars = false
   inline val debugTarget = 1745
 
-  /** The subclass of captureset variables with given initial elements */
-  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, underBox: Boolean = false)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
+  /** The subclass of captureset variables with given initial elements
+   *  @param initialOwner  the initial owner. This is the real owner, except that
+   *                       it can be change in HiddenSets. Used for level checking
+   *                       if different from NoSymbol.
+   *  @param initialElems  the initial elements
+   *  @param nestedOK      relevant only if owner != NoSymbol. If true the set accepts
+   *                       elements that are directly owned by owner.
+   */
+  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
 
     override def owner = initialOwner
 
@@ -682,7 +689,7 @@ object CaptureSet:
     protected var myElems: Refs = initialElems
 
     if debugVars && id == debugTarget then
-      println(i"###INIT ELEMS of $id to $initialElems")
+      println(i"###INIT ELEMS of $id of class $getClass in $initialOwner, $nestedOK to $initialElems")
       assert(false)
 
     def elems: Refs = myElems
@@ -828,15 +835,16 @@ object CaptureSet:
 
     def levelOK(elem: Capability)(using Context): Boolean = elem match
       case elem @ ResultCap(binder) =>
-        rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
+        rootLimit == null && isPartOf(binder.resType)
       case GlobalCap =>
         rootLimit == null
       case elem: ParamRef =>
-        this.isInstanceOf[BiMapped] || isPartOf(elem.binder.resType)
+        isPartOf(elem.binder.resType)
       case _ =>
         if owner.exists then
           val elemVis = elem.visibility
           !elemVis.isProperlyContainedIn(owner)
+          || nestedOK && elemVis.owner == owner
         else true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): Boolean =
@@ -950,6 +958,9 @@ object CaptureSet:
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
 
+    override def levelOK(elem: Capability)(using Context): Boolean =
+      true
+
     // For debugging: A trace where a set was created. Note that logically it would make more
     // sense to place this variable in Mapped, but that runs afoul of the initialization checker.
     // val stack = if debugSets && this.isInstanceOf[Mapped] then (new Throwable).getStackTrace().take(20) else null
@@ -994,6 +1005,10 @@ object CaptureSet:
   final class BiMapped private[CaptureSet]
     (val source: Var, val bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.owner, initialElems):
+
+    if debugVars && id == debugTarget then
+      println(i"variable $id is derived from $source")
+      assert(false)
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then

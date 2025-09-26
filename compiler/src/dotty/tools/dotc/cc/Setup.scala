@@ -495,7 +495,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
-        transformTT(tpt, sym, boxed = false)
+        inContext(ctx.addMode(Mode.CCPreciseOwner)):
+          transformTT(tpt, sym, boxed = false)
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
         throw ex
@@ -851,7 +852,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Add a capture set variable to `tp` if necessary. */
   private def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp, CaptureSet.Var(owner, _))
+    decorate(tp, CaptureSet.Var(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner)))
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types

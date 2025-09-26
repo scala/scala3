@@ -141,6 +141,15 @@ object Mode {
    */
   val InPackageClauseName: Mode = newMode(19, "InPackageClauseName")
 
+  /** When creating capset Vars in cc.Setup, mark the variable to be in
+   *  the result type of the context's owner, so that nested vals cannot
+   *  be included in it.
+   *  Reuses the value of InPackageClauseName to save Mode bits.
+   *  This is OK since InPackageClauseName is only set and tested during Typer,
+   *  and CCPreciseOwner only has an effect during phase CheckCaptures.
+   */
+  val CCPreciseOwner = InPackageClauseName
+
   /** We are in the IDE */
   val Interactive: Mode = newMode(20, "Interactive")
 
