@@ -559,27 +559,10 @@ object MiMaFilters {
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.compose"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.andThen"),
 
-          // This issue only arise in the non-bootstrapped stdlib
-          // It has to do with the fact that the special erasure of Pure was handled such as
-          // `scala.Pure`, not `scala.caps.Pure`. This filter should be removed once we move to 3.8.1
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.Map.from"),
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.SeqMap.from"),
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.Map.from"),
-          ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.SeqMap.from"),
-
           // TO INVESTIGATE: This constructor changed, but it is private... why complaining?
           ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.immutable.LazyList.this"),
           // This one should be fine, public class inside private object
           ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.LazyList#LazyBuilder#DeferredState.eval"),
-
-          // MIX IN FORWARDERS ISSUE (SHOULD BE FIXED WHEN WE REMERGE THE PR)
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.prepended"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.appended"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.appendedAll"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.prependedAll"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.StrictOptimizedSeqOps.padTo"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.immutable.StrictOptimizedSeqOps.updated"),
-          ProblemFilters.exclude[NewMixinForwarderProblem]("scala.collection.immutable.StrictOptimizedSeqOps.patch"),
 
           // NO IDEA FOR NOW :)
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.mutable.ArrayDequeOps.scala$collection$mutable$ArrayDequeOps$$super$sliding"),

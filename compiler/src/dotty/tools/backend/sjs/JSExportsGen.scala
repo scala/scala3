@@ -318,7 +318,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
-      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)(Unversioned)
+      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(using firstAlt.sourcePos), None, None)(Unversioned)
     } else {
       genMemberExportOrDispatcher(name, isProp, alts, static = false)
     }
@@ -369,7 +369,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       }
     }
 
-    js.JSPropertyDef(flags, genExpr(jsName)(alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
+    js.JSPropertyDef(flags, genExpr(jsName)(using alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
   }
 
   private def genExportMethod(alts0: List[Symbol], jsName: JSName, static: Boolean)(using Context): js.JSMethodDef = {
@@ -974,10 +974,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
   class FormalArgsRegistry(val minArgc: Int, needsRestParam: Boolean) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[jsNames.LocalName] =
-      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(NoPosition).name)
+      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(using NoPosition).name)
 
     private val restParamName: jsNames.LocalName =
-      if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
+      if (needsRestParam) freshLocalIdent("rest")(using NoPosition).name
       else null
 
     def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) = {

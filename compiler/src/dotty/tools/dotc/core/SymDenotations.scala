@@ -295,7 +295,7 @@ object SymDenotations {
 
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
-      annotations = myAnnotations.filterNot(_ matches cls)
+      annotations = myAnnotations.filterNot(_.matches(cls))
 
     /** Remove any annotations with same class as `annot`, and add `annot` */
     final def updateAnnotation(annot: Annotation)(using Context): Unit = {
@@ -309,7 +309,7 @@ object SymDenotations {
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(using Context): List[Annotation] = anns match {
-      case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
+      case ann :: rest => if ann.matches(cls) then anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
 
@@ -1161,7 +1161,7 @@ object SymDenotations {
       val d = owner.info.decl(fieldName)
       val field = d.suchThat(!_.is(Method)).symbol
       def getter = d.suchThat(_.info.isParameterless).symbol
-      field orElse getter
+      field `orElse` getter
     }
 
     /** The field accessed by a getter or setter, or
@@ -1169,7 +1169,7 @@ object SymDenotations {
      *  if that does not exist the symbol itself.
      */
     def underlyingSymbol(using Context): Symbol =
-      if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
+      if (is(Accessor)) accessedFieldOrGetter `orElse` symbol else symbol
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(using Context): Iterator[Symbol] = new Iterator[Symbol] {
@@ -2061,11 +2061,9 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(using Context): Boolean =
-      !isAbsent() &&
-      base.isClass &&
-      (  (symbol eq base)
-      || (baseClassSet contains base)
-      )
+      !isAbsent()
+      && base.isClass
+      && ((symbol eq base) || baseClassSet.contains(base))
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
       derivesFrom(base)
@@ -2588,7 +2586,7 @@ object SymDenotations {
         else
           val assocFiles = multi
             .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
-            .aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
+            .aggregate(d => Set(d.symbol.associatedFile.nn), _ `union` _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
           else
@@ -3006,7 +3004,7 @@ object SymDenotations {
         else {
           locked = true
           val computed =
-            try clsd.computeMemberNames(keepOnly)(this, ctx)
+            try clsd.computeMemberNames(keepOnly)(using this, ctx)
             finally locked = false
           cache = cache.nn.updated(keepOnly, computed)
           computed
@@ -3049,7 +3047,7 @@ object SymDenotations {
           locked = true
           provisional = false
           val computed =
-            try clsd.computeBaseData(this, ctx)
+            try clsd.computeBaseData(using this, ctx)
             finally locked = false
           if (!provisional) cache = computed
           else onBehalf.signalProvisional()

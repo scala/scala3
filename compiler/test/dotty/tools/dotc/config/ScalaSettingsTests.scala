@@ -92,7 +92,7 @@ class ScalaSettingsTests:
 
   @nowarn("cat=deprecation")
   @Test def `Deprecated options are correctly mapped to their replacements`: Unit =
-    def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
+    def createTestCase(oldSetting: Setting[?], newSetting: Setting[?], value: String = "") =
       s"${oldSetting.name}$value" -> newSetting
 
     val settings = ScalaSettings
@@ -121,7 +121,7 @@ class ScalaSettingsTests:
 
   @nowarn("cat=deprecation")
   @Test def `Deprecated options should not be set if old option was incorrect`: Unit =
-    def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = ":illegal") =
+    def createTestCase(oldSetting: Setting[?], newSetting: Setting[?], value: String = ":illegal") =
       s"${oldSetting.name}:$value" -> newSetting
 
     val settings = ScalaSettings
@@ -161,7 +161,7 @@ class ScalaSettingsTests:
 
   @nowarn("cat=deprecation")
   @Test def `Deprecated options aliases are correctly mapped to their replacements`: Unit =
-    def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
+    def createTestCase(oldSetting: Setting[?], newSetting: Setting[?], value: String = "") =
       oldSetting.aliases.map: alias =>
         s"$alias$value" -> newSetting
 
@@ -250,7 +250,7 @@ class ScalaSettingsTests:
           )
         )
       )
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
     assertEquals(result, Right(reporting.Action.Silent))
 
   @Test def `WConf src filter doesn't silence warnings from a non-matching path for real file`: Unit =
@@ -265,7 +265,7 @@ class ScalaSettingsTests:
           )
         )
       )
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
     assertEquals(result, Right(reporting.Action.Warning))
 
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =

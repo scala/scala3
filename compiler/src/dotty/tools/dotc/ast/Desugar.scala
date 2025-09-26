@@ -150,25 +150,22 @@ object desugar {
      *  accessor of a type parameter is a private type alias that cannot be accessed
      *  from subclasses.
      */
-    def derivedTree(sym: Symbol)(using Context): tpd.TypeTree = {
-      val relocate = new TypeMap {
+    def derivedTree(sym: Symbol)(using Context): tpd.TypeTree =
+      val relocate = new TypeMap:
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = mapCtx.outersIterator.dropWhile(_.scope eq mapCtx.scope).next()
             var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
-            if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
-            else {
+            if local.exists then defctx.owner.thisType.select(local).dealiasKeepAnnots
+            else
               def msg =
                 em"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               ErrorType(msg).assertingErrorsReported(msg)
-            }
           case _ =>
             mapOver(tp)
         }
-      }
       tpd.TypeTree(relocate(sym.info))
-    }
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
@@ -1968,7 +1965,6 @@ object desugar {
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
-            .withFlags(Synthetic)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
@@ -2345,9 +2341,9 @@ object desugar {
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
       case ForDo(enums, body) =>
-        makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
+        makeFor(nme.foreach, nme.foreach, enums, body) `orElse` tree
       case ForYield(enums, body) =>
-        makeFor(nme.map, nme.flatMap, enums, body) orElse tree
+        makeFor(nme.map, nme.flatMap, enums, body) `orElse` tree
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))

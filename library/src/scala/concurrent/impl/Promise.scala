@@ -257,9 +257,9 @@ private[concurrent] object Promise {
               l.result
             }
           if (r ne null) r
-          else throw new TimeoutException("Future timed out after [" + atMost + "]")
+          else Future.timeoutError(atMost)
         }
-      } else throw new IllegalArgumentException("Cannot wait for Undefined duration of time")
+      } else Future.waitUndefinedError()
 
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])

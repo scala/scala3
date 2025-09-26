@@ -76,11 +76,6 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this set provisionally solved, so that another cc run might unfreeze it? */
   def isProvisionallySolved(using Context): Boolean
 
-  /** An optional level limit, or undefinedLevel if none exists. All elements of the set
-   *  must be at levels equal or smaller than the level of the set, if it is defined.
-   */
-  def level: Level
-
   /** An optional owner, or NoSymbol if none exists. Used for diagnstics
    */
   def owner: Symbol
@@ -394,7 +389,13 @@ sealed abstract class CaptureSet extends Showable:
           if mappedElems == elems then this
           else Const(mappedElems)
         else if ccState.mapFutureElems then
-          def unfused = BiMapped(asVar, tm, mappedElems)
+          def unfused =
+            if debugVars then
+              try BiMapped(asVar, tm, mappedElems)
+              catch case ex: AssertionError =>
+                println(i"error while mapping $this")
+                throw ex
+            else BiMapped(asVar, tm, mappedElems)
           this match
             case self: BiMapped => self.bimap.fuse(tm) match
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
@@ -601,8 +602,6 @@ object CaptureSet:
 
     def withDescription(description: String): Const = Const(elems, description)
 
-    def level = undefinedLevel
-
     def owner = NoSymbol
 
     def dropEmpties()(using Context) = this
@@ -652,8 +651,12 @@ object CaptureSet:
     override def toString = "<fluid>"
   end Fluid
 
+  /** If true emit info when var with id debugTarget is created or gets a new element */
+  inline val debugVars = false
+  inline val debugTarget = 1745
+
   /** The subclass of captureset variables with given initial elements */
-  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
+  class Var(initialOwner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, underBox: Boolean = false)(using /*@constructorOnly*/ ictx: Context) extends CaptureSet:
 
     override def owner = initialOwner
 
@@ -678,8 +681,15 @@ object CaptureSet:
     /** The elements currently known to be in the set */
     protected var myElems: Refs = initialElems
 
+    if debugVars && id == debugTarget then
+      println(i"###INIT ELEMS of $id to $initialElems")
+      assert(false)
+
     def elems: Refs = myElems
-    def elems_=(refs: Refs): Unit = myElems = refs
+    def elems_=(refs: Refs): Unit =
+      if debugVars && id == debugTarget then
+        println(i"###SET ELEMS of $id to $refs")
+      myElems = refs
 
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
@@ -762,6 +772,8 @@ object CaptureSet:
 
     protected def includeElem(elem: Capability)(using Context): Unit =
       if !elems.contains(elem) then
+        if debugVars && id == debugTarget then
+          println(i"###INCLUDE $elem in $this")
         elems += elem
         TypeComparer.logUndoAction: () =>
           elems -= elem
@@ -815,37 +827,17 @@ object CaptureSet:
       find(false, binder)
 
     def levelOK(elem: Capability)(using Context): Boolean = elem match
-      case _: FreshCap =>
-        !level.isDefined
-        || ccState.symLevel(elem.ccOwner) <= level
-        || {
-          capt.println(i"LEVEL ERROR $elem cannot be included in $this of $owner")
-          false
-        }
       case elem @ ResultCap(binder) =>
         rootLimit == null && (this.isInstanceOf[BiMapped] || isPartOf(binder.resType))
       case GlobalCap =>
         rootLimit == null
-      case elem: TermRef if level.isDefined =>
-        elem.prefix match
-          case prefix: Capability =>
-            levelOK(prefix)
-          case _ =>
-            ccState.symLevel(elem.symbol) <= level
-      case elem: ThisType if level.isDefined =>
-        ccState.symLevel(elem.cls).nextInner <= level
-      case elem: ParamRef if !this.isInstanceOf[BiMapped] =>
-        isPartOf(elem.binder.resType)
-        || {
-          capt.println(
-            i"""LEVEL ERROR $elem for $this
-                |elem binder = ${elem.binder}""")
-          false
-        }
-      case elem: DerivedCapability =>
-        levelOK(elem.underlying)
+      case elem: ParamRef =>
+        this.isInstanceOf[BiMapped] || isPartOf(elem.binder.resType)
       case _ =>
-        true
+        if owner.exists then
+          val elemVis = elem.visibility
+          !elemVis.isProperlyContainedIn(owner)
+        else true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): Boolean =
       (cs eq this)
@@ -926,15 +918,9 @@ object CaptureSet:
      */
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
-      val debugInfo =
-        if !ctx.settings.YccDebug.value then ""
-        else if isConst then ids ++ "(solved)"
-        else ids
-      val limitInfo =
-        if ctx.settings.YprintLevel.value && level.isDefined
-        then i"<at level ${level.toString}>"
-        else ""
-      debugInfo ++ limitInfo
+      if !ctx.settings.YccDebug.value then ""
+      else if isConst then ids ++ "(solved)"
+      else ids
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -1206,6 +1192,7 @@ object CaptureSet:
       if alias ne this then alias.add(elem)
       else
         def addToElems() =
+          assert(!isConst)
           includeElem(elem)
           deps.foreach: dep =>
             assert(dep != this)
@@ -1335,7 +1322,7 @@ object CaptureSet:
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
         if levelError then
-          i"($elem at wrong level for $cs at level ${cs.level.toString})"
+          i"($elem at wrong level for $cs in ${cs.owner.showLocated})"
         else
           if ctx.settings.YccDebug.value
           then i"$elem cannot be included in $trace"
@@ -1378,8 +1365,10 @@ object CaptureSet:
      *  but the special state VarState.Separate overrides this.
      */
     def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean =
-      hidden.add(elem)(using ctx, this)
-      true
+      if hidden.isConst then false
+      else
+        hidden.add(elem)(using ctx, this)
+        true
 
     /** If root1 and root2 belong to the same binder but have different originalBinders
      *  it means that one of the roots was mapped to the binder of the other by a

@@ -218,7 +218,7 @@ class SettingsTests {
 
       assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
 
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
 
   @Test def `Output setting is respecting previous setting`: Unit =
     val result = Using.resources(
@@ -263,7 +263,7 @@ class SettingsTests {
 
       assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
 
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
 
   @Test def `Arguments of flags are correctly parsed with both ":" and " " separating`: Unit =
     object Settings extends SettingGroup:
@@ -319,7 +319,7 @@ class SettingsTests {
       testValues(summary = summaryColon)
       testValues(summary = summaryWhitespace)
 
-    }(Files.deleteIfExists(_))
+    }(using Files.deleteIfExists(_))
 
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 

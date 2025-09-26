@@ -8,6 +8,7 @@ import java.lang.System.{lineSeparator => EOL}
 
 import core.Contexts.*
 import core.Decorators.*
+import io.AbstractFile
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic.*
@@ -158,9 +159,12 @@ trait MessageRendering {
       .mkString(EOL)
   }
 
+  // file.path or munge it to normalize for testing
+  protected def renderPath(file: AbstractFile): String = file.path
+
   /** The source file path, line and column numbers from the given SourcePosition */
   protected def posFileStr(pos: SourcePosition): String =
-    val path = pos.source.file.path
+    val path = renderPath(pos.source.file)
     if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
 
   /** The separator between errors containing the source file and error type

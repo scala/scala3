@@ -1138,7 +1138,7 @@ object Parsers {
             opStack = opStack.tail
             recur {
               migrateInfixOp(opInfo, isType):
-                atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                atSpan(opInfo.operator.span `union` opInfo.operand.span `union` top.span):
                   InfixOp(opInfo.operand, opInfo.operator, top)
             }
           }
@@ -2257,7 +2257,7 @@ object Parsers {
       val t = typeBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
-      else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
+      else atSpan((t.span `union` cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
     /** ContextBound      ::=  Type [`as` id] */
@@ -3425,14 +3425,16 @@ object Parsers {
           else mods.withPrivateWithin(ident().toTypeName)
         }
         if mods1.is(Local) then
+          val span = Span(startOffset, in.lastOffset)
+          val p = if mods1.is(Private) then "private" else "protected"
           report.errorOrMigrationWarning(
               em"""Ignoring [this] qualifier.
-                  |This syntax will be deprecated in the future; it should be dropped.
+                  |The syntax `$p[this]` will be deprecated in the future; just write `$p` instead.
                   |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
-              in.sourcePos(),
+              in.sourcePos().withSpan(span),
               MigrationVersion.RemoveThisQualifier)
           if MigrationVersion.RemoveThisQualifier.needsPatch then
-            patch(source, Span(startOffset, in.lastOffset), "")
+            patch(source, span, "")
         mods1
       }
       else mods
@@ -3498,7 +3500,7 @@ object Parsers {
     }
 
     def annotsAsMods(skipNewLines: Boolean = false): Modifiers =
-      Modifiers() withAnnotations annotations(skipNewLines)
+      Modifiers().withAnnotations(annotations(skipNewLines))
 
     def defAnnotsMods(allowed: BitSet): Modifiers =
       modifiers(allowed, annotsAsMods(skipNewLines = true))

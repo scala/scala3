@@ -51,58 +51,6 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  test_non_bootstrapped:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2024-10-18
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'scala/scala3'
-         )"
-    steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
-
-      ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/scala/scala3/pull/19720)
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory $GITHUB_WORKSPACE
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v5
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v5
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        # DON'T add dist/Universal/stage!
-        # Adding dist/Universal/stage bootstraps the compiler
-        # which undermines the point of these tests:
-        # to quickly run the tests without the cost of bootstrapping
-        # and also to run tests when the compiler doesn't bootstrap
-        run: |
-          ./project/scripts/sbt ";compile ;test"
-          ./project/scripts/cmdTests
-
   test:
     runs-on: [self-hosted, Linux]
     container:
@@ -224,16 +172,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v5
 
-      - name: build binary
-        run: sbt "dist-win-x86_64/Universal/stage"
-        shell: cmd
-
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
-        shell: cmd
-
-      - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
+        run: sbt ";scala3-bootstrapped-new/compile ;scala3-compiler-bootstrapped-new/test"
         shell: cmd
 
   community_build_a:
@@ -463,7 +403,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, build-sdk-package, build-msi-package]
+    needs: [test, community_build_a, community_build_b, community_build_c, test_sbt, build-sdk-package, build-msi-package]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 

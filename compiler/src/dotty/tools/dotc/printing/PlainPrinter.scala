@@ -172,13 +172,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
     then cs.toString
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
+      val idTxt = Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
       val core: Text =
-        if !cs.isConst && cs.elems.isEmpty then cs.asVar.repr.show
+        if !cs.isConst && cs.elems.isEmpty
+        then cs.asVar.repr.show ~ idTxt
         else
           Str("'").provided(ccVerbose && !cs.isConst)
            ~ "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
            ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
-           ~ Str(s"#${cs.asVar.id}").provided(showUniqueIds && !cs.isConst)
+           ~ idTxt
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem(ref: Type): Text = ref match
@@ -279,10 +281,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
           def casesText = Text(cases.map(caseText), "\n")
           atPrec(InfixPrec) { toText(scrutinee) } ~
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
-          (" <: " ~ toText(bound) provided !bound.isAny)
+          (" <: " ~ toText(bound) `provided` !bound.isAny)
         }.close
       case tp @ CapturingType(parent, refs) =>
-        val boxText: Text = Str("box ") provided tp.isBoxed && ccVerbose
+        val boxText: Text = Str("box ") `provided` tp.isBoxed && ccVerbose
         if elideCapabilityCaps
             && parent.derivesFromCapability
             && refs.containsTerminalCapability
@@ -310,7 +312,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ ")"
-          ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
+          ~ (Str(": ") `provided` !tp.resultType.isInstanceOf[MethodOrPoly])
           ~ CCState.inNewExistentialScope(tp)(toText(tp.resultType))
         }
       case ExprType(restp) =>
@@ -329,7 +331,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PolyType =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ hashStr(tp) ~
-          (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
+          (Str(": ") `provided` !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
@@ -577,7 +579,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
       case tp: PolyType =>
         "[" ~ paramsText(tp) ~ "]"
-        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
+        ~ (Str(": ") `provided` !tp.resultType.isInstanceOf[MethodOrPoly])
         ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
@@ -753,7 +755,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       else
         Text()
 
-    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ Str(tree.sourcePos.toString).provided(printDebug)
   }.close
 
   def toText(pos: SourcePosition): Text =

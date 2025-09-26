@@ -509,7 +509,7 @@ object JavaParsers {
               if (isPackageAccess && !inInterface) thisPackageName
               else tpnme.EMPTY
 
-            return Modifiers(flags, privateWithin) withAnnotations annots.toList
+            return Modifiers(flags, privateWithin).withAnnotations(annots.toList)
         }
       assert(false, "should not be here")
       throw new RuntimeException
@@ -646,7 +646,7 @@ object JavaParsers {
                   atSpan(nameOffset) {
                     New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Nil)
                   }
-                mods1 = mods1 withAddedAnnotation annot
+                mods1 = mods1.withAddedAnnotation(annot)
                 val unimplemented = unimplementedExpr
                 skipTo(SEMI)
                 accept(SEMI)
@@ -916,7 +916,7 @@ object JavaParsers {
         }
         else
           List(ObjectTpt())
-      val permittedSubclasses = permittedSubclassesOpt(mods is Flags.Sealed)
+      val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
       val (statics, body) = typeBody(INTERFACE, name)
       val iface = atSpan(start, nameOffset) {
         TypeDef(

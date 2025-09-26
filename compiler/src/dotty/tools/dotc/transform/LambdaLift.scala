@@ -96,12 +96,13 @@ object LambdaLift:
     private def liftLocals()(using Context): Unit = {
       for ((local, lOwner) <- deps.logicalOwner) {
         val (newOwner, maybeStatic) =
-          if lOwner is Package then (local.topLevelClass, JavaStatic)
+          if lOwner.is(Package)
+          then (local.topLevelClass, JavaStatic)
           else (lOwner, EmptyFlags)
         // Drop Module because class is no longer a singleton in the lifted context.
         var initFlags = local.flags &~ Module | Private | Lifted | maybeStatic
-        if (local is Method)
-          if (newOwner is Trait)
+        if local.is(Method) then
+          if newOwner.is(Trait) then
             // Drop Final when a method is lifted into a trait.
             // According to the JVM specification, a method declared inside interface cannot have the final flag.
             // "Methods of interfaces may have any of the flags in Table 4.6-A set except ACC_PROTECTED, ACC_FINAL, ..."
@@ -277,24 +278,22 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def prepareForUnit(tree: Tree)(using Context): Context =
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
-  override def transformIdent(tree: Ident)(using Context): Tree = {
+  override def transformIdent(tree: Ident)(using Context): Tree =
     val sym = tree.symbol
-    tree.tpe match {
+    tree.tpe match
       case tpe @ TermRef(prefix, _) =>
         val lft = lifter
-        if (prefix eq NoPrefix)
-          if (sym.enclosure != lft.currentEnclosure && !sym.isStatic)
-            (if (sym is Method) lft.memberRef(sym) else lft.proxyRef(sym)).withSpan(tree.span)
-          else if (sym.owner.isClass) // sym was lifted out
+        if prefix eq NoPrefix then
+          if sym.enclosure != lft.currentEnclosure && !sym.isStatic then
+            (if sym.is(Method) then lft.memberRef(sym) else lft.proxyRef(sym)).withSpan(tree.span)
+          else if sym.owner.isClass then // sym was lifted out
             ref(sym).withSpan(tree.span)
           else
             tree
-        else if (!prefixIsElidable(tpe)) ref(tpe)
+        else if !prefixIsElidable(tpe) then ref(tpe)
         else tree
       case _ =>
         tree
-    }
-  }
 
   override def transformSelect(tree: Select)(using Context): Tree =
     val denot = tree.denot

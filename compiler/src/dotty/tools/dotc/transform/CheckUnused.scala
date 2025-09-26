@@ -7,9 +7,10 @@ import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
-import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
 import dotty.tools.dotc.core.NameKinds.{
   BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
+import dotty.tools.dotc.core.Scopes.newScope
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import dotty.tools.dotc.core.Types.*
@@ -19,6 +20,7 @@ import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.{ImportInfo, Typer}
 import dotty.tools.dotc.typer.Deriving.OriginalTypeClass
+import dotty.tools.dotc.typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
 import dotty.tools.dotc.util.{Property, Spans, SrcPos}, Spans.Span
 import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
 import dotty.tools.dotc.util.chaining.*
@@ -115,6 +117,14 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           args.foreach(_.withAttachment(ForArtifact, ()))
       case _ =>
     ctx
+  override def transformApply(tree: Apply)(using Context): tree.type =
+    // check for multiversal equals
+    tree match
+    case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
+      val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
+      resolveScoped(caneq)
+    case _ =>
+    tree
 
   override def prepareForAssign(tree: Assign)(using Context): Context =
     tree.lhs.putAttachment(AssignmentTarget, ()) // don't take LHS reference as a read
@@ -211,6 +221,16 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if !tree.symbol.is(Param) then // type parameter to do?
       refInfos.register(tree)
     tree
+
+  override def prepareForStats(trees: List[Tree])(using Context): Context =
+    // gather local implicits while ye may
+    if !ctx.owner.isClass then
+      if trees.exists(t => t.isDef && t.symbol.is(Given) && t.symbol.isLocalToBlock) then
+        val scope = newScope.openForMutations
+        for tree <- trees if tree.isDef && tree.symbol.is(Given) do
+          scope.enter(tree.symbol.name, tree.symbol)
+        return ctx.fresh.setScope(scope)
+    ctx
 
   override def transformOther(tree: Tree)(using Context): tree.type =
     tree match
@@ -309,6 +329,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
              alt.symbol == sym
           || nm.isTypeName && alt.symbol.isAliasType && alt.info.dealias.typeSymbol == sym
         sameSym && alt.symbol.isAccessibleFrom(qtpe)
+      def hasAltMemberNamed(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol.isAccessibleFrom(qtpe))
+
       def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
         case sel :: sels =>
           val matches =
@@ -325,9 +347,17 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
                 else
                   !sym.is(Given) // Normal wildcard, check that the symbol is not a given (but can be implicit)
               }
+            else if sel.isUnimport then
+              val masksMatchingMember =
+                   name != nme.NO_NAME
+                && sels.exists(x => x.isWildcard && !x.isGiven)
+                && !name.exists(_.toTermName != sel.name) // import a.b as _, b must match name
+                && (hasAltMemberNamed(sel.name) || hasAltMemberNamed(sel.name.toTypeName))
+              if masksMatchingMember then
+                refInfos.sels.put(sel, ()) // imprecise due to precedence but errs on the side of false negative
+              false
             else
-              // if there is an explicit name, it must match
-                 !name.exists(_.toTermName != sel.rename)
+                 !name.exists(_.toTermName != sel.rename) // if there is an explicit name, it must match
               && (prefix.eq(NoPrefix) || qtpe =:= prefix)
               && (hasAltMember(sel.name) || hasAltMember(sel.name.toTypeName))
           if matches then sel else loop(sels)
@@ -395,6 +425,38 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if candidate != NoContext && candidate.isImportContext && importer != null then
       refInfos.sels.put(importer, ())
   end resolveUsage
+
+  /** Simulate implicit search for contextual implicits in lexical scope and mark any definitions or imports as used.
+   *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
+   */
+  def resolveScoped(tp: Type)(using Context): Unit =
+    var done = false
+    val ctxs = ctx.outersIterator
+    while !done && ctxs.hasNext do
+      val cur = ctxs.next()
+      val implicitRefs: List[ImplicitRef] =
+        if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
+        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
+        else Nil
+      implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
+      case Some(found: TermRef) =>
+        refInfos.addRef(found.denot.symbol)
+        if cur.isImportContext then
+          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+          case Some(sel) =>
+            refInfos.sels.put(sel, ())
+          case _ =>
+        return
+      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
+        refInfos.addRef(found.underlyingRef.denot.symbol)
+        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+        case Some(sel) =>
+          refInfos.sels.put(sel, ())
+        case _ =>
+        return
+      case _ =>
+  end resolveScoped
 end CheckUnused
 
 object CheckUnused:
@@ -600,7 +662,6 @@ object CheckUnused:
         || m.is(Synthetic)
         || m.hasAnnotation(dd.UnusedAnnot)          // param of unused method
         || sym.name.is(ContextFunctionParamName)    // a ubiquitous parameter
-        || sym.isCanEqual
         || sym.info.dealias.typeSymbol.match        // more ubiquity
            case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
            case tps =>
@@ -632,7 +693,6 @@ object CheckUnused:
     def checkLocal(sym: Symbol, pos: SrcPos) =
       if ctx.settings.WunusedHas.locals
         && !sym.is(InlineProxy)
-        && !sym.isCanEqual
       then
         if sym.is(Mutable) && infos.asss(sym) then
           warnAt(pos)(UnusedSymbol.localVars)
@@ -660,12 +720,10 @@ object CheckUnused:
               warnAt(pos)(UnusedSymbol.unsetPrivates)
 
     def checkImports() =
-      // TODO check for unused masking import
       import scala.jdk.CollectionConverters.given
       import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
-      def isUsable(imp: Import, sel: ImportSelector): Boolean =
-        sel.isImportExclusion || infos.sels.containsKey(sel) || imp.isLoose(sel)
+      def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
         val (imp, sel) = warnable
         val msg = UnusedSymbol.imports(actions)
@@ -674,7 +732,7 @@ object CheckUnused:
         warnAt(sel.srcPos)(msg, origin)
 
       if !actionable then
-        for imp <- infos.imps.keySet.nn.asScala; sel <- imp.selectors if !isUsable(imp, sel) do
+        for imp <- infos.imps.keySet.nn.asScala; sel <- imp.selectors if !isUsed(sel) do
           warnImport(imp -> sel)
       else
         // If the rest of the line is blank, include it in the final edit position. (Delete trailing whitespace.)
@@ -729,7 +787,7 @@ object CheckUnused:
         while index < sortedImps.length do
           val nextImport = sortedImps.indexSatisfying(from = index + 1)(_.isPrimaryClause) // next import statement
           if sortedImps.indexSatisfying(from = index, until = nextImport): imp =>
-              imp.selectors.exists(!isUsable(imp, _)) // check if any selector in statement was unused
+              imp.selectors.exists(!isUsed(_)) // check if any selector in statement was unused
           < nextImport then
             // if no usable selectors in the import statement, delete it entirely.
             // if there is exactly one usable selector, then replace with just that selector (i.e., format it).
@@ -738,7 +796,7 @@ object CheckUnused:
             // Reminder that first clause span includes the keyword, so delete point-to-start instead.
             val existing = sortedImps.slice(index, nextImport)
             val (keeping, deleting) = existing.iterator.flatMap(imp => imp.selectors.map(imp -> _)).toList
-                                      .partition(isUsable(_, _))
+                                      .partition((imp, sel) => isUsed(sel))
             if keeping.isEmpty then
               val editPos = existing.head.srcPos.sourcePos.withSpan:
                 Span(start = existing.head.srcPos.span.start, end = existing.last.srcPos.span.end)
@@ -940,8 +998,6 @@ object CheckUnused:
     def isSerializationSupport: Boolean =
       sym.is(Method) && serializationNames(sym.name.toTermName) && sym.owner.isClass
         && sym.owner.derivesFrom(defn.JavaSerializableClass)
-    def isCanEqual: Boolean =
-      sym.isOneOf(GivenOrImplicit) && sym.info.finalResultType.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
     def isMarkerTrait: Boolean =
       sym.info.hiBound.resultType.allMembers.forall: d =>
         val m = d.symbol
@@ -965,12 +1021,6 @@ object CheckUnused:
     def boundTpe: Type = sel.bound match
       case untpd.TypedSplice(tree) => tree.tpe
       case _ => NoType
-    /** This is used to ignore exclusion imports of the form import `qual.member as _`
-     *  because `sel.isUnimport` is too broad for old style `import concurrent._`.
-     */
-    def isImportExclusion: Boolean = sel.renamed match
-      case untpd.Ident(nme.WILDCARD) => true
-      case _ => false
 
   extension (imp: Import)(using Context)
     /** Is it the first import clause in a statement? `a.x` in `import a.x, b.{y, z}` */
@@ -980,21 +1030,6 @@ object CheckUnused:
     /** Generated import of cases from enum companion. */
     def isGeneratedByEnum: Boolean =
       imp.symbol.exists && imp.symbol.owner.is(Enum, butNot = Case)
-
-    /** Under -Wunused:strict-no-implicit-warn, avoid false positives
-     *  if this selector is a wildcard that might import implicits or
-     *  specifically does import an implicit.
-     *  Similarly, import of CanEqual must not warn, as it is always witness.
-     */
-    def isLoose(sel: ImportSelector): Boolean =
-      if ctx.settings.WunusedHas.strictNoImplicitWarn then
-        if sel.isWildcard
-          || imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isOneOf(GivenOrImplicit))
-          || imp.expr.tpe.member(sel.name.toTypeName).hasAltWith(_.symbol.isOneOf(GivenOrImplicit))
-        then return true
-      if sel.isWildcard && sel.isGiven
-      then imp.expr.tpe.allMembers.exists(_.symbol.isCanEqual)
-      else imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isCanEqual)
 
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent

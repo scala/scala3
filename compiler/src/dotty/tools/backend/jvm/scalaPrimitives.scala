@@ -127,7 +127,7 @@ class DottyPrimitives(ictx: Context) {
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
-      assert(!(primitives contains s), "Duplicate primitive " + s)
+      assert(!primitives.contains(s), "Duplicate primitive " + s)
       primitives(s) = code
     }
 

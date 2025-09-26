@@ -16,7 +16,6 @@ import CaptureSet.VarState
 import Annotations.Annotation
 import Flags.*
 import config.Printers.capt
-import CCState.{Level, undefinedLevel}
 import annotation.constructorOnly
 import ast.tpd
 import printing.{Printer, Showable}
@@ -168,6 +167,12 @@ object Capabilities:
       case _ => false
 
     /** Is this fresh cap at the right level to be able to subsume `ref`?
+     *  Only outer freshes can be subsumed.
+     *  TODO Can we merge this with levelOK? Right now we use two different schemes:
+     *   - For level checking capsets with levelOK: Check that the visibility of the element
+     *     os not properly contained in the captset owner.
+     *  - For level checking elements subsumed by FreshCaps: Check that the widened scope
+     *    (using levelOwner) of the elements contains the owner of the FreshCap.
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
@@ -483,19 +488,26 @@ object Capabilities:
       case self: FreshCap => self.hiddenSet.owner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
+    final def visibility(using Context): Symbol = this match
+      case self: FreshCap => adjustOwner(ccOwner)
+      case _ =>
+        val vis = ccOwner
+        if vis.is(Param) then vis.owner else vis
+
     /** The symbol that represents the level closest-enclosing ccOwner.
      *  Symbols representing levels are
      *   - class symbols, but not inner (non-static) module classes
      *   - method symbols, but not accessors or constructors
      */
     final def levelOwner(using Context): Symbol =
-      def adjust(owner: Symbol): Symbol =
-        if !owner.exists
-          || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
-          || owner.is(Flags.Method, butNot = Flags.Accessor) && !owner.isConstructor
-        then owner
-        else adjust(owner.owner)
-      adjust(ccOwner)
+      adjustOwner(ccOwner)
+
+    private def adjustOwner(owner: Symbol)(using Context): Symbol =
+      if !owner.exists
+        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
+        || owner.is(Flags.Method, butNot = Flags.Accessor)
+      then owner
+      else adjustOwner(owner.owner)
 
     /** Tests whether the capability derives from capability class `cls`. */
     def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = this match
@@ -757,7 +769,7 @@ object Capabilities:
               case Maybe(x1) => x1.covers(y1)
               case _ => false
           case y: FreshCap =>
-            y.hiddenSet.superCaps.exists(this covers _)
+            y.hiddenSet.superCaps.exists(this.covers(_))
           case _ =>
             false
 
@@ -1033,7 +1045,13 @@ object Capabilities:
       override def mapCapability(c: Capability, deep: Boolean) = c match
         case c @ ResultCap(binder) =>
           if localBinders.contains(binder) then c // keep bound references
-          else seen.getOrElseUpdate(c, FreshCap(origin)) // map free references to FreshCap
+          else
+            // Create a fresh skolem that does not subsume anything
+            def freshSkolem =
+              val c = FreshCap(origin)
+              c.hiddenSet.markSolved(provisional = false)
+              c
+            seen.getOrElseUpdate(c, freshSkolem) // map free references to FreshCap
         case _ => super.mapCapability(c, deep)
     end subst
 

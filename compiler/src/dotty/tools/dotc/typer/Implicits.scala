@@ -329,7 +329,7 @@ object Implicits:
      */
     private def isOutermost = {
       val finalImplicits = NoContext.implicits
-      (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
+      (this eq finalImplicits) || (outerImplicits eq finalImplicits)
     }
 
     def bindingPrec: BindingPrec =
@@ -404,9 +404,9 @@ object Implicits:
     def exclude(root: Symbol): ContextualImplicits =
       if (this == NoContext.implicits) this
       else {
-        val outerExcluded = outerImplicits.nn exclude root
+        val outerExcluded = outerImplicits.nn.exclude(root)
         if (irefCtx.importInfo.nn.site.termSymbol == root) outerExcluded
-        else if (outerExcluded eqn outerImplicits) this
+        else if (outerExcluded eq outerImplicits) this
         else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
       }
   }

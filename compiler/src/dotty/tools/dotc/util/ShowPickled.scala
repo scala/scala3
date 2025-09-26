@@ -119,14 +119,14 @@ object ShowPickled {
     val entryList = makeEntryList(buf, index)
     buf.readIndex = 0
 
-    def p(s: String) = out print s
+    def p(s: String) = out.print(s)
 
     def printNameRef(): Unit = {
       val idx = buf.readNat()
-      val name = entryList nameAt idx
+      val name = entryList.nameAt(idx)
       val toPrint = " %s(%s)".format(idx, name)
 
-      out print toPrint
+      out.print(toPrint)
     }
 
     def printNat() = p(" " + buf.readNat())
@@ -146,7 +146,7 @@ object ShowPickled {
       def printFlags(privateWithin: Option[Int]) = {
         val accessBoundary = (
           for (idx <- privateWithin) yield {
-            val s = entryList nameAt idx
+            val s = entryList.nameAt(idx)
             s"$idx($s)"
           }
         )
@@ -279,7 +279,7 @@ object ShowPickled {
 
   def main(args: Array[String]) {
     args foreach { arg =>
-      (fromFile(arg) orElse fromName(arg)) match {
+      (fromFile(arg) `orElse` fromName(arg)) match {
         case Some(pb) => show(arg + ":", pb)
         case _        => Console.println("Cannot read " + arg)
       }

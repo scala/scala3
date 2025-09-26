@@ -27,8 +27,10 @@ trait Plugins {
    *  filtered from the final list of plugins.
    */
   protected def loadRoughPluginsList(using Context): List[Plugin] = {
-    def asPath(p: String) = ClassPath split p
-    val paths  = ctx.settings.plugin.value filter (_ != "") map (s => asPath(s) map Path.apply)
+    def asPath(p: String) = ClassPath.split(p)
+    val paths  = ctx.settings.plugin.value
+      .filter (_ != "")
+      .map(s => asPath(s).map(Path.apply))
     val dirs   = {
       def injectDefault(s: String) = if (s.isEmpty) PathResolver.Defaults.scalaPluginPath else s
       asPath(ctx.settings.pluginsDir.value) map injectDefault map Path.apply
@@ -87,11 +89,11 @@ trait Plugins {
       report.error(em"Missing required plugin: $req")
 
     // Verify no non-existent plugin given with -P
-    for {
+    for
       opt <- ctx.settings.pluginOptions.value
-      if !(plugs exists (opt startsWith _.name + ":"))
-    }
-    report.error(em"bad option: -P:$opt")
+      if !plugs.exists(plug => opt.startsWith(plug.name + ":"))
+    do
+      report.error(em"bad option: -P:$opt")
 
     plugs
   }
@@ -115,10 +117,11 @@ trait Plugins {
 
   /** Add plugin phases to phase plan */
   def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
-    def options(plugin: Plugin): List[String] = {
+    def options(plugin: Plugin): List[String] =
       def namec = plugin.name + ":"
-      ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
-    }
+      ctx.settings.pluginOptions.value
+        .filter(_.startsWith(namec))
+        .map(_.stripPrefix(namec))
 
     // schedule plugins according to ordering constraints
     val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.initialize(options(plug)) }

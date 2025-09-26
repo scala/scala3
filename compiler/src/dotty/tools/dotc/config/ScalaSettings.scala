@@ -30,17 +30,17 @@ object ScalaSettings extends ScalaSettings
 
 // Kept as seperate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[SettingCategory, List[Setting[_]]] =
+  val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
     allSettings.groupBy(_.category)
       .view.mapValues(_.toList).toMap
       .withDefaultValue(Nil)
   def categories: List[SettingCategory] = settingsByCategory.keys.toList.sortBy(_.prefixLetter)
-  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting).sortBy(_.name)
-  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting).sortBy(_.name)
-  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting).sortBy(_.name)
-  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
-  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting).sortBy(_.name)
-  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+  val rootSettings: List[Setting[?]] = settingsByCategory(RootSetting).sortBy(_.name)
+  val warningSettings: List[Setting[?]] = settingsByCategory(WarningSetting).sortBy(_.name)
+  val forkSettings: List[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
+  val advancedSettings: List[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
+  val verboseSettings: List[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
+  val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
 
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
@@ -186,12 +186,6 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
-      ChoiceWithHelp(
-        name = "strict-no-implicit-warn",
-        description = """Same as -Wunused:imports, only for imports of explicit named members.
-                        |NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all""".stripMargin
-      ),
-      ChoiceWithHelp("unsafe-warn-patvars", "Deprecated alias for `patvars`"),
     ),
     default = Nil
   )
@@ -376,7 +370,7 @@ private sealed trait XSettings:
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
   @deprecated(message = "Superseded by -Wshadow, Scheduled for removal", since = "3.5.0")
-  val Xlint: Setting[_] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
+  val Xlint: Setting[?] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
 
 end XSettings
 
@@ -455,6 +449,7 @@ private sealed trait YSettings:
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism. (This flag has no effect)", deprecation = Deprecation.removed())
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
+  val YflexifyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yflexify-tasty", "Apply flexification to Scala code compiled without -Yexplicit-nulls, when reading from tasty.")
   val YsafeInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrecheck-test", "Run basic rechecking (internal test only).")

@@ -12,9 +12,9 @@
 13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
    |         ^^^^^^^^^^^^^^^^
    |         Separation failure in method bad's result type Pair[Ref^, Ref^²].
-   |         One part,  Ref^, hides capabilities  {r1*, cap, cap², r0}.
-   |         Another part,  Ref^²,  captures capabilities  {r1*, cap, cap², r0}.
-   |         The two sets overlap at  {r1*, r0}.
+   |         One part,  Ref^, hides capabilities  {cap, cap², r0}.
+   |         Another part,  Ref^²,  captures capabilities  {cap, cap², r0}.
+   |         The two sets overlap at  {r0}.
    |
    |         where:    ^    refers to a fresh root capability classified as Mutable in the result type of method bad
    |                   ^²   refers to a fresh root capability classified as Mutable in the result type of method bad

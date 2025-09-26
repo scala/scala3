@@ -210,10 +210,20 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions, FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
-      compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions and "-Yno-flexible-types"),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-Yno-flexible-types", FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
-    )
-  }.checkExpectedErrors()
+      compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions `and` "-Yno-flexible-types"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-Yno-flexible-types", FileFilter.exclude(TestSources.negExplicitNullsScala2LibraryTastyExcludelisted)),
+    ).checkExpectedErrors()
+
+    locally {
+      val unsafeFile = compileFile("tests/explicit-nulls/flexible-unpickle/neg/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls")
+      val flexibleFile = compileFile("tests/explicit-nulls/flexible-unpickle/neg/Flexible_2.scala",
+          explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/neg/Unsafe_1"))
+
+      flexibleFile.keepOutput.checkExpectedErrors()
+
+      List(unsafeFile, flexibleFile).foreach(_.delete())
+    }
+  }
 
   @Ignore
   @Test def explicitNullsPos: Unit = {
@@ -221,14 +231,14 @@ class CompilationTests {
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls" and "-Yno-flexible-types"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-language:unsafeNulls" `and` "-Yno-flexible-types"),
     ).checkCompile()
 
     locally {
       val tests = List(
-        compileFile("tests/explicit-nulls/flexible-unpickle/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
-        compileFile("tests/explicit-nulls/flexible-unpickle/Flexible_2.scala", explicitNullsOptions.withClasspath(
-          defaultOutputDir + testGroup + "/Unsafe_1/flexible-unpickle/Unsafe_1")),
+        compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions `without` "-Yexplicit-nulls"),
+        compileFile("tests/explicit-nulls/flexible-unpickle/pos/Flexible_2.scala",
+        explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/pos/Unsafe_1")),
       ).map(_.keepOutput.checkCompile())
 
       tests.foreach(_.delete())
@@ -279,9 +289,9 @@ class CompilationTests {
       val outDir2 = defaultOutputDir + i12128Group + "/Macro_2/i12128/Macro_2"
 
       val tests = List(
-        compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(i12128Group),
-        compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(i12128Group),
-        compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(i12128Group)
+        compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(using i12128Group),
+        compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(using i12128Group),
+        compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(using i12128Group)
       ).map(_.keepOutput.checkCompile())
 
       tests.foreach(_.delete())
@@ -300,12 +310,12 @@ class CompilationTests {
       val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
 
       val tests = List(
-        compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/val-or-defdef/v1/B.scala", tastyErrorOptions.withClasspath(classA1))(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/val-or-defdef/v0/A.scala", tastyErrorOptions)(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v1/B.scala", tastyErrorOptions.withClasspath(classA1))(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/val-or-defdef/v0/A.scala", tastyErrorOptions)(using tastyErrorGroup),
       ).map(_.keepOutput.checkCompile())
 
-      compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(tastyErrorGroup).checkExpectedErrors()
+      compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }
@@ -324,13 +334,13 @@ class CompilationTests {
       val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
 
       val tests = List(
-        compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/typedef/v1/A.scala", tastyErrorOptions.withClasspath(classC))(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/typedef/v1/B.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA1))(tastyErrorGroup),
-        compileFile("tests/init/tasty-error/typedef/v0/A.scala", tastyErrorOptions.withClasspath(classC))(tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v1/A.scala", tastyErrorOptions.withClasspath(classC))(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v1/B.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA1))(using tastyErrorGroup),
+        compileFile("tests/init/tasty-error/typedef/v0/A.scala", tastyErrorOptions.withClasspath(classC))(using tastyErrorGroup),
       ).map(_.keepOutput.checkCompile())
 
-      compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(tastyErrorGroup).checkExpectedErrors()
+      compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
       tests.foreach(_.delete())
     }

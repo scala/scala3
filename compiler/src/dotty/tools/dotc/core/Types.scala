@@ -244,6 +244,10 @@ object Types extends TypeUtils {
     def isExactlyNothing(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
+      case AndType(tp1, tp2) =>
+        tp1.isExactlyNothing || tp2.isExactlyNothing
+      case OrType(tp1, tp2) =>
+        tp1.isExactlyNothing && tp2.isExactlyNothing
       case _ => false
     }
 
@@ -251,6 +255,10 @@ object Types extends TypeUtils {
     def isExactlyAny(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
+      case AndType(tp1, tp2) =>
+        tp1.isExactlyAny && tp2.isExactlyAny
+      case OrType(tp1, tp2) =>
+        tp1.isExactlyAny || tp2.isExactlyAny
       case _ => false
     }
 
@@ -6253,6 +6261,8 @@ object Types extends TypeUtils {
       tp.derivedAndType(tp1, tp2)
     protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
       tp.derivedOrType(tp1, tp2)
+    protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
+      tp.derivedAndOrType(tp1, tp2)
     protected def derivedMatchType(tp: MatchType, bound: Type, scrutinee: Type, cases: List[Type]): Type =
       tp.derivedMatchType(bound, scrutinee, cases)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
@@ -7046,23 +7056,24 @@ object Types extends TypeUtils {
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
-      if seen.contains(tp) then n
-      else {
-        seen += tp
-        tp match {
-          case tp: AppliedType =>
-            val tpNorm = tp.tryNormalize
-            if tpNorm.exists then apply(n, tpNorm)
-            else foldOver(n + 1, tp)
-          case tp: RefinedType =>
-            foldOver(n + 1, tp)
-          case tp: TypeRef if tp.info.isTypeAlias =>
-            apply(n, tp.superType)
-          case tp: TypeParamRef =>
-            apply(n, TypeComparer.bounds(tp))
-          case _ =>
+      tp match {
+        case tp: AppliedType =>
+          val tpNorm = tp.tryNormalize
+          if tpNorm.exists then apply(n, tpNorm)
+          else foldOver(n + 1, tp)
+        case tp: RefinedType =>
+          foldOver(n + 1, tp)
+        case tp: TypeRef if tp.info.isTypeAlias =>
+          apply(n, tp.superType)
+        case tp: TypeParamRef =>
+          apply(n, TypeComparer.bounds(tp))
+        case tp: LazyRef =>
+          if seen.contains(tp) then n
+          else
+            seen += tp
             foldOver(n, tp)
-        }
+        case _ =>
+          foldOver(n, tp)
       }
   }
 

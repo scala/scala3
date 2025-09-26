@@ -10,18 +10,18 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:24:2 -----------------------------------------
 24 |  x  // error
    |  ^
-   |  Found:    test.runnable.Transform{val fun: Any ->{f} Any}^{x}
+   |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
    |  Required: test.runnable.Transform
    |
-   |  Note that capability x is not included in capture set {}.
+   |  Note that capability a is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:31:2 -----------------------------------------
 31 |  x  // error
    |  ^
-   |  Found:    test.runnable.Transform{val fun: Any ->{f} Any}^{x}
+   |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
    |  Required: test.runnable.Transform
    |
-   |  Note that capability x is not included in capture set {}.
+   |  Note that capability a is not included in capture set {}.
    |
    | longer explanation available when compiling with `-explain`

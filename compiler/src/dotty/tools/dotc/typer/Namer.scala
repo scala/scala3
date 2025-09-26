@@ -468,13 +468,13 @@ class Namer { typer: Typer =>
 
     def improve(candidate: ClassSymbol, parent: Type): ClassSymbol =
       val pcls = realClassParent(parent.classSymbol)
-      if (pcls derivesFrom candidate) pcls else candidate
+      if pcls.derivesFrom(candidate) then pcls else candidate
 
     parents match
       case p :: _ if p.classSymbol.isRealClass => parents
       case _ =>
         val pcls = parents.foldLeft(defn.ObjectClass)(improve)
-        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
+        typr.println(i"ensure first is class $parents%, % --> ${parents.map(_.baseType(pcls))}%, %")
         val bases = parents.map(_.baseType(pcls))
         var first = TypeComparer.glb(defn.ObjectType :: bases)
         val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
@@ -1564,7 +1564,7 @@ class Namer { typer: Typer =>
       val selfInfo: TypeOrSymbol =
         if (self.isEmpty) NoType
         else if (cls.is(Module)) {
-          val moduleType = cls.owner.thisType select sourceModule
+          val moduleType = cls.owner.thisType.select(sourceModule)
           if (self.name == nme.WILDCARD) moduleType
           else recordSym(
             newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
@@ -2272,7 +2272,7 @@ class Namer { typer: Typer =>
           case _: ValDef if sym.owner.isType => missingType(sym, "")
           case _ =>
         }
-      lhsType orElse WildcardType
+      lhsType `orElse` WildcardType
     }
   end inferredResultType
 

@@ -98,10 +98,12 @@ object report:
     ctx.reporter.report(new Error(fullMsg, NoSourcePosition))
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
-      if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
-      else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
-    else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
+    if sourceVersion != SourceVersion.`2.13` then
+      // ignore errors or warningsfor Scala 2 stdlib sources
+      if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
+        if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
+        else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+      else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
@@ -143,8 +145,6 @@ object report:
         pos.withOuter(outer)
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
-
-  private object messageRendering extends MessageRendering
 
   // Should only be called from Run#enrichErrorMessage.
   def enrichErrorMessage(errorMessage: String)(using Context): String =

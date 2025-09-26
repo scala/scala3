@@ -305,7 +305,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     val modifiers = apiModifiers(sym)
     val anns = apiAnnotations(sym, inlineOrigin = NoSymbol).toArray
     val topLevel = sym.isTopLevelClass
-    val childrenOfSealedClass = sym.sealedDescendants.sorted(classFirstSort).map(c =>
+    val childrenOfSealedClass = sym.sealedDescendants.sorted(using classFirstSort).map(c =>
       if (c.isClass)
         apiType(c.typeRef)
       else
@@ -407,7 +407,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
   }
 
   def apiDefinitions(defs: List[Symbol]): List[api.ClassDefinition] =
-    defs.sorted(classFirstSort).map(apiDefinition(_, inlineOrigin = NoSymbol))
+    defs.sorted(using classFirstSort).map(apiDefinition(_, inlineOrigin = NoSymbol))
 
   /** `inlineOrigin` denotes an optional inline method that we are
    *  currently hashing the body of. If it exists, include extra information

@@ -27,5 +27,5 @@ object comptest extends ParallelTesting {
         dotcDir + "tools/dotc/ast/Trees.scala"
       ),
       TestFlags("", Array("-Ylog:typer", "-Xprompt"))
-  )(TestGroup("comptest"))
+  )(using TestGroup("comptest"))
 }

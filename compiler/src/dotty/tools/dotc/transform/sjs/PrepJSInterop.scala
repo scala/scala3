@@ -1170,10 +1170,10 @@ object PrepJSInterop {
     @inline def |(that: OwnerKind): OwnerKind =
       new OwnerKind(this.baseKinds | that.baseKinds)
 
-    inline def is(that: OwnerKind): Boolean =
+    inline infix def is(that: OwnerKind): Boolean =
       (this.baseKinds & that.baseKinds) != 0
 
-    inline def isnt(that: OwnerKind): Boolean =
+    inline infix def isnt(that: OwnerKind): Boolean =
       !this.is(that)
   }
 

@@ -684,7 +684,7 @@ trait ParallelTesting extends RunnerOrchestration:
 
     protected def compileFromBestEffortTasty(flags0: TestFlags, targetDir: JFile): TestReporter = {
       val classes = flattenFiles(targetDir).filter(isBestEffortTastyFile).map(_.toString)
-      val flags = flags0 and "-from-tasty" and "-Ywith-best-effort-tasty"
+      val flags = flags0 `and` "-from-tasty" `and` "-Ywith-best-effort-tasty"
       val reporter = mkReporter
       val driver = new Driver
 
@@ -710,7 +710,7 @@ trait ParallelTesting extends RunnerOrchestration:
     protected def compileFromTasty(flags0: TestFlags, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
       tastyOutput.mkdir()
-      val flags = flags0 and ("-d", tastyOutput.getPath) and "-from-tasty"
+      val flags = flags0 `and` ("-d", tastyOutput.getPath) `and` "-from-tasty"
 
       val classes = flattenFiles(targetDir).filter(isTastyFile).map(_.toString)
 
@@ -730,7 +730,7 @@ trait ParallelTesting extends RunnerOrchestration:
       testSource.checkFile.foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
     private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
-      reporters.flatMap(_.consoleOutput.split("\n")).toList
+      reporters.flatMap(_.consoleOutput.linesIterator).toList
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
@@ -1043,7 +1043,7 @@ trait ParallelTesting extends RunnerOrchestration:
             testReporter
         }
       if !failedBestEffortCompilation.isEmpty then
-        Some(failedBestEffortCompilation.flatMap(_.consoleOutput.split("\n")).mkString("\n"))
+        Some(failedBestEffortCompilation.flatMap(_.consoleOutput.linesIterator).mkString("\n"))
       else
         None
   }
@@ -1566,7 +1566,7 @@ trait ParallelTesting extends RunnerOrchestration:
   def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(
       implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
-    val flags = flags0 and "-Yretain-trees"
+    val flags = flags0 `and` "-Yretain-trees"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 

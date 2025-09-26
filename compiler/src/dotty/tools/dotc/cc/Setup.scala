@@ -520,16 +520,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if isExcluded(meth) then
             return
 
-          ccState.recordLevel(meth)
-          ccState.inNestedLevel:
-            inContext(ctx.withOwner(meth)):
-              paramss.foreach(traverse)
-              transformResultType(tpt, meth)
-              traverse(tree.rhs)
+          inContext(ctx.withOwner(meth)):
+            paramss.foreach(traverse)
+            transformResultType(tpt, meth)
+            traverse(tree.rhs)
 
         case tree @ ValDef(_, tpt: TypeTree, _) =>
           val sym = tree.symbol
-          ccState.recordLevel(sym)
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             transformResultType(tpt, sym)
@@ -546,10 +543,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
-          ccState.recordLevel(sym)
-          ccState.inNestedLevelUnless(sym.is(Module)):
-            inContext(ctx.withOwner(sym))
-              traverseChildren(tree)
+          inContext(ctx.withOwner(sym))
+            traverseChildren(tree)
 
         case tree @ TypeDef(_, rhs: TypeTree) =>
           transformTT(rhs, tree.symbol, boxed = false)
@@ -670,55 +665,54 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tree.symbol match
           case cls: ClassSymbol =>
             checkClassifiedInheritance(cls)
-            ccState.inNestedLevelUnless(cls.is(Module)):
-              val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+            val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
-              // Compute new self type
-              def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
-              val selfInfo1 =
-                if (selfInfo ne NoType) && !isInnerModule then
-                  // if selfInfo is explicitly given then use that one, except if
-                  // self info applies to non-static modules, these still need to be inferred
-                  selfInfo
-                else if cls.isPureClass then
-                  // is cls is known to be pure, nothing needs to be added to self type
-                  selfInfo
-                else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
-                  // assume {cap} for completely unconstrained self types of publicly extensible classes
-                  CapturingType(cinfo.selfType, CaptureSet.universal)
-                else
-                  // Infer the self type for the rest, which is all classes without explicit
-                  // self types (to which we also add nested module classes), provided they are
-                  // neither pure, nor are publicily extensible with an unconstrained self type.
-                  val cs = CaptureSet.Var(cls, level = ccState.currentLevel)
-                  if cls.derivesFrom(defn.Caps_Capability) then
-                    // If cls is a capability class, we need to add a fresh readonly capability to
-                    // ensure we cannot treat the class as pure.
-                    CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
-                  CapturingType(cinfo.selfType, cs)
+            // Compute new self type
+            def isInnerModule = cls.is(ModuleClass) && !cls.isStatic
+            val selfInfo1 =
+              if (selfInfo ne NoType) && !isInnerModule then
+                // if selfInfo is explicitly given then use that one, except if
+                // self info applies to non-static modules, these still need to be inferred
+                selfInfo
+              else if cls.isPureClass then
+                // is cls is known to be pure, nothing needs to be added to self type
+                selfInfo
+              else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
+                // assume {cap} for completely unconstrained self types of publicly extensible classes
+                CapturingType(cinfo.selfType, CaptureSet.universal)
+              else
+                // Infer the self type for the rest, which is all classes without explicit
+                // self types (to which we also add nested module classes), provided they are
+                // neither pure, nor are publicily extensible with an unconstrained self type.
+                val cs = CaptureSet.Var(cls)
+                if cls.derivesFrom(defn.Caps_Capability) then
+                  // If cls is a capability class, we need to add a fresh readonly capability to
+                  // ensure we cannot treat the class as pure.
+                  CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                CapturingType(cinfo.selfType, cs)
 
-              // Compute new parent types
-              val ps1 = inContext(ctx.withOwner(cls)):
-                ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
+            // Compute new parent types
+            val ps1 = inContext(ctx.withOwner(cls)):
+              ps.mapConserve(transformExplicitType(_, NoSymbol, freshen = false))
 
-              // Install new types and if it is a module class also update module object
-              if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
-                val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
-                updateInfo(cls, newInfo, cls.owner)
-                capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
-                cls.thisType.asInstanceOf[ThisType].invalidateCaches()
-                if cls.is(ModuleClass) then
-                  // if it's a module, the capture set of the module reference is the capture set of the self type
-                  val modul = cls.sourceModule
-                  val selfCaptures = selfInfo1 match
-                    case CapturingType(_, refs) => refs
-                    case _ => CaptureSet.empty
-                  // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
-                  // This would potentially give stackoverflows when setup is run repeatedly.
-                  // One test case is pos-custom-args/captures/checkbounds.scala under
-                  // ccConfig.alwaysRepeatRun = true.
-                  updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
-                  modul.termRef.invalidateCaches()
+            // Install new types and if it is a module class also update module object
+            if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
+              val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
+              updateInfo(cls, newInfo, cls.owner)
+              capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
+              cls.thisType.asInstanceOf[ThisType].invalidateCaches()
+              if cls.is(ModuleClass) then
+                // if it's a module, the capture set of the module reference is the capture set of the self type
+                val modul = cls.sourceModule
+                val selfCaptures = selfInfo1 match
+                  case CapturingType(_, refs) => refs
+                  case _ => CaptureSet.empty
+                // Note: Can't do val selfCaptures = selfInfo1.captureSet here.
+                // This would potentially give stackoverflows when setup is run repeatedly.
+                // One test case is pos-custom-args/captures/checkbounds.scala under
+                // ccConfig.alwaysRepeatRun = true.
+                updateInfo(modul, CapturingType(modul.info, selfCaptures), modul.owner)
+                modul.termRef.invalidateCaches()
           case _ =>
       case _ =>
     end postProcess
@@ -857,7 +851,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Add a capture set variable to `tp` if necessary. */
   private def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp, CaptureSet.Var(owner, _, level = ccState.currentLevel))
+    decorate(tp, CaptureSet.Var(owner, _))
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types

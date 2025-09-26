@@ -149,8 +149,8 @@ trait DottyBytecodeTest {
       val width = isa.map(_.toString.length).max
       val lineWidth = len.toString.length
       (1 to len) foreach { line =>
-        val isaPadded = isa.map(_.toString) orElse LazyList.continually("")
-        val isbPadded = isb.map(_.toString) orElse LazyList.continually("")
+        val isaPadded = isa.map(_.toString) `orElse` LazyList.continually("")
+        val isbPadded = isb.map(_.toString) `orElse` LazyList.continually("")
         val a = isaPadded(line-1)
         val b = isbPadded(line-1)
 
