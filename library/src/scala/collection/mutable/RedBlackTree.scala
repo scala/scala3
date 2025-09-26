@@ -605,7 +605,7 @@ private[collection] object RedBlackTree {
   // building
 
   /** Build a Tree suitable for a TreeSet from an ordered sequence of keys */
-  def fromOrderedKeys[A](xs: Iterator[A], size: Int): Tree[A, Null] = {
+  def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Node[A, Null] = size match {
       case 0 => null
@@ -624,7 +624,7 @@ private[collection] object RedBlackTree {
   }
 
   /** Build a Tree suitable for a TreeMap from an ordered sequence of key/value pairs */
-  def fromOrderedEntries[A, B](xs: Iterator[(A, B)], size: Int): Tree[A, B] = {
+  def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Node[A, B] = size match {
       case 0 => null
