@@ -672,7 +672,7 @@ object SpaceEngine {
         // we get
         //    <== refineUsingParent(NatT, class Succ, []) = Succ[NatT]
         //    <== isSub(Succ[NatT] <:< Succ[Succ[<?>]]) = false
-        def getAppliedClass(tp: Type): Type = tp match
+        @tailrec def getAppliedClass(tp: Type): Type = tp match
           case tp @ AppliedType(_: HKTypeLambda, _)                        => tp
           case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => tp
           case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
