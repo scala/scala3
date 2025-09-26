@@ -92,6 +92,8 @@ object Diagnostic:
     pos: SourcePosition
   ) extends Warning(msg, pos)
 
+  def unapply(d: Diagnostic): (Message, SourcePosition, Int) = (d.msg, d.pos, d.level)
+
 class Diagnostic(
   val msg: Message,
   val pos: SourcePosition,
