@@ -1,4 +1,6 @@
-import scala.language.experimental.into
+//> using options -preview
+// preview needed for into in 3.8
+
 import Conversion.into
 
 import scala.deriving.Mirror

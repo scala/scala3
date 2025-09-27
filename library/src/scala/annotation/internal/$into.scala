@@ -1,9 +1,5 @@
 package scala.annotation.internal
 
-import language.experimental.captureChecking
-
-import annotation.experimental
-
 /** An internal annotation on (part of) a parameter type that serves as a marker where
  *  the original type was of the form `into[T]`. These annotated types are mapped back
  *  to `into[T]` types when forming a method types from the parameter types. The idea is
@@ -11,5 +7,4 @@ import annotation.experimental
  *  `T`. Hence, we don't need to use `.underlying` to go from an into type to its
  *  underlying type in the types of local parameters.
  */
-@experimental
 class $into extends annotation.StaticAnnotation
