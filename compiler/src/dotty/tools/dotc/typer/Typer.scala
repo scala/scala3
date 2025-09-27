@@ -4274,16 +4274,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
 
       /** Search for an alternative that does not take parameters.
-       * If there is one, return it, otherwise emit an error.
+       *  If there is one, return it, otherwise return the error tree.
        */
       def tryParameterless(alts: List[TermRef])(error: => tpd.Tree): Tree =
         alts.filter(_.info.isParameterless) match
-          case alt :: Nil => readaptSimplified(tree.withType(alt))
-          case _ =>
-            if altDenots.exists(_.info.paramInfoss == ListOfNil) then
-              typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
-            else
-              error
+        case alt :: Nil => readaptSimplified(tree.withType(alt))
+        case _ =>
+          altDenots.find(_.info.paramInfoss == ListOfNil) match
+          case Some(alt) => readaptSimplified(tree.withType(alt.symbol.denot.termRef))
+          case _ => error
 
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)
@@ -4976,6 +4975,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => NoType
       case _ => NoType
 
+    // begin adapt1
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
       case _ => tree.tpe.widen match {
