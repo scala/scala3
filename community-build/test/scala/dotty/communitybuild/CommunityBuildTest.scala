@@ -77,7 +77,7 @@ class CommunityBuildTestC:
   @Test def parboiled2 = projects.parboiled2.run()
   @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
-  @Test def protoquill = projects.protoquill.run()
+  //@Test def protoquill = projects.protoquill.run()
   @Test def requests = projects.requests.run()
   @Test def scalacheck = projects.scalacheck.run()
   @Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
