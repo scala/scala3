@@ -1365,7 +1365,7 @@ trait Applications extends Compatibility {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
-              checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
+              checkCanEqual(left, right.tpe.widen, app.span)
           case _ =>
         }
         app
