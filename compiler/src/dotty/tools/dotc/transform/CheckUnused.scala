@@ -15,8 +15,8 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.reporting.{CodeAction, UnusedSymbol}
-import dotty.tools.dotc.rewrites.Rewrites
+import dotty.tools.dotc.reporting.{CodeAction, Diagnostic, UnusedSymbol}
+import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.{ImportInfo, Typer}
 import dotty.tools.dotc.typer.Deriving.OriginalTypeClass
@@ -549,16 +549,15 @@ object CheckUnused:
 
   def reportUnused()(using Context): Unit =
     for (msg, pos, origin) <- warnings do
-      if origin.isEmpty then report.warning(msg, pos)
-      else report.warning(msg, pos, origin)
-      msg.actions.headOption.foreach(Rewrites.applyAction)
+      report.warning(msg, pos, origin)
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
   def warnings(using Context): Array[MessageInfo] =
-    val actionable = ctx.settings.rewrite.value.nonEmpty
+    val actionable: true = true //ctx.settings.rewrite.value.nonEmpty
     val warnings = ArrayBuilder.make[MessageInfo]
-    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = ""): Unit = warnings.addOne((msg, pos, origin))
+    def warnAt(pos: SrcPos)(msg: UnusedSymbol, origin: String = Diagnostic.OriginWarning.NoOrigin): Unit =
+      warnings.addOne((msg, pos, origin))
     val infos = refInfos
 
     // non-local sym was target of assignment or has a sibling setter that was referenced
@@ -721,7 +720,6 @@ object CheckUnused:
 
     def checkImports() =
       import scala.jdk.CollectionConverters.given
-      import Rewrites.ActionPatch
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
       def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
