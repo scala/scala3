@@ -468,6 +468,11 @@ class Definitions {
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
 
+  @tu lazy val spreadMethod = enterMethod(OpsPackageClass, nme.spread,
+      PolyType(TypeBounds.empty :: Nil)(
+        tl => MethodType(AnyType :: Nil, tl.paramRefs(0))
+      ))
+
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
@@ -519,6 +524,8 @@ class Definitions {
     @tu lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     @tu lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
+  @tu lazy val VarArgsBuilderModule: Symbol = requiredModule("scala.runtime.VarArgsBuilder")
+
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
@@ -563,10 +570,11 @@ class Definitions {
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
     @tu lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
+    @tu lazy val Seq_dropRight    : Symbol = SeqClass.requiredMethod(nme.dropRight)
+    @tu lazy val Seq_takeRight    : Symbol = SeqClass.requiredMethod(nme.takeRight)
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
-
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
@@ -2234,7 +2242,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   @tu lazy val syntheticCoreMethods: List[TermSymbol] =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, spreadMethod)
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 

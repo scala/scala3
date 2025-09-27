@@ -157,6 +157,11 @@ object language:
     @compileTimeOnly("`packageObjectValues` can only be used at compile time in import statements")
     object packageObjectValues
 
+    /** Experimental support for multiple spread arguments.
+     */
+    @compileTimeOnly("`multiSpreads` can only be used at compile time in import statements")
+    object multiSpreads
+
     /** Experimental support for match expressions with sub cases.
      */
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")

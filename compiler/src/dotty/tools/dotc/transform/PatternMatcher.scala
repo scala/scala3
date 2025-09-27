@@ -198,6 +198,8 @@ object PatternMatcher {
     case object NonNullTest extends Test                             // scrutinee ne null
     case object GuardTest extends Test                               // scrutinee
 
+    val noLengthTest = LengthTest(0, exact = false)
+
     // ------- Generating plans from trees ------------------------
 
     /** A set of variabes that are known to be not null */
@@ -291,38 +293,67 @@ object PatternMatcher {
       /** Plan for matching the sequence in `seqSym` against sequence elements `args`.
        *  If `exact` is true, the sequence is not permitted to have any elements following `args`.
        */
-      def matchElemsPlan(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Plan) = {
-        val selectors = args.indices.toList.map(idx =>
-          ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx))))
-        TestPlan(LengthTest(args.length, exact), seqSym, seqSym.span,
-          matchArgsPlan(selectors, args, onSuccess))
-      }
+      def matchElemsPlan(seqSym: Symbol, args: List[Tree], lengthTest: LengthTest, onSuccess: Plan) =
+        val selectors = args.indices.toList.map: idx =>
+          ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx)))
+        if lengthTest.len == 0 && lengthTest.exact == false then // redundant test
+          matchArgsPlan(selectors, args, onSuccess)
+        else
+          TestPlan(lengthTest, seqSym, seqSym.span,
+            matchArgsPlan(selectors, args, onSuccess))
 
       /** Plan for matching the sequence in `getResult` against sequence elements
-       *  and a possible last varargs argument `args`.
+       *  `args`. Sequence elements may contain a varargs argument.
+       *  Example:
+       *
+       *    lst match case Seq(1, xs*, 2, 3) => ...
+       *
+       *  generates code which is equivalent to:
+       *
+       *    if lst != null then
+       *      if lst.lengthCompare >= 3 then
+       *        if lst(0) == 1 then
+       *          val x1 = lst.drop(1)
+       *          val xs = x1.dropRight(2)
+       *          val x2 = lst.takeRight(2)
+       *          if x2(0) == 2 && x2(1) == 3 then
+       *            return[matchResult] ...
        */
-      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
-        case Some(VarArgPattern(arg)) =>
-          val matchRemaining =
-            if (args.length == 1) {
-              val toSeq = ref(getResult)
-                .select(defn.Seq_toSeq.matchingMember(getResult.info))
-              letAbstract(toSeq) { toSeqResult =>
-                patternPlan(toSeqResult, arg, onSuccess)
-              }
-            }
-            else {
-              val dropped = ref(getResult)
-                .select(defn.Seq_drop.matchingMember(getResult.info))
-                .appliedTo(Literal(Constant(args.length - 1)))
-              letAbstract(dropped) { droppedResult =>
-                patternPlan(droppedResult, arg, onSuccess)
-              }
-            }
-          matchElemsPlan(getResult, args.init, exact = false, matchRemaining)
-        case _ =>
-          matchElemsPlan(getResult, args, exact = true, onSuccess)
-      }
+      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan =
+        val (leading, varargAndRest) = args.span:
+          case VarArgPattern(_) => false
+          case _ => true
+        varargAndRest match
+          case VarArgPattern(arg) :: trailing =>
+            val remaining =
+              if leading.isEmpty then
+                ref(getResult)
+                  .select(defn.Seq_toSeq.matchingMember(getResult.info))
+              else
+                ref(getResult)
+                  .select(defn.Seq_drop.matchingMember(getResult.info))
+                  .appliedTo(Literal(Constant(leading.length)))
+            val matchRemaining =
+              letAbstract(remaining): remainingResult =>
+                if trailing.isEmpty then
+                  patternPlan(remainingResult, arg, onSuccess)
+                else
+                  val seq = ref(remainingResult)
+                    .select(defn.Seq_dropRight.matchingMember(remainingResult.info))
+                    .appliedTo(Literal(Constant(trailing.length)))
+                  letAbstract(seq): seqResult =>
+                    val rest = ref(remainingResult)
+                      .select(defn.Seq_takeRight.matchingMember(remainingResult.info))
+                      .appliedTo(Literal(Constant(trailing.length)))
+                    val matchTrailing =
+                      letAbstract(rest): trailingResult =>
+                        matchElemsPlan(trailingResult, trailing, noLengthTest, onSuccess)
+                    patternPlan(seqResult, arg, matchTrailing)
+            matchElemsPlan(getResult, leading,
+              LengthTest(leading.length + trailing.length, exact = false),
+              matchRemaining)
+          case _ =>
+            matchElemsPlan(getResult, args, LengthTest(args.length, exact = true), onSuccess)
 
       /** Plan for matching the sequence in `getResult`
        *
@@ -491,7 +522,7 @@ object PatternMatcher {
         case WildcardPattern() | This(_) =>
           onSuccess
         case SeqLiteral(pats, _) =>
-          matchElemsPlan(scrutinee, pats, exact = true, onSuccess)
+          matchElemsPlan(scrutinee, pats, LengthTest(pats.length, exact = true), onSuccess)
         case _ =>
           TestPlan(EqualTest(tree), scrutinee, tree.span, onSuccess)
       }

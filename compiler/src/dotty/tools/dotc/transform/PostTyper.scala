@@ -18,10 +18,14 @@ import config.Printers.typr
 import config.Feature
 import util.{SrcPos, Stats}
 import reporting.*
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, TempResultName}
+import typer.Applications.{spread, HasSpreads}
+import typer.Implicits.SearchFailureType
+import Constants.Constant
 import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
+import ast.TreeInfo
 
 object PostTyper {
   val name: String = "posttyper"
@@ -376,6 +380,86 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ =>
           tpt
 
+    /** If one of `trees` is a spread of an expression that is not idempotent, lift out all
+     *  non-idempotent expressions (not just the spreads) and apply `within` to the resulting
+     *  pure references. Otherwise apply `within` to the original trees.
+     */
+    private def evalSpreadsOnce(trees: List[Tree])(within: List[Tree] => Tree)(using Context): Tree =
+      if trees.exists:
+        case spread(elem) => !(exprPurity(elem) >= TreeInfo.Idempotent)
+        case _ => false
+      then
+        val lifted = new mutable.ListBuffer[ValDef]
+        def liftIfImpure(tree: Tree): Tree = tree match
+          case tree @ Apply(fn, args) if fn.symbol == defn.spreadMethod =>
+            cpy.Apply(tree)(fn, args.mapConserve(liftIfImpure))
+          case _ if tpd.exprPurity(tree) >= TreeInfo.Idempotent =>
+            tree
+          case _ =>
+            val vdef = SyntheticValDef(TempResultName.fresh(), tree).withSpan(tree.span)
+            lifted += vdef
+            Ident(vdef.namedType).withSpan(tree.span)
+        val pureTrees = trees.mapConserve(liftIfImpure)
+        Block(lifted.toList, within(pureTrees))
+      else within(trees)
+
+    /** Translate sequence literal containing spread operators. Example:
+     *
+     *    val xs, ys: List[Int]
+     *    [1, xs*, 2, ys*]
+     *
+     *  Here the sequence literal is translated at typer to
+     *
+     *    [1, spread(xs), 2, spread(ys)]
+     *
+     *  This then translates to
+     *
+     *    scala.runtime.VarArgsBuilder.ofInt(2 + xs.length + ys.length)
+     *      .add(1)
+     *      .addSeq(xs)
+     *      .add(2)
+     *      .addSeq(ys)
+     *
+     *   The reason for doing a two-step typer/postTyper translation is that
+     *   at typer, we don't have all type variables instantiated yet.
+     */
+    private def flattenSpreads[T](tree: SeqLiteral)(using Context): Tree =
+      val SeqLiteral(rawElems, elemtpt) = tree
+      val elemType = elemtpt.tpe
+      val elemCls = elemType.classSymbol
+
+      evalSpreadsOnce(rawElems): elems =>
+        val lengthCalls = elems.collect:
+          case spread(elem) => elem.select(nme.length)
+        val singleElemCount: Tree = Literal(Constant(elems.length - lengthCalls.length))
+        val totalLength =
+          lengthCalls.foldLeft(singleElemCount): (acc, len) =>
+            acc.select(defn.Int_+).appliedTo(len)
+
+        def makeBuilder(name: String) =
+          ref(defn.VarArgsBuilderModule).select(name.toTermName)
+
+        val builder =
+          if defn.ScalaValueClasses().contains(elemCls) then
+            makeBuilder(s"of${elemCls.name}")
+          else if elemCls.derivesFrom(defn.ObjectClass) then
+            makeBuilder("ofRef").appliedToType(elemType)
+          else
+            makeBuilder("generic").appliedToType(elemType)
+
+        elems.foldLeft(builder.appliedTo(totalLength)): (bldr, elem) =>
+          elem match
+            case spread(arg) =>
+              if arg.tpe.derivesFrom(defn.SeqClass) then
+                bldr.select("addSeq".toTermName).appliedTo(arg)
+              else
+                bldr.select("addArray".toTermName).appliedTo(
+                  arg.ensureConforms(defn.ArrayOf(elemType)))
+            case _ => bldr.select("add".toTermName).appliedTo(elem)
+        .select("result".toTermName)
+        .appliedToNone
+    end flattenSpreads
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
@@ -592,6 +676,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: RefinedTypeTree =>
           Checking.checkPolyFunctionType(tree)
           super.transform(tree)
+        case tree: SeqLiteral if tree.hasAttachment(HasSpreads) =>
+          flattenSpreads(tree)
         case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)
