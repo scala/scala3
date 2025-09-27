@@ -30,11 +30,6 @@ trait MessageRendering {
   def stripColor(str: String): String =
     str.replaceAll("\u001b\\[.*?m", "")
 
-  /** List of all the inline calls that surround the position */
-  def inlinePosStack(pos: SourcePosition): List[SourcePosition] =
-    if pos.outer != null && pos.outer.exists then pos :: inlinePosStack(pos.outer)
-    else Nil
-
   /** Get the sourcelines before and after the position, as well as the offset
     * for rendering line numbers
     *
@@ -240,7 +235,7 @@ trait MessageRendering {
   def messageAndPos(dia: Diagnostic)(using Context): String = {
     import dia.*
     val pos1 = pos.nonInlined
-    val inlineStack = inlinePosStack(pos).filter(_ != pos1)
+    val inlineStack = pos.inlinePosStack.filter(_ != pos1)
     val maxLineNumber =
       if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
       else 0
