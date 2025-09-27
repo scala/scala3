@@ -555,7 +555,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           //println(i"Include call or box capture $included from $cs in ${env.owner}/${env.captured}/${env.captured.owner}/${env.kind}")
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          if !isOfNestedMethod(env) then
+          if !isOfNestedMethod(env) && !ccConfig.caplessLike then
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               recur(included, nextEnv, env)

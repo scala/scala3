@@ -21,6 +21,12 @@ object ccConfig:
    */
   inline val deferredReaches = false
 
+  /** Use the capless-like scheme for capture checking:
+   * - preciser capture sets for curried function types
+   * - a different rule for handling application captures
+   */
+  inline val caplessLike = true
+
   /** Check that if a type map (which is not a BiTypeMap) maps initial capture
    *  set variable elements to themselves it will not map any elements added in
    *  the future to something else. That is, we can safely use a capture set
