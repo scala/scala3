@@ -1269,9 +1269,7 @@ object Parsers {
 
     /** Accept identifier or match clause acting as a selector on given tree `t` */
     def selectorOrMatch(t: Tree): Tree =
-      atSpan(startOffset(t), in.offset) {
-        if in.token == MATCH then matchClause(t) else Select(t, ident())
-      }
+      if in.token == MATCH then matchClause(t) else selector(t)
 
     def selector(t: Tree): Tree =
       atSpan(startOffset(t), in.offset) { Select(t, ident()) }
@@ -2370,6 +2368,7 @@ object Parsers {
      *                      |  `try' Expr [`finally' Expr]
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
+     *                      |  `.` id
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  PrefixOperator SimpleExpr `=' Expr
@@ -2758,6 +2757,7 @@ object Parsers {
      *  SimpleExpr1   ::= literal
      *                 |  xmlLiteral
      *                 |  SimpleRef
+     *                 |  `.` id
      *                 |  `(` [ExprsInParens] `)`
      *                 |  SimpleExpr `.` id
      *                 |  SimpleExpr `.` MatchClause
@@ -2802,6 +2802,9 @@ object Parsers {
         case MACRO =>
           val start = in.skipToken()
           MacroTree(simpleExpr(Location.ElseWhere))
+        case DOT if in.featureEnabled(Feature.unqualifiedSelectors)  =>
+          accept(DOT)
+          selector(EmptyTree)
         case _ =>
           if isLiteral then
             literal()
@@ -3289,7 +3292,7 @@ object Parsers {
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
      *                    |  ‘given’ RefinedType
      *  SimplePattern1   ::= SimpleRef
-     *                    |  SimplePattern1 `.' id
+     *                    |  [SimplePattern1] `.' id
      *  PatVar           ::= id
      *                    |  `_'
      */
@@ -3306,6 +3309,9 @@ object Parsers {
         simpleExpr(Location.InPattern)
       case XMLSTART =>
         xmlLiteralPattern()
+      case DOT if in.featureEnabled(Feature.unqualifiedSelectors) =>
+        accept(DOT)
+        simplePatternRest(selector(EmptyTree))
       case GIVEN =>
         atSpan(in.offset) {
           val givenMod = atSpan(in.skipToken())(Mod.Given())

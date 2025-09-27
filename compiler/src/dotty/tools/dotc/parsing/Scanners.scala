@@ -15,6 +15,7 @@ import Tokens.*
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap
+import scala.collection.immutable.BitSet
 import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.{migrateTo3, sourceVersion}
@@ -1241,7 +1242,10 @@ object Scanners {
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3
 
     def canStartExprTokens =
-      if migrateTo3 then canStartExprTokens2 else canStartExprTokens3
+      if migrateTo3 then 
+        canStartExprTokens2 
+      else 
+        canStartExprTokens3 | (if featureEnabled(Feature.unqualifiedSelectors) then BitSet(DOT) else BitSet.empty)
 
 // Literals -----------------------------------------------------------------
 
