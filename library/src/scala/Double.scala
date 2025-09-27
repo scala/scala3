@@ -18,6 +18,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Double`, a 64-bit IEEE-754 floating point number (equivalent to Java's `double` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Double` are not
  *  represented by an object in the underlying runtime system.
@@ -253,5 +255,103 @@ object Double extends AnyValCompanion {
 
   /** The String representation of the scala.Double companion object. */
   override def toString = "object scala.Double"
-}
 
+  extension (self: Double) {
+    /** Returns `'''true'''` if this number is finite and has no decimal component. */
+    def isWhole: Boolean = {
+      val l = self.toLong
+      l.toDouble == self || l == Long.MaxValue && self < Double.PositiveInfinity || l == Long.MinValue && self > Double.NegativeInfinity
+    }
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self.toChar.toDouble == self
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toDouble == self
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toShort.toDouble == self
+
+    /** Returns `true` iff this has a zero fractional part, and is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidInt: Boolean = self.toInt.toDouble == self
+
+    /** Returns `true` iff `this` is a `NaN` value. */
+    def isNaN: Boolean = java.lang.Double.isNaN(self)
+
+    /** Returns `true` iff `this` is `PositiveInfinity` or `NegativeInfinity`. */
+    def isInfinity: Boolean = java.lang.Double.isInfinite(self)
+
+    /** Returns `true` iff `this` is a finite value, i.e., not an infinity nor `NaN`. */
+    def isFinite: Boolean = java.lang.Double.isFinite(self)
+
+    /** Returns `true` iff `this` is `PositiveInfinity`. */
+    def isPosInfinity: Boolean = Double.PositiveInfinity == self
+
+    /** Returns `true` iff `this` is `NegativeInfinity`. */
+    def isNegInfinity: Boolean = Double.NegativeInfinity == self
+
+    /** Returns the absolute value of `this`. */
+    def abs: Double = java.lang.Math.abs(self)
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Double): Double = java.lang.Math.max(self, that)
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Double): Double = java.lang.Math.min(self, that)
+
+    /** Returns the sign of `this`.
+      *
+      * - `1.0` if `this > 0.0`;
+      * - `-1.0` if `this < 0.0`;
+      * - `this` otherwise (for zeros and `NaN`).
+      */
+    def sign: Double = java.lang.Math.signum(self)
+
+    /** Returns the signum of `this`. */
+    @deprecated("signum does not handle -0.0 or Double.NaN; use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign.toInt
+
+    /** Returns the closest `Long` to `this`. */
+    def round: Long = java.lang.Math.round(self)
+
+    /** Returns the smallest integer greater or equal to `this`. */
+    def ceil: Double = java.lang.Math.ceil(self)
+
+    /** Returns the largest integer smaller or equal to `this`. */
+    def floor: Double = java.lang.Math.floor(self)
+
+    /** Converts an angle measured in degrees to an approximately equivalent
+     *  angle measured in radians.
+     *
+     *  @return the measurement of the angle x in radians.
+     */
+    def toRadians: Double = java.lang.Math.toRadians(self)
+
+    /** Converts an angle measured in radians to an approximately equivalent
+     *  angle measured in degrees.
+     *  @return the measurement of the angle x in degrees.
+     */
+    def toDegrees: Double = java.lang.Math.toDegrees(self)
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      *
+      * Special cases for this method:
+      * - `0.0` is considered greater than `-0.0`
+      * - `NaN` is considered greater than all other values, but equal to itself
+      */
+    def compare(that: Double): Int = java.lang.Double.compare(self, that)
+  }
+}
