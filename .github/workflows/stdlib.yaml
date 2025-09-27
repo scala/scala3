@@ -399,8 +399,6 @@ jobs:
   test-scala3-compiler-nonbootstrapped:
     runs-on: ubuntu-latest
     needs: [scala3-compiler-nonbootstrapped, tasty-core-nonbootstrapped, scala-library-nonbootstrapped]
-    ## The reference compiler generates wrong code for the non-bootstrapped stdlib, hence we cannot run tests on it at the moment
-    if: false
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
@@ -413,7 +411,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `scala3-compiler-nonbootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-nonbootstrapped-new/test
+        run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
 
   test-scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
