@@ -1,3 +1,5 @@
+//> using options -preview
+
 package test
 
 import language.experimental.into

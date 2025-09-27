@@ -1,4 +1,5 @@
-import language.experimental.into
+//> using options -preview
+// preview needed for into in 3.8
 
 into class Test
 

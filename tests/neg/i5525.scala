@@ -1,3 +1,6 @@
+//> using options -preview
+// preview needed for into in 3.8
+
 abstract enum Foo1 { case C } // error: only access modifiers allowed
 final    enum Foo2 { case C } // error: only access modifiers allowed
 sealed   enum Foo3 { case C } // error: only access modifiers allowed
@@ -42,9 +45,7 @@ infix enum Foo14[A, B]{   // OK
   infix case C2 extends Foo14[Int, Int] // error // error
 }
 
-import language.experimental.into
-
 into enum Foo15 {   // OK
   case C0
-  into case C1  // error
+  into case C1  // error // error
 }

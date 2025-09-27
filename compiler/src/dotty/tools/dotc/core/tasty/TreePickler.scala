@@ -858,64 +858,60 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if (flags.is(ParamAccessor) && sym.isTerm && !sym.isSetter)
       flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
     pickleFlags(flags, sym.isTerm)
-    if flags.is(Into) then
-      // Temporary measure until we can change TastyFormat to include an INTO tag
-      pickleAnnotation(sym, mdef, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
     val annots = sym.annotations.foreach(pickleAnnotation(sym, mdef, _))
   }
 
-  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
+  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit =
     import Flags.*
-    def writeModTag(tag: Int) = {
+    def writeModTag(tag: Int) =
       assert(isModifierTag(tag))
       writeByte(tag)
-    }
+
     if flags.is(Scala2x) then assert(attributes.scala2StandardLibrary)
-    if (flags.is(Private)) writeModTag(PRIVATE)
-    if (flags.is(Protected)) writeModTag(PROTECTED)
-    if (flags.is(Final, butNot = Module)) writeModTag(FINAL)
-    if (flags.is(Case)) writeModTag(CASE)
-    if (flags.is(Override)) writeModTag(OVERRIDE)
-    if (flags.is(Inline)) writeModTag(INLINE)
-    if (flags.is(InlineProxy)) writeModTag(INLINEPROXY)
-    if (flags.is(Macro)) writeModTag(MACRO)
-    if (flags.is(JavaStatic)) writeModTag(STATIC)
-    if (flags.is(Module)) writeModTag(OBJECT)
-    if (flags.is(Enum)) writeModTag(ENUM)
-    if (flags.is(Local)) writeModTag(LOCAL)
-    if (flags.is(Synthetic)) writeModTag(SYNTHETIC)
-    if (flags.is(Artifact)) writeModTag(ARTIFACT)
+    if flags.is(Private) then writeModTag(PRIVATE)
+    if flags.is(Protected) then writeModTag(PROTECTED)
+    if flags.is(Final, butNot = Module) then writeModTag(FINAL)
+    if flags.is(Case) then writeModTag(CASE)
+    if flags.is(Override) then writeModTag(OVERRIDE)
+    if flags.is(Inline) then writeModTag(INLINE)
+    if flags.is(InlineProxy) then writeModTag(INLINEPROXY)
+    if flags.is(Macro) then writeModTag(MACRO)
+    if flags.is(JavaStatic) then writeModTag(STATIC)
+    if flags.is(Module) then writeModTag(OBJECT)
+    if flags.is(Enum) then writeModTag(ENUM)
+    if flags.is(Local) then writeModTag(LOCAL)
+    if flags.is(Synthetic) then writeModTag(SYNTHETIC)
+    if flags.is(Artifact) then writeModTag(ARTIFACT)
     if flags.is(Transparent) then writeModTag(TRANSPARENT)
     if flags.is(Infix) then writeModTag(INFIX)
     if flags.is(Invisible) then writeModTag(INVISIBLE)
-    if (flags.is(Erased)) writeModTag(ERASED)
-    if (flags.is(Exported)) writeModTag(EXPORTED)
-    if (flags.is(Given)) writeModTag(GIVEN)
-    if (flags.is(Implicit)) writeModTag(IMPLICIT)
-    if (flags.is(Tracked)) writeModTag(TRACKED)
-    if (isTerm) {
-      if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
-      if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
-      if (flags.is(Mutable)) writeModTag(MUTABLE)
-      if (flags.is(Accessor)) writeModTag(FIELDaccessor)
-      if (flags.is(CaseAccessor)) writeModTag(CASEaccessor)
-      if (flags.is(HasDefault)) writeModTag(HASDEFAULT)
+    if flags.is(Erased) then writeModTag(ERASED)
+    if flags.is(Exported) then writeModTag(EXPORTED)
+    if flags.is(Given) then writeModTag(GIVEN)
+    if flags.is(Implicit) then writeModTag(IMPLICIT)
+    if flags.is(Tracked) then writeModTag(TRACKED)
+    if isTerm then
+      if flags.is(Lazy, butNot = Module) then writeModTag(LAZY)
+      if flags.is(AbsOverride) then { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
+      if flags.is(Mutable) then writeModTag(MUTABLE)
+      if flags.is(Accessor) then writeModTag(FIELDaccessor)
+      if flags.is(CaseAccessor) then writeModTag(CASEaccessor)
+      if flags.is(HasDefault) then writeModTag(HASDEFAULT)
       if flags.isAllOf(StableMethod) then writeModTag(STABLE) // other StableRealizable flag occurrences are either implied or can be recomputed
-      if (flags.is(Extension)) writeModTag(EXTENSION)
-      if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
-      if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
-      assert(!(flags.is(Label)))
-    }
-    else {
-      if (flags.is(Sealed)) writeModTag(SEALED)
-      if (flags.is(Abstract)) writeModTag(ABSTRACT)
-      if (flags.is(Trait)) writeModTag(TRAIT)
-      if (flags.is(Covariant)) writeModTag(COVARIANT)
-      if (flags.is(Contravariant)) writeModTag(CONTRAVARIANT)
-      if (flags.is(Opaque)) writeModTag(OPAQUE)
-      if (flags.is(Open)) writeModTag(OPEN)
-    }
-  }
+      if flags.is(Extension) then writeModTag(EXTENSION)
+      if flags.is(ParamAccessor) then writeModTag(PARAMsetter)
+      if flags.is(SuperParamAlias) then writeModTag(PARAMalias)
+      assert(!flags.is(Label))
+    else
+      if flags.is(Sealed) then writeModTag(SEALED)
+      if flags.is(Abstract) then writeModTag(ABSTRACT)
+      if flags.is(Trait) then writeModTag(TRAIT)
+      if flags.is(Covariant) then writeModTag(COVARIANT)
+      if flags.is(Contravariant) then writeModTag(CONTRAVARIANT)
+      if flags.is(Opaque) then writeModTag(OPAQUE)
+      if flags.is(Open) then writeModTag(OPEN)
+      if flags.is(Into) then writeModTag(INTO)
+  end pickleFlags
 
   private def isUnpicklable(owner: Symbol, ann: Annotation)(using Context) = ann match {
     case Annotation.Child(sym) => sym.isInaccessibleChildOf(owner)
