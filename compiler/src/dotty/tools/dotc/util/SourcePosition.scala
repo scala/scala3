@@ -11,7 +11,7 @@ import scala.annotation.internal.sharable
 
 /** A source position is comprised of a span and a source file */
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
-extends SrcPos, interfaces.SourcePosition, Showable {
+extends SrcPos, interfaces.SourcePosition, Showable:
 
   def sourcePos(using Context) = this
 
@@ -82,7 +82,14 @@ extends SrcPos, interfaces.SourcePosition, Showable {
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 
   def toText(printer: Printer): Text = printer.toText(this)
-}
+
+object SourcePosition:
+  extension (pos: SourcePosition)
+    /** List of all the inline calls that surround the position. */
+    def inlinePosStack: List[SourcePosition] =
+      if pos.outer != null && pos.outer.exists then pos :: pos.outer.inlinePosStack
+      else pos :: Nil
+end SourcePosition
 
 /** A sentinel for a non-existing source position */
 @sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan) {
