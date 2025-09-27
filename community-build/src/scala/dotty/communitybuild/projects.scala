@@ -270,7 +270,7 @@ object projects:
         """set genRegularTests4 / Test / managedSources ~= (_.filterNot(_.getName == "FrameworkSuite.scala").filterNot(_.getName == "GeneratorSpec.scala").filterNot(_.getName == "CommonGeneratorsSpec.scala").filterNot(_.getName == "ParallelTestExecutionSpec.scala").filterNot(_.getName == "DispatchReporterSpec.scala").filterNot(_.getName == "TestThreadsStartingCounterSpec.scala").filterNot(_.getName == "EventuallySpec.scala"))""",
         "scalacticTestDotty/test; scalatestTestDotty/test; scalacticDottyJS/compile; scalatestDottyJS/compile"
       ).mkString("; "),
-    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
+    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal; scalatestCompatible/publishLocal",
     sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
     // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
     // org.scalatest.Outcome
@@ -292,7 +292,7 @@ object projects:
     project           = "scalatestplus-junit",
     sbtTestCommand    = "scalatestplus-junit/test",
     sbtPublishCommand = "scalatestplus-junit/publishLocal",
-    dependencies      = List(scalatest)
+    //dependencies      = List(scalatest) DO NOT DEPEND ON SCALATEST, THEY ARE BREAKING THINGS IN MAIN...
   )
 
   lazy val scalatestplusTestNG = SbtCommunityProject(
@@ -317,8 +317,9 @@ object projects:
 
   lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
-    sbtTestCommand   = "dotty-community-build/compile",
-    sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
+    sbtTestCommand   = "test",
+    sbtDocCommand   = "doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xfatal-warnings"), // allow warnings for now
   )
 
   lazy val scalaPB = SbtCommunityProject(
@@ -670,9 +671,9 @@ object projects:
 
   lazy val playJson = SbtCommunityProject(
     project = "play-json",
-    sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest, scalatestplusScalacheck),
+    sbtTestCommand = "play-jsonJVM/test; play-jsonJS/test; play-functionalJVM/test; play-functionalJS/test; play-json-joda/test",
+    sbtPublishCommand = "play-jsonJVM/publishLocal; play-jsonJS/publishLocal; play-functionalJVM/publishLocal; play-functionalJS/publishLocal; play-json-joda/publishLocal",
+    //dependencies = List(scalatest, scalatestplusScalacheck),
   )
 
   lazy val munitCatsEffect = SbtCommunityProject(
