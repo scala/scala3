@@ -228,7 +228,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
                   INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
-                  TRACKED                                                          -- a tracked class parameter / a dependent class
+                  TRACKED
+                  INTO                                                         -- a tracked class parameter / a dependent class
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -705,7 +706,8 @@ object TastyFormat {
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified
-       | TRACKED => true
+       | TRACKED
+       | INTO => true
     case _ => false
   }
 
