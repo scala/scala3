@@ -235,7 +235,7 @@ trait MessageRendering {
   def messageAndPos(dia: Diagnostic)(using Context): String = {
     import dia.*
     val pos1 = pos.nonInlined
-    val inlineStack = pos.inlinePosStack.filter(_ != pos1)
+    val inlineStack = pos.inlinePosStack.filterNot(pos1.coincidesWith(_))
     val maxLineNumber =
       if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
       else 0
