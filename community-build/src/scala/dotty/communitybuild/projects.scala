@@ -241,7 +241,6 @@ object projects:
       ).mkString("; "),
     sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
     sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
-    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -260,8 +259,7 @@ object projects:
   lazy val scalatestplusTestNG = SbtCommunityProject(
     project = "scalatestplus-testng",
     sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
+    sbtPublishCommand = "publishLocal"
   )
 
   lazy val scalaXml = SbtCommunityProject(
