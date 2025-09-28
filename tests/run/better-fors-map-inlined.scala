@@ -2,7 +2,7 @@ enum MyOption[+A]:
   case MySome(x: A)
   case MyNone
 
-  def map[B](f: A => B): MyOption[B] =
+  inline def map[B](f: A => B): MyOption[B] =
     this match
     case MySome(x) => ???  //MySome(f(x))
     case MyNone => ??? //MyNone
@@ -38,7 +38,3 @@ object MyOption:
       a <- MyOption(1)
       (b, (c, d)) <- MyOption((2, (3, 4)))
     yield (b, (c, d))
-
-  extension (i: Int) def map[A](f: Int => A): A = ???
-
-  val _ = for j <- 42 yield j
