@@ -68,9 +68,16 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     def generateSerializationForwarder: Boolean =
        (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
 
+    // Even when mixinForwarderChoices option is true, we might not want to generate certain
+    // mixin forwarders to avoid discrepancies between java getInterfaces() and getGenericInterfaces(),
+    // as adding some unnecessary mixin forwarders forces us to extend the `interfaces` array
+    // of the generated class in its classfile
+    def isJavaInterfaceIndirectlyExtended =
+      meth.owner.isAllOf(Flags.JavaInterface) && !cls.parentSyms.contains(meth.owner)
+
     !meth.isConstructor &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
+    ((ctx.settings.mixinForwarderChoices.isTruthy && !isJavaInterfaceIndirectlyExtended)|| meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
      generateJUnitForwarder || generateSerializationForwarder) &&
     isInImplementingClass(meth) &&
     !meth.name.is(InlineAccessorName)
