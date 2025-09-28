@@ -73,7 +73,8 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
           else GCAS_Complete(m, ct)
         } else {
           // try to abort
-          m.CAS_PREV(prev, new FailedNode(prev.nn))
+          // we know `vn eq prev` and `prev ne null`
+          m.CAS_PREV(prev, new FailedNode(vn))
           GCAS_Complete(/*READ*/mainnode, ct)
         }
     }

@@ -688,7 +688,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           else TypeComparer.orType(e1, e2, isErased = true)
         def isNullStripped =
           tp2.isNullType && e1.derivesFrom(defn.ObjectClass)
-          || tp2.isNullType && e2.derivesFrom(defn.ObjectClass)
+          || tp1.isNullType && e2.derivesFrom(defn.ObjectClass)
         if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value && !isNullStripped then
           // In Scala2Unpickler we unpickle Scala.js pseudo-unions as if they were
           // real unions, but we must still erase them as Scala 2 would to emit

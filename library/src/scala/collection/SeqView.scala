@@ -192,8 +192,7 @@ object SeqView {
     }
 
     private[this] def elems: SomeSeqOps[A]^{this} = {
-      val orig: SomeSeqOps[A]^{this} = underlying.nn
-      if (evaluated) _sorted else orig
+      if (evaluated) _sorted else underlying.nn
     }
 
     def apply(i: Int): A = _sorted.apply(i)
