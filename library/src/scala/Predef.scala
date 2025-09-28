@@ -597,6 +597,14 @@ object Predef extends LowPriorityImplicits {
     @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 
+  // For backward compatibility with code compiled without -Yexplicit-nulls.
+  // If `a` is null, return null; otherwise, return `f`.
+  private[scala] inline def mapNull[A, B](a: A, inline f: B): B =
+    if((a: A | Null) == null) null.asInstanceOf[B] else f
+
+  // Use `null` in places where we want to make sure the reference is cleared.
+  private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
+
   /** A type supporting Self-based type classes.
    *
    *    A is TC
@@ -656,10 +664,6 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   @inline implicit def doubleWrapper(x: Double): runtime.RichDouble    = new runtime.RichDouble(x)
   @inline implicit def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
-  // For backwards compatibility with code compiled without -Yexplicit-nulls
-  private inline def mapNull[A, B](a: A, inline f: B): B =
-    if((a: A | Null) == null) null.asInstanceOf[B] else f
-
   /** @group conversions-array-to-wrapped-array */
   implicit def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
     mapNull(xs, ArraySeq.make(xs))
@@ -699,6 +703,5 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
 private[scala] abstract class LowPriorityImplicits2 {
   @deprecated("implicit conversions from Array to immutable.IndexedSeq are implemented by copying; use `toIndexedSeq` explicitly if you want to copy, or use the more efficient non-copying ArraySeq.unsafeWrapArray", since="2.13.0")
   implicit def copyArrayToImmutableIndexedSeq[T](xs: Array[T]): IndexedSeq[T] =
-    if (xs eq null) null.asInstanceOf[IndexedSeq[T]]
-    else new ArrayOps(xs).toIndexedSeq
+    mapNull(xs, new ArrayOps(xs).toIndexedSeq)
 }

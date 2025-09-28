@@ -123,7 +123,7 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
   def collectionAsScalaIterable[A](i: ju.Collection[A]): Iterable[A] = asScala(i)
 
   @deprecated("Use `asScala` instead", "2.13.0")
-  def asScalaBuffer[A](s: ju.List[A]): mutable.Buffer[A] = asScala(s)
+  def asScalaBuffer[A](l: ju.List[A]): mutable.Buffer[A] = asScala(l)
 
   @deprecated("Use `asScala` instead", "2.13.0")
   def asScalaSet[A](s: ju.Set[A]): mutable.Set[A] = asScala(s)

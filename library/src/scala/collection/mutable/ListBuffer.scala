@@ -217,7 +217,7 @@ class ListBuffer[A]
       first = newElem
     } else {
       // `p` can not be `null` because the case where `idx == 0` is handled above
-      val p = predecessor(idx)
+      val p = predecessor(idx).nn
       val newElem = new :: (elem, p.tail.tail)
       if (last0 eq p.tail) {
         last0 = newElem

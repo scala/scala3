@@ -272,14 +272,15 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       if (!fill()) Iterator.empty.next()
       else {
         filled = false
+        val buffer = this.buffer.nn
         // if stepping, retain overlap in prev
         if (step < size) {
-          if (first) prev = buffer.nn.drop(step)
-          else if (buffer.nn.length == size) Array.copy(src = buffer.nn, srcPos = step, dest = prev.nn, destPos = 0, length = size - step)
+          if (first) prev = buffer.drop(step)
+          else if (buffer.length == size) Array.copy(src = buffer, srcPos = step, dest = prev.nn, destPos = 0, length = size - step)
           else prev = null
         }
-        val res = immutable.ArraySeq.unsafeWrapArray(buffer.nn).asInstanceOf[immutable.ArraySeq[B]]
-        buffer = null
+        val res = immutable.ArraySeq.unsafeWrapArray(buffer).asInstanceOf[immutable.ArraySeq[B]]
+        this.buffer = null
         first = false
         res
       }

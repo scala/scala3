@@ -287,7 +287,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // after initialization (`_head ne Uninitialized`)
   //   - `null` if this is an empty lazy list
   //   - `head: A` otherwise (can be `null`, `_tail == null` is used to test emptiness)
-  @volatile private[this] var _head: Any | Null /* Uninitialized | A */ =
+  @volatile private[this] var _head: Any /* Uninitialized | A */ =
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
@@ -296,7 +296,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyList[A]` otherwise
-  private[this] var _tail: AnyRef | Null /* () => LazyList[A] | MidEvaluation.type | LazyList[A] */ =
+  private[this] var _tail: AnyRef | Null /* () => LazyList[A] | MidEvaluation.type | LazyList[A] | Null */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
