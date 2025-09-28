@@ -294,7 +294,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyListIterable[A]` otherwise
-  private[this] var _tail: AnyRef^{this} | Null /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] */ =
+  private[this] var _tail: AnyRef^{this} | Null /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] | Null */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
