@@ -241,13 +241,7 @@ object projects:
       ).mkString("; "),
     sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
     sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
-    // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
-    // org.scalatest.Outcome
-    // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
-    // dotty.tools.dotc.core.MissingType:
-    dependencies = List(scalaXml),
     scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
-    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -268,7 +262,6 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
-    dependencies = List(scalatest)
   )
 
   lazy val scalaXml = SbtCommunityProject(
@@ -318,7 +311,7 @@ object projects:
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init").filter(_ != "-Yexplicit-nulls"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
