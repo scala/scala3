@@ -37,7 +37,9 @@ abstract class Lifter {
   protected def liftedFlags: FlagSet = EmptyFlags
 
   /** The tree of a lifted definition */
-  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef = ValDef(sym, rhs)
+  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef =
+    // Mark the type of lifted definitions as inferred
+    ValDef(sym, rhs, inferred = true)
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
