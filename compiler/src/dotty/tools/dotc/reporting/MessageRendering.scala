@@ -231,11 +231,29 @@ trait MessageRendering {
     if origin.nonEmpty then
       addHelp("origin=")(origin)
 
-  /** The whole message rendered from `msg` */
+  /** The whole message rendered from `dia.msg`.
+   *
+   *  For a position in an inline expansion, choose `pos1`
+   *  which is the most specific position in the call written
+   *  by the user. For a diagnostic at EOF, where the last char
+   *  of source text is a newline, adjust the position to render
+   *  before the newline, at the end of the last line of text.
+   *
+   *  The rendering begins with a label and position (`posString`).
+   *  Then `sourceLines` with embedded caret `positionMarker`
+   *  and rendered message.
+   *
+   *  Then an `Inline stack trace` showing context for inlined code.
+   *  Inlined positions are taken which don't contain `pos1`.
+   *  (That should probably be positions not contained by outermost.)
+   *  Note that position equality includes `outer` position;
+   *  usually we intend to test `contains` or `coincidesWith`.
+   *
+   */
   def messageAndPos(dia: Diagnostic)(using Context): String = {
     import dia.*
     val pos1 = pos.nonInlined
-    val inlineStack = pos.inlinePosStack.filter(_ != pos1)
+    val inlineStack = pos.inlinePosStack.filterNot(_.contains(pos1))
     val maxLineNumber =
       if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
       else 0
@@ -256,7 +274,6 @@ trait MessageRendering {
     val posString = posStr(adjusted, msg, diagnosticLevel(dia))
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
-      val pos1 = pos.nonInlined
       if (pos1.exists && pos1.source.file.exists) {
         val readjusted =
           if pos1 == pos then adjusted

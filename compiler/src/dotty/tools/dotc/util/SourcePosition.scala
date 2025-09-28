@@ -15,7 +15,7 @@ extends SrcPos, interfaces.SourcePosition, Showable:
 
   def sourcePos(using Context) = this
 
-  /** Is `that` a source position contained in this source position ?
+  /** Is `that` a source position contained in this source position?
    *  `outer` is not taken into account. */
   def contains(that: SourcePosition): Boolean =
     this.source == that.source && this.span.contains(that.span)
