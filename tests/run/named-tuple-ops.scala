@@ -86,6 +86,6 @@ type Labels = (x: String, y: String)
   val cityArr = city.toArray
   assert(cityArr.sameElements(Array("Lausanne", 1000, 140000)))
 
-  val cityMap = city.toListMap
-  val _: ListMap[String, String | Int] = cityMap
+  val cityMap = city.toSeqMap
+  val _: SeqMap[String, String | Int] = cityMap
   assert(cityMap == ListMap("name" -> "Lausanne", "zip" -> 1000, "pop" -> 140000))

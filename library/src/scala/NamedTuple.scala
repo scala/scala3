@@ -1,7 +1,7 @@
 package scala
 import compiletime.ops.boolean.*
 import compiletime.summonAll
-import collection.immutable.ListMap
+import collection.immutable.{SeqMap, ListMap}
 
 import language.experimental.captureChecking
 
@@ -32,7 +32,7 @@ object NamedTuple:
   import NamedTupleDecomposition.{Names, DropNames}
   export NamedTupleDecomposition.{
     Names, DropNames,
-    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray, toListMap
+    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray, toSeqMap
   }
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
@@ -214,7 +214,7 @@ object NamedTupleDecomposition:
     /** An immutable map consisting of all element values preserving an order of fields.
      *  Keys are the names of the elements.
      */
-    inline def toListMap: ListMap[String, Tuple.Union[V]] =
+    inline def toSeqMap: SeqMap[String, Tuple.Union[V]] =
       inline compiletime.constValueTuple[N].toList match
         case names: List[String] =>
           ListMap.from(names.iterator.zip(
