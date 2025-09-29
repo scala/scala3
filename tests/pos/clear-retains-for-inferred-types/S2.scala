@@ -1,5 +1,3 @@
-import language.experimental.{captureChecking => _}
-
 // i24101
 
 trait AttributeValue
