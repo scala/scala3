@@ -4,6 +4,7 @@ import language.experimental.captureChecking
 import java.util.concurrent.CountDownLatch
 
 import scala.annotation.*
+import java.lang.invoke.VarHandle
 
 /**
  * Helper methods used in thread-safe lazy vals.
@@ -104,6 +105,12 @@ object LazyVals {
     if (debug)
       println(s"objCAS($t, $exp, $n)")
     unsafe.compareAndSwapObject(t, offset, exp, n): @nowarn("cat=deprecation")
+  }
+
+  def objCAS2(t: Object, handle: VarHandle, exp: Object, n: Object): Boolean = {
+    if (debug)
+      println(s"objCAS2($t, $exp, $n)")
+    handle.compareAndSet(t, exp, n)
   }
 
   def setFlag(t: Object, offset: Long, v: Int, ord: Int): Unit = {

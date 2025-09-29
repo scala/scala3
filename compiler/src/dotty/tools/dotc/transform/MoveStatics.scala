@@ -12,9 +12,11 @@ import SymDenotations.SymDenotation
 import Names.Name
 import StdNames.nme
 import NameOps.*
+import LazyVals.isVarHandleForLazy
 
 import ast.*
 
+import scala.collection.mutable
 
 import MegaPhase.*
 
@@ -28,7 +30,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
 
   def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists &&
-        (sym.is(Flags.Method) || !(sym.isMutableVarOrAccessor && sym.owner.companionClass.is(Flags.Trait)))) {
+        (sym.is(Flags.Method) || !(sym.isMutableVarOrAccessor && sym.owner.companionClass.is(Flags.Trait)) && !sym.symbol.isVarHandleForLazy)) {
       sym.owner.asClass.delete(sym.symbol)
       sym.owner.companionClass.asClass.enter(sym.symbol)
       sym.copySymDenotation(owner = sym.owner.companionClass)
@@ -64,12 +66,21 @@ class MoveStatics extends MiniPhase with SymTransformer {
         else {
           val moduleTmpl = module.rhs.asInstanceOf[Template]
           val companionTmpl = companion.rhs.asInstanceOf[Template]
-          val (staticDefs, remainingDefs) = moduleTmpl.body.partition {
-            case memberDef: MemberDef => memberDef.symbol.isScalaStatic
-            case _ => false
+
+          val staticDefs = mutable.ListBuffer[Tree]()
+          val staticTiedDefs = mutable.ListBuffer[Tree]()
+          val remainingDefs = mutable.ListBuffer[Tree]()
+
+          moduleTmpl.body.foreach {
+            case memberDef: MemberDef if memberDef.symbol.isScalaStatic =>
+              if memberDef.symbol.isVarHandleForLazy then
+                staticTiedDefs.addOne(memberDef)
+              else
+                staticDefs.addOne(memberDef)
+            case other => remainingDefs.addOne(other)
           }
 
-          rebuild(companion, companionTmpl.body ++ staticDefs) :: rebuild(module, remainingDefs) :: Nil
+          rebuild(companion, companionTmpl.body ++ staticDefs) :: rebuild(module, staticTiedDefs.toList ++ remainingDefs.toList) :: Nil
         }
       }
       val newPairs =
