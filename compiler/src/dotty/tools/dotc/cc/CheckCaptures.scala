@@ -594,6 +594,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.exists && curEnv.kind != EnvKind.Boxed then
           markFree(capturedVars(sym).filter(isRetained), tree)
 
+    /** Include references captured by the type of the function. */
+    def includeFunctionCaptures(qualType: Type, tree: Apply)(using Context): Unit =
+      if ccConfig.caplessLike && !qualType.isAlwaysPure then
+        val funCaptures = qualType.captureSet
+        markFree(funCaptures, tree)
+
     /** If `tp` (possibly after widening singletons) is an ExprType
      *  of a parameterless method, map Result instances in it to Fresh instances
      */
@@ -815,12 +821,15 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
           if formal.hasAnnotation(defn.UseAnnot) then argType.deepCaptureSet else argType.captureSet
+      if ccConfig.caplessLike then
+        includeFunctionCaptures(qualType, tree)
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
             && qualCaptures.mightSubcapture(refs)
-            && argCaptures.forall(_.mightSubcapture(refs)) =>
+            && argCaptures.forall(_.mightSubcapture(refs))
+            && !ccConfig.caplessLike =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
           appType.derivedCapturingType(appType1, callCaptures)
             .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
