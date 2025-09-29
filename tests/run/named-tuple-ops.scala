@@ -1,6 +1,6 @@
 //> using options -source future
 import scala.compiletime.asMatchable
-import scala.collection.immutable.ListMap
+import scala.collection.immutable.{ListMap, SeqMap}
 
 type City = (name: String, zip: Int, pop: Int)
 type Raw = (String, Int, Int)
