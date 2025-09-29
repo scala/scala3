@@ -250,16 +250,8 @@ trait MessageRendering {
    *  usually we intend to test `contains` or `coincidesWith`.
    *
    */
-  def messageAndPos(dia: Diagnostic)(using Context): String = {
-    import dia.*
-    val pos1 = pos.nonInlined
-    val inlineStack = pos.inlinePosStack.filterNot(_.contains(pos1))
-    val maxLineNumber =
-      if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
-      else 0
-    given Level = Level(level)
-    given Offset = Offset(maxLineNumber.toString.length + 2)
-    val sb = StringBuilder()
+  def messageAndPos(dia: Diagnostic)(using Context): String =
+    // adjust a pos at EOF if preceded by newline
     def adjust(pos: SourcePosition): SourcePosition =
       if pos.span.isSynthetic
       && pos.span.isZeroExtent
@@ -270,53 +262,57 @@ trait MessageRendering {
         pos.withSpan(pos.span.shift(-1))
       else
         pos
-    val adjusted = adjust(pos)
-    val posString = posStr(adjusted, msg, diagnosticLevel(dia))
-    if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists) {
-      if (pos1.exists && pos1.source.file.exists) {
-        val readjusted =
-          if pos1 == pos then adjusted
-          else adjust(pos1)
-        val (srcBefore, srcAfter, offset) = sourceLines(readjusted)
-        val marker = positionMarker(readjusted)
-        val err = errorMsg(readjusted, msg.message)
-        sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+    val msg = dia.msg
+    val pos = dia.pos
+    val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
+    val outermost = pos.outermost // call.pos
+    val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
+    given Level = Level(dia.level)
+    given Offset =
+      val maxLineNumber =
+        if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
+        else 0
+      Offset(maxLineNumber.toString.length + 2)
+    val sb = StringBuilder()
+    val posString = posStr(pos1, msg, diagnosticLevel(dia))
+    if posString.nonEmpty then sb.append(posString).append(EOL)
+    if pos.exists && pos1.exists && pos1.source.file.exists then
+      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
+      val marker = positionMarker(pos1)
+      val err = errorMsg(pos1, msg.message)
+      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
 
-        if inlineStack.nonEmpty then
-          sb.append(EOL).append(newBox())
-          sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
-          for inlinedPos <- inlineStack if inlinedPos != pos1 do
-            sb.append(EOL).append(newBox(soft = true))
-            sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-            if inlinedPos.source.file.exists then
-              val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
-              val marker = positionMarker(inlinedPos)
-              sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
-          sb.append(EOL).append(endBox)
-      }
-      else sb.append(msg.message)
-    }
+      if inlineStack.nonEmpty then
+        sb.append(EOL).append(newBox())
+        sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
+        for inlinedPos <- inlineStack do
+          sb.append(EOL).append(newBox(soft = true))
+          sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
+          if inlinedPos.source.file.exists then
+            val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
+            val marker = positionMarker(inlinedPos)
+            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+        sb.append(EOL).append(endBox)
+      end if
     else sb.append(msg.message)
-    if (dia.isVerbose)
+    if dia.isVerbose then
       appendFilterHelp(dia, sb)
 
     if Diagnostic.shouldExplain(dia) then
       sb.append(EOL).append(newBox())
       sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
       sb.append(EOL).append(newBox(soft = true))
-      dia.msg.explanation.split(raw"\R").foreach { line =>
+      dia.msg.explanation.split(raw"\R").foreach: line =>
         sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
-      }
       sb.append(EOL).append(endBox)
     else if dia.msg.canExplain then
       sb.append(EOL).append(offsetBox)
       sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
     sb.toString
-  }
+  end messageAndPos
 
-  private  def hl(str: String)(using Context, Level): String =
+  private def hl(str: String)(using Context, Level): String =
     summon[Level].value match
       case interfaces.Diagnostic.ERROR   => Red(str).show
       case interfaces.Diagnostic.WARNING => Yellow(str).show
