@@ -1,6 +1,5 @@
-//> using options -feature
+//> using options -feature -preview
 package test
-import language.experimental.into
 
 object Test:
   given Conversion[Int, C] = C(_)

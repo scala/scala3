@@ -7,4 +7,5 @@ package scala.annotation.internal
  *  `T`. Hence, we don't need to use `.underlying` to go from an into type to its
  *  underlying type in the types of local parameters.
  */
+@preview
 class $into extends annotation.StaticAnnotation

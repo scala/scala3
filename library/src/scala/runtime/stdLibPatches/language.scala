@@ -99,7 +99,7 @@ object language:
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
-    @deprecated("The into language import is no longer needed since the feature is now standard", since = "3.9")
+    @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
     object into
 
     /** Experimental support for named tuples.

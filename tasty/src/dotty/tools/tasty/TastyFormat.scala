@@ -228,8 +228,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
                   INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
-                  TRACKED
-                  INTO                                                         -- a tracked class parameter / a dependent class
+                  TRACKED                                                          -- a tracked class parameter / a dependent class
+                  INTO                                                             -- a legal conversion target
                   Annotation
 
   Variance      = STABLE                                                           -- invariant

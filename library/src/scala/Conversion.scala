@@ -1,6 +1,7 @@
 package scala
 
 import language.experimental.captureChecking
+import annotation.internal.preview
 
 /** A class for implicit values that can serve as implicit conversions.
 *  The implicit resolution algorithm will act as if there existed
@@ -41,9 +42,11 @@ object Conversion:
    *  conversions are tried from the type of `t` to `T`. `into[T]` types are erased to `T`
    *  in all covariant positions of the types of parameter symbols.
    */
+  @preview
   opaque type into[+T] >: T = T
 
   /** Unwrap an `into` */
   extension [T](x: into[T])
+    @preview
     def underlying: T = x
 end Conversion
