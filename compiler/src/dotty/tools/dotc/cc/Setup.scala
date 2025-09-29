@@ -685,7 +685,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 // Infer the self type for the rest, which is all classes without explicit
                 // self types (to which we also add nested module classes), provided they are
                 // neither pure, nor are publicily extensible with an unconstrained self type.
-                val cs = CaptureSet.Var(cls)
+                val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false)
                 if cls.derivesFrom(defn.Caps_Capability) then
                   // If cls is a capability class, we need to add a fresh readonly capability to
                   // ensure we cannot treat the class as pure.
@@ -852,7 +852,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Add a capture set variable to `tp` if necessary. */
   private def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp, CaptureSet.Var(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner)))
+    decorate(tp, CaptureSet.ProperVar(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner)))
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types

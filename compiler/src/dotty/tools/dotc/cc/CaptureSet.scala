@@ -954,6 +954,10 @@ object CaptureSet:
   class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
     override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
 
+  /** Variables created in types of inferred type trees */
+  class ProperVar(override val owner: Symbol, initialElems: Refs, nestedOK: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  extends Var(owner, initialElems, nestedOK)
+  
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
