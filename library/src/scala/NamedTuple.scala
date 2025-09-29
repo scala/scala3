@@ -1,6 +1,5 @@
 package scala
 import compiletime.ops.boolean.*
-import compiletime.summonAll
 import collection.immutable.{SeqMap, ListMap}
 
 import language.experimental.captureChecking
