@@ -254,9 +254,16 @@ object ScalaRunTime {
       case s => s + "\n"
     }
 
-  // For backwards compatibility with code compiled without -Yexplicit-nulls
+  // For backward compatibility with code compiled without -Yexplicit-nulls.
+  // If `a` is null, return null; otherwise, return `f`.
+  // Have to add a private mapNull here to avoid errors
   private inline def mapNull[A, B](a: A, inline f: B): B =
     if((a: A | Null) == null) null.asInstanceOf[B] else f
+
+  // For the following functions, both the parameter and the return type are non-nullable.
+  // However, if a null reference is passed explicitly, this method will still return null.
+  // We intentionally keep this signature to discourage passing nulls implicitly while
+  // preserving the previous behavior for backward compatibility.
 
   // Convert arrays to immutable.ArraySeq for use with Java varargs:
   def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =

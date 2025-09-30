@@ -25,6 +25,11 @@ import scala.{unchecked => uc}
 
 /** Defines converter methods from Java to Scala collections.
   * These methods are available through the [[scala.jdk.javaapi.CollectionConverters]] object.
+  *
+  * Note: Both the parameter and the return type are non-nullable. However, if a null
+  * reference is passed explicitly, this method will still return null. We intentionally
+  * keep this signature to discourage passing nulls implicitly while preserving the
+  * previous behavior for backward compatibility.
   */
 trait AsScalaConverters {
   import JavaCollectionWrappers._
