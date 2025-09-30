@@ -28,7 +28,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    * The map contains the list of the offset trees.
    */
   class OffsetInfo(var defs: List[Tree], var ord: Int = 0)
-  class VarHandleInfo(var defs: List[Tree])
+  class VarHandleInfo(var methodHandlesLookupDef: Tree, var varHandleDefs: List[Tree])
 
   private val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
   private val appendVarHandleDefs = mutable.Map.empty[Symbol, VarHandleInfo]
@@ -122,7 +122,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       appendVarHandleDefs.get(cls) match {
         case None => template
         case Some(data) =>
-          cpy.Template(template)(body = addInFront(data.defs, template.body))
+          cpy.Template(template)(body = addInFront(data.methodHandlesLookupDef +: data.varHandleDefs, template.body))
       }
   }
 
@@ -475,22 +475,28 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span)) // private @volatile var _x: AnyRef
     containerSymbol.addAnnotations(x.symbol.annotations) // pass annotations from original definition
     containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
-    val getOffset =
-        Select(ref(defn.LazyValsModule), lazyNme.RLazyVals.getOffsetStatic)
     val containerTree = ValDef(containerSymbol, nullLiteral)
+
+    val varHandleInfo = appendVarHandleDefs.getOrElseUpdate(claz, new VarHandleInfo(EmptyTree, Nil))
+    varHandleInfo.methodHandlesLookupDef match
+      case EmptyTree =>
+        val lookupSym: TermSymbol = newSymbol(claz, (s"${claz.name}${lazyNme.methodHandleLookup}").toTermName, Synthetic, defn.MethodHandlesLookupClass.typeRef).enteredAfter(this)
+        lookupSym.addAnnotation(Annotation(defn.ScalaStaticAnnot, lookupSym.span))
+        varHandleInfo.methodHandlesLookupDef =
+          ValDef(lookupSym, Apply(Select(ref(defn.MethodHandlesClass), defn.MethodHandles_lookup.name), Nil))
+      case _ =>
 
     // create a VarHandle for this lazy val
     val varHandleSymbol: TermSymbol = newSymbol(claz, s"$containerName${lazyNme.lzyHandleSuffix}".toTermName, Synthetic, defn.VarHandleClass.typeRef).enteredAfter(this)
     varHandleSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot, varHandleSymbol.span))
     val getVarHandle = Apply(
-      Select(Apply(Select(ref(defn.MethodHandlesClass), defn.MethodHandles_lookup.name), Nil), defn.MethodHandlesLookup_FindVarHandle.name),
+      Select(ref(varHandleInfo.methodHandlesLookupDef.symbol), defn.MethodHandlesLookup_FindVarHandle.name),
       List(thizClass, Literal(Constant(containerName.toString)), Literal(Constant(defn.ObjectType)))
     )
     val varHandleTree = ValDef(varHandleSymbol, getVarHandle)
     val varHandle = ref(varHandleSymbol)
 
-    val varHandleInfo = appendVarHandleDefs.getOrElseUpdate(claz, new VarHandleInfo(Nil))
-    varHandleInfo.defs = varHandleTree :: varHandleInfo.defs
+    varHandleInfo.varHandleDefs = varHandleTree :: varHandleInfo.varHandleDefs
     val swapOver =
         This(claz)
 
@@ -696,8 +702,11 @@ object LazyVals {
     val lock: TermName        = "lock".toTermName
     val discard: TermName     = "discard".toTermName
     val lzyHandleSuffix: String = "$$lzyHandle"
+    val methodHandleLookup: String = "$$methodHandleLookup"
   }
 
   extension (sym: Symbol) def isVarHandleForLazy(using Context) =
     sym.name.endsWith(lazyNme.lzyHandleSuffix)
+  extension (sym: Symbol) def isMethodLookupForLazy(using Context) =
+    sym.name.endsWith(lazyNme.methodHandleLookup)
 }
