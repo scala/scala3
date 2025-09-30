@@ -532,7 +532,7 @@ object CollectionStrawMan5 {
       }
       -1
     }
-    def filter(p: A => Boolean): Iterator[A]^{this, p} = new Iterator[A] {
+    def filter(p: A ->{cap, this} Boolean): Iterator[A]^{this, p} = new Iterator[A] {
       private var hd: A = compiletime.uninitialized
       private var hdDefined: Boolean = false
 

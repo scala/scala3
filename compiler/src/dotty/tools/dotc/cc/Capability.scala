@@ -12,7 +12,7 @@ import CCState.*
 import Periods.{NoRunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
-import CaptureSet.VarState
+import CaptureSet.{Refs, emptyRefs, VarState}
 import Annotations.Annotation
 import Flags.*
 import config.Printers.capt
@@ -546,6 +546,17 @@ object Capabilities:
           myCaptureSet = computed
           captureSetValid = currentId
         computed
+
+    /** The elements hidden by this capability, if this is a FreshCap
+     *  or a derived version of one. Read-only status is transferred from
+     *  the capability to its hidden set. TODO Should classifiers also be
+     *  transferred?
+     */
+    def hiddenElems(using Context): Refs = this.stripRestricted.stripReadOnly match
+      case self: FreshCap =>
+        val hidden = self.hiddenSet.elems
+        if isReadOnly then hidden.map(_.readOnly) else hidden
+      case _ => emptyRefs
 
     /** The transitive classifiers of this capability. */
     def transClassifiers(using Context): Classifiers =
