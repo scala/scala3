@@ -1,11 +1,3 @@
--- Error: tests/neg-custom-args/captures/sepchecks2.scala:10:10 --------------------------------------------------------
-10 |  println(c) // error
-   |          ^
-   |          Separation failure: Illegal access to {c} which is hidden by the previous definition
-   |          of value xs with type List[() => Unit].
-   |          This type hides capabilities  {c}
-   |
-   |          where:    => refers to a fresh root capability in the type of value xs
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:13:7 ---------------------------------------------------------
 13 |  foo((() => println(c)) :: Nil, c) // error
    |       ^^^^^^^^^^^^^^^^^^^^^^^^

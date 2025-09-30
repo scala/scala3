@@ -312,8 +312,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private def formalCaptures(arg: Tree)(using Context): Refs =
     arg.formalType.orElse(arg.nuType).deepCaptureSet.elems
 
-   /** The deep capture set if the type of `tree` */
+   /** The span capture set if the type of `tree` */
   private def captures(tree: Tree)(using Context): Refs =
+   tree.nuType.spanCaptureSet.elems
+
+   /** The deep capture set if the type of `tree` */
+  private def deepCaptures(tree: Tree)(using Context): Refs =
    tree.nuType.deepCaptureSet.elems
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
@@ -376,7 +380,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       if clashIdx == 0 && !isShowableMethod then "" // we already mentioned the type in `funStr`
       else i" with type  ${clashing.nuType}"
     val hiddenSet = formalCaptures(polyArg).hiddenSet
-    val clashSet = captures(clashing)
+    val clashSet = deepCaptures(clashing)
     report.error(
       em"""Separation failure: argument of type  ${polyArg.nuType}
           |to $funStr

@@ -157,8 +157,8 @@ extension (tp: Type)
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
    *  set can be narrowed to`{x*}`.
    */
-  def deepCaptureSet(includeTypevars: Boolean)(using Context): CaptureSet =
-    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars)
+  def deepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
+    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
     if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
       case tp: ObjectCapability if tp.isTrackableRef => tp.reach.singletonCaptureSet
@@ -166,6 +166,9 @@ extension (tp: Type)
 
   def deepCaptureSet(using Context): CaptureSet =
     deepCaptureSet(includeTypevars = false)
+
+  def spanCaptureSet(using Context): CaptureSet =
+    deepCaptureSet(includeTypevars = false, includeBoxed = false)
 
   /** A type capturing `ref` */
   def capturing(ref: Capability)(using Context): Type =
@@ -362,7 +365,7 @@ extension (tp: Type)
    */
   def derivesFromCapTraitDeeply(cls: ClassSymbol)(using Context): Boolean =
     val accumulate = new DeepTypeAccumulator[Boolean]:
-      def capturingCase(acc: Boolean, parent: Type, refs: CaptureSet) =
+      def capturingCase(acc: Boolean, parent: Type, refs: CaptureSet, boxed: Boolean) =
         this(acc, parent)
         && (parent.derivesFromCapTrait(cls)
             || refs.isConst && refs.elems.forall(_.derivesFromCapTrait(cls)))
@@ -734,7 +737,7 @@ object ContainsParam:
 abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
   val seen = util.HashSet[Symbol]()
 
-  protected def capturingCase(acc: T, parent: Type, refs: CaptureSet): T
+  protected def capturingCase(acc: T, parent: Type, refs: CaptureSet, boxed: Boolean): T
 
   protected def abstractTypeCase(acc: T, t: TypeRef, upperBound: Type): T
 
@@ -742,7 +745,7 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
     if variance < 0 then acc
     else t.dealias match
       case t @ CapturingType(parent, cs) =>
-        capturingCase(acc, parent, cs)
+        capturingCase(acc, parent, cs, t.isBoxed)
       case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
         seen += t.symbol
         abstractTypeCase(acc, t, t.info.bounds.hi)

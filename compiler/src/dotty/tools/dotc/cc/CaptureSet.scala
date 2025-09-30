@@ -957,7 +957,7 @@ object CaptureSet:
   /** Variables created in types of inferred type trees */
   class ProperVar(override val owner: Symbol, initialElems: Refs, nestedOK: Boolean)(using /*@constructorOnly*/ ictx: Context)
   extends Var(owner, initialElems, nestedOK)
-  
+
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
@@ -1619,13 +1619,17 @@ object CaptureSet:
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
    */
-  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet =
     val collect = new DeepTypeAccumulator[CaptureSet]:
-      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
-        this(acc, parent) ++ refs
+
+      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet, boxed: Boolean) =
+        if includeBoxed || !boxed then this(acc, parent) ++ refs
+        else this(acc, parent)
+
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
         if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
         else this(acc, upperBound)
+
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[Capability]]

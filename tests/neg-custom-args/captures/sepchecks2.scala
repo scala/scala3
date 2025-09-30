@@ -7,7 +7,7 @@ def bar(x: (Object^, Object^)): Unit = ???
 
 def Test(consume c: Object^) =
   val xs: List[() => Unit] = (() => println(c)) :: Nil
-  println(c) // error
+  println(c)
 
 def Test2(c: Object^, d: Object^): Unit =
   foo((() => println(c)) :: Nil, c) // error

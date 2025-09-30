@@ -26,7 +26,3 @@
    |              ^^
    |              Local reach capability ys* leaks into capture scope of method test.
    |              You could try to abstract the capabilities referred to by ys* in a capset variable.
--- Error: tests/neg-custom-args/captures/unsound-reach-6.scala:19:14 ---------------------------------------------------
-19 |    val z = f(ys)  // error consume failure
-   |              ^^
-   |Separation failure: argument to consume parameter with type List[() ->{io} Unit] refers to non-local parameter io
