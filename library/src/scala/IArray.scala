@@ -330,6 +330,12 @@ object IArray:
   extension [T, U >: T: ClassTag](x: T)
     def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
+  // For backward compatibility with code compiled without -Yexplicit-nulls.
+  // If `a` is null, return null; otherwise, return `f`.
+  // Have to add a private mapNull here to avoid errors
+  private inline def mapNull[A, B](a: A, inline f: B): B =
+    if((a: A | Null) == null) null.asInstanceOf[B] else f
+
   /** Conversion from IArray to immutable.ArraySeq.
    *
    *  Note: Both the parameter and the return type are non-nullable. However, if a null
