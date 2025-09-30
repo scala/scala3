@@ -214,7 +214,7 @@ end SymOps
 class SymOpsWithLinkCache:
   import SymOps.*
 
-  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
+  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile | Null, Option[ExternalDocLink]] = MMap()
 
   extension (using Quotes)(sym: reflect.Symbol)
 
@@ -277,7 +277,7 @@ class SymOpsWithLinkCache:
               then externalLinkCache(csym.associatedFile)
               else {
                 def calculatePath(file: AbstractFile): String = file.underlyingSource.filter(_ != file).fold("")(f => calculatePath(f) + "/") + file.path
-                val calculatedLink = Option(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
+                val calculatedLink = Option.fromNullable(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
                   dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
                 }
                 externalLinkCache += (csym.associatedFile -> calculatedLink)

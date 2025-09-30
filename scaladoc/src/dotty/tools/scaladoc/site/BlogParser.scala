@@ -8,8 +8,8 @@ import scala.beans.{BooleanBeanProperty, BeanProperty}
 import scala.util.Try
 
 case class BlogConfig(
-  @BeanProperty input: String,
-  @BeanProperty output: String,
+  @BeanProperty input: String | Null,
+  @BeanProperty output: String | Null,
   @BooleanBeanProperty hidden: Boolean
 ):
   def this() = this(null, null, false)
