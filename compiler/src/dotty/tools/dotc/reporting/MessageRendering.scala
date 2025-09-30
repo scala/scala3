@@ -2,40 +2,280 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
+import language.unsafeNulls
 
-import java.lang.System.{lineSeparator => EOL}
+import java.lang.System.lineSeparator as EOL
 
-import core.Contexts.*
+import core.Contexts.{Context, ctx}
 import core.Decorators.*
 import io.AbstractFile
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
-import Diagnostic.*
 import util.{SourcePosition, NoSourcePosition}
-import util.Chars.{ LF, CR, FF, SU }
-import scala.annotation.switch
+import util.Chars.{LF, CR, FF, SU}
+import Diagnostic.*
 
+import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
 
-trait MessageRendering {
+trait MessageRendering:
+  import MessageRendering.*
+
+  /** Remove ANSI coloring from `str`.
+   *
+   *  Useful for getting real length of highlighted strings.
+   *
+   *  @return string stripped of ANSI escape codes
+   */
+  def stripColor(str: String): String = Highlight.stripColor(str)
+
+  // file.path or munge it to normalize for testing
+  protected def renderPath(file: AbstractFile): String = file.path
+
+  /** The source file path, line and column numbers from the given SourcePosition. */
+  protected def posFileStr(pos: SourcePosition): String =
+    val path = renderPath(pos.source.file)
+    if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
+
+  /** Explanation rendered under "Explanation" header. */
+  def explanation(m: Message)(using Context): String = {
+    val sb = new StringBuilder(
+      s"""|
+          |${Blue("Explanation").show}
+          |${Blue("===========").show}""".stripMargin
+    )
+    sb.append(EOL).append(m.explanation)
+    if (!m.explanation.endsWith(EOL)) sb.append(EOL)
+    sb.toString
+  }
+
+  /** The whole message rendered from `dia.msg`.
+   *
+   *  For a position in an inline expansion, choose `pos1`
+   *  which is the most specific position in the call written by the user.
+   *
+   *  For a diagnostic at EOF, where the last char of source text is a newline,
+   *  adjust the position to render before the newline, at the end of the last line of text.
+   *
+   *  The rendering begins with a `header` showing a label and position.
+   *  Then `sourceLines` with embedded caret `positionMarker` and rendered message.
+   *
+   *  Then an `Inline stack trace` showing context for inlined code.
+   *  Inlined positions are taken which are not contained by outermost.
+   *  Note that position equality includes `outer` position;
+   *  usually we intend to test `contains` or `coincidesWith`.
+   *
+   *  A verbose diagnostic adds help for how to silence it.
+   *
+   *  A diagnostic offering an `explanation` may add that text.
+   */
+  def messageAndPos(dia: Diagnostic)(using Context): String =
+    import Renderer.{dia as _, *}
+    import Boxing.Inset
+    render(dia):
+      header(posFileStr)
+      if pos.exists && pos.source.file.exists then
+        sourceLines()
+        val inlineStack = dia.pos.inlinedPositions
+        if inlineStack.nonEmpty then
+          box("Inline stack trace"):
+            for inlinedPos <- inlineStack do
+              box(i"This location contains code that was inlined from ${dia.pos}"):
+                if inlinedPos.source.file.exists then
+                  sourceLines(inlinedPos)
+      else message()
+      if dia.isVerbose then
+        filterHelp()
+      locally:
+        given Inset = Inset(1)
+        if Diagnostic.shouldExplain(dia) then
+          box("Explanation (enabled by `-explain`)"):
+            box(""):
+              dia.msg.explanation.split(raw"\R").foreach: line =>
+                sb.nl(line)
+        else if dia.msg.canExplain then
+          sb.nl("").nl("longer explanation available when compiling with `-explain`")
+object MessageRendering:
+  extension (pos: SourcePosition)
+    /** `inlinePosStack` filtering out positions contained by the `call` written by the user */
+    def inlinedPositions =
+      val outermost = pos.outermost // call.pos
+      pos.inlinePosStack.filterNot(outermost.contains(_))
+end MessageRendering
+
+private object Highlight:
+  opaque type Level = Int
+  extension (level: Level) def value: Int = level
+  object Level:
+    def apply(level: Int): Level = level
+
+  private val stripper = raw"\u001b\[.*?m".r
+
+  /** Remove ANSI coloring from `str`, useful for getting real length of strings.
+   *
+   *  @return string stripped of ANSI escape codes
+   */
+  def stripColor(str: String): String = stripper.replaceAllIn(str, "")
+
+  def hl(str: String)(using Context, Level): String =
+    summon[Level].value match
+    case interfaces.Diagnostic.ERROR   => Red(str).show
+    case interfaces.Diagnostic.WARNING => Yellow(str).show
+    case interfaces.Diagnostic.INFO    => Blue(str).show
+end Highlight
+
+/** Size of the left offset added by the box.
+ *
+ *  ```
+ *  -- Error: ... ------------
+ *  4 |  foo
+ *    |  ^^^
+ *  ^^^ // size of this offset
+ *  ```
+ */
+private object Offsets:
+  opaque type Offset = Int
+  def offset(using o: Offset): Int = o
+  object Offset:
+    def apply(level: Int): Offset = level
+
+private object Boxing:
+  opaque type Nesting = Boolean
+  val top: Nesting = false
+  val nested: Nesting = true
+  extension (nesting: Nesting) def isNested: Boolean = nesting
+
+  opaque type Inset = String
+  object Inset:
+    def apply(n: Int): Inset = if n == 0 then "" else " " //" " * n
+end Boxing
+
+private object Renderer:
   import Highlight.*
   import Offsets.*
+  import MessageRendering.*
+  import Rendering.*
+  import Boxing.*
+  opaque type Rendering = StringBuilder
+  object Rendering:
+    extension (r: Rendering)
+      def append(x: Any): r.type = { r.append(x); r }
+      def nl(s: String)(using Context, Level, Offset, Inset): r.type =
+        append(EOL).append(offsetBox)
+        if !s.isEmpty then append(summon[Inset])
+        append(s)
+  opaque type DiagnosticPosition = SourcePosition
+  object DiagnosticPosition:
+    extension (pos: DiagnosticPosition)
+      private def p = pos
+      export p.{exists, source}
 
-  /** Remove ANSI coloring from `str`, useful for getting real length of
-    * strings
-    *
-    * @return string stripped of ANSI escape codes
-    */
-  def stripColor(str: String): String =
-    str.replaceAll("\u001b\\[.*?m", "")
+  def sb(using Rendering) = summon[Rendering]
+  def dia(using Diagnostic) = summon[Diagnostic]
+  def pos(using DiagnosticPosition) = summon[DiagnosticPosition]
+
+  /** Entry point for rendering the diagnostic. */
+  def render(dia: Diagnostic)
+      (op: (Context, Level, Offset, Diagnostic, DiagnosticPosition, Rendering, Inset) ?=> Unit)
+      (using Context): String =
+    given Diagnostic = dia
+    given DiagnosticPosition = adjust(dia.pos.nonInlined) // innermost pos contained by call.pos
+    given Level = Level(dia.level)
+    given Offset =
+      val maxLineNumber =
+        if pos.exists then (pos :: dia.pos.inlinedPositions).map(_.endLine).max + 1
+        else 0
+      Offset(maxLineNumber.toString.length + 2)
+    given Rendering = StringBuilder()
+    given Inset = Inset(0)
+    op
+    sb.toString
+
+  /** Add the header line, which shows the source file and error type. */
+  def header(posRenderer: SourcePosition => String)
+      (using Context, Level, Offset, Diagnostic, DiagnosticPosition, Rendering): Unit =
+    val message = dia.msg
+    assert(
+      message.errorId.isActive,
+      """|Attempting to use an ErrorMessageID that is marked as inactive.
+         |The ID either needs to be marked as active or you need to use another.""".stripMargin
+    )
+    if pos.source != NoSourcePosition.source then
+      val fileAndPos = posRenderer(pos)
+      val errId =
+        if message.errorId != ErrorMessageID.NoExplanationID then
+          val errorNumber = message.errorId.errorNumber
+          s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
+        else ""
+      val kind =
+        if message.kind == MessageKind.NoKind then diagnosticLevel
+        else s"${message.kind.message} $diagnosticLevel"
+      val title =
+        if fileAndPos.isEmpty then s"$errId$kind:"
+          // this happens in dotty.tools.repl.ScriptedTests
+          // please add name of source or remove `:` (and update test files)
+        else s"$errId$kind: $fileAndPos"
+      sb.append(hl(boxTitle(title))).append(EOL)
+
+  /** Add source text at the diagnostic position and error message text. */
+  def sourceLines()(using Context, Level, Offset, Diagnostic, DiagnosticPosition, Rendering): Unit =
+    val (srcBefore, srcAfter, offset) = sourceTexts(pos)
+    val marker = positionMarker(pos)
+    val err = errorMsg(pos, dia.msg.message)
+    sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+  /** Quote the source text at the provided position. Used for inlined positions. */
+  def sourceLines(pos: SourcePosition)
+      (using Context, Level, Offset, Diagnostic, DiagnosticPosition, Rendering): Unit =
+    val (srcBefore, srcAfter, _) = sourceTexts(pos)
+    srcBefore.foreach(s => sb.append(EOL).append(s))
+    sb.append(EOL).append(positionMarker(pos))
+    srcAfter.foreach(s => sb.append(EOL).append(s))
+  /** Add a box. The `soft` flag makes the divider less severe. */
+  def box(title: String)
+      (op: (Context, Level, Offset, Diagnostic, DiagnosticPosition, Rendering, Nesting, Inset) ?=> Unit)
+      (using Context, Level, Offset, Diagnostic, DiagnosticPosition, Rendering, Inset)
+      (using nesting: Nesting = Boxing.top): Unit =
+    sb.append(EOL).append(newBox(nesting.isNested))
+    if !title.isEmpty then
+      sb.nl(title)
+    given Nesting = Boxing.nested
+    op
+    if !nesting.isNested then
+      sb.append(EOL).append(endBox)
+  /** Add just the message. */
+  def message()(using Context, Diagnostic, Rendering): Unit =
+    sb.append(dia.msg.message)
+
+  // adjust a pos at EOF if preceded by newline
+  private def adjust(pos: SourcePosition): SourcePosition =
+    if pos.span.isSynthetic
+    && pos.span.isZeroExtent
+    && pos.span.exists
+    && pos.span.start == pos.source.length
+    && pos.source(pos.span.start - 1) == '\n'
+    then
+      pos.withSpan(pos.span.shift(-1))
+    else
+      pos
+
+  private def diagnosticLevel(using dia: Diagnostic): String =
+    dia match
+    case dia: FeatureWarning     => "Feature Warning"
+    case dia: DeprecationWarning => "Deprecation Warning"
+    case dia: UncheckedWarning   => "Unchecked Warning"
+    case dia: MigrationWarning   => "Migration Warning"
+    case dia =>
+      dia.level match // Diagnostic isn't sealed (e.g. created in the REPL) so provide a fallback
+      case interfaces.Diagnostic.ERROR   => "Error"
+      case interfaces.Diagnostic.WARNING => "Warning"
+      case interfaces.Diagnostic.INFO    => "Info"
 
   /** Get the sourcelines before and after the position, as well as the offset
-    * for rendering line numbers
-    *
-    * @return (lines before error, lines after error, line numbers offset)
-    */
-  private def sourceLines(pos: SourcePosition)(using Context, Level, Offset): (List[String], List[String], Int) = {
+   *  for rendering line numbers
+   *
+   *  @return (lines before error, lines after error, line numbers offset)
+   */
+  private def sourceTexts(pos: SourcePosition)(using Context, Level, Offset): (List[String], List[String], Int) = {
     assert(pos.exists && pos.source.file.exists)
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
@@ -71,17 +311,6 @@ trait MessageRendering {
     )
   }
 
-  /** Generate box containing the report title
-   *
-   *  ```
-   *  -- Error: source.scala ---------------------
-   *  ```
-   */
-  private def boxTitle(title: String)(using Context, Level, Offset): String =
-    val pageWidth = ctx.settings.pageWidth.value
-    val line = "-" * (pageWidth - title.length - 4)
-    hl(s"-- $title $line")
-
   /** The position markers aligned under the error
    *
    *  ```
@@ -97,7 +326,18 @@ trait MessageRendering {
     hl(s"$offsetBox$padding$carets")
   }
 
-  /** The horizontal line with the given offset
+  /** Generate box containing the report title
+   *
+   *  ```
+   *  -- Error: source.scala ---------------------
+   *  ```
+   */
+  private def boxTitle(title: String)(using Context, Level, Offset): String =
+    val pageWidth = ctx.settings.pageWidth.value
+    val line = "-" * (pageWidth - title.length - 4)
+    hl(s"-- $title $line")
+
+  /** Indent to the given offset and add a vertical bar in a box.
    *
    *  ```
    *    |
@@ -107,7 +347,7 @@ trait MessageRendering {
     val prefix = " " * (offset - 1)
     hl(s"$prefix|")
 
-  /** The end of a box section
+  /** The start of a box section.
    *
    *  ```
    *    |---------------
@@ -137,9 +377,9 @@ trait MessageRendering {
     hl(s"${prefix} $line")
 
   /** The error message (`msg`) aligned under `pos`
-    *
-    * @return aligned error message
-    */
+   *
+   *  @return aligned error message
+   */
   private def errorMsg(pos: SourcePosition, msg: String)(using Context, Level, Offset): String = {
     val padding = msg.linesIterator.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
@@ -154,63 +394,8 @@ trait MessageRendering {
       .mkString(EOL)
   }
 
-  // file.path or munge it to normalize for testing
-  protected def renderPath(file: AbstractFile): String = file.path
-
-  /** The source file path, line and column numbers from the given SourcePosition */
-  protected def posFileStr(pos: SourcePosition): String =
-    val path = renderPath(pos.source.file)
-    if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
-
-  /** The separator between errors containing the source file and error type
-    *
-    * @return separator containing error location and kind
-    */
-  private def posStr(
-    pos: SourcePosition,
-    message: Message,
-    diagnosticString: String
-  )(using Context, Level, Offset): String =
-    assert(
-      message.errorId.isActive,
-      """|Attempting to use an ErrorMessageID that is marked as inactive.
-         |The ID either needs to be marked as active or you need to use another.""".stripMargin
-    )
-    if (pos.source != NoSourcePosition.source) then
-      hl({
-        val realPos = pos.nonInlined
-        val fileAndPos = posFileStr(realPos)
-        val errId =
-          if (message.errorId != ErrorMessageID.NoExplanationID) then
-            val errorNumber = message.errorId.errorNumber
-            s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
-          else ""
-        val kind =
-          if (message.kind == MessageKind.NoKind) then diagnosticString
-          else s"${message.kind.message} $diagnosticString"
-        val title =
-          if fileAndPos.isEmpty then s"$errId$kind:" // this happens in dotty.tools.repl.ScriptedTests // TODO add name of source or remove `:` (and update test files)
-          else s"$errId$kind: $fileAndPos"
-        boxTitle(title)
-      })
-    else ""
-  end posStr
-
-  /** Explanation rendered under "Explanation" header */
-  def explanation(m: Message)(using Context): String = {
-    val sb = new StringBuilder(
-      s"""|
-          |${Blue("Explanation").show}
-          |${Blue("===========").show}""".stripMargin
-    )
-    sb.append(EOL).append(m.explanation)
-    if (!m.explanation.endsWith(EOL)) sb.append(EOL)
-    sb.toString
-  }
-
-  private def appendFilterHelp(dia: Diagnostic, sb: StringBuilder)(using Context, Level, Offset): Unit =
-    extension (sb: StringBuilder) def nl: sb.type = sb.append(EOL).append(offsetBox)
-    import dia.msg
+  def filterHelp()(using Context, Level, Offset, Diagnostic, Rendering, Inset): Unit =
+    val msg = dia.msg
     val hasId = msg.errorId.errorNumber >= 0
     val (category, origin) = dia match
       case _: UncheckedWarning   => ("unchecked", "")
@@ -220,9 +405,9 @@ trait MessageRendering {
     var entitled = false
     def addHelp(what: String)(value: String): Unit =
       if !entitled then
-        sb.nl.append("Matching filters for @nowarn or -Wconf:")
+        sb.nl("Matching filters for @nowarn or -Wconf:")
         entitled = true
-      sb.nl.append("  - ").append(what).append(value)
+      sb.nl("  - ").append(what).append(value)
     if hasId then
       addHelp("id=E")(msg.errorId.errorNumber.toString)
       addHelp("name=")(msg.errorId.productPrefix.stripSuffix("ID"))
@@ -230,127 +415,4 @@ trait MessageRendering {
       addHelp("cat=")(category)
     if origin.nonEmpty then
       addHelp("origin=")(origin)
-
-  /** The whole message rendered from `dia.msg`.
-   *
-   *  For a position in an inline expansion, choose `pos1`
-   *  which is the most specific position in the call written
-   *  by the user. For a diagnostic at EOF, where the last char
-   *  of source text is a newline, adjust the position to render
-   *  before the newline, at the end of the last line of text.
-   *
-   *  The rendering begins with a label and position (`posString`).
-   *  Then `sourceLines` with embedded caret `positionMarker`
-   *  and rendered message.
-   *
-   *  Then an `Inline stack trace` showing context for inlined code.
-   *  Inlined positions are taken which don't contain `pos1`.
-   *  (That should probably be positions not contained by outermost.)
-   *  Note that position equality includes `outer` position;
-   *  usually we intend to test `contains` or `coincidesWith`.
-   *
-   */
-  def messageAndPos(dia: Diagnostic)(using Context): String =
-    // adjust a pos at EOF if preceded by newline
-    def adjust(pos: SourcePosition): SourcePosition =
-      if pos.span.isSynthetic
-      && pos.span.isZeroExtent
-      && pos.span.exists
-      && pos.span.start == pos.source.length
-      && pos.source(pos.span.start - 1) == '\n'
-      then
-        pos.withSpan(pos.span.shift(-1))
-      else
-        pos
-    val msg = dia.msg
-    val pos = dia.pos
-    val pos1 = adjust(pos.nonInlined) // innermost pos contained by call.pos
-    val outermost = pos.outermost // call.pos
-    val inlineStack = pos.inlinePosStack.filterNot(outermost.contains(_))
-    given Level = Level(dia.level)
-    given Offset =
-      val maxLineNumber =
-        if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
-        else 0
-      Offset(maxLineNumber.toString.length + 2)
-    val sb = StringBuilder()
-    val posString = posStr(pos1, msg, diagnosticLevel(dia))
-    if posString.nonEmpty then sb.append(posString).append(EOL)
-    if pos.exists && pos1.exists && pos1.source.file.exists then
-      val (srcBefore, srcAfter, offset) = sourceLines(pos1)
-      val marker = positionMarker(pos1)
-      val err = errorMsg(pos1, msg.message)
-      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
-
-      if inlineStack.nonEmpty then
-        sb.append(EOL).append(newBox())
-        sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
-        for inlinedPos <- inlineStack do
-          sb.append(EOL).append(newBox(soft = true))
-          sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-          if inlinedPos.source.file.exists then
-            val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
-            val marker = positionMarker(inlinedPos)
-            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
-        sb.append(EOL).append(endBox)
-      end if
-    else sb.append(msg.message)
-    if dia.isVerbose then
-      appendFilterHelp(dia, sb)
-
-    if Diagnostic.shouldExplain(dia) then
-      sb.append(EOL).append(newBox())
-      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
-      sb.append(EOL).append(newBox(soft = true))
-      dia.msg.explanation.split(raw"\R").foreach: line =>
-        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
-      sb.append(EOL).append(endBox)
-    else if dia.msg.canExplain then
-      sb.append(EOL).append(offsetBox)
-      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
-
-    sb.toString
-  end messageAndPos
-
-  private def hl(str: String)(using Context, Level): String =
-    summon[Level].value match
-      case interfaces.Diagnostic.ERROR   => Red(str).show
-      case interfaces.Diagnostic.WARNING => Yellow(str).show
-      case interfaces.Diagnostic.INFO    => Blue(str).show
-
-  private def diagnosticLevel(dia: Diagnostic): String =
-    dia match {
-      case dia: FeatureWarning => "Feature Warning"
-      case dia: DeprecationWarning => "Deprecation Warning"
-      case dia: UncheckedWarning => "Unchecked Warning"
-      case dia: MigrationWarning => "Migration Warning"
-      case _ => dia.level match // Diagnostic isn't sealed (e.g. created in the REPL) so provide a fallback
-        case interfaces.Diagnostic.ERROR   => "Error"
-        case interfaces.Diagnostic.WARNING => "Warning"
-        case interfaces.Diagnostic.INFO    => "Info"
-    }
-
-}
-
-private object Highlight {
-  opaque type Level = Int
-  extension (level: Level) def value: Int = level
-  object Level:
-    def apply(level: Int): Level = level
-}
-
-/** Size of the left offset added by the box
- *
- *  ```
- *  -- Error: ... ------------
- *  4 |  foo
- *    |  ^^^
- *  ^^^ // size of this offset
- *  ```
- */
-private object Offsets {
-  opaque type Offset = Int
-  def offset(using o: Offset): Int = o
-  object Offset:
-    def apply(level: Int): Offset = level
-}
+end Renderer
