@@ -1968,7 +1968,7 @@ object Build {
     // We add a dependency to the JVM library to have the classfile available
     // (as they are not part of this artifact)
     .dependsOn(`scala3-library-bootstrapped-new`)
-    .enablePlugins(ScalaLibraryPlugin)
+    .enablePlugins(ScalaLibraryPlugin, DottyJSPlugin)
     .settings(publishSettings)
     .settings(
       name          := "scala-library-sjs",
@@ -2017,7 +2017,9 @@ object Build {
           ))
           .flatMap(_.relativeTo(baseDirectory.value / "src")).toSet
 
-        files.filterNot(file =>
+        files.filterNot(_.getPath().contains("BoxesRunTime.scala"))
+             .filterNot(_.getPath().contains("ScalaNumber.scala"))
+             .filterNot(file =>
           file.relativeTo((`scala-library-bootstrapped` / baseDirectory).value / "src")
             .exists(overwrittenSources.contains))
 
@@ -2611,6 +2613,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped-new` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
           s"-Ddotty.tests.classes.jlineTerminal=${findArtifactPath(externalDeps, "jline-terminal")}",
           s"-Ddotty.tests.classes.jlineReader=${findArtifactPath(externalDeps, "jline-reader")}",
@@ -3148,10 +3151,15 @@ object Build {
     )
 
   lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).
-    dependsOn(`scala3-compiler` % "test->test").
+    dependsOn(`scala3-compiler-bootstrapped-new` % "test->test").
     settings(
-      commonNonBootstrappedSettings,
-
+      (Compile / scalaSource)    := baseDirectory.value / "src",
+      (Test / scalaSource)       := baseDirectory.value / "test",
+      (Compile / javaSource)    := baseDirectory.value / "src",
+      (Test / javaSource)       := baseDirectory.value / "test",
+      (Compile / resourceDirectory)    := baseDirectory.value / "resources",
+      (Test / resourceDirectory)       := baseDirectory.value / "test-resources",
+      scalaVersion := (`scala3-compiler-bootstrapped-new` / scalaVersion).value,
       libraryDependencies ++= Seq(
         "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Test cross CrossVersion.for3Use2_13,
         "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % Test cross CrossVersion.for3Use2_13,
@@ -3160,18 +3168,63 @@ object Build {
       // Change the baseDirectory when running the tests
       Test / baseDirectory := baseDirectory.value.getParentFile,
 
-      javaOptions ++= (`scala3-compiler` / javaOptions).value,
+      javaOptions ++= (`scala3-compiler-bootstrapped-new` / javaOptions).value,
       javaOptions ++= {
-        val externalJSDeps = (`scala3-library-bootstrappedJS` / Compile / externalDependencyClasspath).value
-        val dottyLibraryJSJar = (`scala3-library-bootstrappedJS` / Compile / packageBin).value.getAbsolutePath
+        val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
+
+        val managedSrcDir = {
+          // Populate the directory
+          (`scala3-compiler-bootstrapped-new` / Compile / managedSources).value
+
+          (`scala3-compiler-bootstrapped-new` / Compile / sourceManaged).value
+        }
+
+        val externalDeps = (`scala3-compiler-bootstrapped-new` / Runtime / externalDependencyClasspath).value
 
         Seq(
-          "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
+          s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
+          s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
+          s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
+          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.jlineTerminal=${findArtifactPath(externalDeps, "jline-terminal")}",
+          s"-Ddotty.tests.classes.jlineReader=${findArtifactPath(externalDeps, "jline-reader")}",
+          s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
+          "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
-          "-Ddotty.tests.classes.scalaJSScalalib=" + findArtifactPath(externalJSDeps, "scalajs-scalalib_2.13"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
+      // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
+      scalaInstance := {
+        val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+        val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+        val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+        val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+        Defaults.makeScalaInstance(
+          dottyNonBootstrappedVersion,
+          libraryJars     = Array(scalaLibrary),
+          allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+          allDocJars      = Seq.empty,
+          state.value,
+          scalaInstanceTopLoader.value
+        )
+      },
+      scalaCompilerBridgeBinaryJar := {
+        Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+      },
+      Test / forkOptions := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
     )
 
   lazy val `scala3-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)

@@ -111,6 +111,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     "scala/collection/immutable/DoubleVectorStepper",
     "scala/collection/immutable/IntVectorStepper",
     "scala/collection/immutable/LongVectorStepper",
+    "scala/collection/immutable/Range", "scala/collection/immutable/Range$",
     "scala/jdk/DoubleAccumulator",
     "scala/jdk/IntAccumulator",
     "scala/jdk/LongAccumulator",
