@@ -23,6 +23,7 @@ import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import dotty.tools.sbtplugin.ScalaLibraryPlugin
+import dotty.tools.sbtplugin.ScalaLibraryPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyJSPlugin
 import dotty.tools.sbtplugin.DottyJSPlugin.autoImport._
 
@@ -1646,6 +1647,8 @@ object Build {
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      // Should we also patch .sjsir files
+      keepSJSIR := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1768,6 +1771,8 @@ object Build {
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      // Should we also patch .sjsir files
+      keepSJSIR := false,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1816,6 +1821,7 @@ object Build {
     // We add a dependency to the JVM library to have the classfile available
     // (as they are not part of this artifact)
     .dependsOn(`scala3-library-bootstrapped-new`)
+    .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
     .settings(
       name          := "scala-library-sjs",
@@ -1922,6 +1928,8 @@ object Build {
         }
       }).transform(node).head
       },
+      // Should we also patch .sjsir files
+      keepSJSIR := true,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
