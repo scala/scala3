@@ -200,11 +200,11 @@ jobs:
          )"
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -257,11 +257,11 @@ jobs:
          )"
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -314,11 +314,11 @@ jobs:
          )"
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE
@@ -415,11 +415,11 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
-      ######################################################################################
-      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
-      ######################################################################################
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+      ##############################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
+      ##############################################################################################
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory $GITHUB_WORKSPACE

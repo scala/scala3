@@ -10,15 +10,15 @@ object ScalaSettingsProperties:
   private lazy val minTargetVersion = classfileVersionMap.keysIterator.min
   private lazy val maxTargetVersion = classfileVersionMap.keysIterator.max
 
+  private val minReleaseVersion = 17
+
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
 
   def supportedReleaseVersions: List[String] =
-    if scala.util.Properties.isJavaAtLeast("9") then
-      val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
-      val maxVersion = Math.min(jdkVersion, maxTargetVersion)
-      (minTargetVersion to maxVersion).toList.map(_.toString)
-    else List(minTargetVersion).map(_.toString)
+    val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
+    val maxVersion = Math.min(jdkVersion, maxTargetVersion)
+    (minReleaseVersion to maxVersion).toList.map(_.toString)
 
   def supportedScalaReleaseVersions: List[String] =
     ScalaRelease.values.toList.map(_.show)
