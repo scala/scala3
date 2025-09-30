@@ -353,13 +353,16 @@ object IArray:
    *  keep this signature to discourage passing nulls implicitly while preserving the
    *  previous behavior for backward compatibility.
    */
+  // TODO!!! only for stdliib migration!
+  import scala.language.unsafeNulls
   implicit def wrapRefArray[T <: AnyRef | Null](arr: IArray[T]): ArraySeq.ofRef[T] =
     // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef | Null]
     // is as good as another for all T <: AnyRef | Null.  Instead of creating 100,000,000
     // unique ones by way of this implicit, let's share one.
+    // import scala.language.unsafeNulls
     mapNull(arr,
       if (arr.length == 0) ArraySeq.empty[AnyRef | Null].asInstanceOf[ArraySeq.ofRef[T]]
-      else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+      else ArraySeq.ofRef[AnyRef](arr.asInstanceOf[Array[AnyRef]]).asInstanceOf[ArraySeq.ofRef[T]]
     )
 
   /** Conversion from IArray to immutable.ArraySeq.

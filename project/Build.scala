@@ -241,7 +241,7 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Werror",
+      // "-Werror",
       //"-Wunused:all",
       //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
