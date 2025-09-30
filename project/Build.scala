@@ -2075,6 +2075,16 @@ object Build {
         }
       }).transform(node).head
       },
+      // Add configuration for MiMa
+      mimaCheckDirection := (compatMode match {
+        case CompatMode.BinaryCompatible          => "backward"
+        case CompatMode.SourceAndBinaryCompatible => "both"
+      }),
+      mimaExcludeAnnotations += "scala.annotation.experimental",
+      mimaPreviousArtifacts += ("org.scala-js" % "fat-stdlib_sjs1" % "3.7.3"),
+      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       // Should we also patch .sjsir files
       keepSJSIR := true,
     )
