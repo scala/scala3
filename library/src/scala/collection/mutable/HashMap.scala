@@ -149,8 +149,11 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
               previousNode = prev
               foundNode = nd
             }
-            else if ((nd.next eq null) || (nd.hash > h)) ()
-            else findNode(nd, nd.next.nn, k, h)
+            else {
+              val ndNext = nd.next
+              if ((ndNext eq null) || (nd.hash > h)) ()
+              else findNode(nd, ndNext, k, h)
+            }
           }
 
           findNode(null, nd, key, hash)

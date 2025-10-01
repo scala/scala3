@@ -895,7 +895,7 @@ object Regex {
     }
 
     // Appends the input prefix and the replacement text.
-    def replace(replacement: String) = matcher.appendReplacement(sb, replacement)
+    def replace(replacement: String): Matcher = matcher.appendReplacement(sb, replacement)
   }
 
   /** Quotes strings to be used literally in regex patterns.

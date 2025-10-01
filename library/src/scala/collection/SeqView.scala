@@ -138,7 +138,7 @@ object SeqView {
     extends SeqView[A] {
     outer: Sorted[A, B]^ =>
 
-    private var underlying: SomeSeqOps[A]^{underlying_} | Null = underlying_
+    private var underlying = underlying_
 
     // force evaluation immediately by calling `length` so infinite collections
     // hang on `sorted`/`sortWith`/`sortBy` rather than on arbitrary method calls
@@ -169,10 +169,10 @@ object SeqView {
       val res = {
         val len = this.len
         if (len == 0) Nil
-        else if (len == 1) List(underlying.nn.head)
+        else if (len == 1) List(underlying.head)
         else {
           val arr = new Array[Any](len) // Array[Any] =:= Array[AnyRef]
-          @annotation.unused val copied = underlying.nn.copyToArray(arr)
+          @annotation.unused val copied = underlying.copyToArray(arr)
           //assert(copied == len)
           java.util.Arrays.sort(arr.asInstanceOf[Array[AnyRef]], ord.asInstanceOf[Ordering[AnyRef]])
           // casting the Array[AnyRef] to Array[A] and creating an ArraySeq from it
@@ -187,12 +187,12 @@ object SeqView {
         }
       }
       evaluated = true
-      underlying = null
+      underlying = nullForGC[SomeSeqOps[A]] // allow GC of unneeded reference
       res
     }
 
     private[this] def elems: SomeSeqOps[A]^{this} = {
-      if (evaluated) _sorted else underlying.nn
+      if (evaluated) _sorted else underlying
     }
 
     def apply(i: Int): A = _sorted.apply(i)

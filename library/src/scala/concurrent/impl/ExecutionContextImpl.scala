@@ -119,6 +119,7 @@ private[concurrent] object ExecutionContextImpl {
     ExecutionContextExecutorService = es match {
       case null => createDefaultExecutorService(reporter)
       case some =>
+        // This is a anonymous class extending a Java class, so we left inferred flexible types in the signatures.
         new ExecutionContextImpl(some, reporter) with ExecutionContextExecutorService {
             private[this] final def asExecutorService: ExecutorService = executor.asInstanceOf[ExecutorService]
             final override def shutdown() = asExecutorService.shutdown()
