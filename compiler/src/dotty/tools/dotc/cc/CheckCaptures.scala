@@ -548,7 +548,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val included = cs.filter: c =>
             val isVisible = isVisibleFromEnv(c.pathOwner, env)
             if !isVisible then
-              if ccConfig.deferredReaches
+              if ccConfig.deferredReaches || ccConfig.caplessLike
               then avoidLocalCapability(c, env, lastEnv)
               else avoidLocalReachCapability(c, env)
             isVisible
