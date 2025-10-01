@@ -26,6 +26,35 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
+  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
+    def fallback() =
+      dotty.shaded.pprint.PPrinter.BlackWhite
+        .apply(value, width = width, height = height, initialOffset = initialOffset)
+        .plainText
+    try
+      val cl = classLoader()
+      val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$BlackWhite$", false, cl)
+      val fansiStrCls = Class.forName("dotty.shaded.fansi.Str", false, cl)
+      val BlackWhite = pprintCls.getField("MODULE$").get(null)
+      val BlackWhite_apply = pprintCls.getMethod("apply",
+        classOf[Any],     // value
+        classOf[Int],     // width
+        classOf[Int],     // height
+        classOf[Int],     // indentation
+        classOf[Int],     // initialOffset
+        classOf[Boolean], // escape Unicode
+        classOf[Boolean], // show field names
+      )
+      val FansiStr_plainText = fansiStrCls.getMethod("plainText")
+      val fansiStr = BlackWhite_apply.invoke(
+        BlackWhite, value, width, height, 2, initialOffset, false, true
+      )
+      FansiStr_plainText.invoke(fansiStr).asInstanceOf[String]
+    catch
+      case _: ClassNotFoundException => fallback()
+      case _: NoSuchMethodException  => fallback()
+  }
+
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -55,14 +84,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): String = {
     // pretty-print things with 100 cols 50 rows by default,
-    dotty.shaded.pprint.PPrinter.BlackWhite
-      .apply(
-        value,
-        width = 100,
-        height = 50,
-        initialOffset = prefixLength
-      )
-      .plainText
+    pprintRender(
+      value,
+      width = 100,
+      height = 50,
+      initialOffset = prefixLength
+    )
   }
 
   /** Load the value of the symbol using reflection.
