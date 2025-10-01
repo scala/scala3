@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 import language.experimental.captureChecking
 
 //import scala.collection.generic._
