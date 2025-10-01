@@ -548,14 +548,19 @@ object Capabilities:
         computed
 
     /** The elements hidden by this capability, if this is a FreshCap
-     *  or a derived version of one. Read-only status is transferred from
-     *  the capability to its hidden set. TODO Should classifiers also be
-     *  transferred?
+     *  or a derived version of one. Read-only status and restrictions
+     *  are transferred from the capability to its hidden set.
      */
-    def hiddenElems(using Context): Refs = this.stripRestricted.stripReadOnly match
-      case self: FreshCap =>
-        val hidden = self.hiddenSet.elems
-        if isReadOnly then hidden.map(_.readOnly) else hidden
+    def hiddenSet(using Context): Refs = computeHiddenSet(identity)
+
+    /** Compute hidden set of this capability.
+     *  Restrictions and read-only status transfer from the capability to its
+     *  hidden set.
+     */
+    def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
+      case self: FreshCap => f(self.hiddenSet.elems)
+      case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
+      case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
     /** The transitive classifiers of this capability. */
