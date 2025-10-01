@@ -1,8 +1,3 @@
--- Error: tests/neg-custom-args/captures/reference-cc.scala:42:20 ------------------------------------------------------
-42 |    def f = println(c)  // error
-   |                    ^
-   |                    reference (c : Cap) is not included in the allowed capture set {}
-   |                    of the enclosing class A
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:44:29 ---------------------------------
 44 |  val later = usingLogFile { file => () => file.write(0) } // error
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^

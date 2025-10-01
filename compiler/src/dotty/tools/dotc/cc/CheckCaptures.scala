@@ -1376,7 +1376,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
-      testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
+      try testAdapted(actual, expected, tree, addenda)(err.typeMismatch)
+      catch case ex: AssertionError =>
+        println(i"error while checking $tree: $actual against $expected")
+        throw ex
 
     @annotation.tailrec
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match

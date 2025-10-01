@@ -777,7 +777,7 @@ object CaptureSet:
           assert(elem.subsumes(elem1),
             i"Skipped map ${tm.getClass} maps newly added $elem to $elem1 in $this")
 
-    protected def includeElem(elem: Capability)(using Context): Unit =
+    protected def includeElem(elem: Capability)(using Context, VarState): Unit =
       if !elems.contains(elem) then
         if debugVars && id == debugTarget then
           println(i"###INCLUDE $elem in $this")
@@ -803,7 +803,10 @@ object CaptureSet:
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        includeElem(elem)
+        try includeElem(elem)
+        catch case ex: AssertionError =>
+          println(i"error for incl $elem in $this, ${summon[VarState].toString}")
+          throw ex
         if isBadRoot(elem) then
           rootAddedHandler()
         val normElem = if isMaybeSet then elem else elem.stripMaybe
@@ -947,16 +950,66 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
-  /** Variables that represent refinements of class parameters can have the universal
-   *  capture set, since they represent only what is the result of the constructor.
-   *  Test case: Without that tweak, logger.scala would not compile.
-   */
-  class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
+  inline val strictFreshLevels = true
 
   /** Variables created in types of inferred type trees */
-  class ProperVar(override val owner: Symbol, initialElems: Refs, nestedOK: Boolean)(using /*@constructorOnly*/ ictx: Context)
-  extends Var(owner, initialElems, nestedOK)
+  class ProperVar(override val owner: Symbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  extends Var(owner, initialElems, nestedOK):
+
+    /** Make sure that capset variables in types of vals and result types of
+     *  non-anonymous functions contain only a single FreshCap, and furthermore
+     *  that that FreshCap has as origin InDecl(owner), where owner is the val
+     *  or def for which the type is defined.
+     *  Note: This currently does not apply to classified or read-only fresh caps.
+     */
+    override def includeElem(elem: Capability)(using ctx: Context, vs: VarState): Unit = elem match
+      case elem: FreshCap
+      if !nestedOK
+          && !elems.contains(elem)
+          && !owner.isAnonymousFunction
+          && ccConfig.newScheme =>
+        def fail = i"attempting to add $elem to $this"
+        def hideIn(fc: FreshCap): Unit =
+          assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
+          if strictFreshLevels && !isRefining then
+            // If a variable is added by addCaptureRefinements in a synthetic
+            // refinement of a class type, don't do level checking. The problem is
+            // that the variable might be matched against a type that does not have
+            // a refinement, in which case FreshCaps of the class definition would
+            // leak out in the corresponding places. This will fail level checking.
+            // The disallowBadRoots override below has a similar reason.
+            // TODO: We should instead mark the variable as impossible to instantiate
+            // and drop the refinement later in the inferred type.
+            // Test case is drop-refinement.scala.
+            assert(fc.acceptsLevelOf(elem),
+              i"level failure, cannot add $elem with ${elem.levelOwner} to $owner / $getClass / $fail")
+          fc.hiddenSet.add(elem)
+        val isSubsumed = (false /: elems): (isSubsumed, prev) =>
+          prev match
+            case prev: FreshCap =>
+              hideIn(prev)
+              true
+            case _ => isSubsumed
+        if !isSubsumed then
+          if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
+            val fc = new FreshCap(owner, Origin.InDecl(owner))
+            assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
+            hideIn(fc)
+            super.includeElem(fc)
+          else
+            super.includeElem(elem)
+      case _ =>
+        super.includeElem(elem)
+
+    /** Variables that represent refinements of class parameters can have the universal
+     *  capture set, since they represent only what is the result of the constructor.
+     *  Test case: Without that tweak, logger.scala would not compile.
+     */
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
+      if isRefining then this
+      else super.disallowBadRoots(upto)(handler)
+
+  end ProperVar
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
