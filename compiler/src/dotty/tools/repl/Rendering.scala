@@ -26,6 +26,47 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
+  private var pprintState: ((Any, Int, Int, Int) => String) | Null = null
+  private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
+    def fallback = (value: Any, width: Int, height: Int, initialOffset: Int) =>
+      dotty.shaded.pprint.PPrinter.BlackWhite.apply(
+        value, width = 100, height = 50, initialOffset = initialOffset
+      ).plainText
+    val cl = classLoader()
+    val firstTry = pprintState
+    val lambda =
+      if firstTry == null then
+        val loaded: (Any, Int, Int, Int) => String = try
+          val pprintCls = Class.forName("dotty.shaded.pprint.PPrinter$BlackWhite$", false, cl)
+          val BlackWhite = pprintCls.getField("MODULE$").get(null)
+          val BlackWhite_apply = pprintCls.getMethod("apply",
+            classOf[Any],     // value
+            classOf[Int],     // width
+            classOf[Int],     // height
+            classOf[Int],     // indentation
+            classOf[Int],     // initialOffset
+            classOf[Boolean], // escape Unicode
+            classOf[Boolean], // show field names
+          )
+          val fansiStrCls = Class.forName("dotty.shaded.fansi.Str", false, cl)
+          val FansiStr_plainText = fansiStrCls.getMethod("plainText")
+          {(value: Any, width: Int, height: Int, initialOffset: Int) =>
+            val fansiStr = BlackWhite_apply.invoke(
+              BlackWhite, value, width, height, 2, initialOffset, false, true
+            )
+            FansiStr_plainText.invoke(fansiStr).asInstanceOf[String]
+          }
+        catch
+          case _: ClassNotFoundException => fallback
+          case _: NoSuchMethodException  => fallback
+        pprintState = loaded
+        loaded
+      else firstTry
+    end lambda
+
+    lambda(value, width, height, initialOffset)
+  }
+
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
@@ -44,6 +85,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
+      pprintState = null // reset pprint if we change classloader
       myClassLoader
     }
 
@@ -55,7 +97,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String = {
     // pretty-print things with 100 cols 50 rows by default,
-    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value, width = 100, height = 50).plainText
+    pprintRender(value, width = 100, height = 50, initialOffset = 0 /* TODO: include offset */)
   }
 
   /** Load the value of the symbol using reflection.
