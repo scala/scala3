@@ -119,7 +119,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           val prefix = s"$dcl = "
           // Prefix can have multiple lines, only consider the last one
           // when determining the initial column offset for pretty-printing
-          val prefixLength = prefix.linesIterator.toSeq.lastOption.getOrElse("")
+          val prefixLength = prefix.linesIterator.toSeq.lastOption.getOrElse("").length
           valueOf(d.symbol, prefixLength).map(value => msg(s"$prefix$value"))
         }
       )
