@@ -544,7 +544,12 @@ object projects:
 
   lazy val scissLucre = SbtCommunityProject(
     project           = "Lucre",
-    sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
+    sbtTestCommand    =
+      val subprojects = List("adjunct.jvm", "base.jvm", "confluent.jvm", "core.jvm", "data.jvm", "expr.jvm", "geom.jvm", "bdb", "tests.jvm")
+      List(
+        subprojects.map(name => s"""set ($name/Compile/compile/scalacOptions) := ($name/Compile/compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "8")"""),
+        List("adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test")
+      ).flatten.mkString("; "),
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
   )
@@ -615,7 +620,12 @@ object projects:
 
   lazy val fs2 = SbtCommunityProject(
     project = "fs2",
-    sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
+    sbtTestCommand =
+      val subprojects = List("coreJVM", "coreJS")
+      List(
+        subprojects.map(name => s"""set $name/Compile/scalacOptions := ($name/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "8")"""),
+        List("coreJVM/test; coreJS/test;")
+      ).flatten.mkString("; "),
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
   )

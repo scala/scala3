@@ -200,10 +200,10 @@ jobs:
          )"
 
     steps:
-      ##############################################################################################
+      ############################################################################################################
       ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
-      ##############################################################################################
-      - name: Set JDK 17 as default
+      ############################################################################################################
+      - name: Set JDK 17 as default # some projects depend on javalib elements removed in newer versions
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
@@ -257,10 +257,10 @@ jobs:
          )"
 
     steps:
-      ##############################################################################################
+      ############################################################################################################
       ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
-      ##############################################################################################
-      - name: Set JDK 17 as default
+      ############################################################################################################
+      - name: Set JDK 17 as default # some projects depend on javalib elements removed in newer versions
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
@@ -314,9 +314,9 @@ jobs:
          )"
 
     steps:
-      ##############################################################################################
+      ############################################################################################################
       ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17. ##
-      ##############################################################################################
+      ############################################################################################################
       - name: Set JDK 17 as default
         run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
