@@ -491,7 +491,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     varHandleSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot, varHandleSymbol.span))
     val getVarHandle = Apply(
       Select(ref(varHandleInfo.methodHandlesLookupDef.symbol), defn.MethodHandlesLookup_FindVarHandle.name),
-      List(thizClass, Literal(Constant(containerName.toString)), Literal(Constant(defn.ObjectType)))
+      List(thizClass, Literal(Constant(containerName.mangledString)), Literal(Constant(defn.ObjectType)))
     )
     val varHandleTree = ValDef(varHandleSymbol, getVarHandle)
     val varHandle = ref(varHandleSymbol)
