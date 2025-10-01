@@ -4394,6 +4394,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
+            val pt1 = pt.deepenProtoTrans
+            val approxPt = withMode(Mode.TypevarsMissContext):
+              wildApprox(pt1)
+            val containsUninst = new TypeAccumulator[Boolean]:
+              def apply(need: Boolean, tp: Type): Boolean =
+                need || tp.match
+                  case tvar: TypeVar =>
+                    ctx.typerState.constraint.contains(tvar) || tvar.instanceOpt.isInstanceOf[TypeVar]
+                  case _ =>
+                    foldOver(need, tp)
+            if (pt1 `ne` pt)
+              && (pt1 ne sharpenedPt)
+              && (AvoidWildcardsMap()(approxPt) `eq` approxPt)
+              && !isFullyDefined(formal, ForceDegree.none)
+              && !containsUninst(false, formal) then
+              constrainResult(tree.symbol, wtp, pt1)
             val arg = inferImplicitArg(formal, tree.span.endPos)
 
             lazy val defaultArg = findDefaultArgument(argIndex)
@@ -4419,7 +4435,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
-                val pt1 = pt.deepenProtoTrans
                 if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
                   return implicitArgs(formals, argIndex, pt1)
               case _ =>
