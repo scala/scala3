@@ -479,8 +479,8 @@ object Stream extends SeqFactory[Stream] {
     new WithFilter[A](l, p)
 
   private[this] final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
-    private[this] var s: Stream[A] | Null = l                                                // set to null to allow GC after filtered
-    private[this] lazy val filtered: Stream[A] = { val f = s.nn.filter(p); s = null; f } // don't set to null if throw during filter
+    private[this] var s: Stream[A] = l // set to null to allow GC after filtered
+    private[this] lazy val filtered: Stream[A] = { val f = s.filter(p); s = nullForGC[Stream[A]]; f } // don't set to null if throw during filter
     def map[B](f: A => B): Stream[B] = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]): Stream[B] = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)

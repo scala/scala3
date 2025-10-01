@@ -410,7 +410,7 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
     GCAS_READ(ct).nn.knownSize()
 
   /* this is a quiescent method! */
-  def string(lev: Int) = "%sINode -> %s".format("  " * lev, mainnode match {
+  def string(lev: Int): String = "%sINode -> %s".format("  " * lev, mainnode match {
     case null => "<null>"
     case tn: TNode[_, _] => "TNode(%s, %s, %d, !)".format(tn.k, tn.v, tn.hc)
     case cn: CNode[_, _] => cn.string(lev)
@@ -446,7 +446,7 @@ private[concurrent] final class FailedNode[K, V](p: MainNode[K, V]) extends Main
 
   def knownSize: Int = throw new UnsupportedOperationException
 
-  override def toString = "FailedNode(%s)".format(p)
+  override def toString: String = "FailedNode(%s)".format(p)
 }
 
 
@@ -461,7 +461,7 @@ private[collection] final class SNode[K, V](final val k: K, final val v: V, fina
   def copyTombed = new TNode(k, v, hc)
   def copyUntombed = new SNode(k, v, hc)
   def kvPair = (k, v)
-  def string(lev: Int) = ("  " * lev) + "SNode(%s, %s, %x)".format(k, v, hc)
+  def string(lev: Int): String = ("  " * lev) + "SNode(%s, %s, %x)".format(k, v, hc)
 }
 
 // Tomb Node, used to ensure proper ordering during removals
@@ -473,7 +473,7 @@ private[collection] final class TNode[K, V](final val k: K, final val v: V, fina
   def kvPair = (k, v)
   def cachedSize(ct: AnyRef): Int = 1
   def knownSize: Int = 1
-  def string(lev: Int) = ("  " * lev) + "TNode(%s, %s, %x, !)".format(k, v, hc)
+  def string(lev: Int): String = ("  " * lev) + "TNode(%s, %s, %x, !)".format(k, v, hc)
 }
 
 // List Node, leaf node that handles hash collisions
@@ -514,7 +514,7 @@ private[collection] final class LNode[K, V](val entries: List[(K, V)], equiv: Eq
 
   def knownSize: Int = -1 // shouldn't ever be empty, and the size of a list is not known
 
-  def string(lev: Int) = (" " * lev) + "LNode(%s)".format(entries.mkString(", "))
+  def string(lev: Int): String = (" " * lev) + "LNode(%s)".format(entries.mkString(", "))
 
 }
 
@@ -839,7 +839,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   }
 
 
-  def string = RDCSS_READ_ROOT().string(0)
+  def string: String = RDCSS_READ_ROOT().string(0)
 
   /* public methods */
 
@@ -1082,17 +1082,17 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
 
   def hasNext = (current ne null) || (subiter ne null)
 
-  def next() = if (hasNext) {
-    var r: (K, V) | Null = null
+  def next(): (K, V) = {
     if (subiter ne null) {
-      r = subiter.next()
+      val r = subiter.next()
       checkSubiter()
-    } else {
-      r = current.nn.kvPair
+      r
+    } else if (current ne null) {
+      val r = current.kvPair
       advance()
-    }
-    r
-  } else Iterator.empty.next()
+      r
+    } else Iterator.empty.next()
+  }
 
   private def readin(in: INode[K, V]) = in.gcasRead(ct) match {
     case cn: CNode[K, V] =>
