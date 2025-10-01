@@ -12,6 +12,8 @@
 
 package scala
 
+import scala.language.`2.13`
+
 import scala.scalajs.js
 
 /** This class provides a simple way to get unique objects for equal strings.

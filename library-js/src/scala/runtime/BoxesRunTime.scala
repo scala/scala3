@@ -1,5 +1,7 @@
 package scala.runtime
 
+import scala.language.`2.13`
+
 import scala.math.ScalaNumber
 
 /* The declaration of the class is only to make the JVM back-end happy when
