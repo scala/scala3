@@ -271,7 +271,7 @@ private[collection] object RedBlackTree {
       else if (z.right eq null) {
         x = z.left
         transplant(tree, z, z.left)
-        xParent = z.left.parent
+        xParent = z.parent
       }
       else {
         y = minNodeNonNull(z.right)
