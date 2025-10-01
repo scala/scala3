@@ -839,7 +839,7 @@ private[collection] object RedBlackTree {
       stackOfNexts.nn(index)
     }
 
-    protected[this] val stackOfNexts: Array[Tree[A, B]] | Null = if (root eq null) null else {
+    protected[this] val stackOfNexts: Array[Tree[A, B] | Null] | Null = if (root eq null) null else {
       /*
        * According to "Ralf Hinze. Constructing red-black trees" [https://www.cs.ox.ac.uk/ralf.hinze/publications/#P5]
        * the maximum height of a red-black tree is 2*log_2(n + 2) - 2.
@@ -850,7 +850,7 @@ private[collection] object RedBlackTree {
        * we potentially do so in `startFrom`.
        */
       val maximumHeight = 2 * (32 - Integer.numberOfLeadingZeros(root.count + 2 - 1)) - 2
-      new Array[Tree[A, B]](maximumHeight)
+      new Array[Tree[A, B] | Null](maximumHeight)
     }
     private[this] var index = 0
     protected var lookahead: Tree[A, B] | Null = if (start.isDefined) startFrom(start.get) else findLeftMostOrPopOnEmpty(root)
