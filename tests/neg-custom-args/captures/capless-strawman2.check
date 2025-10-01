@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/capless-strawman2.scala:3:53 ----------------------------------------
+3 |def test1(ops: List[() => Unit]): Unit = ops.foreach(op => op())  // error
+  |                                                     ^^^^^^^^^^
+  |Local reach capability ops* leaks into capture scope of method test1.
+  |You could try to abstract the capabilities referred to by ops* in a capset variable.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capless-strawman2.scala:4:49 ------------------------
+4 |def test2(ops: List[() => Unit]): () ->{} Unit = () => ops.foreach(f => f())  // error
+  |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |              Found:    () ->{ops*} Unit
+  |              Required: () -> Unit
+  |
+  |              Note that capability ops* is not included in capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`

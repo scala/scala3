@@ -555,7 +555,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           //println(i"Include call or box capture $included from $cs in ${env.owner}/${env.captured}/${env.captured.owner}/${env.kind}")
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          if !isOfNestedMethod(env) && !ccConfig.caplessLike then
+          if !isOfNestedMethod(env) && (!ccConfig.caplessLike || env.kind == EnvKind.NestedInOwner) then
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               recur(included, nextEnv, env)
@@ -2107,6 +2107,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
             checkUseDeclared(c, tree.srcPos)
 
+        def checkUse(c: Capability, croot: NamedType) =
+          if ccConfig.caplessLike then
+            if !env.owner.isProperlyContainedIn(croot.symbol.owner) then
+              checkUseDeclared(c, tree.srcPos)
+          else checkUseUnlessBoxed(c, croot)
+
         def check(cs: CaptureSet): Unit = cs.elems.foreach(checkElem)
 
         def checkElem(c: Capability): Unit =
@@ -2115,7 +2121,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             c match
               case Reach(c1) =>
                 c1.paramPathRoot match
-                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
+                  case croot: NamedType => checkUse(c, croot)
                   case _ => check(CaptureSet.ofTypeDeeply(c1.widen))
               case c: TypeRef =>
                 c.paramPathRoot match
