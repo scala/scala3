@@ -32,7 +32,9 @@ object SourceLanguage:
       SourceLanguage.Java
     // Scala 2 methods don't have Inline set, except for the ones injected with `patchStdlibClass`
     // which are really Scala 3 methods.
-    else if denot.isClass && denot.is(Scala2x) || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline)) then
+    else if denot.isClass && denot.is(Scala2x)
+          || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline))
+          || denot.is(Param) && denot.maybeOwner.is(Method)  && denot.maybeOwner.maybeOwner.lastKnownDenotation.is(Scala2x) then
       SourceLanguage.Scala2
     else
       SourceLanguage.Scala3
