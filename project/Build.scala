@@ -44,6 +44,8 @@ import scala.xml.transform.{RewriteRule, RuleTransformer}
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
+import sbt.dsl.LinterLevel.Ignore
+
 object Build {
   import ScaladocConfigs._
 
@@ -1330,6 +1332,73 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-nonbootstrapped",
+      scalac := Def.inputTaskDyn {
+        val log = streams.value.log
+        val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
+        val stdlib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath.toString()
+        val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath.toString()
+        val args0: List[String] = spaceDelimited("<arg>").parsed.toList
+        val decompile = args0.contains("-decompile")
+        val printTasty = args0.contains("-print-tasty")
+        val debugFromTasty = args0.contains("-Ythrough-tasty")
+        val defaultOutputDirectory =
+          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil
+          else List("-d", ((ThisBuild / baseDirectory).value / "out" / "default-last-scalac-out.jar").getPath)
+        val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
+            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
+        val main =
+          if (decompile) "dotty.tools.dotc.decompiler.Main"
+          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
+          else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
+          else "dotty.tools.dotc.Main"
+
+        var extraClasspath = Seq(stdlib)
+
+        if (decompile && !args.contains("-classpath"))
+          extraClasspath ++= Seq(".")
+
+        if (args0.contains("-with-compiler")) {
+          log.error("-with-compiler should only be used with a bootstrapped compiler")
+        }
+
+        val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
+
+        (`scala3-compiler-nonbootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
+      }.evaluated,
+      testCompilation := Def.inputTaskDyn {
+        val args = spaceDelimited("<arg>").parsed
+        if (args.contains("--help")) {
+          println(
+            s"""
+               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [<filter>]
+               |
+               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
+               |excluding tests tagged with dotty.SlowTests.
+               |
+               |  --help                show this message
+               |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
+               |  --update-checkfiles   override the checkfiles that did not match with the current output
+               |  --failed              re-run only failed tests
+               |  <filter>              substring of the path of the tests file
+               |
+             """.stripMargin
+          )
+          (`scala3-compiler-nonbootstrapped` / Test / testOnly).toTask(" not.a.test")
+        }
+        else {
+          val updateCheckfile = args.contains("--update-checkfiles")
+          val rerunFailed = args.contains("--failed")
+          val fromTasty = args.contains("--from-tasty")
+          val args1 = if (updateCheckfile | fromTasty | rerunFailed) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed") else args
+          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
+          val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+            (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
+            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
+            (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
+          (`scala3-compiler-nonbootstrapped` / Test / testOnly).toTask(cmd)
+        }
+      }.evaluated
     )
 
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-nonbootstrapped project */
@@ -1410,6 +1479,79 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-bootstrapped",
+      scalac := Def.inputTaskDyn {
+        val log = streams.value.log
+        val externalDeps = (`scala3-compiler-bootstrapped-new` / Runtime / externalDependencyClasspath).value
+        val stdlib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath.toString
+        val dottyCompiler = (`scala3-compiler-bootstrapped-new` / Compile / packageBin).value.getAbsolutePath.toString
+        val args0: List[String] = spaceDelimited("<arg>").parsed.toList
+        val decompile = args0.contains("-decompile")
+        val printTasty = args0.contains("-print-tasty")
+        val debugFromTasty = args0.contains("-Ythrough-tasty")
+        val defaultOutputDirectory =
+          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil
+          else List("-d", ((ThisBuild / baseDirectory).value / "out" / "default-last-scalac-out.jar").getPath)
+        val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
+            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
+        val main =
+          if (decompile) "dotty.tools.dotc.decompiler.Main"
+          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
+          else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
+          else "dotty.tools.dotc.Main"
+
+        var extraClasspath = Seq(stdlib)
+
+        if (decompile && !args.contains("-classpath"))
+          extraClasspath ++= Seq(".")
+
+        if (args0.contains("-with-compiler")) {
+          val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath.toString
+          val dottyStaging = (`scala3-staging-new` / Compile / packageBin).value.getAbsolutePath.toString
+          val dottyTastyInspector = (`scala3-tasty-inspector-new` / Compile / packageBin).value.getAbsolutePath.toString
+          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath.toString
+          val asm = findArtifactPath(externalDeps, "scala-asm")
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
+        }
+
+        val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
+
+        (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
+      }.evaluated,
+      testCompilation := Def.inputTaskDyn {
+        val args = spaceDelimited("<arg>").parsed
+        if (args.contains("--help")) {
+          println(
+            s"""
+               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [<filter>]
+               |
+               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
+               |excluding tests tagged with dotty.SlowTests.
+               |
+               |  --help                show this message
+               |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
+               |  --update-checkfiles   override the checkfiles that did not match with the current output
+               |  --failed              re-run only failed tests
+               |  <filter>              substring of the path of the tests file
+               |
+             """.stripMargin
+          )
+          (`scala3-compiler-bootstrapped-new` / Test / testOnly).toTask(" not.a.test")
+        }
+        else {
+          val updateCheckfile = args.contains("--update-checkfiles")
+          val rerunFailed = args.contains("--failed")
+          val fromTasty = args.contains("--from-tasty")
+          val args1 = if (updateCheckfile | fromTasty | rerunFailed) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed") else args
+          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
+          val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+            (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
+            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
+            (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
+          (`scala3-compiler-bootstrapped-new` / Test / testOnly).toTask(cmd)
+        }
+      }.evaluated
     )
 
   /* Configuration of the org.scala-lang:scala3-sbt-bridge:*.**.**-bootstrapped project */
@@ -2247,6 +2389,8 @@ object Build {
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
       // Configuration of the test suite
+      Compile / run / forkOptions := (Compile / run / forkOptions).value
+        .withWorkingDirectory((ThisBuild / baseDirectory).value),
       Test / forkOptions := (Test / forkOptions).value
         .withWorkingDirectory((ThisBuild / baseDirectory).value),
       Test / test := (Test / testOnly).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value,
@@ -2418,6 +2562,8 @@ object Build {
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
       (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
+      Compile / run / forkOptions := (Compile / run / forkOptions).value
+        .withWorkingDirectory((ThisBuild / baseDirectory).value),
       // Configuration of the test suite
       Test / forkOptions := (Test / forkOptions).value
         .withWorkingDirectory((ThisBuild / baseDirectory).value),
