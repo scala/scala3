@@ -175,6 +175,10 @@ class ReplDriver(settings: Array[String],
       s"""Welcome to Scala $simpleVersionString ($javaVersion, Java $javaVmName).
          |Type in expressions for evaluation. Or try :help.""".stripMargin)
 
+    // Track the time of last Ctrl-C
+    var lastCtrlCTime: Long = 0L
+    val ctrlCWindowMs = 1000L  // 1 second window for double Ctrl-C
+
     /** Blockingly read a line, getting back a parse result */
     def readLine()(using state: State): ParseResult = {
       given Context = state.context
@@ -211,16 +215,44 @@ class ReplDriver(settings: Array[String],
         val line = terminal.readLine(completer)
         ParseResult(line)
       } catch {
-        case _: EndOfFileException |
-            _: UserInterruptException => // Ctrl+D or Ctrl+C
+        case _: EndOfFileException => // Ctrl+D
           Quit
+        case _: UserInterruptException => // Ctrl+C at prompt - clear and continue
+          SigKill
       }
     }
 
     @tailrec def loop(using state: State)(): State = {
       val res = readLine()
       if (res == Quit) state
-      else loop(using interpret(res))()
+      else if (res == SigKill) {
+        // Ctrl-C pressed at prompt - just continue with same state (line is cleared by JLine)
+        loop(using state)()
+      } else {
+        // Set up interrupt handler for command execution
+        val thread = Thread.currentThread()
+        val signalHandler = terminal.handle(
+          org.jline.terminal.Terminal.Signal.INT,
+          (sig: org.jline.terminal.Terminal.Signal) => {
+            val now = System.currentTimeMillis()
+            if (now - lastCtrlCTime < ctrlCWindowMs) {
+              // Second Ctrl-C within window - interrupt the thread
+              out.println("\nTerminating REPL...")
+              thread.interrupt()
+              System.exit(130)  // Standard exit code for SIGINT
+            } else {
+              // First Ctrl-C - warn user
+              lastCtrlCTime = now
+              out.println("\nPress Ctrl-C again to terminate the process")
+            }
+          }
+        )
+
+        val newState = interpret(res)
+        // Restore previous handler
+        terminal.handle(org.jline.terminal.Terminal.Signal.INT, signalHandler)
+        loop(using newState)()
+      }
     }
 
     try runBody { loop() }
