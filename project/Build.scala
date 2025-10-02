@@ -288,8 +288,8 @@ object Build {
         })
         .withBuildCache(
           buildCache
-            .withLocal(buildCache.local.withEnabled(false).withStoreEnabled(false))
-            .withRemote(buildCache.remote.withEnabled(false).withStoreEnabled(false))
+            .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
+            .withRemote(buildCache.remote.withEnabled(true).withStoreEnabled(isInsideCI))
             .withRequireClean(!isInsideCI)
         )
         .withTestRetry(
@@ -1619,6 +1619,9 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   /* Configuration of the org.scala-lang:scala3-staging:*.**.**-bootstrapped project */
@@ -1677,6 +1680,9 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   /* Configuration of the org.scala-lang:scala3-tasty-inspector:*.**.**-bootstrapped project */
@@ -1735,6 +1741,9 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   // ==============================================================================================
@@ -1912,6 +1921,9 @@ object Build {
       mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1953,6 +1965,9 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
@@ -2066,6 +2081,9 @@ object Build {
         }
       }).transform(node).head
       },
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
@@ -2107,6 +2125,9 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library",
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   // ==============================================================================================
@@ -2245,6 +2266,9 @@ object Build {
       mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
       mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   // ==============================================================================================
@@ -2598,6 +2622,9 @@ object Build {
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   // ==============================================================================================
@@ -2679,6 +2706,9 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
+      // Force recomplilation when bootstrapped compiler changes
+      Compile / extraDevelocityCacheInputFiles ++=
+        (`scala3-compiler-nonbootstrapped` / Compile / fullClasspathAsJars).value.map(_.data.toPath)
     )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
