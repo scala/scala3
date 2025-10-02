@@ -170,24 +170,6 @@ object SepCheck:
     private def nonPeaks(using Context): Refs =
       refs.filter(!_.isTerminalCapability)
 
-    /** The footprint of a set of references `refs` the smallest set `F` such that
-     *   1. all capabilities in `refs` satisfying (1) are in `F`
-     *   2. if `f in F` then the footprint of `f`'s info is also in `F`.
-     */
-    private def oldFootprint(using Context): Refs =
-      if ccConfig.newScheme then
-        directFootprint.nonPeaks
-      else
-        def retain(ref: Capability) = !ref.isTerminalCapability
-        def recur(elems: Refs, newElems: List[Capability]): Refs = newElems match
-          case newElem :: newElems1 =>
-            val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
-              retain(superElem) && !elems.contains(superElem)
-            recur(elems ++ superElems, newElems1 ++ superElems.toList)
-          case Nil => elems
-        val elems: Refs = refs.filter(retain)
-        recur(elems, elems.toList)
-
     /** The footprint of a set of capabilities `refs` is the closure
      *  of `refs` under `_.captureSetOfInfo`, dropping any shared terminal
      *  capabilities. If `followHidden` is true, we close under both
@@ -371,24 +353,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
 
-  def sharedPeaksStr(shared: Refs)(using Context): String =
+  def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
+    val hiddenFootprint = hiddenSet.directFootprint
+    val clashFootprint = clashSet.directFootprint
+    val shared = hiddenFootprint.overlapWith(clashFootprint).reduced
     shared.nth(0) match
       case fresh: FreshCap =>
         if fresh.hiddenSet.owner.exists then i"$fresh of ${fresh.hiddenSet.owner}" else i"$fresh"
-      case other =>
-        i"$other"
-
-  def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
-    val hiddenFootprint = hiddenSet.oldFootprint
-    val clashFootprint = clashSet.oldFootprint
-    // The overlap of footprints, or, of this empty the set of shared peaks.
-    // We prefer footprint overlap since it tends to be more informative.
-    val overlap = hiddenFootprint.overlapWith(clashFootprint)
-    if !overlap.isEmpty then i"${CaptureSet(overlap)}"
-    else
-      val sharedPeaks = hiddenSet.allPeaks.sharedPeaks(clashSet.allPeaks)
-      assert(!sharedPeaks.isEmpty, i"no overlap for $hiddenSet vs $clashSet")
-      sharedPeaksStr(sharedPeaks)
+      case _ =>
+        i"${CaptureSet(shared)}"
 
   /** Report a separation failure in an application `fn(args)`
    *  @param fn          the function
@@ -430,6 +403,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       else i" with type  ${clashing.nuType}"
     val hiddenSet = formalCaptures(polyArg).transHiddenSet
     val clashSet = deepCaptures(clashing)
+    val hiddenFootprint = hiddenSet.directFootprint
+    val clashFootprint = clashSet.directFootprint
     report.error(
       em"""Separation failure: argument of type  ${polyArg.nuType}
           |to $funStr
@@ -438,10 +413,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           |Some of these overlap with the captures of the ${clashArgStr.trim}$clashTypeStr.
           |
           |  Hidden set of current argument        : ${CaptureSet(hiddenSet)}
-          |  Hidden footprint of current argument  : ${CaptureSet(hiddenSet.oldFootprint)}
+          |  Hidden footprint of current argument  : ${CaptureSet(hiddenFootprint.nonPeaks)}
           |  Capture set of $clashArgStr        : ${CaptureSet(clashSet)}
-          |  Footprint set of $clashArgStr      : ${CaptureSet(clashSet.oldFootprint)}
-          |  The two sets overlap at               : ${overlapStr(hiddenSet, clashSet)}""",
+          |  Footprint set of $clashArgStr      : ${CaptureSet(clashFootprint.nonPeaks)}
+          |  The two sets overlap at               : ${overlapStr(hiddenFootprint, clashFootprint)}""",
       polyArg.srcPos)
 
   /** Report a use/definition failure, where a previously hidden capability is
@@ -720,7 +695,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val captured = genPart.deepCaptureSet.elems
       val hiddenSet = captured.transHiddenSet.pruned
       val clashSet = otherPart.deepCaptureSet.elems
-      val deepClashSet = (clashSet.oldFootprint ++ clashSet.transHiddenSet).pruned
+      val deepClashSet = clashSet.completeFootprint.nonPeaks.pruned
       report.error(
         em"""Separation failure in ${role.description} $tpe.
             |One part,  $genPart, hides capabilities  ${CaptureSet(hiddenSet)}.
@@ -823,11 +798,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.transHiddenSet.oldFootprint.deduct(refs.oldFootprint)
+          val toCheck = refs.transHiddenSet.directFootprint.nonPeaks.deduct(refs.directFootprint.nonPeaks)
           checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
       case TypeRole.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
-          val capts = spanCaptures(arg).oldFootprint
+          val capts = spanCaptures(arg).directFootprint.nonPeaks
           checkConsumedRefs(capts, tpe, role, i"argument to consume parameter with type ${arg.nuType} refers to", pos)
       case _ =>
 
@@ -952,7 +927,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
     if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
       checkType(tree.tpt, tree.symbol)
-      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.oldFootprint}")
+      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
       pushDef(tree, spanCaptures(tree.tpt).transHiddenSet.deductSymRefs(tree.symbol))
 
   def inSection[T](op: => T)(using Context): T =
@@ -989,7 +964,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsumeParam =>
           traverseChildren(tree)
           checkConsumedRefs(
-              spanCaptures(qual).oldFootprint, qual.nuType,
+              spanCaptures(qual).directFootprint.nonPeaks, qual.nuType,
               TypeRole.Qualifier(qual, tree.symbol),
               i"call prefix of consume ${tree.symbol} refers to", qual.srcPos)
         case tree: GenericApply =>

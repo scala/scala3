@@ -3,7 +3,7 @@
    |                   ^^^^^^^^^^^^^^^^
    |Separation failure in method mkCounter's result type Pair[Ref^, Ref^²].
    |One part,  Ref^, hides capabilities  {c, cap, cap²}.
-   |Another part,  Ref^²,  captures capabilities  {c, cap, cap²}.
+   |Another part,  Ref^²,  captures capabilities  {c}.
    |The two sets overlap at  {c}.
    |
    |where:    ^    refers to a fresh root capability classified as Mutable in the result type of method mkCounter
