@@ -10,7 +10,7 @@ def Test(consume c: Object^) =
   println(c)
 
 def Test2(c: Object^, d: Object^): Unit =
-  foo((() => println(c)) :: Nil, c) // error
+  foo((() => println(c)) :: Nil, c) // ok
   val x1: (Object^, Object^) = (c, c) // error
   val x2: (Object^, Object^{d}) = (d, d) // error
 

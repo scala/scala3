@@ -341,7 +341,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  the latter contains a cap.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
-    arg.formalType.orElse(arg.nuType).deepCaptureSet.elems
+    arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
 
    /** The span capture set if the type of `tree` */
   private def spanCaptures(tree: Tree)(using Context): Refs =
@@ -402,7 +402,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       if clashIdx == 0 && !isShowableMethod then "" // we already mentioned the type in `funStr`
       else i" with type  ${clashing.nuType}"
     val hiddenSet = formalCaptures(polyArg).transHiddenSet
-    val clashSet = deepCaptures(clashing)
+    val clashSet = if clashIdx == -1 then deepCaptures(clashing) else spanCaptures(clashing)
     val hiddenFootprint = hiddenSet.directFootprint
     val clashFootprint = clashSet.directFootprint
     report.error(
@@ -891,10 +891,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val resultType = mtpe.finalResultType
     val resultCaptures =
       (resultArgCaptures(resultType) ++ resultType.deepCaptureSet.elems).filter(!isLocalRef(_))
+      // See i23726.scala why deepCaptureSet is needed here.
     val resultPeaks = resultCaptures.allPeaks
     capt.println(i"deps for $app = ${deps.toList}")
     (deps, resultPeaks)
-
+  end dependencies
 
   /** Decompose an application into a function prefix and a list of argument lists.
    *  If some of the arguments need a separation check because they are capture polymorphic,
