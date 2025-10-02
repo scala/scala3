@@ -594,7 +594,6 @@ object Predef extends LowPriorityImplicits {
       !(x eq y)
 
   extension (opt: Option.type)
-    @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 
   // For backward compatibility with code compiled without -Yexplicit-nulls.
