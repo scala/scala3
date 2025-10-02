@@ -228,7 +228,7 @@ class ReplDriver(settings: Array[String],
         // Set up interrupt handler for command execution
         var firstCtrlCEntered = false
         val thread = Thread.currentThread()
-        val signalHandler = terminal.handle(
+        val previousSignalHandler = terminal.handle(
           org.jline.terminal.Terminal.Signal.INT,
           (sig: org.jline.terminal.Terminal.Signal) => {
             val now = System.currentTimeMillis()
@@ -238,15 +238,16 @@ class ReplDriver(settings: Array[String],
               out.println("\nInterrupting running thread, Ctrl-C again to terminate the process")
             }else {
               out.println("\nTerminating REPL...")
-
               System.exit(130)  // Standard exit code for SIGINT
             }
           }
         )
 
-        val newState = interpret(res)
-        // Restore previous handler
-        terminal.handle(org.jline.terminal.Terminal.Signal.INT, signalHandler)
+        val newState =
+          try interpret(res)
+          // Restore previous handler
+          finally terminal.handle(org.jline.terminal.Terminal.Signal.INT, previousSignalHandler)
+
         loop(using newState)()
       }
     }
