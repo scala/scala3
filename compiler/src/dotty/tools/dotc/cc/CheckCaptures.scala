@@ -608,7 +608,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           markFree(capturedVars(sym).filter(isRetained), tree)
 
     /** Include references captured by the type of the function. */
-    def includeFunctionCaptures(qualType: Type, tree: Apply)(using Context): Unit =
+    def includeFunctionCaptures(qualType: Type, tree: Tree)(using Context): Unit =
       if ccConfig.caplessLike && !qualType.isAlwaysPure then
         val funCaptures = qualType.captureSet
         markFree(funCaptures, tree)
@@ -742,6 +742,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       val selType = mapResultRoots(recheckSelection(tree, qualType, name, disambiguate), tree.symbol)
       val selWiden = selType.widen
+
+      // Include function captures for parameterless class methods
+      if tree.symbol.is(Method) && qualType.isParameterless then
+        includeFunctionCaptures(qualType, tree)
 
       // Don't apply the rule
       //   - on the LHS of assignments, or
