@@ -508,16 +508,20 @@ class CheckCaptures extends Recheck, SymTransformer:
                 checkUseDeclared(c, tree.srcPos)
             case _ =>
         else
+          var isRoot: Boolean = false
           val underlying = c match
             case Reach(c1) => CaptureSet.ofTypeDeeply(c1.widen)
             case _ => c.core match
-              case c1: RootCapability => c1.singletonCaptureSet
+              case c1: RootCapability =>
+                isRoot = true
+                c1.singletonCaptureSet
               case c1: CoreCapability =>
                 CaptureSet.ofType(c1.widen, followResult = ccConfig.useSpanCapset)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowBadRoots(NoSymbol): () =>
             report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `cap` as underlying capture set", tree.srcPos)
-          recur(underlying, env, lastEnv)
+          if !isRoot then  // To avoid looping infinitely
+            recur(underlying, env, lastEnv)
 
       /** Avoid locally defined capability if it is a reach capability or capture set
        *  parameter. This is the default.
