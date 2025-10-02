@@ -203,7 +203,7 @@ object SepCheck:
             case _ if newElem.isTerminalCapability =>
               recur(seen + newElem, acc, newElems1)
             case _ =>
-              recur(seen + newElem, acc, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
+              recur(seen + newElem, acc + newElem, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
         case Nil => acc
       recur(emptyRefs, emptyRefs, refs.toList)
 
