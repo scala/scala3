@@ -55,11 +55,11 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   def sourcePos(using Context): SourcePosition =
     val info = WrappedSourceFile.locateMagicHeader(source)
     info match
-      case HasHeader(offset, originalFile) =>
-        if span.start >= offset then  // This span is in user code
+      // This span is in user code
+      case HasHeader(offset, originalFile)
+        if span != NoSpan && span.start >= offset =>
           originalFile.atSpan(span.shift(-offset))
-        else  // Otherwise, return the source position in the wrapper code
-          source.atSpan(span)
+      // Otherwise, return the source position in the wrapper code
       case _ => source.atSpan(span)
 
   /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
