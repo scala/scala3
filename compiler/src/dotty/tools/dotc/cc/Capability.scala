@@ -769,6 +769,7 @@ object Capabilities:
      *   x covers x
      *   x covers y  ==>  x covers y.f
      *   x covers y  ==>  x* covers y*, x? covers y?
+     *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
      *   TODO what other clauses from subsumes do we need to port here?
      */
     final def covers(y: Capability)(using Context): Boolean =
@@ -784,10 +785,13 @@ object Capabilities:
             this match
               case Maybe(x1) => x1.covers(y1)
               case _ => false
-          case y: FreshCap =>
-            y.hiddenSet.superCaps.exists(this.covers(_))
+          case Restricted(y1, _) =>
+            this.covers(y1)
           case _ =>
             false
+      || this.match
+          case Restricted(x1, _) => x1.covers(y)
+          case _ => false
 
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)

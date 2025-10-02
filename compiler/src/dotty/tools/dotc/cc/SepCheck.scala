@@ -214,36 +214,16 @@ object SepCheck:
     private def directFootprint(using Context): Refs =
       computeFootprint(followHidden = false)
 
-    /** The hidden footprint of a set of capabilities `refs` is the closure
+    /** The complete footprint of a set of capabilities `refs` is the closure
      *  of `refs` under `_.captureSetOfInfo` and `_.hiddenElems`, dropping any shared terminal
      *  capabilities.
      */
-    private def hiddenFootprint(using Context): Refs =
+    private def completeFootprint(using Context): Refs =
       computeFootprint(followHidden = true)
 
-    /** Same as hiddenFootprint.peaks under new scheme. Was maximal elements before */
-    private def transPeaks(using Context): Refs =
-      def recur(seen: Refs, acc: Refs, newElems: List[Capability]): Refs = trace(i"peaks $acc, $newElems = "):
-        newElems match
-        case newElem :: newElems1 =>
-          if seen.contains(newElem) then
-            recur(seen, acc, newElems1)
-          else newElem.stripRestricted.stripReadOnly match
-            case elem: FreshCap if !elem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
-              if elem.hiddenSet.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
-              else
-                val superCaps =
-                  if newElem.isReadOnly then elem.hiddenSet.superCaps.map(_.readOnly)
-                  else elem.hiddenSet.superCaps
-                recur(seen + newElem, acc, superCaps ++ newElems)
-            case _ =>
-              if newElem.isTerminalCapability
-                //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
-              then recur(seen + newElem, acc, newElems1)
-              else recur(seen + newElem, acc, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
-        case Nil => acc
-      if ccConfig.newScheme then hiddenFootprint.peaks
-      else recur(emptyRefs, emptyRefs, refs.toList)
+    /** Same as completeFootprint.peaks under new scheme. Was maximal elements before */
+    private def allPeaks(using Context): Refs =
+      completeFootprint.peaks
 
     /** The shared elements between the peak sets `refs` and `other`.
      *  These are the core capabilities and fresh capabilities that appear
@@ -403,7 +383,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val overlap = hiddenFootprint.overlapWith(clashFootprint)
     if !overlap.isEmpty then i"${CaptureSet(overlap)}"
     else
-      val sharedPeaks = hiddenSet.transPeaks.sharedPeaks(clashSet.transPeaks)
+      val sharedPeaks = hiddenSet.allPeaks.sharedPeaks(clashSet.allPeaks)
       assert(!sharedPeaks.isEmpty, i"no overlap for $hiddenSet vs $clashSet")
       sharedPeaksStr(sharedPeaks)
 
@@ -540,7 +520,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val (qual, fnCaptures) = methPart(fn) match
       case Select(qual, _) => (qual, qual.nuType.captureSet)
       case _ => (fn, CaptureSet.empty)
-    var currentPeaks = PeaksPair(fnCaptures.elems.transPeaks, emptyRefs)
+    var currentPeaks = PeaksPair(fnCaptures.elems.allPeaks, emptyRefs)
     val partsWithPeaks = mutable.ListBuffer[(Tree, PeaksPair)]() += (qual -> currentPeaks)
 
     capt.println(
@@ -554,8 +534,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     for arg <- args do
       val argPeaks = PeaksPair(
-          spanCaptures(arg).transPeaks,
-          if arg.needsSepCheck then formalCaptures(arg).transHiddenSet.transPeaks else emptyRefs)
+          spanCaptures(arg).allPeaks,
+          if arg.needsSepCheck then formalCaptures(arg).transHiddenSet.allPeaks else emptyRefs)
       val argDeps = deps(arg)
 
       def clashingPart(argPeaks: Refs, selector: PeaksPair => Refs): Tree =
@@ -607,9 +587,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val used = tree.markedFree.elems
     if !used.isEmpty then
       capt.println(i"check use $tree: $used")
-      val usedPeaks = used.transPeaks
-      val overlap = defsShadow.transPeaks.sharedPeaks(usedPeaks)
-      if !defsShadow.transPeaks.sharedPeaks(usedPeaks).isEmpty then
+      val usedPeaks = used.allPeaks
+      val overlap = defsShadow.allPeaks.sharedPeaks(usedPeaks)
+      if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
         val sym = tree.symbol
 
         def findClashing(prevDefs: List[DefInfo]): Option[DefInfo] = prevDefs match
@@ -757,7 +737,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         val captured = part.deepCaptureSet.elems.pruned
         val hidden = captured.transHiddenSet.pruned
         val actual = captured ++ hidden
-        val partPeaks = PeaksPair(actual.transPeaks, hidden.transPeaks)
+        val partPeaks = PeaksPair(actual.allPeaks, hidden.allPeaks)
         /*
         println(i"""check parts $parts
                    |current = ${currentPeaks.actual}/${currentPeaks.hidden}
@@ -933,7 +913,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val resultType = mtpe.finalResultType
     val resultCaptures =
       (resultArgCaptures(resultType) ++ resultType.deepCaptureSet.elems).filter(!isLocalRef(_))
-    val resultPeaks = resultCaptures.transPeaks
+    val resultPeaks = resultCaptures.allPeaks
     capt.println(i"deps for $app = ${deps.toList}")
     (deps, resultPeaks)
 
@@ -959,7 +939,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
     defsShadow ++= hiddenByDef
-    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.transPeaks) :: previousDefs
+    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
 
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
