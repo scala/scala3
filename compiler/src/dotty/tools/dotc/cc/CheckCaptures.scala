@@ -507,7 +507,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if !accessFromNestedClosure then
                 checkUseDeclared(c, tree.srcPos)
             case _ =>
-        else
+        else if !c.isThisPath then  // We never need to avoid `this`.
           var isRoot: Boolean = false
           val underlying = c match
             case Reach(c1) => CaptureSet.ofTypeDeeply(c1.widen)
