@@ -1220,6 +1220,9 @@ object CaptureSet:
    */
   class HiddenSet(initialOwner: Symbol, val owningCap: FreshCap)(using @constructorOnly ictx: Context)
   extends Var(initialOwner):
+
+    // Updated by anchorCaps in CheckCaptures, but owner can be changed only
+    // if it was NoSymbol before.
     var givenOwner: Symbol = initialOwner
 
     override def owner = givenOwner
@@ -1228,62 +1231,9 @@ object CaptureSet:
 
     description = i"of elements subsumed by a fresh cap in $initialOwner"
 
-    private def aliasRef: FreshCap | Null =
-      if myElems.size == 1 then
-        myElems.nth(0) match
-          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias
-          case _ => null
-      else null
-
-    private def aliasSet: HiddenSet =
-      if myElems.size == 1 then
-        myElems.nth(0) match
-          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias.hiddenSet
-          case _ => this
-      else this
-
-    def superCaps: List[FreshCap] =
-      deps.toList.map(_.asInstanceOf[HiddenSet].owningCap)
-
-    override def elems: Refs =
-      val al = aliasSet
-      if al eq this then super.elems else al.elems
-
-    override def elems_=(refs: Refs) =
-      val al = aliasSet
-      if al eq this then super.elems_=(refs) else al.elems_=(refs)
-
-    /** Add element to hidden set. Also add it to all supersets (as indicated by
-     *  deps of this set). Follow aliases on both hidden set and added element
-     *  before adding. If the added element is also a Fresh instance with
-     *  hidden set H which is a superset of this set, then make this set an
-     *  alias of H.
-     */
+    /** Add element to hidden set. */
     def add(elem: Capability)(using ctx: Context, vs: VarState): Unit =
-      val alias = aliasSet
-      if alias ne this then alias.add(elem)
-      else
-        def addToElems() =
-          assert(!isConst)
-          includeElem(elem)
-          deps.foreach: dep =>
-            assert(dep != this)
-            vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
-        elem match
-          case elem: FreshCap =>
-            if this ne elem.hiddenSet then
-              val alias = elem.hiddenSet.aliasRef
-              if alias != null then
-                add(alias)
-              else if deps.contains(elem.hiddenSet) then // make this an alias of elem
-                capt.println(i"Alias $this to ${elem.hiddenSet}")
-                elems = SimpleIdentitySet(elem)
-                deps = SimpleIdentitySet(elem.hiddenSet)
-              else
-                addToElems()
-                elem.hiddenSet.includeDep(this)
-          case _ =>
-            addToElems()
+      includeElem(elem)
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the
      *  duration. This is used to escape infinite recursions if two Freshs
