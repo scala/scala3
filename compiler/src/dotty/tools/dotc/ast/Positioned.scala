@@ -57,7 +57,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     info match
       // This span is in user code
       case HasHeader(offset, originalFile)
-        if span != NoSpan && span.start >= offset =>
+        if span.exists && span.start >= offset =>
           originalFile.atSpan(span.shift(-offset))
       // Otherwise, return the source position in the wrapper code
       case _ => source.atSpan(span)
