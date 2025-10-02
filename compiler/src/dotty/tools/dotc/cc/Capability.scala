@@ -770,28 +770,38 @@ object Capabilities:
      *   x covers y  ==>  x covers y.f
      *   x covers y  ==>  x* covers y*, x? covers y?
      *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
+     *   x covers y  ==>  <fresh hiding x> covers y
      *   TODO what other clauses from subsumes do we need to port here?
      */
     final def covers(y: Capability)(using Context): Boolean =
-      (this eq y)
-      || y.match
-          case y @ TermRef(ypre: Capability, _) =>
-            this.covers(ypre)
-          case Reach(y1) =>
-            this match
-              case Reach(x1) => x1.covers(y1)
-              case _ => false
-          case Maybe(y1) =>
-            this match
-              case Maybe(x1) => x1.covers(y1)
-              case _ => false
-          case Restricted(y1, _) =>
-            this.covers(y1)
-          case _ =>
-            false
-      || this.match
-          case Restricted(x1, _) => x1.covers(y)
-          case _ => false
+      val seen: util.EqHashSet[FreshCap] = new util.EqHashSet
+
+      def recur(x: Capability, y: Capability): Boolean =
+        (x eq y)
+        || y.match
+            case y @ TermRef(ypre: Capability, _) =>
+              recur(x, ypre)
+            case Reach(y1) =>
+              x match
+                case Reach(x1) => recur(x1, y1)
+                case _ => false
+            case Maybe(y1) =>
+              x match
+                case Maybe(x1) => recur(x1, y1)
+                case _ => false
+            case Restricted(y1, _) =>
+              recur(x, y1)
+            case _ =>
+              false
+        || x.match
+            case x: FreshCap if !seen.contains(x) =>
+              seen.add(x)
+              x.hiddenSet.exists(recur(_, y))
+            case Restricted(x1, _) => recur(x1, y)
+            case _ => false
+
+      recur(this, y)
+    end covers
 
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
