@@ -231,7 +231,6 @@ class ReplDriver(settings: Array[String],
         val previousSignalHandler = terminal.handle(
           org.jline.terminal.Terminal.Signal.INT,
           (sig: org.jline.terminal.Terminal.Signal) => {
-            val now = System.currentTimeMillis()
             if (!firstCtrlCEntered) {
               firstCtrlCEntered = true
               thread.interrupt()
