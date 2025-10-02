@@ -28,7 +28,7 @@ object Option {
    *  @param  x the value
    *  @return   Some(value) if value != null, None if value == null
    */
-  def apply[A](x: A | Null): Option[A] = if (x == null) None else Some(x)
+  def apply[A](x: A): Option[A] = if (x == null) None else Some(x)
 
   /** An Option factory which returns `None` in a manner consistent with
    *  the collections hierarchy.
