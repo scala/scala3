@@ -235,7 +235,7 @@ class ReplDriver(settings: Array[String],
             if (!firstCtrlCEntered) {
               firstCtrlCEntered = true
               thread.interrupt()
-              out.println("\nInterrupting running thread, Ctrl-C again to terminate the process")
+              out.println("\nInterrupting running thread, Ctrl-C again to terminate the REPL Process")
             }else {
               out.println("\nTerminating REPL Process...")
               System.exit(130)  // Standard exit code for SIGINT
