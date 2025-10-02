@@ -84,6 +84,9 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
+  def strictEqualityPatternMatching(using Context): Boolean =
+    Feature.enabled(Feature.strictEqualityPatternMatching)
+
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -1038,8 +1041,9 @@ trait Implicits:
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
+   *   - if strictEqualityPatternMatching is set and the necessary conditions are met
    */
-  def assumedCanEqual(ltp: Type, rtp: Type)(using Context) = {
+  def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
@@ -1062,15 +1066,23 @@ trait Implicits:
 
     ltp.isError
     || rtp.isError
-    || !strictEquality && (ltp <:< lift(rtp) || rtp <:< lift(ltp))
+    || locally:
+      if strictEquality then
+        strictEqualityPatternMatching &&
+          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
+          ltp <:< lift(rtp)
+      else
+        ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
 
-  /** Check that equality tests between types `ltp` and `rtp` make sense */
-  def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit =
-    if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
+  /** Check that equality tests between types `ltp` and `left.tpe` make sense.
+   * `left` is required to check for the condition for language.strictEqualityPatternMatching.
+   */
+  def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
+    val ltp = left.tpe.widen
+    if !ctx.isAfterTyper && !assumedCanEqual(ltp, rtp, left) then
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
-    }
 
   object hasSkolem extends TreeAccumulator[Boolean]:
     def apply(x: Boolean, tree: Tree)(using Context): Boolean =
