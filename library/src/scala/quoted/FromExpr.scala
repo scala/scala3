@@ -104,7 +104,7 @@ object FromExpr {
    */
   given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with {
     def unapply(x: Expr[Option[T]])(using Quotes) = x match {
-      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
+      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
       case '{ None } => Some(None)
       case '{ ${Expr(opt)} : Some[T] } => Some(opt)
       case _ => None

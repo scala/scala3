@@ -74,8 +74,8 @@ class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
         else Right(TemplateSourceLink(supported.foldLeft(string)((template, pattern) =>
           template.replace(pattern, SupportedScalaDocPatternReplacements(pattern)))))
       case KnownProvider(name: String, organization: String, repo: String, rawRevision, rawSubPath) =>
-        val subPath = Option(rawSubPath).fold("")("/" + _.drop(1))
-        val pathRev = Option(rawRevision).map(_.drop(1)).orElse(revision)
+        val subPath = Option.fromNullable(rawSubPath).fold("")("/" + _.drop(1))
+        val pathRev = Option.fromNullable(rawRevision).map(_.drop(1)).orElse(revision)
 
         def withRevision(template: String => SourceLink) =
           pathRev.fold(Left(s"No revision provided"))(r => Right(template(r)))
