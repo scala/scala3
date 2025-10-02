@@ -559,7 +559,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           //println(i"Include call or box capture $included from $cs in ${env.owner}/${env.captured}/${env.captured.owner}/${env.kind}")
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          if !isOfNestedMethod(env) && (!ccConfig.caplessLike || env.kind == EnvKind.NestedInOwner) then
+
+          // A phantom environment is one that should not stop the propagation of captures.
+          // An environment is phantom if
+          // (1) it is `NestedInOwner`, which means it is an environment created during box adaptation,
+          // or (2) it is a class method, in which case the captures should always be aggregated to the class.
+          inline def isPhantomEnv: Boolean =
+            env.kind == EnvKind.NestedInOwner
+            || (env.owner.is(Method) && env.outer.owner.isClass)
+
+          if !isOfNestedMethod(env) && (!ccConfig.caplessLike || isPhantomEnv) then
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               recur(included, nextEnv, env)
