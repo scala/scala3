@@ -175,15 +175,18 @@ object SepCheck:
      *   2. if `f in F` then the footprint of `f`'s info is also in `F`.
      */
     private def oldFootprint(using Context): Refs =
-      def retain(ref: Capability) = !ref.isTerminalCapability
-      def recur(elems: Refs, newElems: List[Capability]): Refs = newElems match
-        case newElem :: newElems1 =>
-          val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
-            retain(superElem) && !elems.contains(superElem)
-          recur(elems ++ superElems, newElems1 ++ superElems.toList)
-        case Nil => elems
-      val elems: Refs = refs.filter(retain)
-      recur(elems, elems.toList)
+      if ccConfig.newScheme then
+        directFootprint.nonPeaks
+      else
+        def retain(ref: Capability) = !ref.isTerminalCapability
+        def recur(elems: Refs, newElems: List[Capability]): Refs = newElems match
+          case newElem :: newElems1 =>
+            val superElems = newElem.captureSetOfInfo.elems.filter: superElem =>
+              retain(superElem) && !elems.contains(superElem)
+            recur(elems ++ superElems, newElems1 ++ superElems.toList)
+          case Nil => elems
+        val elems: Refs = refs.filter(retain)
+        recur(elems, elems.toList)
 
     /** The footprint of a set of capabilities `refs` is the closure
      *  of `refs` under `_.captureSetOfInfo`, dropping any shared terminal
