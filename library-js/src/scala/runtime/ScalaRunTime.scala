@@ -254,11 +254,14 @@ object ScalaRunTime {
       case s => s + "\n"
     }
 
+
   // For backward compatibility with code compiled without -Yexplicit-nulls.
   // If `a` is null, return null; otherwise, return `f`.
-  // Have to add a private mapNull here to avoid errors
-  private inline def mapNull[A, B](a: A, inline f: B): B =
-    if((a: A | Null) == null) null.asInstanceOf[B] else f
+  private[scala] inline def mapNull[A, B](a: A, inline f: B): B =
+    if ((a: A | Null) == null) null.asInstanceOf[B] else f
+
+  // Use `null` in places where we want to make sure the reference is cleared.
+  private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
 
   // For the following functions, both the parameter and the return type are non-nullable.
   // However, if a null reference is passed explicitly, this method will still return null.
@@ -268,11 +271,8 @@ object ScalaRunTime {
   // Convert arrays to immutable.ArraySeq for use with Java varargs:
   def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
     mapNull(xs, ArraySeq.unsafeWrapArray(xs))
-  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = {
-    if (xs eq null) null.asInstanceOf[ArraySeq[T]]
-    else if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq[T]]
-    else new ArraySeq.ofRef[T](xs)
-  }
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] =
+    mapNull(xs, if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq[T]] else new ArraySeq.ofRef[T](xs))
   def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = mapNull(xs, new ArraySeq.ofInt(xs))
   def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = mapNull(xs, new ArraySeq.ofDouble(xs))
   def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = mapNull(xs, new ArraySeq.ofLong(xs))

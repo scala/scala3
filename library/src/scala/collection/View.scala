@@ -18,6 +18,7 @@ import language.experimental.captureChecking
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.{ArrayBuffer, Builder}
 import scala.collection.immutable.LazyList
+import scala.runtime.ScalaRunTime.nullForGC
 import caps.unsafe.unsafeAssumePure
 
 /** Views are collections whose transformation operations are non strict: the resulting elements
@@ -465,7 +466,7 @@ object View extends IterableFactory[View] {
         if(pos == maxlen) pos = 0
         len += 1
       }
-      underlying = null.asInstanceOf[Iterator[A]] // allow GC of underlying iterator
+      underlying = nullForGC[Iterator[A]]
       if(len > maxlen) len = maxlen
       pos = pos - len
       if(pos < 0) pos += maxlen
