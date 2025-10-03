@@ -56,7 +56,7 @@ object Util:
     end match
   end detectMainClassAndMethod
 
-  def pathsep = sys.props("path.separator")
+  def pathsep: String = sys.props("path.separator").nn
 
 end Util
 

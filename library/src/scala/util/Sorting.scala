@@ -234,10 +234,10 @@ object Sorting {
 
   // TODO: add upper bound: T <: AnyRef, propagate to callers below (not binary compatible)
   // Maybe also rename all these methods to `sort`.
-  @inline private def sort[T](a: Array[T] | Null, from: Int, until: Int, ord: Ordering[T]): Unit = (a: @unchecked) match {
-    case _: Array[AnyRef]  =>
+  @inline private def sort[T](a: Array[T], from: Int, until: Int, ord: Ordering[T]): Unit = (a: @unchecked) match {
+    case a: Array[AnyRef]  =>
       // Note that runtime matches are covariant, so could actually be any Array[T] s.t. T is not primitive (even boxed value classes)
-      if (a.nn.length > 1 && (ord eq null)) throw new NullPointerException("Ordering")
+      if (a.length > 1 && (ord eq null)) throw new NullPointerException("Ordering")
       java.util.Arrays.sort(a, from, until, ord)
     case a: Array[Int]     => if (ord eq Ordering.Int) java.util.Arrays.sort(a, from, until) else mergeSort[Int](a, from, until, ord)
     case a: Array[Double]  => mergeSort[Double](a, from, until, ord)  // Because not all NaNs are identical, stability is meaningful!
