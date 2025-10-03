@@ -313,7 +313,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case Select(_, name: TermName) if infixNames(name) => false
         case Select(This(_), _) => false
         // is a select statement without a dot `qual.name`
-        case sel @ Select(qual, _) if !sel.symbol.is(Synthetic) =>
+        case sel @ Select(qual, _) if !sel.symbol.is(Synthetic) && sel.nameSpan.start < tree.source.length =>
           val source = tree.source
           !(qual.span.end until sel.nameSpan.start)
             .map(source.apply)
