@@ -23,6 +23,7 @@ import printing.Texts.Text
 import reporting.{Message, trace}
 import NameOps.isImpureFunction
 import annotation.internal.sharable
+import collection.immutable
 
 /** Capabilities are members of capture sets. They partially overlap with types
  *  as shown in the trait hierarchy below.
@@ -147,9 +148,29 @@ object Capabilities:
    *  @param origin  an indication where and why the FreshCap was created, used
    *                 for diagnostics
    */
-  case class FreshCap (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
-    val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
+  case class FreshCap(val prefix: Type)
+      (val owner: Symbol, val origin: Origin, origHidden: CaptureSet.HiddenSet | Null)
+      (using @constructorOnly ctx: Context)
+  extends RootCapability:
+    val hiddenSet =
+      if origHidden == null then CaptureSet.HiddenSet(owner, this: @unchecked)
+      else origHidden
       // fails initialization check without the @unchecked
+
+    def derivedFreshCap(newPrefix: Type)(using Context): FreshCap =
+      if newPrefix eq prefix then this
+      else if newPrefix eq hiddenSet.owningCap.prefix then
+        hiddenSet.owningCap
+      else
+        hiddenSet.derivedCaps
+          .getOrElseUpdate(newPrefix, FreshCap(newPrefix)(owner, origin, hiddenSet))
+
+    /** A map from context owners to skolem TermRefs that were created by ensurePath
+     *  TypeMap's mapCapability.
+     */
+    var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
+
+    //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
 
     /** Is this fresh cap (definitely) classified? If that's the case, the
      *  classifier cannot be changed anymore.
@@ -167,12 +188,6 @@ object Capabilities:
       case _ => false
 
     /** Is this fresh cap at the right level to be able to subsume `ref`?
-     *  Only outer freshes can be subsumed.
-     *  TODO Can we merge this with levelOK? Right now we use two different schemes:
-     *   - For level checking capsets with levelOK: Check that the visibility of the element
-     *     os not properly contained in the captset owner.
-     *  - For level checking elements subsumed by FreshCaps: Check that the widened scope
-     *    (using levelOwner) of the elements contains the owner of the FreshCap.
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
@@ -203,8 +218,12 @@ object Capabilities:
       i"a fresh root capability$classifierStr$originStr"
 
   object FreshCap:
+    def apply(owner: Symbol, prefix: Type, origin: Origin)(using Context): FreshCap =
+      new FreshCap(prefix)(owner, origin, null)
+    def apply(owner: Symbol, origin: Origin)(using Context): FreshCap =
+      apply(owner, owner.skipWeakOwner.thisType, origin)
     def apply(origin: Origin)(using Context): FreshCap =
-      FreshCap(ctx.owner, origin)
+      apply(ctx.owner, origin)
 
   /** A root capability associated with a function type. These are conceptually
    *  existentially quantified over the function's result type.
@@ -441,6 +460,7 @@ object Capabilities:
      *  the form this.C but their pathroot is still this.C, not this.
      */
     final def pathRoot(using Context): Capability = this match
+      case FreshCap(pre: Capability) => pre.pathRoot
       case _: RootCapability => this
       case self: DerivedCapability => self.underlying.pathRoot
       case self: CoreCapability => self.dealias match
@@ -485,7 +505,13 @@ object Capabilities:
       case TermRef(prefix: Capability, _) => prefix.ccOwner
       case self: NamedType => self.symbol
       case self: DerivedCapability => self.underlying.ccOwner
-      case self: FreshCap => self.hiddenSet.owner
+      case self: FreshCap =>
+        val setOwner = self.hiddenSet.owner
+        self.prefix match
+          case prefix: ThisType if setOwner.isTerm && setOwner.owner == prefix.cls =>
+            setOwner
+          case prefix: Capability => prefix.ccOwner
+          case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
     final def visibility(using Context): Symbol = this match
@@ -732,12 +758,25 @@ object Capabilities:
       (this eq y)
       || this.match
         case x: FreshCap =>
+          def classifierOK =
+            if y.tryClassifyAs(x.hiddenSet.classifier) then true
+            else
+              capt.println(i"$y cannot be classified as $x")
+              false
+
+          def prefixAllowsAddHidden: Boolean =
+            CCState.collapseFresh || x.prefix.match
+              case NoPrefix => true
+              case pre: ThisType => x.ccOwner.isContainedIn(pre.cls)
+              case pre =>
+                capt.println(i"fresh not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipWeakOwner.thisType}")
+                false
+
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
           || x.acceptsLevelOf(y)
-              && ( y.tryClassifyAs(x.hiddenSet.classifier)
-                   || { capt.println(i"$y cannot be classified as $x"); false }
-              )
+              && classifierOK
               && canAddHidden
+              && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
           val result = y match

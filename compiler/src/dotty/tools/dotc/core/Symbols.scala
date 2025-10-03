@@ -900,8 +900,8 @@ object Symbols extends SymUtils {
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type)(using Context): TermSymbol =
-    newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(owner: Symbol, tp: Type)(using Context): TermSymbol =
+    newSymbol(owner, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: Message)(using Context): Symbol = {
     val errType = ErrorType(msg)

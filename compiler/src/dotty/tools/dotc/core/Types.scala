@@ -1706,11 +1706,10 @@ object Types extends TypeUtils {
         if hasNext then current = f(current.asInstanceOf[TypeProxy])
         res
 
-    /** A prefix-less refined this or a termRef to a new skolem symbol
-     *  that has the given type as info.
+    /** A prefix-less TermRef to a new skolem symbol that has this type as info.
      */
-    def narrow(using Context): TermRef =
-      TermRef(NoPrefix, newSkolem(this))
+    def narrow(using Context)(owner: Symbol = defn.RootClass): TermRef =
+      TermRef(NoPrefix, newSkolem(owner, this))
 
     /** Useful for diagnostics: The underlying type if this type is a type proxy,
      *  otherwise NoType
@@ -2319,14 +2318,14 @@ object Types extends TypeUtils {
     override def dropIfProto = WildcardType
   }
 
-  /** Implementations of this trait cache the results of `narrow`. */
-  trait NarrowCached extends Type {
+  /** Implementations of this trait cache the results of `narrow` if the owner is RootClass. */
+  trait NarrowCached extends Type:
     private var myNarrow: TermRef | Null = null
-    override def narrow(using Context): TermRef = {
-      if (myNarrow == null) myNarrow = super.narrow
-      myNarrow.nn
-    }
-  }
+    override def narrow(using Context)(owner: Symbol): TermRef =
+      if owner == defn.RootClass then
+        if myNarrow == null then myNarrow = super.narrow(owner)
+        myNarrow.nn
+      else super.narrow(owner)
 
 // --- NamedTypes ------------------------------------------------------------------
 
@@ -6330,6 +6329,23 @@ object Types extends TypeUtils {
         null
 
     def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+      case c @ FreshCap(prefix) =>
+        // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
+        // We create at most one such skolem per FreshCap/context owner pair.
+        // This approximates towards creating fewer skolems than otherwise needed,
+        // which means we might get more separation conflicts than otherwise. But
+        // it's not clear we will get such conflicts anyway.
+        def ensurePath(pre: Type)(using Context): Type = pre match
+          case pre @ TermRef(pre1, _) => pre.withPrefix(ensurePath(pre1))
+          case NoPrefix | _: SingletonType => pre
+          case pre =>
+            c.skolems.get(ctx.owner) match
+              case Some(skolem) => skolem
+              case None =>
+                val skolem = pre.narrow(ctx.owner)
+                c.skolems = c.skolems.updated(ctx.owner, skolem)
+                skolem
+        c.derivedFreshCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)

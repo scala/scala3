@@ -337,7 +337,7 @@ object Applications {
       case pre: SingletonType => singleton(pre, needLoad = !testOnly)
       case pre if testOnly =>
         // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
-        ref(pre.narrow)
+        ref(pre.narrow())
       case _ => EmptyTree
 
     if fn.symbol.hasDefaultParams then
@@ -1845,7 +1845,7 @@ trait Applications extends Compatibility {
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[MethodicType] =>
       p(methRef)
     case mt: MethodicType =>
-      p(mt.narrow)
+      p(mt.narrow())
     case _ =>
       followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
