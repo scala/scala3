@@ -53,16 +53,23 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(sym: Symbol, value: Object)(using Context): String = {
+  private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): String = {
     // pretty-print things with 100 cols 50 rows by default,
-    dotty.shaded.pprint.PPrinter.BlackWhite.apply(value, width = 100, height = 50).plainText
+    dotty.shaded.pprint.PPrinter.BlackWhite
+      .apply(
+        value,
+        width = 100,
+        height = 50,
+        initialOffset = prefixLength
+      )
+      .plainText
   }
 
   /** Load the value of the symbol using reflection.
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] =
+  private def valueOf(sym: Symbol, prefixLength: Int)(using Context): Option[String] =
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
@@ -71,7 +78,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
     symValue
       .filter(_ => sym.is(Flags.Method) || sym.info != defn.UnitType)
-      .map(value => stripReplPrefix(replStringOf(sym, value)))
+      .map(value => stripReplPrefix(replStringOf(value, prefixLength)))
 
   private def stripReplPrefix(s: String): String =
     if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
@@ -108,7 +115,13 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     try
       Right(
         if d.symbol.is(Flags.Lazy) then Some(msg(dcl))
-        else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+        else {
+          val prefix = s"$dcl = "
+          // Prefix can have multiple lines, only consider the last one
+          // when determining the initial column offset for pretty-printing
+          val prefixLength = prefix.linesIterator.toSeq.lastOption.getOrElse("").length
+          valueOf(d.symbol, prefixLength).map(value => msg(s"$prefix$value"))
+        }
       )
     catch case e: ReflectiveOperationException => Left(e)
   end renderVal
