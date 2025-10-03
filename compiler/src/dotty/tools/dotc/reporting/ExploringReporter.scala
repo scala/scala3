@@ -4,13 +4,13 @@ package reporting
 
 import scala.language.unsafeNulls
 
-import collection.mutable
+import collection.mutable.ListBuffer
 import core.Contexts.Context
 import Diagnostic.*
 
 /** A re-usable Reporter used in Contexts#test */
 class ExploringReporter extends StoreReporter(null, fromTyperState = false):
-  infos = new mutable.ListBuffer[Diagnostic]
+  infos = ListBuffer.empty[Diagnostic]
 
   override def hasUnreportedErrors: Boolean =
     infos.exists(_.isInstanceOf[Error])
