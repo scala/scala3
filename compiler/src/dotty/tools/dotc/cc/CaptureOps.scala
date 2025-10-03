@@ -151,24 +151,37 @@ extension (tp: Type)
     case tp: ObjectCapability => tp.captureSetOfInfo
     case _ => CaptureSet.ofType(tp, followResult = false)
 
-  /** The deep capture set of a type. This is by default the union of all
+  /** Compute a captureset by traversing parts of this type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by
    *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
    *  set can be narrowed to`{x*}`.
+   *  @param includeTypevars  if true, return a new FreshCap for every type parameter
+   *                          or abstract type with an Any upper bound. Types with
+   *                          defined upper bound are always mapped to the dcs of their bound
+   *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
    */
-  def deepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
+  def computeDeepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
     val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
     if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
       case tp: ObjectCapability if tp.isTrackableRef => tp.reach.singletonCaptureSet
       case _ => tp.captureSet ++ dcs
 
+  /** The deep capture set of a type. This is by default the union of all
+   *  covariant capture sets embedded in the widened type, as computed by
+   *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
+   *  a singleton capability `x` or a reach capability `x*`, the deep capture
+   *  set can be narrowed to`{x*}`.
+   */
   def deepCaptureSet(using Context): CaptureSet =
-    deepCaptureSet(includeTypevars = false)
+    computeDeepCaptureSet(includeTypevars = false)
 
+  /** The span capture set of a type. This is analogous to deepCaptureSet but ignoring
+   *  capture sets in boxed parts.
+   */
   def spanCaptureSet(using Context): CaptureSet =
-    deepCaptureSet(includeTypevars = false, includeBoxed = false)
+    computeDeepCaptureSet(includeTypevars = false, includeBoxed = false)
 
   /** A type capturing `ref` */
   def capturing(ref: Capability)(using Context): Type =

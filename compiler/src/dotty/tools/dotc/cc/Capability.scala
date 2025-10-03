@@ -553,9 +553,10 @@ object Capabilities:
      */
     def hiddenSet(using Context): Refs = computeHiddenSet(identity)
 
-    /** Compute hidden set of this capability.
+    /** Compute result based on hidden set of this capability.
      *  Restrictions and read-only status transfer from the capability to its
      *  hidden set.
+     *  @param  f   a function that gets applied to all detected hidden sets
      */
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: FreshCap => f(self.hiddenSet.elems)

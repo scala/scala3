@@ -950,8 +950,6 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
-  inline val strictFreshLevels = true
-
   /** Variables created in types of inferred type trees */
   class ProperVar(override val owner: Symbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
   extends Var(owner, initialElems, nestedOK):
@@ -971,7 +969,7 @@ object CaptureSet:
         def fail = i"attempting to add $elem to $this"
         def hideIn(fc: FreshCap): Unit =
           assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
-          if strictFreshLevels && !isRefining then
+          if !isRefining then
             // If a variable is added by addCaptureRefinements in a synthetic
             // refinement of a class type, don't do level checking. The problem is
             // that the variable might be matched against a type that does not have
@@ -1560,7 +1558,7 @@ object CaptureSet:
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
     case Reach(c1) =>
-      c1.widen.deepCaptureSet(includeTypevars = true)
+      c1.widen.computeDeepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
     case Restricted(c1, cls) =>
       if cls == defn.NothingClass then CaptureSet.empty
