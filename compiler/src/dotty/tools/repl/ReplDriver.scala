@@ -301,8 +301,35 @@ class ReplDriver(settings: Array[String],
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
-      case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state)
+      case parsed: Parsed =>
+        // Check for magic comments specifying dependencies
+        val sourceCode = parsed.source.content().mkString
+        val depStrings = DependencyResolver.extractDependencies(sourceCode)
+
+        if depStrings.nonEmpty then
+          val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+          if deps.nonEmpty then
+            DependencyResolver.resolveDependencies(deps) match
+              case Right(files) =>
+                if files.nonEmpty then
+                  inContext(state.context):
+                    // Update both compiler classpath and classloader
+                    val prevOutputDir = ctx.settings.outputDir.value
+                    val prevClassLoader = rendering.classLoader()
+                    rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                      files,
+                      prevClassLoader,
+                      prevOutputDir
+                    )
+                    out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
+              case Left(error) =>
+                out.println(s"Error resolving dependencies: $error")
+
+        // Only compile if there are actual trees to compile
+        if parsed.trees.nonEmpty then
+          compile(parsed, state)
+        else
+          state
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
