@@ -58,9 +58,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
-           refInfos.inlined.isEmpty
-        || tree.srcPos.isZeroExtentSynthetic
-        || refInfos.inlined.exists(_.sourcePos.contains(tree.srcPos.sourcePos))
+        val inlineds = enclosingInlineds // per current context
+           inlineds.isEmpty
+        || tree.srcPos.isZeroExtentSynthetic // take as summonInline
+        || inlineds.last.srcPos.sourcePos.contains(tree.srcPos.sourcePos)
       if resolving && !ignoreTree(tree) then
         def loopOverPrefixes(prefix: Type, depth: Int): Unit =
           if depth < 10 && prefix.exists && !prefix.classSymbol.isEffectiveRoot then
@@ -160,12 +161,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     case _ =>
     tree
 
-  override def prepareForInlined(tree: Inlined)(using Context): Context =
-    refInfos.inlined.push(tree.call.srcPos)
-    ctx
   override def transformInlined(tree: Inlined)(using Context): tree.type =
     transformAllDeep(tree.call)
-    val _ = refInfos.inlined.pop()
     tree
 
   override def prepareForBind(tree: Bind)(using Context): Context =
@@ -500,7 +497,7 @@ object CheckUnused:
     val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
-    def register(tree: Tree)(using Context): Unit = if inlined.isEmpty then
+    def register(tree: Tree)(using Context): Unit = if enclosingInlineds.isEmpty then
       tree match
       case imp: Import =>
         if inliners == 0
@@ -529,7 +526,6 @@ object CheckUnused:
         if tree.symbol ne NoSymbol then
           defs.addOne((tree.symbol, tree.srcPos)) // TODO is this a code path
 
-    val inlined = Stack.empty[SrcPos] // enclosing call.srcPos of inlined code (expansions)
     var inliners = 0 // depth of inline def (not inlined yet)
 
     // instead of refs.addOne, use addRef to distinguish a read from a write to var
