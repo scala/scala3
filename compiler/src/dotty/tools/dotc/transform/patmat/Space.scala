@@ -717,7 +717,6 @@ object SpaceEngine {
 
   extension (tp: Type)
     def isDecomposableToChildren(using Context): Boolean =
-      val sym = tp.typeSymbol  // e.g. Foo[List[Int]] = type Foo (i19275)
       val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
       tp.hasSimpleKind                  // can't decompose higher-kinded types
         && cls.is(Sealed)
