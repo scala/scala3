@@ -22,43 +22,34 @@ object DependencyResolver:
    *  - Scala: `com.lihaoyi::scalatags:0.13.1` (automatically appends _3)
    */
   def parseDependency(dep: String): Option[(String, String, String)] =
-    // Match either org:artifact:version or org::artifact:version
-    val pattern = """([^:]+)::?([^:]+):([^:]+)""".r
-
     dep match
-      case pattern(org, artifact, version) =>
-        val isScalaStyle = dep.contains("::")
-        val fullArtifact = if isScalaStyle then s"${artifact}_3" else artifact
-        Some((org, fullArtifact, version))
-      case _ => None
+      case s"$org::$artifact:$version" => Some((org, s"${artifact}_3", version))
+      case s"$org:$artifact:$version" => Some((org, artifact, version))
+      case _ =>
+        System.err.println("Unable to parse dependency \"" + dep + "\"")
+        None
 
   /** Extract all dependencies from using directives in source code */
   def extractDependencies(sourceCode: String): List[String] =
     try
-      val processor = new UsingDirectivesProcessor()
-      val directives = processor.extract(sourceCode.toCharArray)
+      val directives = new UsingDirectivesProcessor().extract(sourceCode.toCharArray)
+      val deps = scala.collection.mutable.Buffer[String]()
 
-      val deps = scala.collection.mutable.ListBuffer[String]()
-
-      directives.asScala.foreach { directive =>
-        val flatMap = directive.getFlattenedMap
-        flatMap.asScala.foreach { case (path, values) =>
-          // Check if this is a "dep" directive (path segments: ["dep"])
-          if path.getPath.asScala.toList == List("dep") then
-            values.asScala.foreach { value =>
-              value match
-                case strValue: StringValue =>
-                  deps += strValue.get()
-                case _ =>
-            }
-        }
-      }
+      for
+        directive <- directives.asScala
+        (path, values) <- directive.getFlattenedMap.asScala
+      do
+        if path.getPath.asScala.toList == List("dep") then
+          values.asScala.foreach {
+            case strValue: StringValue => deps += strValue.get()
+            case value => System.err.println("Unrecognized directive value " + value)
+          }
+        else
+          System.err.println("Unrecognized directive " + path.getPath)
 
       deps.toList
     catch
-      case NonFatal(e) =>
-        // If parsing fails, fall back to empty list
-        Nil
+      case NonFatal(e) => Nil // If parsing fails, fall back to empty list
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =
@@ -72,16 +63,15 @@ object DependencyResolver:
         )
 
         // Create dependency objects
-        val deps = dependencies.map { case (org, artifact, version) =>
-          Dependency.of(org, artifact, version)
-        }.toArray
+        val deps = dependencies
+          .map { case (org, artifact, version) => Dependency.of(org, artifact, version) }
+          .toArray
 
         val fetch = coursierapi.Fetch.create()
           .withRepositories(repos*)
           .withDependencies(deps*)
 
-        val files = fetch.fetch().asScala.toList
-        Right(files)
+        Right(fetch.fetch().asScala.toList)
 
       catch
         case NonFatal(e) =>
