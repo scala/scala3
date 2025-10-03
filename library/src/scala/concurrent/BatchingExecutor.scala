@@ -100,7 +100,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
   */
   private[this] sealed abstract class AbstractBatch protected (
     @annotation.stableNull protected final var first: Runnable | Null,
-    @annotation.stableNull protected final var other: Array[Runnable | Null],
+    protected final var other: Array[Runnable | Null],
     protected final var size: Int
   ) {
 
@@ -149,7 +149,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
   }
 
   private[this] final class AsyncBatch private(_first: Runnable | Null, _other: Array[Runnable | Null], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable | Null) {
-    @annotation.stableNull private[this] final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
+    private[this] final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
 
     final def this(runnable: Runnable) = this(runnable, BatchingExecutorStatics.emptyBatchArray, 1)
 

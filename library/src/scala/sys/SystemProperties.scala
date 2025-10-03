@@ -34,7 +34,7 @@ extends mutable.AbstractMap[String, String | Null] {
   override def empty: mutable.Map[String, String | Null] = mutable.Map[String, String | Null]()
   override def default(key: String): String | Null = null
 
-  def iterator: Iterator[(String, String | Null)] = wrapAccess {
+  def iterator: Iterator[(String, String)] = wrapAccess {
     val ps = System.getProperties()
     names map (k => (k, ps getProperty k)) filter (_._2 ne null)
   } getOrElse Iterator.empty
