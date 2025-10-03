@@ -118,9 +118,9 @@ object SepCheck:
 
     def clashing(ref: Capability)(using Context): SrcPos | Null =
       val refPeaks = ref.directPeaks
-      if !directPeaks .sharedPeaks(refPeaks).isEmpty then
+      if !directPeaks.sharedPeaks(refPeaks).isEmpty then
         var i = 0
-        while i < size && refs(i).directPeaks .sharedPeaks(refPeaks).isEmpty do
+        while i < size && refs(i).directPeaks.sharedPeaks(refPeaks).isEmpty do
           i += 1
         assert(i < size)
         locs(i)
@@ -232,13 +232,12 @@ object SepCheck:
      *  such that one of the following is true:
      *   1.
      *      - one of the sets contains `r`
-     *      - the other contains a capability `s` or `s.rd` where `s` _covers_ `r`
+     *      - the other contains a capability `s` or `s.rd` where `s` covers `r`
      *   2.
      *      - one of the sets contains `r.rd`
-     *      - the other contains a capability `s` where `s` _covers_ `r`
+     *      - the other contains a capability `s` where `s` covers `r`
      *
-     *  A capability `s` covers `r` if `r` can be seen as a path extension of `s`. E.g.
-     *  if `s = x.a` and `r = x.a.b.c` then `s` covers `a`.
+     *  @see covers in Capability
      */
     private def overlapWith(other: Refs)(using Context): Refs =
       val refs1 = refs
@@ -343,11 +342,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private def formalCaptures(arg: Tree)(using Context): Refs =
     arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
 
-   /** The span capture set if the type of `tree` */
+   /** The span capture set of the type of `tree` */
   private def spanCaptures(tree: Tree)(using Context): Refs =
    tree.nuType.spanCaptureSet.elems
 
-   /** The deep capture set if the type of `tree` */
+   /** The deep capture set of the type of `tree` */
   private def deepCaptures(tree: Tree)(using Context): Refs =
    tree.nuType.deepCaptureSet.elems
 
@@ -588,7 +587,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       for ref <- used do
         val pos = consumed.clashing(ref)
         if pos != null then
-          // println(i"consumed so far ${consumed.refs.toList} with peaks ${consumed.directPeaks .toList}, used = $used, exposed = ${ref.directPeaks }")
+          // println(i"consumed so far ${consumed.refs.toList} with peaks ${consumed.directPeaks.toList}, used = $used, exposed = ${ref.directPeaks }")
           consumeError(ref, pos, tree.srcPos)
   end checkUse
 

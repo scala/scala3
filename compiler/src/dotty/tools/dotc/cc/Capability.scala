@@ -770,9 +770,14 @@ object Capabilities:
      *   x covers x
      *   x covers y  ==>  x covers y.f
      *   x covers y  ==>  x* covers y*, x? covers y?
-     *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
      *   x covers y  ==>  <fresh hiding x> covers y
+     *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
+     *
      *   TODO what other clauses from subsumes do we need to port here?
+     *   The last clause is a conservative over-approximation: basically, we can't achieve
+     *   separation by having different classifiers for now. It would be good to
+     *   have a test that would expect such separation, then we can try to refine
+     *   the clause to make the test pass.
      */
     final def covers(y: Capability)(using Context): Boolean =
       val seen: util.EqHashSet[FreshCap] = new util.EqHashSet
