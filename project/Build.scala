@@ -718,6 +718,7 @@ object Build {
         "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
         "io.get-coursier" % "interface" % "1.0.19", // used by the REPL for dependency resolution
+        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
 
       (Compile / sourceGenerators) += ShadedSourceGenerator.task.taskValue,
