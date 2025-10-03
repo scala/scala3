@@ -58,10 +58,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolving =
-        val inlineds = enclosingInlineds // per current context
-           inlineds.isEmpty
+           tree.srcPos.isUserCode
         || tree.srcPos.isZeroExtentSynthetic // take as summonInline
-        || inlineds.last.srcPos.sourcePos.contains(tree.srcPos.sourcePos)
       if resolving && !ignoreTree(tree) then
         def loopOverPrefixes(prefix: Type, depth: Int): Unit =
           if depth < 10 && prefix.exists && !prefix.classSymbol.isEffectiveRoot then
@@ -497,7 +495,7 @@ object CheckUnused:
     val nowarn = mutable.Set.empty[Symbol]            // marked @nowarn
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
-    def register(tree: Tree)(using Context): Unit = if enclosingInlineds.isEmpty then
+    def register(tree: Tree)(using Context): Unit = if tree.srcPos.isUserCode then
       tree match
       case imp: Import =>
         if inliners == 0
@@ -1036,6 +1034,10 @@ object CheckUnused:
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
     def isSynthetic: Boolean = pos.span.isSynthetic && pos.span.exists
+    def isUserCode(using Context): Boolean =
+      val inlineds = enclosingInlineds // per current context
+         inlineds.isEmpty
+      || inlineds.last.srcPos.sourcePos.contains(pos.sourcePos)
 
   extension [A <: AnyRef](arr: Array[A])
     // returns `until` if not satisfied
