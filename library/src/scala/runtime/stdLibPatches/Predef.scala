@@ -67,6 +67,7 @@ object Predef:
       !(x eq y)
 
   extension (opt: Option.type)
+    @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 
   /** A type supporting Self-based type classes.

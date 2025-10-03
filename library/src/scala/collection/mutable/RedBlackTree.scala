@@ -146,7 +146,8 @@ private[collection] object RedBlackTree {
   private[this] def minNodeAfter[A, B](node: Node[A, B] | Null, key: A)(implicit ord: Ordering[A]): Node[A, B] | Null = {
     if (node eq null) null
     else {
-      var y: Node[A, B] | Null = null
+      // We know x is not null initially, so y will only be null before the first iteration of the loop.
+      var y: Node[A, B] = null.asInstanceOf[Node[A, B]]
       var x: Node[A, B] | Null = node
       var cmp = 1
       while ((x ne null) && cmp != 0) {
@@ -176,7 +177,8 @@ private[collection] object RedBlackTree {
   private[this] def maxNodeBefore[A, B](node: Node[A, B] | Null, key: A)(implicit ord: Ordering[A]): Node[A, B] | Null = {
     if (node eq null) null
     else {
-      var y: Node[A, B] | Null = null
+      // We know x is not null initially, so y will only be null before the first iteration of the loop.
+      var y: Node[A, B] = null.asInstanceOf[Node[A, B]]
       var x: Node[A, B] | Null = node
       var cmp = 1
       while ((x ne null) && cmp != 0) {
@@ -364,9 +366,8 @@ private[collection] object RedBlackTree {
    * Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
    * therefore, the last node), this method returns `null`.
    */
-  private[this] def successor[A, B](node: Node[A, B] | Null): Node[A, B] | Null = {
-    if (node eq null) null
-    else if (node.right ne null) minNodeNonNull(node.right)
+  private[this] def successor[A, B](node: Node[A, B]): Node[A, B] | Null = {
+    if (node.right ne null) minNodeNonNull(node.right)
     else {
       var x = node
       var y = x.parent
@@ -382,9 +383,8 @@ private[collection] object RedBlackTree {
    * Returns the node that precedes `node` in an in-order tree traversal. If `node` has the minimum key (and is,
    * therefore, the first node), this method returns `null`.
    */
-  private[this] def predecessor[A, B](node: Node[A, B] | Null): Node[A, B] | Null = {
-    if (node eq null) null
-    else if (node.left ne null) maxNodeNonNull(node.left)
+  private[this] def predecessor[A, B](node: Node[A, B]): Node[A, B] | Null = {
+    if (node.left ne null) maxNodeNonNull(node.left)
     else {
       var x = node
       var y = x.parent

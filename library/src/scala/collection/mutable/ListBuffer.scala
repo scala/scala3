@@ -321,7 +321,7 @@ class ListBuffer[A]
    *  @param f the mapping function
    *  @return this $coll
    */
-  def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
+  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
     mutationCount += 1
     var src = first
     var dst: List[A] | Null = null
