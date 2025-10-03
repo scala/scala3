@@ -27,14 +27,14 @@ class DiagnosticProviderSuite extends PcAssertions {
       .asScala
 
     val actual = diagnostics.map(d => TestDiagnostic(d.getRange().getStart().getOffset(text), d.getRange().getEnd().getOffset(text), d.getMessage(), d.getSeverity()))
-    // NOTE IF those tests turn out to be flaky, consider just checking the beginning of the message
     assertEquals(expected, actual, s"Expected [${expected.mkString(", ")}] but got [${actual.mkString(", ")}]")
 
   @Test def error =
     check(
-      """|class Bar(i: It)
+      """|object M:
+         |  Int.maaxValue
          |""".stripMargin,
-      List(TestDiagnostic(13, 15, "Not found: type It - did you mean Int? or perhaps Int.type?", DiagnosticSeverity.Error))
+      List(TestDiagnostic(12,25, "value maaxValue is not a member of object Int - did you mean Int.MaxValue?", DiagnosticSeverity.Error))
     )
 
   @Test def warning =
@@ -47,13 +47,13 @@ class DiagnosticProviderSuite extends PcAssertions {
 
   @Test def mixed =
     check(
-      """|class Bar(i: It)
-         |object M:
+      """object M:
+         |  Int.maaxValue
          |  1 + 1
          |""".stripMargin,
       List(
-        TestDiagnostic(13 ,15, "Not found: type It - did you mean Int? or perhaps Int.type?", DiagnosticSeverity.Error),
-        TestDiagnostic(29, 34, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning)
+        TestDiagnostic(12,25, "value maaxValue is not a member of object Int - did you mean Int.MaxValue?", DiagnosticSeverity.Error),
+        TestDiagnostic(28, 33, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning)
       )
     )
 
