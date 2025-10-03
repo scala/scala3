@@ -18,6 +18,7 @@ import language.experimental.captureChecking
 
 import scala.annotation.nowarn
 import scala.collection.generic.CommonErrors
+import scala.runtime.ScalaRunTime.nullForGC
 
 
 trait SeqView[+A] extends SeqOps[A, View, View[A]] with View[A] {
@@ -187,7 +188,7 @@ object SeqView {
         }
       }
       evaluated = true
-      underlying = nullForGC[SomeSeqOps[A]] // allow GC of unneeded reference
+      underlying = nullForGC[SomeSeqOps[A]]
       res
     }
 

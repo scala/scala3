@@ -17,6 +17,7 @@ import language.experimental.captureChecking
 import scala.collection.mutable.{ArrayBuffer, ArrayBuilder, Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
+import scala.runtime.ScalaRunTime.nullForGC
 import scala.runtime.Statics
 
 /** Iterators are data structures that allow to iterate over a sequence
@@ -772,14 +773,14 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         case 1 => if (self.hasNext) { status = 2 ; true } else { status = 3 ; false }
         case 0 => true
         case _ =>
-          if (myLeading.finish()) { status = 0 ; true } else { status = 1 ; myLeading = null.asInstanceOf[Leading]; hasNext }
+          if (myLeading.finish()) { status = 0 ; true } else { status = 1 ; myLeading = nullForGC[Leading]; hasNext }
       }
       def next() = {
         if (hasNext) {
           if (status == 0) {
             status = 1
             val res = myLeading.trailer
-            myLeading = null.asInstanceOf[Leading]
+            myLeading = nullForGC[Leading]
             res
           } else {
             status = 1
@@ -1301,7 +1302,7 @@ object Iterator extends IterableFactory[Iterator] {
           if (res eq null) throw new NullPointerException("null during unfold")
           res
         }
-        state = null.asInstanceOf[S] // allow GC
+        state = nullForGC[S]
       }
       nextResult.nn.isDefined
     }

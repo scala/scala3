@@ -27,7 +27,7 @@ import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.collection.immutable.VectorInline._
 import scala.collection.immutable.VectorStatics._
 import scala.collection.mutable.ReusableBuilder
-
+import scala.runtime.ScalaRunTime.nullForGC
 
 /** $factoryInfo
   * @define Coll `Vector`
@@ -1421,11 +1421,11 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
   @inline def nonEmpty: Boolean = knownSize != 0
 
   def clear(): Unit = {
-    a6 = null.asInstanceOf[Arr6]
-    a5 = null.asInstanceOf[Arr5]
-    a4 = null.asInstanceOf[Arr4]
-    a3 = null.asInstanceOf[Arr3]
-    a2 = null.asInstanceOf[Arr2]
+    a6 = nullForGC[Arr6]
+    a5 = nullForGC[Arr5]
+    a4 = nullForGC[Arr4]
+    a3 = nullForGC[Arr3]
+    a2 = nullForGC[Arr2]
     a1 = new Arr1(WIDTH)
     len1 = 0
     lenRest = 0

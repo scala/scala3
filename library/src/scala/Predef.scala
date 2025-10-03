@@ -20,6 +20,7 @@ import scala.annotation.{elidable, experimental, implicitNotFound, publicInBinar
 import scala.annotation.meta.{ companionClass, companionMethod }
 import scala.annotation.internal.{ RuntimeChecked }
 import scala.compiletime.summonFrom
+import scala.runtime.ScalaRunTime.mapNull
 
 /** The `Predef` object provides definitions that are accessible in all Scala
  *  compilation units without explicit qualification.
@@ -596,14 +597,6 @@ object Predef extends LowPriorityImplicits {
   extension (opt: Option.type)
     @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
-
-  // For backward compatibility with code compiled without -Yexplicit-nulls.
-  // If `a` is null, return null; otherwise, return `f`.
-  private[scala] inline def mapNull[A, B](a: A, inline f: B): B =
-    if((a: A | Null) == null) null.asInstanceOf[B] else f
-
-  // Use `null` in places where we want to make sure the reference is cleared.
-  private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
 
   /** A type supporting Self-based type classes.
    *
