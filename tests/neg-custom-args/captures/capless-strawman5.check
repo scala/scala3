@@ -1,0 +1,14 @@
+-- Error: tests/neg-custom-args/captures/capless-strawman5.scala:8:12 --------------------------------------------------
+8 |  f(x.eval).eval  // error
+  |  ^^^^^^^^^^^^^^
+  |  Local reach capability f* leaks into capture scope of method test1.
+  |  You could try to abstract the capabilities referred to by f* in a capset variable.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capless-strawman5.scala:12:4 -----------------------------
+12 |    () => myIO.println("hello")  // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    Found:    () ->{myIO} Unit
+   |    Required: () -> Unit
+   |
+   |    Note that capability myIO is not included in capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
