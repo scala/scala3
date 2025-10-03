@@ -13,6 +13,8 @@
 package scala
 package reflect
 
+import scala.language.`2.13`
+
 import scala.collection.mutable.{ArrayBuilder, ArraySeq}
 
 /** A `Manifest[T]` is an opaque descriptor for type T.  Its supported use

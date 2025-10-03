@@ -13,6 +13,8 @@
 package scala
 package reflect
 
+import scala.language.`2.13`
+
 import scala.annotation.unchecked.uncheckedStable
 
 import java.lang.{ Class => jClass }
