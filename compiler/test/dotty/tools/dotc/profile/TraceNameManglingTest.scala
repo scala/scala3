@@ -27,7 +27,7 @@ class TraceNameManglingTest extends DottyTest {
   }
 
   @Test def escapeBackslashes(): Unit = {
-    val isWindows = sys.props("os.name").toLowerCase(Locale.ROOT).nn.contains("windows")
+    val isWindows = sys.props("os.name").nn.toLowerCase(Locale.ROOT).nn.contains("windows")
     // It is not possible to create a file with backslash in name on Windows
     val filename = if isWindows then "test.scala" else "\\.scala"
     checkTraceEvents(

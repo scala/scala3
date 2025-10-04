@@ -136,7 +136,7 @@ object ListMap extends MapFactory[ListMap] {
   private[immutable] final class Node[K, V](
     override private[immutable] val key: K,
     private[immutable] var _value: V,
-    private[immutable] var _init: ListMap[K, V]
+    private[immutable] var _init: ListMap[K, V] | Null
   ) extends ListMap[K, V] {
     releaseFence()
 
@@ -195,28 +195,28 @@ object ListMap extends MapFactory[ListMap] {
 
       if (found) {
         if (isDifferent) {
-          var newHead: ListMap.Node[K, V1] = null
-          var prev: ListMap.Node[K, V1] = null
+          var newHead: ListMap.Node[K, V1] | Null = null
+          var prev: ListMap.Node[K, V1] | Null = null
           var curr: ListMap[K, V1] = this
           var i = 0
           while (i < index) {
             val temp = new ListMap.Node(curr.key, curr.value, null)
-            if (prev ne null) {
+            if (prev != null) {
               prev._init = temp
             }
             prev = temp
             curr = curr.init
-            if (newHead eq null) {
+            if (newHead == null) {
               newHead = prev
             }
             i += 1
           }
           val newNode = new ListMap.Node(curr.key, v, curr.init)
-          if (prev ne null) {
+          if (prev != null) {
             prev._init = newNode
           }
           releaseFence()
-          if (newHead eq null) newNode else newHead
+          if (newHead == null) newNode else newHead
         } else {
           this
         }
@@ -232,7 +232,7 @@ object ListMap extends MapFactory[ListMap] {
 
     override def removed(k: K): ListMap[K, V] = removeInternal(k, this, Nil)
 
-    override private[immutable] def next: ListMap[K, V] = _init
+    override private[immutable] def next: ListMap[K, V] = _init.nn
 
     override def last: (K, V) = (key, value)
     override def init: ListMap[K, V] = next

@@ -37,7 +37,7 @@ object BasicIO {
   final val BufferSize = 8192
 
   /** Used to separate lines in the `processFully` function that takes `Appendable`. */
-  final val Newline    = System.lineSeparator
+  final val Newline: String = System.lineSeparator
 
   private[process] final class LazilyListed[T](
     val  process:   T => Unit,
