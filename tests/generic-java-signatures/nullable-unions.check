@@ -1,0 +1,5 @@
+f1(A): A
+f2(A): A
+g1(T): T
+g2(T): T
+i(java.lang.Object): java.lang.Object
