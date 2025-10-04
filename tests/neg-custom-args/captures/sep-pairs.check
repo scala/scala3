@@ -13,7 +13,7 @@
    |         ^^^^^^^^^^^^^^^^
    |         Separation failure in method bad's result type Pair[Ref^, Ref^²].
    |         One part,  Ref^, hides capabilities  {r1*, cap, cap², r0}.
-   |         Another part,  Ref^²,  captures capabilities  {r1*, cap, cap², r0}.
+   |         Another part,  Ref^²,  captures capabilities  {r1*, r0}.
    |         The two sets overlap at  {r1*, r0}.
    |
    |         where:    ^    refers to a fresh root capability classified as Mutable in the result type of method bad
@@ -25,7 +25,7 @@
    |                  ^^^^^^^^^^^^^^^^
    |            Separation failure in value sameToPair's type Pair[Ref^, Ref^²].
    |            One part,  Ref^, hides capabilities  {fstSame}.
-   |            Another part,  Ref^²,  captures capabilities  {sndSame}.
+   |            Another part,  Ref^²,  captures capabilities  {sndSame, same.snd*}.
    |            The two sets overlap at  cap of value same.
    |
    |            where:    ^  refers to a fresh root capability classified as Mutable in the type of value sameToPair

@@ -1,0 +1,34 @@
+-- Error: tests/neg-custom-args/captures/cc-poly-varargs.scala:11:13 ---------------------------------------------------
+11 |  val left = src1.transformValuesWith(Left(_))    // error
+   |             ^^^^
+   |Separation failure: argument of type  (src1 : Source[T1, scala.caps.CapSet^{Cap}]^{Cap})
+   |to method transformValuesWith: [T, Cap >: scala.caps.CapSet <: scala.caps.CapSet^]
+   |  (src: Source[T, scala.caps.CapSet^{Cap}]^)[U](f: T ->{Cap} U): Source[U, scala.caps.CapSet^{Cap}]^{src, f}
+   |corresponds to capture-polymorphic formal parameter src of type  Source[T1^'s3, scala.caps.CapSet^{Cap}]^
+   |and hides capabilities  {src1}.
+   |Some of these overlap with the captures of the function result with type  Source[Left[T1^'s1, Nothing]^'s2, scala.caps.CapSet^{Cap}]^{src1}.
+   |
+   |  Hidden set of current argument        : {src1}
+   |  Hidden footprint of current argument  : {src1, Cap}
+   |  Capture set of function result        : {src1, Cap}
+   |  Footprint set of function result      : {src1, Cap}
+   |  The two sets overlap at               : {src1, Cap}
+   |
+   |where:    ^ refers to a fresh root capability created in value left when checking argument to parameter src of method transformValuesWith
+-- Error: tests/neg-custom-args/captures/cc-poly-varargs.scala:12:14 ---------------------------------------------------
+12 |  val right = src2.transformValuesWith(Right(_))  // error
+   |              ^^^^
+   |Separation failure: argument of type  (src2 : Source[T2, scala.caps.CapSet^{Cap}]^{Cap})
+   |to method transformValuesWith: [T, Cap >: scala.caps.CapSet <: scala.caps.CapSet^]
+   |  (src: Source[T, scala.caps.CapSet^{Cap}]^)[U](f: T ->{Cap} U): Source[U, scala.caps.CapSet^{Cap}]^{src, f}
+   |corresponds to capture-polymorphic formal parameter src of type  Source[T2^'s6, scala.caps.CapSet^{Cap}]^
+   |and hides capabilities  {src2}.
+   |Some of these overlap with the captures of the function result with type  Source[Right[Nothing, T2^'s4]^'s5, scala.caps.CapSet^{Cap}]^{src2}.
+   |
+   |  Hidden set of current argument        : {src2}
+   |  Hidden footprint of current argument  : {src2, Cap}
+   |  Capture set of function result        : {src2, Cap}
+   |  Footprint set of function result      : {src2, Cap}
+   |  The two sets overlap at               : {src2, Cap}
+   |
+   |where:    ^ refers to a fresh root capability created in value right when checking argument to parameter src of method transformValuesWith

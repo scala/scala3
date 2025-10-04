@@ -777,7 +777,7 @@ object CaptureSet:
           assert(elem.subsumes(elem1),
             i"Skipped map ${tm.getClass} maps newly added $elem to $elem1 in $this")
 
-    protected def includeElem(elem: Capability)(using Context): Unit =
+    protected def includeElem(elem: Capability)(using Context, VarState): Unit =
       if !elems.contains(elem) then
         if debugVars && id == debugTarget then
           println(i"###INCLUDE $elem in $this")
@@ -803,7 +803,10 @@ object CaptureSet:
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        includeElem(elem)
+        try includeElem(elem)
+        catch case ex: AssertionError =>
+          println(i"error for incl $elem in $this, ${summon[VarState].toString}")
+          throw ex
         if isBadRoot(elem) then
           rootAddedHandler()
         val normElem = if isMaybeSet then elem else elem.stripMaybe
@@ -947,12 +950,64 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
-  /** Variables that represent refinements of class parameters can have the universal
-   *  capture set, since they represent only what is the result of the constructor.
-   *  Test case: Without that tweak, logger.scala would not compile.
-   */
-  class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
-    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) = this
+  /** Variables created in types of inferred type trees */
+  class ProperVar(override val owner: Symbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  extends Var(owner, initialElems, nestedOK):
+
+    /** Make sure that capset variables in types of vals and result types of
+     *  non-anonymous functions contain only a single FreshCap, and furthermore
+     *  that that FreshCap has as origin InDecl(owner), where owner is the val
+     *  or def for which the type is defined.
+     *  Note: This currently does not apply to classified or read-only fresh caps.
+     */
+    override def includeElem(elem: Capability)(using ctx: Context, vs: VarState): Unit = elem match
+      case elem: FreshCap
+      if !nestedOK
+          && !elems.contains(elem)
+          && !owner.isAnonymousFunction
+          && ccConfig.newScheme =>
+        def fail = i"attempting to add $elem to $this"
+        def hideIn(fc: FreshCap): Unit =
+          assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)
+          if !isRefining then
+            // If a variable is added by addCaptureRefinements in a synthetic
+            // refinement of a class type, don't do level checking. The problem is
+            // that the variable might be matched against a type that does not have
+            // a refinement, in which case FreshCaps of the class definition would
+            // leak out in the corresponding places. This will fail level checking.
+            // The disallowBadRoots override below has a similar reason.
+            // TODO: We should instead mark the variable as impossible to instantiate
+            // and drop the refinement later in the inferred type.
+            // Test case is drop-refinement.scala.
+            assert(fc.acceptsLevelOf(elem),
+              i"level failure, cannot add $elem with ${elem.levelOwner} to $owner / $getClass / $fail")
+          fc.hiddenSet.add(elem)
+        val isSubsumed = (false /: elems): (isSubsumed, prev) =>
+          prev match
+            case prev: FreshCap =>
+              hideIn(prev)
+              true
+            case _ => isSubsumed
+        if !isSubsumed then
+          if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
+            val fc = new FreshCap(owner, Origin.InDecl(owner))
+            assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
+            hideIn(fc)
+            super.includeElem(fc)
+          else
+            super.includeElem(elem)
+      case _ =>
+        super.includeElem(elem)
+
+    /** Variables that represent refinements of class parameters can have the universal
+     *  capture set, since they represent only what is the result of the constructor.
+     *  Test case: Without that tweak, logger.scala would not compile.
+     */
+    override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
+      if isRefining then this
+      else super.disallowBadRoots(upto)(handler)
+
+  end ProperVar
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -1163,6 +1218,9 @@ object CaptureSet:
    */
   class HiddenSet(initialOwner: Symbol, val owningCap: FreshCap)(using @constructorOnly ictx: Context)
   extends Var(initialOwner):
+
+    // Updated by anchorCaps in CheckCaptures, but owner can be changed only
+    // if it was NoSymbol before.
     var givenOwner: Symbol = initialOwner
 
     override def owner = givenOwner
@@ -1171,62 +1229,9 @@ object CaptureSet:
 
     description = i"of elements subsumed by a fresh cap in $initialOwner"
 
-    private def aliasRef: FreshCap | Null =
-      if myElems.size == 1 then
-        myElems.nth(0) match
-          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias
-          case _ => null
-      else null
-
-    private def aliasSet: HiddenSet =
-      if myElems.size == 1 then
-        myElems.nth(0) match
-          case alias: FreshCap if deps.contains(alias.hiddenSet) => alias.hiddenSet
-          case _ => this
-      else this
-
-    def superCaps: List[FreshCap] =
-      deps.toList.map(_.asInstanceOf[HiddenSet].owningCap)
-
-    override def elems: Refs =
-      val al = aliasSet
-      if al eq this then super.elems else al.elems
-
-    override def elems_=(refs: Refs) =
-      val al = aliasSet
-      if al eq this then super.elems_=(refs) else al.elems_=(refs)
-
-    /** Add element to hidden set. Also add it to all supersets (as indicated by
-     *  deps of this set). Follow aliases on both hidden set and added element
-     *  before adding. If the added element is also a Fresh instance with
-     *  hidden set H which is a superset of this set, then make this set an
-     *  alias of H.
-     */
+    /** Add element to hidden set. */
     def add(elem: Capability)(using ctx: Context, vs: VarState): Unit =
-      val alias = aliasSet
-      if alias ne this then alias.add(elem)
-      else
-        def addToElems() =
-          assert(!isConst)
-          includeElem(elem)
-          deps.foreach: dep =>
-            assert(dep != this)
-            vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
-        elem match
-          case elem: FreshCap =>
-            if this ne elem.hiddenSet then
-              val alias = elem.hiddenSet.aliasRef
-              if alias != null then
-                add(alias)
-              else if deps.contains(elem.hiddenSet) then // make this an alias of elem
-                capt.println(i"Alias $this to ${elem.hiddenSet}")
-                elems = SimpleIdentitySet(elem)
-                deps = SimpleIdentitySet(elem.hiddenSet)
-              else
-                addToElems()
-                elem.hiddenSet.includeDep(this)
-          case _ =>
-            addToElems()
+      includeElem(elem)
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the
      *  duration. This is used to escape infinite recursions if two Freshs
@@ -1553,7 +1558,7 @@ object CaptureSet:
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
     case Reach(c1) =>
-      c1.widen.deepCaptureSet(includeTypevars = true)
+      c1.widen.computeDeepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
     case Restricted(c1, cls) =>
       if cls == defn.NothingClass then CaptureSet.empty
@@ -1615,13 +1620,17 @@ object CaptureSet:
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
    */
-  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false, includeBoxed: Boolean = true)(using Context): CaptureSet =
     val collect = new DeepTypeAccumulator[CaptureSet]:
-      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet) =
-        this(acc, parent) ++ refs
+
+      def capturingCase(acc: CaptureSet, parent: Type, refs: CaptureSet, boxed: Boolean) =
+        if includeBoxed || !boxed then this(acc, parent) ++ refs
+        else this(acc, parent)
+
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
         if includeTypevars && upperBound.isExactlyAny then fresh(Origin.DeepCS(t))
         else this(acc, upperBound)
+
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[Capability]]

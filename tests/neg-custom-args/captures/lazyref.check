@@ -54,7 +54,7 @@
    |  Hidden set of current argument        : {cap2}
    |  Hidden footprint of current argument  : {cap2}
    |  Capture set of function prefix        : {ref1, ref2, ref2*}
-   |  Footprint set of function prefix      : {ref1, ref2, ref2*, cap1, cap2}
+   |  Footprint set of function prefix      : {ref1, cap1, ref2, cap2, ref2*}
    |  The two sets overlap at               : {cap2}
    |
    |where:    => refers to a fresh root capability created in value ref4 when checking argument to parameter f of method map

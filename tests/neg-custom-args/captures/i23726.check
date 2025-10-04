@@ -13,7 +13,7 @@
    |  Footprint set of function result      : {a}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Mutable created in value a when constructing mutable Ref
+   |where:    ^  refers to a fresh root capability classified as Mutable in the type of value a
    |          ^² refers to a fresh root capability classified as Mutable created in method test1 when checking argument to parameter x of method apply
 -- Error: tests/neg-custom-args/captures/i23726.scala:15:5 -------------------------------------------------------------
 15 |  f3(b)  // error
@@ -30,7 +30,7 @@
    |  Footprint set of function result      : {op, b}
    |  The two sets overlap at               : {b}
    |
-   |where:    ^  refers to a fresh root capability classified as Mutable created in value b when constructing mutable Ref
+   |where:    ^  refers to a fresh root capability classified as Mutable in the type of value b
    |          ^² refers to a fresh root capability classified as Mutable created in method test1 when checking argument to parameter x of method apply
 -- Error: tests/neg-custom-args/captures/i23726.scala:23:5 -------------------------------------------------------------
 23 |  f7(a)  // error
@@ -47,5 +47,5 @@
    |  Footprint set of function prefix      : {f7*, a, b}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Mutable created in value a when constructing mutable Ref
+   |where:    ^  refers to a fresh root capability classified as Mutable in the type of value a
    |          ^² refers to a fresh root capability classified as Mutable created in method test1 when checking argument to parameter x of method apply

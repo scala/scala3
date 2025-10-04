@@ -1,15 +1,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrude-mut.scala:9:8 ------------------------------
 9 |    a = a1  // error
   |        ^^
-  |Found:    (a1 : A^)
-  |Required: A^²
+  |        Found:    (a1 : A^)
+  |        Required: A^²
   |
-  |Note that capability cap is not included in capture set {cap²}
-  |because cap in method b is not visible from cap² in variable a.
+  |        Note that capability cap is not included in capture set {cap²}
+  |        because cap in method b is not visible from cap² in variable a.
   |
-  |where:    ^    refers to a fresh root capability classified as Mutable created in value a1 when constructing mutable A
-  |          ^²   refers to a fresh root capability classified as Mutable in the type of variable a
-  |          cap  is a fresh root capability classified as Mutable created in value a1 when constructing mutable A
-  |          cap² is a fresh root capability classified as Mutable in the type of variable a
+  |        where:    ^    refers to a fresh root capability classified as Mutable in the type of value a1
+  |                  ^²   refers to a fresh root capability classified as Mutable in the type of variable a
+  |                  cap  is a fresh root capability classified as Mutable in the type of value a1
+  |                  cap² is a fresh root capability classified as Mutable in the type of variable a
   |
   | longer explanation available when compiling with `-explain`

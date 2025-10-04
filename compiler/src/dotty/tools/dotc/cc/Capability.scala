@@ -12,7 +12,7 @@ import CCState.*
 import Periods.{NoRunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
-import CaptureSet.VarState
+import CaptureSet.{Refs, emptyRefs, VarState}
 import Annotations.Annotation
 import Flags.*
 import config.Printers.capt
@@ -147,7 +147,7 @@ object Capabilities:
    *  @param origin  an indication where and why the FreshCap was created, used
    *                 for diagnostics
    */
-  case class FreshCap private (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
+  case class FreshCap (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
     val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
       // fails initialization check without the @unchecked
 
@@ -547,6 +547,23 @@ object Capabilities:
           captureSetValid = currentId
         computed
 
+    /** The elements hidden by this capability, if this is a FreshCap
+     *  or a derived version of one. Read-only status and restrictions
+     *  are transferred from the capability to its hidden set.
+     */
+    def hiddenSet(using Context): Refs = computeHiddenSet(identity)
+
+    /** Compute result based on hidden set of this capability.
+     *  Restrictions and read-only status transfer from the capability to its
+     *  hidden set.
+     *  @param  f   a function that gets applied to all detected hidden sets
+     */
+    def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
+      case self: FreshCap => f(self.hiddenSet.elems)
+      case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
+      case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
+      case _ => emptyRefs
+
     /** The transitive classifiers of this capability. */
     def transClassifiers(using Context): Classifiers =
       def toClassifiers(cls: ClassSymbol): Classifiers =
@@ -753,25 +770,44 @@ object Capabilities:
      *   x covers x
      *   x covers y  ==>  x covers y.f
      *   x covers y  ==>  x* covers y*, x? covers y?
+     *   x covers y  ==>  <fresh hiding x> covers y
+     *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
+     *
      *   TODO what other clauses from subsumes do we need to port here?
+     *   The last clause is a conservative over-approximation: basically, we can't achieve
+     *   separation by having different classifiers for now. It would be good to
+     *   have a test that would expect such separation, then we can try to refine
+     *   the clause to make the test pass.
      */
     final def covers(y: Capability)(using Context): Boolean =
-      (this eq y)
-      || y.match
-          case y @ TermRef(ypre: Capability, _) =>
-            this.covers(ypre)
-          case Reach(y1) =>
-            this match
-              case Reach(x1) => x1.covers(y1)
-              case _ => false
-          case Maybe(y1) =>
-            this match
-              case Maybe(x1) => x1.covers(y1)
-              case _ => false
-          case y: FreshCap =>
-            y.hiddenSet.superCaps.exists(this.covers(_))
-          case _ =>
-            false
+      val seen: util.EqHashSet[FreshCap] = new util.EqHashSet
+
+      def recur(x: Capability, y: Capability): Boolean =
+        (x eq y)
+        || y.match
+            case y @ TermRef(ypre: Capability, _) =>
+              recur(x, ypre)
+            case Reach(y1) =>
+              x match
+                case Reach(x1) => recur(x1, y1)
+                case _ => false
+            case Maybe(y1) =>
+              x match
+                case Maybe(x1) => recur(x1, y1)
+                case _ => false
+            case Restricted(y1, _) =>
+              recur(x, y1)
+            case _ =>
+              false
+        || x.match
+            case x: FreshCap if !seen.contains(x) =>
+              seen.add(x)
+              x.hiddenSet.exists(recur(_, y))
+            case Restricted(x1, _) => recur(x1, y)
+            case _ => false
+
+      recur(this, y)
+    end covers
 
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)

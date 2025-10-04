@@ -1,11 +1,12 @@
 -- Error: tests/neg-custom-args/captures/sep-counter.scala:12:19 -------------------------------------------------------
 12 |  def mkCounter(): Pair[Ref^, Ref^] =  // error
    |                   ^^^^^^^^^^^^^^^^
-   | Separation failure in method mkCounter's result type Pair[Ref^, Ref^²].
-   | One part,  Ref^, hides capabilities  {c, cap}.
-   | Another part,  Ref^²,  captures capabilities  {c, cap}.
-   | The two sets overlap at  {c}.
+   |Separation failure in method mkCounter's result type Pair[Ref^, Ref^²].
+   |One part,  Ref^, hides capabilities  {c, cap, cap²}.
+   |Another part,  Ref^²,  captures capabilities  {c}.
+   |The two sets overlap at  {c}.
    |
-   | where:    ^   refers to a fresh root capability classified as Mutable in the result type of method mkCounter
-   |           ^²  refers to a fresh root capability classified as Mutable in the result type of method mkCounter
-   |           cap is a fresh root capability classified as Mutable created in value c when constructing mutable Ref
+   |where:    ^    refers to a fresh root capability classified as Mutable in the result type of method mkCounter
+   |          ^²   refers to a fresh root capability classified as Mutable in the result type of method mkCounter
+   |          cap  is a fresh root capability classified as Mutable in the type of value c
+   |          cap² is a fresh root capability classified as Mutable created in value c when constructing mutable Ref
