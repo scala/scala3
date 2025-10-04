@@ -38,7 +38,8 @@ class BaseInlayHintsSuite extends BasePCSuite {
       byNameParameters = true,
       implicitConversions = true,
       namedParameters = true,
-      hintsInPatternMatch = hintsInPatternMatch
+      hintsInPatternMatch = hintsInPatternMatch,
+      closingLabels = false
     )
 
     val inlayHints = presentationCompiler
