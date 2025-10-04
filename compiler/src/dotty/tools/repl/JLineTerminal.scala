@@ -82,6 +82,10 @@ class JLineTerminal extends java.io.Closeable {
 
   def close(): Unit = terminal.close()
 
+  /** Register a signal handler and return the previous handler */
+  def handle(signal: org.jline.terminal.Terminal.Signal, handler: org.jline.terminal.Terminal.SignalHandler): org.jline.terminal.Terminal.SignalHandler =
+    terminal.handle(signal, handler)
+
   /** Provide syntax highlighting */
   private class Highlighter(using Context) extends reader.Highlighter {
     def highlight(reader: LineReader, buffer: String): AttributedString = {
