@@ -34,7 +34,8 @@ enum MessageFilter:
       pattern.findFirstIn(path).nonEmpty
     case Origin(pattern) =>
       message match
-      case message: OriginWarning => pattern.findFirstIn(message.origin).nonEmpty
+      case message: OriginWarning if message.origin != OriginWarning.NoOrigin =>
+        pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
 
