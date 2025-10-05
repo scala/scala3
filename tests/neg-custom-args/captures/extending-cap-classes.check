@@ -1,23 +1,25 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/extending-cap-classes.scala:7:15 -------------------------
 7 |  val x2: C1 = new C2 // error
   |               ^^^^^^
-  |Found:    C2^{cap.rd}
+  |Found:    C2^
   |Required: C1
   |
-  |Note that capability cap.rd is not included in capture set {}.
+  |Note that capability cap is not included in capture set {}.
   |
-  |where:    cap is a fresh root capability classified as SharedCapability created in value x2 when constructing Capability instance C2
+  |where:    ^   refers to a fresh root capability classified as SharedCapability created in value x2 when constructing Capability instance C2
+  |          cap is a fresh root capability classified as SharedCapability created in value x2 when constructing Capability instance C2
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/extending-cap-classes.scala:8:15 -------------------------
 8 |  val x3: C1 = new C3 // error
   |               ^^^^^^
-  |Found:    C3^{cap.rd}
+  |Found:    C3^
   |Required: C1
   |
-  |Note that capability cap.rd is not included in capture set {}.
+  |Note that capability cap is not included in capture set {}.
   |
-  |where:    cap is a fresh root capability classified as SharedCapability created in value x3 when constructing Capability instance C3
+  |where:    ^   refers to a fresh root capability classified as SharedCapability created in value x3 when constructing Capability instance C3
+  |          cap is a fresh root capability classified as SharedCapability created in value x3 when constructing Capability instance C3
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/extending-cap-classes.scala:13:15 ------------------------

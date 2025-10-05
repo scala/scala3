@@ -863,16 +863,13 @@ class CheckCaptures extends Recheck, SymTransformer:
        *
        *  Second half: union of initial capture set and all capture sets of arguments
        *  to tracked parameters. The initial capture set `initCs` is augmented with
-       *   - FreshCap(...)    if `core` extends Mutable
-       *   - FreshCap(...).rd if `core` extends Capability
+       *  a fresh cap if `core` extends Capability.
        */
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
-          if core.derivesFromMutable then
-            initCs ++ FreshCap(Origin.NewMutable(core)).singletonCaptureSet
-          else if core.derivesFromCapability then
-            initCs ++ FreshCap(Origin.NewCapability(core)).readOnly.singletonCaptureSet
+          if core.derivesFromCapability
+          then initCs ++ FreshCap(Origin.NewCapability(core)).singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
@@ -896,6 +893,21 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
+
+      /*
+      def impliedFresh: CaptureSet =
+        cls.info.fields.foldLeft(CaptureSet.empty: CaptureSet): (cs, field) =>
+          if !cs.isAlwaysEmpty || field.symbol.is(ParamAccessor) then
+            cs
+          else
+            val fieldFreshCaps = field.info.spanCaptureSet.elems.filter(_.isTerminalCapability)
+            if fieldFreshCaps.isEmpty then cs
+            else
+              val classFresh = FreshCap(ctx.owner, NoPrefix, )
+              if fieldFreshCaps.forall(_.isReadOnly)
+              then cs + classFresh.readOnly
+              else cs + classFresh
+      */
 
       augmentConstructorType(resType, capturedVars(cls))
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)

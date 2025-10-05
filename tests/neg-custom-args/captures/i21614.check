@@ -1,5 +1,5 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:33 ---------------------------------------
-12 |  files.map((f: F) => new Logger(f)) // error // error, Q: can we make this pass (see #19076)?
+12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
    |                                 ^
    |Found:    (f : F)
    |Required: File^
@@ -11,25 +11,16 @@
    |          cap² is a fresh root capability classified as SharedCapability created in anonymous function of type (f²: F): Logger when checking argument to parameter f of constructor Logger
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i21614.scala:12:8 -------------------------------------------------------------
-12 |  files.map((f: F) => new Logger(f)) // error // error, Q: can we make this pass (see #19076)?
-   |  ^^^^^^^^^
-   |Type variable U of method map cannot be instantiated to Logger{val f: File^'s1}^{cap.rd} since
-   |that type captures the root capability `cap`.
-   |This is often caused by a local capability in an argument of method map
-   |leaking as part of its result.
-   |
-   |where:    cap is a root capability associated with the result type of (f²: F^{files*}): Logger{val f: File^'s1}^'s2
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |Found:    (_$1: File^'s3) ->{C} Logger{val f: File^{_$1}}^{cap.rd, _$1}
-   |Required: File^{C} => Logger{val f: File^'s4}^'s5
+   |Found:    (_$1: File^'s1) ->{C} Logger{val f: File^{_$1}}^{cap, _$1}
+   |Required: File^{C} => Logger{val f: File^'s2}^'s3
    |
    |Note that capability C is not classified as trait SharedCapability, therefore it
-   |cannot be included in capture set 's3 of parameter _$1 of SharedCapability elements.
+   |cannot be included in capture set 's1 of parameter _$1 of SharedCapability elements.
    |
    |where:    =>  refers to a fresh root capability created in method mkLoggers2 when checking argument to parameter f of method map
-   |          cap is a root capability associated with the result type of (_$1: File^'s3): Logger{val f: File^{_$1}}^{cap.rd, _$1}
+   |          cap is a root capability associated with the result type of (_$1: File^'s1): Logger{val f: File^{_$1}}^{cap, _$1}
    |
    | longer explanation available when compiling with `-explain`

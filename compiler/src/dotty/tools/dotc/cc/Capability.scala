@@ -950,10 +950,9 @@ object Capabilities:
         i" when instantiating argument of unapply with type $info"
       case LocalInstance(restpe) =>
         i" when instantiating expected result type $restpe of function literal"
-      case NewMutable(tp) =>
-        i" when constructing mutable $tp"
       case NewCapability(tp) =>
-        i" when constructing Capability instance $tp"
+        val kind = if tp.derivesFromMutable then "mutable" else "Capability instance"
+        i" when constructing $kind $tp"
       case LambdaExpected(respt) =>
         i" when instantiating expected result type $respt of lambda"
       case LambdaActual(restp: Type) =>
