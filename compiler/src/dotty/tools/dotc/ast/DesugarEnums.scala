@@ -289,7 +289,15 @@ object DesugarEnums {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Object, definesLookups)
       val impl1 = cpy.Template(impl)(parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue), body = Nil)
         .withAttachment(ExtendsSingletonMirror, ())
-      val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
+
+      /** i11443: Attempt to provide an explicit type annotation for the enum case to allow certain cycles.
+       *  We pick the intersection of all parents, but only if they can be determined to be all types at this point.
+       *  Notably, this doesn't hold if one of the parents is a constructor call (e.g., extends Planet("Pluto")),
+       *  which might involve yet-to-be inferred generic parameters.
+       */
+      val tpt = if impl.parents.forall(_.isType) then impl.parents.reduceLeft(makeAndType(_, _)) else TypeTree()
+
+      val vdef = ValDef(name, tpt, New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
     }
   }

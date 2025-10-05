@@ -8,7 +8,7 @@ enum Shape extends Figure:
   case Ellipsis extends Shape
 
 def hasCorners(s: Shape): Boolean = s match
-  case hasCorners: Corners => true //  <--- reported as `Unreachable case`
+  case hasCorners: Corners => true //  <--- previously reported as `Unreachable case` (i21860), ok now (i11443)
   case _                   => false
 
 class Test:
