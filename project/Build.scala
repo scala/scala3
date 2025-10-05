@@ -241,7 +241,7 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      // "-Werror",
+      "-Werror",
       //"-Wunused:all",
       //"-rewrite", // requires -Werror:false since no rewrites are applied with errors
       "-encoding", "UTF8",
@@ -961,6 +961,9 @@ object Build {
         ).mapValues(_.getAbsolutePath)
       }
     }.value,
+
+    // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
+    (Compile / scalacOptions) -= "-Werror",
 
     (Test / testOptions) += Tests.Argument(
       TestFrameworks.JUnit,
@@ -1797,7 +1800,7 @@ object Build {
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
       Compile / scalacOptions += "-Yexplicit-nulls",
-      (Compile / scalacOptions) ++= Seq(
+      Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -2342,6 +2345,8 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
+      // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
+      Compile / scalacOptions -= "-Werror",
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
       // Add entry's to the MANIFEST

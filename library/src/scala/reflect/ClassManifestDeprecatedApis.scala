@@ -32,7 +32,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
     def loop(left: Set[jClass[_]], seen: Set[jClass[_]]): Boolean = {
       left.nonEmpty && {
         val next = left.head
-        val supers = next.getInterfaces.nn.toSet ++ Option(next.getSuperclass)
+        val supers = next.getInterfaces.toSet ++ Option(next.getSuperclass)
         supers(sup) || {
           val xs = left ++ supers filterNot seen
           loop(xs - next, seen + next)
@@ -137,6 +137,7 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
 
   protected def argString =
     if (typeArguments.nonEmpty) typeArguments.mkString("[", ", ", "]")
+    // TODO: remove .nn here after 3.8. See #24070
     else if (runtimeClass.isArray) "["+ClassManifest.fromClass(runtimeClass.getComponentType.nn)+"]"
     else ""
 }
