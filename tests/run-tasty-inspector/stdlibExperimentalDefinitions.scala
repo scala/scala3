@@ -79,6 +79,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.RenameSelectorModule.apply",
   "scala.quoted.Quotes.reflectModule.SimpleSelectorModule.apply",
 
+  // New feature: fromNullable for explicit nulls
+  "scala.Predef$.fromNullable",
+
   // New feature: modularity
   "scala.Precise",
   "scala.annotation.internal.WitnessNames",
