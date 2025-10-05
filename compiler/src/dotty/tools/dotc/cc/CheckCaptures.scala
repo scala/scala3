@@ -17,6 +17,7 @@ import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, NothingToAdd, err}
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
+import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
@@ -246,6 +247,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.run
 
   val ccState1 = new CCState // Dotty problem: Rename to ccState ==> Crash in ExplicitOuter
+
+  /** A cache that stores for each class the classifiers of all fresh instances
+   *  in the types of its fields.
+   */
+  val knownFresh = new util.EqHashMap[Symbol, List[ClassSymbol]]
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx), CheckerAPI:
 
@@ -620,9 +626,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           fn.tpe.widenDealias match
             case tl: TypeLambda => tl.paramNames
             case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
-            case t =>
-              println(i"parent type: $t")
-              args.map(_ => EmptyTypeName)
+            case t => args.map(_ => EmptyTypeName)
 
         for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
           def where = if sym.exists then i" in an argument of $sym" else ""
@@ -870,7 +874,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         var allCaptures: CaptureSet =
           if core.derivesFromCapability
           then initCs ++ FreshCap(Origin.NewCapability(core)).singletonCaptureSet
-          else initCs
+          else initCs ++ impliedByFields(core)
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
@@ -894,20 +898,53 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
 
-      /*
-      def impliedFresh: CaptureSet =
-        cls.info.fields.foldLeft(CaptureSet.empty: CaptureSet): (cs, field) =>
-          if !cs.isAlwaysEmpty || field.symbol.is(ParamAccessor) then
-            cs
-          else
-            val fieldFreshCaps = field.info.spanCaptureSet.elems.filter(_.isTerminalCapability)
-            if fieldFreshCaps.isEmpty then cs
-            else
-              val classFresh = FreshCap(ctx.owner, NoPrefix, )
-              if fieldFreshCaps.forall(_.isReadOnly)
-              then cs + classFresh.readOnly
-              else cs + classFresh
-      */
+      /** The additional capture set implied by the capture sets of its fields. This
+       *  is either empty or, if some fields have a terminal capability in their span
+       *  capture sets, it consists of a single fresh cap that subsumes all these terminal
+       *  capabiltities. Class parameters are not counted.
+       */
+      def impliedByFields(core: Type): CaptureSet =
+        var infos: List[String] = Nil
+        def pushInfo(msg: => String) =
+          if ctx.settings.YccVerbose.value then infos = msg :: infos
+
+        /** The classifiers of the fresh caps in the span capture sets of all fields
+         *  in the given class `cls`.
+         */
+        def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
+          case cls: ClassSymbol =>
+            val fieldClassifiers =
+              for
+                sym <- cls.info.decls.toList
+                if sym.isField && !sym.isOneOf(DeferredOrTermParamOrAccessor)
+                    && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
+                case fresh: FreshCap <- sym.info.spanCaptureSet.elems
+                  .filter(_.isTerminalCapability)
+                  .map(_.stripReadOnly)
+                  .toList
+                _ = pushInfo(i"Note: ${sym.showLocated} captures a $fresh")
+              yield fresh.hiddenSet.classifier
+            val parentClassifiers =
+              cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
+            if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
+            then Nil
+            else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
+          case _ => Nil
+
+        def fresh =
+          FreshCap(Origin.NewInstance(core)).tap: fresh =>
+            if ctx.settings.YccVerbose.value then
+              pushInfo(i"Note: instance of $cls captures a $fresh that comes from a field")
+              report.echo(infos.mkString("\n"), ctx.owner.srcPos)
+
+        knownFresh.getOrElseUpdate(cls, impliedClassifiers(cls)) match
+          case Nil => CaptureSet.empty
+          case cl :: Nil =>
+            val result = fresh
+            result.hiddenSet.adoptClassifier(cl)
+            result.singletonCaptureSet
+          case _ => fresh.singletonCaptureSet
+      end impliedByFields
 
       augmentConstructorType(resType, capturedVars(cls))
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)

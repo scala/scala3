@@ -16,6 +16,7 @@ package generic
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import caps.unsafe.untrackedCaptures
 
 /** Type class witnessing that a collection representation type `Repr` has
  *  elements of type `A` and has a conversion to `IterableOnce[A]`.
@@ -46,6 +47,7 @@ transparent trait IsIterableOnce[Repr] {
   type A
 
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
+  @untrackedCaptures
   val conversion: Repr => IterableOnce[A] = apply(_)
 
   /** A conversion from the representation type `Repr` to a `IterableOnce[A]`. */

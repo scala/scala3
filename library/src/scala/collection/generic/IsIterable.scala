@@ -15,6 +15,7 @@ package generic
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import caps.unsafe.untrackedCaptures
 
 /** A trait which can be used to avoid code duplication when defining extension
  *  methods that should be applicable both to existing Scala collections (i.e.,
@@ -123,6 +124,7 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
   type C
 
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
+  @untrackedCaptures
   override val conversion: Repr => IterableOps[A, Iterable, C] = apply(_)
 
   /** A conversion from the type `Repr` to `IterableOps[A, Iterable, C]` */

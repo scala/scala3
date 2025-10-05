@@ -896,18 +896,26 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
-  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
+  /** The smallest list D of class symbols in cs1 and cs2 such that
+   *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
+   */
+  def dominators(cs1: List[ClassSymbol], cs2: List[ClassSymbol])(using Context): List[ClassSymbol] =
     // Drop classes that subclass classes of the other set
     // @param proper  If true, only drop proper subclasses of a class of the other set
     def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol], proper: Boolean) =
       cs1.filter: cls1 =>
         !cs2.exists: cls2 =>
           cls1.isSubClass(cls2) && (!proper || cls1 != cls2)
+    filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false)
+
+  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
     (cs1, cs2) match
-      case (Unclassified, _) | (_, Unclassified) => Unclassified
-      case (UnknownClassifier, _) | (_, UnknownClassifier) => UnknownClassifier
+      case (Unclassified, _) | (_, Unclassified) =>
+        Unclassified
+      case (UnknownClassifier, _) | (_, UnknownClassifier) =>
+        UnknownClassifier
       case (ClassifiedAs(cs1), ClassifiedAs(cs2)) =>
-        ClassifiedAs(filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false))
+        ClassifiedAs(dominators(cs1, cs2))
 
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics
@@ -920,7 +928,7 @@ object Capabilities:
     case ResultInstance(methType: Type, meth: Symbol)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
-    case NewMutable(tp: Type)
+    case NewInstance(tp: Type)
     case NewCapability(tp: Type)
     case LambdaExpected(respt: Type)
     case LambdaActual(restp: Type)
@@ -950,6 +958,8 @@ object Capabilities:
         i" when instantiating argument of unapply with type $info"
       case LocalInstance(restpe) =>
         i" when instantiating expected result type $restpe of function literal"
+      case NewInstance(tp) =>
+        i" when constructing instance $tp"
       case NewCapability(tp) =>
         val kind = if tp.derivesFromMutable then "mutable" else "Capability instance"
         i" when constructing $kind $tp"
