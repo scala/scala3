@@ -928,9 +928,6 @@ class Namer { typer: Typer =>
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
 
-      def isJavaRecord(owner: Symbol) =
-        owner.is(JavaDefined) && owner.derivesFrom(defn.JavaRecordClass)
-
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
@@ -954,8 +951,8 @@ class Namer { typer: Typer =>
             && (definesMember || inheritsConcreteMember)
           )
           ||
-          // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
-          (isJavaRecord(denot.owner)
+          // remove synthetic constructor, method or companion's unapply of a java Record if it clashes with a non-synthetic one
+          ((denot.owner.isJavaRecord || denot.owner.companionClass.isJavaRecord && denot.name == nme.unapply)
             && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )

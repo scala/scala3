@@ -54,6 +54,7 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.CaptureChecked"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.reachCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedCaptures"),
         ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$ValOrDefDefMethods"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$"),

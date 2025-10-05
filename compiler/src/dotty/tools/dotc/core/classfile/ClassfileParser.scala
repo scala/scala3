@@ -535,6 +535,35 @@ class ClassfileParser(
     }
   }
 
+  class RecordUnapplyCompleter() extends LazyType {
+    override def complete(denot: SymDenotation)(using Context): Unit =
+      def methType(t: Type) = MethodType(List(nme.x_0), List(t), t)
+
+      val unapplyMethodType =
+        val recType = classRoot.typeRef
+        val tparams = classRoot.typeParams
+        if tparams.length > 0 then
+          PolyType(tparams.map(_.name))(
+            pt => tparams.map(_.info.subst(tparams, pt.paramRefs).bounds),
+            pt => methType(AppliedType(recType, pt.paramRefs))
+          )
+        else methType(recType)
+
+      // synthetic unapply generated here won't be invalidated by `invalidateIfClashingSynthetic`, so we handle that immediately
+      val clashes = denot.owner.unforcedDecls.lookupAll(nme.unapply)
+      if clashes.exists(c => c != denot.symbol && c.info.matches(unapplyMethodType)) then
+        denot.info = NoType
+      else
+        denot.info = unapplyMethodType
+        val sym = denot.symbol
+        val ddef = DefDef(sym.asTerm, _.last.last)
+          .withAddedFlags(Flags.JavaDefined | Flags.SyntheticMethod | Flags.Inline).withSpan(Span(0))
+        sym.defTree = ddef
+
+        // typed trees generated here are not a subject to typer's inline logic, so we do that manually
+        inlines.PrepareInlineable.registerInlineInfo(sym, ddef.rhs)
+  }
+
   def constantTagToType(tag: Int)(using Context): Type =
     (tag: @switch) match {
       case BYTE_TAG   => defn.ByteType
@@ -989,6 +1018,32 @@ class ClassfileParser(
             sym.owner.resetFlag(Flags.PureInterface)
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
           }
+
+        case tpnme.RecordATTR =>
+          val components = List.fill(in.nextChar):
+            val name = pool.getName(in.nextChar).value
+            val _ = in.nextChar
+            skipAttributes()
+            name
+
+          classRoot.addAnnotation(
+            Annotation(
+              defn.JavaRecordFieldsAnnot,
+              Typed(
+                SeqLiteral(components.map(field => Literal(Constant(field))), TypeTree(defn.StringType)),
+                TypeTree(defn.RepeatedParamType.appliedTo(defn.StringType))
+              ),
+              NoSpan
+            )
+          )
+          val completer = RecordUnapplyCompleter()
+          val member = newSymbol(
+            moduleRoot.symbol,
+            nme.unapply,
+            Flags.JavaDefined | Flags.SyntheticMethod | Flags.Inline,
+            completer,
+          )
+          staticScope.enter(member)
 
         case _ =>
       }
