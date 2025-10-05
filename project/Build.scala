@@ -686,6 +686,9 @@ object Build {
       // Note: bench/profiles/projects.yml should be updated accordingly.
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
 
+      // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
+      Compile / scalacOptions -= "-Werror",
+
       // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
       scalacOptions ++= Seq("-source", "3.3"),
 
@@ -961,9 +964,6 @@ object Build {
         ).mapValues(_.getAbsolutePath)
       }
     }.value,
-
-    // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
-    (Compile / scalacOptions) -= "-Werror",
 
     (Test / testOptions) += Tests.Argument(
       TestFrameworks.JUnit,
@@ -2345,8 +2345,6 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
-      // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
-      Compile / scalacOptions -= "-Werror",
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
       // Add entry's to the MANIFEST
