@@ -923,6 +923,9 @@ object Types extends TypeUtils {
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
             val joint = CCState.withCollapsedFresh:
+                // We have to do a collapseFresh here since `pdenot` will see the class
+                // view and a fresh in the class will not be able to subsume a
+                // refinement from outside since level checking would fail.
                 pdenot.meet(
                   new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
                   pre,

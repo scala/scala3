@@ -1392,7 +1392,7 @@ object CaptureSet:
     def addHidden(hidden: HiddenSet, elem: Capability)(using Context): Boolean =
       if hidden.isConst then false
       else
-        hidden.add(elem)(using ctx, this)
+        if !CCState.collapseFresh then hidden.add(elem)(using ctx, this)
         true
 
     /** If root1 and root2 belong to the same binder but have different originalBinders
