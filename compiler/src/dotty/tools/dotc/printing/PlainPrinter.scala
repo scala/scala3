@@ -493,7 +493,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else s" classified as ${c.hiddenSet.classifier.name.show}"
       def prefixTxt: Text = c.prefix match
         case NoPrefix | _: ThisType => ""
-        case pre => pre.show ~ "."
+        case pre: SingletonType => toTextRef(pre) ~ "."
+        case pre => toText(pre) ~ "."
       def core: Text =
         if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
         else "cap"

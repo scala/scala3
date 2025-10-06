@@ -272,7 +272,6 @@ object SepCheck:
      *   3. the set itself if it consists only of hidden terminal capabilities.
      */
     def reduced(using Context): Refs =
-      assert(!refs.isEmpty)
       val concrete = refs.nonPeaks
       if !concrete.isEmpty then concrete
       else
@@ -356,9 +355,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val hiddenFootprint = hiddenSet.directFootprint
     val clashFootprint = clashSet.directFootprint
     val shared = hiddenFootprint.overlapWith(clashFootprint).reduced
-    shared.nth(0) match
+    if shared.isEmpty then i"${CaptureSet(shared)}"
+    else shared.nth(0) match
       case fresh: FreshCap =>
-        if fresh.hiddenSet.owner.exists then i"$fresh of ${fresh.hiddenSet.owner}" else i"$fresh"
+        if fresh.hiddenSet.owner.exists then i"{$fresh of ${fresh.hiddenSet.owner}}" else i"$fresh"
       case _ =>
         i"${CaptureSet(shared)}"
 
@@ -402,8 +402,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       else i" with type  ${clashing.nuType}"
     val hiddenSet = formalCaptures(polyArg).transHiddenSet
     val clashSet = if clashIdx == -1 then deepCaptures(clashing) else spanCaptures(clashing)
-    val hiddenFootprint = hiddenSet.directFootprint
-    val clashFootprint = clashSet.directFootprint
+    val hiddenFootprint = hiddenSet.completeFootprint
+    val clashFootprint = clashSet.completeFootprint
+
     report.error(
       em"""Separation failure: argument of type  ${polyArg.nuType}
           |to $funStr
