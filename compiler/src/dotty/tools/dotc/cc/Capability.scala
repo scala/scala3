@@ -691,6 +691,8 @@ object Capabilities:
 
       try (this eq y)
       || maxSubsumes(y, canAddHidden = !vs.isOpen)
+          // if vs is open, we should add new elements to the set containing `this`
+          // instead of adding them to the hidden set of of `this`.
       || y.match
         case y: TermRef =>
             y.prefix.match
@@ -773,6 +775,7 @@ object Capabilities:
                 false
 
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
+          || x.coversFresh(y)
           || x.acceptsLevelOf(y)
               && classifierOK
               && canAddHidden
@@ -839,14 +842,38 @@ object Capabilities:
             case _ =>
               false
         || x.match
-            case x: FreshCap if !seen.contains(x) =>
-              seen.add(x)
-              x.hiddenSet.exists(recur(_, y))
+            case x: FreshCap =>
+              if x.coversFresh(y) then true
+              else if !seen.contains(x) then
+                seen.add(x)
+                x.hiddenSet.exists(recur(_, y))
+              else false
             case Restricted(x1, _) => recur(x1, y)
             case _ => false
 
       recur(this, y)
     end covers
+
+    /** `x eq y` or `x` is a fresh cap, `y` is a fresh cap with prefix
+     *  `p`, and there is a prefix of `p` that contains `x` in its
+     *  capture set.
+     */
+    final def coversFresh(y: Capability)(using Context): Boolean =
+      (this eq y) || this.match
+        case x: FreshCap => y match
+          case y: FreshCap =>
+            x.origin match
+              case Origin.InDecl(sym) =>
+                def occursInPrefix(pre: Type): Boolean = pre match
+                  case pre @ TermRef(pre1, _) =>
+                    pre.symbol == sym
+                    && pre.info.captureSet.elems.contains(x)
+                    || occursInPrefix(pre1)
+                  case _ => false
+                occursInPrefix(y.prefix)
+              case _ => false
+          case _ => false
+        case _ => false
 
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)

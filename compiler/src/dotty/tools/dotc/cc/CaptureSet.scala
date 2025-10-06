@@ -1236,6 +1236,7 @@ object CaptureSet:
 
     /** Add element to hidden set. */
     def add(elem: Capability)(using ctx: Context, vs: VarState): Unit =
+      assert(elem ne owningCap)
       includeElem(elem)
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the

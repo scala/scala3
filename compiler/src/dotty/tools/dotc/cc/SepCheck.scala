@@ -221,7 +221,7 @@ object SepCheck:
         refs1.foreach: ref =>
           if !ref.isReadOnly then
             val coreRef = ref.stripRestricted
-            if refs2.exists(_.stripRestricted.stripReadOnly eq coreRef) then
+            if refs2.exists(_.stripRestricted.stripReadOnly.coversFresh(coreRef)) then
               acc += coreRef
         acc
       assert(refs.forall(_.isTerminalCapability))
