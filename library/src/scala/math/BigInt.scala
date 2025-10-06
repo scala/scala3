@@ -19,6 +19,7 @@ import scala.language.`2.13`
 import scala.annotation.nowarn
 import scala.language.implicitConversions
 import scala.collection.immutable.NumericRange
+import scala.runtime.ScalaRunTime.mapNull
 
 object BigInt {
 
@@ -122,9 +123,14 @@ object BigInt {
    */
   implicit def long2bigInt(l: Long): BigInt = apply(l)
 
+  // For the following function, both the parameter and the return type are non-nullable.
+  // However, if a null reference is passed explicitly, this method will still return null.
+  // We intentionally keep this signature to discourage passing nulls implicitly while
+  // preserving the previous behavior for backward compatibility.
+
   /** Implicit conversion from `java.math.BigInteger` to `scala.BigInt`.
    */
-  implicit def javaBigInteger2bigInt(x: BigInteger | Null): BigInt | Null = if (x eq null) null else apply(x)
+  implicit def javaBigInteger2bigInt(x: BigInteger): BigInt = mapNull(x, apply(x))
 
   // this method is adapted from Google Guava's version at
   //   https://github.com/google/guava/blob/master/guava/src/com/google/common/math/LongMath.java

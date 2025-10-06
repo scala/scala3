@@ -24,14 +24,14 @@ import scala.{unchecked => uc}
 
 /** Defines converter methods from Scala to Java collections.
   * These methods are available through the [[scala.jdk.javaapi.CollectionConverters]] object.
-  *
-  * Note: Both the parameter and the return type are non-nullable. However, if a null
-  * reference is passed explicitly, this method will still return null. We intentionally
-  * keep this signature to discourage passing nulls implicitly while preserving the
-  * previous behavior for backward compatibility.
   */
 trait AsJavaConverters {
   import JavaCollectionWrappers._
+
+  // Note: Both the parameter and the return type of the methods in this class are non-nullable.
+  // However, if a null reference is passed explicitly, the method will still return null.
+  // We intentionally keep this signature to discourage passing nulls implicitly while preserving the
+  // previous behavior for backward compatibility.
 
   /**
    * Converts a Scala `Iterator` to a Java `Iterator`.
