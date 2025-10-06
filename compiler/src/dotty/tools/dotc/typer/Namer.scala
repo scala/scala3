@@ -952,7 +952,7 @@ class Namer { typer: Typer =>
           )
           ||
           // remove synthetic constructor, method or companion's unapply of a java Record if it clashes with a non-synthetic one
-          ((denot.owner.isJavaRecord || denot.owner.companionClass.isJavaRecord && denot.name == nme.unapply)
+          ((denot.owner.isJavaRecord || (denot.owner.companionClass.isJavaRecord && denot.name == nme.unapply))
             && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )

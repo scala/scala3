@@ -19,6 +19,7 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.Conversion$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.RuntimeChecked"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.stableNull"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
 
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleOrdering"),
         ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$namedTupleOrdering"),
@@ -54,7 +55,6 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.CaptureChecked"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.reachCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.unchecked.uncheckedCaptures"),
         ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$ValOrDefDefMethods"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$"),

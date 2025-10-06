@@ -179,7 +179,9 @@ class CompilationTests {
 
     if scala.util.Properties.isJavaAtLeast("16") then
       tests ++= List(
+        // for separate compilation
         compileFilesInDir("tests/run-java16+", defaultOptions),
+        // for joint compilation
         compileDir("tests/run-java16+/java-records-match", defaultOptions),
       )
 
