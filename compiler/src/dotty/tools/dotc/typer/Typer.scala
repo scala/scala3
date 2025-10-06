@@ -588,11 +588,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def toNotNullTermRef(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case ref: TermRef
-    if pt != LhsProto && // Ensure it is not the lhs of Assign
-    ctx.notNullInfos.impliesNotNull(ref) &&
-    // If a reference is in the context, it is already trackable at the point we add it.
-    // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
-    !ref.usedOutOfOrder =>
+    if ctx.explicitNulls
+      && pt != LhsProto // Ensure it is not the lhs of Assign
+      && ctx.notNullInfos.impliesNotNull(ref)
+      // If a reference is in the context, it is already trackable at the point we add it.
+      // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+      && !ref.usedOutOfOrder =>
       ref match
         case OrNull(tpnn) => tree.cast(AndType(ref, tpnn))
         case _            => tree
@@ -2228,7 +2229,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         given Context = caseCtx
         val case1 = typedCase(cas, sel, wideSelType, tpe)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
-        if !alreadyStripped && Nullables.matchesNull(case1) then
+        if ctx.explicitNulls && !alreadyStripped && Nullables.matchesNull(case1) then
           wideSelType = wideSelType.stripNull()
           alreadyStripped = true
         case1
@@ -2261,7 +2262,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       given Context = caseCtx
       val case1 = typedCase(cas, sel, wideSelType, pt)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
-      if !alreadyStripped && Nullables.matchesNull(case1) then
+      if ctx.explicitNulls && !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull()
         alreadyStripped = true
       case1
