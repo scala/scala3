@@ -1651,3 +1651,6 @@ final case class StringView(s: String) extends AbstractIndexedSeqView[Char] {
   def apply(n: Int) = s.charAt(n)
   override def toString: String = s"StringView($s)"
 }
+
+object StringView extends scala.runtime.AbstractFunction1[String, StringView]:
+  override def toString: String = "StringView"
