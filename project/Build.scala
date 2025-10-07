@@ -2936,6 +2936,48 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
     )
 
+  /** Common settings for sjsSandbox and sjsJUnitTests */
+  lazy val regularScalaJSProjectSettings: Seq[Setting[_]] = Def.settings(
+    version       := dottyVersion,
+    scalaVersion  := referenceVersion,
+    crossPaths    := true,
+    autoScalaLibrary := false, // do not add a dependency to stdlib, we depend on it with dependsOn
+    // Add the source directories
+    Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+    Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+    // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
+    Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
+    Compile / scalacOptions += "-scalajs", // we really need this one for Scala.js projects
+    // Don't publish
+    publish / skip := false,
+    // Configure to use the non-bootstrapped compiler
+    scalaInstance := {
+      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
+
+      // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+      // just directories containing classfiles because sbt maintains a cache of
+      // compiler instances. This cache is invalidated based on timestamps
+      // however this is only implemented on jars, directories are never
+      // invalidated.
+      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value
+      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value
+      val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value
+      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value
+
+      Defaults.makeScalaInstance(
+        dottyNonBootstrappedVersion,
+        libraryJars     = Array(scalaLibrary),
+        allCompilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps,
+        allDocJars      = Seq.empty,
+        state.value,
+        scalaInstanceTopLoader.value
+      )
+    },
+    scalaCompilerBridgeBinaryJar := {
+      Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
+    },
+  )
+
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
    *  This sandbox is compiled with dotty with support for Scala.js. It can be
@@ -2947,9 +2989,9 @@ object Build {
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scala-library-sjs`).
     settings(
-      commonBootstrappedSettings,
+      regularScalaJSProjectSettings,
       // Required to run Scala.js tests.
       Test / fork := false,
 
@@ -2965,9 +3007,9 @@ object Build {
    */
   lazy val sjsJUnitTests = project.in(file("tests/sjs-junit")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scala-library-sjs`).
     settings(
-      commonBootstrappedSettings,
+      regularScalaJSProjectSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation"),
 

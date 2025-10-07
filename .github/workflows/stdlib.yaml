@@ -532,5 +532,10 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
-      - name: Test Scala.js
-        run: ./project/scripts/sbt sjsCompilerTests/test
+      - name: Scala.js compiler tests
+        run: ./project/scripts/sbt "sjsCompilerTests/test"
+      - name: Scala.js sandbox
+        run: ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test"
+      - name: Scala.js JUnit tests
+        run: ./project/scripts/sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test"
+  # TODO Scala.js on Windows
