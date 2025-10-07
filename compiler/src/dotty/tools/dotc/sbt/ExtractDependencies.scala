@@ -171,23 +171,19 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   lazy val allowsDependencyByMacroExpansion =
     classOf[DependencyContext].getFields().exists(_.getName() == "DependencyByMacroExpansion")
 
-  private def addMacroDependency(sym: Symbol)(using Context): Unit =
-    if (allowsDependencyByMacroExpansion) {
-      if (!ignoreDependency(sym)) {
-        if (!sym.is(Package)) {
-          val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
-          assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $sym")
-
-          rec.addClassDependency(enclOrModuleClass, DependencyByMacroExpansion)
-        }
-      }
-    }
-
   private def addMacroDependency(trees: List[Tree])(using Context): Unit =
-    val traverser = new TypeDependencyTraverser {
-      def addDependency(symbol: Symbol) = addMacroDependency(symbol)
+    if (allowsDependencyByMacroExpansion) {
+      val traverser = new TypeDependencyTraverser {
+        def addDependency(symbol: Symbol) =
+          if (!ignoreDependency(symbol)) {
+            val enclOrModuleClass = if (symbol.is(ModuleVal)) symbol.moduleClass else symbol.enclosingClass
+            assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $symbol")
+
+            rec.addClassDependency(enclOrModuleClass, DependencyByMacroExpansion)
+          }
+      }
+      trees.foreach(tree => traverser.traverse(tree.tpe))
     }
-    trees.foreach(tree => traverser.traverse(tree.tpe))
 
   private def depContextOf(cls: Symbol)(using Context): DependencyContext =
     if cls.isLocal then LocalDependencyByInheritance
