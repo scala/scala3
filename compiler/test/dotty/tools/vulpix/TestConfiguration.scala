@@ -48,7 +48,6 @@ object TestConfiguration {
     Properties.scalaJSJavalib,
     Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
-    Properties.dottyLibraryJS
   ))
 
   def mkClasspath(classpaths: List[String]): String =
