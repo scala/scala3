@@ -531,6 +531,9 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
       - uses: sbt/setup-sbt@v1
       - name: Scala.js compiler tests
         run: ./project/scripts/sbt "sjsCompilerTests/test"
@@ -538,4 +541,8 @@ jobs:
         run: ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test"
       - name: Scala.js JUnit tests
         run: ./project/scripts/sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test"
+      - name: Scala.js JUnit tests with latest ES version
+        run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToLatestESVersion ;sjsJUnitTests/test"
+      - name: Scala.js JUnit tests with WebAssembly
+        run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToLatestESVersion ;set Global/enableWebAssembly := true; sjsJUnitTests/test"
   # TODO Scala.js on Windows
