@@ -68,17 +68,17 @@
    |          ^² refers to a fresh root capability classified as Mutable in the type of value snd
    |          ^³ refers to a fresh root capability in the type of value two
    |          ^⁴ refers to a fresh root capability created in value twisted when checking argument to parameter x of method swapped
--- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:58:22 -------------------------------------------------
+-- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:58:26 -------------------------------------------------
 58 |  val twoOther = Pair(two.fst, two.snd)  // error // error
-   |                      ^^^
+   |                      ^^^^^^^
    |                      Separation failure: Illegal access to {two.fst} which is hidden by the previous definition
    |                      of value twoCopy with type Pair^.
    |                      This type hides capabilities  {two.fst, two.snd}
    |
    |                      where:    ^ refers to a fresh root capability in the type of value twoCopy
--- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:58:31 -------------------------------------------------
+-- Error: tests/neg-custom-args/captures/sep-pairs-unboxed.scala:58:35 -------------------------------------------------
 58 |  val twoOther = Pair(two.fst, two.snd)  // error // error
-   |                               ^^^
+   |                               ^^^^^^^
    |                      Separation failure: Illegal access to {two.snd} which is hidden by the previous definition
    |                      of value twoCopy with type Pair^.
    |                      This type hides capabilities  {two.fst, two.snd}

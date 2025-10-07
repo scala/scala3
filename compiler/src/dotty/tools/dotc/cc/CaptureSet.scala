@@ -966,8 +966,7 @@ object CaptureSet:
       case elem: FreshCap
       if !nestedOK
           && !elems.contains(elem)
-          && !owner.isAnonymousFunction
-          && ccConfig.newScheme =>
+          && !owner.isAnonymousFunction =>
         def fail = i"attempting to add $elem to $this"
         def hideIn(fc: FreshCap): Unit =
           assert(elem.tryClassifyAs(fc.hiddenSet.classifier), fail)

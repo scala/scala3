@@ -102,7 +102,7 @@ object CheckCaptures:
   end SubstParamsMap
 
   /** A prototype that indicates selection with an immutable value */
-  class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
+  class PathSelectionProto(val select: Select, val pt: Type)(using Context) extends WildcardSelectionProto
 
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
@@ -653,11 +653,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         // If ident refers to a parameterless method, charge its cv to the environment
         includeCallCaptures(sym, sym.info, tree)
       else if !sym.isStatic then
-        markFree(sym, pathRef(sym.termRef, pt), tree)
+        if ccConfig.newScheme && sym.exists
+        then markPathFree(sym.termRef, pt, tree)
+        else markFree(sym, pathRef(sym.termRef, pt), tree)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
 
     override def recheckThis(tree: This, pt: Type)(using Context): Type =
-      markFree(pathRef(tree.tpe.asInstanceOf[ThisType], pt), tree)
+      if ccConfig.newScheme
+      then markPathFree(tree.tpe.asInstanceOf[ThisType], pt, tree)
+      else markFree(pathRef(tree.tpe.asInstanceOf[ThisType], pt), tree)
       super.recheckThis(tree, pt)
 
     /** Add all selections and also any `.rd modifier implied by the expected
@@ -668,17 +672,37 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def pathRef(base: TermRef | ThisType, pt: Type)(using Context): Capability =
       def addSelects(ref: TermRef | ThisType, pt: Type): Capability = pt match
         case pt: PathSelectionProto if ref.isTracked =>
-          if pt.sym.isReadOnlyMethod then
+          if pt.select.symbol.isReadOnlyMethod then
             ref.readOnly
           else
             // if `ref` is not tracked then the selection could not give anything new
             // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
-            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+            addSelects(ref.select(pt.select.symbol).asInstanceOf[TermRef], pt.pt)
         case _ => ref
       val ref: Capability = addSelects(base, pt)
       if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType
       then ref.readOnly
       else ref
+
+    /** Add all selections and also any `.rd modifier implied by the expected
+     *  type `pt` to `base`. Example:
+     *  If we have `x` and the expected type says we select that with `.a.b`
+     *  where `b` is a read-only method, we charge `x.a.b.rd` instead of `x`.
+     */
+    private def markPathFree(ref: TermRef | ThisType, pt: Type, tree: Tree)(using Context): Unit =
+      pt match
+        case pt: PathSelectionProto if ref.isTracked =>
+          // if `ref` is not tracked then the selection could not give anything new
+          // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+          if pt.select.symbol.isReadOnlyMethod then
+            markFree(ref.readOnly, tree)
+          else
+            markPathFree(ref.select(pt.select.symbol).asInstanceOf[TermRef], pt.pt, pt.select)
+        case _ =>
+          if ref.derivesFromMutable && pt.isValueType && !pt.isMutableType then
+            markFree(ref.readOnly, tree)
+          else
+            markFree(ref, tree)
 
     /** The expected type for the qualifier of a selection. If the selection
      *  could be part of a capability path or is a a read-only method, we return
@@ -688,7 +712,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val sym = tree.symbol
       if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic
           || sym.isReadOnlyMethod
-      then PathSelectionProto(sym, pt)
+      then PathSelectionProto(tree, pt)
       else super.selectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
@@ -1820,7 +1844,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def noWiden(actual: Type, expected: Type)(using Context): Boolean =
       actual.isSingleton
       && expected.match
-          case expected: PathSelectionProto => !expected.sym.isOneOf(UnstableValueFlags)
+          case expected: PathSelectionProto => !expected.select.symbol.isOneOf(UnstableValueFlags)
           case _ => expected.stripCapturing.isSingleton || expected == LhsProto
 
     /** Adapt `actual` type to `expected` type. This involves:
