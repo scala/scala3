@@ -443,7 +443,12 @@ object TypeErasure {
             }
 
             // We are not interested in anything that is not a supertype of tp2
-            val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)
+            val tp2superclasses = tp1.baseClasses
+              // We filter out Pure from the base classes since CC should not affect binary compatibitlity
+              // and the algorithm here sometimes will take the erasure of Pure
+              // The root problem is described here: https://github.com/scala/scala3/issues/24148
+              .filter(_ != defn.PureClass)
+              .filter(cls2.derivesFrom)
 
             // From the spec, "Linearization also satisfies the property that a
             // linearization of a class always contains the linearization of its
@@ -672,6 +677,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         WildcardType
       case tp: TypeProxy =>
         this(tp.underlying)
+      // When erasing something that is `A & Pure` or `Pure & A`, we should take the erasure of A
+      // This also work for [T <: Pure] `T & A` or `A & T`
+      // The root problem is described here: https://github.com/scala/scala3/issues/24113
+      case AndType(tp1, tp2) if tp1.dealias.classSymbol == defn.PureClass =>
+        this(tp2)
+      case AndType(tp1, tp2) if tp2.dealias.classSymbol == defn.PureClass =>
+        this(tp1)
       case tp @ AndType(tp1, tp2) =>
         if sourceLanguage.isJava then
           this(tp1)
