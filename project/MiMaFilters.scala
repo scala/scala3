@@ -551,17 +551,6 @@ object MiMaFilters {
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll2$extension"),
           ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll3$extension"),
 
-          // singleton case classes modules inherit AbstractFunction1??
-          ProblemFilters.exclude[MissingTypesProblem]("scala.ScalaReflectionException$"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.ScalaReflectionException.compose"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.ScalaReflectionException.andThen"),
-          ProblemFilters.exclude[MissingTypesProblem]("scala.UninitializedFieldError$"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.UninitializedFieldError.compose"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.UninitializedFieldError.andThen"),
-          ProblemFilters.exclude[MissingTypesProblem]("scala.collection.StringView$"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.compose"),
-          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringView.andThen"),
-
           // TO INVESTIGATE: This constructor changed, but it is private... why complaining?
           ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.immutable.LazyList.this"),
           // This one should be fine, public class inside private object

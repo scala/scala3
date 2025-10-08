@@ -1526,7 +1526,7 @@ object Build {
         val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
         val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
 
-        (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
+        (`scala3-compiler-bootstrapped-new` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
       testCompilation := Def.inputTaskDyn {
         val args = spaceDelimited("<arg>").parsed
