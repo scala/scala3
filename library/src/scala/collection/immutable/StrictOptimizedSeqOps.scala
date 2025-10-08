@@ -25,8 +25,7 @@ transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends Any
     with SeqOps[A, CC, C]
     with collection.StrictOptimizedSeqOps[A, CC, C]
-    with StrictOptimizedIterableOps[A, CC, C]
-    with caps.Pure {
+    with StrictOptimizedIterableOps[A, CC, C] {
 
   override def distinctBy[B](f: A -> B): C = {
     if (lengthCompare(1) <= 0) coll

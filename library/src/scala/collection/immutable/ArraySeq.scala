@@ -41,8 +41,7 @@ sealed abstract class ArraySeq[+A]
     with IndexedSeqOps[A, ArraySeq, ArraySeq[A]]
     with StrictOptimizedSeqOps[A, ArraySeq, ArraySeq[A]]
     with EvidenceIterableFactoryDefaults[A, ArraySeq, ClassTag]
-    with Serializable
-    with caps.Pure {
+    with Serializable{
 
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
     * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
