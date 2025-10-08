@@ -914,12 +914,10 @@ object Types extends TypeUtils {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
-          val overridingRefinement = rinfo match
-            case AnnotatedType(rinfo1, ann) if ann.symbol == defn.RefineOverrideAnnot => rinfo1
-            case _ if pdenot.symbol.is(Tracked) => rinfo
-            case _ => NoType
-          if overridingRefinement.exists then
-            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, overridingRefinement)
+          val overridingRefinement =
+            tp.isPrecise || pdenot.symbol.is(Tracked)
+          if overridingRefinement then
+            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
             val joint = CCState.withCollapsedFresh:
@@ -3259,6 +3257,12 @@ object Types extends TypeUtils {
     else assert(refinedInfo.isInstanceOf[TypeType], this)
     assert(!refinedName.is(NameKinds.ExpandedName), this)
 
+    /** If true we know that refinedInfo is always more precise than the info for
+     *  field `refinedName` in parent, so no type intersection needs to be computed
+     *  for the type of this field.
+     */
+    def isPrecise: Boolean = false
+
     override def underlying(using Context): Type = parent
 
     private def badInst =
@@ -3270,6 +3274,7 @@ object Types extends TypeUtils {
         (parent: Type = this.parent, refinedName: Name = this.refinedName, refinedInfo: Type = this.refinedInfo)
         (using Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
+      else if isPrecise then RefinedType.precise(parent, refinedName, refinedInfo)
       else RefinedType(parent, refinedName, refinedInfo)
 
     /** Add this refinement to `parent`, provided `refinedName` is a member of `parent`. */
@@ -3302,6 +3307,10 @@ object Types extends TypeUtils {
   class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
   extends RefinedType(parent, refinedName, refinedInfo)
 
+  class PreciseRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
+  extends RefinedType(parent, refinedName, refinedInfo):
+    override def isPrecise = true
+
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(using Context): Type =
       if (names.isEmpty) parent
@@ -3311,6 +3320,10 @@ object Types extends TypeUtils {
       assert(!ctx.erasedTypes)
       unique(new CachedRefinedType(parent, name, info)).checkInst
     }
+
+    def precise(parent: Type, name: Name, info: Type)(using Context): RefinedType =
+      assert(!ctx.erasedTypes)
+      unique(new PreciseRefinedType(parent, name, info)).checkInst
   }
 
   /** A recursive type. Instances should be constructed via the companion object.

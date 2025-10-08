@@ -358,7 +358,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if shared.isEmpty then i"${CaptureSet(shared)}"
     else shared.nth(0) match
       case fresh: FreshCap =>
-        if fresh.hiddenSet.owner.exists then i"{$fresh of ${fresh.hiddenSet.owner}}" else i"$fresh"
+        val where = if ctx.settings.YccVerbose.value then "" else i" of ${fresh.ccOwnerStr}"
+        i"{$fresh$where}"
       case _ =>
         i"${CaptureSet(shared)}"
 
@@ -574,9 +575,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           case Select(This(_), _) => tree
           case Select(prefix, _) => pathRoot(prefix)
           case _ => tree
-          
+
         val rootSym = pathRoot(tree).symbol
-        
+
         def findClashing(prevDefs: List[DefInfo]): Option[DefInfo] = prevDefs match
           case prevDef :: prevDefs1 =>
             if prevDef.symbol == rootSym then Some(prevDef)
