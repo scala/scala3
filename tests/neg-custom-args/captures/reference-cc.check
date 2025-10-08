@@ -32,7 +32,6 @@
    |Note that capability canThrow$1 is not included in capture set {cap}
    |because (canThrow$1 : CanThrow[LimitExceeded]) in method try$1 is not visible from cap in enclosing function.
    |
-   |where:    =>  refers to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
-   |          cap is a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
+   |where:    => and cap refer to a fresh root capability created in anonymous function of type (using erased x$1: CanThrow[LimitExceeded]): () => Double when instantiating expected result type () ->{cap²} Double of function literal
    |
    | longer explanation available when compiling with `-explain`
