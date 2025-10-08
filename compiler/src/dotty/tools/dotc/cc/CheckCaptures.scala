@@ -194,6 +194,11 @@ object CheckCaptures:
     check.traverse(tp)
   end disallowBadRootsIn
 
+  private def contributesFreshToClass(sym: Symbol)(using Context): Boolean =
+    sym.isField
+    && !sym.isOneOf(DeferredOrTermParamOrAccessor)
+    && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
+
   private def ownerStr(owner: Symbol)(using Context): String =
     if owner.isAnonymousFunction then "enclosing function" else owner.show
 
@@ -918,8 +923,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val fieldClassifiers =
               for
                 sym <- cls.info.decls.toList
-                if sym.isField && !sym.isOneOf(DeferredOrTermParamOrAccessor)
-                    && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
+                if contributesFreshToClass(sym)
                 case fresh: FreshCap <- sym.info.spanCaptureSet.elems
                   .filter(_.isTerminalCapability)
                   .map(_.stripReadOnly)
@@ -1160,15 +1164,15 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
       val sym = tree.symbol
 
-      def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-        sym.isLocalToCompilationUnit      // Symbols that can't be seen outside the compilation unit can always have inferred types
-        || ctx.owner.enclosingPackageClass.isEmptyPackage
-                                          // We make an exception for symbols in the empty package.
-                                          // these could theoretically be accessed from other files in the empty package, but
-                                          // usually it would be too annoying to require explicit types.
-        || sym.name.is(DefaultGetterName) // Default getters are exempted since otherwise it would be
-                                          // too annoying. This is a hole since a defualt getter's result type
-                                          // might leak into a type variable.
+      def isExemptFromChecks =
+        ctx.owner.enclosingPackageClass.isEmptyPackage
+          // We make an exception for symbols in the empty package.
+          // these could theoretically be accessed from other files in the empty package, but
+          // usually it would be too annoying to require explicit types.
+        || sym.name.is(DefaultGetterName)
+          // Default getters are exempted since otherwise it would be
+          // too annoying. This is a hole since a defualt getter's result type
+          // might leak into a type variable.
 
       def fail(tree: Tree, expected: Type, addenda: Addenda): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
@@ -1191,14 +1195,30 @@ class CheckCaptures extends Recheck, SymTransformer:
           |must conform to this type."""
 
       tree.tpt match
-        case tpt: InferredTypeTree if !canUseInferred =>
-          val expected = tpt.tpe.dropAllRetains
-          todoAtPostCheck += { () =>
-            withCapAsRoot:
-              testAdapted(tp, expected, tree.rhs, addenda(expected))(fail)
-              // The check that inferred <: expected is done after recheck so that it
-              // does not interfere with normal rechecking by constraining capture set variables.
-          }
+        case tpt: InferredTypeTree if !isExemptFromChecks =>
+          if !sym.isLocalToCompilationUnit
+             // Symbols that can't be seen outside the compilation unit can have inferred types
+             // except for the else clause below.
+          then
+            val expected = tpt.tpe.dropAllRetains
+            todoAtPostCheck += { () =>
+              withCapAsRoot:
+                testAdapted(tp, expected, tree.rhs, addenda(expected))(fail)
+                // The check that inferred <: expected is done after recheck so that it
+                // does not interfere with normal rechecking by constraining capture set variables.
+            }
+          else if sym.is(Private)
+              && !sym.isLocalToCompilationUnitIgnoringPrivate
+              && tree.tpt.nuType.spanCaptureSet.containsTerminalCapability
+              && contributesFreshToClass(sym)
+              // Private symbols capturing a root capability need explicit types
+              // so that we can compute field constributions to class instance
+              // capture sets across compilation units.
+          then
+            report.error(
+              em"""$sym needs an explicit type because it captures a root capability in its type ${tree.tpt.nuType}.
+                  |Fields of publicily accessible classes that capture a root capability need to be given an explicit type.""",
+            tpt.srcPos)
         case _ =>
       tp
     end checkInferredResult
