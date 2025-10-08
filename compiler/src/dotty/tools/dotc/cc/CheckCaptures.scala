@@ -507,17 +507,21 @@ class CheckCaptures extends Recheck, SymTransformer:
               if !accessFromNestedClosure then
                 checkUseDeclared(c, tree.srcPos)
             case _ =>
-        else
+        else if !c.isThisPath then  // We never need to avoid `this`.
+          var isRoot: Boolean = false
           val underlying = c match
             case Reach(c1) => CaptureSet.ofTypeDeeply(c1.widen)
             case _ => c.core match
-              case c1: RootCapability => c1.singletonCaptureSet
+              case c1: RootCapability =>
+                isRoot = true
+                c1.singletonCaptureSet
               case c1: CoreCapability =>
                 CaptureSet.ofType(c1.widen, followResult = ccConfig.useSpanCapset)
           capt.println(i"Widen reach $c to $underlying in ${env.owner}")
           underlying.disallowBadRoots(NoSymbol): () =>
             report.error(em"Local capability $c${env.owner.qualString("in")} cannot have `cap` as underlying capture set", tree.srcPos)
-          recur(underlying, env, lastEnv)
+          if !isRoot then  // To avoid looping infinitely
+            recur(underlying, env, lastEnv)
 
       /** Avoid locally defined capability if it is a reach capability or capture set
        *  parameter. This is the default.
@@ -548,14 +552,23 @@ class CheckCaptures extends Recheck, SymTransformer:
           val included = cs.filter: c =>
             val isVisible = isVisibleFromEnv(c.pathOwner, env)
             if !isVisible then
-              if ccConfig.deferredReaches
+              if ccConfig.deferredReaches || ccConfig.caplessLike
               then avoidLocalCapability(c, env, lastEnv)
               else avoidLocalReachCapability(c, env)
             isVisible
           //println(i"Include call or box capture $included from $cs in ${env.owner}/${env.captured}/${env.captured.owner}/${env.kind}")
           checkSubset(included, env.captured, tree.srcPos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          if !isOfNestedMethod(env) then
+
+          // A phantom environment is one that should not stop the propagation of captures.
+          // An environment is phantom if
+          // (1) it is `NestedInOwner`, which means it is an environment created during box adaptation,
+          // or (2) it is a class method, in which case the captures should always be aggregated to the class.
+          inline def isPhantomEnv: Boolean =
+            env.kind == EnvKind.NestedInOwner
+            || (env.owner.is(Method) && env.outer.owner.isClass)
+
+          if !isOfNestedMethod(env) && (!ccConfig.caplessLike || isPhantomEnv) then
             val nextEnv = nextEnvToCharge(env)
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               recur(included, nextEnv, env)
@@ -593,6 +606,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => true
         if sym.exists && curEnv.kind != EnvKind.Boxed then
           markFree(capturedVars(sym).filter(isRetained), tree)
+
+    /** Include references captured by the type of the function. */
+    def includeFunctionCaptures(qualType: Type, tree: Tree)(using Context): Unit =
+      if ccConfig.caplessLike && !qualType.isAlwaysPure then
+        val funCaptures = qualType.captureSet
+        markFree(funCaptures, tree)
 
     /** If `tp` (possibly after widening singletons) is an ExprType
      *  of a parameterless method, map Result instances in it to Fresh instances
@@ -724,6 +743,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       val selType = mapResultRoots(recheckSelection(tree, qualType, name, disambiguate), tree.symbol)
       val selWiden = selType.widen
 
+      // Include function captures for parameterless class methods
+      if tree.symbol.is(Method) && qualType.isParameterless then
+        includeFunctionCaptures(qualType, tree)
+
       // Don't apply the rule
       //   - on the LHS of assignments, or
       //   - if the qualifier or selection type is boxed, or
@@ -815,12 +838,15 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
           if formal.hasAnnotation(defn.UseAnnot) then argType.deepCaptureSet else argType.captureSet
+      if ccConfig.caplessLike then
+        includeFunctionCaptures(qualType, tree)
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
             && qualCaptures.mightSubcapture(refs)
-            && argCaptures.forall(_.mightSubcapture(refs)) =>
+            && argCaptures.forall(_.mightSubcapture(refs))
+            && !ccConfig.caplessLike =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
           appType.derivedCapturingType(appType1, callCaptures)
             .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
@@ -2101,6 +2127,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
             checkUseDeclared(c, tree.srcPos)
 
+        def checkUse(c: Capability, croot: NamedType) =
+          if ccConfig.caplessLike then
+            if !env.owner.isProperlyContainedIn(croot.symbol.owner) then
+              checkUseDeclared(c, tree.srcPos)
+          else checkUseUnlessBoxed(c, croot)
+
         def check(cs: CaptureSet): Unit = cs.elems.foreach(checkElem)
 
         def checkElem(c: Capability): Unit =
@@ -2109,7 +2141,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             c match
               case Reach(c1) =>
                 c1.paramPathRoot match
-                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
+                  case croot: NamedType => checkUse(c, croot)
                   case _ => check(CaptureSet.ofTypeDeeply(c1.widen))
               case c: TypeRef =>
                 c.paramPathRoot match

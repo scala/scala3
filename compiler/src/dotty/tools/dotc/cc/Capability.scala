@@ -480,6 +480,8 @@ object Capabilities:
 
     final def isParamPath(using Context): Boolean = paramPathRoot.exists
 
+    final def isThisPath(using Context): Boolean = pathRoot.isInstanceOf[ThisType]
+
     final def ccOwner(using Context): Symbol = this match
       case self: ThisType => self.cls
       case TermRef(prefix: Capability, _) => prefix.ccOwner
