@@ -914,9 +914,7 @@ object Types extends TypeUtils {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
-          val overridingRefinement =
-            tp.isPrecise || pdenot.symbol.is(Tracked)
-          if overridingRefinement then
+          if tp.isPrecise  then
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
