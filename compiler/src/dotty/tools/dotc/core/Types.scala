@@ -7066,7 +7066,10 @@ object Types extends TypeUtils {
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
         case tp: TypeParamRef =>
-          apply(n, TypeComparer.bounds(tp))
+          val bounds = TypeComparer.bounds(tp)
+          val loSize = apply(n, bounds.lo)
+          val hiSize = apply(n, bounds.hi)
+          hiSize max loSize
         case tp: LazyRef =>
           if seen.contains(tp) then n
           else
