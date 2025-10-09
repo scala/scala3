@@ -3252,72 +3252,76 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *  parameters of the current class are also defined.
      */
     def implementDeferredGivens(body: List[Tree]): List[Tree] =
-      if cls.is(Trait) || ctx.isAfterTyper then body
-      else
-        def isGivenValue(mbr: TermRef) =
-          val dcl = mbr.symbol
-          if dcl.is(Method) then
-            report.error(
-              em"""Cannnot infer the implementation of the deferred ${dcl.showLocated}
-                  |since that given is parameterized. An implementing given needs to be written explicitly.""",
-              cdef.srcPos)
-            false
-          else true
+      def failFor(mbr: TermRef, why: String): false =
+        report.error(
+          em"""Cannot infer the implementation of the deferred ${mbr.symbol.showLocated}
+              |since $why. An implementing given needs to be written explicitly.""",
+          cdef.srcPos)
+        false
+      def isGivenValue(mbr: TermRef) = !mbr.symbol.is(Method) || failFor(mbr, "that given is parameterized")
 
-        def willBeimplementedInParentClass(m: TermRef) =
-          val superCls = cls.superClass
-          superCls.exists && superCls.asClass.baseClasses.contains(m.symbol.owner)
+      def willBeImplementedInParentClass(m: TermRef) =
+        val superCls = cls.superClass
+        superCls.exists && superCls.asClass.baseClasses.contains(m.symbol.owner)
 
-        def givenImpl(mbr: TermRef): ValDef =
-          val dcl = mbr.symbol
-          val target = dcl.info.asSeenFrom(cls.thisType, dcl.owner)
-          val constr = cls.primaryConstructor
-          val usingParamAccessors = cls.paramAccessors.filter(_.is(Given))
-          val paramScope = newScopeWith(usingParamAccessors*)
-          val searchCtx = ctx.outer.fresh.setScope(paramScope)
-
-          // Before losing the reference to ctx.owner
-          // when calling implicitArgTree with searchCtx,
-          // let's store ctx.owner as the fallback "responsibleForImports"
-          // in DependencyRecorder.  That way, if we end up recording any dependencies
-          // we use ctx.owner as the "fromClass" rather than emitting a warning
-          // (because ctx.compilationUnit.tpdTree is still EmptyTree during typer).
-          // For example, to record mirror dependencies, see i23049.
-          val depRecorder = ctx.compilationUnit.depRecorder
-          val responsibleForImports = depRecorder._responsibleForImports
-          if responsibleForImports == null then
-            depRecorder._responsibleForImports = ctx.owner
-
-          val rhs = implicitArgTree(target, cdef.span,
-              where = i"inferring the implementation of the deferred ${dcl.showLocated}"
-            )(using searchCtx)
-
+      // Before losing the reference to ctx.owner
+      // when calling implicitArgTree with searchCtx,
+      // let's store ctx.owner as the fallback "responsibleForImports"
+      // in DependencyRecorder.  That way, if we end up recording any dependencies
+      // we use ctx.owner as the "fromClass" rather than emitting a warning
+      // (because ctx.compilationUnit.tpdTree is still EmptyTree during typer).
+      // For example, to record mirror dependencies, see i23049.
+      inline def withOwnerResponsibleForImports[A](inline op: A): A =
+        val depRecorder = ctx.compilationUnit.depRecorder
+        val responsibleForImports = depRecorder._responsibleForImports
+        if responsibleForImports == null then
+          depRecorder._responsibleForImports = ctx.owner
+        op.tap: _ =>
           if responsibleForImports == null then
             depRecorder._responsibleForImports = null
 
-          val impl = dcl.copy(cls,
-            flags = dcl.flags &~ (HasDefault | Deferred) | Final | Override,
-            info = target,
-            coord = rhs.span).entered.asTerm
+      def givenImpl(mbr: TermRef): ValDef =
+        val dcl = mbr.symbol
+        val target = dcl.info.asSeenFrom(cls.thisType, dcl.owner)
+        val constr = cls.primaryConstructor
+        val usingParamAccessors = cls.paramAccessors.filter(_.is(Given))
+        val paramScope = newScopeWith(usingParamAccessors*)
+        val searchCtx = ctx.outer.fresh.setScope(paramScope)
 
-          def anchorParams = new TreeMap:
-            override def transform(tree: Tree)(using Context): Tree = tree match
-              case id: Ident if usingParamAccessors.contains(id.symbol) =>
-                cpy.Select(id)(This(cls), id.name)
+        val rhs = withOwnerResponsibleForImports:
+          implicitArgTree(target, cdef.span,
+            where = i"inferring the implementation of the deferred ${dcl.showLocated}"
+          )(using searchCtx)
+            .tap:
+              _.tpe match
+              case tp: NamedType =>
+                val resolvedHere = tp.prefix.typeSymbol == cls && tp.name == mbr.name && !tp.typeSymbol.is(Method)
+                if resolvedHere then failFor(mbr, "the result is self-recursive")
               case _ =>
-                super.transform(tree)
-          ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
-        end givenImpl
 
-        val givenImpls =
-          cls.thisType.implicitMembers
-            //.showing(i"impl def givens for $cls/$result")
-            .filter(_.symbol.isAllOf(DeferredGivenFlags, butNot = Param))
-            .filter(!willBeimplementedInParentClass(_)) // only implement the given in the topmost class
-            //.showing(i"impl def filtered givens for $cls/$result")
-            .filter(isGivenValue)
-            .map(givenImpl)
-        body ++ givenImpls
+        val impl = dcl.copy(cls,
+          flags = dcl.flags &~ (HasDefault | Deferred) | Final | Override,
+          info = target,
+          coord = rhs.span).entered.asTerm
+
+        def anchorParams = new TreeMap:
+          override def transform(tree: Tree)(using Context): Tree = tree match
+            case id: Ident if usingParamAccessors.contains(id.symbol) =>
+              cpy.Select(id)(This(cls), id.name)
+            case _ =>
+              super.transform(tree)
+        ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
+      end givenImpl
+
+      if cls.is(Trait) || ctx.isAfterTyper then body
+      else
+        body ++ cls.thisType.implicitMembers
+          //.showing(i"impl def givens for $cls/$result")
+          .filter(_.symbol.isAllOf(DeferredGivenFlags, butNot = Param))
+          .filter(!willBeImplementedInParentClass(_)) // only implement the given in the topmost class
+          //.showing(i"impl def filtered givens for $cls/$result")
+          .filter(isGivenValue)
+          .map(givenImpl)
     end implementDeferredGivens
 
     ensureCorrectSuperClass()
