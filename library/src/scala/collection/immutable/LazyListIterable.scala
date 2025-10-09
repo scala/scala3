@@ -321,7 +321,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
         try fun().evaluated
         // restore `fun` in finally so we can try again later if an exception was thrown (similar to lazy val)
         finally _tail = fun
-      _tail = l.rawTail
+      _tail = caps.unsafe.unsafeAssumePure(l.rawTail)
       _head = l.rawHead
     }
   }

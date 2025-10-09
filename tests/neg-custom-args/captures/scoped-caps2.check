@@ -62,12 +62,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:16:29 ---------------------------------
 16 |  val _: C -> C = (x: C) => a(x) // error
    |                            ^^^^
-   |    Found:    C^{x}
-   |    Required: C^
+   |Found:    C^
+   |Required: C^²
    |
-   |    Note that capability x is not included in capture set {cap}
-   |    because (x : C) in enclosing function is not visible from cap in value _$8.
+   |Note that capability cap is not included in capture set {cap²}
+   |because cap in enclosing function is not visible from cap² in value _$8.
    |
-   |    where:    ^ and cap refer to a fresh root capability classified as SharedCapability in the type of value _$8
+   |where:    ^ and cap   refer to a fresh root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating method apply's type (x: C^³): C^⁴
+   |          ^² and cap² refer to a fresh root capability classified as SharedCapability in the type of value _$8
    |
    | longer explanation available when compiling with `-explain`
