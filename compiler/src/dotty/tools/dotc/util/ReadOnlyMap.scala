@@ -17,17 +17,17 @@ abstract class ReadOnlyMap[Key, Value]:
 
   def get(key: Key): Option[Value] = lookup(key) match
     case null => None
-    case v => Some(v.uncheckedNN)
+    case v => Some(v)
 
   def getOrElse(key: Key, value: => Value) = lookup(key) match
     case null => value
-    case v => v.uncheckedNN
+    case v => v
 
   def contains(key: Key): Boolean = lookup(key) != null
 
   def apply(key: Key): Value = lookup(key) match
     case null => throw new NoSuchElementException(s"$key")
-    case v => v.uncheckedNN
+    case v => v
 
   def toArray: Array[(Key, Value)] =
     val result = new Array[(Key, Value)](size)
