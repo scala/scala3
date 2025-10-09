@@ -890,6 +890,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The current tree applied to (): `tree()` */
         def appliedToNone: Apply
 
+        /** The current tree applied to `()` unless the tree's widened type is parameterless */
+        def ensureApplied: Term
+
         /** The current tree applied to given type argument: `tree[targ]` */
         def appliedToType(targ: TypeRepr): Term
 
