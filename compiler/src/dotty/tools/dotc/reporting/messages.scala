@@ -3741,3 +3741,15 @@ final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(Recurs
     i"Recursive call used a default argument for parameter $name."
   override protected def explain(using Context): String =
     "It's more explicit to pass current or modified arguments in a recursion."
+
+final class DetachedUnaryMinus()(using Context) extends SyntaxMsg(DetachedUnaryMinusID):
+  override protected def msg(using Context): String =
+    "Unary minus is too far to the left."
+  override protected def explain(using Context): String =
+    "The expression is parsed as a literal, and intervening space is ignored."
+
+final class UnaryMinusInSelect()(using Context) extends SyntaxMsg(UnaryMinusInSelectID):
+  override protected def msg(using Context): String =
+    "Negative literal should be parenthesized before dot selection."
+  override protected def explain(using Context): String =
+    "The receiver is parsed as a negative literal, not as the negation of the whole expression."

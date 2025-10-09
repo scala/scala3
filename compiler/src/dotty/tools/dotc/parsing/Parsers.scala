@@ -1361,8 +1361,10 @@ object Parsers {
       def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal)
-        def digits = if (isNegated) "-" + digits0 else digits0
+        def digits = if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
+          if isNegated && negOffset < in.offset - 1 && ctx.settings.Whas.syntax then
+            warning(DetachedUnaryMinus(), negOffset)
           token match {
             case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
             case DECILIT => return Number(digits, NumberKind.Decimal)
@@ -2826,6 +2828,8 @@ object Parsers {
       if (canApply) argumentStart()
       in.token match
         case DOT =>
+          if ctx.settings.Whas.syntax then
+            t match { case Number(n, _) if n(0) == '-' => warning(UnaryMinusInSelect(), t.span.start) case _ => }
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
