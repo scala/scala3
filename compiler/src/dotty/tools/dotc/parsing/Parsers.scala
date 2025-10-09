@@ -1345,7 +1345,7 @@ object Parsers {
       if isIdent(nme.raw.MINUS) then
         val start = in.offset
         in.nextToken()
-        literal(negOffset = start, inTypeOrSingleton = true)
+        literal(start, inTypeOrSingleton = true)
       else
         literal(inTypeOrSingleton = true)
 
@@ -1354,17 +1354,17 @@ object Parsers {
      *                      |  symbolLiteral
      *                      |  ‘null’
      *
-     *  @param negOffset   The offset of a preceding `-' sign, if any.
-     *                     If the literal is not negated, negOffset == in.offset.
+     *  @param start   The offset of a preceding `-' sign, if any.
+     *                 If the literal is not negated, start == in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+    def literal(start: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
-        val isNegated = negOffset < in.offset
+        val isNegated = start < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal)
         def digits = if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
-          if isNegated && negOffset < in.offset - 1 && ctx.settings.Whas.syntax then
-            warning(DetachedUnaryMinus(), negOffset)
+          if isNegated && start < in.offset - 1 && ctx.settings.Whas.syntax then
+            warning(DetachedUnaryMinus(), start)
           token match {
             case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
             case DECILIT => return Number(digits, NumberKind.Decimal)
@@ -1397,15 +1397,15 @@ object Parsers {
         val t = in.token match {
           case STRINGLIT | STRINGPART =>
             val value = in.strVal
-            atSpan(negOffset, negOffset, negOffset + value.length) { Literal(Constant(value)) }
+            atSpan(start, start, start + value.length) { Literal(Constant(value)) }
           case _ =>
             syntaxErrorOrIncomplete(IllegalLiteral())
-            atSpan(negOffset) { Literal(Constant(null)) }
+            atSpan(start) { Literal(Constant(null)) }
         }
         in.nextToken()
         t
       }
-      else atSpan(negOffset) {
+      else atSpan(start) {
         if (in.token == QUOTEID)
           if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(in.name(0))) {
             val t = atSpan(in.offset + 1) {
@@ -1478,7 +1478,7 @@ object Parsers {
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
       if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+        segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
 
       InterpolatedString(interpolator, segmentBuf.toList)
     }
