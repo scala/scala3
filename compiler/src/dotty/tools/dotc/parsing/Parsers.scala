@@ -219,9 +219,8 @@ object Parsers {
       isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
     def isConsume =
       isIdent(nme.consume) && ccEnabled //\&& in.isSoftModifierInParamModifierPosition
-    def isSimpleLiteral =
-      simpleLiteralTokens.contains(in.token)
-      || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
+    def isNegatedNumber = isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
+    def isSimpleLiteral = simpleLiteralTokens.contains(in.token) || isNegatedNumber
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
@@ -3304,9 +3303,8 @@ object Parsers {
      */
     def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
-        simpleRef() match
-          case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
-          case t => simplePatternRest(t)
+        if isNegatedNumber then literal(start = in.skipToken())
+        else simplePatternRest(simpleRef())
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
