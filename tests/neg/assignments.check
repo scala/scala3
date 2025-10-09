@@ -1,0 +1,22 @@
+-- [E052] Type Error: tests/neg/assignments.scala:17:8 -----------------------------------------------------------------
+17 |    x_= = 2  // error should give missing arguments, was: Reassignment to val x_=
+   |    ^^^^^^^
+   |    Bad assignment to setter should use x_=(2)
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | x_= is a setter name and can be used with assignment syntax:
+   |   x = 2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E083] Type Error: tests/neg/assignments.scala:20:9 -----------------------------------------------------------------
+20 |  import c._ // error should give: prefix is not stable
+   |         ^
+   |         (assignments.c : assignments.C) is not a valid import prefix, since it is not an immutable path
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | An immutable path is
+   |  - a reference to an immutable value, or
+   |  - a reference to `this`, or
+   |  - a selection of an immutable path with an immutable value.
+    --------------------------------------------------------------------------------------------------------------------
