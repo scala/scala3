@@ -2744,14 +2744,15 @@ object Parsers {
      */
     val prefixExpr: Location => Tree = location =>
       if in.token == IDENTIFIER && nme.raw.isUnary(in.name)
-         && in.canStartExprTokens.contains(in.lookahead.token)
+        && {
+          val lookahead = in.lookahead
+          in.canStartExprTokens.contains(lookahead.token) && lookahead.lineOffset < 0
+        }
       then
-        val start = in.offset
-        val op = termIdent()
-        if (op.name == nme.raw.MINUS && isNumericLit)
-          simpleExprRest(literal(start), location, canApply = true)
+        if isNegatedNumber then
+          simpleExprRest(literal(start = in.skipToken()), location, canApply = true)
         else
-          atSpan(start) { PrefixOp(op, simpleExpr(location)) }
+          atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
