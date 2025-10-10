@@ -97,7 +97,7 @@ import dotty.tools.initialize
  *  the same parameters as type arguments. This is no longer the case in
  *  dotc thanks to being located after erasure.
  *  In scalac, this is named tailCall but it does only provide optimization for
- *  self recursive functions, that's why it's renamed to tailrec
+ *  self recursive functions, that's why it's renamed to tailrec.
  *
  *  @author
  *    Erik Stenman, Iulian Dragos,
@@ -414,7 +414,12 @@ class TailRec extends MiniPhase {
             rewriteApply(tree)
 
         case tree @ Select(qual, name) =>
-          cpy.Select(tree)(noTailTransform(qual), name)
+          val qual1 =
+            if tree.symbol == defn.Any_asInstanceOf && tree.span.isSynthetic then
+              transform(qual) // synthetic cast is still tailrec
+            else
+              noTailTransform(qual)
+          cpy.Select(tree)(qual1, name)
 
         case tree @ Block(stats, expr) =>
           cpy.Block(tree)(
