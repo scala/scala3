@@ -30,7 +30,12 @@ import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
 
-
+/**
+ * The raw public API of the presentation compiler that does not handle synchronisation.
+ * Scala compiler can't run concurrent code at that point, so we need to enforce sequential, single threaded execution.
+ *
+ * It has to be implemented by the consumer of this API.
+ */
 case class RawScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
     buildTargetName: Option[String] = None,

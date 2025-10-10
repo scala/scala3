@@ -8,13 +8,13 @@ import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
 
 import scala.meta.pc.VirtualFileParams
-import ch.epfl.scala.bsp4j
 import dotty.tools.dotc.reporting.CodeAction
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.reporting.ErrorMessageID
 import org.eclipse.lsp4j.DiagnosticTag
+import org.eclipse.lsp4j.CodeActionKind
 
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
@@ -33,29 +33,32 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
       )
       lspDiag.setCode(diag.msg.errorId.errorNumber)
 
-      val scalaDiagnostic = new bsp4j.ScalaDiagnostic()
-      val actions = diag.msg.actions.map(toBspScalaAction).asJava
-      scalaDiagnostic.setActions(actions)
+      val actions = diag.msg.actions.map(toLspScalaAction).asJava
+
       // lspDiag.setRelatedInformation(???) Currently not emitted by the compiler
-      lspDiag.setData(scalaDiagnostic)
+      lspDiag.setData(actions)
       if diag.msg.errorId == ErrorMessageID.UnusedSymbolID then
         lspDiag.setTags(List(DiagnosticTag.Unnecessary).asJava)
 
       lspDiag
 
-  private def toBspScalaAction(action: CodeAction): bsp4j.ScalaAction =
-    val bspAction = bsp4j.ScalaAction(action.title)
-    action.description.foreach(bspAction.setDescription)
-    val workspaceEdit = bsp4j.ScalaWorkspaceEdit(action.patches.map(toBspTextEdit).asJava)
-    bspAction.setEdit(workspaceEdit)
-    bspAction
+  private def toLspScalaAction(action: CodeAction): lsp4j.CodeAction =
+    val lspAction = lsp4j.CodeAction(action.title)
+    lspAction.setKind(CodeActionKind.QuickFix)
+    lspAction.setIsPreferred(true)
+    val edits = action.patches.groupBy(_.srcPos.source.path)
+      .map((path, actions) => path -> (actions.map(toLspTextEdit).asJava))
+      .asJava
 
-  private def toBspTextEdit(actionPatch: ActionPatch): bsp4j.ScalaTextEdit =
-    val startPos = bsp4j.Position(actionPatch.srcPos.startLine, actionPatch.srcPos.startColumn)
-    val endPos   = bsp4j.Position(actionPatch.srcPos.endLine, actionPatch.srcPos.endColumn)
-    val range = bsp4j.Range(startPos, endPos)
-    bsp4j.ScalaTextEdit(range, actionPatch.replacement)
+    val workspaceEdit = lsp4j.WorkspaceEdit(edits)
+    lspAction.setEdit(workspaceEdit)
+    lspAction
 
+  private def toLspTextEdit(actionPatch: ActionPatch): lsp4j.TextEdit =
+    val startPos = lsp4j.Position(actionPatch.srcPos.startLine, actionPatch.srcPos.startColumn)
+    val endPos   = lsp4j.Position(actionPatch.srcPos.endLine, actionPatch.srcPos.endColumn)
+    val range = lsp4j.Range(startPos, endPos)
+    lsp4j.TextEdit(range, actionPatch.replacement)
 
   private def toDiagnosticSeverity(severity: Int): DiagnosticSeverity =
     severity match
