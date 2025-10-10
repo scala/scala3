@@ -484,6 +484,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           argss.foldLeft(self: Term)(Apply(_, _))
         def appliedToNone: Apply =
           self.appliedToArgs(Nil)
+        def ensureApplied: Term =
+          if (self.tpe.widen.isParameterless) self else self.appliedToNone
         def appliedToType(targ: TypeRepr): Term =
           self.appliedToTypes(targ :: Nil)
         def appliedToTypes(targs: List[TypeRepr]): Term =
