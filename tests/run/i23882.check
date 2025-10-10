@@ -1,0 +1,6 @@
+public void Foo.foo(java.lang.Object)
+public void Foo.foo(scala.Equals)
+public void Foo.bar(Bar)
+public void Foo.bar2(Bar)
+public void Foo.bar3(Bar)
+public void Foo.bar4(Bar)
