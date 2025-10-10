@@ -1342,9 +1342,7 @@ object Parsers {
      */
     def simpleLiteral(): Tree =
       if isIdent(nme.raw.MINUS) then
-        val start = in.offset
-        in.nextToken()
-        literal(start, inTypeOrSingleton = true)
+        literal(start = in.skipToken(), inTypeOrSingleton = true)
       else
         literal(inTypeOrSingleton = true)
 
