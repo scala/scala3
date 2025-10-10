@@ -193,11 +193,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AppliedType(`tycon`, args0) => args0.last ne args.last
           case _ => false
         if expand then
-          val fn = depFun(
+          val (fn: RefinedType) = depFun(
             args.init, args.last,
             isContextual = defn.isContextFunctionClass(tycon.classSymbol))
               .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
-          AnnotatedType(fn, Annotation(defn.InferredDepFunAnnot, util.Spans.NoSpan))
+            .runtimeChecked
+          RefinedType.inferred(fn.parent, fn.refinedName, fn.refinedInfo)
         else tp
       case _ => tp
 

@@ -3268,12 +3268,14 @@ object Types extends TypeUtils {
 
     def checkInst(using Context): this.type = this // debug hook
 
+    def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+      RefinedType(parent, refinedName, refinedInfo)
+
     final def derivedRefinedType
         (parent: Type = this.parent, refinedName: Name = this.refinedName, refinedInfo: Type = this.refinedInfo)
         (using Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
-      else if isPrecise then RefinedType.precise(parent, refinedName, refinedInfo)
-      else RefinedType(parent, refinedName, refinedInfo)
+      else newLikeThis(parent, refinedName, refinedInfo)
 
     /** Add this refinement to `parent`, provided `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(using Context): Type =
@@ -3308,6 +3310,17 @@ object Types extends TypeUtils {
   class PreciseRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
   extends RefinedType(parent, refinedName, refinedInfo):
     override def isPrecise = true
+    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+      PreciseRefinedType(parent, refinedName, refinedInfo)
+
+  /** Used for refined function types created at cc/Setup that come from original
+   *  generic function types. Function types of this class don't get their result
+   *  captures mapped from FreshCaps to ResultCaps with toResult.
+   */
+  class InferredRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
+  extends RefinedType(parent, refinedName, refinedInfo):
+    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+      InferredRefinedType(parent, refinedName, refinedInfo)
 
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(using Context): Type =
@@ -3322,6 +3335,10 @@ object Types extends TypeUtils {
     def precise(parent: Type, name: Name, info: Type)(using Context): RefinedType =
       assert(!ctx.erasedTypes)
       unique(new PreciseRefinedType(parent, name, info)).checkInst
+
+    def inferred(parent: Type, name: Name, info: Type)(using Context): RefinedType =
+      assert(!ctx.erasedTypes)
+      unique(new InferredRefinedType(parent, name, info)).checkInst
   }
 
   /** A recursive type. Instances should be constructed via the companion object.
