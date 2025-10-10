@@ -118,6 +118,7 @@ object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
     "-Wsafe-init",
+    "-Yexplicit-nulls",
   )
 
 object projects:
@@ -245,6 +246,7 @@ object projects:
       ).mkString("; "),
     sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
     sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
+    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty"),
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -264,13 +266,15 @@ object projects:
     project = "scalatestplus-testng",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions ++ List("-Yflexify-tasty")
   )
 
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand = "xml/test",
     sbtPublishCommand = "xml/publishLocal",
-    sbtDocCommand = "xml/doc"
+    sbtDocCommand = "xml/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Yexplicit-nulls")
   )
 
   lazy val scalap = SbtCommunityProject(
@@ -312,7 +316,7 @@ object projects:
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init").filter(_ != "-Yexplicit-nulls"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
