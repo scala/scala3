@@ -32,6 +32,7 @@ import dotty.tools.dotc.util.Spans.Span
 import org.eclipse.lsp4j.InlayHint
 import org.eclipse.lsp4j.InlayHintKind
 import org.eclipse.{lsp4j as l}
+import scala.meta.internal.pc.InlayHintOrigin
 
 class PcInlayHintsProvider(
     driver: InteractiveDriver,
@@ -80,7 +81,7 @@ class PcInlayHintsProvider(
         )
       case _ => inlayHints
     }
-    
+
     tree match
       case ImplicitConversion(symbol, range) =>
         val adjusted = adjustPos(range)
@@ -89,11 +90,13 @@ class PcInlayHintsProvider(
             adjusted.startPos.toLsp,
             labelPart(symbol, symbol.decodedName) :: LabelPart("(") :: Nil,
             InlayHintKind.Parameter,
+            InlayHintOrigin.ImplicitConversion
           )
           .add(
             adjusted.endPos.toLsp,
             LabelPart(")") :: Nil,
             InlayHintKind.Parameter,
+            InlayHintOrigin.ImplicitConversion
           )
       case ImplicitParameters(trees, pos) =>
         firstPassHints.add(
@@ -104,12 +107,14 @@ class PcInlayHintsProvider(
                case None => LabelPart(label)
            ),
           InlayHintKind.Parameter,
+          InlayHintOrigin.ImplicitParameters
         )
       case ValueOf(label, pos) =>
         firstPassHints.add(
           adjustPos(pos).toLsp,
           LabelPart("(") :: LabelPart(label) :: List(LabelPart(")")),
           InlayHintKind.Parameter,
+          InlayHintOrigin.ImplicitParameters
         )
       case TypeParameters(tpes, pos, sel)
           if !syntheticTupleApply(sel) =>
@@ -118,19 +123,18 @@ class PcInlayHintsProvider(
           adjustPos(pos).endPos.toLsp,
           label,
           InlayHintKind.Type,
+          InlayHintOrigin.TypeParameters
         )
       case InferredType(tpe, pos, defTree)
           if !isErrorTpe(tpe) =>
         val adjustedPos = adjustPos(pos).endPos
-        if firstPassHints.containsDef(adjustedPos.start) then firstPassHints
-        else
-          firstPassHints
-            .add(
-              adjustedPos.toLsp,
-              LabelPart(": ") :: toLabelParts(tpe, pos),
-              InlayHintKind.Type,
-            )
-            .addDefinition(adjustedPos.start)
+        firstPassHints
+          .add(
+            adjustedPos.toLsp,
+            LabelPart(": ") :: toLabelParts(tpe, pos),
+            InlayHintKind.Type,
+            InlayHintOrigin.InferredType
+          )
       case Parameters(isInfixFun, args) =>
         def isNamedParam(pos: SourcePosition): Boolean =
           val start = text.indexWhere(!_.isWhitespace, pos.start)
@@ -167,6 +171,7 @@ class PcInlayHintsProvider(
                   hintPos.startPos.toLsp,
                   List(LabelPart(labelStr)),
                   InlayHintKind.Parameter,
+                  if params.byNameParameters then InlayHintOrigin.ByNameParameters else InlayHintOrigin.NamedParameters
                 )
             else ih
         }
@@ -515,7 +520,7 @@ object XRayModeHint:
         case Some(sel: Select) if sel.isForComprehensionMethod => false
         case Some(par) if par.sourcePos.exists && par.sourcePos.line == tree.sourcePos.line => true
         case _ => false
-      
+
       tree match
         /*
         anotherTree
@@ -530,7 +535,7 @@ object XRayModeHint:
          .select
          */
         case select @ Select(innerTree, _)
-            if innerTree.sourcePos.exists && !isParentOnSameLine && !isParentApply && 
+            if innerTree.sourcePos.exists && !isParentOnSameLine && !isParentApply &&
               isEndOfLine(tree.sourcePos) =>
           Some((select.tpe.widen.deepDealiasAndSimplify, tree.sourcePos))
         case _ => None
