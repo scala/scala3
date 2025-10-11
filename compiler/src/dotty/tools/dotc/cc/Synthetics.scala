@@ -58,7 +58,7 @@ object Synthetics:
 
   /** Transform the type of a method either to its type under capture checking
    *  or back to its previous type.
-   *  @param  sym  The method to transform @pre needsTransform(sym) must hold.
+   *  @param  symd The method to transform @pre needsTransform(sym) must hold.
    *  @param  info The possibly already mapped info of sym
    */
   def transform(symd: SymDenotation, info: Type)(using Context): SymDenotation =
