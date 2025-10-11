@@ -2053,6 +2053,28 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
     )
 
+  @Test def `namedTuple completions-3` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.@@name""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
+  @Test def `namedTuple completions-4` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.n@@ame""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
   @Test def `Selectable with namedTuple Fields member` =
     check(
       """|import scala.NamedTuple.*
@@ -2285,7 +2307,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       "asTerm: Term"
     )
-  
+
   @Test def `derives-no-square-brackets` =
     check(
       """
