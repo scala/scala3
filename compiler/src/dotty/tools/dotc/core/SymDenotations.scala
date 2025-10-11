@@ -1248,10 +1248,12 @@ object SymDenotations {
       || isClass
         && (!isOneOf(EffectivelyOpenFlags) || isLocalToCompilationUnit)
 
-    final def isLocalToCompilationUnit(using Context): Boolean =
-      is(Private)
-      || owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
+    final def isLocalToCompilationUnitIgnoringPrivate(using Context): Boolean =
+      owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
       || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
+
+    final def isLocalToCompilationUnit(using Context): Boolean =
+      is(Private) || isLocalToCompilationUnitIgnoringPrivate
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType) || defn.isAssumedTransparent(symbol)

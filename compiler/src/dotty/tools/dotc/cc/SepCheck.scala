@@ -221,7 +221,7 @@ object SepCheck:
         refs1.foreach: ref =>
           if !ref.isReadOnly then
             val coreRef = ref.stripRestricted
-            if refs2.exists(_.stripRestricted.stripReadOnly eq coreRef) then
+            if refs2.exists(_.stripRestricted.stripReadOnly.coversFresh(coreRef)) then
               acc += coreRef
         acc
       assert(refs.forall(_.isTerminalCapability))
@@ -272,7 +272,6 @@ object SepCheck:
      *   3. the set itself if it consists only of hidden terminal capabilities.
      */
     def reduced(using Context): Refs =
-      assert(!refs.isEmpty)
       val concrete = refs.nonPeaks
       if !concrete.isEmpty then concrete
       else
@@ -356,9 +355,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val hiddenFootprint = hiddenSet.directFootprint
     val clashFootprint = clashSet.directFootprint
     val shared = hiddenFootprint.overlapWith(clashFootprint).reduced
-    shared.nth(0) match
+    if shared.isEmpty then i"${CaptureSet(shared)}"
+    else shared.nth(0) match
       case fresh: FreshCap =>
-        if fresh.hiddenSet.owner.exists then i"$fresh of ${fresh.hiddenSet.owner}" else i"$fresh"
+        if fresh.hiddenSet.owner.exists then i"{$fresh of ${fresh.hiddenSet.owner}}" else i"$fresh"
       case _ =>
         i"${CaptureSet(shared)}"
 
@@ -402,8 +402,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       else i" with type  ${clashing.nuType}"
     val hiddenSet = formalCaptures(polyArg).transHiddenSet
     val clashSet = if clashIdx == -1 then deepCaptures(clashing) else spanCaptures(clashing)
-    val hiddenFootprint = hiddenSet.directFootprint
-    val clashFootprint = clashSet.directFootprint
+    val hiddenFootprint = hiddenSet.completeFootprint
+    val clashFootprint = clashSet.completeFootprint
+
     report.error(
       em"""Separation failure: argument of type  ${polyArg.nuType}
           |to $funStr
@@ -430,6 +431,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def sepUseError(tree: Tree, clashingDef: ValOrDefDef | Null, used: Refs, hidden: Refs)(using Context): Unit =
     if clashingDef != null then
       def resultStr = if clashingDef.isInstanceOf[DefDef] then " result" else ""
+      //println(i"sep use error: previous ${clashingDef.tpt.nuType}, ref = $used")
       report.error(
         em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
             |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
@@ -567,11 +569,17 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val usedPeaks = used.allPeaks
       val overlap = defsShadow.allPeaks.sharedPeaks(usedPeaks)
       if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
-        val sym = tree.symbol
-
+        // Drop all Selects unless they select from a `this`
+        def pathRoot(tree: Tree): Tree = tree match
+          case Select(This(_), _) => tree
+          case Select(prefix, _) => pathRoot(prefix)
+          case _ => tree
+          
+        val rootSym = pathRoot(tree).symbol
+        
         def findClashing(prevDefs: List[DefInfo]): Option[DefInfo] = prevDefs match
           case prevDef :: prevDefs1 =>
-            if prevDef.symbol == sym then Some(prevDef)
+            if prevDef.symbol == rootSym then Some(prevDef)
             else if !prevDef.hiddenPeaks.sharedPeaks(usedPeaks).isEmpty then Some(prevDef)
             else findClashing(prevDefs1)
           case Nil =>
@@ -579,10 +587,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
         findClashing(previousDefs) match
           case Some(clashing) =>
-            if clashing.symbol != sym then
+            //println(i"check use $tree, $used, $rootSym, ${clashing.symbol}")
+            if clashing.symbol != rootSym then
               sepUseError(tree, clashing.tree, used, clashing.hidden)
           case None =>
             sepUseError(tree, null, used, defsShadow)
+      end if
 
       for ref <- used do
         val pos = consumed.clashing(ref)

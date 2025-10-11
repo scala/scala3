@@ -23,6 +23,7 @@ import printing.Texts.Text
 import reporting.{Message, trace}
 import NameOps.isImpureFunction
 import annotation.internal.sharable
+import collection.immutable
 
 /** Capabilities are members of capture sets. They partially overlap with types
  *  as shown in the trait hierarchy below.
@@ -147,9 +148,29 @@ object Capabilities:
    *  @param origin  an indication where and why the FreshCap was created, used
    *                 for diagnostics
    */
-  case class FreshCap (owner: Symbol, origin: Origin)(using @constructorOnly ctx: Context) extends RootCapability:
-    val hiddenSet = CaptureSet.HiddenSet(owner, this: @unchecked)
+  case class FreshCap(val prefix: Type)
+      (val owner: Symbol, val origin: Origin, origHidden: CaptureSet.HiddenSet | Null)
+      (using @constructorOnly ctx: Context)
+  extends RootCapability:
+    val hiddenSet =
+      if origHidden == null then CaptureSet.HiddenSet(owner, this: @unchecked)
+      else origHidden
       // fails initialization check without the @unchecked
+
+    def derivedFreshCap(newPrefix: Type)(using Context): FreshCap =
+      if newPrefix eq prefix then this
+      else if newPrefix eq hiddenSet.owningCap.prefix then
+        hiddenSet.owningCap
+      else
+        hiddenSet.derivedCaps
+          .getOrElseUpdate(newPrefix, FreshCap(newPrefix)(owner, origin, hiddenSet))
+
+    /** A map from context owners to skolem TermRefs that were created by ensurePath
+     *  TypeMap's mapCapability.
+     */
+    var skolems: immutable.Map[Symbol, TermRef] = immutable.HashMap.empty
+
+    //assert(rootId != 10, i"fresh $prefix, ${ctx.owner}")
 
     /** Is this fresh cap (definitely) classified? If that's the case, the
      *  classifier cannot be changed anymore.
@@ -167,12 +188,6 @@ object Capabilities:
       case _ => false
 
     /** Is this fresh cap at the right level to be able to subsume `ref`?
-     *  Only outer freshes can be subsumed.
-     *  TODO Can we merge this with levelOK? Right now we use two different schemes:
-     *   - For level checking capsets with levelOK: Check that the visibility of the element
-     *     os not properly contained in the captset owner.
-     *  - For level checking elements subsumed by FreshCaps: Check that the widened scope
-     *    (using levelOwner) of the elements contains the owner of the FreshCap.
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useFreshLevels && !CCState.collapseFresh then
@@ -203,8 +218,12 @@ object Capabilities:
       i"a fresh root capability$classifierStr$originStr"
 
   object FreshCap:
+    def apply(owner: Symbol, prefix: Type, origin: Origin)(using Context): FreshCap =
+      new FreshCap(prefix)(owner, origin, null)
+    def apply(owner: Symbol, origin: Origin)(using Context): FreshCap =
+      apply(owner, owner.skipWeakOwner.thisType, origin)
     def apply(origin: Origin)(using Context): FreshCap =
-      FreshCap(ctx.owner, origin)
+      apply(ctx.owner, origin)
 
   /** A root capability associated with a function type. These are conceptually
    *  existentially quantified over the function's result type.
@@ -441,6 +460,7 @@ object Capabilities:
      *  the form this.C but their pathroot is still this.C, not this.
      */
     final def pathRoot(using Context): Capability = this match
+      case FreshCap(pre: Capability) => pre.pathRoot
       case _: RootCapability => this
       case self: DerivedCapability => self.underlying.pathRoot
       case self: CoreCapability => self.dealias match
@@ -485,7 +505,13 @@ object Capabilities:
       case TermRef(prefix: Capability, _) => prefix.ccOwner
       case self: NamedType => self.symbol
       case self: DerivedCapability => self.underlying.ccOwner
-      case self: FreshCap => self.hiddenSet.owner
+      case self: FreshCap =>
+        val setOwner = self.hiddenSet.owner
+        self.prefix match
+          case prefix: ThisType if setOwner.isTerm && setOwner.owner == prefix.cls =>
+            setOwner
+          case prefix: Capability => prefix.ccOwner
+          case _ => setOwner
       case _ /* : GlobalCap | ResultCap | ParamRef */ => NoSymbol
 
     final def visibility(using Context): Symbol = this match
@@ -665,6 +691,8 @@ object Capabilities:
 
       try (this eq y)
       || maxSubsumes(y, canAddHidden = !vs.isOpen)
+          // if vs is open, we should add new elements to the set containing `this`
+          // instead of adding them to the hidden set of of `this`.
       || y.match
         case y: TermRef =>
             y.prefix.match
@@ -732,12 +760,26 @@ object Capabilities:
       (this eq y)
       || this.match
         case x: FreshCap =>
+          def classifierOK =
+            if y.tryClassifyAs(x.hiddenSet.classifier) then true
+            else
+              capt.println(i"$y cannot be classified as $x")
+              false
+
+          def prefixAllowsAddHidden: Boolean =
+            CCState.collapseFresh || x.prefix.match
+              case NoPrefix => true
+              case pre: ThisType => x.ccOwner.isContainedIn(pre.cls)
+              case pre =>
+                capt.println(i"fresh not open $x, ${x.rootId}, $pre, ${x.ccOwner.skipWeakOwner.thisType}")
+                false
+
           vs.ifNotSeen(this)(x.hiddenSet.elems.exists(_.subsumes(y)))
+          || x.coversFresh(y)
           || x.acceptsLevelOf(y)
-              && ( y.tryClassifyAs(x.hiddenSet.classifier)
-                   || { capt.println(i"$y cannot be classified as $x"); false }
-              )
+              && classifierOK
               && canAddHidden
+              && prefixAllowsAddHidden
               && vs.addHidden(x.hiddenSet, y)
         case x: ResultCap =>
           val result = y match
@@ -800,14 +842,38 @@ object Capabilities:
             case _ =>
               false
         || x.match
-            case x: FreshCap if !seen.contains(x) =>
-              seen.add(x)
-              x.hiddenSet.exists(recur(_, y))
+            case x: FreshCap =>
+              if x.coversFresh(y) then true
+              else if !seen.contains(x) then
+                seen.add(x)
+                x.hiddenSet.exists(recur(_, y))
+              else false
             case Restricted(x1, _) => recur(x1, y)
             case _ => false
 
       recur(this, y)
     end covers
+
+    /** `x eq y` or `x` is a fresh cap, `y` is a fresh cap with prefix
+     *  `p`, and there is a prefix of `p` that contains `x` in its
+     *  capture set.
+     */
+    final def coversFresh(y: Capability)(using Context): Boolean =
+      (this eq y) || this.match
+        case x: FreshCap => y match
+          case y: FreshCap =>
+            x.origin match
+              case Origin.InDecl(sym) =>
+                def occursInPrefix(pre: Type): Boolean = pre match
+                  case pre @ TermRef(pre1, _) =>
+                    pre.symbol == sym
+                    && pre.info.captureSet.elems.contains(x)
+                    || occursInPrefix(pre1)
+                  case _ => false
+                occursInPrefix(y.prefix)
+              case _ => false
+          case _ => false
+        case _ => false
 
     def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[Capability] =
       CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
@@ -857,18 +923,26 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
-  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
+  /** The smallest list D of class symbols in cs1 and cs2 such that
+   *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
+   */
+  def dominators(cs1: List[ClassSymbol], cs2: List[ClassSymbol])(using Context): List[ClassSymbol] =
     // Drop classes that subclass classes of the other set
     // @param proper  If true, only drop proper subclasses of a class of the other set
     def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol], proper: Boolean) =
       cs1.filter: cls1 =>
         !cs2.exists: cls2 =>
           cls1.isSubClass(cls2) && (!proper || cls1 != cls2)
+    filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false)
+
+  def joinClassifiers(cs1: Classifiers, cs2: Classifiers)(using Context): Classifiers =
     (cs1, cs2) match
-      case (Unclassified, _) | (_, Unclassified) => Unclassified
-      case (UnknownClassifier, _) | (_, UnknownClassifier) => UnknownClassifier
+      case (Unclassified, _) | (_, Unclassified) =>
+        Unclassified
+      case (UnknownClassifier, _) | (_, UnknownClassifier) =>
+        UnknownClassifier
       case (ClassifiedAs(cs1), ClassifiedAs(cs2)) =>
-        ClassifiedAs(filterSub(cs1, cs2, proper = true) ++ filterSub(cs2, cs1, proper = false))
+        ClassifiedAs(dominators(cs1, cs2))
 
   /** The place of - and cause for - creating a fresh capability. Used for
    *  error diagnostics
@@ -881,7 +955,7 @@ object Capabilities:
     case ResultInstance(methType: Type, meth: Symbol)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
-    case NewMutable(tp: Type)
+    case NewInstance(tp: Type)
     case NewCapability(tp: Type)
     case LambdaExpected(respt: Type)
     case LambdaActual(restp: Type)
@@ -911,10 +985,11 @@ object Capabilities:
         i" when instantiating argument of unapply with type $info"
       case LocalInstance(restpe) =>
         i" when instantiating expected result type $restpe of function literal"
-      case NewMutable(tp) =>
-        i" when constructing mutable $tp"
+      case NewInstance(tp) =>
+        i" when constructing instance $tp"
       case NewCapability(tp) =>
-        i" when constructing Capability instance $tp"
+        val kind = if tp.derivesFromMutable then "mutable" else "Capability instance"
+        i" when constructing $kind $tp"
       case LambdaExpected(respt) =>
         i" when instantiating expected result type $respt of lambda"
       case LambdaActual(restp: Type) =>

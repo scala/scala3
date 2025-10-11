@@ -1,0 +1,60 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/fresh-fields.scala:25:13 ---------------------------------
+25 |  val _: B = b // error
+   |             ^
+   |             Found:    (b : B^)
+   |             Required: B
+   |
+   |             Note that capability cap is not included in capture set {}.
+   |
+   |             where:    ^   refers to a fresh root capability in the type of value b
+   |                       cap is a fresh root capability in the type of value b
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/fresh-fields.scala:27:13 ---------------------------------
+27 |  val _: C = c // error
+   |             ^
+   |             Found:    (c : C^)
+   |             Required: C
+   |
+   |             Note that capability cap is not included in capture set {}.
+   |
+   |             where:    ^   refers to a fresh root capability in the type of value c
+   |                       cap is a fresh root capability in the type of value c
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/fresh-fields.scala:29:13 ---------------------------------
+29 |  val _: D = d // error
+   |             ^
+   |             Found:    (d : D^)
+   |             Required: D
+   |
+   |             Note that capability cap is not included in capture set {}.
+   |
+   |             where:    ^   refers to a fresh root capability in the type of value d
+   |                       cap is a fresh root capability in the type of value d
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/fresh-fields.scala:31:13 ---------------------------------
+31 |  val _: E = e // error
+   |             ^
+   |           Found:    (e : E^)
+   |           Required: E
+   |
+   |           Note that capability cap is not included in capture set {}.
+   |
+   |           where:    ^   refers to a fresh root capability classified as SharedCapability in the type of value e
+   |                     cap is a fresh root capability classified as SharedCapability in the type of value e
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/fresh-fields.scala:33:13 ---------------------------------
+33 |  val _: F = f // error
+   |             ^
+   |             Found:    (f : F^)
+   |             Required: F
+   |
+   |             Note that capability cap is not included in capture set {}.
+   |
+   |             where:    ^   refers to a fresh root capability in the type of value f
+   |                       cap is a fresh root capability in the type of value f
+   |
+   | longer explanation available when compiling with `-explain`
