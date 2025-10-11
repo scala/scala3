@@ -315,4 +315,15 @@ object Annotations {
         case Some(Constant(msg: String)) => Some(msg)
         case _ => Some("")
   }
+
+  object JavaRecordFieldsAnnotation {
+    def unapply(a: Annotation)(using Context): Option[List[String]] =
+      if a.symbol ne defn.JavaRecordFieldsAnnot then None
+      else
+        a.tree match
+          case Apply(_, List(Typed(SeqLiteral(args, _), _))) =>
+            val fields = args.collect { case Literal(Constant(s: String)) => s }
+            Some(fields)
+          case _ => None
+  }
 }
