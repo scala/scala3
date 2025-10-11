@@ -46,7 +46,7 @@ object Symbol extends UniquenessCache[String, Symbol] {
 }
 
 // Modified to use Scala.js specific cache
-private[scala] abstract class UniquenessCache[K, V >: Null] {
+private[scala] abstract class UniquenessCache[K, V] {
   private val cache = js.Dictionary.empty[V]
 
   protected def valueFromKey(k: String): V

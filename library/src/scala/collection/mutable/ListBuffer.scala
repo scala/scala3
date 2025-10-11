@@ -49,11 +49,12 @@ class ListBuffer[A]
   @transient private[this] var mutationCount: Int = 0
 
   private var first: List[A] = Nil
-  private var last0: ::[A] = null // last element (`last0` just because the name `last` is already taken)
+  @annotation.stableNull
+  private var last0: ::[A] | Null = null // last element (`last0` just because the name `last` is already taken)
   private[this] var aliased = false
   private[this] var len = 0
 
-  private type Predecessor = ::[A] /*| Null*/
+  private type Predecessor = ::[A] | Null
 
   def iterator: Iterator[A] = new MutationTracker.CheckedIterator(first.iterator, mutationCount)
 
@@ -101,7 +102,7 @@ class ListBuffer[A]
     if (isEmpty) xs
     else {
       ensureUnaliased()
-      last0.next = xs
+      last0.nn.next = xs
       toList
     }
   }
@@ -117,7 +118,7 @@ class ListBuffer[A]
   final def addOne(elem: A): this.type = {
     ensureUnaliased()
     val last1 = new ::[A](elem, Nil)
-    if (len == 0) first = last1 else last0.next = last1
+    if (len == 0) first = last1 else last0.nn.next = last1
     last0 = last1
     len += 1
     this
@@ -149,7 +150,7 @@ class ListBuffer[A]
       val fresh = new ListBuffer[A].freshFrom(it)
       ensureUnaliased()
       if (len == 0) first = fresh.first
-      else last0.next = fresh.first
+      else last0.nn.next = fresh.first
       last0 = fresh.last0
       len += fresh.length
     }
@@ -216,7 +217,7 @@ class ListBuffer[A]
       first = newElem
     } else {
       // `p` can not be `null` because the case where `idx == 0` is handled above
-      val p = predecessor(idx)
+      val p = predecessor(idx).nn
       val newElem = new :: (elem, p.tail.tail)
       if (last0 eq p.tail) {
         last0 = newElem
@@ -247,7 +248,7 @@ class ListBuffer[A]
     if (!fresh.isEmpty) {
       val follow = getNext(prev)
       if (prev eq null) first = fresh.first else prev.next = fresh.first
-      fresh.last0.next = follow
+      fresh.last0.nn.next = follow
       if (follow.isEmpty) last0 = fresh.last0
       len += fresh.length
     }
@@ -323,14 +324,14 @@ class ListBuffer[A]
   def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
     mutationCount += 1
     var src = first
-    var dst: List[A] = null
+    var dst: List[A] | Null = null
     last0 = null
     len = 0
     while(!src.isEmpty) {
       val it = f(src.head).iterator
       while(it.hasNext) {
         val v = new ::(it.next(), Nil)
-        if(dst eq null) dst = v else last0.next = v
+        if(dst eq null) dst = v else last0.nn.next = v
         last0 = v
         len += 1
       }

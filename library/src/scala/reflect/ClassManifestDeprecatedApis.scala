@@ -137,7 +137,8 @@ trait ClassManifestDeprecatedApis[T] extends OptManifest[T] {
 
   protected def argString =
     if (typeArguments.nonEmpty) typeArguments.mkString("[", ", ", "]")
-    else if (runtimeClass.isArray) "["+ClassManifest.fromClass(runtimeClass.getComponentType)+"]"
+    // TODO: remove .nn here after 3.8. See #24070
+    else if (runtimeClass.isArray) "["+ClassManifest.fromClass(runtimeClass.getComponentType.nn)+"]"
     else ""
 }
 

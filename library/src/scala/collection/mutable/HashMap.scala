@@ -15,6 +15,7 @@ package mutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializationProxy
@@ -52,7 +53,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   import HashMap.Node
 
   /** The actual hash table. */
-  private[this] var table = new Array[Node[K, V]](tableSizeFor(initialCapacity))
+  private[this] var table = new Array[Node[K, V] | Null](tableSizeFor(initialCapacity))
 
   /** The next size value at which to resize (capacity * load factor). */
   private[this] var threshold: Int = newThreshold(table.length)
@@ -83,7 +84,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   override def contains(key: K): Boolean = findNode(key) ne null
 
-  @`inline` private[this] def findNode(key: K): Node[K, V] = {
+  @`inline` private[this] def findNode(key: K): Node[K, V] | Null = {
     val hash = computeHash(key)
     table(index(hash)) match {
       case null => null
@@ -137,19 +138,22 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       val hash = computeHash(key)
       val indexedHash = index(hash)
 
-      var foundNode: Node[K, V] = null
-      var previousNode: Node[K, V] = null
+      var foundNode: Node[K, V] | Null = null
+      var previousNode: Node[K, V] | Null = null
       table(indexedHash) match {
         case null =>
         case nd =>
           @tailrec
-          def findNode(prev: Node[K, V], nd: Node[K, V], k: K, h: Int): Unit = {
+          def findNode(prev: Node[K, V] | Null, nd: Node[K, V], k: K, h: Int): Unit = {
             if (h == nd.hash && k == nd.key) {
               previousNode = prev
               foundNode = nd
             }
-            else if ((nd.next eq null) || (nd.hash > h)) ()
-            else findNode(nd, nd.next, k, h)
+            else {
+              val ndNext = nd.next
+              if ((ndNext eq null) || (nd.hash > h)) ()
+              else findNode(nd, ndNext, k, h)
+            }
           }
 
           findNode(null, nd, key, hash)
@@ -166,8 +170,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
         case (None, None) => // do nothing
 
         case (Some(_), None) =>
-          if (previousNode != null) previousNode.next = foundNode.next
-          else table(indexedHash) = foundNode.next
+          if (previousNode != null) previousNode.nn.next = foundNode.nn.next
+          else table(indexedHash) = foundNode.nn.next
           contentSize -= 1
 
         case (None, Some(value)) =>
@@ -178,7 +182,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
             } else indexedHash
           put0(key, value, getOld = false, hash, newIndexedHash)
 
-        case (Some(_), Some(newValue)) => foundNode.value = newValue
+        case (Some(_), Some(newValue)) => foundNode.nn.value = newValue
       }
       nextValue
     }
@@ -223,13 +227,13 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     * @param hash the **improved** hashcode of `key` (see computeHash)
     * @param getOld if true, then the previous value for `key` will be returned, otherwise, false
     */
-  private[this] def put0(key: K, value: V, hash: Int, getOld: Boolean): Some[V] = {
+  private[this] def put0(key: K, value: V, hash: Int, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     val idx = index(hash)
     put0(key, value, getOld, hash, idx)
   }
 
-  private[this] def put0(key: K, value: V, getOld: Boolean): Some[V] = {
+  private[this] def put0(key: K, value: V, getOld: Boolean): Some[V] | Null = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     val hash = computeHash(key)
     val idx = index(hash)
@@ -237,13 +241,13 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   }
 
 
-  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] = {
+  private[this] def put0(key: K, value: V, getOld: Boolean, hash: Int, idx: Int): Some[V] | Null = {
     table(idx) match {
       case null =>
         table(idx) = new Node[K, V](key, hash, value, null)
       case old =>
-        var prev: Node[K, V] = null
-        var n = old
+        var prev: Node[K, V] | Null = null
+        var n: Node[K, V] | Null = old
         while((n ne null) && n.hash <= hash) {
           if(n.hash == hash && key == n.key) {
             val old = n.value
@@ -260,7 +264,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     null
   }
 
-  private def remove0(elem: K) : Node[K, V] = remove0(elem, computeHash(elem))
+  private def remove0(elem: K) : Node[K, V] | Null = remove0(elem, computeHash(elem))
 
   /** Removes a key from this map if it exists
     *
@@ -268,7 +272,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     * @param hash the **improved** hashcode of `element` (see computeHash)
     * @return the node that contained element if it was present, otherwise null
     */
-  private[this] def remove0(elem: K, hash: Int) : Node[K, V] = {
+  private[this] def remove0(elem: K, hash: Int) : Node[K, V] | Null = {
     val idx = index(hash)
     table(idx) match {
       case null => null
@@ -296,7 +300,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   private[this] abstract class HashMapIterator[A] extends AbstractIterator[A] {
     private[this] var i = 0
-    private[this] var node: Node[K, V] = null
+    private[this] var node: Node[K, V] | Null = null
     private[this] val len = table.length
 
     protected[this] def extract(nd: Node[K, V]): A
@@ -316,8 +320,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     def next(): A =
       if(!hasNext) Iterator.empty.next()
       else {
-        val r = extract(node)
-        node = node.next
+        val r = extract(node.nn)
+        node = node.nn.next
         r
       }
   }
@@ -350,16 +354,16 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S with EfficientSplit =
     shape.
-      parUnbox(new convert.impl.AnyTableStepper[(K, V), Node[K, V]](size, table, _.next, node => (node.key, node.value), 0, table.length)).
+      parUnbox(new convert.impl.AnyTableStepper[(K, V), Node[K, V]](size, table, _.next.nn, node => (node.key, node.value), 0, table.length)).
       asInstanceOf[S with EfficientSplit]
 
   override def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S with EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
-      case StepperShape.IntShape    => new IntTableStepper[Node[K, V]]   (size, table, _.next, _.key.asInstanceOf[Int],    0, table.length)
-      case StepperShape.LongShape   => new LongTableStepper[Node[K, V]]  (size, table, _.next, _.key.asInstanceOf[Long],   0, table.length)
-      case StepperShape.DoubleShape => new DoubleTableStepper[Node[K, V]](size, table, _.next, _.key.asInstanceOf[Double], 0, table.length)
-      case _         => shape.parUnbox(new AnyTableStepper[K, Node[K, V]](size, table, _.next, _.key,                      0, table.length))
+      case StepperShape.IntShape    => new IntTableStepper[Node[K, V]]   (size, table, _.next.nn, _.key.asInstanceOf[Int],    0, table.length)
+      case StepperShape.LongShape   => new LongTableStepper[Node[K, V]]  (size, table, _.next.nn, _.key.asInstanceOf[Long],   0, table.length)
+      case StepperShape.DoubleShape => new DoubleTableStepper[Node[K, V]](size, table, _.next.nn, _.key.asInstanceOf[Double], 0, table.length)
+      case _         => shape.parUnbox(new AnyTableStepper[K, Node[K, V]](size, table, _.next.nn, _.key,                      0, table.length))
     }
     s.asInstanceOf[S with EfficientSplit]
   }
@@ -367,10 +371,10 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   override def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S with EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
-      case StepperShape.IntShape    => new IntTableStepper[Node[K, V]]   (size, table, _.next, _.value.asInstanceOf[Int],    0, table.length)
-      case StepperShape.LongShape   => new LongTableStepper[Node[K, V]]  (size, table, _.next, _.value.asInstanceOf[Long],   0, table.length)
-      case StepperShape.DoubleShape => new DoubleTableStepper[Node[K, V]](size, table, _.next, _.value.asInstanceOf[Double], 0, table.length)
-      case _         => shape.parUnbox(new AnyTableStepper[V, Node[K, V]](size, table, _.next, _.value,                      0, table.length))
+      case StepperShape.IntShape    => new IntTableStepper[Node[K, V]]   (size, table, _.next.nn, _.value.asInstanceOf[Int],    0, table.length)
+      case StepperShape.LongShape   => new LongTableStepper[Node[K, V]]  (size, table, _.next.nn, _.value.asInstanceOf[Long],   0, table.length)
+      case StepperShape.DoubleShape => new DoubleTableStepper[Node[K, V]](size, table, _.next.nn, _.value.asInstanceOf[Double], 0, table.length)
+      case _         => shape.parUnbox(new AnyTableStepper[V, Node[K, V]](size, table, _.next.nn, _.value,                      0, table.length))
     }
     s.asInstanceOf[S with EfficientSplit]
   }
@@ -380,7 +384,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
       throw new RuntimeException(s"new HashMap table size $newlen exceeds maximum")
     var oldlen = table.length
     threshold = newThreshold(newlen)
-    if(size == 0) table = new Array(newlen)
+    if(size == 0) table = new Array[Node[K, V] | Null](newlen)
     else {
       table = java.util.Arrays.copyOf(table, newlen)
       val preLow: Node[K, V] = new Node(null.asInstanceOf[K], 0, null.asInstanceOf[V], null)
@@ -396,7 +400,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
             preHigh.next = null
             var lastLow: Node[K, V] = preLow
             var lastHigh: Node[K, V] = preHigh
-            var n = old
+            var n: Node[K, V] | Null = old
             while(n ne null) {
               val next = n.next
               if((n.hash & oldlen) == 0) { // keep low
@@ -625,16 +629,16 @@ object HashMap extends MapFactory[HashMap] {
     def newBuilder: Builder[(K, V), HashMap[K, V]] = HashMap.newBuilder(tableLength, loadFactor)
   }
 
-  private[collection] final class Node[K, V](_key: K, _hash: Int, private[this] var _value: V, private[this] var _next: Node[K, V]) {
+  private[collection] final class Node[K, V](_key: K, _hash: Int, private[this] var _value: V, @annotation.stableNull private[this] var _next: Node[K, V] | Null) {
     def key: K = _key
     def hash: Int = _hash
     def value: V = _value
     def value_= (v: V): Unit = _value = v
-    def next: Node[K, V] = _next
-    def next_= (n: Node[K, V]): Unit = _next = n
+    def next: Node[K, V] | Null = _next
+    def next_= (n: Node[K, V] | Null): Unit = _next = n
 
     @tailrec
-    def findNode(k: K, h: Int): Node[K, V] =
+    def findNode(k: K, h: Int): Node[K, V] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
       else _next.findNode(k, h)
@@ -654,3 +658,4 @@ object HashMap extends MapFactory[HashMap] {
     override def toString = s"Node($key, $value, $hash) -> $next"
   }
 }
+

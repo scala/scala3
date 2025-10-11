@@ -5,7 +5,7 @@ package xsbt;
 
 import java.util.ArrayList;
 
-import scala.Some;
+import scala.Option;
 
 import xsbti.Logger;
 
@@ -40,7 +40,7 @@ public class ConsoleInterface {
     completeArgsList.add(classpathString);
     String[] completeArgs = completeArgsList.toArray(args);
 
-    ReplDriver driver = new ReplDriver(completeArgs, System.out, Some.apply(loader), ReplDriver.pprintImport());
+    ReplDriver driver = new ReplDriver(completeArgs, System.out, Option.apply(loader), ReplDriver.pprintImport());
 
     State state = driver.initialState();
     assert bindNames.length == bindValues.length;
