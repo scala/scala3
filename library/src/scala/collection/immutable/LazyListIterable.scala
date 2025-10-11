@@ -25,6 +25,7 @@ import scala.collection.generic.SerializeEnd
 import scala.collection.mutable.{Builder, ReusableBuilder, StringBuilder}
 import scala.language.implicitConversions
 import scala.runtime.Statics
+import caps.unsafe.untrackedCaptures
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -310,7 +311,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
         throw new RuntimeException(
           "LazyListIterable evaluation depends on its own result (self-reference); see docs for more info")
 
-      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^]
+      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^{this}]
       _tail = MidEvaluation
       val l =
         // `fun` returns a LazyListIterable that represents the state (head/tail) of `this`. We call `l.evaluated` to ensure
@@ -1374,7 +1375,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private final class WithFilter[A] private[LazyListIterable](lazyList: LazyListIterable[A]^, p: A => Boolean)
     extends collection.WithFilter[A, LazyListIterable] {
-    private[this] val filtered = lazyList.filter(p)
+    @untrackedCaptures private[this] val filtered = lazyList.filter(p)
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
     def foreach[U](f: A => U): Unit = filtered.foreach(f)

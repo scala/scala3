@@ -15,14 +15,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach.scala:18:31 --------------------------------
 18 |    val backdoor: Foo[File^] = new Bar   // error (follow-on, since the parent Foo[File^] of bar is illegal).
    |                               ^^^^^^^
-   |                               Found:    Bar
-   |                               Required: Foo[File^]
+   |                             Found:    Bar
+   |                             Required: Foo[File^]
    |
-   |                               Note that capability cap is not included in capture set {cap²}
-   |                               because cap is not visible from cap² in value backdoor.
+   |                             Note that capability cap is not included in capture set {cap²}
+   |                             because cap is not visible from cap² in value backdoor.
    |
-   |                               where:    ^    refers to a fresh root capability in the type of value backdoor
-   |                                         cap  is the universal root capability
-   |                                         cap² is a fresh root capability in the type of value backdoor
+   |                             where:    ^ and cap² refer to a fresh root capability in the type of value backdoor
+   |                                       cap        is the universal root capability
    |
    | longer explanation available when compiling with `-explain`

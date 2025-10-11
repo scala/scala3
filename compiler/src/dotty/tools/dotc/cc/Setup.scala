@@ -193,11 +193,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case AppliedType(`tycon`, args0) => args0.last ne args.last
           case _ => false
         if expand then
-          val fn = depFun(
+          val (fn: RefinedType) = depFun(
             args.init, args.last,
             isContextual = defn.isContextFunctionClass(tycon.classSymbol))
               .showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
-          AnnotatedType(fn, Annotation(defn.InferredDepFunAnnot, util.Spans.NoSpan))
+            .runtimeChecked
+          RefinedType.inferred(fn.parent, fn.refinedName, fn.refinedInfo)
         else tp
       case _ => tp
 
@@ -273,7 +274,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 then
                   val getterType =
                     mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType(core, getter.name,
+                  RefinedType.precise(core, getter.name,
                       CapturingType(getterType,
                         CaptureSet.ProperVar(ctx.owner, isRefining = true)))
                     .showing(i"add capture refinement $tp --> $result", capt)
@@ -690,7 +691,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if cls.derivesFrom(defn.Caps_Capability) then
                   // If cls is a capability class, we need to add a fresh readonly capability to
                   // ensure we cannot treat the class as pure.
-                  CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
                 CapturingType(cinfo.selfType, cs)
 
             // Compute new parent types
