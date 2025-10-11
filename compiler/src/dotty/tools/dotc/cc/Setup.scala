@@ -273,7 +273,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 then
                   val getterType =
                     mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
-                  RefinedType(core, getter.name,
+                  RefinedType.precise(core, getter.name,
                       CapturingType(getterType,
                         CaptureSet.ProperVar(ctx.owner, isRefining = true)))
                     .showing(i"add capture refinement $tp --> $result", capt)
@@ -690,7 +690,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if cls.derivesFrom(defn.Caps_Capability) then
                   // If cls is a capability class, we need to add a fresh readonly capability to
                   // ensure we cannot treat the class as pure.
-                  CaptureSet.fresh(Origin.InDecl(cls)).readOnly.subCaptures(cs)
+                  CaptureSet.fresh(cls, cls.thisType, Origin.InDecl(cls)).readOnly.subCaptures(cs)
                 CapturingType(cinfo.selfType, cs)
 
             // Compute new parent types

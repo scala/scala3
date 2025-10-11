@@ -467,8 +467,7 @@ extension (tp: Type)
     acc(false, tp)
 
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
-    RefinedType(tp, name,
-      AnnotatedType(rinfo, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan)))
+    RefinedType.precise(tp, name, rinfo)
 
   def dropUseAndConsumeAnnots(using Context): Type =
     tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)

@@ -1,0 +1,35 @@
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:12:19 ----------------------------------------------------
+12 |  private val count = Ref() // error
+   |                   ^
+   |        value count needs an explicit type because it captures a root capability in its type test.Ref^.
+   |        Fields of publicily accessible classes that capture a root capability need to be given an explicit type.
+   |
+   |        where:    ^ refers to a fresh root capability classified as Mutable in the type of value count
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:18:13 ----------------------------------------------------
+18 |  val incr = () => // error
+   |             ^
+   |             value incr needs an explicit type because the inferred type does not conform to
+   |             the type that is externally visible in other compilation units.
+   |
+   |              Inferred type          : () ->{Counter.this.count} Unit
+   |              Externally visible type: () -> Unit
+19 |    count.put(count.get + 1)
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:20:13 ----------------------------------------------------
+20 |  val decr = () => // error
+   |             ^
+   |             value decr needs an explicit type because the inferred type does not conform to
+   |             the type that is externally visible in other compilation units.
+   |
+   |              Inferred type          : () ->{Counter.this.count} Unit
+   |              Externally visible type: () -> Unit
+21 |    count.put(count.get - 1)
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:24:14 ----------------------------------------------------
+24 |  val count = Ref(): Object^ // error
+   |              ^^^^^^^^^^^^^^
+   |              value count needs an explicit type because the inferred type does not conform to
+   |              the type that is externally visible in other compilation units.
+   |
+   |               Inferred type          : Object^
+   |               Externally visible type: Object
+   |
+   |              where:    ^ refers to a fresh root capability created in value count

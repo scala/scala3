@@ -26,7 +26,7 @@
    |            Separation failure in value sameToPair's type Pair[Ref^, Ref^²].
    |            One part,  Ref^, hides capabilities  {fstSame}.
    |            Another part,  Ref^²,  captures capabilities  {sndSame, same.snd*}.
-   |            The two sets overlap at  cap of value same.
+   |            The two sets overlap at  {cap of value same}.
    |
    |            where:    ^  refers to a fresh root capability classified as Mutable in the type of value sameToPair
    |                      ^² refers to a fresh root capability classified as Mutable in the type of value sameToPair
