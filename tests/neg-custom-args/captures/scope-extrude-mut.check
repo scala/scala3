@@ -7,9 +7,7 @@
   |        Note that capability cap is not included in capture set {cap²}
   |        because cap in method b is not visible from cap² in variable a.
   |
-  |        where:    ^    refers to a fresh root capability classified as Mutable in the type of value a1
-  |                  ^²   refers to a fresh root capability classified as Mutable in the type of variable a
-  |                  cap  is a fresh root capability classified as Mutable in the type of value a1
-  |                  cap² is a fresh root capability classified as Mutable in the type of variable a
+  |        where:    ^ and cap   refer to a fresh root capability classified as Mutable in the type of value a1
+  |                  ^² and cap² refer to a fresh root capability classified as Mutable in the type of variable a
   |
   | longer explanation available when compiling with `-explain`

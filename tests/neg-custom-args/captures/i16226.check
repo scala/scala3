@@ -8,12 +8,11 @@
    |Note that capability f1 is not included in capture set {cap}
    |because (f1 : A^'s5 ->'s6 B^'s7) is not visible from cap in method mapc.
    |
-   |where:    =>  refers to a root capability associated with the result type of (ref1: LazyRef[A^'s1]{val elem: () ->'s2 A^'s3}^'s4, f1: A^'s5 ->'s6 B^'s7):
+   |where:    =>        refers to a root capability associated with the result type of (ref1: LazyRef[A^'s1]{val elem: () ->'s2 A^'s3}^'s4, f1: A^'s5 ->'s6 B^'s7):
    |  LazyRef[B^'s9]{val elem: () => B^'s10}^{f1, ref1}
-   |          =>² refers to the universal root capability
-   |          =>³ refers to a fresh root capability in the result type of method mapc
-   |          ^   refers to a fresh root capability in the result type of method mapc
-   |          cap is a fresh root capability in the result type of method mapc
+   |          =>²       refers to the universal root capability
+   |          =>³       refers to a fresh root capability in the result type of method mapc
+   |          ^ and cap refer to a fresh root capability in the result type of method mapc
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:4 ----------------------------------------
@@ -28,13 +27,10 @@
    |Note that the existential capture root in LazyRef[B]^²
    |cannot subsume the capability (f1 : A^'s15 ->'s16 B^'s17) since that capability is not a `Sharable` capability..
    |
-   |where:    =>  refers to a root capability associated with the result type of (ref1: LazyRef[A^'s11]{val elem: () ->'s12 A^'s13}^'s14, f1: A^'s15 ->'s16 B^'s17):
+   |where:    => and cap refer to a root capability associated with the result type of (ref1: LazyRef[A^'s11]{val elem: () ->'s12 A^'s13}^'s14, f1: A^'s15 ->'s16 B^'s17):
    |  LazyRef[B^'s19]{val elem: () => B^'s20}^{f1, ref1}
-   |          =>² refers to the universal root capability
-   |          =>³ refers to a fresh root capability in the result type of method mapd
-   |          ^   refers to a root capability associated with the result type of (ref: LazyRef[A]^{io}, f: A =>² B): LazyRef[B]^
-   |          ^²  refers to the universal root capability
-   |          cap is a root capability associated with the result type of (ref1: LazyRef[A^'s11]{val elem: () ->'s12 A^'s13}^'s14, f1: A^'s15 ->'s16 B^'s17):
-   |  LazyRef[B^'s19]{val elem: () => B^'s20}^{f1, ref1}
+   |          =>² and ^² refer to the universal root capability
+   |          =>³        refers to a fresh root capability in the result type of method mapd
+   |          ^          refers to a root capability associated with the result type of (ref: LazyRef[A]^{io}, f: A =>² B): LazyRef[B]^
    |
    | longer explanation available when compiling with `-explain`

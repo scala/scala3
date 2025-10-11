@@ -395,7 +395,7 @@ object SpaceEngine {
 
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
-      Typ(pat.tpe.narrow, decomposed = false)
+      Typ(pat.tpe.narrow(), decomposed = false)
   })
 
   private def project(tp: Type)(using Context): Space = tp match {

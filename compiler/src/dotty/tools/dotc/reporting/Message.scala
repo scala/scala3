@@ -142,7 +142,7 @@ object Message:
     end record
 
     /** Create explanation for single `Recorded` type or symbol */
-    private def explanation(entry: AnyRef, key: String)(using Context): String =
+    private def explanation(entry: AnyRef, keys: List[String])(using Context): String =
       def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
         if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -178,7 +178,8 @@ object Message:
           s"is an unknown value of type ${tp.widen.show}"
         case ref: RootCapability =>
           val relation =
-            if List("^", "=>", "?=>").exists(key.startsWith) then "refers to"
+            if keys.length > 1 then "refer to"
+            else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
             else "is"
           s"$relation ${ref.descr}"
     end explanation
@@ -207,16 +208,20 @@ object Message:
         res // help the inferencer out
       }.sortBy(_._1)
 
-      def columnar(parts: List[(String, String)]): List[String] = {
+      def columnar(parts: List[(String, String)]): List[String] =
         lazy val maxLen = parts.map(_._1.length).max
-        parts.map {
-          case (leader, trailer) =>
-            val variable = hl(leader)
-            s"""$variable${" " * (maxLen - leader.length)} $trailer"""
-        }
-      }
+        parts.map: (leader, trailer) =>
+          val variable = hl(leader)
+          s"""$variable${" " * (maxLen - leader.length)} $trailer"""
 
-      val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry, str)) }
+      // Group keys with the same Recorded entry together. We can't use groupBy here
+      // since we want to maintain the order in which entries first appear in the
+      //  original list.
+      val toExplainGrouped: List[(Recorded, List[String])] =
+        for entry <- toExplain.map(_._2).distinct
+        yield (entry, for (key, e) <- toExplain if e == entry yield key)
+      val explainParts = toExplainGrouped.map:
+        (entry, keys) => (keys.mkString(" and "), explanation(entry, keys))
       val explainLines = columnar(explainParts)
       if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
     end explanations

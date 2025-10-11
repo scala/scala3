@@ -15,6 +15,7 @@ package generic
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
+import caps.unsafe.untrackedCaptures
 
 import scala.reflect.ClassTag
 
@@ -31,6 +32,7 @@ import scala.reflect.ClassTag
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
+  @untrackedCaptures
   override val conversion: Repr => SeqOps[A, Iterable, C] = apply(_)
 
   /** A conversion from the type `Repr` to `SeqOps[A, Iterable, C]`

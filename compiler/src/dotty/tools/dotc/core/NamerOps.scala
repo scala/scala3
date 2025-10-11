@@ -52,7 +52,7 @@ object NamerOps:
    */
   def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
     paramss.flatten.foldLeft(resType): (rt, param) =>
-      if param.is(Tracked) then RefinedType(rt, param.name, param.termRef)
+      if param.is(Tracked) then RefinedType.precise(rt, param.name, param.termRef)
       else rt
 
   /** Split dependent class refinements off parent type. Add them to `refinements`,
