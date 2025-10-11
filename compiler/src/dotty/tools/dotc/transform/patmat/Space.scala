@@ -304,7 +304,7 @@ object SpaceEngine {
 
   /** Is this an `'{..}` or `'[..]` irrefutable quoted patterns?
    *  @param  body The body of the quoted pattern
-   *  @param  bodyPt The scrutinee body type
+   *  @param  pt The scrutinee body type
    */
   def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
     if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe

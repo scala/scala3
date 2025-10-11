@@ -46,7 +46,7 @@ class DottyPrimitives(ictx: Context) {
    * operation is an array get/set, we inspect the type of the receiver
    * to demux the operation.
    *
-   * @param fun The method symbol
+   * @param app The method symbol
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */

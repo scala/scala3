@@ -455,7 +455,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Report a failure where a capability is consumed in a loop.
    *  @param ref     the capability
-   *  @param loc     the position where the capability was consumed
+   *  @param pos     the position where the capability was consumed
    */
   def consumeInLoopError(ref: Capability, pos: SrcPos)(using Context): Unit =
     report.error(

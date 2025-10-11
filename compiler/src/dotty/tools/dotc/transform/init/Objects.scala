@@ -498,7 +498,7 @@ class Objects(using Context @constructorOnly):
     /**
      * The main procedure for searching through the outer chain
      * @param target The symbol to search for if `bySymbol = true`; otherwise the method symbol of the target environment
-     * @param scopeSet The set of scopes as starting point
+     * @param envSet The set of scopes as starting point
      * @return The scopes that contains symbol `target` or whose method is `target`,
      *         and the value for `C.this` where C is the enclosing class of the result scopes
      */
