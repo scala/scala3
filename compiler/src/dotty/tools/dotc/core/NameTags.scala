@@ -40,6 +40,8 @@ object NameTags extends TastyFormat.NameTags {
   inline val EXPLICITFIELD = 38  // An explicitly named field, introduce to avoid a clash
                                  // with a regular field of the underlying name
 
+  inline val LAZYVALVARHANDLE = 39 // A field containing a VarHandle generated for lazy vals
+
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"

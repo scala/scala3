@@ -141,6 +141,15 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolModule.newClass"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolModule.newModule"),
 
+          // Changes to lazy vals (added static constructors)
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.ArraySeq.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.ExecutionContext.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.io.Codec.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.math.BigDecimal.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.sys.SystemProperties.<clinit>"),
+          ProblemFilters.exclude[DirectMissingMethodProblem]("scala.sys.process.Process.<clinit>"),
+
           // Change `experimental` annotation to a final class
           ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
 
