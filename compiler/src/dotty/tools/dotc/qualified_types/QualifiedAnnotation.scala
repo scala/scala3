@@ -37,3 +37,9 @@ case class QualifiedAnnotation(qualifier: ENode.Lambda) extends Annotation:
         case TermParamRef(tl1, _) if tl eq tl1 => res = true
         case _ => ()
     res
+
+  def foldOverTypes[A](z: A, f: (A, Type) => A)(using Context): A =
+    var acc = z
+    qualifier.foreachType: tp =>
+      acc = f(acc, tp)
+    acc
