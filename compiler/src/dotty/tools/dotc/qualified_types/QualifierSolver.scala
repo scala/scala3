@@ -8,26 +8,25 @@ import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.{Type, TypeVar, TypeMap}
 import dotty.tools.dotc.core.Decorators.i
 import dotty.tools.dotc.printing.Showable
+import dotty.tools.dotc.reporting.trace
 
 class QualifierSolver(using Context):
 
-  def implies(node1: ENode.Lambda, node2: ENode.Lambda) =
-    require(node1.paramTps.length == 1)
-    require(node2.paramTps.length == 1)
-    val node1Inst = node1.normalizeTypes().asInstanceOf[ENode.Lambda]
-    val node2Inst = node2.normalizeTypes().asInstanceOf[ENode.Lambda]
-    val paramTp1 = node1Inst.paramTps.head
-    val paramTp2 = node2Inst.paramTps.head
-    if paramTp1 frozen_<:< paramTp2 then
-      impliesRec(subsParamRefTps(node1Inst.body, node2Inst), node2Inst.body)
-    else if paramTp2 frozen_<:< paramTp1 then
-      impliesRec(node1Inst.body, subsParamRefTps(node2Inst.body, node1Inst))
-    else
-      false
+  def implies(node1: ENode.Lambda, node2: ENode.Lambda): Boolean =
+    trace(i"implie ${node1.showNoBreak}  -->  ${node2.showNoBreak}", Printers.qualifiedTypes):
+      require(node1.paramTps.length == 1)
+      require(node2.paramTps.length == 1)
+      val node1Inst = node1.normalizeTypes().asInstanceOf[ENode.Lambda]
+      val node2Inst = node2.normalizeTypes().asInstanceOf[ENode.Lambda]
+      val paramTp1 = node1Inst.paramTps.head
+      val paramTp2 = node2Inst.paramTps.head
+      if paramTp1 frozen_<:< paramTp2 then impliesCommonParams(node1Inst, node2Inst, node1Inst)
+      else if paramTp2 frozen_<:< paramTp1 then impliesCommonParams(node1Inst, node2Inst, node2Inst)
+      else false
 
-  private def subsParamRefTps(node1Body: ENode, node2: ENode.Lambda): ENode =
-    val paramRefs = node2.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i, tp))
-    node1Body.substEParamRefs(0, paramRefs)
+  private def impliesCommonParams(node1: ENode.Lambda, node2: ENode.Lambda, mostPreciseNode: ENode.Lambda): Boolean =
+    val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i, tp))
+    impliesRec(node1.body.substEParamRefs(0, paramRefs), node2.body.substEParamRefs(0, paramRefs))
 
   private def impliesRec(node1: ENode, node2: ENode): Boolean =
     node1 match
@@ -42,10 +41,11 @@ class QualifierSolver(using Context):
   protected def impliesLeaf(egraph: EGraph, enode1: ENode, enode2: ENode): Boolean =
     val node1Canonical = egraph.canonicalize(enode1)
     val node2Canonical = egraph.canonicalize(enode2)
-    egraph.assertInvariants()
-    egraph.merge(node1Canonical, egraph.trueNode)
-    egraph.repair()
-    egraph.equiv(node2Canonical, egraph.trueNode)
+    trace(i"impliesLeaf ${node1Canonical.showNoBreak}  -->  ${node2Canonical.showNoBreak}", Printers.qualifiedTypes):
+      egraph.assertInvariants()
+      egraph.merge(node1Canonical, egraph.trueNode)
+      egraph.repair()
+      egraph.equiv(node2Canonical, egraph.trueNode)
 
 final class ExplainingQualifierSolver(
   traceIndented: [T] => (String) => (=> T) => T)(using Context) extends QualifierSolver:
@@ -53,5 +53,5 @@ final class ExplainingQualifierSolver(
   override protected def impliesLeaf(egraph: EGraph, enode1: ENode, enode2: ENode): Boolean =
     traceIndented(s"${enode1.showNoBreak}  -->  ${enode2.showNoBreak}"):
       val res = super.impliesLeaf(egraph, enode1, enode2)
-      if !res then println(egraph.debugString())
+      //if !res then println(egraph.debugString())
       res
