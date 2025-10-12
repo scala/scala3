@@ -249,7 +249,8 @@ enum ENode extends Showable:
         body.foreachType(f)
 
   def normalizeTypes()(using Context): ENode =
-    mapTypes(NormalizeMap())
+    trace(i"normalizeTypes($this)", Printers.qualifiedTypes):
+      mapTypes(NormalizeMap())
 
   private class NormalizeMap(using Context) extends TypeMap:
     def apply(tp: Type): Type =
@@ -257,7 +258,7 @@ enum ENode extends Showable:
         case tp: TypeVar if tp.isPermanentlyInstantiated =>
           apply(tp.permanentInst)
         case tp: NamedType =>
-          val dealiased = tp.dealias
+          val dealiased = tp.dealiasKeepAnnotsAndOpaques
           if dealiased ne tp then
             apply(dealiased)
           else if tp.symbol.isStatic then
@@ -547,7 +548,7 @@ object ENode:
   def assumptions(node: ENode)(using Context): List[ENode] =
     trace(i"assumptions($node)", Printers.qualifiedTypes):
       node match
-        case Atom(tp: SingletonType) => termAssumptions(tp) ++ typeAssumptions(tp)
+        case n: Atom => termAssumptions(n.tp) ++ typeAssumptions(n.tp)
         case n: Constructor => Nil
         case n: Select => assumptions(n.qual)
         case n: Apply => assumptions(n.fn) ++ n.args.flatMap(assumptions)
@@ -560,7 +561,6 @@ object ENode:
       tp match
         case tp: TermRef =>
           tp.symbol.info match
-            case QualifiedType(_, _) => Nil
             case _ =>
               tp.symbol.defTree match
                 case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>

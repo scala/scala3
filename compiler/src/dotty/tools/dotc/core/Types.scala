@@ -43,7 +43,7 @@ import cc.*
 import CaptureSet.IdentityCaptRefMap
 import Capabilities.*
 import transform.Recheck.currentRechecker
-import qualified_types.QualifiedType
+import qualified_types.{QualifiedType, QualifiedAnnotation}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
@@ -5010,6 +5010,7 @@ object Types extends TypeUtils {
 
     private var myRepr: Name | Null = null
     def repr(using Context): Name = {
+      //if (myRepr == null) myRepr = s"?$id".toString.toTermName
       if (myRepr == null) myRepr = SkolemName.fresh()
       myRepr.nn
     }
@@ -6944,7 +6945,10 @@ object Types extends TypeUtils {
 
     def apply(x: T, tp: Type): T
 
-    protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
+    protected def applyToAnnot(x: T, annot: Annotation): T =
+      annot match
+        case annot: QualifiedAnnotation => annot.foldOverTypes(x, this)
+        case _ => x // don't go into other annotations
 
     /** A prefix is never contravariant. Even if say `p.A` is used in a contravariant
      *  context, we cannot assume contravariance for `p` because `p`'s lower
