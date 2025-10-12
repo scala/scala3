@@ -37,7 +37,6 @@ class Compiler {
          CheckUnused.PostTyper(),   // Check for unused
          CheckShadowing()) ::       // Check for shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
-    List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB.ExtractSemanticInfo) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
@@ -50,6 +49,7 @@ class Compiler {
     List(new Pickler) ::            // Generate TASTY info
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new Inlining) ::           // Inline and execute macros
+    List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostInlining) ::       // Add mirror support for inlined code
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
