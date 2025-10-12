@@ -131,9 +131,9 @@ object MainGenericCompiler {
       val tStopAtLvl="-XX:TieredStopAtLevel=1"
       println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
       process(tail, settings)
-    case javaOption(stripped) :: tail =>
+    case javaOption(stripped: String) :: tail =>
       process(tail, settings.withJavaArgs(stripped))
-    case javaPropOption(opt, value) :: tail =>
+    case javaPropOption(opt: String, value: String) :: tail =>
       process(tail, settings.withJavaProps(opt -> value))
     case arg :: tail =>
       process(tail, settings.withResidualArgs(arg))

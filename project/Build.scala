@@ -686,6 +686,9 @@ object Build {
       // Note: bench/profiles/projects.yml should be updated accordingly.
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
 
+      // TODO: Enable fatal warnings after 3.8 because old stdlib has different nullability.
+      Compile / scalacOptions -= "-Werror",
+
       // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
       scalacOptions ++= Seq("-source", "3.3"),
 
@@ -1796,6 +1799,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
@@ -1890,6 +1894,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
@@ -2026,6 +2031,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions :=  Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions", "-nowarn"),
       Compile / scalacOptions += "-Yno-stdlib-patches",
+      Compile / scalacOptions += "-Yexplicit-nulls",
       Compile / scalacOptions += "-scalajs",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -2335,7 +2341,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // TODO: Enable these flags when the new stdlib is explicitelly null checked
-      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
@@ -2509,7 +2515,7 @@ object Build {
       // NOTE: The only difference here is that we drop `-Werror` and semanticDB for now
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       // TODO: Enable these flags when the new stdlib is explicitelly null checked
-      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),
@@ -2688,7 +2694,7 @@ object Build {
       Compile / scalacOptions := Seq("-deprecation", "-feature", "-unchecked", "-encoding", "UTF8", "-language:implicitConversions"),
       Compile / scalacOptions += "-experimental",
       // TODO: Enable these flags when the new stdlib is explicitelly null checked
-      //Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       Compile / javacOptions  ++= Seq("--release", Versions.minimumJVMVersion),
       Compile / scalacOptions ++= Seq("--java-output-version", Versions.minimumJVMVersion),

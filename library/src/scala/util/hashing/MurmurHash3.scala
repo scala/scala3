@@ -83,7 +83,7 @@ private[hashing] class MurmurHash3 {
   }
 
   /** See the [[MurmurHash3.caseClassHash(x:Product,caseClassName:String)]] overload */
-  final def caseClassHash(x: Product, seed: Int, caseClassName: String): Int = {
+  final def caseClassHash(x: Product, seed: Int, caseClassName: String | Null): Int = {
     val arr = x.productArity
     val aye = (if (caseClassName != null) caseClassName else x.productPrefix).hashCode
     if (arr == 0) aye
@@ -395,7 +395,7 @@ object MurmurHash3 extends MurmurHash3 {
    * val res2: Int = -668012062
    * }}}
    */
-  def caseClassHash(x: Product, caseClassName: String = null): Int = caseClassHash(x, productSeed, caseClassName)
+  def caseClassHash(x: Product, caseClassName: String | Null = null): Int = caseClassHash(x, productSeed, caseClassName)
 
   private[scala] def arraySeqHash[@specialized T](a: Array[T]): Int = arrayHash(a, seqSeed)
   private[scala] def tuple2Hash(x: Any, y: Any): Int = tuple2Hash(x.##, y.##, productSeed)

@@ -406,7 +406,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
-  def trySplit(): DoubleStepper =
+  def trySplit(): DoubleStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1

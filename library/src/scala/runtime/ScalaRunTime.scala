@@ -281,13 +281,21 @@ object ScalaRunTime {
       case s => s + "\n"
     }
 
+  // For backward compatibility with code compiled without -Yexplicit-nulls.
+  // If `a` is null, return null; otherwise, return `f`.
+  private[scala] inline def mapNull[A, B](a: A, inline f: B): B =
+    if ((a: A | Null) == null) null.asInstanceOf[B] else f
+
+  // Use `null` in places where we want to make sure the reference is cleared.
+  private[scala] inline def nullForGC[T]: T = null.asInstanceOf[T]
+
   // Convert arrays to immutable.ArraySeq for use with Scala varargs.
   // By construction, calls to these methods always receive a fresh (and non-null), non-empty array.
   // In cases where an empty array would appear, the compiler uses a direct reference to Nil instead.
   // Synthetic Java varargs forwarders (@annotation.varargs or varargs bridges when overriding) may pass
   // `null` to these methods; but returning `null` or `ArraySeq(null)` makes little difference in practice.
   def genericWrapArray[T](xs: Array[T]): ArraySeq[T] = ArraySeq.unsafeWrapArray(xs)
-  def wrapRefArray[T <: AnyRef](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
+  def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = new ArraySeq.ofRef[T](xs)
   def wrapIntArray(xs: Array[Int]): ArraySeq[Int] = new ArraySeq.ofInt(xs)
   def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double] = new ArraySeq.ofDouble(xs)
   def wrapLongArray(xs: Array[Long]): ArraySeq[Long] = new ArraySeq.ofLong(xs)

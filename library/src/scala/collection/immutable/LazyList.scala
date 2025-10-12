@@ -296,11 +296,11 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
   //   - `tail: LazyList[A]` otherwise
-  private[this] var _tail: AnyRef /* () => LazyList[A] | MidEvaluation.type | LazyList[A] */ =
+  private[this] var _tail: AnyRef | Null /* () => LazyList[A] | MidEvaluation.type | LazyList[A] | Null */ =
     if (lazyState eq EmptyMarker) null else lazyState
 
   private def rawHead: Any = _head
-  private def rawTail: AnyRef = _tail
+  private def rawTail: AnyRef | Null = _tail
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
@@ -1112,7 +1112,7 @@ object LazyList extends SeqFactory[LazyList] {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
     var restRef = ll                          // val restRef = new ObjectRef(ll)
     newLL {
-      var it: Iterator[B] = null
+      var it: Iterator[B] | Null = null
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
@@ -1124,10 +1124,10 @@ object LazyList extends SeqFactory[LazyList] {
         }
       }
       if (itHasNext) {
-        val head = it.next()
+        val head = it.nn.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        eagerCons(head, newLL(eagerHeadPrependIterator(it)(flatMapImpl(rest, f))))
+        eagerCons(head, newLL(eagerHeadPrependIterator(it.nn)(flatMapImpl(rest, f))))
       } else Empty
     }
   }
@@ -1449,3 +1449,4 @@ object LazyList extends SeqFactory[LazyList] {
     private[this] def readResolve(): Any = coll
   }
 }
+

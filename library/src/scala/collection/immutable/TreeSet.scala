@@ -39,7 +39,7 @@ import scala.runtime.AbstractFunction1
   *  @define mayNotTerminateInf
   *  @define willNotTerminateInf
   */
-final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[A, Any])(implicit val ordering: Ordering[A])
+final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[A, Any] | Null)(implicit val ordering: Ordering[A])
   extends AbstractSet[A]
     with SortedSet[A]
     with SortedSetOps[A, TreeSet, TreeSet[A]]
@@ -53,7 +53,7 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
 
   override def sortedIterableFactory: TreeSet.type = TreeSet
 
-  private[this] def newSetOrSelf(t: RB.Tree[A, Any]) = if(t eq tree) this else new TreeSet[A](t)
+  private[this] def newSetOrSelf(t: RB.Tree[A, Any] | Null) = if(t eq tree) this else new TreeSet[A](t)
 
   override def size: Int = RB.count(tree)
 
@@ -254,7 +254,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
           // Dotty doesn't infer that E =:= Int, since instantiation of covariant GADTs is unsound
         new TreeSet[E](tree)
       case _ =>
-        var t: RB.Tree[E, Null] = null
+        var t: RB.Tree[E, Null] | Null = null
         val i = it.iterator
         while (i.hasNext) t = RB.update(t, i.next(), null, overwrite = false)
         new TreeSet[E](t)
@@ -265,7 +265,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
     extends RB.SetHelper[A]
       with ReusableBuilder[A, TreeSet[A]] {
     type Tree = RB.Tree[A, Any]
-    private [this] var tree:RB.Tree[A, Any] = null
+    private [this] var tree:RB.Tree[A, Any] | Null = null
 
     override def addOne(elem: A): this.type = {
       tree = mutableUpd(tree, elem)

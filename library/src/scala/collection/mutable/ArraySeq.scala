@@ -138,7 +138,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   }).asInstanceOf[ArraySeq[T]]
 
   @SerialVersionUID(3L)
-  final class ofRef[T <: AnyRef](val array: Array[T]) extends ArraySeq[T] {
+  final class ofRef[T <: AnyRef | Null](val array: Array[T]) extends ArraySeq[T] {
     def elemTag: ClassTag[T] = ClassTag[T](array.getClass.getComponentType)
     def length: Int = array.length
     def apply(index: Int): T = array(index)

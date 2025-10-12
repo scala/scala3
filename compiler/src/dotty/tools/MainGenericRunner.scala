@@ -143,7 +143,7 @@ object MainGenericRunner {
       processArgs(tail, settings.noSave)
     case "-with-compiler" :: tail =>
       processArgs(tail, settings.withCompiler)
-    case (o @ javaOption(striped)) :: tail =>
+    case (o @ javaOption(striped: String)) :: tail =>
       processArgs(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
       val remainingArgs = CommandLineParser.expandArg(o) ++ tail
