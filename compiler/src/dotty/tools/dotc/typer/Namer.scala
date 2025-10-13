@@ -1933,6 +1933,10 @@ class Namer { typer: Typer =>
     else mbrTpe
   }
 
+  // Decides whether we want to run tracked inference on all code, not just
+  // code with x.modularity
+  private inline val testTrackedInference = true
+
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type =
     // Beware: ddef.name need not match sym.name if sym was freshened!
@@ -1981,12 +1985,12 @@ class Namer { typer: Typer =>
     def addTrackedIfNeeded(ddef: DefDef, owningSym: Symbol): Unit =
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
-        if needsTracked(psym, param, owningSym) then
-          if Feature.enabled(modularity) then
-            psym.setFlag(Tracked)
-            setParamTrackedWithAccessors(psym, sym.maybeOwner.infoOrCompleter)
+        if needsTracked(psym, param, owningSym) && Feature.enabled(modularity) then
+          psym.setFlag(Tracked)
+          setParamTrackedWithAccessors(psym, sym.maybeOwner.infoOrCompleter)
 
-    if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
+    if Feature.enabled(modularity) || testTrackedInference then
+      addTrackedIfNeeded(ddef, sym.maybeOwner)
 
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
