@@ -830,6 +830,11 @@ class Namer { typer: Typer =>
     def setNotNullInfos(infos: List[NotNullInfo]): Unit =
       myNotNullInfos = infos
 
+    /** Cache for type signature if computed without forcing annotations
+     *  by `typeSigOnly`
+     */
+    private var knownTypeSig: Type = NoType
+
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
@@ -1006,12 +1011,20 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
       addAnnotations(sym)
       addInlineInfo(sym)
-      denot.info = typeSig(sym)
+      denot.info = knownTypeSig `orElse` typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       normalizeFlags(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
+
+    /** Just the type signature without forcing any of the other parts of
+     *  this denotation. The denotation will still be completed later.
+     */
+    def typeSigOnly(sym: Symbol): Type =
+      if !knownTypeSig.exists then
+        knownTypeSig = typeSig(sym)
+      knownTypeSig
   }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
@@ -1974,10 +1987,12 @@ class Namer { typer: Typer =>
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
         if needsTracked(psym, param, owningSym) then
-          psym.setFlag(Tracked)
-          setParamTrackedWithAccessors(psym, sym.maybeOwner.infoOrCompleter)
+          println(i"NEEDS TRACKED $psym in $owningSym in ${ctx.source}")
+          if Feature.enabled(modularity) then
+            psym.setFlag(Tracked)
+            setParamTrackedWithAccessors(psym, sym.maybeOwner.infoOrCompleter)
 
-    if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
+    if Feature.enabled(modularity) || true then addTrackedIfNeeded(ddef, sym.maybeOwner)
 
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
@@ -2030,30 +2045,25 @@ class Namer { typer: Typer =>
       psym.setFlag(Tracked)
       acc.setFlag(Tracked)
 
-  /** `psym` needs tracked if it is referenced in any of the public signatures
-   *  of the defining class or when `psym` is a context bound witness with an
-   *  abstract type member
+  /** `psym` needs an inferred tracked if
+   *    - it is a val parameter of a class or
+   *      an evidence parameter of a context bound witness, and
+   *    - its type contains an abstract type member.
    */
   def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
-    lazy val needsTrackedSimp = needsTrackedSimple(psym, param, owningSym)
+    lazy val accessorSyms = maybeParamAccessors(owningSym, psym)
+
+    def infoDontForceAnnots = psym.infoOrCompleter match
+      case completer: this.Completer => completer.typeSigOnly(psym)
+      case tpe => tpe
+
     !psym.is(Tracked)
       && psym.isTerm
-      && needsTrackedSimp
-
-  private def needsTrackedSimple(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
-    val accessorSyms = maybeParamAccessors(owningSym, psym)
-    (owningSym.isClass || owningSym.isAllOf(Given | Method))
-      && !accessorSyms.exists(_.is(Mutable))
+      && (owningSym.isClass || owningSym.isAllOf(Given | Method))
+      && accessorSyms.forall(!_.is(Mutable))
       && (param.hasAttachment(ContextBoundParam) || accessorSyms.exists(!_.isOneOf(PrivateLocal)))
-      && psym.infoDontForceAnnotsAndInferred(param).memberNames(abstractTypeNameFilter).nonEmpty
-
-  extension (sym: Symbol)
-    private def infoDontForceAnnotsAndInferred(tree: DefTree)(using Context): Type =
-      sym.infoOrCompleter match
-        case tpe if tree.mods.annotations.nonEmpty => tpe
-        case tpe: LazyType if tpe.isExplicit => sym.info
-        case tpe if sym.isType => sym.info
-        case info => info
+      && infoDontForceAnnots.abstractTypeMembers.nonEmpty
+  end needsTracked
 
   private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] = owner.infoOrCompleter match
     case info: ClassInfo =>
