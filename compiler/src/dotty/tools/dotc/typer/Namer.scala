@@ -1982,12 +1982,11 @@ class Namer { typer: Typer =>
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
         if needsTracked(psym, param, owningSym) then
-          println(i"NEEDS TRACKED $psym in $owningSym in ${ctx.source}")
           if Feature.enabled(modularity) then
             psym.setFlag(Tracked)
             setParamTrackedWithAccessors(psym, sym.maybeOwner.infoOrCompleter)
 
-    if Feature.enabled(modularity) || true then addTrackedIfNeeded(ddef, sym.maybeOwner)
+    if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
 
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
