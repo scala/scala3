@@ -280,9 +280,6 @@ class Namer { typer: Typer =>
                 if rhs.isEmpty || flags.is(Opaque) then flags |= Deferred
             if flags.is(Param) then tree.rhs else analyzeRHS(tree.rhs)
 
-        def hasExplicitType(tree: ValOrDefDef): Boolean =
-          !tree.tpt.isEmpty || tree.mods.isOneOf(TermParamOrAccessor)
-
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
         // constructor is recorded and the context in which it is completed are
@@ -296,8 +293,6 @@ class Namer { typer: Typer =>
 
         val completer = tree match
           case tree: TypeDef => TypeDefCompleter(tree)(cctx)
-          case tree: ValOrDefDef if Feature.enabled(Feature.modularity) && hasExplicitType(tree) =>
-            new Completer(tree, isExplicit = true)(cctx)
           case _ => Completer(tree)(cctx)
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
@@ -813,7 +808,7 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree, override val isExplicit: Boolean = false)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
+  class Completer(val original: Tree)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 

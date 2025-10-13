@@ -2799,9 +2799,6 @@ object SymDenotations {
     /** Sets all missing fields of given denotation */
     def complete(denot: SymDenotation)(using Context): Unit
 
-    /** Is this a completer for an explicit type tree */
-    def isExplicit: Boolean = false
-
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
