@@ -78,10 +78,10 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB, srcC, srcD)
     val scalaVersion = scala.util.Properties.versionNumberString
-    val namesA = standardNames ++ Set("Nothing", "Any")
-    val namesAX = standardNames ++ Set("x", "T", "A", "Nothing", "Any")
+    val namesA = standardNames
+    val namesAX = standardNames ++ Set("x", "T", "A")
     val namesB = Set("A", "Int", "A;init;", "Unit")
-    val namesC = Set("B;init;", "B", "Unit")
+    val namesC = Set("B;init;", "B", "Unit", "Object")
     val namesD = standardNames ++ Set("C", "X", "foo", "Int", "T")
     assertEquals(namesA, usedNames("A"))
     assertEquals(namesAX, usedNames("A.X"))
@@ -143,8 +143,7 @@ class ExtractUsedNamesSpecification {
            "M",
            "N",
            "Predef",
-           "???",
-           "Nothing")
+           "???")
     val expectedNames_bar =
       standardNames ++
        Set("B",
@@ -152,8 +151,7 @@ class ExtractUsedNamesSpecification {
            "P1",
            "P0",
            "Predef",
-           "???",
-           "Nothing")
+           "???")
     assertEquals(expectedNames_lista, usedNames("Test_lista"))
     assertEquals(expectedNames_at, usedNames("Test_at"))
     assertEquals(expectedNames_as, usedNames("Test_as"))

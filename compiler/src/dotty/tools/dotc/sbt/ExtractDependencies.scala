@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 
@@ -75,7 +76,7 @@ class ExtractDependencies extends Phase {
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val rec = unit.depRecorder
-    val collector = ExtractDependenciesCollector(rec)
+    val collector = ExtractDependenciesCollector(rec, defn)
     collector.traverse(unit.tpdTree)
 
     if (ctx.settings.YdumpSbtInc.value) {
@@ -137,7 +138,7 @@ object ExtractDependencies {
  *  specially, see the subsection "Dependencies introduced by member reference and
  *  inheritance" in the "Name hashing algorithm" section.
  */
-private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.TreeTraverser { thisTreeTraverser =>
+private class ExtractDependenciesCollector(rec: DependencyRecorder, defn: Definitions) extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd.*
 
   private def addMemberRefDependency(sym: Symbol)(using Context): Unit =
@@ -169,6 +170,14 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
     if cls.isLocal then LocalDependencyByInheritance
     else DependencyByInheritance
 
+  private val ignoredSymbols = Set[Symbol](
+    defn.syntheticScalaClasses*
+  ) ++ Set(
+    defn.ClassClass,
+    defn.ModuleSerializationProxyClass,
+    defn.ModuleSerializationProxyConstructor,
+  )
+
   private def ignoreDependency(sym: Symbol)(using Context) =
     try
       !sym.exists ||
@@ -176,7 +185,8 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
                                         // e.g. java.lang.Object companion object
       sym.isEffectiveRoot ||
       sym.isAnonymousFunction ||
-      sym.isAnonymousClass
+      sym.isAnonymousClass ||
+      ignoredSymbols(sym)
     catch case ex: StaleSymbol =>
       // can happen for constructor proxies. Test case is pos-macros/i13532.
       true
