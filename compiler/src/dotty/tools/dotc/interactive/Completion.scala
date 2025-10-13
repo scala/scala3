@@ -35,6 +35,8 @@ import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.TypeOps
 import dotty.tools.dotc.core.StdNames
 
+import java.util.logging.Logger
+
 /**
  * One of the results of a completion query.
  *
@@ -47,6 +49,8 @@ import dotty.tools.dotc.core.StdNames
 case class Completion(label: String, description: String, symbols: List[Symbol])
 
 object Completion:
+
+  private val logger = Logger.getLogger(this.getClass.getName)
 
   def scopeContext(pos: SourcePosition)(using Context): CompletionResult =
     val tpdPath = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
@@ -609,7 +613,11 @@ object Completion:
              val tpe = asDefLikeType(tree.typeOpt.dealias)
               termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
             }
-        catch case NonFatal(_) => None
+        catch case NonFatal(ex) =>
+          logger.warning(
+            s"Exception when trying to apply extension method:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
+          )
+          None
 
       def extractMemberExtensionMethods(types: Seq[Type]): Seq[(TermRef, TermName)] =
         object DenotWithMatchingName:
@@ -713,7 +721,11 @@ object Completion:
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
-    } catch case NonFatal(_) => Set.empty
+    } catch case NonFatal(ex) =>
+      logger.warning(
+        s"Exception when searching for implicit conversions:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
+      )
+      Set.empty
 
     /** Filter for names that should appear when looking for completions. */
     private object completionsFilter extends NameFilter:
