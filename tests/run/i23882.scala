@@ -13,6 +13,16 @@ class Foo:
   def bar3[T <: Pure](x: Bar & T): Unit = ???      // erases to Bar
   def bar4[T <: Pure](x: T & Bar): Unit = ???      // erases to Bar
 
+def printGenericSignature(m: java.lang.reflect.Method): Unit =
+  val tpe = m.getParameterTypes().map(_.getTypeName).mkString(", ")
+  val ret = m.getReturnType().getTypeName
+  println(s"${m.getName}($tpe): $ret")
+
 @main def Test =
-  for mtd <- classOf[Foo].getDeclaredMethods do
-    println(mtd)
+  val cls = classOf[Foo]
+  printGenericSignature(cls.getDeclaredMethod("foo", classOf[scala.Equals]))
+  printGenericSignature(cls.getDeclaredMethod("foo", classOf[Object]))
+  printGenericSignature(cls.getDeclaredMethod("bar", classOf[Bar]))
+  printGenericSignature(cls.getDeclaredMethod("bar2", classOf[Bar]))
+  printGenericSignature(cls.getDeclaredMethod("bar3", classOf[Bar]))
+  printGenericSignature(cls.getDeclaredMethod("bar4", classOf[Bar]))
