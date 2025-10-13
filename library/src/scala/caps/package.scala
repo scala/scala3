@@ -181,7 +181,7 @@ object unsafe:
    *
    *   2. Marks a class field that has a cap in its capture set, so that
    *      the cap is not contributed to the class instance.
-   *      Exampple:
+   *      Example:
    *
    *          class A { val b B^ = ... }; new A()
    *
