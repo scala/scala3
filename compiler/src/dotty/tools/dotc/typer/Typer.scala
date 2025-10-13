@@ -2875,7 +2875,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // leave the original tuple type; don't mix with & TupleXXL which would only obscure things
                 pt
               case _ =>
-                pt & body1.tpe
+                body1.tpe & pt
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
