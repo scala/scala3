@@ -1935,7 +1935,7 @@ class Namer { typer: Typer =>
 
   // Decides whether we want to run tracked inference on all code, not just
   // code with x.modularity
-  private inline val testTrackedInference = true
+  private inline val testTrackedInference = false
 
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type =
