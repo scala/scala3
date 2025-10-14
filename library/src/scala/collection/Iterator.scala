@@ -19,6 +19,7 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.runtime.ScalaRunTime.nullForGC
 import scala.runtime.Statics
+import caps.unsafe.untrackedCaptures
 
 /** Iterators are data structures that allow to iterate over a sequence
   * of elements. They have a `hasNext` method for checking
@@ -918,7 +919,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def patch[B >: A](from: Int, patchElems: Iterator[B]^, replaced: Int): Iterator[B]^{this, patchElems} =
     new AbstractIterator[B] {
-      private[this] var origElems: Iterator[B]^ = self
+      // TODO We should be able to prove that origElems is safe even though it is
+      // declared as Iterator[B]^. We could show that origElems is never assigned a
+      // freh cap. Maybe we can invent another annotation that is checked and that
+      // shows that the `^` is just used as an upper bound for concete non-fresh
+      // capabilities.
+      @untrackedCaptures private[this] var origElems: Iterator[B]^ = self
       // > 0  => that many more elems from `origElems` before switching to `patchElems`
       //   0  => need to drop elems from `origElems` and start using `patchElems`
       //  -1  => have dropped elems from `origElems`, will be using `patchElems` until it's empty
