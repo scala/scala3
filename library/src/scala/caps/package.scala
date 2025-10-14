@@ -145,6 +145,7 @@ object internal:
    *  info from the parent type, so no intersection needs to be formed.
    *  This could be useful for tracked parameters as well.
    */
+  @deprecated
   final class refineOverride extends annotation.StaticAnnotation
 
   /** An annotation used internally for root capability wrappers of `cap` that

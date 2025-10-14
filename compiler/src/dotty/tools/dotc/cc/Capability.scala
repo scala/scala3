@@ -205,6 +205,11 @@ object Capabilities:
         hiddenSet.adoptClassifier(cls)
         if freeze then isClassified = true
 
+    def ccOwnerStr(using Context): String =
+      val owner = ccOwner
+      if owner.name == nme.SKOLEM then i"a new instance of ${hiddenSet.owner}"
+      else owner.show
+
     def descr(using Context) =
       val originStr = origin match
         case Origin.InDecl(sym) if sym.exists =>
