@@ -879,9 +879,14 @@ object JavaParsers {
         fieldsByName -= name
       end for
 
+      // accessor for record's vararg field  (T...) returns array type (T[])
+      def adaptVarargsType(tpt: Tree) = tpt match
+        case PostfixOp(tpt2, Ident(tpnme.raw.STAR)) => arrayOf(tpt2)
+        case _ => tpt
+
       val accessors =
         (for (name, (tpt, annots)) <- fieldsByName yield
-          DefDef(name, List(Nil), tpt, unimplementedExpr)
+          DefDef(name, List(Nil), adaptVarargsType(tpt), unimplementedExpr)
             .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
         ).toList
 
