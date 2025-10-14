@@ -311,7 +311,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
         throw new RuntimeException(
           "LazyListIterable evaluation depends on its own result (self-reference); see docs for more info")
 
-      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^]
+      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^{this}]
       _tail = MidEvaluation
       val l =
         // `fun` returns a LazyListIterable that represents the state (head/tail) of `this`. We call `l.evaluated` to ensure

@@ -1252,14 +1252,11 @@ object Capabilities:
   def toResultInResults(sym: Symbol, fail: Message => Unit, keepAliases: Boolean = false)(tp: Type)(using Context): Type =
     val m = new TypeMap with FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case AnnotatedType(parent @ defn.RefinedFunctionOf(mt), ann) if ann.symbol == defn.InferredDepFunAnnot =>
-          val mt1 = mapOver(mt).asInstanceOf[MethodType]
-          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
-          else parent
-        case defn.RefinedFunctionOf(mt) =>
-          val mt1 = apply(mt)
-          if mt1 ne mt then mt1.toFunctionType(alwaysDependent = true)
-          else t
+        case rt @ defn.RefinedFunctionOf(mt) =>
+          rt.derivedRefinedType(refinedInfo =
+            if rt.isInstanceOf[InferredRefinedType]
+            then mapOver(mt)
+            else apply(mt))
         case t: MethodType if variance > 0 && t.marksExistentialScope =>
           val t1 = mapOver(t).asInstanceOf[MethodType]
           t1.derivedLambdaType(resType = toResult(t1.resType, t1, fail))

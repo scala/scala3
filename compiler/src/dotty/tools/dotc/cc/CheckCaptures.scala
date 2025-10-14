@@ -732,19 +732,26 @@ class CheckCaptures extends Recheck, SymTransformer:
                 |since its capture set ${qualType.captureSet} is read-only""",
             tree.srcPos)
 
-      val selType = mapResultRoots(recheckSelection(tree, qualType, name, disambiguate), tree.symbol)
+      val origSelType = recheckSelection(tree, qualType, name, disambiguate)
+      val selType = mapResultRoots(origSelType, tree.symbol)
       val selWiden = selType.widen
+
+      def capturesResult = origSelType.widenSingleton match
+        case ExprType(resType) => resType.captureSet.containsResultCapability
+        case _ => false
 
       // Don't apply the rule
       //   - on the LHS of assignments, or
       //   - if the qualifier or selection type is boxed, or
-      //   - the selection is either a trackable capture reference or a pure type
+      //   - the selection is either a trackable capture reference or a pure type, or
+      //   - if the selection is of a parameterless method capturing a result cap
       if noWiden(selType, pt)
           || qualType.isBoxedCapturing
           || selType.isBoxedCapturing
           || selWiden.isBoxedCapturing
           || selType.isTrackableRef
           || selWiden.captureSet.isAlwaysEmpty
+          || capturesResult
       then
         selType
       else
@@ -819,9 +826,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
-      val appType = resultToFresh(
-        super.recheckApplication(tree, qualType, funType, argTypes),
-        Origin.ResultInstance(funType, tree.symbol))
+      val resultType = super.recheckApplication(tree, qualType, funType, argTypes)
+      val appType = resultToFresh(resultType, Origin.ResultInstance(funType, tree.symbol))
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
@@ -830,6 +836,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
+            && !resultType.captureSet.containsResultCapability
             && qualCaptures.mightSubcapture(refs)
             && argCaptures.forall(_.mightSubcapture(refs)) =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
