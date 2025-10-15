@@ -388,7 +388,7 @@ object Scanners {
           case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
           case InDedentedString(quoteCount, _) if lastToken != STRINGPART =>
             offset = charOffset - 1
-            getDedentedStringPartWithDelimiter(quoteCount)
+            getDedentedStringPartWithDelimiter(quoteCount, isInterpolated = true)
           case _ => fetchToken()
         if token == ERROR then adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
       else
@@ -1323,145 +1323,29 @@ object Scanners {
       if (ch == CR) nextRawChar()
       if (ch == LF) nextRawChar()
 
-      // For interpolated strings, check if we need to handle $ interpolation first
-      if (isInterpolated) {
-        getDedentedStringPartWithDelimiter(quoteCount)
-        quoteCount
-      } else {
-        // Collect all lines until we find the closing delimiter
-        val lines = scala.collection.mutable.ArrayBuffer[String]()
-        val lineIndents = scala.collection.mutable.ArrayBuffer[String]()
-        var currentLine = new StringBuilder
-        var currentIndent = new StringBuilder
-        var atLineStart = true
-        var closingIndent: String = null
-        var foundClosing = false
+      // Collect all content using the string part parser
+      getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
 
-        while (!foundClosing && ch != SU) {
-          if (atLineStart) {
-            // Collect indentation
-            currentIndent.clear()
-            while (ch == ' ' || ch == '\t') {
-              currentIndent.append(ch)
-              nextRawChar()
-            }
-
-            // Check if this might be the closing delimiter
-            if (ch == '\'') {
-              var endQuoteCount = 0
-              while (ch == '\'' && endQuoteCount < quoteCount + 1) {
-                endQuoteCount += 1
-                nextRawChar()
-              }
-
-              if (endQuoteCount == quoteCount && ch != '\'') {
-                // Found closing delimiter (not followed by another quote)
-                foundClosing = true
-                closingIndent = currentIndent.toString
-              } else {
-                // False alarm, these quotes are part of the content
-                // We need to restore and add them to current line
-                currentLine.append(currentIndent)
-                for (_ <- 0 until endQuoteCount) currentLine.append('\'')
-                atLineStart = false
-              }
-            } else {
-              atLineStart = false
-            }
-          }
-
-          if (!foundClosing && !atLineStart) {
-            // Regular content
-            if (ch == CR || ch == LF) {
-              // End of line
-              lineIndents += currentIndent.toString
-              lines += currentLine.toString
-              currentLine.clear()
-              currentIndent.clear()
-
-              // Normalize newlines to \n
-              if (ch == CR) nextRawChar()
-              if (ch == LF) nextRawChar()
-              atLineStart = true
-            } else {
-              currentLine.append(ch)
-              nextRawChar()
-            }
-          }
-        }
-
-        if (!foundClosing) {
-          incompleteInputError(em"unclosed dedented string literal")
-        } else if (closingIndent == null) {
-          error(em"internal error: closing indent not set")
-          token = ERROR
-        } else {
-          // Validate and dedent all lines
-          val dedentedLines = scala.collection.mutable.ArrayBuffer[String]()
-          val closingIndentLen = closingIndent.length
-          var hasSpaces = false
-          var hasTabs = false
-
-          for (indent <- closingIndent) {
-            if (indent == ' ') hasSpaces = true
-            if (indent == '\t') hasTabs = true
-          }
-
-          var hasError = false
-          for (i <- 0 until lines.length if !hasError) {
-            val line = lines(i)
-            val indent = lineIndents(i)
-
-            // Check for mixed tabs and spaces
-            var lineHasSpaces = false
-            var lineHasTabs = false
-            for (ch <- indent) {
-              if (ch == ' ') lineHasSpaces = true
-              if (ch == '\t') lineHasTabs = true
-            }
-
-            if ((hasSpaces && lineHasTabs) || (hasTabs && lineHasSpaces)) {
-              error(em"dedented string literal cannot mix tabs and spaces in indentation")
-              token = ERROR
-              hasError = true
-            } else if (line.isEmpty) {
-              // Empty lines are allowed
-              dedentedLines += ""
-            } else {
-              // Non-empty lines must be indented at least as much as closing delimiter
-              if (!indent.startsWith(closingIndent)) {
-                error(em"line in dedented string literal must be indented at least as much as the closing delimiter")
-                token = ERROR
-                hasError = true
-              } else {
-                // Remove the closing indentation from this line
-                dedentedLines += indent.substring(closingIndentLen) + line
-              }
-            }
-          }
-
-          if (!hasError) {
-            // Set the string value (join with \n)
-            strVal = dedentedLines.mkString("\n")
-            litBuf.clear()
-            token = STRINGLIT
-          }
-        }
-
-        quoteCount
+      // For non-interpolated strings, we need to dedent the collected content
+      if (!isInterpolated && token == STRINGLIT) {
+        dedentCollectedString()
       }
+
+      quoteCount
     }
 
-    /** Parse interpolated dedented string content, handling $ expressions.
-     *  This collects content until hitting $ or closing delimiter.
+    /** Parse dedented string content, with optional $ interpolation handling.
+     *  This collects content until hitting $ (if interpolated) or closing delimiter.
      *  Respects the quote count for extended delimiters.
      *
-     *  Note: This parses with the same format requirements as non-interpolated dedented strings
-     *  (newline after opening, extended delimiters, etc.) but does NOT dedent the content during
-     *  parsing. Dedenting for interpolated strings must be handled at runtime after all parts
-     *  are assembled, similar to how the string interpolator combines the parts.
+     *  @param quoteCount The number of quotes in the delimiter (3 for ''', 4 for '''', etc.)
+     *  @param isInterpolated If true, handles $ expressions and returns STRINGPART tokens.
+     *                        If false, treats $ as regular content and returns STRINGLIT.
+     *
+     *  Note: Interpolated strings do NOT dedent during parsing - dedenting must be handled
+     *  at runtime after all parts are assembled. Non-interpolated strings dedent after collection.
      */
-    @tailrec private def getDedentedStringPartWithDelimiter(quoteCount: Int): Unit =
+    @tailrec private def getDedentedStringPartWithDelimiter(quoteCount: Int, isInterpolated: Boolean): Unit =
       // Check for closing delimiter with correct quote count
       if (ch == '\'') {
         // Count the quotes we encounter
@@ -1479,10 +1363,10 @@ object Scanners {
         } else {
           // Not the closing delimiter, add the quotes we found to content
           for (_ <- 0 until foundQuotes) putChar('\'')
-          getDedentedStringPartWithDelimiter(quoteCount)
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
         }
       }
-      else if (ch == '$') {
+      else if (isInterpolated && ch == '$') {
         // Handle interpolation
         def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
           @tailrec def loopRest(): Unit =
@@ -1510,7 +1394,7 @@ object Scanners {
         if (ch == '$' || ch == '\'') {
           putChar(ch)
           nextRawChar()
-          getDedentedStringPartWithDelimiter(quoteCount)
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
         }
         else if (ch == '{') {
           setStrVal()
@@ -1523,7 +1407,7 @@ object Scanners {
         else
           error("invalid string interpolation: `$$`, `$'`, `$`ident or `$`BlockExpr expected".toMessage, off = charOffset - 2)
           putChar('$')
-          getDedentedStringPartWithDelimiter(quoteCount)
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && ch == SU
@@ -1532,10 +1416,105 @@ object Scanners {
         else {
           putChar(ch)
           nextRawChar()
-          getDedentedStringPartWithDelimiter(quoteCount)
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
         }
       }
     end getDedentedStringPartWithDelimiter
+
+    /** Dedent a collected string by analyzing line structure and removing common indentation.
+     *  This processes the content in `strVal`, validating indentation rules and removing
+     *  the minimum common indentation from all non-empty lines.
+     */
+    private def dedentCollectedString(): Unit = {
+      val content = strVal
+      if (content.isEmpty) return
+
+      val lines = scala.collection.mutable.ArrayBuffer[String]()
+      val lineIndents = scala.collection.mutable.ArrayBuffer[String]()
+
+      // Parse content into lines with their indentation
+      var i = 0
+      while (i < content.length) {
+        // Collect indentation for this line
+        val indentStart = i
+        while (i < content.length && (content(i) == ' ' || content(i) == '\t')) {
+          i += 1
+        }
+        val indent = content.substring(indentStart, i)
+
+        // Collect rest of line
+        val lineStart = i
+        while (i < content.length && content(i) != '\n') {
+          i += 1
+        }
+        val line = content.substring(lineStart, i)
+
+        lines += line
+        lineIndents += indent
+
+        // Skip the newline
+        if (i < content.length && content(i) == '\n') {
+          i += 1
+        }
+      }
+
+      // The last line's indentation is the closing indentation
+      if (lines.isEmpty) {
+        strVal = ""
+        return
+      }
+
+      val closingIndent = lineIndents.last
+      val closingIndentLen = closingIndent.length
+
+      // Check for mixed tabs/spaces in closing indent
+      var hasSpaces = false
+      var hasTabs = false
+      for (ch <- closingIndent) {
+        if (ch == ' ') hasSpaces = true
+        if (ch == '\t') hasTabs = true
+      }
+
+      // Validate and dedent all lines
+      val dedentedLines = scala.collection.mutable.ArrayBuffer[String]()
+      var hasError = false
+
+      for (i <- 0 until lines.length - 1 if !hasError) {  // Skip last line (it's empty after closing delimiter)
+        val line = lines(i)
+        val indent = lineIndents(i)
+
+        // Check for mixed tabs and spaces
+        var lineHasSpaces = false
+        var lineHasTabs = false
+        for (ch <- indent) {
+          if (ch == ' ') lineHasSpaces = true
+          if (ch == '\t') lineHasTabs = true
+        }
+
+        if ((hasSpaces && lineHasTabs) || (hasTabs && lineHasSpaces)) {
+          error(em"dedented string literal cannot mix tabs and spaces in indentation")
+          token = ERROR
+          hasError = true
+        } else if (line.isEmpty) {
+          // Empty lines are allowed
+          dedentedLines += ""
+        } else {
+          // Non-empty lines must be indented at least as much as closing delimiter
+          if (!indent.startsWith(closingIndent)) {
+            error(em"line in dedented string literal must be indented at least as much as the closing delimiter")
+            token = ERROR
+            hasError = true
+          } else {
+            // Remove the closing indentation from this line
+            dedentedLines += indent.substring(closingIndentLen) + line
+          }
+        }
+      }
+
+      if (!hasError) {
+        strVal = dedentedLines.mkString("\n")
+      }
+    }
 
     private def getRawStringLit(): Unit =
       if (ch == '\"') {
