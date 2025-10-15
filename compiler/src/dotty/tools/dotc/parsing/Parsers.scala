@@ -1376,7 +1376,10 @@ object Parsers {
       val dedented = lines.dropRight(1).map { line =>
         if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
         else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
-        else ??? // should never happen
+        else assert(
+          false,
+          s"line \"$line\" in dedented string must be either empty or be further indented than the closing delimiter"
+        )
       }
 
       // Drop the first line if it's empty (the newline after opening delimiter)
