@@ -2,7 +2,6 @@
 
 object Test {
   def main(args: Array[String]): Unit = {
-    // Test basic dedenting
     val basic = '''
     i am cow
     hear me moo
@@ -11,23 +10,28 @@ object Test {
     println(basic)
     println()
 
-    // Test with indentation preserved
-    val withIndent = '''
+    val noIndent = '''
+i am cow
+hear me moo
+'''
+    println("No Indent:")
+    println(noIndent)
+    println()
+
+    val withIndentPreserved = '''
       i am cow
       hear me moo
     '''
     println("With indent:")
-    println(withIndent)
+    println(withIndentPreserved)
     println()
 
-    // Test empty string
     val empty = '''
     '''
     println("Empty:")
     println(s"[${empty}]")
     println()
 
-    // Test single line
     val singleLine = '''
     hello world
     '''
@@ -35,7 +39,6 @@ object Test {
     println(singleLine)
     println()
 
-    // Test blank lines
     val blankLines = '''
     line 1
 
@@ -45,7 +48,6 @@ object Test {
     println(blankLines)
     println()
 
-    // Test deep indentation removal
     val deepIndent = '''
           deeply
           indented
@@ -55,7 +57,6 @@ object Test {
     println(deepIndent)
     println()
 
-    // Test mixed indentation levels (preserved)
     val mixedIndent = '''
       first level
         second level
@@ -65,7 +66,6 @@ object Test {
     println(mixedIndent)
     println()
 
-    // Test extended delimiter with embedded '''
     val withTripleQuotes = ''''
     '''
     i am cow
@@ -75,7 +75,6 @@ object Test {
     println(withTripleQuotes)
     println()
 
-    // Test extended delimiter with 5 quotes
     val extended5 = '''''
     ''''
     content with four quotes
@@ -85,7 +84,6 @@ object Test {
     println(extended5)
     println()
 
-    // Test that newlines are normalized to \n
     val normalized = '''
     line1
     line2
@@ -94,7 +92,6 @@ object Test {
     println(s"Has only LF: ${!normalized.contains('\r')}")
     println()
 
-    // Test special characters
     val specialChars = '''
     !"#$%&()*+,-./:;<=>?@[\]^_`{|}~
     '''
@@ -102,7 +99,6 @@ object Test {
     println(specialChars)
     println()
 
-    // Test unicode
     val unicode = '''
     Hello 世界
     '''
@@ -110,7 +106,6 @@ object Test {
     println(unicode)
     println()
 
-    // Test tabs for indentation
     val withTabs = '''
 		tab indented
 		content here
@@ -119,7 +114,6 @@ object Test {
     println(withTabs)
     println()
 
-    // Test empty lines anywhere
     val emptyLinesAnywhere = '''
 
     content
@@ -131,7 +125,6 @@ object Test {
     println(s"[${emptyLinesAnywhere}]")
     println()
 
-    // Test content with quotes
     val withQuotes = '''
     "double quotes"
     'single quote'
@@ -141,7 +134,6 @@ object Test {
     println(withQuotes)
     println()
 
-    // Test zero-width closing indent
     val zeroIndent = '''
     content
     '''
@@ -149,7 +141,6 @@ object Test {
     println(zeroIndent)
     println()
 
-    // Test content length and character accuracy
     val precise = '''
       ab
       cd
@@ -160,7 +151,6 @@ object Test {
     println(s"Chars: ${precise.toList}")
     println()
 
-    // Test with string interpolator
     val name = "Alice"
     val age = 30
     val interpolated = s'''
@@ -171,7 +161,6 @@ object Test {
     println(interpolated)
     println()
 
-    // Test with f interpolator
     val value = 42
     val formatted = f'''
     Value: $value%05d
@@ -181,7 +170,6 @@ object Test {
     println(formatted)
     println()
 
-    // Test as pattern
     def testPattern(s: String): String = s match {
       case '''
       test
@@ -195,7 +183,6 @@ object Test {
     println(s"Pattern result: ${testPattern("test")}")
     println()
 
-    // Test as pattern with interpolator
     def testInterpolatedPattern(s: String): String = s match {
       case s'''
       Hello $_
@@ -206,7 +193,6 @@ object Test {
     println(s"Interpolated pattern result: ${testInterpolatedPattern("Hello World")}")
     println()
 
-    // Test as pattern with two lines
     def testPatternTwoLines(s: String): String = s match {
       case '''
       line one
@@ -218,7 +204,6 @@ object Test {
     println(s"Two line pattern result: ${testPatternTwoLines("line one\nline two")}")
     println()
 
-    // Test as pattern with interpolator and two lines
     def testInterpolatedPatternTwoLines(s: String): String = s match {
       case s'''
       First: $_
@@ -230,7 +215,6 @@ object Test {
     println(s"Two line interpolated result: ${testInterpolatedPatternTwoLines("First: Alice\nSecond: Bob")}")
     println()
 
-    // Test in function context
     def inFunction = '''
       function content
       more content
@@ -239,7 +223,6 @@ object Test {
     println(inFunction)
     println()
 
-    // Test in class context
     class InClass {
       val inClass = '''
         class member
@@ -251,7 +234,6 @@ object Test {
     println(classInstance.inClass)
     println()
 
-    // Test in a list
     val list = List(
       '''
         first
@@ -269,7 +251,6 @@ object Test {
     }
     println()
 
-    // Test nested in expressions
     val nested = "prefix" + '''
       middle
     ''' + "suffix"
@@ -277,7 +258,6 @@ object Test {
     println(nested)
     println()
 
-    // Test as type ascription (singleton literal type)
     val typedVal: '''
       first line
         indented line
@@ -288,7 +268,6 @@ object Test {
     println(s"Type matches: ${typedVal == "  first line\n    indented line\n  third line"}")
     println()
 
-    // Test as type parameter to valueOf
     val valueOfResult = scala.compiletime.constValue['''
       alpha
         beta

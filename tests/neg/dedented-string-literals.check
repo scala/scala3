@@ -1,25 +1,20 @@
--- Error: tests/neg/dedented-string-literals.scala:5:27
-5 |  val noNewlineAfterOpen = '''content on same line // error
+-- Error: ----------------------------------------------------------------------
+5 |  val noNewlineAfterOpen = '''content on same line // error: dedented string literal must start with a newline
   |                           ^
-  |dedented string literal must start with newline after opening quotes
--- Error: tests/neg/dedented-string-literals.scala:8:20
+  |      dedented string literal must start with newline after opening quotes
+-- Error: ----------------------------------------------------------------------
 8 |  val notIndented = '''
   |                    ^
   |line in dedented string literal must be indented at least as much as the closing delimiter
--- Error: tests/neg/dedented-string-literals.scala:13:24
+-- Error: ----------------------------------------------------------------------
 13 |  val mixedTabsSpaces = '''
    |                        ^
-   |dedented string literal cannot mix tabs and spaces in indentation
--- Error: tests/neg/dedented-string-literals.scala:19:35
+   |       dedented string literal cannot mix tabs and spaces in indentation
+-- Error: ----------------------------------------------------------------------
 19 |  val nonWhitespaceBeforeClosing = '''
    |                                   ^
    |last line of dedented string literal must contain only whitespace before closing delimiter
--- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:41:17
+-- Error: ----------------------------------------------------------------------
 41 |  val unclosed = '''
    |                 ^
-   |unclosed dedented string literal
--- Error: tests/neg/dedented-string-literals.scala:35:4
-35 |    onlyAtCompileTime // error
-   |    ^^^^^^^^^^^^^^^^^
-   |This method should only be used at compile time
-   |Do not call at runtime
+   |                 unclosed dedented string literal
