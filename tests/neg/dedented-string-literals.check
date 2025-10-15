@@ -1,0 +1,20 @@
+-- Error: ----------------------------------------------------------------------
+5 |  val noNewlineAfterOpen = '''content on same line // error: dedented string literal must start with a newline
+  |                           ^
+  |      dedented string literal must start with newline after opening quotes
+-- Error: ----------------------------------------------------------------------
+8 |  val notIndented = '''
+  |                    ^
+  |line in dedented string literal must be indented at least as much as the closing delimiter
+-- Error: ----------------------------------------------------------------------
+13 |  val mixedTabsSpaces = '''
+   |                        ^
+   |       dedented string literal cannot mix tabs and spaces in indentation
+-- Error: ----------------------------------------------------------------------
+19 |  val nonWhitespaceBeforeClosing = '''
+   |                                   ^
+   |last line of dedented string literal must contain only whitespace before closing delimiter
+-- Error: ----------------------------------------------------------------------
+41 |  val unclosed = '''
+   |                 ^
+   |                 unclosed dedented string literal

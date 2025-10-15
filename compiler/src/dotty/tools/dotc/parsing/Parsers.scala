@@ -1349,6 +1349,95 @@ object Parsers {
       else
         literal(inTypeOrSingleton = true)
 
+    /** Dedent a string literal by removing common leading whitespace.
+     *  The amount of whitespace to remove is determined by the indentation
+     *  of the last line (which should contain only whitespace before the
+     *  closing delimiter).
+     *
+     *  @param str The string content to dedent
+     *  @param offset The source offset where the string literal begins
+     *  @return The dedented string, or str if errors were reported
+     */
+    private def dedentString(str: String,
+                             offset: Offset,
+                             closingIndent: String,
+                             isFirstPart: Boolean,
+                             isLastPart: Boolean): String = {
+      // Just explicitly do nothing when the `closingIndent` is empty. This is easier than trying
+      // to ensure that handling of the  various `linesIterator`/`linesWithSeparators`/etc.
+      // APIs behaves predictably in the presence of empty leading/trailing lines
+      if (closingIndent == "") str
+      else {
+        // Check for mixed tabs and spaces in closing indent
+
+        val hasTabs = closingIndent.contains('\t')
+        val hasSpaces = closingIndent.contains(' ')
+        if (hasTabs && hasSpaces) {
+          syntaxError(
+            em"dedented string literal cannot mix tabs and spaces in indentation",
+            offset
+          )
+          return str
+        }
+
+        // Split into lines
+        val linesAndWithSeps = (str.linesIterator.zip(str.linesWithSeparators)).toSeq
+
+        var lineOffset = offset
+
+        def dedentLine(line: String, lineWithSep: String) = {
+          val result =
+            if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
+            else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
+            else {
+              // Check if this line has mixed tabs/spaces that don't match closing indent
+              val lineIndent = line.takeWhile(_.isWhitespace)
+              val lineHasTabs = lineIndent.contains('\t')
+              val lineHasSpaces = lineIndent.contains(' ')
+              if ((hasTabs && lineHasSpaces && !lineHasTabs) || (hasSpaces && lineHasTabs && !lineHasSpaces)) {
+                syntaxError(
+                  em"dedented string literal cannot mix tabs and spaces in indentation",
+                  offset
+                )
+              } else {
+                syntaxError(
+                  em"line in dedented string literal must be indented at least as much as the closing delimiter",
+                  lineOffset
+                )
+              }
+              line
+            }
+          lineOffset += lineWithSep.length // Make sure to include any \n, \r, \r\n, or \n\r
+          result
+        }
+
+        // If this is the first part of a string, then the first line is the empty string following
+        // the opening `'''` delimiter, so we skip it. If not, then the first line is immediately
+        // following an interpolated value, and should be used raw without indenting
+        val firstLine =
+          if (isFirstPart) Nil
+          else {
+            val (line, lineWithSep) = linesAndWithSeps.head
+            lineOffset += lineWithSep.length
+            Seq(line)
+          }
+
+        // Process all lines except the first and last, which require special handling
+        val dedented = linesAndWithSeps.drop(1).dropRight(1).map { case (line, lineWithSep) =>
+          dedentLine(line, lineWithSep)
+        }
+
+        // If this is the last part of the string, then the last line is the indentation-only
+        // line preceding the closing delimiter, and should be ignored. If not, then the last line
+        // also needs to be de-dented
+        val lastLine =
+          if (isLastPart) Nil
+          else Seq(dedentLine(linesAndWithSeps.last._1, linesAndWithSeps.last._2))
+
+        (firstLine ++ dedented ++ lastLine).mkString("\n")
+      }
+    }
+
     /** Literal           ::=  SimpleLiteral
      *                      |  processedStringLiteral
      *                      |  symbolLiteral
@@ -1377,7 +1466,13 @@ object Parsers {
             case FLOATLIT                      => floatFromDigits(digits)
             case DOUBLELIT | DECILIT | EXPOLIT => doubleFromDigits(digits)
             case CHARLIT                       => in.strVal.head
-            case STRINGLIT | STRINGPART        => in.strVal
+            case STRINGLIT | STRINGPART        =>
+              // Check if this is a dedented string (non-interpolated)
+              // For non-interpolated dedented strings, check if the token starts with '''
+              val str = in.strVal
+              if (token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
+                dedentString(str, negOffset, extractClosingIndent(str, negOffset), true, true)
+              } else str
             case TRUE                          => true
             case FALSE                         => false
             case NULL                          => null
@@ -1389,6 +1484,15 @@ object Parsers {
             case ex: FromDigitsException => syntaxErrorOrIncomplete(ex.getMessage.toMessage)
           }
         Literal(Constant(value))
+      }
+
+      /** Check if a string literal at the given offset is a dedented string */
+      def isDedentedStringLiteral(offset: Int): Boolean = {
+        val buf = in.buf
+        offset + 2 < buf.length &&
+          buf(offset) == '\'' &&
+          buf(offset + 1) == '\'' &&
+          buf(offset + 2) == '\''
       }
 
       if (inStringInterpolation) {
@@ -1447,38 +1551,107 @@ object Parsers {
         in.charOffset + 1 < in.buf.length &&
         in.buf(in.charOffset) == '"' &&
         in.buf(in.charOffset + 1) == '"'
+      val isDedented =
+        in.charOffset + 2 < in.buf.length &&
+        in.buf(in.charOffset - 1) == '\'' &&
+        in.buf(in.charOffset) == '\'' &&
+        in.buf(in.charOffset + 1) == '\''
       in.nextToken()
-      def nextSegment(literalOffset: Offset) =
-        segmentBuf += Thicket(
-            literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
-            atSpan(in.offset) {
-              if (in.token == IDENTIFIER)
-                termIdent()
-              else if (in.token == USCORE && inPattern) {
-                in.nextToken()
-                Ident(nme.WILDCARD)
-              }
-              else if (in.token == THIS) {
-                in.nextToken()
-                This(EmptyTypeIdent)
-              }
-              else if (in.token == LBRACE)
-                if (inPattern) Block(Nil, inBraces(pattern()))
-                else expr()
-              else {
-                report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-                EmptyTree
-              }
-            })
 
-      var offsetCorrection = if isTripleQuoted then 3 else 1
-      while (in.token == STRINGPART)
-        nextSegment(in.offset + offsetCorrection)
+      // Collect all string parts and their offsets
+      val stringParts = new ListBuffer[(String, Offset)]
+      val interpolatedExprs = new ListBuffer[Tree]
+
+      var offsetCorrection = if (isDedented) 3 else if (isTripleQuoted) 3 else 1
+      while (in.token == STRINGPART) {
+        val literalOffset = in.offset + offsetCorrection
+        stringParts += ((in.strVal, literalOffset))
         offsetCorrection = 0
-      if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+        in.nextToken()
+
+        // Collect the interpolated expression
+        interpolatedExprs += atSpan(in.offset) {
+          if (in.token == IDENTIFIER)
+            termIdent()
+          else if (in.token == USCORE && inPattern) {
+            in.nextToken()
+            Ident(nme.WILDCARD)
+          }
+          else if (in.token == THIS) {
+            in.nextToken()
+            This(EmptyTypeIdent)
+          }
+          else if (in.token == LBRACE)
+            if (inPattern) Block(Nil, inBraces(pattern()))
+            else expr()
+          else {
+            report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+            EmptyTree
+          }
+        }
+      }
+
+      // Get the final STRINGLIT
+      val finalLiteral = if (in.token == STRINGLIT) {
+        val s = in.strVal
+        val off = in.offset + offsetCorrection
+        stringParts += ((s, off))
+        in.nextToken()
+        true
+      } else false
+
+      val dedentedParts =
+        if (!isDedented || stringParts.isEmpty) stringParts
+        else {
+          val lastPart = stringParts.last._1
+          val closingIndent = extractClosingIndent(lastPart, in.offset)
+          stringParts.zipWithIndex.map { case ((str, offset), index) =>
+            val dedented = dedentString(str, in.offset, closingIndent, index == 0, index == stringParts.length - 1)
+            (dedented, offset)
+          }
+        }
+
+      // Build the segments with dedented strings
+      for ((str, expr) <- dedentedParts.zip(interpolatedExprs)) {
+        val (dedentedStr, offset) = str
+        segmentBuf += Thicket(
+          atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) },
+          expr
+        )
+      }
+
+      // Add the final literal if present
+      if (finalLiteral) {
+        val (dedentedStr, offset) = dedentedParts.last
+        segmentBuf += atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) }
+      }
 
       InterpolatedString(interpolator, segmentBuf.toList)
+    }
+
+    /** Extract the closing indentation from the last line of a string */
+    private def extractClosingIndent(str: String, offset: Offset): String = {
+      // If the last line is empty, `linesIterator` and `linesWithSeparators` skips
+      // the empty string, so we must recognize that case and explicitly default to ""
+      // otherwise things will blow up
+      val closingIndent = str
+        .linesIterator
+        .zip(str.linesWithSeparators)
+        .toSeq
+        .lastOption
+        .filter((line, lineWithSep) => line == lineWithSep)
+        .map(_._1)
+        .getOrElse("")
+
+      if (closingIndent.exists(!_.isWhitespace)) {
+        syntaxError(
+          em"last line of dedented string literal must contain only whitespace before closing delimiter",
+          offset
+        )
+        return str
+      }
+
+      closingIndent
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */

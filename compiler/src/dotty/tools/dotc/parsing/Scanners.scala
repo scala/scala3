@@ -374,6 +374,7 @@ object Scanners {
       case STRINGLIT =>
         currentRegion match {
           case InString(_, outer) => currentRegion = outer
+          case InDedentedString(_, outer) => currentRegion = outer
           case _ =>
         }
       case _ =>
@@ -385,6 +386,9 @@ object Scanners {
         lastOffset = lastCharOffset
         currentRegion match
           case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
+          case InDedentedString(quoteCount, _) if lastToken != STRINGPART =>
+            offset = charOffset - 1
+            getDedentedStringPartWithDelimiter(quoteCount, isInterpolated = true)
           case _ => fetchToken()
         if token == ERROR then adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
       else
@@ -888,6 +892,14 @@ object Scanners {
           getIdentRest()
           if (ch == '"' && token == IDENTIFIER)
             token = INTERPOLATIONID
+          else if (ch == '\'' && token == IDENTIFIER)
+            // Check for ''' to support dedented string interpolation
+            val la = lookaheadReader()
+            la.nextChar()
+            if (la.ch == '\'')
+              la.nextChar()
+              if (la.ch == '\'')
+                token = INTERPOLATIONID
         case '<' => // is XMLSTART?
           def fetchLT() = {
             val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
@@ -978,7 +990,28 @@ object Scanners {
         case '\'' =>
           def fetchSingleQuote(): Unit = {
             nextChar()
-            if isIdentifierStart(ch) then
+            // Check for triple single quote (dedented string literal)
+            if (ch == '\'') {
+              nextChar()
+              if (ch == '\'') {
+                // We have at least '''
+                // Check if this is an interpolated dedented string
+                if (token == INTERPOLATIONID) {
+                  // For interpolation, handle as string part
+                  nextRawChar()
+                  val quoteCount = getDedentedString(isInterpolated = true)
+                  currentRegion = InDedentedString(quoteCount, currentRegion)
+                } else {
+                  getDedentedString(isInterpolated = false)
+                  // No need to store quoteCount for non-interpolated strings
+                }
+              }
+              else {
+                // We have '' followed by something else
+                error(em"empty character literal")
+              }
+            }
+            else if isIdentifierStart(ch) then
               charLitOr { getIdentRest(); QUOTEID }
             else if isOperatorPart(ch) && ch != '\\' then
               charLitOr { getOperatorRest(); QUOTEID }
@@ -1254,6 +1287,109 @@ object Scanners {
       }
       else error(em"unclosed string literal")
     }
+
+    private def getDedentedString(isInterpolated: Boolean): Int = {
+      // For interpolated strings, we're already at the first character after '''
+      // For non-interpolated, we need to consume the first character
+      if (!isInterpolated) nextChar()
+
+      // Count opening quotes (already consumed 3)
+      var quoteCount = 3
+      while (ch == '\'') {
+        quoteCount += 1
+        if (isInterpolated) nextRawChar() else nextChar()
+      }
+
+      // Must be followed by a newline
+      if (ch != LF && ch != CR) {
+        error(em"dedented string literal must start with newline after opening quotes")
+        token = ERROR
+        return 0
+      }
+
+      // Collect all content using the string part parser
+      getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
+
+      quoteCount
+    }
+
+    @tailrec private def getDedentedStringPartWithDelimiter(quoteCount: Int, isInterpolated: Boolean): Unit =
+      // Check for closing delimiter with correct quote count
+      if (ch == '\'') {
+        // Count the quotes we encounter
+        var foundQuotes = 0
+        while (ch == '\'' && foundQuotes < quoteCount + 1) {
+          foundQuotes += 1
+          nextRawChar()
+        }
+
+        if (foundQuotes == quoteCount && ch != '\'') {
+          // The while-loop above steps forward to the first non-`'` character,
+          // so we need to backtrack 1 char to avoid consuming it
+          charOffset -= 1
+          // Found closing delimiter - exact match and not followed by another quote
+          setStrVal()
+          nextChar()  // Switch from raw mode to normal mode
+          token = STRINGLIT
+        } else {
+          // Not the closing delimiter, add the quotes we found to content
+          for (_ <- 0 until foundQuotes) putChar('\'')
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
+        }
+      }
+      else if (isInterpolated && ch == '$') {
+        // Handle interpolation
+        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
+          @tailrec def loopRest(): Unit =
+            if ch != SU && isUnicodeIdentifierPart(ch) then
+              putChar(ch) ; nextRawChar()
+              loopRest()
+            else if atSupplementary(ch, isUnicodeIdentifierPart) then
+              putChar(ch) ; nextRawChar()
+              putChar(ch) ; nextRawChar()
+              loopRest()
+            else
+              finishNamedToken(IDENTIFIER, target = next)
+          end loopRest
+          setStrVal()
+          token = STRINGPART
+          next.lastOffset = charOffset - 1
+          next.offset = charOffset - 1
+          putChar(ch) ; nextRawChar()
+          if hasSupplement then
+            putChar(ch) ; nextRawChar()
+          loopRest()
+        end getInterpolatedIdentRest
+
+        nextRawChar()
+        if (ch == '$' || ch == '\'') {
+          putChar(ch)
+          nextRawChar()
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
+        }
+        else if (ch == '{') {
+          setStrVal()
+          token = STRINGPART
+        }
+        else if isUnicodeIdentifierStart(ch) || ch == '_' then
+          getInterpolatedIdentRest(hasSupplement = false)
+        else if atSupplementary(ch, isUnicodeIdentifierStart) then
+          getInterpolatedIdentRest(hasSupplement = true)
+        else
+          error("invalid string interpolation: `$$`, `$'`, `$`ident or `$`BlockExpr expected".toMessage, off = charOffset - 2)
+          putChar('$')
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
+      }
+      else {
+        val isUnclosedLiteral = !isUnicodeEscape && ch == SU
+        if (isUnclosedLiteral) incompleteInputError(em"unclosed dedented string literal")
+        else {
+          putChar(ch)
+          nextRawChar()
+          getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
+        }
+      }
+    end getDedentedStringPartWithDelimiter
 
     private def getRawStringLit(): Unit =
       if (ch == '\"') {
@@ -1662,6 +1798,7 @@ object Scanners {
 
     private def delimiter = this match
       case _: InString => "}(in string)"
+      case _: InDedentedString => "}(in dedented string)"
       case InParens(LPAREN, _) => ")"
       case InParens(LBRACKET, _) => "]"
       case _: InBraces => "}"
@@ -1677,6 +1814,7 @@ object Scanners {
   end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region(RBRACE)
+  case class InDedentedString(quoteCount: Int, outer: Region) extends Region(RBRACE)
   case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
   case class InBraces(outer: Region) extends Region(RBRACE)
   case class InCase(outer: Region) extends Region(OUTDENT)
