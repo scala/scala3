@@ -433,6 +433,7 @@ object CheckUnused:
         if inliners == 0
           && languageImport(imp.expr).isEmpty
           && !imp.isGeneratedByEnum
+          && !imp.isCompiletimeTesting
           && !ctx.owner.name.isReplWrapperName
         then
           imps.put(imp, ())
@@ -989,6 +990,10 @@ object CheckUnused:
       if sel.isWildcard && sel.isGiven
       then imp.expr.tpe.allMembers.exists(_.symbol.isCanEqual)
       else imp.expr.tpe.member(sel.name.toTermName).hasAltWith(_.symbol.isCanEqual)
+
+    /** No mechanism for detection yet. */
+    def isCompiletimeTesting: Boolean =
+      imp.expr.symbol == defn.CompiletimeTestingPackage//.moduleClass
 
   extension (pos: SrcPos)
     def isZeroExtentSynthetic: Boolean = pos.span.isSynthetic && pos.span.isZeroExtent
