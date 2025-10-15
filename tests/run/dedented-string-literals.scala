@@ -112,8 +112,8 @@ object Test {
 
     // Test tabs for indentation
     val withTabs = '''
-	tab indented
-	content here
+		tab indented
+		content here
 	'''
     println("With tabs:")
     println(withTabs)
@@ -289,8 +289,7 @@ object Test {
     println()
 
     // Test as type parameter to valueOf
-    import scala.compiletime.valueOf
-    val valueOfResult = valueOf['''
+    val valueOfResult = scala.compiletime.constValue['''
       alpha
         beta
       gamma

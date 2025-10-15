@@ -55,7 +55,6 @@ Empty lines anywhere:
 content
 
 more content
-
 ]
 
 With quotes:
@@ -94,20 +93,20 @@ Interpolated pattern (two lines):
 Two line interpolated result: matched two line greeting
 
 In function:
-function content
-more content
+  function content
+  more content
 
 In class:
-class member
-content
+  class member
+  content
 
 In list:
-Item: [first]
-Item: [second]
-Item: [third]
+Item: [  first]
+Item: [  second]
+Item: [  third]
 
 Nested in expressions:
-prefixmiddlesuffix
+prefix  middlesuffix
 
 Type ascription:
 Value: [  first line

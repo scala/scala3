@@ -14,12 +14,12 @@
 19 |  val nonWhitespaceBeforeClosing = '''
    |                                   ^
    |last line of dedented string literal must contain only whitespace before closing delimiter
+-- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:41:17
+41 |  val unclosed = '''
+   |                 ^
+   |unclosed dedented string literal
 -- Error: tests/neg/dedented-string-literals.scala:35:4
 35 |    onlyAtCompileTime // error
    |    ^^^^^^^^^^^^^^^^^
    |This method should only be used at compile time
    |Do not call at runtime
--- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:41:17
-41 |  val unclosed = '''
-   |                 ^
-   |unclosed dedented string literal

@@ -1319,10 +1319,6 @@ object Scanners {
         return 0
       }
 
-      // Skip the initial newline (CR LF or just LF)
-      if (ch == CR) nextRawChar()
-      if (ch == LF) nextRawChar()
-
       // Collect all content using the string part parser
       getDedentedStringPartWithDelimiter(quoteCount, isInterpolated)
 
@@ -1349,11 +1345,11 @@ object Scanners {
           foundQuotes += 1
           nextRawChar()
         }
-        // The while-loop above steps forward to the first non-`'` character,
-        // so we need to backtrack 1 char to avoid consuming it
-        charOffset -= 1
 
         if (foundQuotes == quoteCount && ch != '\'') {
+          // The while-loop above steps forward to the first non-`'` character,
+          // so we need to backtrack 1 char to avoid consuming it
+          charOffset -= 1
           // Found closing delimiter - exact match and not followed by another quote
           setStrVal()
           nextChar()  // Switch from raw mode to normal mode

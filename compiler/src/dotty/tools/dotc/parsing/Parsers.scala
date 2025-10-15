@@ -1363,6 +1363,7 @@ object Parsers {
 
       // Find the last line (should be just whitespace before closing delimiter)
       val lastNewlineIdx = str.lastIndexOf('\n')
+
       if (lastNewlineIdx < 0) {
         syntaxError(
           em"dedented string literal must start with newline after opening quotes",
@@ -1392,11 +1393,12 @@ object Parsers {
       }
 
       // Split into lines
-      val lines = str.linesIterator.toSeq
+      val linesAndWithSeps = (str.linesIterator.zip(str.linesWithSeparators)).toSeq
 
-      // Process all lines except the last (which is just the closing indentation)
+      // Process all lines except the first (which is empty before the first newline)
+      // and the last (which is just the closing indentation)
       var lineOffset = offset
-      val dedented = lines.dropRight(1).map { line =>
+      val dedented = linesAndWithSeps.drop(1).dropRight(1).map { case (line, lineWithSep) =>
         val result =
           if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
           else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
@@ -1418,14 +1420,11 @@ object Parsers {
             }
             line
           }
-        lineOffset += line.length + 1  // +1 for the newline
+        lineOffset += lineWithSep.length // Make sure to include any \n, \r, \r\n, or \n\r
         result
       }
 
-      // Drop the first line if it's empty (the newline after opening delimiter)
-      val result = if (dedented.headOption.contains("")) dedented.drop(1) else dedented
-
-      result.mkString("\n")
+      dedented.mkString("\n")
     }
 
     /** Literal           ::=  SimpleLiteral

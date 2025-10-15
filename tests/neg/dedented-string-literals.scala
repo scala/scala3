@@ -38,5 +38,5 @@ object CompileTimeOnlyTest {
 
 // Error: Unclosed literal - must be last since it breaks parsing
 object UnclosedTest {
-  val unclosed = ''' // error: unclosed dedented string literal
-some content
+  val unclosed = '''
+  some content // error: unclosed dedented string literal
