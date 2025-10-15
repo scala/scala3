@@ -1353,33 +1353,73 @@ object Parsers {
      *  The amount of whitespace to remove is determined by the indentation
      *  of the last line (which should contain only whitespace before the
      *  closing delimiter).
+     *
+     *  @param str The string content to dedent
+     *  @param offset The source offset where the string literal begins
+     *  @return The dedented string, or str if errors were reported
      */
-    private def dedentString(str: String): String = {
+    private def dedentString(str: String, offset: Offset): String = {
       if (str.isEmpty) return str
 
       // Find the last line (should be just whitespace before closing delimiter)
       val lastNewlineIdx = str.lastIndexOf('\n')
-      assert(
-        lastNewlineIdx >= 0,
-        "Dedented string literal must contain at least two newlines"
-      )
+      if (lastNewlineIdx < 0) {
+        syntaxError(
+          em"dedented string literal must start with newline after opening quotes",
+          offset
+        )
+        return str
+      }
 
       val closingIndent = str.substring(lastNewlineIdx + 1)
-      assert(
-        closingIndent.forall(_.isWhitespace),
-        "Last line of a dedented string literal must contain only whitespace followed by the closing delimiter"
-      )
+      if (!closingIndent.forall(_.isWhitespace)) {
+        syntaxError(
+          em"last line of dedented string literal must contain only whitespace before closing delimiter",
+          offset
+        )
+        return str
+      }
+
+      // Check for mixed tabs and spaces in closing indent
+      val hasTabs = closingIndent.contains('\t')
+      val hasSpaces = closingIndent.contains(' ')
+      if (hasTabs && hasSpaces) {
+        syntaxError(
+          em"dedented string literal cannot mix tabs and spaces in indentation",
+          offset
+        )
+        return str
+      }
+
       // Split into lines
       val lines = str.linesIterator.toSeq
 
       // Process all lines except the last (which is just the closing indentation)
+      var lineOffset = offset
       val dedented = lines.dropRight(1).map { line =>
-        if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
-        else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
-        else assert(
-          false,
-          s"line \"$line\" in dedented string must be either empty or be further indented than the closing delimiter"
-        )
+        val result =
+          if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
+          else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
+          else {
+            // Check if this line has mixed tabs/spaces that don't match closing indent
+            val lineIndent = line.takeWhile(_.isWhitespace)
+            val lineHasTabs = lineIndent.contains('\t')
+            val lineHasSpaces = lineIndent.contains(' ')
+            if ((hasTabs && lineHasSpaces && !lineHasTabs) || (hasSpaces && lineHasTabs && !lineHasSpaces)) {
+              syntaxError(
+                em"dedented string literal cannot mix tabs and spaces in indentation",
+                offset
+              )
+            } else {
+              syntaxError(
+                em"line in dedented string literal must be indented at least as much as the closing delimiter",
+                lineOffset
+              )
+            }
+            line
+          }
+        lineOffset += line.length + 1  // +1 for the newline
+        result
       }
 
       // Drop the first line if it's empty (the newline after opening delimiter)
@@ -1424,7 +1464,7 @@ object Parsers {
               // For non-interpolated dedented strings, check if the token starts with '''
               val str = in.strVal
               if (token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
-                dedentString(str)
+                dedentString(str, negOffset)
               } else str
             case TRUE                          => true
             case FALSE                         => false

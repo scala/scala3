@@ -10,16 +10,16 @@
 13 |  val mixedTabsSpaces = '''
    |                        ^
    |dedented string literal cannot mix tabs and spaces in indentation
--- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:19:17
-19 |  val unclosed = '''
-   |                 ^
-   |unclosed dedented string literal
--- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:23:35
-23 |  val nonWhitespaceBeforeClosing = '''
+-- Error: tests/neg/dedented-string-literals.scala:19:35
+19 |  val nonWhitespaceBeforeClosing = '''
    |                                   ^
-   |unclosed dedented string literal
--- Error: tests/neg/dedented-string-literals.scala:39:4
-39 |    onlyAtCompileTime // error
+   |last line of dedented string literal must contain only whitespace before closing delimiter
+-- Error: tests/neg/dedented-string-literals.scala:35:4
+35 |    onlyAtCompileTime // error
    |    ^^^^^^^^^^^^^^^^^
    |This method should only be used at compile time
    |Do not call at runtime
+-- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:41:17
+41 |  val unclosed = '''
+   |                 ^
+   |unclosed dedented string literal

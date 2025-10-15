@@ -1,28 +1,24 @@
 // Test error cases for dedented string literals
 
-object DedentedStringErrors { // nopos-error // nopos-error // nopos-error
+object DedentedStringErrors {
   // Error: No newline after opening quotes
-  val noNewlineAfterOpen = '''content on same line // error
+  val noNewlineAfterOpen = '''content on same line // error: dedented string literal must start with a newline
 
   // Error: Content not indented enough
   val notIndented = '''
-content
+content // error: line in dedented string literal is indented less than the closing delimiter
   '''
 
-  // Error: Mixed tabs and spaces
+  // Error: Mixed tabs and spaces - first line has tab, but closing delimiter has spaces
   val mixedTabsSpaces = '''
-	tab line
+	tab line // error: line in dedented string literal is indented less than the closing delimiter
   space line
 	'''
-
-  // Error: Unclosed literal
-  val unclosed = '''
-some content
 
   // Error: Non-whitespace before closing delimiter
   val nonWhitespaceBeforeClosing = '''
   content here
-  text'''
+  text''' // error: last line of dedented string literal must contain only whitespace before closing delimiter
 }
 
 // Test @compileTimeOnly with dedented string
@@ -39,3 +35,8 @@ object CompileTimeOnlyTest {
     onlyAtCompileTime // error
   }
 }
+
+// Error: Unclosed literal - must be last since it breaks parsing
+object UnclosedTest {
+  val unclosed = ''' // error: unclosed dedented string literal
+some content
