@@ -978,7 +978,19 @@ object Scanners {
         case '\'' =>
           def fetchSingleQuote(): Unit = {
             nextChar()
-            if isIdentifierStart(ch) then
+            // Check for triple single quote (dedented string literal)
+            if (ch == '\'') {
+              nextChar()
+              if (ch == '\'') {
+                // We have at least '''
+                getDedentedStringLit()
+              }
+              else {
+                // We have '' followed by something else
+                error(em"empty character literal")
+              }
+            }
+            else if isIdentifierStart(ch) then
               charLitOr { getIdentRest(); QUOTEID }
             else if isOperatorPart(ch) && ch != '\\' then
               charLitOr { getOperatorRest(); QUOTEID }
@@ -1253,6 +1265,160 @@ object Scanners {
         token = STRINGLIT
       }
       else error(em"unclosed string literal")
+    }
+
+    /** Parse a dedented string literal (triple single quotes)
+     *  Requirements:
+     *  - Must start with ''' followed by newline
+     *  - Must end with newline + whitespace + '''
+     *  - Removes first newline after opening delimiter
+     *  - Removes final newline and preceding whitespace before closing delimiter
+     *  - Strips indentation equal to closing delimiter indentation
+     *  - All lines must be empty or indented further than closing delimiter
+     *  - Supports extended delimiters (e.g., '''', ''''')
+     */
+    private def getDedentedStringLit(): Unit = {
+      // Count opening quotes (already consumed 3)
+      nextChar()
+      var quoteCount = 3
+      while (ch == '\'') {
+        quoteCount += 1
+        nextChar()
+      }
+
+      // Must be followed by a newline
+      if (ch != LF && ch != CR) {
+        error(em"dedented string literal must start with newline after opening quotes")
+        token = ERROR
+      } else {
+        // Skip the initial newline (CR LF or just LF)
+        if (ch == CR) nextRawChar()
+        if (ch == LF) nextRawChar()
+
+        // Collect all lines until we find the closing delimiter
+        val lines = scala.collection.mutable.ArrayBuffer[String]()
+        val lineIndents = scala.collection.mutable.ArrayBuffer[String]()
+        var currentLine = new StringBuilder
+        var currentIndent = new StringBuilder
+        var atLineStart = true
+        var closingIndent: String = null
+        var foundClosing = false
+
+        while (!foundClosing && ch != SU) {
+          if (atLineStart) {
+            // Collect indentation
+            currentIndent.clear()
+            while (ch == ' ' || ch == '\t') {
+              currentIndent.append(ch)
+              nextRawChar()
+            }
+
+            // Check if this might be the closing delimiter
+            if (ch == '\'') {
+              var endQuoteCount = 0
+              val savedOffset = charOffset
+              while (ch == '\'' && endQuoteCount < quoteCount + 1) {
+                endQuoteCount += 1
+                nextRawChar()
+              }
+
+              if (endQuoteCount == quoteCount && (ch == SU || ch == CR || ch == LF || ch == ' ' || ch == '\t' || ch == ';')) {
+                // Found closing delimiter
+                foundClosing = true
+                closingIndent = currentIndent.toString
+                // Consume any trailing whitespace/newlines after closing quotes
+                while (ch == ' ' || ch == '\t') nextChar()
+                if (ch == CR || ch == LF) nextChar()
+              } else {
+                // False alarm, these quotes are part of the content
+                // We need to restore and add them to current line
+                currentLine.append(currentIndent)
+                for (_ <- 0 until endQuoteCount) currentLine.append('\'')
+                atLineStart = false
+              }
+            } else {
+              atLineStart = false
+            }
+          }
+
+          if (!foundClosing && !atLineStart) {
+            // Regular content
+            if (ch == CR || ch == LF) {
+              // End of line
+              lineIndents += currentIndent.toString
+              lines += currentLine.toString
+              currentLine.clear()
+              currentIndent.clear()
+
+              // Normalize newlines to \n
+              if (ch == CR) nextRawChar()
+              if (ch == LF) nextRawChar()
+              atLineStart = true
+            } else {
+              currentLine.append(ch)
+              nextRawChar()
+            }
+          }
+        }
+
+        if (!foundClosing) {
+          incompleteInputError(em"unclosed dedented string literal")
+        } else if (closingIndent == null) {
+          error(em"internal error: closing indent not set")
+          token = ERROR
+        } else {
+          // Validate and dedent all lines
+          val dedentedLines = scala.collection.mutable.ArrayBuffer[String]()
+          val closingIndentLen = closingIndent.length
+          var hasSpaces = false
+          var hasTabs = false
+
+          for (indent <- closingIndent) {
+            if (indent == ' ') hasSpaces = true
+            if (indent == '\t') hasTabs = true
+          }
+
+          var hasError = false
+          for (i <- 0 until lines.length if !hasError) {
+            val line = lines(i)
+            val indent = lineIndents(i)
+
+            // Check for mixed tabs and spaces
+            var lineHasSpaces = false
+            var lineHasTabs = false
+            for (ch <- indent) {
+              if (ch == ' ') lineHasSpaces = true
+              if (ch == '\t') lineHasTabs = true
+            }
+
+            if ((hasSpaces && lineHasTabs) || (hasTabs && lineHasSpaces)) {
+              error(em"dedented string literal cannot mix tabs and spaces in indentation")
+              token = ERROR
+              hasError = true
+            } else if (line.isEmpty) {
+              // Empty lines are allowed
+              dedentedLines += ""
+            } else {
+              // Non-empty lines must be indented at least as much as closing delimiter
+              if (!indent.startsWith(closingIndent)) {
+                error(em"line in dedented string literal must be indented at least as much as the closing delimiter")
+                token = ERROR
+                hasError = true
+              } else {
+                // Remove the closing indentation from this line
+                dedentedLines += indent.substring(closingIndentLen) + line
+              }
+            }
+          }
+
+          if (!hasError) {
+            // Set the string value (join with \n)
+            strVal = dedentedLines.mkString("\n")
+            litBuf.clear()
+            token = STRINGLIT
+          }
+        }
+      }
     }
 
     private def getRawStringLit(): Unit =

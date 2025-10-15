@@ -1,0 +1,16 @@
+-- Error: tests/neg/dedented-string-literals.scala:5:36
+5 |  val noNewlineAfterOpen = '''content on same line // error
+  |                                    ^
+  |dedented string literal must start with newline after opening quotes
+-- Error: tests/neg/dedented-string-literals.scala:8:0
+8 |content
+  |^
+  |line in dedented string literal must be indented at least as much as the closing delimiter
+-- Error: tests/neg/dedented-string-literals.scala:14:0
+14 |  space line
+   |  ^
+   |dedented string literal cannot mix tabs and spaces in indentation
+-- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:19:0
+19 |  // error: missing closing quotes
+   |  ^^
+   |unclosed dedented string literal

@@ -1,0 +1,52 @@
+Basic:
+i am cow
+hear me moo
+
+With indent:
+i am cow
+hear me moo
+
+Empty:
+[]
+
+Single line:
+hello world
+
+Blank lines:
+line 1
+
+line 3
+
+Deep indent:
+deeply
+indented
+content
+
+Mixed indent:
+first level
+  second level
+    third level
+
+With triple quotes:
+'''
+i am cow
+'''
+
+Normalized newlines:
+Has only LF: true
+
+Special chars:
+!"#$%&()*+,-./:;<=>?@[\]^_`{|}~
+
+Unicode:
+Hello 世界
+
+Zero indent:
+content
+
+Precise:
+Length: 7
+Content: [ab
+cd]
+Chars: List(a, b,
+, c, d)
