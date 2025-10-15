@@ -374,7 +374,7 @@ object Scanners {
       case STRINGLIT =>
         currentRegion match {
           case InString(_, outer) => currentRegion = outer
-          case InDedentedString(outer) => currentRegion = outer
+          case InDedentedString(_, outer) => currentRegion = outer
           case _ =>
         }
       case _ =>
@@ -386,7 +386,9 @@ object Scanners {
         lastOffset = lastCharOffset
         currentRegion match
           case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
-          case InDedentedString(_) if lastToken != STRINGPART => fetchDedentedStringPart()
+          case InDedentedString(quoteCount, _) if lastToken != STRINGPART =>
+            offset = charOffset - 1
+            getDedentedStringPartWithDelimiter(quoteCount)
           case _ => fetchToken()
         if token == ERROR then adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
       else
@@ -997,10 +999,11 @@ object Scanners {
                 if (token == INTERPOLATIONID) {
                   // For interpolation, handle as string part
                   nextRawChar()
-                  getDedentedString(isInterpolated = true)
-                  currentRegion = InDedentedString(currentRegion)
+                  val quoteCount = getDedentedString(isInterpolated = true)
+                  currentRegion = InDedentedString(quoteCount, currentRegion)
                 } else {
                   getDedentedString(isInterpolated = false)
+                  // No need to store quoteCount for non-interpolated strings
                 }
               }
               else {
@@ -1295,8 +1298,9 @@ object Scanners {
      *  - All lines must be empty or indented further than closing delimiter
      *  - Supports extended delimiters (e.g., '''', ''''')
      *  @param isInterpolated If true, handles $ interpolation and returns STRINGPART tokens
+     *  @return The quote count (number of quotes in the delimiter) for storing in the region
      */
-    private def getDedentedString(isInterpolated: Boolean): Unit = {
+    private def getDedentedString(isInterpolated: Boolean): Int = {
       // For interpolated strings, we're already at the first character after '''
       // For non-interpolated, we need to consume the first character
       if (!isInterpolated) nextChar()
@@ -1312,7 +1316,7 @@ object Scanners {
       if (ch != LF && ch != CR) {
         error(em"dedented string literal must start with newline after opening quotes")
         token = ERROR
-        return
+        return 0
       }
 
       // Skip the initial newline (CR LF or just LF)
@@ -1322,6 +1326,7 @@ object Scanners {
       // For interpolated strings, check if we need to handle $ interpolation first
       if (isInterpolated) {
         getDedentedStringPartWithDelimiter(quoteCount)
+        quoteCount
       } else {
         // Collect all lines until we find the closing delimiter
         val lines = scala.collection.mutable.ArrayBuffer[String]()
@@ -1442,6 +1447,8 @@ object Scanners {
             token = STRINGLIT
           }
         }
+
+        quoteCount
       }
     }
 
@@ -1635,10 +1642,6 @@ object Scanners {
       getStringPart(multiLine)
     }
 
-    private def fetchDedentedStringPart() = {
-      offset = charOffset - 1
-      getDedentedString(isInterpolated = true)
-    }
 
     private def isTripleQuote(): Boolean =
       if (ch == '"') {
@@ -1958,7 +1961,7 @@ object Scanners {
   end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region(RBRACE)
-  case class InDedentedString(outer: Region) extends Region(RBRACE)
+  case class InDedentedString(quoteCount: Int, outer: Region) extends Region(RBRACE)
   case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
   case class InBraces(outer: Region) extends Region(RBRACE)
   case class InCase(outer: Region) extends Region(OUTDENT)
