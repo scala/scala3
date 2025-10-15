@@ -1288,18 +1288,6 @@ object Scanners {
       else error(em"unclosed string literal")
     }
 
-    /** Parse a dedented string literal (triple single quotes)
-     *  Requirements:
-     *  - Must start with ''' followed by newline
-     *  - Must end with newline + whitespace + '''
-     *  - Removes first newline after opening delimiter
-     *  - Removes final newline and preceding whitespace before closing delimiter
-     *  - Strips indentation equal to closing delimiter indentation
-     *  - All lines must be empty or indented further than closing delimiter
-     *  - Supports extended delimiters (e.g., '''', ''''')
-     *  @param isInterpolated If true, handles $ interpolation and returns STRINGPART tokens
-     *  @return The quote count (number of quotes in the delimiter) for storing in the region
-     */
     private def getDedentedString(isInterpolated: Boolean): Int = {
       // For interpolated strings, we're already at the first character after '''
       // For non-interpolated, we need to consume the first character

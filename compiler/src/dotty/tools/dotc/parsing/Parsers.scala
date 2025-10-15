@@ -1363,7 +1363,9 @@ object Parsers {
                              closingIndent: String,
                              isFirstPart: Boolean,
                              isLastPart: Boolean): String = {
-
+      // Just explicitly do nothing when the `closingIndent` is empty. This is easier than trying
+      // to ensure that handling of the  various `linesIterator`/`linesWithSeparators`/etc.
+      // APIs behaves predictably in the presence of empty leading/trailing lines
       if (closingIndent == "") str
       else {
         // Check for mixed tabs and spaces in closing indent
