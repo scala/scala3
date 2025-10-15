@@ -1446,10 +1446,7 @@ object Parsers {
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset == in.offset.
      */
-    def literal(negOffset: Int = in.offset,
-                inPattern: Boolean = false,
-                inTypeOrSingleton: Boolean = false,
-                inStringInterpolation: Boolean = false): Tree = {
+    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal)

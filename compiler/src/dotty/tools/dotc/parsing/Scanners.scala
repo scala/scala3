@@ -1496,7 +1496,6 @@ object Scanners {
       getStringPart(multiLine)
     }
 
-
     private def isTripleQuote(): Boolean =
       if (ch == '"') {
         nextRawChar()
