@@ -14,3 +14,12 @@
 19 |  val unclosed = '''
    |                 ^
    |unclosed dedented string literal
+-- [E040] Syntax Error: tests/neg/dedented-string-literals.scala:23:35
+23 |  val nonWhitespaceBeforeClosing = '''
+   |                                   ^
+   |unclosed dedented string literal
+-- Error: tests/neg/dedented-string-literals.scala:39:4
+39 |    onlyAtCompileTime // error
+   |    ^^^^^^^^^^^^^^^^^
+   |This method should only be used at compile time
+   |Do not call at runtime

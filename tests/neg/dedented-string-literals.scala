@@ -18,4 +18,24 @@ content
   // Error: Unclosed literal
   val unclosed = '''
 some content
+
+  // Error: Non-whitespace before closing delimiter
+  val nonWhitespaceBeforeClosing = '''
+  content here
+  text'''
+}
+
+// Test @compileTimeOnly with dedented string
+object CompileTimeOnlyTest {
+  import scala.annotation.compileTimeOnly
+
+  @compileTimeOnly('''
+  This method should only be used at compile time
+  Do not call at runtime
+  ''')
+  def onlyAtCompileTime: Unit = ()
+
+  def test(): Unit = {
+    onlyAtCompileTime // error
+  }
 }

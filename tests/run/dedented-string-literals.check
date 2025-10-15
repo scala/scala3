@@ -32,6 +32,11 @@ With triple quotes:
 i am cow
 '''
 
+Extended 5 quotes:
+''''
+content with four quotes
+''''
+
 Normalized newlines:
 Has only LF: true
 
@@ -40,6 +45,23 @@ Special chars:
 
 Unicode:
 Hello 世界
+
+With tabs:
+	tab indented
+	content here
+
+Empty lines anywhere:
+[
+content
+
+more content
+
+]
+
+With quotes:
+"double quotes"
+'single quote'
+''
 
 Zero indent:
 content
@@ -50,3 +72,51 @@ Content: [  ab
   cd]
 Chars: List( ,  , a, b,
 ,  ,  , c, d)
+
+Interpolated:
+Hello Alice
+You are 30 years old
+
+Formatted:
+Value: 00042
+Done
+
+Pattern matching:
+Pattern result: matched basic
+
+Interpolated pattern:
+Interpolated pattern result: matched greeting
+
+Pattern matching (two lines):
+Two line pattern result: matched two lines
+
+Interpolated pattern (two lines):
+Two line interpolated result: matched two line greeting
+
+In function:
+function content
+more content
+
+In class:
+class member
+content
+
+In list:
+Item: [first]
+Item: [second]
+Item: [third]
+
+Nested in expressions:
+prefixmiddlesuffix
+
+Type ascription:
+Value: [  first line
+    indented line
+  third line]
+Type matches: true
+
+valueOf test:
+Value: [  alpha
+    beta
+  gamma]
+Type matches: true
