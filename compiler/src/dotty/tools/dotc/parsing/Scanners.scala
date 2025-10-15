@@ -1322,13 +1322,10 @@ object Scanners {
                 nextRawChar()
               }
 
-              if (endQuoteCount == quoteCount && (ch == SU || ch == CR || ch == LF || ch == ' ' || ch == '\t' || ch == ';')) {
-                // Found closing delimiter
+              if (endQuoteCount == quoteCount && ch != '\'') {
+                // Found closing delimiter (not followed by another quote)
                 foundClosing = true
                 closingIndent = currentIndent.toString
-                // Consume any trailing whitespace/newlines after closing quotes
-                while (ch == ' ' || ch == '\t') nextChar()
-                if (ch == CR || ch == LF) nextChar()
               } else {
                 // False alarm, these quotes are part of the content
                 // We need to restore and add them to current line

@@ -3,8 +3,8 @@ i am cow
 hear me moo
 
 With indent:
-i am cow
-hear me moo
+  i am cow
+  hear me moo
 
 Empty:
 []
@@ -18,14 +18,14 @@ line 1
 line 3
 
 Deep indent:
-deeply
-indented
-content
+      deeply
+      indented
+      content
 
 Mixed indent:
-first level
-  second level
-    third level
+  first level
+    second level
+      third level
 
 With triple quotes:
 '''
@@ -45,8 +45,8 @@ Zero indent:
 content
 
 Precise:
-Length: 7
-Content: [ab
-cd]
-Chars: List(a, b,
-, c, d)
+Length: 9
+Content: [  ab
+  cd]
+Chars: List( ,  , a, b,
+,  ,  , c, d)
