@@ -1365,7 +1365,10 @@ object Parsers {
       )
 
       val closingIndent = str.substring(lastNewlineIdx + 1)
-
+      assert(
+        closingIndent.forall(_.isWhitespace),
+        "Last line of a dedented string literal must contain only whitespace followed by the closing delimiter"
+      )
       // Split into lines
       val lines = str.linesIterator.toSeq
 
