@@ -1349,10 +1349,12 @@ object Scanners {
           foundQuotes += 1
           nextRawChar()
         }
+        charOffset -= 1
 
         if (foundQuotes == quoteCount && ch != '\'') {
           // Found closing delimiter - exact match and not followed by another quote
           setStrVal()
+          nextChar()  // Switch from raw mode to normal mode
           token = STRINGLIT
         } else {
           // Not the closing delimiter, add the quotes we found to content

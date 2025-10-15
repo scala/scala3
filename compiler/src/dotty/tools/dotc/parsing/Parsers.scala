@@ -1349,6 +1349,46 @@ object Parsers {
       else
         literal(inTypeOrSingleton = true)
 
+    /** Dedent a string literal by removing common leading whitespace.
+     *  The amount of whitespace to remove is determined by the indentation
+     *  of the last line (which should contain only whitespace before the
+     *  closing delimiter).
+     */
+    private def dedentString(str: String): String = {
+      if (str.isEmpty) return str
+
+      // Find the last line (should be just whitespace before closing delimiter)
+      val lastNewlineIdx = str.lastIndexOf('\n')
+      if (lastNewlineIdx < 0) {
+        // No newlines, return as-is (shouldn't happen for valid dedented strings)
+        return str
+      }
+
+      // Extract the indentation from the last line
+      val closingIndent = str.substring(lastNewlineIdx + 1)
+
+      // Split into lines
+      val lines = str.split("\n", -1) // -1 to keep trailing empty strings
+
+      // Process all lines except the last (which is just the closing indentation)
+      val dedented = lines.dropRight(1).map { line =>
+        if (line.startsWith(closingIndent)) {
+          line.substring(closingIndent.length)
+        } else if (line.trim.isEmpty) {
+          // Empty or whitespace-only lines
+          ""
+        } else {
+          // Line doesn't start with the closing indentation, keep as-is
+          line
+        }
+      }
+
+      // Drop the first line if it's empty (the newline after opening delimiter)
+      val result = if (dedented.headOption.contains("")) dedented.drop(1) else dedented
+
+      result.mkString("\n")
+    }
+
     /** Literal           ::=  SimpleLiteral
      *                      |  processedStringLiteral
      *                      |  symbolLiteral
@@ -1377,7 +1417,15 @@ object Parsers {
             case FLOATLIT                      => floatFromDigits(digits)
             case DOUBLELIT | DECILIT | EXPOLIT => doubleFromDigits(digits)
             case CHARLIT                       => in.strVal.head
-            case STRINGLIT | STRINGPART        => in.strVal
+            case STRINGLIT | STRINGPART        =>
+              // Check if this is a dedented string (non-interpolated)
+              // For non-interpolated dedented strings, check if the token starts with '''
+              val str = in.strVal
+              if (token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
+                dedentString(str)
+              } else {
+                str
+              }
             case TRUE                          => true
             case FALSE                         => false
             case NULL                          => null
@@ -1389,6 +1437,15 @@ object Parsers {
             case ex: FromDigitsException => syntaxErrorOrIncomplete(ex.getMessage.toMessage)
           }
         Literal(Constant(value))
+      }
+
+      /** Check if a string literal at the given offset is a dedented string */
+      def isDedentedStringLiteral(offset: Int): Boolean = {
+        val buf = in.buf
+        offset + 2 < buf.length &&
+          buf(offset) == '\'' &&
+          buf(offset + 1) == '\'' &&
+          buf(offset + 2) == '\''
       }
 
       if (inStringInterpolation) {
@@ -1447,38 +1504,145 @@ object Parsers {
         in.charOffset + 1 < in.buf.length &&
         in.buf(in.charOffset) == '"' &&
         in.buf(in.charOffset + 1) == '"'
-      in.nextToken()
-      def nextSegment(literalOffset: Offset) =
-        segmentBuf += Thicket(
-            literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
-            atSpan(in.offset) {
-              if (in.token == IDENTIFIER)
-                termIdent()
-              else if (in.token == USCORE && inPattern) {
-                in.nextToken()
-                Ident(nme.WILDCARD)
-              }
-              else if (in.token == THIS) {
-                in.nextToken()
-                This(EmptyTypeIdent)
-              }
-              else if (in.token == LBRACE)
-                if (inPattern) Block(Nil, inBraces(pattern()))
-                else expr()
-              else {
-                report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-                EmptyTree
-              }
-            })
+      val isDedented =
+        in.charOffset + 2 < in.buf.length &&
+        in.buf(in.charOffset) == '\'' &&
+        in.buf(in.charOffset + 1) == '\'' &&
+        in.buf(in.charOffset + 2) == '\''
 
-      var offsetCorrection = if isTripleQuoted then 3 else 1
-      while (in.token == STRINGPART)
-        nextSegment(in.offset + offsetCorrection)
-        offsetCorrection = 0
-      if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+      in.nextToken()
+
+      // For dedented strings, we need to collect all string parts first,
+      // then dedent them all based on the closing indentation
+      if (isDedented) {
+        // Collect all string parts and their offsets
+        val stringParts = new ListBuffer[(String, Offset)]
+        val interpolatedExprs = new ListBuffer[Tree]
+
+        var offsetCorrection = 3 // triple single quotes
+        while (in.token == STRINGPART) {
+          val literalOffset = in.offset + offsetCorrection
+          stringParts += ((in.strVal, literalOffset))
+          offsetCorrection = 0
+          in.nextToken()
+
+          // Collect the interpolated expression
+          interpolatedExprs += atSpan(in.offset) {
+            if (in.token == IDENTIFIER)
+              termIdent()
+            else if (in.token == USCORE && inPattern) {
+              in.nextToken()
+              Ident(nme.WILDCARD)
+            }
+            else if (in.token == THIS) {
+              in.nextToken()
+              This(EmptyTypeIdent)
+            }
+            else if (in.token == LBRACE)
+              if (inPattern) Block(Nil, inBraces(pattern()))
+              else expr()
+            else {
+              report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+              EmptyTree
+            }
+          }
+        }
+
+        // Get the final STRINGLIT
+        val finalLiteral = if (in.token == STRINGLIT) {
+          val s = in.strVal
+          val off = in.offset + offsetCorrection
+          stringParts += ((s, off))
+          in.nextToken()
+          true
+        } else false
+
+        // Now dedent all string parts based on the last one's closing indentation
+        if (stringParts.nonEmpty) {
+          val lastPart = stringParts.last._1
+          val closingIndent = extractClosingIndent(lastPart)
+
+          // Dedent all parts
+          val dedentedParts = stringParts.map { case (str, offset) =>
+            (dedentStringPart(str, closingIndent), offset)
+          }
+
+          // Build the segments with dedented strings
+          for (i <- 0 until dedentedParts.size - 1) {
+            val (dedentedStr, offset) = dedentedParts(i)
+            segmentBuf += Thicket(
+              atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) },
+              interpolatedExprs(i)
+            )
+          }
+
+          // Add the final literal if present
+          if (finalLiteral) {
+            val (dedentedStr, offset) = dedentedParts.last
+            segmentBuf += atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) }
+          }
+        }
+      } else {
+        // Non-dedented string: use original logic
+        def nextSegment(literalOffset: Offset) =
+          segmentBuf += Thicket(
+              literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
+              atSpan(in.offset) {
+                if (in.token == IDENTIFIER)
+                  termIdent()
+                else if (in.token == USCORE && inPattern) {
+                  in.nextToken()
+                  Ident(nme.WILDCARD)
+                }
+                else if (in.token == THIS) {
+                  in.nextToken()
+                  This(EmptyTypeIdent)
+                }
+                else if (in.token == LBRACE)
+                  if (inPattern) Block(Nil, inBraces(pattern()))
+                  else expr()
+                else {
+                  report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+                  EmptyTree
+                }
+              })
+
+        var offsetCorrection = if isTripleQuoted then 3 else 1
+        while (in.token == STRINGPART)
+          nextSegment(in.offset + offsetCorrection)
+          offsetCorrection = 0
+        if (in.token == STRINGLIT)
+          segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+      }
 
       InterpolatedString(interpolator, segmentBuf.toList)
+    }
+
+    /** Extract the closing indentation from the last line of a string */
+    private def extractClosingIndent(str: String): String = {
+      val lastNewlineIdx = str.lastIndexOf('\n')
+      if (lastNewlineIdx < 0) "" else str.substring(lastNewlineIdx + 1)
+    }
+
+    /** Dedent a string part by removing the specified indentation from each line */
+    private def dedentStringPart(str: String, closingIndent: String): String = {
+      if (str.isEmpty || closingIndent.isEmpty) return str
+
+      val lines = str.split("\n", -1) // -1 to keep trailing empty strings
+
+      val dedented = lines.map { line =>
+        if (line.startsWith(closingIndent)) {
+          line.substring(closingIndent.length)
+        } else if (line.trim.isEmpty) {
+          // Empty or whitespace-only lines
+          ""
+        } else {
+          // Line doesn't start with the closing indentation, keep as-is
+          line
+        }
+      }
+
+      dedented.mkString("\n")
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
