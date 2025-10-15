@@ -1349,6 +1349,8 @@ object Scanners {
           foundQuotes += 1
           nextRawChar()
         }
+        // The while-loop above steps forward to the first non-`'` character,
+        // so we need to backtrack 1 char to avoid consuming it
         charOffset -= 1
 
         if (foundQuotes == quoteCount && ch != '\'') {
@@ -1407,8 +1409,7 @@ object Scanners {
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && ch == SU
-        if (isUnclosedLiteral)
-          incompleteInputError(em"unclosed dedented string literal")
+        if (isUnclosedLiteral) incompleteInputError(em"unclosed dedented string literal")
         else {
           putChar(ch)
           nextRawChar()

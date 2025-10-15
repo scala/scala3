@@ -1359,28 +1359,21 @@ object Parsers {
 
       // Find the last line (should be just whitespace before closing delimiter)
       val lastNewlineIdx = str.lastIndexOf('\n')
-      if (lastNewlineIdx < 0) {
-        // No newlines, return as-is (shouldn't happen for valid dedented strings)
-        return str
-      }
+      assert(
+        lastNewlineIdx >= 0,
+        "Dedented string literal must contain at least two newlines"
+      )
 
-      // Extract the indentation from the last line
       val closingIndent = str.substring(lastNewlineIdx + 1)
 
       // Split into lines
-      val lines = str.split("\n", -1) // -1 to keep trailing empty strings
+      val lines = str.linesIterator.toSeq
 
       // Process all lines except the last (which is just the closing indentation)
       val dedented = lines.dropRight(1).map { line =>
-        if (line.startsWith(closingIndent)) {
-          line.substring(closingIndent.length)
-        } else if (line.trim.isEmpty) {
-          // Empty or whitespace-only lines
-          ""
-        } else {
-          // Line doesn't start with the closing indentation, keep as-is
-          line
-        }
+        if (line.startsWith(closingIndent)) line.substring(closingIndent.length)
+        else if (line.trim.isEmpty) "" // Empty or whitespace-only lines
+        else ??? // should never happen
       }
 
       // Drop the first line if it's empty (the newline after opening delimiter)
@@ -1397,7 +1390,10 @@ object Parsers {
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset == in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+    def literal(negOffset: Int = in.offset,
+                inPattern: Boolean = false,
+                inTypeOrSingleton: Boolean = false,
+                inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal)
@@ -1423,9 +1419,7 @@ object Parsers {
               val str = in.strVal
               if (token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(negOffset)) {
                 dedentString(str)
-              } else {
-                str
-              }
+              } else str
             case TRUE                          => true
             case FALSE                         => false
             case NULL                          => null
