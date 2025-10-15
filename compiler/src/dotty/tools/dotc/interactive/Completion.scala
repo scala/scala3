@@ -35,6 +35,8 @@ import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.TypeOps
 import dotty.tools.dotc.core.StdNames
 
+import java.util.logging.Logger
+
 /**
  * One of the results of a completion query.
  *
@@ -47,6 +49,8 @@ import dotty.tools.dotc.core.StdNames
 case class Completion(label: String, description: String, symbols: List[Symbol])
 
 object Completion:
+
+  private val logger = Logger.getLogger(this.getClass.getName)
 
   def scopeContext(pos: SourcePosition)(using Context): CompletionResult =
     val tpdPath = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
@@ -601,12 +605,19 @@ object Completion:
         case _: MethodOrPoly => tpe
         case _ => ExprType(tpe)
 
+      // Try added due to https://github.com/scalameta/metals/issues/7872
       def tryApplyingReceiverToExtension(termRef: TermRef): Option[SingleDenotation] =
-        ctx.typer.tryApplyingExtensionMethod(termRef, qual)
-          .map { tree =>
-            val tpe = asDefLikeType(tree.typeOpt.dealias)
-            termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
-          }
+        try
+          ctx.typer.tryApplyingExtensionMethod(termRef, qual)
+            .map { tree =>
+             val tpe = asDefLikeType(tree.typeOpt.dealias)
+              termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
+            }
+        catch case NonFatal(ex) =>
+          logger.warning(
+            s"Exception when trying to apply extension method:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
+          )
+          None
 
       def extractMemberExtensionMethods(types: Seq[Type]): Seq[(TermRef, TermName)] =
         object DenotWithMatchingName:
@@ -704,13 +715,17 @@ object Completion:
      * @param qual The argument to which the implicit conversion should be applied.
      * @return The set of types after `qual` implicit conversion.
      */
-    private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
+    private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = try {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span, Set.empty).allImplicits
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
-    }
+    } catch case NonFatal(ex) =>
+      logger.warning(
+        s"Exception when searching for implicit conversions:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
+      )
+      Set.empty
 
     /** Filter for names that should appear when looking for completions. */
     private object completionsFilter extends NameFilter:
