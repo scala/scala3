@@ -1554,105 +1554,71 @@ object Parsers {
         in.buf(in.charOffset + 1) == '\''
       in.nextToken()
 
-      if (isDedented) {
-        // Collect all string parts and their offsets
-        val stringParts = new ListBuffer[(String, Offset)]
-        val interpolatedExprs = new ListBuffer[Tree]
+      // Collect all string parts and their offsets
+      val stringParts = new ListBuffer[(String, Offset)]
+      val interpolatedExprs = new ListBuffer[Tree]
 
-        var offsetCorrection = 3 // triple single quotes
-        while (in.token == STRINGPART) {
-          val literalOffset = in.offset + offsetCorrection
-          stringParts += ((in.strVal, literalOffset))
-          offsetCorrection = 0
-          in.nextToken()
+      var offsetCorrection = if (isDedented) 3 else if (isTripleQuoted) 3 else 1
+      while (in.token == STRINGPART) {
+        val literalOffset = in.offset + offsetCorrection
+        stringParts += ((in.strVal, literalOffset))
+        offsetCorrection = 0
+        in.nextToken()
 
-          // Collect the interpolated expression
-          interpolatedExprs += atSpan(in.offset) {
-            if (in.token == IDENTIFIER)
-              termIdent()
-            else if (in.token == USCORE && inPattern) {
-              in.nextToken()
-              Ident(nme.WILDCARD)
-            }
-            else if (in.token == THIS) {
-              in.nextToken()
-              This(EmptyTypeIdent)
-            }
-            else if (in.token == LBRACE)
-              if (inPattern) Block(Nil, inBraces(pattern()))
-              else expr()
-            else {
-              report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-              EmptyTree
-            }
+        // Collect the interpolated expression
+        interpolatedExprs += atSpan(in.offset) {
+          if (in.token == IDENTIFIER)
+            termIdent()
+          else if (in.token == USCORE && inPattern) {
+            in.nextToken()
+            Ident(nme.WILDCARD)
+          }
+          else if (in.token == THIS) {
+            in.nextToken()
+            This(EmptyTypeIdent)
+          }
+          else if (in.token == LBRACE)
+            if (inPattern) Block(Nil, inBraces(pattern()))
+            else expr()
+          else {
+            report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+            EmptyTree
           }
         }
+      }
 
-        // Get the final STRINGLIT
-        val finalLiteral = if (in.token == STRINGLIT) {
-          val s = in.strVal
-          val off = in.offset + offsetCorrection
-          stringParts += ((s, off))
-          in.nextToken()
-          true
-        } else false
+      // Get the final STRINGLIT
+      val finalLiteral = if (in.token == STRINGLIT) {
+        val s = in.strVal
+        val off = in.offset + offsetCorrection
+        stringParts += ((s, off))
+        in.nextToken()
+        true
+      } else false
 
-        // Now dedent all string parts based on the last one's closing indentation
-        if (stringParts.nonEmpty) {
+      val dedentedParts =
+        if (!isDedented) stringParts
+        else {
           val lastPart = stringParts.last._1
           val closingIndent = extractClosingIndent(lastPart, in.offset)
-
-          // Dedent all parts
-          val dedentedParts = stringParts.zipWithIndex.map { case ((str, offset), index) =>
-            (dedentString(str, in.offset, closingIndent, index == 0, index == stringParts.length-1), offset)
-          }
-
-          // Build the segments with dedented strings
-          for (i <- 0 until dedentedParts.size - 1) {
-            val (dedentedStr, offset) = dedentedParts(i)
-            segmentBuf += Thicket(
-              atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) },
-              interpolatedExprs(i)
-            )
-          }
-
-          // Add the final literal if present
-          if (finalLiteral) {
-            val (dedentedStr, offset) = dedentedParts.last
-            segmentBuf += atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) }
+          stringParts.zipWithIndex.map { case ((str, offset), index) =>
+            (dedentString(str, in.offset, closingIndent, index == 0, index == stringParts.length - 1), offset)
           }
         }
-      } else {
-        // Non-dedented string: use original logic
-        def nextSegment(literalOffset: Offset) =
-          segmentBuf += Thicket(
-              literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
-              atSpan(in.offset) {
-                if (in.token == IDENTIFIER)
-                  termIdent()
-                else if (in.token == USCORE && inPattern) {
-                  in.nextToken()
-                  Ident(nme.WILDCARD)
-                }
-                else if (in.token == THIS) {
-                  in.nextToken()
-                  This(EmptyTypeIdent)
-                }
-                else if (in.token == LBRACE)
-                  if (inPattern) Block(Nil, inBraces(pattern()))
-                  else expr()
-                else {
-                  report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-                  EmptyTree
-                }
-              })
 
-        var offsetCorrection = if isTripleQuoted then 3 else 1
-        while (in.token == STRINGPART)
-          nextSegment(in.offset + offsetCorrection)
-          offsetCorrection = 0
-        if (in.token == STRINGLIT)
-          segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+      // Build the segments with dedented strings
+      for (i <- 0 until dedentedParts.size - 1) {
+        val (dedentedStr, offset) = dedentedParts(i)
+        segmentBuf += Thicket(
+          atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) },
+          interpolatedExprs(i)
+        )
+      }
+
+      // Add the final literal if present
+      if (finalLiteral) {
+        val (dedentedStr, offset) = dedentedParts.last
+        segmentBuf += atSpan(offset, offset, offset + dedentedStr.length) { Literal(Constant(dedentedStr)) }
       }
 
       InterpolatedString(interpolator, segmentBuf.toList)
