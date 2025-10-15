@@ -81,6 +81,10 @@ Interpolated:
 Hello Alice
 You are 30 years old
 
+Escaped Interpolated:
+Hello $name
+You are $age years old
+
 Formatted:
 Value: 00042
 Done

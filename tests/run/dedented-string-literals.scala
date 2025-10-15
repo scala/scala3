@@ -161,6 +161,14 @@ hear me moo
     println(interpolated)
     println()
 
+    val escapedInterpolated = s'''
+    Hello $$name
+    You are $$age years old
+    '''
+    println("Escaped Interpolated:")
+    println(escapedInterpolated)
+    println()
+
     val value = 42
     val formatted = f'''
     Value: $value%05d
