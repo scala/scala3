@@ -1313,17 +1313,6 @@ object Scanners {
       quoteCount
     }
 
-    /** Parse dedented string content, with optional $ interpolation handling.
-     *  This collects content until hitting $ (if interpolated) or closing delimiter.
-     *  Respects the quote count for extended delimiters.
-     *
-     *  @param quoteCount The number of quotes in the delimiter (3 for ''', 4 for '''', etc.)
-     *  @param isInterpolated If true, handles $ expressions and returns STRINGPART tokens.
-     *                        If false, treats $ as regular content and returns STRINGLIT.
-     *
-     *  Note: Interpolated strings do NOT dedent during parsing - dedenting must be handled
-     *  at runtime after all parts are assembled. Non-interpolated strings dedent after collection.
-     */
     @tailrec private def getDedentedStringPartWithDelimiter(quoteCount: Int, isInterpolated: Boolean): Unit =
       // Check for closing delimiter with correct quote count
       if (ch == '\'') {
