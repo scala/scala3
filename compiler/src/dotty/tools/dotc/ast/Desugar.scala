@@ -1749,6 +1749,10 @@ object desugar {
         report.error(
             em"$name cannot be used as the name of a tuple element because it is a regular tuple selector",
             arg.srcPos)
+      if name == nme.apply then
+        report.error(
+            em"$name cannot be used as the name of a tuple element",
+            arg.srcPos)
 
     elems match
     case elem :: elems1 =>

@@ -1,0 +1,8 @@
+-- Error: tests/neg/i24021.scala:2:3 -----------------------------------------------------------------------------------
+2 |  (apply = () => 1, k2 = 2).k2 // error
+  |   ^^^^^^^^^^^^^^^
+  |   apply cannot be used as the name of a tuple element
+-- Error: tests/neg/i24021.scala:3:3 -----------------------------------------------------------------------------------
+3 |  (apply = () => 1)() // error
+  |   ^^^^^^^^^^^^^^^
+  |   apply cannot be used as the name of a tuple element

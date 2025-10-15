@@ -849,11 +849,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes(true)
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
       if nameIdx >= 0 && sourceVersion.enablesNamedTuples then
-        typed(
-          untpd.Apply(
-            untpd.Select(untpd.TypedSplice(qual), nme.apply),
-            untpd.Literal(Constant(nameIdx))),
-          pt)
+        if selName == nme.apply then
+          EmptyTree
+        else
+          typed(
+            untpd.Apply(
+              untpd.Select(untpd.TypedSplice(qual), nme.apply),
+              untpd.Literal(Constant(nameIdx))),
+            pt)
       else EmptyTree
 
     // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
