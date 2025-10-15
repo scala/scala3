@@ -962,9 +962,6 @@ object SourceCode {
 
     }
 
-    inline private val qc  = "\'"
-    inline private val qSc = "\""
-
     def printConstant(const: Constant): this.type = const match {
       case UnitConstant() => this += highlightLiteral("()")
       case NullConstant() => this += highlightLiteral("null")
@@ -975,8 +972,8 @@ object SourceCode {
       case LongConstant(v) => this += highlightLiteral(v.toString + "L")
       case FloatConstant(v) => this += highlightLiteral(v.toString + "f")
       case DoubleConstant(v) => this += highlightLiteral(v.toString)
-      case CharConstant(v) => this += highlightString(escapedChar(v))
-      case StringConstant(v) => this += highlightString(escapedString(v))
+      case CharConstant(v) => this += highlightString(Chars.escapedChar(v))
+      case StringConstant(v) => this += highlightString(Chars.escapedString(v, quoted = true))
       case ClassOfConstant(v) =>
         this += "classOf"
         inSquare(printType(v))
@@ -1449,62 +1446,6 @@ object SourceCode {
     private def +=(x: Double): this.type = { sb.append(x); this }
     private def +=(x: Char): this.type = { sb.append(x); this }
     private def +=(x: String): this.type = { sb.append(x); this }
-
-    private def escapedChar(ch: Char): String =
-      if requiresFormat(ch) then
-        val b = StringBuilder().append(qc)
-        escapedChar(b, ch)
-        b.append(qc).toString
-      else
-        qc + ch + qc
-
-    private def escapedChar(b: StringBuilder, c: Char): Unit =
-      def quadNibble(b: StringBuilder, x: Int, i: Int): Unit =
-        if i < 4 then
-          quadNibble(b, x >> 4, i + 1)
-          val n = x & 0xF
-          val c = if (n < 10) '0' + n else 'a' + (n - 10)
-          b.append(c.toChar)
-      val replace = (c: @switch) match
-        case '\b' => "\\b"
-        case '\t' => "\\t"
-        case '\n' => "\\n"
-        case '\f' => "\\f"
-        case '\r' => "\\r"
-        case '"'  => "\\\""
-        case '\'' => "\\\'"
-        case '\\' => "\\\\"
-        case c =>
-          if c.isControl then
-            b.append("\\u")
-            quadNibble(b, c.toInt, 0)
-          else
-            b.append(c)
-          return
-      b.append(replace)
-
-    private def requiresFormat(c: Char): Boolean = (c: @switch) match
-      case '\b' | '\t' | '\n' | '\f' | '\r' | '"' | '\'' | '\\' => true
-      case c => c.isControl
-
-    private def escapedString(text: String): String =
-      def mustBuild: Boolean =
-        var i = 0
-        while i < text.length do
-          if requiresFormat(text.charAt(i)) then return true
-          i += 1
-        false
-      if mustBuild then
-        val b = StringBuilder(text.length + 16)
-        b.append(qSc)
-        var i = 0
-        while i < text.length do
-          escapedChar(b, text.charAt(i))
-          i += 1
-        b.append(qSc)
-        b.toString
-      else
-        qSc + text + qSc
 
     private val names = mutable.Map.empty[Symbol, String]
     private val namesIndex = mutable.Map.empty[String, Int]
