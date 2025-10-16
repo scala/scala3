@@ -74,4 +74,4 @@ Additionally, this extension changes the way `for`-comprehensions are desugared.
       List(1, 2, 3)
       ```
 
-For more details on the desugaring scheme see the comment in [`Desugar.scala#makeFor`](https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/ast/Desugar.scala#L1928).
+For more details on the desugaring scheme see the comment in [`Desugar.scala#makeFor`](https://github.com/scala/scala3/blob/f7470073902d810911bdfb4b4cf905a4716b9bde/compiler/src/dotty/tools/dotc/ast/Desugar.scala#L2091).
