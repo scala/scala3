@@ -850,11 +850,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes(true)
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
       if nameIdx >= 0 && sourceVersion.enablesNamedTuples then
-        typed(
-          untpd.Apply(
-            untpd.Select(untpd.TypedSplice(qual), nme.apply),
-            untpd.Literal(Constant(nameIdx))),
-          pt)
+        if namedTupleElems.forall(_._1 != nme.apply) then
+          typed(
+            untpd.Apply(
+              untpd.Select(untpd.TypedSplice(qual), nme.apply),
+              untpd.Literal(Constant(nameIdx))),
+            pt)
+        else
+          report.error(
+            em"""Named tuples that define an `apply` field do not allow field selection.
+                |The `apply` field should be renamed to something else.""",
+            tree0.srcPos)
+          EmptyTree
       else EmptyTree
 
     // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
