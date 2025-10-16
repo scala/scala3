@@ -2230,12 +2230,71 @@ trait Applications extends Compatibility {
     }
   }
 
+  /** Overloadoing Priority Schemes, changing in `scala-3.7`.
+   *
+   *  Old Scheme, until 3.7:
+   *  - First, determines the _candidates_ (subset of the alternatives) by:
+   *    + looking at the first paramater clause
+   *  - Second, determine the best candidate by:
+   *    + doing narrowMostSpecific on the first argument list;
+   *    + if still ambigous and there is another parameter clause, then
+   *      restarts narrowMostSpecific by mapping the problem onto the next parameter clause,
+   *      but still considering all candidates.
+   *
+   *  New Scheme, from 3.7
+   *  - First, determines the candidates by:
+   *    + looking at first paramater clause;
+   *    + if still no determined and there is another parameter clause, then
+   *      looks at the next argument lists to narrow the candidates (not restarting from alts).
+   *      If that finds no alternative is applicable, fallback to the previous iteration
+   *      (see comment in narrowByNextParamClause for details).
+   *  - Second, determine the best candidate by, restoring all parameter clauses, and:
+   *    + doing narrowMostSpecific on the first argument list;
+   *    + if still ambigous and there is another parameter clause, then
+   *      continue narrowMostSpecific by mapping the problem onto the next parameter clause,
+   *      but only considering the alternatives found until now.
+   */
+  enum ResolveScheme:
+    case Old
+    case New
+    def isNewPriority: Boolean = this == New
+
+  /** Resolve overloaded alternative `alts`, given expected type `pt`. Determines the current
+   *  priority scheme and emits warnings for changes in resolution in migration version.
+   */
+  def resolveOverloaded(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
+    record("resolveOverloaded")
+    lazy val oldRes = resolveOverloaded(resolveOverloaded1(ResolveScheme.Old))(alts, pt)
+    lazy val newRes = resolveOverloaded(resolveOverloaded1(ResolveScheme.New))(alts, pt)
+
+    val sv = Feature.sourceVersion
+    val isNewPriorityVersion = sv.isAtLeast(SourceVersion.`3.7`)
+    val isWarnPriorityChangeVersion = sv == SourceVersion.`3.7-migration`
+
+    def doWarn(oldChoice: String, newChoice: String): Unit = report.warning(
+      em"""Overloading resolution for ${err.expectedTypeStr(pt)} between alternatives
+          | ${alts map (_.info)}%\n %
+          |has changed.
+          |Previous choice          : $oldChoice
+          |New choice from Scala 3.7: $newChoice""", srcPos)
+
+    if isWarnPriorityChangeVersion then (oldRes, newRes) match
+      case (oldAlt :: Nil, newAlt :: Nil) if oldAlt != newAlt => doWarn(oldAlt.info.show, newAlt.info.show)
+      case (oldAlt :: Nil, Nil) => doWarn(oldAlt.info.show, "none")
+      case (Nil, newAlt :: Nil) => doWarn("none", newAlt.info.show)
+      case _ => // neither scheme has determined an alternative
+
+    if isNewPriorityVersion then newRes else oldRes
+  end resolveOverloaded
+
   /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
+   *  Each trial applies the `resolve` parameter.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
-    record("resolveOverloaded")
+  def resolveOverloaded
+      (resolve: (List[TermRef], Type) => Context ?=> List[TermRef])
+      (alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
@@ -2272,7 +2331,7 @@ trait Applications extends Compatibility {
           case Nil => chosen
           case alt2 :: Nil => alt2
           case alts2 =>
-            resolveOverloaded(alts2, pt) match {
+            resolveOverloaded(resolve)(alts2, pt) match {
               case alt2 :: Nil => alt2
               case _ => chosen
             }
@@ -2280,23 +2339,23 @@ trait Applications extends Compatibility {
       case _ => chosen
     }
 
-    def resolve(alts: List[TermRef]): List[TermRef] =
+    def resolve1(alts: List[TermRef]): List[TermRef] =
       pt match
         case pt: FunProto =>
           if pt.applyKind == ApplyKind.Using then
             val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
-            if alts0 ne alts then return resolve(alts0)
+            if alts0 ne alts then return resolve1(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
-            return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
+            return resolveMapped(alt => stripImplicit(alt.widen), resolve)(alts, pt)
         case _ =>
 
-      var found = withoutMode(Mode.ImplicitsEnabled)(resolveOverloaded1(alts, pt))
+      var found = withoutMode(Mode.ImplicitsEnabled)(resolve(alts, pt))
       if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
-        found = resolveOverloaded1(alts, pt)
+        found = resolve(alts, pt)
       found match
         case alt :: Nil => adaptByResult(alt, alts) :: Nil
         case _ => found
-    end resolve
+    end resolve1
 
     /** Try an apply method, if
      *   - the result is applied to value arguments and alternative is not a method, or
@@ -2329,9 +2388,9 @@ trait Applications extends Compatibility {
 
     if (alts.exists(tryApply)) {
       val expanded = alts.flatMap(applyMembers)
-      resolve(expanded).map(retract)
+      resolve1(expanded).map(retract)
     }
-    else resolve(alts)
+    else resolve1(alts)
   end resolveOverloaded
 
   /** This private version of `resolveOverloaded` does the bulk of the work of
@@ -2339,11 +2398,13 @@ trait Applications extends Compatibility {
    *  It might be called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded1(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
-    trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
+  private def resolveOverloaded1(scheme: ResolveScheme)(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
+  trace(i"resolve over $alts%, %, pt = $pt", typr, show = true):
     record(s"resolveOverloaded1", alts.length)
 
-    def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
+    extension (self: List[TermRef])
+      def isDetermined: Boolean = self.isEmpty || self.tail.isEmpty
+      inline def fallbackTo(inline alts: List[TermRef]) = if self.nonEmpty then self else alts
 
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
@@ -2370,6 +2431,48 @@ trait Applications extends Compatibility {
 
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
+
+    def narrowByNextParamClause
+        (resolve: (List[TermRef], Type) => Context ?=> List[TermRef])
+        (alts: List[TermRef], args: List[Tree], resultType: FunOrPolyProto): List[TermRef] =
+
+      /** The type of alternative `alt` after instantiating its first parameter
+       *  clause with `argTypes`. In addition, if the resulting type is a PolyType
+       *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
+       */
+      def skipParamClause(typeArgs: List[Type])(alt: TermRef): Type =
+        def skip(tp: Type): Type = tp match
+          case tp: PolyType =>
+            skip(tp.resultType) match
+              case NoType =>
+                NoType
+              case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
+                tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
+              case rt =>
+                tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
+          case tp: MethodType =>
+            tp.instantiate(args.tpes)
+          case _ =>
+            NoType
+        skip(alt.widen)
+
+      resultType match
+        case PolyProto(targs, resType) =>
+          // try to narrow further with snd argument list and following type params
+          resolveMapped(skipParamClause(targs.tpes), resolve)(alts, resType)
+        case resType =>
+          // try to narrow further with snd argument list
+          resolveMapped(skipParamClause(Nil), resolve)(alts, resType)
+
+      // Note that `resolvedMapped` applies `resolveOverloaded(resolve)`, _not_ `resolve` directly.
+      // This benefits from the insertion of implicit parameters, apply methods, etc.
+      // But there are still some adaptations, e.g. auto-tupling, that are not performed at this stage.
+      // In those cases, it is possible that we find that no alternatives are applicable.
+      // So, in resolveCandidates, we fallback to the `alts` we had before considering the next parameter clause.
+      // Resolution will succeed (only) if narrowMostSpecific finds an unambiguous alternative
+      // by considering (only) the prior argument lists, after which adaptation can be performed.
+      // See tests/run/tupled-function-extension-method.scala for an example.
+    end narrowByNextParamClause
 
     /** Normalization steps before checking arguments:
      *
@@ -2427,7 +2530,10 @@ trait Applications extends Compatibility {
       case _ => arg
     end normArg
 
-    val candidates = pt match {
+    // Note it is important not to capture the outer ctx, for when it is passed to resolveMapped
+    // (through narrowByNextParamClause) which retracts the Mode.SynthesizeExtMethodReceiver from the ctx
+    // before continuing to `resolveCandidates`.
+    def resolveCandidates(alts: List[TermRef], pt: Type)(using Context): List[TermRef] = pt match
       case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
         def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
@@ -2479,7 +2585,14 @@ trait Applications extends Compatibility {
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+            val alts3 = narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+
+            resultType.deepenProto match
+              case resultType: FunOrPolyProto if scheme.isNewPriority =>
+                narrowByNextParamClause(resolveCandidates)(alts3, pt.typedArgs(), resultType)
+                  .fallbackTo(alts3) // see comment in narrowByNextParamClause
+              case _ =>
+                alts3
 
       case pt @ PolyProto(targs1, pt1) =>
         val alts1 = alts.filterConserve(pt.canInstantiate)
@@ -2490,7 +2603,7 @@ trait Applications extends Compatibility {
               TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
           val alts2 = alts1.filter(withinBounds)
           if isDetermined(alts2) then alts2
-          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
+          else resolveMapped(_.widen.appliedTo(targs1.tpes), resolveCandidates)(alts1, pt1)
 
       case pt =>
         val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
@@ -2514,74 +2627,53 @@ trait Applications extends Compatibility {
                   normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
               if convertible.length == 1 then convertible else compat
         else compat
-    }
-
-    /** The type of alternative `alt` after instantiating its first parameter
-     *  clause with `argTypes`. In addition, if the resulting type is a PolyType
-     *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
-     */
-    def skipParamClause(argTypes: List[Type], typeArgs: List[Type])(alt: TermRef): Type =
-      def skip(tp: Type): Type = tp match {
-        case tp: PolyType =>
-          skip(tp.resultType) match
-            case NoType =>
-              NoType
-            case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
-              tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
-            case rt =>
-              tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
-        case tp: MethodType =>
-          tp.instantiate(argTypes)
-        case _ =>
-          NoType
-      }
-      skip(alt.widen)
+    end resolveCandidates
 
     def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
       case tp: MethodType => stripInferrable(tp.resultType).isInstanceOf[MethodType]
       case _ => false
 
-    record("resolveOverloaded.narrowedApplicable", candidates.length)
-    if pt.unusableForInference then
-      // `pt` might have become erroneous by typing arguments of FunProtos.
-      // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
-      candidates
-    else
-      val found = narrowMostSpecific(candidates)
-      if found.length <= 1 then found
+    // Like resolveCandidates, we should not capture the outer ctx parameter.
+    def resolveOverloaded2(candidates: List[TermRef], pt: Type)(using Context): List[TermRef] =
+      if pt.unusableForInference then
+        // `pt` might have become erroneous by typing arguments of FunProtos.
+        // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
+        candidates
       else
-        val deepPt = pt.deepenProto
-        deepPt match
-          case pt @ FunProto(_, PolyProto(targs, resType)) =>
-            // try to narrow further with snd argument list and following type params
-            resolveMapped(candidates,
-              skipParamClause(pt.typedArgs().tpes, targs.tpes), resType)
-          case pt @ FunProto(_, resType: FunOrPolyProto) =>
-            // try to narrow further with snd argument list
-            resolveMapped(candidates,
-              skipParamClause(pt.typedArgs().tpes, Nil), resType)
-          case _ =>
-            // prefer alternatives that need no eta expansion
-            val noCurried = alts.filterConserve(!resultIsMethod(_))
-            val noCurriedCount = noCurried.length
-            if noCurriedCount == 1 then
-              noCurried
-            else if noCurriedCount > 1 && noCurriedCount < alts.length then
-              resolveOverloaded1(noCurried, pt)
-            else
-              // prefer alternatves that match without default parameters
-              val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
-              val noDefaultsCount = noDefaults.length
-              if noDefaultsCount == 1 then
-                noDefaults
-              else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-                resolveOverloaded1(noDefaults, pt)
-              else if deepPt ne pt then
-                // try again with a deeper known expected type
-                resolveOverloaded1(alts, deepPt)
+        val found = narrowMostSpecific(candidates)
+        if isDetermined(found) then found
+        else
+          val deepPt = pt.deepenProto
+          deepPt match
+            case pt @ FunProto(_, resType: FunOrPolyProto) =>
+              val alts1 = if scheme.isNewPriority then found else candidates
+              narrowByNextParamClause(resolveOverloaded1(scheme))(alts1, pt.typedArgs(), resType)
+            case _ =>
+              // prefer alternatives that need no eta expansion
+              val noCurried = alts.filterConserve(!resultIsMethod(_))
+              val noCurriedCount = noCurried.length
+              if noCurriedCount == 1 then
+                noCurried
+              else if noCurriedCount > 1 && noCurriedCount < alts.length then
+                resolveOverloaded1(scheme)(noCurried, pt)
               else
-                candidates
-    }
+                // prefer alternatves that match without default parameters
+                val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
+                val noDefaultsCount = noDefaults.length
+                if noDefaultsCount == 1 then
+                  noDefaults
+                else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
+                  resolveOverloaded1(scheme)(noDefaults, pt)
+                else if deepPt ne pt then
+                  // try again with a deeper known expected type
+                  resolveOverloaded1(scheme)(alts, deepPt)
+                else
+                  candidates
+    end resolveOverloaded2
+
+    val candidates = resolveCandidates(alts, pt)
+    record("resolveOverloaded.narrowedApplicable", candidates.length)
+    resolveOverloaded2(candidates, pt)
   end resolveOverloaded1
 
   /** Is `formal` a product type which is elementwise compatible with `params`? */
@@ -2608,11 +2700,13 @@ trait Applications extends Compatibility {
       recur(paramss, 0)
     case _ => (Nil, 0)
 
-  /** Resolve overloading by mapping to a different problem where each alternative's
-   *  type is mapped with `f`, alternatives with non-existing types or symbols are dropped, and the
-   *  expected type is `pt`. Map the results back to the original alternatives.
+  /** ResolveOverloaded using `resolve` by mapping to a different problem where each alternative's
+   *  type is mapped with `f`, alternatives with non-existing types or symbols are dropped,
+   *  and the expected type is `pt`. Map the results back to the original alternatives.
    */
-  def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type)(using Context): List[TermRef] =
+  def resolveMapped
+      (f: TermRef => Type, resolve: (List[TermRef], Type) => Context ?=> List[TermRef])
+      (alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists && alt.symbol.exists then
@@ -2635,8 +2729,9 @@ trait Applications extends Compatibility {
     }
     val mapped = reverseMapping.map(_._1)
     overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
-    resolveOverloaded(mapped, pt)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
+    resolveOverloaded(resolve)(mapped, pt)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
       .map(reverseMapping.toMap)
+  end resolveMapped
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
    *  parameter type. If the formal parameter types corresponding to a closure argument
