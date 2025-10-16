@@ -717,6 +717,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
 
   /** Returns the decimal String representation of this BigDecimal.
    */
-  override def toString: String = this.bigDecimal.toString
+  override def toString(): String = this.bigDecimal.toString
 
 }
